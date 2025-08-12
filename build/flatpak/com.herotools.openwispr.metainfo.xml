@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.herotools.openwispr</id>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <name>OpenWispr</name>
+  <summary>Desktop dictation application using OpenAI Whisper</summary>
+  <description>
+    <p>
+      OpenWispr is a desktop dictation application that uses OpenAI Whisper for 
+      speech-to-text transcription. It supports both local (privacy-focused) and 
+      cloud (OpenAI API) processing modes.
+    </p>
+    <p>Features:</p>
+    <ul>
+      <li>Global hotkey activation</li>
+      <li>Local and cloud transcription modes</li>
+      <li>Multiple language support</li>
+      <li>Always-on-top dictation interface</li>
+      <li>Clipboard integration</li>
+      <li>Transcription history</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">com.herotools.openwispr.desktop</launchable>
+  <url type="homepage">https://github.com/HeroTools/open-wispr</url>
+  <url type="bugtracker">https://github.com/HeroTools/open-wispr/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/HeroTools/open-wispr/main/assets/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <content_rating type="oars-1.1"/>
+  <categories>
+    <category>Office</category>
+    <category>Accessibility</category>
+    <category>AudioVideo</category>
+  </categories>
+  <keywords>
+    <keyword>dictation</keyword>
+    <keyword>speech</keyword>
+    <keyword>transcription</keyword>
+    <keyword>whisper</keyword>
+    <keyword>ai</keyword>
+  </keywords>
+</component>

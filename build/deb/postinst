@@ -1,0 +1,24 @@
+#!/bin/bash
+set -e
+
+# Update desktop database
+if command -v update-desktop-database > /dev/null 2>&1; then
+    update-desktop-database -q /usr/share/applications
+fi
+
+# Update icon cache
+if command -v gtk-update-icon-cache > /dev/null 2>&1; then
+    gtk-update-icon-cache -q /usr/share/icons/hicolor
+fi
+
+# Update MIME database
+if command -v update-mime-database > /dev/null 2>&1; then
+    update-mime-database /usr/share/mime
+fi
+
+# Install Python dependencies if pip is available
+if command -v pip3 > /dev/null 2>&1; then
+    pip3 install --user openai-whisper torch torchaudio --quiet || true
+fi
+
+exit 0

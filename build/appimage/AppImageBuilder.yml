@@ -1,0 +1,92 @@
+version: 1
+script:
+  # Remove any previous build
+  - rm -rf AppDir  | true
+  # Create AppDir structure
+  - mkdir -p AppDir/usr/bin
+  - mkdir -p AppDir/usr/lib
+  - mkdir -p AppDir/usr/share/applications
+  - mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
+  # Copy the application
+  - cp -r dist/linux-unpacked/* AppDir/usr/lib/open-wispr/
+  - ln -sf ../lib/open-wispr/open-wispr AppDir/usr/bin/open-wispr
+  # Copy desktop files and icons
+  - cp build/flatpak/com.herotools.openwispr.desktop AppDir/usr/share/applications/open-wispr.desktop
+  - cp assets/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/open-wispr.png
+  # Create AppRun
+  - cp assets/icon.png AppDir/open-wispr.png
+  - cp build/flatpak/com.herotools.openwispr.desktop AppDir/open-wispr.desktop
+
+AppDir:
+  path: ./AppDir
+
+  app_info:
+    id: com.herotools.openwispr
+    name: OpenWispr
+    icon: open-wispr
+    version: 1.0.2
+    exec: usr/bin/open-wispr
+    exec_args: $@
+
+  apt:
+    arch: amd64
+    sources:
+      - sourceline: 'deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main restricted universe multiverse'
+        key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x3B4FE6ACC0B21F32'
+    include:
+      - libasound2
+      - libatk1.0-0
+      - libcairo-gobject2
+      - libcairo2
+      - libdrm2
+      - libgdk-pixbuf2.0-0
+      - libgtk-3-0
+      - libnspr4
+      - libnss3
+      - libpango-1.0-0
+      - libpangocairo-1.0-0
+      - libx11-6
+      - libx11-xcb1
+      - libxcb-dri3-0
+      - libxcomposite1
+      - libxcursor1
+      - libxdamage1
+      - libxext6
+      - libxfixes3
+      - libxi6
+      - libxrandr2
+      - libxrender1
+      - libxss1
+      - libxtst6
+      - python3
+      - python3-pip
+
+  runtime:
+    env:
+      APPIMAGE_UUID: c0dd3990-19e6-11ec-9621-0242ac130002
+
+  test:
+    fedora:
+      image: appimagecrafters/tests-env:fedora-35
+      command: ./AppRun --version
+      use_host_x: true
+    debian:
+      image: appimagecrafters/tests-env:debian-oldstable
+      command: ./AppRun --version
+      use_host_x: true
+    arch:
+      image: appimagecrafters/tests-env:archlinux-latest
+      command: ./AppRun --version
+      use_host_x: true
+    centos:
+      image: appimagecrafters/tests-env:centos-7
+      command: ./AppRun --version
+      use_host_x: true
+    ubuntu:
+      image: appimagecrafters/tests-env:ubuntu-xenial
+      command: ./AppRun --version
+      use_host_x: true
+
+AppImage:
+  arch: x86_64
+  file_name: OpenWispr-1.0.2-x86_64.AppImage
