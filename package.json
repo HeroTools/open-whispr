@@ -20,7 +20,15 @@
     "dist": "npm run build:renderer && electron-builder",
     "lint": "cd src && eslint .",
     "preview": "cd src && vite preview",
-    "clean": "node cleanup.js"
+    "clean": "node cleanup.js",
+    "package:setup": "tsx build/scripts/handle-platform-deps.ts create-platform-configs",
+    "package:linux": "tsx build/scripts/build-all.ts",
+    "package:flatpak": "tsx build/scripts/build-flatpak.ts",
+    "package:appimage": "tsx build/scripts/build-appimage.ts",
+    "package:deb": "tsx build/scripts/build-deb.ts",
+    "package:rpm": "tsx build/scripts/build-rpm.ts",
+    "package:test": "tsx build/scripts/test-packages.ts",
+    "package:restore": "tsx build/scripts/handle-platform-deps.ts restore"
   },
   "keywords": [
     "dictation",
@@ -50,6 +58,8 @@
     "globals": "^16.0.0",
     "postcss": "^8.5.6",
     "tailwindcss": "^4.1.10",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
     "vite": "^6.3.5"
   },
   "dependencies": {

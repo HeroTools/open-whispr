@@ -1,4 +1,11 @@
 const { app, globalShortcut, BrowserWindow } = require("electron");
+const { version } = require("./package.json");
+
+// Handle --version flag for headless testing
+if (process.argv.includes('--version')) {
+  console.log(version);
+  process.exit(0);
+}
 
 // Add global error handling for uncaught exceptions
 process.on("uncaughtException", (error) => {
