@@ -79,7 +79,7 @@ async function buildDockerImages(buildUtils) {
   const platform = arch === 'arm64' ? 'linux/arm64' : 'linux/amd64';
   
   for (const dockerfile of dockerFiles) {
-    const baseImageName = `openwispr-${dockerfile.split('.')[1]}-builder`;
+    const baseImageName = `openwhispr-${dockerfile.split('.')[1]}-builder`;
     const imageName = `${baseImageName}-${arch}`;
     log(`Building Docker image: ${imageName} for ${platform}`);
     

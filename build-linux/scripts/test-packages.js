@@ -11,7 +11,7 @@ const VERSION = getPackageVersion();
 const testConfigs = [
   {
     name: 'Ubuntu 22.04',
-    baseImage: 'openwispr-deb-builder', // Reuse our existing DEB builder
+    baseImage: 'openwhispr-deb-builder', // Reuse our existing DEB builder
     packageFile: getDebFilename(),
     installCommand: `dpkg -i ./${getDebFilename()} || (apt update && apt install -f -y)`,
     testCommand: 'open-whispr --version',
@@ -27,7 +27,7 @@ const testConfigs = [
   },
   {
     name: 'Fedora 39',
-    baseImage: 'openwispr-rpm-builder', // Reuse our existing RPM builder
+    baseImage: 'openwhispr-rpm-builder', // Reuse our existing RPM builder
     packageFile: getRpmFilename(),
     installCommand: `dnf install -y ./${getRpmFilename()}`,
     testCommand: 'open-whispr --version',
@@ -61,8 +61,8 @@ async function ensureBuildImages() {
   log('Ensuring Docker build images are available...');
   
   const requiredImages = [
-    'openwispr-deb-builder',
-    'openwispr-rpm-builder'
+    'openwhispr-deb-builder',
+    'openwhispr-rpm-builder'
   ];
   
   for (const imageName of requiredImages) {
@@ -72,7 +72,7 @@ async function ensureBuildImages() {
       log(`✅ Image ${imageName} exists`);
     } catch (error) {
       log(`⚠️ Image ${imageName} not found, building it...`);
-      const dockerfileName = imageName.replace('openwispr-', '').replace('-builder', '');
+      const dockerfileName = imageName.replace('openwhispr-', '').replace('-builder', '');
       const dockerfilePath = path.join(PROJECT_ROOT, 'build-linux/docker', `Dockerfile.${dockerfileName}`);
       
       if (existsSync(dockerfilePath)) {
@@ -183,12 +183,12 @@ echo "📦 Installing Flatpak..."
 flatpak install --user --assumeyes ./${flatpakFile}
 
 echo "🔍 Testing installation..."
-OUTPUT=$(flatpak run com.herotools.openwispr --version 2>&1)
+OUTPUT=$(flatpak run com.herotools.openwhispr --version 2>&1)
 echo "Version output: '$OUTPUT'"
 
 if [ "$OUTPUT" = "${VERSION}" ]; then
   echo "✅ Version check passed"
-  flatpak uninstall --user com.herotools.openwispr --assumeyes
+  flatpak uninstall --user com.herotools.openwhispr --assumeyes
   exit 0
 else
   echo "❌ Version check failed. Expected '${VERSION}', got '$OUTPUT'"
@@ -202,7 +202,7 @@ fi
       `-v "${PROJECT_ROOT}:/workspace"`,
       '-w /workspace',
       '-e FLATPAK_USER_DIR=/tmp/flatpak-user',
-      'openwispr-flatpak-builder',
+      'openwhispr-flatpak-builder',
       'bash -c',
       `"${testScript.replace(/"/g, '\\"')}"`
     ].join(' ');
@@ -263,7 +263,7 @@ fi
       `-v "${PROJECT_ROOT}:/workspace"`,
       '-w /workspace',
       '-e APPIMAGE_EXTRACT_AND_RUN=1',
-      'openwispr-appimage-builder',
+      'openwhispr-appimage-builder',
       'bash -c',
       `"${testScript.replace(/"/g, '\\"')}"`
     ].join(' ');

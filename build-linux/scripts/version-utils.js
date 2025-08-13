@@ -28,13 +28,13 @@ function getRpmFilename(arch) {
 
 function getFlatpakFilename() {
   const version = getPackageVersion();
-  return `OpenWispr-${version}.flatpak`;
+  return `OpenWhispr-${version}.flatpak`;
 }
 
 function getAppImageFilename(arch) {
   const version = getPackageVersion();
   const architecture = arch || (process.env.ARCH === 'arm64' ? 'aarch64' : 'x86_64');
-  return `OpenWispr-${version}-${architecture}.AppImage`;
+  return `OpenWhispr-${version}-${architecture}.AppImage`;
 }
 
 function getTarballFilename() {

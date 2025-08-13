@@ -70,7 +70,7 @@ async function buildDeb() {
   runCommand(`ln -sf /opt/open-whispr/open-whispr ${debPackageDir}/usr/bin/open-whispr`);
   
   // Copy desktop file and icon
-  runCommand(`cp ${WORKING_DIR}/build-linux/flatpak/com.herotools.openwispr.desktop ${debPackageDir}/usr/share/applications/open-whispr.desktop`);
+  runCommand(`cp ${WORKING_DIR}/build-linux/flatpak/com.herotools.openwhispr.desktop ${debPackageDir}/usr/share/applications/open-whispr.desktop`);
   runCommand(`cp ${WORKING_DIR}/assets/icon.png ${debPackageDir}/usr/share/icons/hicolor/512x512/apps/open-whispr.png`);
   
   // Copy control files
@@ -89,7 +89,7 @@ async function buildDeb() {
     'docker run --rm',
     `-v "${WORKING_DIR}:/workspace"`,
     '-w /workspace',
-    `openwispr-deb-builder-${arch}`,
+    `openwhispr-deb-builder-${arch}`,
     'dpkg-deb',
     '--build',
     'deb-package',

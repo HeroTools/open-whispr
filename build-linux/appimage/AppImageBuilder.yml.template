@@ -11,18 +11,18 @@ script:
   - cp -r dist/linux-unpacked/* AppDir/usr/lib/open-whispr/
   - ln -sf ../lib/open-whispr/open-whispr AppDir/usr/bin/open-whispr
   # Copy desktop files and icons
-  - cp build-linux/flatpak/com.herotools.openwispr.desktop AppDir/usr/share/applications/open-whispr.desktop
+  - cp build-linux/flatpak/com.herotools.openwhispr.desktop AppDir/usr/share/applications/open-whispr.desktop
   - cp assets/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/open-whispr.png
   # Create AppRun
   - cp assets/icon.png AppDir/open-whispr.png
-  - cp build-linux/flatpak/com.herotools.openwispr.desktop AppDir/open-whispr.desktop
+  - cp build-linux/flatpak/com.herotools.openwhispr.desktop AppDir/open-whispr.desktop
 
 AppDir:
   path: ./AppDir
 
   app_info:
-    id: com.herotools.openwispr
-    name: OpenWispr
+    id: com.herotools.openwhispr
+    name: OpenWhispr
     icon: open-whispr
     version: {{VERSION}}
     exec: usr/bin/open-whispr
@@ -89,4 +89,4 @@ AppDir:
 
 AppImage:
   arch: {{APPIMAGE_ARCH}}
-  file_name: OpenWispr-{{VERSION}}-{{APPIMAGE_ARCH}}.AppImage
+  file_name: OpenWhispr-{{VERSION}}-{{APPIMAGE_ARCH}}.AppImage

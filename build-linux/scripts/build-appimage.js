@@ -51,7 +51,7 @@ async function buildAppImage() {
     `--security-opt apparmor:unconfined`,
     `-v "${PROJECT_ROOT}:/workspace"`,
     '-w /workspace',
-    `openwispr-appimage-builder-${arch}`,
+    `openwhispr-appimage-builder-${arch}`,
     'appimage-builder',
     '--recipe build-linux/appimage/AppImageBuilder.yml'
   ].join(' ');

@@ -47,12 +47,12 @@ async function buildFlatpak() {
     `-v "${PROJECT_ROOT}:/workspace"`,
     '-w /workspace',
     '--privileged',
-    `openwispr-flatpak-builder-${arch}`,
+    `openwhispr-flatpak-builder-${arch}`,
     'flatpak-builder',
     '--force-clean',
     '--repo=flatpak-repo',
     'flatpak-build',
-    'build-linux/flatpak/com.herotools.openwispr.yml'
+    'build-linux/flatpak/com.herotools.openwhispr.yml'
   ].join(' ');
   
   runCommand(dockerCommand);
@@ -64,11 +64,11 @@ async function buildFlatpak() {
     `-v "${PROJECT_ROOT}:/workspace"`,
     '-w /workspace',
     '--privileged',
-    `openwispr-flatpak-builder-${arch}`,
+    `openwhispr-flatpak-builder-${arch}`,
     'flatpak build-bundle',
     'flatpak-repo',
     path.join(OUTPUT_DIR, getFlatpakFilename()),
-    'com.herotools.openwispr'
+    'com.herotools.openwhispr'
   ].join(' ');
   
   runCommand(exportCommand);

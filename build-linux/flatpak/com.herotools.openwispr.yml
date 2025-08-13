@@ -1,4 +1,4 @@
-app-id: com.herotools.openwispr
+app-id: com.herotools.openwhispr
 runtime: org.freedesktop.Platform
 runtime-version: '23.08'
 sdk: org.freedesktop.Sdk
@@ -32,17 +32,17 @@ finish-args:
   - --talk-name=org.freedesktop.Notifications
 
 modules:
-  - name: openwispr
+  - name: openwhispr
     buildsystem: simple
     build-commands:
       - cp -r . /app/
       - chmod +x /app/open-whispr
       - mkdir -p /app/share/applications
-      - cp build/flatpak/com.herotools.openwispr.desktop /app/share/applications/
+      - cp build/flatpak/com.herotools.openwhispr.desktop /app/share/applications/
       - mkdir -p /app/share/icons/hicolor/512x512/apps
-      - cp assets/icon.png /app/share/icons/hicolor/512x512/apps/com.herotools.openwispr.png
+      - cp assets/icon.png /app/share/icons/hicolor/512x512/apps/com.herotools.openwhispr.png
       - mkdir -p /app/share/metainfo
-      - cp build/flatpak/com.herotools.openwispr.metainfo.xml /app/share/metainfo/
+      - cp build/flatpak/com.herotools.openwhispr.metainfo.xml /app/share/metainfo/
     sources:
       - type: dir
         path: ../../

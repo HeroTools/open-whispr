@@ -31,7 +31,7 @@ Requires:       python3 >= 3.8
 Requires:       pulseaudio-libs
 
 %description
-OpenWispr is a desktop dictation application that uses OpenAI Whisper for 
+OpenWhispr is a desktop dictation application that uses OpenAI Whisper for 
 speech-to-text transcription. It supports both local (privacy-focused) and 
 cloud (OpenAI API) processing modes.
 
@@ -56,13 +56,13 @@ ln -sf /opt/open-whispr/open-whispr $RPM_BUILD_ROOT/usr/bin/open-whispr
 
 cat > $RPM_BUILD_ROOT/usr/share/applications/open-whispr.desktop << EOF
 [Desktop Entry]
-Name=OpenWispr
+Name=OpenWhispr
 Comment=Desktop dictation application using OpenAI Whisper
 Exec=open-whispr
 Icon=open-whispr
 Type=Application
 Categories=Office;Accessibility;AudioVideo;
-StartupWMClass=OpenWispr
+StartupWMClass=OpenWhispr
 MimeType=audio/wav;audio/mp3;audio/flac;audio/ogg;
 Keywords=dictation;speech;transcription;whisper;ai;
 EOF
@@ -90,5 +90,5 @@ fi
 /usr/bin/gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 %changelog
-* Mon Jan 01 2024 OpenWispr Team <support@herotools.com> - {{VERSION}}-1
+* Mon Jan 01 2024 OpenWhispr Team <support@herotools.com> - {{VERSION}}-1
 - Release version {{VERSION}}
