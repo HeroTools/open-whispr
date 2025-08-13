@@ -13,7 +13,9 @@ class BuildUtils {
     this.projectRoot = path.resolve(__dirname, '../..');
     this.buildLinuxDir = path.join(this.projectRoot, 'build-linux');
     this.arch = getCurrentArch();
-    this.tempBuildDir = path.join(this.projectRoot, `dist-linux/${this.arch}`);
+    // Use OS temp directory to avoid copying project to subdirectory of itself
+    const os = require('os');
+    this.tempBuildDir = path.join(os.tmpdir(), `open-whispr-build-${this.arch}-${Date.now()}`);
     this.renderer = new TemplateRenderer();
   }
 
@@ -140,13 +142,34 @@ class BuildUtils {
     
     this.log(`Copying artifacts from temp build to ${destPath}`);
     
-    // Use glob pattern to copy artifacts
-    const copyCommand = `cp -v ${sourcePattern} ${destPath}/`;
+    // Use glob pattern to copy artifacts - use find with exec for better reliability
+    const findCommand = `find . -maxdepth 2 -name "${sourcePattern}" -exec cp {} ${destPath}/ \\;`;
     try {
-      this.runCommand(copyCommand, this.tempBuildDir);
+      this.runCommand(findCommand, this.tempBuildDir);
       this.log('✅ Artifacts copied successfully');
     } catch (error) {
       this.log(`Warning: Could not copy artifacts with pattern ${sourcePattern}`);
+    }
+  }
+
+  /**
+   * Copy specific artifacts to main dist directory
+   */
+  copySpecificArtifacts(...artifactPaths) {
+    const mainDistDir = path.join(this.projectRoot, 'dist');
+    mkdirSync(mainDistDir, { recursive: true });
+    
+    for (const artifactPath of artifactPaths) {
+      const fullPath = path.join(this.tempBuildDir, artifactPath);
+      if (existsSync(fullPath)) {
+        const copyCommand = `cp -v "${fullPath}" "${mainDistDir}/"`;
+        try {
+          this.runCommand(copyCommand);
+          this.log(`✅ Copied ${artifactPath} to dist/`);
+        } catch (error) {
+          this.log(`Warning: Could not copy artifact ${artifactPath}`);
+        }
+      }
     }
   }
 }

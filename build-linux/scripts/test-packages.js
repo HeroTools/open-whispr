@@ -11,7 +11,7 @@ const VERSION = getPackageVersion();
 const testConfigs = [
   {
     name: 'Ubuntu 22.04',
-    baseImage: 'openwhispr-deb-builder', // Reuse our existing DEB builder
+    baseImage: 'open-whispr-deb-builder', // Reuse our existing DEB builder
     packageFile: getDebFilename(),
     installCommand: `dpkg -i ./${getDebFilename()} || (apt update && apt install -f -y)`,
     testCommand: 'open-whispr --version',
@@ -27,7 +27,7 @@ const testConfigs = [
   },
   {
     name: 'Fedora 39',
-    baseImage: 'openwhispr-rpm-builder', // Reuse our existing RPM builder
+    baseImage: 'open-whispr-rpm-builder', // Reuse our existing RPM builder
     packageFile: getRpmFilename(),
     installCommand: `dnf install -y ./${getRpmFilename()}`,
     testCommand: 'open-whispr --version',
@@ -61,8 +61,8 @@ async function ensureBuildImages() {
   log('Ensuring Docker build images are available...');
   
   const requiredImages = [
-    'openwhispr-deb-builder',
-    'openwhispr-rpm-builder'
+    'open-whispr-deb-builder',
+    'open-whispr-rpm-builder'
   ];
   
   for (const imageName of requiredImages) {
@@ -202,7 +202,7 @@ fi
       `-v "${PROJECT_ROOT}:/workspace"`,
       '-w /workspace',
       '-e FLATPAK_USER_DIR=/tmp/flatpak-user',
-      'openwhispr-flatpak-builder',
+      'open-whispr-flatpak-builder',
       'bash -c',
       `"${testScript.replace(/"/g, '\\"')}"`
     ].join(' ');
@@ -263,7 +263,7 @@ fi
       `-v "${PROJECT_ROOT}:/workspace"`,
       '-w /workspace',
       '-e APPIMAGE_EXTRACT_AND_RUN=1',
-      'openwhispr-appimage-builder',
+      'open-whispr-appimage-builder',
       'bash -c',
       `"${testScript.replace(/"/g, '\\"')}"`
     ].join(' ');

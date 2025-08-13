@@ -56,7 +56,7 @@ async function buildRpm() {
     'docker run --rm',
     `-v "${PROJECT_ROOT}:/workspace"`,
     '-w /workspace',
-    `openwhispr-rpm-builder-${arch}`,
+    `open-whispr-rpm-builder-${arch}`,
     'bash -c',
     `"cp ${tarballName} /root/rpmbuild/SOURCES/ && `,
     `cp ${RPM_DIR}/open-whispr.spec /root/rpmbuild/SPECS/ && `,

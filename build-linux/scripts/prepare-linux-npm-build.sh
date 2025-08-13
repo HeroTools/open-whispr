@@ -14,7 +14,7 @@ if [ -f package.linux.json ]; then
     cp package.linux.json package.json
     echo "[prepare-linux-npm-build.sh] 🐧 Using Linux-specific package.json"
 else
-    echo "[prepare-linux-npm-build.sh] ❌ package.linux.json not found! Run 'node build-linux/scripts/handle-patform-npm-packages.js' first"
+    echo "[prepare-linux-npm-build.sh] ❌ package.linux.json not found! Run 'node build-linux/scripts/handle-platform-npm-packages.js' first"
     exit 1
 fi
 

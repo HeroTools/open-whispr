@@ -1,6 +1,6 @@
-# OpenWhispr Linux Packaging
+# Open-Whispr Linux Packaging
 
-This directory contains all the necessary files and scripts for building OpenWhispr packages for Linux distributions.
+This directory contains all the necessary files and scripts for building Open-Whispr packages for Linux distributions.
 
 ## Quick Start
 
@@ -13,7 +13,7 @@ This directory contains all the necessary files and scripts for building OpenWhi
 2. **Build all Linux packages:**
 
    ```bash
-   npm run package-linux:all
+   npm run package-linux:all-amd64
    ```
 
 3. **Test packages on different distributions:**
@@ -29,35 +29,35 @@ This directory contains all the necessary files and scripts for building OpenWhi
 ### Flatpak
 
 - **File**: `build-linux/flatpak/`
-- **Build**: `npm run package-linux:flatpak`
+- **Build**: Individual builds not supported - use `npm run package-linux:all-amd64`
 - **Features**: Wayland-first, sandboxed, automatic dependency management
 
 ### AppImage
 
 - **File**: `build-linux/appimage/`
-- **Build**: `npm run package-linux:appimage`
+- **Build**: Individual builds not supported - use `npm run package-linux:all-amd64`
 - **Features**: Portable, no installation required, works across distributions
 
 ### DEB (Debian/Ubuntu)
 
 - **File**: `build-linux/deb/`
-- **Build**: `npm run package-linux:deb`
+- **Build**: Individual builds not supported - use `npm run package-linux:all-amd64`
 - **Features**: Native package management integration, automatic dependency resolution
 
 ### RPM (Fedora/RHEL/CentOS)
 
 - **File**: `build-linux/rpm/`
-- **Build**: `npm run package-linux:rpm`
+- **Build**: Individual builds not supported - use `npm run package-linux:all-amd64`
 - **Features**: Native package management integration, system service integration
 
 ## Docker Build Environment
 
 Each package format has its own Docker container to ensure consistent builds:
 
-- `openwhispr-flatpak-builder`: Fedora-based with Flatpak tools
-- `openwhispr-appimage-builder`: Ubuntu-based with AppImage tools
-- `openwhispr-deb-builder`: Ubuntu-based with DEB packaging tools
-- `openwhispr-rpm-builder`: Fedora-based with RPM packaging tools
+- `open-whispr-flatpak-builder`: Fedora-based with Flatpak tools
+- `open-whispr-appimage-builder`: Ubuntu-based with AppImage tools
+- `open-whispr-deb-builder`: Ubuntu-based with DEB packaging tools
+- `open-whispr-rpm-builder`: Fedora-based with RPM packaging tools
 
 ## Platform Dependency Handling
 
@@ -73,9 +73,9 @@ The build system automatically handles platform-specific dependencies like `@esb
 
 The test suite uses Docker containers to test installations across multiple distributions:
 
-- Ubuntu 22.04 (using openwhispr-deb-builder)
+- Ubuntu 22.04 (using open-whispr-deb-builder)
 - Debian 12 (using debian:12 base image)
-- Fedora 39 (using openwhispr-rpm-builder)
+- Fedora 39 (using open-whispr-rpm-builder)
 - CentOS Stream 9 (using centos:stream9 base image)
 
 The testing automatically reuses our existing Docker build images, making it fast and reliable.
@@ -86,7 +86,7 @@ Test individual packages:
 
 ```bash
 # Test version flag works
-./dist/OpenWhispr-1.0.2-x86_64.AppImage --version
+./dist/Open-Whispr-1.0.2-x86_64.AppImage --version
 
 # Install DEB package
 sudo dpkg -i dist/open-whispr_1.0.2_amd64.deb
@@ -97,7 +97,7 @@ sudo dnf install dist/open-whispr-1.0.2-1.*.x86_64.rpm
 open-whispr --version
 
 # Install Flatpak
-flatpak install --user dist/OpenWhispr-1.0.2.flatpak
+flatpak install --user dist/Open-Whispr-1.0.2.flatpak
 flatpak run com.herotools.openwhispr --version
 ```
 
@@ -129,8 +129,8 @@ All packages are built to the `dist/` directory:
 
 ```
 dist/
-├── OpenWhispr-1.0.2.flatpak
-├── OpenWhispr-1.0.2-x86_64.AppImage
+├── Open-Whispr-1.0.2.flatpak
+├── Open-Whispr-1.0.2-x86_64.AppImage
 ├── open-whispr_1.0.2_amd64.deb
 └── open-whispr-1.0.2-1.fc39.x86_64.rpm
 ```
@@ -144,7 +144,8 @@ dist/
 docker system prune -f
 cd build-linux/docker
 for dockerfile in *.Dockerfile; do
-    image_name="openwhispr-${dockerfile##*.}-builder"
+    format_name="${dockerfile%.Dockerfile}"
+    image_name="open-whispr-${format_name}-builder-amd64"
     docker build -f "$dockerfile" -t "$image_name" .
 done
 ```
@@ -156,8 +157,7 @@ done
 npm run clean
 rm -rf dist/ node_modules/
 npm install
-npm run package-linux:setup
-npm run package-linux:all
+npm run package-linux:all-amd64
 ```
 
 ### Testing Issues

@@ -26,8 +26,8 @@ async function buildAll() {
     // Step 3: Handle platform-specific dependencies in temp directory
     log('Handling platform-specific dependencies...');
     const tempScriptDir = path.join(tempBuildDir, 'build-linux/scripts');
-    buildUtils.runCommand(`node ${path.join(tempScriptDir, 'handle-patform-npm-packages.js')} create-platform-package-json`, tempBuildDir);
-    buildUtils.runCommand(`node ${path.join(tempScriptDir, 'handle-patform-npm-packages.js')} prepare-linux-npm-build`, tempBuildDir);
+    buildUtils.runCommand(`node ${path.join(tempScriptDir, 'handle-platform-npm-packages.js')} create-platform-package-json`, tempBuildDir);
+    buildUtils.runCommand(`node ${path.join(tempScriptDir, 'handle-platform-npm-packages.js')} prepare-linux-npm-build`, tempBuildDir);
     
     // Step 4: Build Docker images first
     log('Building Docker images...');
@@ -51,6 +51,13 @@ async function buildAll() {
         buildUtils.runCommand(`node ${scriptPath} --temp-build-dir=${tempBuildDir}`, tempBuildDir);
       }
     }
+    
+    // Step 6: Copy all artifacts back to main dist directory
+    log('Copying build artifacts to dist/ directory...');
+    buildUtils.copyArtifacts('*.deb', '');
+    buildUtils.copyArtifacts('*.rpm', '');
+    buildUtils.copyArtifacts('*.AppImage', '');
+    buildUtils.copyArtifacts('*.flatpak', '');
     
     log('All builds completed successfully!');
     log('Check the dist/ directory for all package formats.');
@@ -79,8 +86,8 @@ async function buildDockerImages(buildUtils) {
   const platform = arch === 'arm64' ? 'linux/arm64' : 'linux/amd64';
   
   for (const dockerfile of dockerFiles) {
-    const baseImageName = `openwhispr-${dockerfile.split('.')[1]}-builder`;
-    const imageName = `${baseImageName}-${arch}`;
+    const formatName = dockerfile.split('.')[0]; // e.g., "flatpak" from "flatpak.Dockerfile"
+    const imageName = `open-whispr-${formatName}-builder-${arch}`;
     log(`Building Docker image: ${imageName} for ${platform}`);
     
     buildUtils.runCommand(`docker build --platform ${platform} -f ${dockerfile} -t ${imageName} .`, dockerDir);

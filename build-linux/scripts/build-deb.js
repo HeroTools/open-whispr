@@ -89,7 +89,7 @@ async function buildDeb() {
     'docker run --rm',
     `-v "${WORKING_DIR}:/workspace"`,
     '-w /workspace',
-    `openwhispr-deb-builder-${arch}`,
+    `open-whispr-deb-builder-${arch}`,
     'dpkg-deb',
     '--build',
     'deb-package',
