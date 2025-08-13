@@ -68,10 +68,10 @@ async function buildAll() {
 
 async function buildDockerImages(buildUtils) {
   const dockerFiles = [
-    'Dockerfile.flatpak',
-    'Dockerfile.appimage',
-    'Dockerfile.deb',
-    'Dockerfile.rpm'
+    'flatpak.Dockerfile',
+    'appimage.Dockerfile',
+    'deb.Dockerfile',
+    'rpm.Dockerfile'
   ];
   
   const dockerDir = buildUtils.getTempPath('build-linux/docker');

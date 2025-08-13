@@ -143,7 +143,7 @@ dist/
 # Rebuild all Docker images
 docker system prune -f
 cd build-linux/docker
-for dockerfile in Dockerfile.*; do
+for dockerfile in *.Dockerfile; do
     image_name="openwhispr-${dockerfile##*.}-builder"
     docker build -f "$dockerfile" -t "$image_name" .
 done

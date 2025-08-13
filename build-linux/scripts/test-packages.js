@@ -73,7 +73,7 @@ async function ensureBuildImages() {
     } catch (error) {
       log(`⚠️ Image ${imageName} not found, building it...`);
       const dockerfileName = imageName.replace('openwhispr-', '').replace('-builder', '');
-      const dockerfilePath = path.join(PROJECT_ROOT, 'build-linux/docker', `Dockerfile.${dockerfileName}`);
+      const dockerfilePath = path.join(PROJECT_ROOT, 'build-linux/docker', `${dockerfileName}.Dockerfile`);
       
       if (existsSync(dockerfilePath)) {
         runCommand(`docker build -f ${dockerfilePath} -t ${imageName} .`, path.join(PROJECT_ROOT, 'build-linux/docker'));
