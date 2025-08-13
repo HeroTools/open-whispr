@@ -19,10 +19,7 @@ This directory contains all the necessary files and scripts for building OpenWis
    npm run package-linux:test
    ```
 
-4. **Restore original package.json (if needed):**
-   ```bash
-   npm run linux:restore
-   ```
+4. **That's it!** All packages will be built to the `dist/` directory.
 
 ## Package Formats
 
