@@ -6,17 +6,17 @@ This directory contains all the necessary files and scripts for building OpenWis
 
 1. **Setup packaging environment:**
    ```bash
-   npm run linux:setup
+   npm run package-linux:setup
    ```
 
 2. **Build all Linux packages:**
    ```bash
-   npm run linux:all
+   npm run package-linux:all
    ```
 
 3. **Test packages on different distributions:**
    ```bash
-   npm run linux:test
+   npm run package-linux:test
    ```
 
 4. **Restore original package.json (if needed):**
@@ -28,22 +28,22 @@ This directory contains all the necessary files and scripts for building OpenWis
 
 ### Flatpak
 - **File**: `build-linux/flatpak/`
-- **Build**: `npm run linux:flatpak`
+- **Build**: `npm run package-linux:flatpak`
 - **Features**: Wayland-first, sandboxed, automatic dependency management
 
 ### AppImage
 - **File**: `build-linux/appimage/`
-- **Build**: `npm run linux:appimage` 
+- **Build**: `npm run package-linux:appimage` 
 - **Features**: Portable, no installation required, works across distributions
 
 ### DEB (Debian/Ubuntu)
 - **File**: `build-linux/deb/`
-- **Build**: `npm run linux:deb`
+- **Build**: `npm run package-linux:deb`
 - **Features**: Native package management integration, automatic dependency resolution
 
 ### RPM (Fedora/RHEL/CentOS)
 - **File**: `build-linux/rpm/`
-- **Build**: `npm run linux:rpm`
+- **Build**: `npm run package-linux:rpm`
 - **Features**: Native package management integration, system service integration
 
 ## Docker Build Environment
@@ -144,8 +144,8 @@ done
 npm run clean
 rm -rf dist/ node_modules/
 npm install
-npm run linux:setup
-npm run linux:all
+npm run package-linux:setup
+npm run package-linux:all
 ```
 
 ### Testing Issues
@@ -153,7 +153,7 @@ npm run linux:all
 # Clean Docker containers and images
 docker container prune -f
 docker image prune -f
-npm run linux:test
+npm run package-linux:test
 ```
 
 ## Contributing

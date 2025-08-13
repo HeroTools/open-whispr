@@ -21,15 +21,13 @@
     "lint": "cd src && eslint .",
     "preview": "cd src && vite preview",
     "clean": "node cleanup.js",
-    "linux:setup": "npx ts-node build-linux/scripts/handle-platform-deps.ts create-platform-configs",
-    "linux:manifests": "npx ts-node build-linux/scripts/generate-manifests.ts",
-    "linux:all": "npx ts-node build-linux/scripts/build-all.ts",
-    "linux:flatpak": "npx ts-node build-linux/scripts/build-flatpak.ts",
-    "linux:appimage": "npx ts-node build-linux/scripts/build-appimage.ts",
-    "linux:deb": "npx ts-node build-linux/scripts/build-deb.ts",
-    "linux:rpm": "npx ts-node build-linux/scripts/build-rpm.ts",
-    "linux:test": "npx ts-node build-linux/scripts/test-packages.ts",
-    "linux:restore": "npx ts-node build-linux/scripts/handle-platform-deps.ts restore"
+    "package-linux:setup": "npx ts-node build-linux/scripts/handle-platform-deps.ts create-platform-configs",
+    "package-linux:all": "npx ts-node build-linux/scripts/build-all.ts",
+    "package-linux:flatpak": "npx ts-node build-linux/scripts/build-flatpak.ts",
+    "package-linux:appimage": "npx ts-node build-linux/scripts/build-appimage.ts",
+    "package-linux:deb": "npx ts-node build-linux/scripts/build-deb.ts",
+    "package-linux:rpm": "npx ts-node build-linux/scripts/build-rpm.ts",
+    "package-linux:test": "npx ts-node build-linux/scripts/test-packages.ts"
   },
   "keywords": [
     "dictation",
