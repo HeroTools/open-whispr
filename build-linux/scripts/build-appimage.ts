@@ -2,6 +2,7 @@
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, copyFileSync } from 'fs';
 import * as path from 'path';
+import { getAppImageFilename } from "./version-utils";
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
@@ -30,6 +31,10 @@ async function buildAppImage() {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
+  // Generate manifests first  
+  log('Generating manifests with current version...');
+  runCommand(`npx ts-node ${path.join(__dirname, 'generate-manifests.ts')}`);
+
   // Build the Electron app first
   log('Building Electron app...');
   runCommand('npm run build:renderer');
@@ -52,8 +57,8 @@ async function buildAppImage() {
   runCommand(dockerCommand);
 
   // Move the created AppImage to output directory
-  const appImagePath = `${PROJECT_ROOT}/OpenWispr-1.0.2-x86_64.AppImage`;
-  const outputPath = `${OUTPUT_DIR}/OpenWispr-1.0.2-x86_64.AppImage`;
+  const appImagePath = `${PROJECT_ROOT}/${getAppImageFilename()}`;
+  const outputPath = `${OUTPUT_DIR}/${getAppImageFilename()}`;
   
   if (existsSync(appImagePath)) {
     copyFileSync(appImagePath, outputPath);

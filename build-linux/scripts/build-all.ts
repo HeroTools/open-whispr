@@ -27,6 +27,10 @@ async function buildAll() {
   log('Handling platform-specific dependencies...');
   runCommand(`npx ts-node ${path.join(SCRIPTS_DIR, 'handle-platform-deps.ts')} linux-build`);
   
+  // Generate manifests with current version
+  log('Generating manifests with current version...');
+  runCommand(`npx ts-node ${path.join(SCRIPTS_DIR, 'generate-manifests.ts')}`);
+  
   // Build Docker images first
   log('Building Docker images...');
   await buildDockerImages();

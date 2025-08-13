@@ -2,6 +2,7 @@
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync, chmodSync } from 'fs';
 import * as path from 'path';
+import { getDebFilename } from "./version-utils";
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
@@ -29,6 +30,10 @@ async function buildDeb() {
   if (!existsSync(OUTPUT_DIR)) {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
+
+  // Generate manifests first  
+  log('Generating manifests with current version...');
+  runCommand(`npx ts-node ${path.join(__dirname, 'generate-manifests.ts')}`);
 
   // Build the Electron app first
   log('Building Electron app...');
@@ -77,7 +82,7 @@ async function buildDeb() {
     'dpkg-deb',
     '--build',
     'deb-package',
-    `${OUTPUT_DIR}/open-wispr_1.0.2_amd64.deb`
+    `${OUTPUT_DIR}/${getDebFilename()}`
   ].join(' ');
   
   runCommand(dockerCommand);
@@ -86,7 +91,7 @@ async function buildDeb() {
   runCommand(`rm -rf ${debPackageDir}`);
 
   log('DEB build completed successfully!');
-  log(`Output: ${OUTPUT_DIR}/open-wispr_1.0.2_amd64.deb`);
+  log(`Output: ${OUTPUT_DIR}/${getDebFilename()}`);
 }
 
 if (require.main === module) {

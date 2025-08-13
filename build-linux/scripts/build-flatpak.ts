@@ -2,9 +2,10 @@
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
 import * as path from 'path';
+import { getFlatpakFilename } from './version-utils';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
-const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
+const BUILD_DIR = path.join(PROJECT_ROOT, 'build-linux');
 const FLATPAK_DIR = path.join(BUILD_DIR, 'flatpak');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
 
@@ -62,14 +63,14 @@ async function buildFlatpak() {
     'openwispr-flatpak-builder',
     'flatpak build-bundle',
     'flatpak-repo',
-    `${OUTPUT_DIR}/OpenWispr-1.0.2.flatpak`,
+    path.join(OUTPUT_DIR, getFlatpakFilename()),
     'com.herotools.openwispr'
   ].join(' ');
   
   runCommand(exportCommand);
 
   log('Flatpak build completed successfully!');
-  log(`Output: ${OUTPUT_DIR}/OpenWispr-1.0.2.flatpak`);
+  log(`Output: ${path.join(OUTPUT_DIR, getFlatpakFilename())}`);
 }
 
 if (require.main === module) {

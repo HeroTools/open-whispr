@@ -2,9 +2,11 @@
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
 import * as path from 'path';
+import { getPackageVersion, getDebFilename, getRpmFilename, getFlatpakFilename, getAppImageFilename } from './version-utils';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
+const VERSION = getPackageVersion();
 
 interface TestConfig {
   name: string;
@@ -19,32 +21,32 @@ const testConfigs: TestConfig[] = [
   {
     name: 'Ubuntu 22.04',
     baseImage: 'openwispr-deb-builder', // Reuse our existing DEB builder
-    packageFile: 'open-wispr_1.0.2_amd64.deb',
-    installCommand: 'dpkg -i ./open-wispr_1.0.2_amd64.deb || (apt update && apt install -f -y)',
+    packageFile: getDebFilename(),
+    installCommand: `dpkg -i ./${getDebFilename()} || (apt update && apt install -f -y)`,
     testCommand: 'open-wispr --version',
     packageType: 'deb'
   },
   {
     name: 'Debian 12',
     baseImage: 'debian:12',
-    packageFile: 'open-wispr_1.0.2_amd64.deb',
-    installCommand: 'apt update && dpkg -i ./open-wispr_1.0.2_amd64.deb || (apt install -f -y)',
+    packageFile: getDebFilename(),
+    installCommand: `apt update && dpkg -i ./${getDebFilename()} || (apt install -f -y)`,
     testCommand: 'open-wispr --version',
     packageType: 'deb'
   },
   {
     name: 'Fedora 39',
     baseImage: 'openwispr-rpm-builder', // Reuse our existing RPM builder
-    packageFile: 'open-wispr-1.0.2-1.*.x86_64.rpm',
-    installCommand: 'dnf install -y ./open-wispr-1.0.2-1.*.x86_64.rpm',
+    packageFile: getRpmFilename(),
+    installCommand: `dnf install -y ./${getRpmFilename()}`,
     testCommand: 'open-wispr --version',
     packageType: 'rpm'
   },
   {
     name: 'CentOS Stream 9',
     baseImage: 'centos:stream9',
-    packageFile: 'open-wispr-1.0.2-1.*.x86_64.rpm',
-    installCommand: 'dnf install -y ./open-wispr-1.0.2-1.*.x86_64.rpm',
+    packageFile: getRpmFilename(),
+    installCommand: `dnf install -y ./${getRpmFilename()}`,
     testCommand: 'open-wispr --version',
     packageType: 'rpm'
   }
@@ -132,11 +134,11 @@ echo "🔍 Testing installation..."
 OUTPUT=$(${config.testCommand} 2>&1)
 echo "Version output: '$OUTPUT'"
 
-if [ "$OUTPUT" = "1.0.2" ]; then
+if [ "$OUTPUT" = "${VERSION}" ]; then
   echo "✅ Version check passed"
   exit 0
 else
-  echo "❌ Version check failed. Expected '1.0.2', got '$OUTPUT'"
+  echo "❌ Version check failed. Expected '${VERSION}', got '$OUTPUT'"
   exit 1
 fi
 `;
@@ -170,7 +172,7 @@ fi
 }
 
 async function testFlatpak(): Promise<boolean> {
-  const flatpakPath = path.join(DIST_DIR, 'OpenWispr-1.0.2.flatpak');
+  const flatpakPath = path.join(DIST_DIR, getFlatpakFilename());
   
   if (!existsSync(flatpakPath)) {
     log('❌ Flatpak: Package not found, skipping Flatpak test');
@@ -181,23 +183,24 @@ async function testFlatpak(): Promise<boolean> {
   
   try {
     // Use our Flatpak builder Docker image for testing
+    const flatpakFile = getFlatpakFilename();
     const testScript = `#!/bin/bash
 set -e
 cd /workspace/dist
 
 echo "📦 Installing Flatpak..."
-flatpak install --user --assumeyes ./OpenWispr-1.0.2.flatpak
+flatpak install --user --assumeyes ./${flatpakFile}
 
 echo "🔍 Testing installation..."
 OUTPUT=$(flatpak run com.herotools.openwispr --version 2>&1)
 echo "Version output: '$OUTPUT'"
 
-if [ "$OUTPUT" = "1.0.2" ]; then
+if [ "$OUTPUT" = "${VERSION}" ]; then
   echo "✅ Version check passed"
   flatpak uninstall --user com.herotools.openwispr --assumeyes
   exit 0
 else
-  echo "❌ Version check failed. Expected '1.0.2', got '$OUTPUT'"
+  echo "❌ Version check failed. Expected '${VERSION}', got '$OUTPUT'"
   exit 1
 fi
 `;
@@ -232,7 +235,7 @@ fi
 }
 
 async function testAppImage(): Promise<boolean> {
-  const appImagePath = path.join(DIST_DIR, 'OpenWispr-1.0.2-x86_64.AppImage');
+  const appImagePath = path.join(DIST_DIR, getAppImageFilename());
   
   if (!existsSync(appImagePath)) {
     log('❌ AppImage: Package not found, skipping AppImage test');
@@ -243,20 +246,21 @@ async function testAppImage(): Promise<boolean> {
   
   try {
     // Use our AppImage builder Docker image for testing
+    const appImageFile = getAppImageFilename();
     const testScript = `#!/bin/bash
 set -e
 cd /workspace/dist
 
 echo "🔍 Making AppImage executable and testing..."
-chmod +x ./OpenWispr-1.0.2-x86_64.AppImage
-OUTPUT=$(./OpenWispr-1.0.2-x86_64.AppImage --version 2>&1)
+chmod +x ./${appImageFile}
+OUTPUT=$(./${appImageFile} --version 2>&1)
 echo "Version output: '$OUTPUT'"
 
-if [ "$OUTPUT" = "1.0.2" ]; then
+if [ "$OUTPUT" = "${VERSION}" ]; then
   echo "✅ Version check passed"
   exit 0
 else
-  echo "❌ Version check failed. Expected '1.0.2', got '$OUTPUT'"
+  echo "❌ Version check failed. Expected '${VERSION}', got '$OUTPUT'"
   exit 1
 fi
 `;

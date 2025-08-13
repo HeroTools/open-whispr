@@ -91,4 +91,4 @@ fi
 
 %changelog
 * Mon Jan 01 2024 OpenWispr Team <support@herotools.com> - 1.0.2-1
-- Initial RPM package
+- Release version 1.0.2

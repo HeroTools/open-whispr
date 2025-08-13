@@ -22,6 +22,7 @@
     "preview": "cd src && vite preview",
     "clean": "node cleanup.js",
     "linux:setup": "npx ts-node build-linux/scripts/handle-platform-deps.ts create-platform-configs",
+    "linux:manifests": "npx ts-node build-linux/scripts/generate-manifests.ts",
     "linux:all": "npx ts-node build-linux/scripts/build-all.ts",
     "linux:flatpak": "npx ts-node build-linux/scripts/build-flatpak.ts",
     "linux:appimage": "npx ts-node build-linux/scripts/build-appimage.ts",

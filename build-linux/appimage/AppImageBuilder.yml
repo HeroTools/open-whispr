@@ -11,11 +11,11 @@ script:
   - cp -r dist/linux-unpacked/* AppDir/usr/lib/open-wispr/
   - ln -sf ../lib/open-wispr/open-wispr AppDir/usr/bin/open-wispr
   # Copy desktop files and icons
-  - cp build/flatpak/com.herotools.openwispr.desktop AppDir/usr/share/applications/open-wispr.desktop
+  - cp build-linux/flatpak/com.herotools.openwispr.desktop AppDir/usr/share/applications/open-wispr.desktop
   - cp assets/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/open-wispr.png
   # Create AppRun
   - cp assets/icon.png AppDir/open-wispr.png
-  - cp build/flatpak/com.herotools.openwispr.desktop AppDir/open-wispr.desktop
+  - cp build-linux/flatpak/com.herotools.openwispr.desktop AppDir/open-wispr.desktop
 
 AppDir:
   path: ./AppDir

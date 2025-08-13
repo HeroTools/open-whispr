@@ -2,6 +2,7 @@
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import * as path from 'path';
+import { getTarballFilename, getRpmFilename } from "./version-utils";
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
@@ -30,6 +31,10 @@ async function buildRpm() {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
+  // Generate manifests first  
+  log('Generating manifests with current version...');
+  runCommand(`npx ts-node ${path.join(__dirname, 'generate-manifests.ts')}`);
+
   // Build the Electron app first
   log('Building Electron app...');
   runCommand('npm run build:renderer');
@@ -37,7 +42,7 @@ async function buildRpm() {
 
   // Create source tarball
   log('Creating source tarball...');
-  const tarballName = 'open-wispr-1.0.2.tar.gz';
+  const tarballName = getTarballFilename();
   runCommand(`tar --exclude=node_modules --exclude=dist --exclude=.git -czf ${tarballName} .`);
 
   // Build RPM using Docker
@@ -48,10 +53,10 @@ async function buildRpm() {
     '-w /workspace',
     'openwispr-rpm-builder',
     'bash -c',
-    `"cp ${tarballName} /root/rpmbuild-linux/SOURCES/ && `,
-    `cp ${RPM_DIR}/open-wispr.spec /root/rpmbuild-linux/SPECS/ && `,
-    `rpmbuild -ba /root/rpmbuild-linux/SPECS/open-wispr.spec && `,
-    `cp /root/rpmbuild-linux/RPMS/x86_64/open-wispr-1.0.2-1.*.x86_64.rpm ${OUTPUT_DIR}/"`
+    `"cp ${tarballName} /root/rpmbuild/SOURCES/ && `,
+    `cp ${RPM_DIR}/open-wispr.spec /root/rpmbuild/SPECS/ && `,
+    `rpmbuild -ba /root/rpmbuild/SPECS/open-wispr.spec && `,
+    `cp /root/rpmbuild/RPMS/x86_64/${getRpmFilename()} ${OUTPUT_DIR}/"`
   ].join(' ');
   
   runCommand(dockerCommand);
@@ -60,7 +65,7 @@ async function buildRpm() {
   runCommand(`rm -f ${tarballName}`);
 
   log('RPM build completed successfully!');
-  log(`Output: ${OUTPUT_DIR}/open-wispr-1.0.2-1.*.x86_64.rpm`);
+  log(`Output: ${OUTPUT_DIR}/${getRpmFilename()}`);
 }
 
 if (require.main === module) {
