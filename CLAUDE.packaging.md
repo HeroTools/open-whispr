@@ -67,9 +67,9 @@ Need automated handling of platform-specific dependencies like `@esbuild/darwin-
 4. **RPM**: New RPM packaging with proper spec files
 
 ### Phase 4: Testing & Validation
-1. Automated installation testing across distributions
+1. Docker-based automated testing across distributions
 2. Functionality testing with `open-wispr --version`
-3. Integration with distrobox for multi-distro validation
+3. Reuse of existing Docker build images for efficient testing
 
 ## Technical Challenges
 
@@ -97,6 +97,6 @@ Need automated handling of platform-specific dependencies like `@esbuild/darwin-
 
 ## Architecture Decisions Made
 - **TypeScript build scripts**: For robustness and maintainability
-- **Docker-based builds**: For consistent cross-platform building
+- **Docker-based builds**: For consistent cross-platform building and testing
 - **Wayland-first approach**: Modern Linux desktop support
-- **distrobox testing**: Automated validation across distributions
+- **Automated Docker testing**: Reuse build images for efficient validation

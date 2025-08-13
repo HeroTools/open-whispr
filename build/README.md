@@ -66,12 +66,14 @@ The build system automatically handles platform-specific dependencies like `@esb
 ## Testing
 
 ### Automated Testing
-The test suite uses distrobox to test installations across multiple distributions:
+The test suite uses Docker containers to test installations across multiple distributions:
 
-- Ubuntu 22.04
-- Debian 12  
-- Fedora 39
-- CentOS Stream 9
+- Ubuntu 22.04 (using openwispr-deb-builder)
+- Debian 12 (using debian:12 base image)
+- Fedora 39 (using openwispr-rpm-builder) 
+- CentOS Stream 9 (using centos:stream9 base image)
+
+The testing automatically reuses our existing Docker build images, making it fast and reliable.
 
 ### Manual Testing
 Test individual packages:
@@ -148,8 +150,9 @@ npm run package:linux
 
 ### Testing Issues
 ```bash
-# Reset distrobox containers
-distrobox rm ubuntu-test fedora-test debian-test centos-test --force
+# Clean Docker containers and images
+docker container prune -f
+docker image prune -f
 npm run package:test
 ```
 
@@ -166,9 +169,8 @@ When modifying packaging:
 
 ### Build Dependencies
 - Node.js 16+
-- Docker  
-- distrobox (for testing)
-- flatpak (for Flatpak testing)
+- Docker
+- tsx (installed via npm)
 
 ### Runtime Dependencies
 Automatically handled by each package format's dependency system.
