@@ -5,59 +5,50 @@ const path = require('path');
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
 function log(message) {
-  console.log(`[Platform Deps] ${message}`);
+  console.log(`[Linux Platform Deps] ${message}`);
 }
 
-const PLATFORM_SPECIFIC_DEPS = {
-  '@esbuild/darwin-arm64': ['darwin'],
-  '@esbuild/darwin-x64': ['darwin'],
-  '@esbuild/win32-x64': ['win32'],
-  '@esbuild/win32-ia32': ['win32'],
-  '@esbuild/linux-x64': ['linux'],
-  '@esbuild/linux-arm64': ['linux']
-};
+// Only Linux-specific esbuild dependencies
+const LINUX_ESBUILD_DEPS = [
+  '@esbuild/linux-x64',
+  '@esbuild/linux-arm64'
+];
 
-function shouldIncludeDependency(depName, targetPlatform) {
-  const platforms = PLATFORM_SPECIFIC_DEPS[depName];
-  
-  if (!platforms) {
-    return true; // Include non-platform-specific dependencies
-  }
-  
-  const currentPlatform = targetPlatform || process.platform;
-  return platforms.includes(currentPlatform);
-}
-
-function filterDependenciesForPlatform(deps, targetPlatform) {
+function filterDependenciesForLinux(deps) {
   if (!deps) return {};
   
   const filtered = {};
   
   for (const [depName, version] of Object.entries(deps)) {
-    if (shouldIncludeDependency(depName, targetPlatform)) {
+    // Include all non-esbuild dependencies
+    if (!depName.startsWith('@esbuild/')) {
+      filtered[depName] = version;
+    } 
+    // Only include Linux esbuild dependencies
+    else if (LINUX_ESBUILD_DEPS.includes(depName)) {
       filtered[depName] = version;
     } else {
-      log(`Excluding platform-specific dependency: ${depName} (not needed for ${targetPlatform || process.platform})`);
+      log(`Excluding non-Linux esbuild dependency: ${depName}`);
     }
   }
   
   return filtered;
 }
 
-function createPlatformPackageJson(targetPlatform) {
+function createLinuxPackageJson() {
   const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
   const originalPackageJson = JSON.parse(readFileSync(packageJsonPath, 'utf8'));
   
-  log(`Creating platform-specific package.json for ${targetPlatform}...`);
+  log('Creating Linux-specific package.json...');
   
-  const platformPackageJson = {
+  const linuxPackageJson = {
     ...originalPackageJson,
-    devDependencies: filterDependenciesForPlatform(originalPackageJson.devDependencies, targetPlatform),
-    optionalDependencies: filterDependenciesForPlatform(originalPackageJson.optionalDependencies, targetPlatform)
+    devDependencies: filterDependenciesForLinux(originalPackageJson.devDependencies),
+    optionalDependencies: filterDependenciesForLinux(originalPackageJson.optionalDependencies)
   };
   
-  const outputPath = path.join(PROJECT_ROOT, `package.${targetPlatform}.json`);
-  writeFileSync(outputPath, JSON.stringify(platformPackageJson, null, 2));
+  const outputPath = path.join(PROJECT_ROOT, 'package.linux.json');
+  writeFileSync(outputPath, JSON.stringify(linuxPackageJson, null, 2));
   log(`Created ${outputPath}`);
 }
 
@@ -79,9 +70,9 @@ async function main() {
   
   switch (command) {
     case 'create-platform-package-json':
-      log('Creating platform-specific package.json files...');
-      createPlatformPackageJson('linux');
-      log('✅ Platform configurations created');
+      log('Creating Linux-specific package.json...');
+      createLinuxPackageJson();
+      log('✅ Linux package.json created');
       break;
       
     case 'restore':
@@ -96,9 +87,9 @@ async function main() {
       
     default:
       log('Usage:');
-      log('  create-platform-package-json - Create platform-specific package.json files');
-      log('  prepare-linux-npm-build - Prepare npm environment for Linux build');
-      log('  restore                 - Restore original package.json from backup');
+      log('  create-platform-package-json - Create Linux-specific package.json');
+      log('  prepare-linux-npm-build     - Prepare npm environment for Linux build');
+      log('  restore                     - Restore original package.json from backup');
   }
 }
 

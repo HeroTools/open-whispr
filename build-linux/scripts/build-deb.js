@@ -3,27 +3,22 @@ const { execSync } = require('child_process');
 const { existsSync, mkdirSync, writeFileSync, chmodSync } = require('fs');
 const path = require('path');
 const { getDebFilename, getCurrentArch, getElectronBuilderArch } = require('./version-utils');
+const BuildUtils = require('./build-utils');
 
-// Support both temp build directory mode (called from build-all.js) and standalone mode
-const tempBuildDirArg = process.argv.find(arg => arg.startsWith('--temp-build-dir='));
-const WORKING_DIR = tempBuildDirArg ? tempBuildDirArg.split('=')[1] : path.resolve(__dirname, '../..');
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
-const BUILD_DIR = path.join(WORKING_DIR, 'build-linux');
+// Initialize build utils for consistent temp directory and path handling
+const buildUtils = new BuildUtils();
+const WORKING_DIR = buildUtils.getTempBuildDir();
+const PROJECT_ROOT = buildUtils.projectRoot;
+const BUILD_DIR = buildUtils.getTempPath('build-linux');
 const DEB_DIR = path.join(BUILD_DIR, 'deb');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
 
 function log(message) {
-  console.log(`[DEB Build] ${message}`);
+  buildUtils.log(`[DEB Build] ${message}`);
 }
 
 function runCommand(command, cwd) {
-  log(`Running: ${command}`);
-  try {
-    execSync(command, { stdio: 'inherit', cwd: cwd || WORKING_DIR });
-  } catch (error) {
-    log(`Command failed: ${command}`);
-    process.exit(1);
-  }
+  buildUtils.runCommand(command, cwd || WORKING_DIR);
 }
 
 async function buildDeb() {
@@ -34,15 +29,10 @@ async function buildDeb() {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  // Check if we're in temp build mode (manifests already rendered) or standalone mode
-  if (!tempBuildDirArg) {
-    log('Running in standalone mode - rendering manifests...');
-    const BuildUtils = require('./build-utils');
-    const buildUtils = new BuildUtils();
-    buildUtils.renderManifests();
-  } else {
-    log('Running in temp build mode - manifests already rendered');
-  }
+  // Prepare temp build directory and render manifests
+  log('Preparing temp build directory...');
+  buildUtils.prepareTempBuildDir();
+  buildUtils.renderManifests();
 
   // Build the Electron app first
   log('Building Electron app...');
@@ -50,9 +40,9 @@ async function buildDeb() {
   const electronArch = getElectronBuilderArch();
   runCommand(`npm run build:linux -- --${electronArch}`);
 
-  // Prepare DEB package structure
+  // Prepare DEB package structure in temp directory
   log('Preparing DEB package structure...');
-  const debPackageDir = path.join(PROJECT_ROOT, 'deb-package');
+  const debPackageDir = buildUtils.getTempPath('deb-package');
   const debianDir = path.join(debPackageDir, 'DEBIAN');
   
   // Clean and create directories
@@ -93,13 +83,16 @@ async function buildDeb() {
     'dpkg-deb',
     '--build',
     'deb-package',
-    `${OUTPUT_DIR}/${getDebFilename()}`
+    `dist/${getDebFilename()}`
   ].join(' ');
   
   runCommand(dockerCommand);
+  
+  // Copy artifacts to main dist directory
+  buildUtils.copySpecificArtifacts(`dist/${getDebFilename()}`);
 
-  // Cleanup
-  runCommand(`rm -rf ${debPackageDir}`);
+  // Cleanup temp directory
+  buildUtils.cleanup();
 
   log('DEB build completed successfully!');
   log(`Output: ${OUTPUT_DIR}/${getDebFilename()}`);

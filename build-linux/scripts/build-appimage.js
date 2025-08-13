@@ -3,24 +3,22 @@ const { execSync } = require('child_process');
 const { existsSync, mkdirSync, copyFileSync } = require('fs');
 const path = require('path');
 const { getAppImageFilename, getElectronBuilderArch } = require('./version-utils');
+const BuildUtils = require('./build-utils');
 
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
-const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
+// Initialize build utils for consistent temp directory and path handling
+const buildUtils = new BuildUtils();
+const WORKING_DIR = buildUtils.getTempBuildDir();
+const PROJECT_ROOT = buildUtils.projectRoot;
+const BUILD_DIR = buildUtils.getTempPath('build-linux');
 const APPIMAGE_DIR = path.join(BUILD_DIR, 'appimage');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
 
 function log(message) {
-  console.log(`[AppImage Build] ${message}`);
+  buildUtils.log(`[AppImage Build] ${message}`);
 }
 
 function runCommand(command, cwd) {
-  log(`Running: ${command}`);
-  try {
-    execSync(command, { stdio: 'inherit', cwd: cwd || PROJECT_ROOT });
-  } catch (error) {
-    log(`Command failed: ${command}`);
-    process.exit(1);
-  }
+  buildUtils.runCommand(command, cwd || WORKING_DIR);
 }
 
 async function buildAppImage() {
@@ -31,9 +29,10 @@ async function buildAppImage() {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  // Generate manifests first  
-  log('Generating manifests with current version...');
-  runCommand(`node ${path.join(__dirname, 'generate-manifests.js')}`);
+  // Prepare temp build directory and render manifests
+  log('Preparing temp build directory...');
+  buildUtils.prepareTempBuildDir();
+  buildUtils.renderManifests();
 
   // Build the Electron app first
   log('Building Electron app...');
@@ -49,7 +48,7 @@ async function buildAppImage() {
     `--device /dev/fuse`,
     `--cap-add SYS_ADMIN`,
     `--security-opt apparmor:unconfined`,
-    `-v "${PROJECT_ROOT}:/workspace"`,
+    `-v "${WORKING_DIR}:/workspace"`,
     '-w /workspace',
     `open-whispr-appimage-builder-${arch}`,
     'appimage-builder',
@@ -58,18 +57,21 @@ async function buildAppImage() {
   
   runCommand(dockerCommand);
 
-  // Move the created AppImage to output directory
-  const appImagePath = `${PROJECT_ROOT}/${getAppImageFilename()}`;
-  const outputPath = `${OUTPUT_DIR}/${getAppImageFilename()}`;
+  // Copy artifacts to main dist directory
+  const appImagePath = buildUtils.getTempPath(getAppImageFilename());
   
   if (existsSync(appImagePath)) {
-    copyFileSync(appImagePath, outputPath);
+    buildUtils.copySpecificArtifacts(getAppImageFilename());
     log('AppImage build completed successfully!');
-    log(`Output: ${outputPath}`);
+    log(`Output: ${OUTPUT_DIR}/${getAppImageFilename()}`);
   } else {
     log('AppImage build failed - output file not found');
+    buildUtils.cleanup();
     process.exit(1);
   }
+  
+  // Cleanup temp directory
+  buildUtils.cleanup();
 }
 
 if (require.main === module) {

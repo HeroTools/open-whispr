@@ -3,26 +3,22 @@ const { execSync } = require('child_process');
 const { existsSync, mkdirSync, writeFileSync } = require('fs');
 const path = require('path');
 const { getTarballFilename, getRpmFilename, getElectronBuilderArch } = require('./version-utils');
+const BuildUtils = require('./build-utils');
 
-const tempBuildDirArg = process.argv.find(arg => arg.startsWith('--temp-build-dir='));
-const WORKING_DIR = tempBuildDirArg ? tempBuildDirArg.split('=')[1] : path.resolve(__dirname, '../..');
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
-const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
+// Initialize build utils for consistent temp directory and path handling
+const buildUtils = new BuildUtils();
+const WORKING_DIR = buildUtils.getTempBuildDir();
+const PROJECT_ROOT = buildUtils.projectRoot;
+const BUILD_DIR = buildUtils.getTempPath('build-linux');
 const RPM_DIR = path.join(BUILD_DIR, 'rpm');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
 
 function log(message) {
-  console.log(`[RPM Build] ${message}`);
+  buildUtils.log(`[RPM Build] ${message}`);
 }
 
 function runCommand(command, cwd) {
-  log(`Running: ${command}`);
-  try {
-    execSync(command, { stdio: 'inherit', cwd: cwd || WORKING_DIR });
-  } catch (error) {
-    log(`Command failed: ${command}`);
-    process.exit(1);
-  }
+  buildUtils.runCommand(command, cwd || WORKING_DIR);
 }
 
 async function buildRpm() {
@@ -33,9 +29,10 @@ async function buildRpm() {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  // Generate manifests first  
-  log('Generating manifests with current version...');
-  runCommand(`node ${path.join(__dirname, 'generate-manifests.js')}`);
+  // Prepare temp build directory and render manifests
+  log('Preparing temp build directory...');
+  buildUtils.prepareTempBuildDir();
+  buildUtils.renderManifests();
 
   // Build the Electron app first
   log('Building Electron app...');
@@ -43,10 +40,11 @@ async function buildRpm() {
   const electronArch = getElectronBuilderArch();
   runCommand(`npm run build:linux -- --${electronArch}`);
 
-  // Create source tarball
+  // Create source tarball in temp directory
   log('Creating source tarball...');
   const tarballName = getTarballFilename();
-  runCommand(`tar --exclude=node_modules --exclude=dist --exclude=.git -czf ${tarballName} .`);
+  const tarballPath = buildUtils.getTempPath(tarballName);
+  runCommand(`tar --exclude=node_modules --exclude=dist --exclude=.git -czf ${tarballPath} .`);
 
   // Build RPM using Docker
   log('Building RPM package...');
@@ -54,20 +52,23 @@ async function buildRpm() {
   const rpmArch = arch === 'arm64' ? 'aarch64' : 'x86_64';
   const dockerCommand = [
     'docker run --rm',
-    `-v "${PROJECT_ROOT}:/workspace"`,
+    `-v "${WORKING_DIR}:/workspace"`,
     '-w /workspace',
     `open-whispr-rpm-builder-${arch}`,
     'bash -c',
     `"cp ${tarballName} /root/rpmbuild/SOURCES/ && `,
-    `cp ${RPM_DIR}/open-whispr.spec /root/rpmbuild/SPECS/ && `,
+    `cp build-linux/rpm/open-whispr.spec /root/rpmbuild/SPECS/ && `,
     `rpmbuild -ba /root/rpmbuild/SPECS/open-whispr.spec && `,
-    `cp /root/rpmbuild/RPMS/${rpmArch}/${getRpmFilename()} ${OUTPUT_DIR}/"`
+    `cp /root/rpmbuild/RPMS/${rpmArch}/${getRpmFilename()} dist/"`
   ].join(' ');
   
   runCommand(dockerCommand);
+  
+  // Copy artifacts to main dist directory
+  buildUtils.copySpecificArtifacts(`dist/${getRpmFilename()}`);
 
-  // Cleanup
-  runCommand(`rm -f ${tarballName}`);
+  // Cleanup temp directory
+  buildUtils.cleanup();
 
   log('RPM build completed successfully!');
   log(`Output: ${OUTPUT_DIR}/${getRpmFilename()}`);

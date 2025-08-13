@@ -3,26 +3,22 @@ const { execSync } = require('child_process');
 const { existsSync, mkdirSync } = require('fs');
 const path = require('path');
 const { getFlatpakFilename, getElectronBuilderArch } = require('./version-utils');
+const BuildUtils = require('./build-utils');
 
-const tempBuildDirArg = process.argv.find(arg => arg.startsWith('--temp-build-dir='));
-const WORKING_DIR = tempBuildDirArg ? tempBuildDirArg.split('=')[1] : path.resolve(__dirname, '../..');
-const PROJECT_ROOT = path.resolve(__dirname, '../..');
-const BUILD_DIR = path.join(PROJECT_ROOT, 'build-linux');
+// Initialize build utils for consistent temp directory and path handling
+const buildUtils = new BuildUtils();
+const WORKING_DIR = buildUtils.getTempBuildDir();
+const PROJECT_ROOT = buildUtils.projectRoot;
+const BUILD_DIR = buildUtils.getTempPath('build-linux');
 const FLATPAK_DIR = path.join(BUILD_DIR, 'flatpak');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
 
 function log(message) {
-  console.log(`[Flatpak Build] ${message}`);
+  buildUtils.log(`[Flatpak Build] ${message}`);
 }
 
 function runCommand(command, cwd) {
-  log(`Running: ${command}`);
-  try {
-    execSync(command, { stdio: 'inherit', cwd: cwd || WORKING_DIR });
-  } catch (error) {
-    log(`Command failed: ${command}`);
-    process.exit(1);
-  }
+  buildUtils.runCommand(command, cwd || WORKING_DIR);
 }
 
 async function buildFlatpak() {
@@ -32,6 +28,11 @@ async function buildFlatpak() {
   if (!existsSync(OUTPUT_DIR)) {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
+
+  // Prepare temp build directory and render manifests
+  log('Preparing temp build directory...');
+  buildUtils.prepareTempBuildDir();
+  buildUtils.renderManifests();
 
   // Build the Electron app first
   log('Building Electron app...');
@@ -44,7 +45,7 @@ async function buildFlatpak() {
   const arch = process.env.ARCH || 'amd64';
   const dockerCommand = [
     'docker run --rm',
-    `-v "${PROJECT_ROOT}:/workspace"`,
+    `-v "${WORKING_DIR}:/workspace"`,
     '-w /workspace',
     '--privileged',
     `open-whispr-flatpak-builder-${arch}`,
@@ -61,20 +62,26 @@ async function buildFlatpak() {
   log('Exporting Flatpak...');
   const exportCommand = [
     'docker run --rm',
-    `-v "${PROJECT_ROOT}:/workspace"`,
+    `-v "${WORKING_DIR}:/workspace"`,
     '-w /workspace',
     '--privileged',
     `open-whispr-flatpak-builder-${arch}`,
     'flatpak build-bundle',
     'flatpak-repo',
-    path.join(OUTPUT_DIR, getFlatpakFilename()),
+    `dist/${getFlatpakFilename()}`,
     'com.herotools.openwhispr'
   ].join(' ');
   
   runCommand(exportCommand);
+  
+  // Copy artifacts to main dist directory
+  buildUtils.copySpecificArtifacts(`dist/${getFlatpakFilename()}`);
+  
+  // Cleanup temp directory
+  buildUtils.cleanup();
 
   log('Flatpak build completed successfully!');
-  log(`Output: ${path.join(OUTPUT_DIR, getFlatpakFilename())}`);
+  log(`Output: ${OUTPUT_DIR}/${getFlatpakFilename()}`);
 }
 
 if (require.main === module) {
