@@ -55,35 +55,20 @@ class BuildUtils {
     // Copy entire repo to temp directory
     this.log('Copying repository to temp build directory...');
     
-    // Use rsync for better performance and to respect .gitignore
-    const excludePatterns = [
-      '--exclude=node_modules/',
-      '--exclude=dist/',
-      '--exclude=dist-linux/',
-      '--exclude=.git/',
-      '--exclude=*.log',
-      '--exclude=.DS_Store',
-      '--exclude=Thumbs.db'
-    ];
-    
-    const rsyncCommand = `rsync -av ${excludePatterns.join(' ')} ${this.projectRoot}/ ${this.tempBuildDir}/`;
-    
-    try {
-      this.runCommand(rsyncCommand);
-    } catch (error) {
-      // Fallback to cp if rsync is not available
-      this.log('rsync failed, falling back to cp...');
-      cpSync(this.projectRoot, this.tempBuildDir, {
-        recursive: true,
-        filter: (src) => {
-          const relativePath = path.relative(this.projectRoot, src);
-          return !relativePath.includes('node_modules') && 
-                 !relativePath.includes('dist') &&
-                 !relativePath.includes('.git') &&
-                 !relativePath.endsWith('.log');
-        }
-      });
-    }
+    // Use cp to copy files with filtering
+    cpSync(this.projectRoot, this.tempBuildDir, {
+      recursive: true,
+      filter: (src) => {
+        const relativePath = path.relative(this.projectRoot, src);
+        return !relativePath.includes('node_modules') && 
+               !relativePath.includes('dist') &&
+               !relativePath.includes('dist-linux') &&
+               !relativePath.includes('.git') &&
+               !relativePath.endsWith('.log') &&
+               !relativePath.includes('.DS_Store') &&
+               !relativePath.includes('Thumbs.db');
+      }
+    });
     
     this.log(`✅ Repository copied to ${this.tempBuildDir}`);
     return this.tempBuildDir;
