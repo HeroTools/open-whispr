@@ -4,6 +4,8 @@ const { existsSync, mkdirSync } = require('fs');
 const path = require('path');
 const { getFlatpakFilename, getElectronBuilderArch } = require('./version-utils');
 
+const tempBuildDirArg = process.argv.find(arg => arg.startsWith('--temp-build-dir='));
+const WORKING_DIR = tempBuildDirArg ? tempBuildDirArg.split('=')[1] : path.resolve(__dirname, '../..');
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build-linux');
 const FLATPAK_DIR = path.join(BUILD_DIR, 'flatpak');
@@ -16,7 +18,7 @@ function log(message) {
 function runCommand(command, cwd) {
   log(`Running: ${command}`);
   try {
-    execSync(command, { stdio: 'inherit', cwd: cwd || PROJECT_ROOT });
+    execSync(command, { stdio: 'inherit', cwd: cwd || WORKING_DIR });
   } catch (error) {
     log(`Command failed: ${command}`);
     process.exit(1);

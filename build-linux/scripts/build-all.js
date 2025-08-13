@@ -25,8 +25,9 @@ async function buildAll() {
     
     // Step 3: Handle platform-specific dependencies in temp directory
     log('Handling platform-specific dependencies...');
-    buildUtils.runCommand(`node ${path.join(SCRIPTS_DIR, 'handle-patform-npm-packages.js')} create-platform-package-json`, tempBuildDir);
-    buildUtils.runCommand(`node ${path.join(SCRIPTS_DIR, 'handle-patform-npm-packages.js')} prepare-linux-npm-build`, tempBuildDir);
+    const tempScriptDir = path.join(tempBuildDir, 'build-linux/scripts');
+    buildUtils.runCommand(`node ${path.join(tempScriptDir, 'handle-patform-npm-packages.js')} create-platform-package-json`, tempBuildDir);
+    buildUtils.runCommand(`node ${path.join(tempScriptDir, 'handle-patform-npm-packages.js')} prepare-linux-npm-build`, tempBuildDir);
     
     // Step 4: Build Docker images first
     log('Building Docker images...');
