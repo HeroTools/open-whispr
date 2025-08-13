@@ -1,19 +1,19 @@
-#!/usr/bin/env ts-node
-import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import * as path from 'path';
-import { getTarballFilename, getRpmFilename } from "./version-utils";
+#!/usr/bin/env node
+const { execSync } = require('child_process');
+const { existsSync, mkdirSync, writeFileSync } = require('fs');
+const path = require('path');
+const { getTarballFilename, getRpmFilename, getElectronBuilderArch } = require('./version-utils');
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
 const RPM_DIR = path.join(BUILD_DIR, 'rpm');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
 
-function log(message: string) {
+function log(message) {
   console.log(`[RPM Build] ${message}`);
 }
 
-function runCommand(command: string, cwd?: string) {
+function runCommand(command, cwd) {
   log(`Running: ${command}`);
   try {
     execSync(command, { stdio: 'inherit', cwd: cwd || PROJECT_ROOT });
@@ -33,12 +33,13 @@ async function buildRpm() {
 
   // Generate manifests first  
   log('Generating manifests with current version...');
-  runCommand(`npx ts-node ${path.join(__dirname, 'generate-manifests.ts')}`);
+  runCommand(`node ${path.join(__dirname, 'generate-manifests.js')}`);
 
   // Build the Electron app first
   log('Building Electron app...');
   runCommand('npm run build:renderer');
-  runCommand('npm run build:linux');
+  const electronArch = getElectronBuilderArch();
+  runCommand(`npm run build:linux -- --${electronArch}`);
 
   // Create source tarball
   log('Creating source tarball...');
@@ -47,16 +48,18 @@ async function buildRpm() {
 
   // Build RPM using Docker
   log('Building RPM package...');
+  const arch = process.env.ARCH || 'amd64';
+  const rpmArch = arch === 'arm64' ? 'aarch64' : 'x86_64';
   const dockerCommand = [
     'docker run --rm',
     `-v "${PROJECT_ROOT}:/workspace"`,
     '-w /workspace',
-    'openwispr-rpm-builder',
+    `openwispr-rpm-builder-${arch}`,
     'bash -c',
     `"cp ${tarballName} /root/rpmbuild/SOURCES/ && `,
-    `cp ${RPM_DIR}/open-wispr.spec /root/rpmbuild/SPECS/ && `,
-    `rpmbuild -ba /root/rpmbuild/SPECS/open-wispr.spec && `,
-    `cp /root/rpmbuild/RPMS/x86_64/${getRpmFilename()} ${OUTPUT_DIR}/"`
+    `cp ${RPM_DIR}/open-whispr.spec /root/rpmbuild/SPECS/ && `,
+    `rpmbuild -ba /root/rpmbuild/SPECS/open-whispr.spec && `,
+    `cp /root/rpmbuild/RPMS/${rpmArch}/${getRpmFilename()} ${OUTPUT_DIR}/"`
   ].join(' ');
   
   runCommand(dockerCommand);

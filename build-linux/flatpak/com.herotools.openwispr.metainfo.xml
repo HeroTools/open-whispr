@@ -22,11 +22,11 @@
     </ul>
   </description>
   <launchable type="desktop-id">com.herotools.openwispr.desktop</launchable>
-  <url type="homepage">https://github.com/HeroTools/open-wispr</url>
-  <url type="bugtracker">https://github.com/HeroTools/open-wispr/issues</url>
+  <url type="homepage">https://github.com/HeroTools/open-whispr</url>
+  <url type="bugtracker">https://github.com/HeroTools/open-whispr/issues</url>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/HeroTools/open-wispr/main/assets/screenshot.png</image>
+      <image>https://raw.githubusercontent.com/HeroTools/open-whispr/main/assets/screenshot.png</image>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1"/>

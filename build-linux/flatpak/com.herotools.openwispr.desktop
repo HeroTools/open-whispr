@@ -1,7 +1,7 @@
 [Desktop Entry]
 Name=OpenWispr
 Comment=A desktop dictation application using OpenAI Whisper for speech-to-text transcription
-Exec=open-wispr
+Exec=open-whispr
 Icon=com.herotools.openwispr
 Type=Application
 Categories=Office;Accessibility;AudioVideo;

@@ -21,13 +21,9 @@
     "lint": "cd src && eslint .",
     "preview": "cd src && vite preview",
     "clean": "node cleanup.js",
-    "package-linux:setup": "npx ts-node build-linux/scripts/handle-platform-deps.ts create-platform-configs",
-    "package-linux:all": "npx ts-node build-linux/scripts/build-all.ts",
-    "package-linux:flatpak": "npx ts-node build-linux/scripts/build-flatpak.ts",
-    "package-linux:appimage": "npx ts-node build-linux/scripts/build-appimage.ts",
-    "package-linux:deb": "npx ts-node build-linux/scripts/build-deb.ts",
-    "package-linux:rpm": "npx ts-node build-linux/scripts/build-rpm.ts",
-    "package-linux:test": "npx ts-node build-linux/scripts/test-packages.ts"
+    "package-linux:all-amd64": "node build-linux/scripts/build-all.js",
+    "package-linux:test": "node build-linux/scripts/test-packages.js",
+    "package-linux:all-arm64": "ARCH=arm64 node build-linux/scripts/build-all.js"
   },
   "keywords": [
     "dictation",

@@ -1,29 +1,20 @@
-#!/usr/bin/env ts-node
-import { execSync } from 'child_process';
-import { existsSync } from 'fs';
-import * as path from 'path';
-import { getPackageVersion, getDebFilename, getRpmFilename, getFlatpakFilename, getAppImageFilename } from './version-utils';
+#!/usr/bin/env node
+const { execSync } = require('child_process');
+const { existsSync } = require('fs');
+const path = require('path');
+const { getPackageVersion, getDebFilename, getRpmFilename, getFlatpakFilename, getAppImageFilename } = require('./version-utils');
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
 const VERSION = getPackageVersion();
 
-interface TestConfig {
-  name: string;
-  baseImage: string;
-  packageFile: string;
-  installCommand: string;
-  testCommand: string;
-  packageType: 'deb' | 'rpm' | 'flatpak' | 'appimage';
-}
-
-const testConfigs: TestConfig[] = [
+const testConfigs = [
   {
     name: 'Ubuntu 22.04',
     baseImage: 'openwispr-deb-builder', // Reuse our existing DEB builder
     packageFile: getDebFilename(),
     installCommand: `dpkg -i ./${getDebFilename()} || (apt update && apt install -f -y)`,
-    testCommand: 'open-wispr --version',
+    testCommand: 'open-whispr --version',
     packageType: 'deb'
   },
   {
@@ -31,7 +22,7 @@ const testConfigs: TestConfig[] = [
     baseImage: 'debian:12',
     packageFile: getDebFilename(),
     installCommand: `apt update && dpkg -i ./${getDebFilename()} || (apt install -f -y)`,
-    testCommand: 'open-wispr --version',
+    testCommand: 'open-whispr --version',
     packageType: 'deb'
   },
   {
@@ -39,7 +30,7 @@ const testConfigs: TestConfig[] = [
     baseImage: 'openwispr-rpm-builder', // Reuse our existing RPM builder
     packageFile: getRpmFilename(),
     installCommand: `dnf install -y ./${getRpmFilename()}`,
-    testCommand: 'open-wispr --version',
+    testCommand: 'open-whispr --version',
     packageType: 'rpm'
   },
   {
@@ -47,16 +38,16 @@ const testConfigs: TestConfig[] = [
     baseImage: 'centos:stream9',
     packageFile: getRpmFilename(),
     installCommand: `dnf install -y ./${getRpmFilename()}`,
-    testCommand: 'open-wispr --version',
+    testCommand: 'open-whispr --version',
     packageType: 'rpm'
   }
 ];
 
-function log(message: string) {
+function log(message) {
   console.log(`[Package Test] ${message}`);
 }
 
-function runCommand(command: string, cwd?: string): string {
+function runCommand(command, cwd) {
   log(`Running: ${command}`);
   try {
     return execSync(command, { encoding: 'utf8', cwd: cwd || PROJECT_ROOT });
@@ -94,14 +85,14 @@ async function ensureBuildImages() {
   }
 }
 
-async function testPackageInstallation(config: TestConfig): Promise<boolean> {
+async function testPackageInstallation(config) {
   // Find the package file (handle wildcards)
-  let packagePath: string;
+  let packagePath;
   if (config.packageFile.includes('*')) {
     const pattern = config.packageFile.replace(/\*/g, '.*');
     const regex = new RegExp(pattern);
     const files = require('fs').readdirSync(DIST_DIR);
-    const matchingFiles = files.filter((f: string) => regex.test(f));
+    const matchingFiles = files.filter((f) => regex.test(f));
     
     if (matchingFiles.length === 0) {
       log(`❌ ${config.name}: No package found matching pattern ${config.packageFile}`);
@@ -171,7 +162,7 @@ fi
   }
 }
 
-async function testFlatpak(): Promise<boolean> {
+async function testFlatpak() {
   const flatpakPath = path.join(DIST_DIR, getFlatpakFilename());
   
   if (!existsSync(flatpakPath)) {
@@ -234,7 +225,7 @@ fi
   }
 }
 
-async function testAppImage(): Promise<boolean> {
+async function testAppImage() {
   const appImagePath = path.join(DIST_DIR, getAppImageFilename());
   
   if (!existsSync(appImagePath)) {

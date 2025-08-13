@@ -90,6 +90,9 @@ public
 tmp/
 temp/
 
+# Linux build temporary directories
+dist-linux/
+
 # Logs
 logs
 *.log

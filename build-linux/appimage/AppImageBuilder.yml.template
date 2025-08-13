@@ -8,14 +8,14 @@ script:
   - mkdir -p AppDir/usr/share/applications
   - mkdir -p AppDir/usr/share/icons/hicolor/512x512/apps
   # Copy the application
-  - cp -r dist/linux-unpacked/* AppDir/usr/lib/open-wispr/
-  - ln -sf ../lib/open-wispr/open-wispr AppDir/usr/bin/open-wispr
+  - cp -r dist/linux-unpacked/* AppDir/usr/lib/open-whispr/
+  - ln -sf ../lib/open-whispr/open-whispr AppDir/usr/bin/open-whispr
   # Copy desktop files and icons
-  - cp build-linux/flatpak/com.herotools.openwispr.desktop AppDir/usr/share/applications/open-wispr.desktop
-  - cp assets/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/open-wispr.png
+  - cp build-linux/flatpak/com.herotools.openwispr.desktop AppDir/usr/share/applications/open-whispr.desktop
+  - cp assets/icon.png AppDir/usr/share/icons/hicolor/512x512/apps/open-whispr.png
   # Create AppRun
-  - cp assets/icon.png AppDir/open-wispr.png
-  - cp build-linux/flatpak/com.herotools.openwispr.desktop AppDir/open-wispr.desktop
+  - cp assets/icon.png AppDir/open-whispr.png
+  - cp build-linux/flatpak/com.herotools.openwispr.desktop AppDir/open-whispr.desktop
 
 AppDir:
   path: ./AppDir
@@ -23,15 +23,15 @@ AppDir:
   app_info:
     id: com.herotools.openwispr
     name: OpenWispr
-    icon: open-wispr
-    version: 1.0.2
-    exec: usr/bin/open-wispr
+    icon: open-whispr
+    version: {{VERSION}}
+    exec: usr/bin/open-whispr
     exec_args: $@
 
   apt:
-    arch: amd64
+    arch: {{ARCH}}
     sources:
-      - sourceline: 'deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main restricted universe multiverse'
+      - sourceline: 'deb [arch={{ARCH}}] http://archive.ubuntu.com/ubuntu/ focal main restricted universe multiverse'
         key_url: 'http://keyserver.ubuntu.com/pks/lookup?op=get&search=0x3B4FE6ACC0B21F32'
     include:
       - libasound2
@@ -88,5 +88,5 @@ AppDir:
       use_host_x: true
 
 AppImage:
-  arch: x86_64
-  file_name: OpenWispr-1.0.2-x86_64.AppImage
+  arch: {{APPIMAGE_ARCH}}
+  file_name: OpenWispr-{{VERSION}}-{{APPIMAGE_ARCH}}.AppImage

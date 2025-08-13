@@ -1,19 +1,19 @@
-#!/usr/bin/env ts-node
-import { execSync } from 'child_process';
-import { existsSync, mkdirSync } from 'fs';
-import * as path from 'path';
-import { getFlatpakFilename } from './version-utils';
+#!/usr/bin/env node
+const { execSync } = require('child_process');
+const { existsSync, mkdirSync } = require('fs');
+const path = require('path');
+const { getFlatpakFilename, getElectronBuilderArch } = require('./version-utils');
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build-linux');
 const FLATPAK_DIR = path.join(BUILD_DIR, 'flatpak');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
 
-function log(message: string) {
+function log(message) {
   console.log(`[Flatpak Build] ${message}`);
 }
 
-function runCommand(command: string, cwd?: string) {
+function runCommand(command, cwd) {
   log(`Running: ${command}`);
   try {
     execSync(command, { stdio: 'inherit', cwd: cwd || PROJECT_ROOT });
@@ -34,16 +34,18 @@ async function buildFlatpak() {
   // Build the Electron app first
   log('Building Electron app...');
   runCommand('npm run build:renderer');
-  runCommand('npm run pack');
+  const electronArch = getElectronBuilderArch();
+  runCommand(`npm run pack -- --${electronArch}`);
 
   // Build Flatpak using Docker
   log('Building Flatpak package...');
+  const arch = process.env.ARCH || 'amd64';
   const dockerCommand = [
     'docker run --rm',
     `-v "${PROJECT_ROOT}:/workspace"`,
     '-w /workspace',
     '--privileged',
-    'openwispr-flatpak-builder',
+    `openwispr-flatpak-builder-${arch}`,
     'flatpak-builder',
     '--force-clean',
     '--repo=flatpak-repo',
@@ -60,7 +62,7 @@ async function buildFlatpak() {
     `-v "${PROJECT_ROOT}:/workspace"`,
     '-w /workspace',
     '--privileged',
-    'openwispr-flatpak-builder',
+    `openwispr-flatpak-builder-${arch}`,
     'flatpak build-bundle',
     'flatpak-repo',
     path.join(OUTPUT_DIR, getFlatpakFilename()),

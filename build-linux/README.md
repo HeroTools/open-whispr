@@ -80,12 +80,12 @@ Test individual packages:
 ./dist/OpenWispr-1.0.2-x86_64.AppImage --version
 
 # Install DEB package
-sudo dpkg -i dist/open-wispr_1.0.2_amd64.deb
-open-wispr --version
+sudo dpkg -i dist/open-whispr_1.0.2_amd64.deb
+open-whispr --version
 
 # Install RPM package  
-sudo dnf install dist/open-wispr-1.0.2-1.*.x86_64.rpm
-open-wispr --version
+sudo dnf install dist/open-whispr-1.0.2-1.*.x86_64.rpm
+open-whispr --version
 
 # Install Flatpak
 flatpak install --user dist/OpenWispr-1.0.2.flatpak
@@ -118,8 +118,8 @@ All packages are built to the `dist/` directory:
 dist/
 ├── OpenWispr-1.0.2.flatpak
 ├── OpenWispr-1.0.2-x86_64.AppImage  
-├── open-wispr_1.0.2_amd64.deb
-└── open-wispr-1.0.2-1.fc39.x86_64.rpm
+├── open-whispr_1.0.2_amd64.deb
+└── open-whispr-1.0.2-1.fc39.x86_64.rpm
 ```
 
 ## Troubleshooting
