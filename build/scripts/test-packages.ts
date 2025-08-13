@@ -1,7 +1,7 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env ts-node
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
-import path from 'path';
+import * as path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const DIST_DIR = path.join(PROJECT_ROOT, 'dist');
@@ -359,6 +359,6 @@ async function runAllTests() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   runAllTests().catch(console.error);
 }

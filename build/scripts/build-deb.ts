@@ -1,7 +1,7 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env ts-node
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync, chmodSync } from 'fs';
-import path from 'path';
+import * as path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
@@ -89,6 +89,6 @@ async function buildDeb() {
   log(`Output: ${OUTPUT_DIR}/open-wispr_1.0.2_amd64.deb`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   buildDeb().catch(console.error);
 }

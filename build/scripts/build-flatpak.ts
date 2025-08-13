@@ -1,7 +1,7 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env ts-node
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync } from 'fs';
-import path from 'path';
+import * as path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
@@ -72,6 +72,6 @@ async function buildFlatpak() {
   log(`Output: ${OUTPUT_DIR}/OpenWispr-1.0.2.flatpak`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   buildFlatpak().catch(console.error);
 }

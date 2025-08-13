@@ -1,7 +1,7 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env ts-node
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import path from 'path';
+import * as path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
@@ -63,6 +63,6 @@ async function buildRpm() {
   log(`Output: ${OUTPUT_DIR}/open-wispr-1.0.2-1.*.x86_64.rpm`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   buildRpm().catch(console.error);
 }

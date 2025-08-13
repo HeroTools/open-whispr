@@ -1,6 +1,6 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env ts-node
 import { readFileSync, writeFileSync, existsSync } from 'fs';
-import path from 'path';
+import * as path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 
@@ -159,6 +159,6 @@ async function main() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   main().catch(console.error);
 }

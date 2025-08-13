@@ -1,7 +1,7 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env ts-node
 import { execSync } from 'child_process';
 import { existsSync } from 'fs';
-import path from 'path';
+import * as path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const SCRIPTS_DIR = __dirname;
@@ -96,6 +96,6 @@ async function buildDockerImages() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   buildAll().catch(console.error);
 }

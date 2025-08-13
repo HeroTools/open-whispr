@@ -1,7 +1,7 @@
-#!/usr/bin/env tsx
+#!/usr/bin/env ts-node
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, copyFileSync } from 'fs';
-import path from 'path';
+import * as path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
@@ -65,6 +65,6 @@ async function buildAppImage() {
   }
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (require.main === module) {
   buildAppImage().catch(console.error);
 }
