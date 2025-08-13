@@ -6,44 +6,44 @@ This directory contains all the necessary files and scripts for building OpenWis
 
 1. **Setup packaging environment:**
    ```bash
-   npm run package:setup
+   npm run linux:setup
    ```
 
 2. **Build all Linux packages:**
    ```bash
-   npm run package:linux
+   npm run linux:all
    ```
 
 3. **Test packages on different distributions:**
    ```bash
-   npm run package:test
+   npm run linux:test
    ```
 
 4. **Restore original package.json (if needed):**
    ```bash
-   npm run package:restore
+   npm run linux:restore
    ```
 
 ## Package Formats
 
 ### Flatpak
-- **File**: `build/flatpak/`
-- **Build**: `npm run package:flatpak`
+- **File**: `build-linux/flatpak/`
+- **Build**: `npm run linux:flatpak`
 - **Features**: Wayland-first, sandboxed, automatic dependency management
 
 ### AppImage
-- **File**: `build/appimage/`
-- **Build**: `npm run package:appimage` 
+- **File**: `build-linux/appimage/`
+- **Build**: `npm run linux:appimage` 
 - **Features**: Portable, no installation required, works across distributions
 
 ### DEB (Debian/Ubuntu)
-- **File**: `build/deb/`
-- **Build**: `npm run package:deb`
+- **File**: `build-linux/deb/`
+- **Build**: `npm run linux:deb`
 - **Features**: Native package management integration, automatic dependency resolution
 
 ### RPM (Fedora/RHEL/CentOS)
-- **File**: `build/rpm/`
-- **Build**: `npm run package:rpm`
+- **File**: `build-linux/rpm/`
+- **Build**: `npm run linux:rpm`
 - **Features**: Native package management integration, system service integration
 
 ## Docker Build Environment
@@ -57,7 +57,7 @@ Each package format has its own Docker container to ensure consistent builds:
 
 ## Platform Dependency Handling
 
-The build system automatically handles platform-specific dependencies like `@esbuild/darwin-arm64` that break Linux builds:
+The build system automatically handles platform-specific dependencies like `@esbuild-linux/darwin-arm64` that break Linux builds:
 
 1. Creates platform-specific package.json files
 2. Temporarily removes incompatible dependencies during Linux builds
@@ -131,7 +131,7 @@ dist/
 ```bash
 # Rebuild all Docker images
 docker system prune -f
-cd build/docker
+cd build-linux/docker
 for dockerfile in Dockerfile.*; do
     image_name="openwispr-${dockerfile##*.}-builder"
     docker build -f "$dockerfile" -t "$image_name" .
@@ -144,8 +144,8 @@ done
 npm run clean
 rm -rf dist/ node_modules/
 npm install
-npm run package:setup
-npm run package:linux
+npm run linux:setup
+npm run linux:all
 ```
 
 ### Testing Issues
@@ -153,14 +153,14 @@ npm run package:linux
 # Clean Docker containers and images
 docker container prune -f
 docker image prune -f
-npm run package:test
+npm run linux:test
 ```
 
 ## Contributing
 
 When modifying packaging:
 
-1. Update relevant manifest files in `build/`
+1. Update relevant manifest files in `build-linux/`
 2. Test on all supported distributions
 3. Update this documentation
 4. Run the full test suite

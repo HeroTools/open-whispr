@@ -80,10 +80,10 @@ async function ensureBuildImages() {
     } catch (error) {
       log(`⚠️ Image ${imageName} not found, building it...`);
       const dockerfileName = imageName.replace('openwispr-', '').replace('-builder', '');
-      const dockerfilePath = path.join(PROJECT_ROOT, 'build/docker', `Dockerfile.${dockerfileName}`);
+      const dockerfilePath = path.join(PROJECT_ROOT, 'build-linux/docker', `Dockerfile.${dockerfileName}`);
       
       if (existsSync(dockerfilePath)) {
-        runCommand(`docker build -f ${dockerfilePath} -t ${imageName} .`, path.join(PROJECT_ROOT, 'build/docker'));
+        runCommand(`docker build -f ${dockerfilePath} -t ${imageName} .`, path.join(PROJECT_ROOT, 'build-linux/docker'));
         log(`✅ Built image ${imageName}`);
       } else {
         log(`❌ Dockerfile not found: ${dockerfilePath}`);

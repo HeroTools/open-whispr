@@ -47,7 +47,7 @@ async function buildFlatpak() {
     '--force-clean',
     '--repo=flatpak-repo',
     'flatpak-build',
-    'build/flatpak/com.herotools.openwispr.yml'
+    'build-linux/flatpak/com.herotools.openwispr.yml'
   ].join(' ');
   
   runCommand(dockerCommand);

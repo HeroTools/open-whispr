@@ -55,7 +55,7 @@ async function buildDeb() {
   runCommand(`ln -sf /opt/open-wispr/open-wispr ${debPackageDir}/usr/bin/open-wispr`);
   
   // Copy desktop file and icon
-  runCommand(`cp build/flatpak/com.herotools.openwispr.desktop ${debPackageDir}/usr/share/applications/open-wispr.desktop`);
+  runCommand(`cp build-linux/flatpak/com.herotools.openwispr.desktop ${debPackageDir}/usr/share/applications/open-wispr.desktop`);
   runCommand(`cp assets/icon.png ${debPackageDir}/usr/share/icons/hicolor/512x512/apps/open-wispr.png`);
   
   // Copy control files

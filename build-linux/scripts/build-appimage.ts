@@ -1,15 +1,15 @@
 #!/usr/bin/env ts-node
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { existsSync, mkdirSync, copyFileSync } from 'fs';
 import * as path from 'path';
 
 const PROJECT_ROOT = path.resolve(__dirname, '../..');
 const BUILD_DIR = path.join(PROJECT_ROOT, 'build');
-const RPM_DIR = path.join(BUILD_DIR, 'rpm');
+const APPIMAGE_DIR = path.join(BUILD_DIR, 'appimage');
 const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
 
 function log(message: string) {
-  console.log(`[RPM Build] ${message}`);
+  console.log(`[AppImage Build] ${message}`);
 }
 
 function runCommand(command: string, cwd?: string) {
@@ -22,8 +22,8 @@ function runCommand(command: string, cwd?: string) {
   }
 }
 
-async function buildRpm() {
-  log('Starting RPM build...');
+async function buildAppImage() {
+  log('Starting AppImage build...');
   
   // Ensure output directory exists
   if (!existsSync(OUTPUT_DIR)) {
@@ -35,34 +35,36 @@ async function buildRpm() {
   runCommand('npm run build:renderer');
   runCommand('npm run build:linux');
 
-  // Create source tarball
-  log('Creating source tarball...');
-  const tarballName = 'open-wispr-1.0.2.tar.gz';
-  runCommand(`tar --exclude=node_modules --exclude=dist --exclude=.git -czf ${tarballName} .`);
-
-  // Build RPM using Docker
-  log('Building RPM package...');
+  // Build AppImage using Docker
+  log('Building AppImage...');
   const dockerCommand = [
     'docker run --rm',
+    `--device /dev/fuse`,
+    `--cap-add SYS_ADMIN`,
+    `--security-opt apparmor:unconfined`,
     `-v "${PROJECT_ROOT}:/workspace"`,
     '-w /workspace',
-    'openwispr-rpm-builder',
-    'bash -c',
-    `"cp ${tarballName} /root/rpmbuild/SOURCES/ && `,
-    `cp ${RPM_DIR}/open-wispr.spec /root/rpmbuild/SPECS/ && `,
-    `rpmbuild -ba /root/rpmbuild/SPECS/open-wispr.spec && `,
-    `cp /root/rpmbuild/RPMS/x86_64/open-wispr-1.0.2-1.*.x86_64.rpm ${OUTPUT_DIR}/"`
+    'openwispr-appimage-builder',
+    'appimage-builder',
+    '--recipe build-linux/appimage/AppImageBuilder.yml'
   ].join(' ');
   
   runCommand(dockerCommand);
 
-  // Cleanup
-  runCommand(`rm -f ${tarballName}`);
-
-  log('RPM build completed successfully!');
-  log(`Output: ${OUTPUT_DIR}/open-wispr-1.0.2-1.*.x86_64.rpm`);
+  // Move the created AppImage to output directory
+  const appImagePath = `${PROJECT_ROOT}/OpenWispr-1.0.2-x86_64.AppImage`;
+  const outputPath = `${OUTPUT_DIR}/OpenWispr-1.0.2-x86_64.AppImage`;
+  
+  if (existsSync(appImagePath)) {
+    copyFileSync(appImagePath, outputPath);
+    log('AppImage build completed successfully!');
+    log(`Output: ${outputPath}`);
+  } else {
+    log('AppImage build failed - output file not found');
+    process.exit(1);
+  }
 }
 
 if (require.main === module) {
-  buildRpm().catch(console.error);
+  buildAppImage().catch(console.error);
 }

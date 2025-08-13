@@ -21,14 +21,14 @@
     "lint": "cd src && eslint .",
     "preview": "cd src && vite preview",
     "clean": "node cleanup.js",
-    "package:setup": "ts-node build/scripts/handle-platform-deps.ts create-platform-configs",
-    "package:linux": "ts-node build/scripts/build-all.ts",
-    "package:flatpak": "ts-node build/scripts/build-flatpak.ts",
-    "package:appimage": "ts-node build/scripts/build-appimage.ts",
-    "package:deb": "ts-node build/scripts/build-deb.ts",
-    "package:rpm": "ts-node build/scripts/build-rpm.ts",
-    "package:test": "ts-node build/scripts/test-packages.ts",
-    "package:restore": "ts-node build/scripts/handle-platform-deps.ts restore"
+    "linux:setup": "npx ts-node build-linux/scripts/handle-platform-deps.ts create-platform-configs",
+    "linux:all": "npx ts-node build-linux/scripts/build-all.ts",
+    "linux:flatpak": "npx ts-node build-linux/scripts/build-flatpak.ts",
+    "linux:appimage": "npx ts-node build-linux/scripts/build-appimage.ts",
+    "linux:deb": "npx ts-node build-linux/scripts/build-deb.ts",
+    "linux:rpm": "npx ts-node build-linux/scripts/build-rpm.ts",
+    "linux:test": "npx ts-node build-linux/scripts/test-packages.ts",
+    "linux:restore": "npx ts-node build-linux/scripts/handle-platform-deps.ts restore"
   },
   "keywords": [
     "dictation",
@@ -42,6 +42,7 @@
   "license": "MIT",
   "devDependencies": {
     "@electron/notarize": "^3.0.1",
+    "@esbuild/darwin-arm64": "^0.25.5",
     "@eslint/js": "^9.25.0",
     "@tailwindcss/vite": "^4.1.10",
     "@types/react": "^19.1.2",

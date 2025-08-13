@@ -17,12 +17,12 @@ function log(message: string) {
 }
 
 const PLATFORM_SPECIFIC_DEPS = {
-  '@esbuild/darwin-arm64': ['darwin'],
-  '@esbuild/darwin-x64': ['darwin'],
-  '@esbuild/win32-x64': ['win32'],
-  '@esbuild/win32-ia32': ['win32'],
-  '@esbuild/linux-x64': ['linux'],
-  '@esbuild/linux-arm64': ['linux']
+  '@esbuild-linux/darwin-arm64': ['darwin'],
+  '@esbuild-linux/darwin-x64': ['darwin'],
+  '@esbuild-linux/win32-x64': ['win32'],
+  '@esbuild-linux/win32-ia32': ['win32'],
+  '@esbuild-linux/linux-x64': ['linux'],
+  '@esbuild-linux/linux-arm64': ['linux']
 };
 
 function shouldIncludeDependency(depName: string, targetPlatform?: string): boolean {
@@ -89,7 +89,7 @@ if [ -f package.linux.json ]; then
     cp package.linux.json package.json
     echo "🐧 Using Linux-specific package.json"
 else
-    echo "❌ package.linux.json not found! Run 'tsx build/scripts/handle-platform-deps.ts' first"
+    echo "❌ package.linux.json not found! Run 'tsx build-linux/scripts/handle-platform-deps.ts' first"
     exit 1
 fi
 
@@ -107,7 +107,7 @@ npm run build
 echo "✅ Linux build preparation complete!"
 `;
 
-  const scriptPath = path.join(PROJECT_ROOT, 'build/scripts/prepare-linux-build.sh');
+  const scriptPath = path.join(PROJECT_ROOT, 'build-linux/scripts/prepare-linux-build.sh');
   writeFileSync(scriptPath, scriptContent);
   
   // Make executable
@@ -148,7 +148,7 @@ async function main() {
     case 'linux-build':
       log('Preparing for Linux build...');
       const { execSync } = require('child_process');
-      execSync('./build/scripts/prepare-linux-build.sh', { stdio: 'inherit', cwd: PROJECT_ROOT });
+      execSync('./build-linux/scripts/prepare-linux-build.sh', { stdio: 'inherit', cwd: PROJECT_ROOT });
       break;
       
     default:

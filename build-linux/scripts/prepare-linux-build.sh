@@ -14,7 +14,7 @@ if [ -f package.linux.json ]; then
     cp package.linux.json package.json
     echo "🐧 Using Linux-specific package.json"
 else
-    echo "❌ package.linux.json not found! Run 'tsx build/scripts/handle-platform-deps.ts' first"
+    echo "❌ package.linux.json not found! Run 'tsx build-linux/scripts/handle-platform-deps.ts' first"
     exit 1
 fi
 

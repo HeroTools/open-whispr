@@ -1,4 +1,6 @@
 {
+  // This tsconfig.json is used ONLY for build-linux/scripts/*.ts files
+  // Main React/Vite app uses src/vite.config.mjs for TypeScript configuration
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
@@ -18,7 +20,7 @@
     }
   },
   "include": [
-    "build/scripts/**/*"
+    "build-linux/scripts/**/*"
   ],
   "exclude": [
     "node_modules",

@@ -23,9 +23,9 @@ function runCommand(command: string, cwd?: string) {
 async function buildAll() {
   log('Starting complete Linux packaging build...');
   
-  // Handle platform-specific dependencies
+  // Handle platform-specific dependencies using the dedicated script
   log('Handling platform-specific dependencies...');
-  await handlePlatformDependencies();
+  runCommand(`npx ts-node ${path.join(SCRIPTS_DIR, 'handle-platform-deps.ts')} linux-build`);
   
   // Build Docker images first
   log('Building Docker images...');
@@ -45,7 +45,7 @@ async function buildAll() {
     const scriptPath = path.join(SCRIPTS_DIR, script);
     if (existsSync(scriptPath)) {
       log(`Running ${script}...`);
-      runCommand(`tsx ${scriptPath}`);
+      runCommand(`npx ts-node ${scriptPath}`);
     }
   }
   
@@ -53,30 +53,6 @@ async function buildAll() {
   log('Check the dist/ directory for all package formats.');
 }
 
-async function handlePlatformDependencies() {
-  // Check if we're on Linux and handle @esbuild/darwin-arm64 issue
-  if (process.platform === 'linux') {
-    log('Removing macOS-specific dependencies for Linux build...');
-    
-    // Read package.json and temporarily remove problematic dependency
-    const packageJsonPath = path.join(PROJECT_ROOT, 'package.json');
-    const packageJson = JSON.parse(require('fs').readFileSync(packageJsonPath, 'utf8'));
-    
-    // Check if the problematic dependency exists
-    if (packageJson.devDependencies && packageJson.devDependencies['@esbuild/darwin-arm64']) {
-      log('Found @esbuild/darwin-arm64 dependency, temporarily removing for Linux build...');
-      
-      // Create a backup and remove the dependency
-      const backupPath = path.join(PROJECT_ROOT, 'package.json.backup');
-      require('fs').writeFileSync(backupPath, JSON.stringify(packageJson, null, 2));
-      
-      delete packageJson.devDependencies['@esbuild/darwin-arm64'];
-      require('fs').writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
-      
-      log('Dependency temporarily removed. It will be restored after build.');
-    }
-  }
-}
 
 async function buildDockerImages() {
   const dockerFiles = [
@@ -86,7 +62,7 @@ async function buildDockerImages() {
     'Dockerfile.rpm'
   ];
   
-  const dockerDir = path.join(PROJECT_ROOT, 'build/docker');
+  const dockerDir = path.join(PROJECT_ROOT, 'build-linux/docker');
   
   for (const dockerfile of dockerFiles) {
     const imageName = `openwispr-${dockerfile.split('.')[1]}-builder`;
