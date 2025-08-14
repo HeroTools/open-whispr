@@ -60,7 +60,8 @@
       "deb"
     ],
     "icon": "assets/icon.png",
-    "category": "Utility"
+    "category": "Utility",
+    "maintainer": "OpenWhispr TODO <TODO@openwhispr.com>"
   },
   "nsis": {
     "oneClick": false,

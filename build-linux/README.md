@@ -50,22 +50,50 @@ This directory contains all the necessary files and scripts for building Open-Wh
 - **Build**: Individual builds not supported - use `npm run package-linux:all-amd64`
 - **Features**: Native package management integration, system service integration
 
+## Build Orchestration
+
+The build system uses a centralized orchestrator (`build-all.js`) that:
+
+1. **Prepares shared temporary build directory** under `/tmp/open-whispr-build-*`
+2. **Renders manifest templates** with current version and architecture
+3. **Handles platform-specific dependencies** by creating Linux-specific package.json
+4. **Builds renderer and electron app once** in shared environment
+5. **Calls individual build scripts** with `--temp-build-dir` argument
+6. **Copies final artifacts** to main `dist/` directory
+7. **Cleans up temporary directories** automatically
+
+### Error Handling
+
+- **Fail-fast behavior**: All scripts exit with non-zero status on errors
+- **Error propagation**: Individual script failures stop the entire build process
+- **Automatic cleanup**: Temporary directories are cleaned up even on failure
+
 ## Docker Build Environment
 
 Each package format has its own Docker container to ensure consistent builds:
 
-- `open-whispr-flatpak-builder`: Fedora-based with Flatpak tools
-- `open-whispr-appimage-builder`: Ubuntu-based with AppImage tools
-- `open-whispr-deb-builder`: Ubuntu-based with DEB packaging tools
-- `open-whispr-rpm-builder`: Fedora-based with RPM packaging tools
+- `open-whispr-flatpak-builder-amd64`: Fedora-based with Flatpak tools
+- `open-whispr-appimage-builder-amd64`: Ubuntu-based with AppImage tools
+- `open-whispr-deb-builder-amd64`: Ubuntu-based with DEB packaging tools
+- `open-whispr-rpm-builder-amd64`: Fedora-based with RPM packaging tools
+
+**Important**: Docker images are built automatically by the orchestrator before packaging begins.
 
 ## Platform Dependency Handling
 
-The build system automatically handles platform-specific dependencies like `@esbuild-linux/darwin-arm64` that break Linux builds:
+The build system automatically handles platform-specific dependencies like `@esbuild/darwin-arm64` that break Linux builds:
 
-1. Creates platform-specific package.json files
-2. Temporarily removes incompatible dependencies during Linux builds
-3. Restores original configuration after build
+1. **Creates platform-specific package.json** (`package.linux.json`) excluding non-Linux esbuild dependencies
+2. **Temporarily replaces main package.json** during Linux builds
+3. **Runs full npm install** with Linux-compatible dependencies only
+4. **Builds renderer and electron app** in prepared environment
+5. **Restores original configuration** after build
+
+### Shared Build Environment
+
+- **Single build per orchestration**: Renderer and electron app built once in shared temp directory
+- **Artifact sharing**: All package scripts use the same built electron app
+- **Consistent environment**: All scripts operate in the same prepared temp directory
 
 ## Testing
 
@@ -135,6 +163,23 @@ dist/
 └── open-whispr-1.0.2-1.fc39.x86_64.rpm
 ```
 
+## Known Issues
+
+### Current Build Failures
+
+1. **Electron Builder Metadata**: ✅ **FIXED** - Added required homepage, author email, and maintainer fields
+2. **Flatpak Binary Missing**: ❌ **ACTIVE** - `/app/open-whispr` not found during Flatpak build
+3. **AppImage Permissions**: ❌ **ACTIVE** - Permission denied on recipe file inside Docker
+4. **DEB Missing Directory**: ❌ **ACTIVE** - `/dist/linux-unpacked` missing in temp build
+5. **RPM Tarball Issues**: ❌ **ACTIVE** - Files changing during tar operation
+
+### Build System Status
+
+- ✅ **Error handling**: Scripts now exit with non-zero status on failure
+- ✅ **Temp directory sharing**: All scripts use orchestrator's shared temp directory
+- ✅ **Orchestration logic**: Simplified scripts assume prepared environment
+- ✅ **Metadata requirements**: Added missing electron-builder configuration
+
 ## Troubleshooting
 
 ### Docker Issues
@@ -158,6 +203,18 @@ npm run clean
 rm -rf dist/ node_modules/
 npm install
 npm run package-linux:all-amd64
+```
+
+### Debug Build Process
+
+```bash
+# Check temp directory contents during build failure
+# (temp dir path shown in build logs)
+ls -la /tmp/open-whispr-build-*
+ls -la /tmp/open-whispr-build-*/dist/
+
+# Check Docker container logs
+docker logs $(docker ps -a -q --filter ancestor=open-whispr-flatpak-builder-amd64 | head -1)
 ```
 
 ### Testing Issues

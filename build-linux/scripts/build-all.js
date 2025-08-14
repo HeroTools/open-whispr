@@ -95,5 +95,8 @@ async function buildDockerImages(buildUtils) {
 }
 
 if (require.main === module) {
-  buildAll().catch(console.error);
+  buildAll().catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
 }

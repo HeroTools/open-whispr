@@ -1,5 +1,5 @@
 {
-  "name": "open-wispr",
+  "name": "open-whispr",
   "version": "1.0.2",
   "description": "A desktop dictation application using OpenAI Whisper for speech-to-text transcription",
   "main": "main.js",
@@ -33,7 +33,11 @@
     "electron",
     "desktop-app"
   ],
-  "author": "OpenWispr Team",
+  "author": {
+    "name": "OpenWhispr TODO",
+    "email": "TODO@openwhispr.com"
+  },
+  "homepage": "https://github.com/herotools/open-whispr",
   "license": "MIT",
   "devDependencies": {
     "@electron/notarize": "^3.0.1",

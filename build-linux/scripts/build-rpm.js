@@ -7,6 +7,13 @@ const BuildUtils = require('./build-utils');
 
 // Initialize build utils for consistent temp directory and path handling
 const buildUtils = new BuildUtils();
+
+// Use orchestrator's temp directory if provided
+const tempBuildDirArg = process.argv.find(arg => arg.startsWith('--temp-build-dir='));
+if (tempBuildDirArg) {
+  buildUtils.tempBuildDir = tempBuildDirArg.split('=')[1];
+}
+
 const WORKING_DIR = buildUtils.getTempBuildDir();
 const PROJECT_ROOT = buildUtils.projectRoot;
 const BUILD_DIR = buildUtils.getTempPath('build-linux');
@@ -29,16 +36,7 @@ async function buildRpm() {
     mkdirSync(OUTPUT_DIR, { recursive: true });
   }
 
-  // Prepare temp build directory and render manifests
-  log('Preparing temp build directory...');
-  buildUtils.prepareTempBuildDir();
-  buildUtils.renderManifests();
-
-  // Build the Electron app first
-  log('Building Electron app...');
-  runCommand('npm run build:renderer');
-  const electronArch = getElectronBuilderArch();
-  runCommand(`npm run build:linux -- --${electronArch}`);
+  // Orchestrator has already prepared directories and built the app
 
   // Create source tarball in temp directory
   log('Creating source tarball...');
@@ -75,5 +73,8 @@ async function buildRpm() {
 }
 
 if (require.main === module) {
-  buildRpm().catch(console.error);
+  buildRpm().catch(error => {
+    console.error(error);
+    process.exit(1);
+  });
 }
