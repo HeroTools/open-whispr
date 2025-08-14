@@ -65,10 +65,6 @@ async function buildAll() {
   } catch (error) {
     log(`Build failed: ${error.message}`);
     throw error;
-  } finally {
-    // Always clean up temporary directory
-    log('Cleaning up temporary build directory...');
-    buildUtils.cleanup();
   }
 }
 
