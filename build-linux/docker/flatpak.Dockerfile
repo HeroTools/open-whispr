@@ -1,16 +1,12 @@
 FROM fedora:39
 
-# Install Flatpak and required tools
-RUN dnf update -y && \
-    dnf install -y \
+# Install Flatpak tools only (no weak deps) and clean
+RUN dnf -y --setopt=install_weak_deps=False update && \
+    dnf -y --setopt=install_weak_deps=False install \
         flatpak \
         flatpak-builder \
-        git \
-        nodejs \
-        npm \
-        python3 \
-        python3-pip && \
-    dnf clean all
+        git && \
+    dnf clean all && rm -rf /var/cache/dnf
 
 # Add flathub repository
 RUN flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo

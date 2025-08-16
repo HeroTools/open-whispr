@@ -7,15 +7,17 @@ const TemplateRenderer = require('./template-renderer');
 
 /**
  * Build utilities for managing temporary build directories and operations
+ * @param {boolean} fixedBuildDirName - Use fixed build directory name
  */
 class BuildUtils {
-  constructor() {
+  constructor(fixedBuildDirName) {
     this.projectRoot = path.resolve(__dirname, '../..');
+    this.outputDir = path.join(this.projectRoot, 'dist');
     this.buildLinuxDir = path.join(this.projectRoot, 'build-linux');
     this.arch = getCurrentArch();
     // Use OS temp directory to avoid copying project to subdirectory of itself
     const os = require('os');
-    this.tempBuildDir = path.join(os.tmpdir(), `open-whispr-build-${this.arch}-${Date.now()}`);
+    this.tempBuildDir = path.join(os.tmpdir(), `open-whispr-build-${this.arch}-${fixedBuildDirName ? 'tmp' : Date.now()}`);
     this.renderer = new TemplateRenderer();
   }
 
@@ -30,32 +32,34 @@ class BuildUtils {
    * Run command with error handling
    */
   runCommand(command, cwd) {
-    this.log(`Running: ${command}`);
+    this.log(`➡️ Running: ${command}`);
     try {
       execSync(command, { stdio: 'inherit', cwd: cwd || this.projectRoot });
     } catch (error) {
-      this.log(`Command failed: ${command}`);
+      this.log(` 🚫 Command failed: ${command}`);
       throw error;
     }
   }
 
   /**
    * Create temporary build directory and copy entire repo
+   * @param {boolean} skipClean - Skip cleaning existing temp directory
    */
-  prepareTempBuildDir() {
-    this.log(`Preparing temporary build directory: ${this.tempBuildDir}`);
+  prepareTempBuildDir(skipClean) {
+    this.log(`📂 Preparing temporary build directory: ${this.tempBuildDir}`);
     
     // Clean up existing temp directory
-    if (existsSync(this.tempBuildDir)) {
-      this.log('Removing existing temp build directory...');
-      rmSync(this.tempBuildDir, { recursive: true, force: true });
+    if (!skipClean) {
+      this.cleanup();
+    } else {
+      this.log("⏩ Skipping cleanup of existing temp directory...");
     }
     
     // Create temp directory
     mkdirSync(this.tempBuildDir, { recursive: true });
     
     // Copy entire repo to temp directory
-    this.log('Copying repository to temp build directory...');
+    this.log('📂 Copying repository to temp build directory...');
     
     // Use cp to copy files with filtering
     cpSync(this.projectRoot, this.tempBuildDir, {
@@ -80,7 +84,7 @@ class BuildUtils {
    * Render all manifest templates in the temp build directory
    */
   renderManifests() {
-    this.log('Rendering manifest templates...');
+    this.log(' 📝 Rendering manifest templates...');
     
     const tempBuildLinuxDir = path.join(this.tempBuildDir, 'build-linux');
     
@@ -110,17 +114,17 @@ class BuildUtils {
    */
   cleanup() {
     if (existsSync(this.tempBuildDir)) {
-      this.log(`Cleaning up temp build directory: ${this.tempBuildDir}`);
+      this.log(`🧹 Cleaning up temp build directory: ${this.tempBuildDir}`);
       rmSync(this.tempBuildDir, { recursive: true, force: true });
       this.log('✅ Cleanup completed');
     }
   }
 
   /**
-   * Get the temporary build directory path
+   * Get current architecture
    */
-  getTempBuildDir() {
-    return this.tempBuildDir;
+  getCurrentArch() {
+    return this.arch;
   }
 
   /**
@@ -131,46 +135,47 @@ class BuildUtils {
   }
 
   /**
-   * Copy build artifacts from temp directory to main dist directory
+   * Copy specific artifacts to main dist directory
+   * @param {string[]} artifactPaths - Array of artifact paths to copy, each path is absolute
    */
-  copyArtifacts(sourcePattern, destDir) {
-    const mainDistDir = path.join(this.projectRoot, 'dist');
-    mkdirSync(mainDistDir, { recursive: true });
+  copySpecificArtifacts(...artifactPaths) {
+    if (!Array.isArray(artifactPaths) || artifactPaths.length === 0) {
+      throw new Error(`Expected array of artifact paths, but got ${typeof artifactPaths} ${artifactPaths}`);
+    }
+    if (!artifactPaths.every(path => path.startsWith('/'))) {
+      throw new Error(`Expected absolute paths, but got ${artifactPaths}`);
+    }
+    if (!existsSync(this.outputDir)) {
+      mkdirSync(this.outputDir, { recursive: true });
+    }
+    this.log(`📂 Copying specified artifacts to ${this.outputDir}: ${artifactPaths}`);
     
-    const destPath = path.join(mainDistDir, destDir || '');
-    mkdirSync(destPath, { recursive: true });
-    
-    this.log(`Copying artifacts from temp build to ${destPath}`);
-    
-    // Use glob pattern to copy artifacts - use find with exec for better reliability
-    const findCommand = `find . -maxdepth 2 -name "${sourcePattern}" -exec cp {} ${destPath}/ \\;`;
-    try {
-      this.runCommand(findCommand, this.tempBuildDir);
-      this.log('✅ Artifacts copied successfully');
-    } catch (error) {
-      this.log(`Warning: Could not copy artifacts with pattern ${sourcePattern}`);
+    for (const artifactPath of artifactPaths) {
+      if (existsSync(artifactPath)) {
+        const copyCommand = `cp -v "${artifactPath}" "${this.outputDir}/"`;
+        try {
+          this.runCommand(copyCommand);
+          this.log(`✅ Copied ${artifactPath} to ${this.outputDir}`);
+        } catch (error) {
+          this.log(`❗ Error: Could not copy artifact ${artifactPath}`);
+          throw error;
+        }
+      } else {
+        throw new Error(`❗ Error: Artifact ${artifactPath} does not exist`);
+      }
     }
   }
 
   /**
-   * Copy specific artifacts to main dist directory
+   * Ensure artifact in output directory
+   * @param {string} artifactName - Artifact file name to ensure
    */
-  copySpecificArtifacts(...artifactPaths) {
-    const mainDistDir = path.join(this.projectRoot, 'dist');
-    mkdirSync(mainDistDir, { recursive: true });
-    
-    for (const artifactPath of artifactPaths) {
-      const fullPath = path.join(this.tempBuildDir, artifactPath);
-      if (existsSync(fullPath)) {
-        const copyCommand = `cp -v "${fullPath}" "${mainDistDir}/"`;
-        try {
-          this.runCommand(copyCommand);
-          this.log(`✅ Copied ${artifactPath} to dist/`);
-        } catch (error) {
-          this.log(`Warning: Could not copy artifact ${artifactPath}`);
-        }
-      }
+  ensureArtifactInOutput(artifactName) {
+    const artifactPath = path.join(this.outputDir, artifactName);
+    if (!existsSync(artifactPath)) {
+      throw new Error(`❗ Error: Artifact ${artifactPath} does not exist in output directory`);
     }
+    this.log(`✅ Artifact ${artifactPath} exists in output directory`);
   }
 }
 
@@ -190,13 +195,7 @@ if (require.main === module) {
     case 'cleanup':
       buildUtils.cleanup();
       break;
-    case 'test':
-      console.log('Build Utils Test');
-      console.log('Project Root:', buildUtils.projectRoot);
-      console.log('Temp Build Dir:', buildUtils.getTempBuildDir());
-      console.log('Architecture:', buildUtils.arch);
-      break;
     default:
-      console.log('Usage: node build-utils.js <prepare|cleanup|test>');
+      console.log('Usage: node build-utils.js <prepare|cleanup>');
   }
 }

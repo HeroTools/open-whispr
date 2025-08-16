@@ -1,20 +1,15 @@
 FROM fedora:39
 
-# Install RPM build tools and dependencies
-RUN dnf update -y && \
-    dnf install -y \
+# Install RPM build tools only (no weak deps) and clean
+RUN dnf -y --setopt=install_weak_deps=False update && \
+    dnf -y --setopt=install_weak_deps=False install \
         rpm-build \
         rpm-devel \
         rpmlint \
         rpmdevtools \
-        nodejs \
-        npm \
-        python3 \
-        python3-pip \
-        git \
         which \
-        file \
-        && dnf clean all
+        file && \
+    dnf clean all && rm -rf /var/cache/dnf
 
 # Set up RPM build environment
 RUN rpmdev-setuptree

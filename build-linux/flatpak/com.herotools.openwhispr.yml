@@ -35,14 +35,16 @@ modules:
   - name: openwhispr
     buildsystem: simple
     build-commands:
-      - cp -r . /app/
+      - cp -r dist/linux-unpacked/* /app/
       - chmod +x /app/open-whispr
+      - mkdir -p /app/bin
+      - ln -sf /app/open-whispr /app/bin/open-whispr
       - mkdir -p /app/share/applications
-      - cp build/flatpak/com.herotools.openwhispr.desktop /app/share/applications/
+      - cp build-linux/flatpak/com.herotools.openwhispr.desktop /app/share/applications/
       - mkdir -p /app/share/icons/hicolor/512x512/apps
       - cp assets/icon.png /app/share/icons/hicolor/512x512/apps/com.herotools.openwhispr.png
       - mkdir -p /app/share/metainfo
-      - cp build/flatpak/com.herotools.openwhispr.metainfo.xml /app/share/metainfo/
+      - cp build-linux/flatpak/com.herotools.openwhispr.metainfo.xml /app/share/metainfo/
     sources:
       - type: dir
         path: ../../

@@ -1,41 +1,34 @@
 #!/usr/bin/env node
-const { execSync } = require('child_process');
-const { existsSync, mkdirSync, writeFileSync } = require('fs');
+const { existsSync } = require('fs');
 const path = require('path');
-const { getTarballFilename, getRpmFilename, getElectronBuilderArch } = require('./version-utils');
+const { getTarballFilename, getRpmFilename } = require('./version-utils');
 const BuildUtils = require('./build-utils');
 
 // Initialize build utils for consistent temp directory and path handling
 const buildUtils = new BuildUtils();
 
-// Use orchestrator's temp directory if provided
+// Use orchestrator's temp directory
 const tempBuildDirArg = process.argv.find(arg => arg.startsWith('--temp-build-dir='));
+let tempBuildDir;
 if (tempBuildDirArg) {
-  buildUtils.tempBuildDir = tempBuildDirArg.split('=')[1];
+  tempBuildDir = tempBuildDirArg.split('=')[1];
+} else {
+  throw new Error('Missing --temp-build-dir argument');
 }
 
-const WORKING_DIR = buildUtils.getTempBuildDir();
-const PROJECT_ROOT = buildUtils.projectRoot;
-const BUILD_DIR = buildUtils.getTempPath('build-linux');
-const RPM_DIR = path.join(BUILD_DIR, 'rpm');
-const OUTPUT_DIR = path.join(PROJECT_ROOT, 'dist');
+const WORKING_DIR = tempBuildDir;
 
 function log(message) {
   buildUtils.log(`[RPM Build] ${message}`);
 }
 
-function runCommand(command, cwd) {
-  buildUtils.runCommand(command, cwd || WORKING_DIR);
+function runCommand(command) {
+  buildUtils.runCommand(command, WORKING_DIR);
 }
 
 async function buildRpm() {
   log('Starting RPM build...');
   
-  // Ensure output directory exists
-  if (!existsSync(OUTPUT_DIR)) {
-    mkdirSync(OUTPUT_DIR, { recursive: true });
-  }
-
   // Orchestrator has already prepared directories and built the app
 
   // Create source tarball in temp directory
@@ -50,7 +43,7 @@ async function buildRpm() {
   const rpmArch = arch === 'arm64' ? 'aarch64' : 'x86_64';
   const dockerCommand = [
     'docker run --rm',
-    `-v "${WORKING_DIR}:/workspace"`,
+    `-v "${WORKING_DIR}:/workspace:Z"`,
     '-w /workspace',
     `open-whispr-rpm-builder-${arch}`,
     'bash -c',
@@ -63,13 +56,11 @@ async function buildRpm() {
   runCommand(dockerCommand);
   
   // Copy artifacts to main dist directory
-  buildUtils.copySpecificArtifacts(`dist/${getRpmFilename()}`);
+  buildUtils.copySpecificArtifacts(path.join(WORKING_DIR, "dist", getRpmFilename()));
 
-  // Cleanup temp directory
-  buildUtils.cleanup();
+  buildUtils.ensureArtifactInOutput(getRpmFilename());
 
   log('RPM build completed successfully!');
-  log(`Output: ${OUTPUT_DIR}/${getRpmFilename()}`);
 }
 
 if (require.main === module) {

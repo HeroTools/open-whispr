@@ -1,24 +1,17 @@
-FROM ubuntu:22.04
+FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install build tools and dependencies
-RUN apt-get update && \
-    apt-get install -y \
+# Install minimal build tools for DEB packaging
+RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         devscripts \
         debhelper \
         dh-make \
-        nodejs \
-        npm \
-        python3 \
-        python3-pip \
-        git \
-        curl \
-        file \
         fakeroot \
         lintian \
-        && rm -rf /var/lib/apt/lists/*
+        file \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /workspace
 

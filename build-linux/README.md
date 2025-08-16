@@ -57,7 +57,7 @@ The build system uses a centralized orchestrator (`build-all.js`) that:
 1. **Prepares shared temporary build directory** under `/tmp/open-whispr-build-*`
 2. **Renders manifest templates** with current version and architecture
 3. **Handles platform-specific dependencies** by creating Linux-specific package.json
-4. **Builds renderer and electron app once** in shared environment
+4. **Builds renderer and electron app once inside Docker** using the npm/electron builder image
 5. **Calls individual build scripts** with `--temp-build-dir` argument
 6. **Copies final artifacts** to main `dist/` directory
 7. **Cleans up temporary directories** automatically
@@ -76,6 +76,7 @@ Each package format has its own Docker container to ensure consistent builds:
 - `open-whispr-appimage-builder-amd64`: Ubuntu-based with AppImage tools
 - `open-whispr-deb-builder-amd64`: Ubuntu-based with DEB packaging tools
 - `open-whispr-rpm-builder-amd64`: Fedora-based with RPM packaging tools
+- `open-whispr-npm-builder-amd64`: npm/electron builder image for building renderer and electron app
 
 **Important**: Docker images are built automatically by the orchestrator before packaging begins.
 
@@ -85,8 +86,8 @@ The build system automatically handles platform-specific dependencies like `@esb
 
 1. **Creates platform-specific package.json** (`package.linux.json`) excluding non-Linux esbuild dependencies
 2. **Temporarily replaces main package.json** during Linux builds
-3. **Runs full npm install** with Linux-compatible dependencies only
-4. **Builds renderer and electron app** in prepared environment
+3. **Runs full npm install** with Linux-compatible dependencies only (inside npm builder container)
+4. **Builds renderer and electron app** inside the npm builder container
 5. **Restores original configuration** after build
 
 ### Shared Build Environment
