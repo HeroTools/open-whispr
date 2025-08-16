@@ -23,7 +23,7 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 // Import helper modules
-const debugLogger = require("./src/helpers/debugLogger");
+const DebugLogger = require("./src/helpers/debugLogger");
 const EnvironmentManager = require("./src/helpers/environment");
 const WindowManager = require("./src/helpers/windowManager");
 const DatabaseManager = require("./src/helpers/database");
@@ -130,8 +130,8 @@ async function startApp() {
 // App event handlers
 app.whenReady().then(() => {
   // Only log debug status in development
-  if (debugLogger.isEnabled() && process.env.NODE_ENV === 'development') {
-    console.log(`Debug logging enabled: ${debugLogger.getLogPath()}`);
+  if (DebugLogger.isEnabled() && process.env.NODE_ENV === 'development') {
+    console.log(`Debug logging enabled: ${DebugLogger.getLogPath()}`);
   }
   
   startApp();

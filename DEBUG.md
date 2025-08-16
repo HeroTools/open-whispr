@@ -30,9 +30,9 @@ OpenWispr.exe
 
 When debug mode is enabled, logs are saved to:
 
-- **macOS**: `~/Library/Application Support/open-wispr/logs/debug-[timestamp].log`
-- **Windows**: `%APPDATA%/open-wispr/logs/debug-[timestamp].log`
-- **Linux**: `~/.config/open-wispr/logs/debug-[timestamp].log`
+- **macOS**: `~/Library/Application Support/open-whispr/logs/debug-[timestamp].log`
+- **Windows**: `%APPDATA%/open-whispr/logs/debug-[timestamp].log`
+- **Linux**: `~/.config/open-whispr/logs/debug-[timestamp].log`
 
 ## What the Logs Include
 

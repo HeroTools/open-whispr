@@ -22,5 +22,23 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    rollupOptions: {
+      external: [
+        'electron',
+        'fs',
+        'path',
+        'child_process',
+        'https',
+        'http',
+        'crypto',
+        'os',
+        'stream',
+        'util',
+        'zlib',
+        'tar',
+        'unzipper',
+        '@aws-sdk/client-s3'
+      ]
+    }
   }
 })

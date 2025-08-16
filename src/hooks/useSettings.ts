@@ -156,6 +156,7 @@ export function useSettings() {
         setUseReasoningModel(settings.useReasoningModel);
       if (settings.reasoningModel !== undefined)
         setReasoningModel(settings.reasoningModel);
+      // reasoningProvider is computed from reasoningModel, not stored separately
     },
     [setUseReasoningModel, setReasoningModel]
   );

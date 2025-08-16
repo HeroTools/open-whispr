@@ -1,0 +1,62 @@
+{
+  "providers": [
+    {
+      "id": "qwen",
+      "name": "Qwen",
+      "baseUrl": "https://huggingface.co",
+      "models": [
+        {
+          "id": "qwen2.5-0.5b-instruct-q5_k_m",
+          "name": "Qwen2.5 0.5B",
+          "size": "0.4GB",
+          "sizeBytes": 429496729,
+          "description": "Smallest model, fast but limited capabilities",
+          "fileName": "qwen2.5-0.5b-instruct-q5_k_m.gguf",
+          "quantization": "q5_k_m",
+          "contextLength": 32768
+        },
+        {
+          "id": "qwen2.5-1.5b-instruct-q5_k_m",
+          "name": "Qwen2.5 1.5B",
+          "size": "1.3GB",
+          "sizeBytes": 1395864371,
+          "description": "Small model, good for basic tasks",
+          "fileName": "qwen2.5-1.5b-instruct-q5_k_m.gguf",
+          "quantization": "q5_k_m",
+          "contextLength": 32768
+        },
+        {
+          "id": "qwen2.5-3b-instruct-q5_k_m",
+          "name": "Qwen2.5 3B",
+          "size": "2.3GB",
+          "sizeBytes": 2469606195,
+          "description": "Balanced model for general use",
+          "fileName": "qwen2.5-3b-instruct-q5_k_m.gguf",
+          "quantization": "q5_k_m",
+          "contextLength": 32768
+        },
+        {
+          "id": "qwen2.5-7b-instruct-q4km",
+          "name": "Qwen2.5 7B",
+          "size": "4.7GB",
+          "sizeBytes": 5046586241,
+          "description": "Large model with high quality (Q4_K_M quantization)",
+          "fileName": "qwen2.5-7b-instruct-q4_k_m.gguf",
+          "quantization": "q4_k_m",
+          "contextLength": 128000,
+          "recommended": true
+        },
+        {
+          "id": "qwen2.5-7b-instruct-q5_k_m",
+          "name": "Qwen2.5 7B",
+          "size": "5.4GB", 
+          "sizeBytes": 5798205849,
+          "description": "Large model, high quality reasoning (Q5_K_M quantization)",
+          "fileName": "qwen2.5-7b-instruct-q5_k_m.gguf",
+          "quantization": "q5_k_m",
+          "contextLength": 128000
+        }
+      ]
+    }
+  ]
+}

@@ -125,10 +125,26 @@ declare global {
       getOpenAIKey: () => Promise<string>;
       saveOpenAIKey: (key: string) => Promise<{ success: boolean }>;
       createProductionEnvFile: (key: string) => Promise<void>;
+      getAnthropicKey: () => Promise<string | null>;
+      saveAnthropicKey: (key: string) => Promise<void>;
 
       // Clipboard operations
       readClipboard: () => Promise<string>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
+      pasteFromClipboard: () => Promise<{ success: boolean; error?: string }>;
+      pasteFromClipboardWithFallback: () => Promise<{ success: boolean; error?: string }>;
+
+      // Settings
+      getSettings: () => Promise<any>;
+      updateSettings: (settings: any) => Promise<void>;
+
+      // Audio
+      getAudioDevices: () => Promise<MediaDeviceInfo[]>;
+      transcribeAudio: (audioData: ArrayBuffer) => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
 
       // Python operations
       checkPythonInstallation: () => Promise<PythonInstallation>;
@@ -162,14 +178,35 @@ declare global {
         error?: string;
       }>;
 
+      // Local AI model management
+      modelGetAll: () => Promise<any[]>;
+      modelCheck: (modelId: string) => Promise<boolean>;
+      modelDownload: (modelId: string) => Promise<void>;
+      modelDelete: (modelId: string) => Promise<void>;
+      modelCheckRuntime: () => Promise<boolean>;
+      onModelDownloadProgress: (callback: (event: any, data: any) => void) => void;
+      
+      // Local reasoning
+      processLocalReasoning: (text: string, modelId: string, agentName: string | null, config: any) => Promise<{ success: boolean; text?: string; error?: string }>;
+      checkLocalReasoningAvailable: () => Promise<boolean>;
+      
+      // llama.cpp management
+      llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;
+      llamaCppInstall: () => Promise<{ success: boolean; error?: string }>;
+      llamaCppUninstall: () => Promise<{ success: boolean; error?: string }>;
+
       // Window control operations
       windowMinimize: () => Promise<void>;
       windowMaximize: () => Promise<void>;
       windowClose: () => Promise<void>;
       windowIsMaximized: () => Promise<boolean>;
+      startWindowDrag: () => Promise<void>;
+      stopWindowDrag: () => Promise<void>;
 
       // App management
-      cleanupApp: () => Promise<void>;
+      cleanupApp: () => Promise<{ success: boolean; message: string }>;
+      getTranscriptionHistory: () => Promise<any[]>;
+      clearTranscriptionHistory: () => Promise<void>;
 
       // Update operations
       checkForUpdates: () => Promise<UpdateCheckResult>;
@@ -193,13 +230,17 @@ declare global {
       // External URL operations
       openExternal: (
         url: string
-      ) => Promise<{ success: boolean; error?: string }>;
+      ) => Promise<{ success: boolean; error?: string } | void>;
 
       // Event listener cleanup
-      removeAllListeners?: (channel: string) => void;
+      removeAllListeners: (channel: string) => void;
 
       // Hotkey management
-      updateHotkey?: (key: string) => Promise<void>;
+      updateHotkey: (key: string) => Promise<void>;
+    };
+    
+    api?: {
+      sendDebugLog: (message: string) => void;
     };
   }
 }

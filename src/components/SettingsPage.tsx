@@ -15,6 +15,8 @@ import { useClipboard } from "../hooks/useClipboard";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
+import { LocalModelManager } from "./LocalModelManager";
+import AIModelSelector from "./AIModelSelector";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 
 export type SettingsSectionType =
@@ -92,6 +94,11 @@ export default function SettingsPage({
   const { pasteFromClipboardWithFallback } = useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
 
+  // Local state for provider selection (overrides computed value)
+  const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
+    return localStorage.getItem("reasoningProvider") || reasoningProvider;
+  });
+
   // Defer heavy operations for better performance
   useEffect(() => {
     let mounted = true;
@@ -162,13 +169,21 @@ export default function SettingsPage({
   };
 
   const saveReasoningSettings = useCallback(() => {
-    updateReasoningSettings({ useReasoningModel, reasoningModel });
+    // Update reasoning settings
+    updateReasoningSettings({ 
+      useReasoningModel, 
+      reasoningModel
+    });
+    
     updateApiKeys({
-      ...(reasoningProvider === "openai" &&
+      ...(localReasoningProvider === "openai" &&
         openaiApiKey.trim() && { openaiApiKey }),
-      ...(reasoningProvider === "anthropic" &&
+      ...(localReasoningProvider === "anthropic" &&
         anthropicApiKey.trim() && { anthropicApiKey }),
     });
+    
+    // Save the provider separately since it's computed from the model
+    localStorage.setItem("reasoningProvider", localReasoningProvider);
 
     showAlertDialog({
       title: "Reasoning Settings Saved",
@@ -176,14 +191,14 @@ export default function SettingsPage({
         useReasoningModel ? "enabled" : "disabled"
       } with ${
         REASONING_PROVIDERS[
-          reasoningProvider as keyof typeof REASONING_PROVIDERS
-        ]?.name || reasoningProvider
+          localReasoningProvider as keyof typeof REASONING_PROVIDERS
+        ]?.name || localReasoningProvider
       } ${reasoningModel}`,
     });
   }, [
     useReasoningModel,
     reasoningModel,
-    reasoningProvider,
+    localReasoningProvider,
     openaiApiKey,
     anthropicApiKey,
     updateReasoningSettings,
@@ -725,15 +740,6 @@ export default function SettingsPage({
                 and fixes obvious errors while preserving your natural tone.
               </p>
 
-              {useLocalWhisper && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-amber-800">
-                    <span className="font-medium">Note:</span> AI text
-                    enhancement requires API access and is currently only
-                    available when using cloud-based providers.
-                  </p>
-                </div>
-              )}
 
               <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
                 <div>
@@ -775,9 +781,27 @@ export default function SettingsPage({
                 <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                   <h4 className="font-medium text-blue-900">AI Provider</h4>
                   <select
-                    value={reasoningProvider}
-                    onChange={(e) => {
-                      setReasoningProvider(e.target.value);
+                    value={localReasoningProvider}
+                    onChange={async (e) => {
+                      const newProvider = e.target.value;
+                      setLocalReasoningProvider(newProvider);
+                      
+                      // Update the model to the first model of the new provider
+                      const firstModel = REASONING_PROVIDERS[newProvider as keyof typeof REASONING_PROVIDERS]?.models[0];
+                      if (firstModel) {
+                        setReasoningModel(firstModel.value);
+                      }
+                      
+                      // If switching to local, show a warning if llama.cpp is not available
+                      if (newProvider === "local") {
+                        const isAvailable = await window.electronAPI?.checkLocalReasoningAvailable?.();
+                        if (!isAvailable) {
+                          showAlertDialog({
+                            title: "Local AI Setup Required",
+                            description: "To use local AI models, you need to install llama.cpp and download at least one model. Check the Local AI Models section below for setup instructions.",
+                          });
+                        }
+                      }
                     }}
                     className="w-full text-sm border border-blue-300 rounded-md p-2 bg-white focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                   >
@@ -799,7 +823,7 @@ export default function SettingsPage({
                     className="w-full text-sm border border-indigo-300 rounded-md p-2 bg-white focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
                   >
                     {REASONING_PROVIDERS[
-                      reasoningProvider as keyof typeof REASONING_PROVIDERS
+                      localReasoningProvider as keyof typeof REASONING_PROVIDERS
                     ]?.models.map((model) => (
                       <option key={model.value} value={model.value}>
                         {model.label} - {model.description}
@@ -811,7 +835,7 @@ export default function SettingsPage({
                   </p>
                 </div>
 
-                {reasoningProvider === "openai" && (
+                {localReasoningProvider === "openai" && (
                   <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
                     <h4 className="font-medium text-blue-900">
                       OpenAI API Key
@@ -824,7 +848,7 @@ export default function SettingsPage({
                   </div>
                 )}
 
-                {reasoningProvider === "anthropic" && (
+                {localReasoningProvider === "anthropic" && (
                   <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
                     <h4 className="font-medium text-purple-900">
                       Anthropic API Key
@@ -851,6 +875,12 @@ export default function SettingsPage({
                     <p className="text-xs text-purple-600">
                       Get your API key from console.anthropic.com
                     </p>
+                  </div>
+                )}
+
+                {localReasoningProvider === "local" && (
+                  <div className="space-y-4">
+                    <LocalModelManager />
                   </div>
                 )}
               </>

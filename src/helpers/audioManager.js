@@ -135,15 +135,8 @@ class AudioManager {
   }
 
   static cleanTranscriptionForAPI(text) {
-    return TextCleanup.cleanTranscription(text, {
-      removeArtifacts: true,
-      normalizeSpaces: true,
-      fixPunctuation: false, // Let reasoning model handle this
-      removeFillers: false, // Preserve context for reasoning model
-      removeRepetitions: false, // Let reasoning model decide
-      capitalizeFirst: false, // Let reasoning model handle
-      addPeriod: false,
-    });
+    // Minimal cleanup - only normalize spaces for API processing
+    return TextCleanup.normalizeSpaces(text);
   }
 
   async processWithLocalWhisper(audioBlob, model = "base") {
@@ -176,7 +169,7 @@ class AudioManager {
       
 
       if (result.success && result.text) {
-        let text = AudioManager.cleanTranscription(result.text);
+        const text = await this.processTranscription(result.text, "local");
         if (text) {
           return { success: true, text, source: "local" };
         } else {
@@ -363,12 +356,38 @@ class AudioManager {
   }
 
   async processWithReasoningModel(text) {
+    const model = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
+    return await ReasoningService.processText(text, model);
+  }
+
+  async isReasoningAvailable() {
+    const useReasoning = localStorage.getItem("useReasoningModel") === "true";
+    if (!useReasoning) return false;
+    
     try {
-      const model = localStorage.getItem("reasoningModel") || "gpt-3.5-turbo";
-      return await ReasoningService.processText(text, model);
-    } catch (error) {
-      return AudioManager.cleanTranscription(text);
+      return await ReasoningService.isAvailable();
+    } catch {
+      return false;
     }
+  }
+
+  async processTranscription(text, source) {
+    // Check if reasoning should handle cleanup
+    const useReasoning = await this.isReasoningAvailable();
+    
+    if (useReasoning) {
+      try {
+        // Minimal cleanup for reasoning models
+        const preparedText = AudioManager.cleanTranscriptionForAPI(text);
+        return await this.processWithReasoningModel(preparedText);
+      } catch (error) {
+        console.error(`Reasoning failed (${source}):`, error.message);
+        // Fall back to standard cleanup
+      }
+    }
+    
+    // Standard cleanup when reasoning is unavailable or fails
+    return AudioManager.cleanTranscription(text);
   }
 
   async processWithOpenAIAPI(audioBlob) {
@@ -406,24 +425,11 @@ class AudioManager {
       }
 
       const result = await response.json();
-      const rawText = AudioManager.cleanTranscriptionForAPI(result.text);
-
-      if (rawText) {
-        // Apply reasoning model if enabled
-        const useReasoning =
-          localStorage.getItem("useReasoningModel") === "true";
-
-        if (useReasoning) {
-          const reasonedText = await this.processWithReasoningModel(rawText);
-          return {
-            success: true,
-            text: reasonedText,
-            source: "openai-reasoned",
-          };
-        } else {
-          const finalText = AudioManager.cleanTranscription(rawText);
-          return { success: true, text: finalText, source: "openai" };
-        }
+      
+      if (result.text) {
+        const text = await this.processTranscription(result.text, "openai");
+        const source = await this.isReasoningAvailable() ? "openai-reasoned" : "openai";
+        return { success: true, text, source };
       } else {
         throw new Error("No text transcribed");
       }
@@ -453,7 +459,7 @@ class AudioManager {
           );
 
           if (result.success && result.text) {
-            let text = AudioManager.cleanTranscription(result.text);
+            const text = await this.processTranscription(result.text, "local-fallback");
             if (text) {
               return { success: true, text, source: "local-fallback" };
             }

@@ -1,3 +1,5 @@
+import { modelRegistry } from "../models/ModelRegistry";
+
 export const LANGUAGE_OPTIONS = [
   { value: "auto", label: "Auto-detect" },
   { value: "af", label: "Afrikaans" },
@@ -96,7 +98,19 @@ export const REASONING_PROVIDERS = {
       },
     ],
   },
+  local: {
+    name: "Local AI",
+    models: [], // Will be populated dynamically
+  },
 };
+
+// Dynamically populate local models from registry
+const localModels = modelRegistry.getAllModels();
+REASONING_PROVIDERS.local.models = localModels.map(model => ({
+  value: model.id,
+  label: model.name,
+  description: `${model.description} (${model.size})`,
+}));
 
 export const getAllReasoningModels = () => {
   return Object.entries(REASONING_PROVIDERS).flatMap(([providerId, provider]) =>

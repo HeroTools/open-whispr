@@ -22,7 +22,7 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
         console.error("Failed to open email client:", result?.error);
         // Fallback: try opening the email as a web URL
         await window.electronAPI?.openExternal(
-          "https://mail.google.com/mail/?view=cm&to=support@openwispr.com"
+          "https://mail.google.com/mail/?view=cm&to=support@openwhispr.com"
         );
       }
     } catch (error) {
@@ -33,7 +33,7 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
   const handleSubmitBug = async () => {
     try {
       const result = await window.electronAPI?.openExternal(
-        "https://github.com/HeroTools/open-wispr/issues"
+        "https://github.com/HeroTools/open-whispr/issues"
       );
       if (!result?.success) {
         console.error("Failed to open GitHub issues:", result?.error);

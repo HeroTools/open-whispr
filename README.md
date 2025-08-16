@@ -33,8 +33,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/HeroTools/open-wispr.git
-   cd open-wispr
+   git clone https://github.com/HeroTools/open-whispr.git
+   cd open-whispr
    ```
 
 2. **Install dependencies**:
@@ -70,7 +70,7 @@ npm run pack
 
 # The unsigned app will be in: dist/mac-arm64/OpenWispr.app (macOS)
 # or dist/win-unpacked/OpenWispr.exe (Windows)
-# or dist/linux-unpacked/open-wispr (Linux)
+# or dist/linux-unpacked/open-whispr (Linux)
 ```
 
 **Note**: On macOS, you may see a security warning when first opening the unsigned app. Right-click and select "Open" to bypass this.
@@ -148,7 +148,7 @@ The AI automatically detects when you're giving it commands versus dictating reg
 ## Project Structure
 
 ```
-open-wispr/
+open-whispr/
 ├── main.js              # Electron main process & IPC handlers
 ├── preload.js           # Electron preload script & API bridge
 ├── whisper_bridge.py    # Python script for local Whisper processing
@@ -351,7 +351,7 @@ OpenWispr is designed with privacy and security in mind:
 
 ### Getting Help
 
-- Check the [Issues](https://github.com/your-repo/open-wispr/issues) page
+- Check the [Issues](https://github.com/your-repo/open-whispr/issues) page
 - Review the console logs for debugging information
 - For local processing: Ensure Python and pip are working
 - For cloud processing: Verify your OpenAI API key and billing status

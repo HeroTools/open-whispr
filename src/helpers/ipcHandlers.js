@@ -9,6 +9,7 @@ class IPCHandlers {
     this.clipboardManager = managers.clipboardManager;
     this.whisperManager = managers.whisperManager;
     this.windowManager = managers.windowManager;
+    this.modelManager = managers.modelManager;
     this.setupHandlers();
   }
 
@@ -280,6 +281,140 @@ class IPCHandlers {
       try {
         await shell.openExternal(url);
         return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Model management handlers
+    ipcMain.handle("model-get-all", async () => {
+      try {
+        console.log('[IPC] model-get-all called');
+        const modelManager = require("./modelManagerBridge").default;
+        const models = await modelManager.getModelsWithStatus();
+        console.log('[IPC] Returning models:', models.length);
+        return models;
+      } catch (error) {
+        console.error('[IPC] Error in model-get-all:', error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle("model-check", async (_, modelId) => {
+      const modelManager = require("./modelManagerBridge").default;
+      return modelManager.isModelDownloaded(modelId);
+    });
+
+    ipcMain.handle("model-download", async (event, modelId) => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        const result = await modelManager.downloadModel(
+          modelId,
+          (progress, downloadedSize, totalSize) => {
+            event.sender.send("model-download-progress", {
+              modelId,
+              progress,
+              downloadedSize,
+              totalSize,
+            });
+          }
+        );
+        return { success: true, path: result };
+      } catch (error) {
+        return { 
+          success: false, 
+          error: error.message,
+          code: error.code,
+          details: error.details 
+        };
+      }
+    });
+
+    ipcMain.handle("model-delete", async (event, modelId) => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        await modelManager.deleteModel(modelId);
+        return { success: true };
+      } catch (error) {
+        return { 
+          success: false, 
+          error: error.message,
+          code: error.code,
+          details: error.details 
+        };
+      }
+    });
+
+    ipcMain.handle("model-check-runtime", async (event) => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        await modelManager.ensureLlamaCpp();
+        return { available: true };
+      } catch (error) {
+        return { 
+          available: false, 
+          error: error.message,
+          code: error.code,
+          details: error.details 
+        };
+      }
+    });
+
+    ipcMain.handle("get-anthropic-key", async (event) => {
+      return this.environmentManager.getAnthropicKey();
+    });
+
+    ipcMain.handle("save-anthropic-key", async (event, key) => {
+      return this.environmentManager.saveAnthropicKey(key);
+    });
+
+    // Local reasoning handler
+    ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
+      try {
+        const LocalReasoningService = require("../services/localReasoningBridge").default;
+        const result = await LocalReasoningService.processText(text, modelId, agentName, config);
+        return { success: true, text: result };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Check if local reasoning is available
+    ipcMain.handle("check-local-reasoning-available", async () => {
+      try {
+        const LocalReasoningService = require("../services/localReasoningBridge").default;
+        return await LocalReasoningService.isAvailable();
+      } catch (error) {
+        return false;
+      }
+    });
+
+    // llama.cpp installation handlers
+    ipcMain.handle("llama-cpp-check", async () => {
+      try {
+        const llamaCppInstaller = require("./llamaCppInstaller").default;
+        const isInstalled = await llamaCppInstaller.isInstalled();
+        const version = isInstalled ? await llamaCppInstaller.getVersion() : null;
+        return { isInstalled, version };
+      } catch (error) {
+        return { isInstalled: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("llama-cpp-install", async () => {
+      try {
+        const llamaCppInstaller = require("./llamaCppInstaller").default;
+        const result = await llamaCppInstaller.install();
+        return result;
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("llama-cpp-uninstall", async () => {
+      try {
+        const result = await llamaCppInstaller.uninstall();
+        return result;
       } catch (error) {
         return { success: false, error: error.message };
       }

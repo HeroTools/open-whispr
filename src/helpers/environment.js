@@ -53,6 +53,22 @@ class EnvironmentManager {
     }
   }
 
+  getAnthropicKey() {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    return apiKey || "";
+  }
+
+  saveAnthropicKey(key) {
+    try {
+      // Update the environment variable in memory for immediate use
+      process.env.ANTHROPIC_API_KEY = key;
+      return { success: true };
+    } catch (error) {
+      console.error("Error saving Anthropic API key:", error.message);
+      throw error;
+    }
+  }
+
   createProductionEnvFile(apiKey) {
     try {
       const envPath = path.join(app.getPath("userData"), ".env");

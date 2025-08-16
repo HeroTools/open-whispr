@@ -27,7 +27,7 @@ class TextCleanup {
     // Enhanced filler words - industry standard  
     fillers: [
       /\b(?:um|uh|er|ah|mm|hmm|mhm)\b\s*/gi, // Hesitation sounds
-      /\b(?:like|so|well|right|okay|ok|yeah|yep|yup|sure|alright|fine)\b\s*/gi, // Common discourse markers
+      /\b(?:like|so|well|right|okay|ok|yeah|yep|yup|sure|alright)\b\s*/gi, // Common discourse markers
       /\b(?:you know|I mean|I guess|sort of|kind of)\b\s*/gi, // Meaningless phrases and uncertainty markers
       /\b(?:maybe|perhaps)\b(?=\s)/gi, // Uncertainty markers (when not essential)
       /\b(?:basically|literally|totally|honestly|obviously|definitely|probably|actually)\b\s*/gi, // Overused intensifiers
@@ -343,14 +343,15 @@ class TextCleanup {
   }
 
   /**
-   * Normalize whitespace and handle punctuation efficiently
+   * Normalize whitespace - public method for minimal cleanup
    * @param {string} text 
    * @returns {string}
    */
   static normalizeSpaces(text) {
+    if (!text) return '';
     return text
       .replace(/\s+/g, ' ')  // Multiple spaces to single space
-      .replace(/[ 	]+(?=[.,!?;:])/g, '')  // Remove unnecessary spaces before punctuation
+      .replace(/[ 	]+(?=[.,!?;:])/g, '')  // Remove spaces before punctuation
       .replace(/\n+/g, ' ')  // Newlines to spaces
       .replace(/\t+/g, ' ')  // Tabs to spaces
       .trim();

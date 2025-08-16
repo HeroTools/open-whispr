@@ -28,7 +28,7 @@ class UpdateManager {
     autoUpdater.setFeedURL({
       provider: "github",
       owner: "HeroTools",
-      repo: "open-wispr",
+      repo: "open-whispr",
       private: false,
     });
 

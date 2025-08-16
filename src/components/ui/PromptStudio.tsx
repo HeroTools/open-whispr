@@ -90,14 +90,16 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         return;
       }
       
-      // Check if we have the required API key
-      const apiKey = reasoningProvider === "openai" 
-        ? localStorage.getItem("openaiApiKey")
-        : localStorage.getItem("anthropicApiKey");
-        
-      if (!apiKey || apiKey.trim() === "") {
-        setTestResult(`⚠️ No ${reasoningProvider === "openai" ? "OpenAI" : "Anthropic"} API key found. Add it in AI Models settings.`);
-        return;
+      // Check if we have the required API key (only for cloud providers)
+      if (reasoningProvider !== "local") {
+        const apiKey = reasoningProvider === "openai" 
+          ? localStorage.getItem("openaiApiKey")
+          : localStorage.getItem("anthropicApiKey");
+          
+        if (!apiKey || apiKey.trim() === "") {
+          setTestResult(`⚠️ No ${reasoningProvider === "openai" ? "OpenAI" : "Anthropic"} API key found. Add it in AI Models settings.`);
+          return;
+        }
       }
       
       // Save current prompts temporarily so the test uses them
@@ -108,9 +110,31 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       }));
       
       try {
-        // Call the AI - ReasoningService will automatically use the custom prompts
-        const result = await ReasoningService.processText(testText, reasoningModel);
-        setTestResult(result);
+        // For local models, use a different approach
+        if (reasoningProvider === "local") {
+          // Call local reasoning directly
+          const result = await window.electronAPI.processLocalReasoning(testText, reasoningModel, agentName, {
+            customPrompts: {
+              agent: editedAgentPrompt,
+              regular: editedRegularPrompt
+            }
+          });
+          
+          if (result.success) {
+            setTestResult(result.text);
+          } else {
+            setTestResult(`❌ Local model error: ${result.error}`);
+          }
+        } else {
+          // Call the AI - ReasoningService will automatically use the custom prompts
+          const result = await ReasoningService.processText(testText, reasoningModel, agentName, {
+            customPrompts: {
+              agent: editedAgentPrompt,
+              regular: editedRegularPrompt
+            }
+          });
+          setTestResult(result);
+        }
       } finally {
         // Restore original prompts
         if (currentCustomPrompts) {

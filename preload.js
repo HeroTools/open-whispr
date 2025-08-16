@@ -92,6 +92,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // External link opener
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
   
+  // Model management functions
+  modelGetAll: () => ipcRenderer.invoke("model-get-all"),
+  modelCheck: (modelId) => ipcRenderer.invoke("model-check", modelId),
+  modelDownload: (modelId) => ipcRenderer.invoke("model-download", modelId),
+  modelDelete: (modelId) => ipcRenderer.invoke("model-delete", modelId),
+  modelCheckRuntime: () => ipcRenderer.invoke("model-check-runtime"),
+  onModelDownloadProgress: (callback) => ipcRenderer.on("model-download-progress", callback),
+  
+  // Anthropic API
+  getAnthropicKey: () => ipcRenderer.invoke("get-anthropic-key"),
+  saveAnthropicKey: (key) => ipcRenderer.invoke("save-anthropic-key", key),
+  
+  // Local reasoning
+  processLocalReasoning: (text, modelId, agentName, config) => 
+    ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),
+  checkLocalReasoningAvailable: () => 
+    ipcRenderer.invoke("check-local-reasoning-available"),
+  
+  // llama.cpp
+  llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
+  llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
+  llamaCppUninstall: () => ipcRenderer.invoke("llama-cpp-uninstall"),
+  
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
