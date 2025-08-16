@@ -82,7 +82,7 @@ For maintainers who need to distribute signed builds:
 ```bash
 # Requires code signing certificates and notarization setup
 npm run build        # Build for the current platform
-npm run build -- --linux --x64 # Build for specific platform and architecture
+npm run build -- --x64 --linux deb # Build for specific platform, package and architecture
 
 ```
 
@@ -245,7 +245,7 @@ npm run pack
 
 # Production builds
 npm run build          # Build for the current platform
-npm run build -- --linux --x64 # Build for specific platform and architecture
+npm run build -- --x64 --linux deb # Build for specific platform, package and architecture
 ```
 
 ## Configuration

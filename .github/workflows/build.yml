@@ -82,5 +82,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.os }}-build
-          path: dist/
+          path: |
+            dist/**
+            !dist/linux-unpacked/**
           retention-days: 7

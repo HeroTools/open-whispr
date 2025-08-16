@@ -81,5 +81,7 @@ jobs:
         if: always()
         with:
           name: ${{ matrix.os }}-release
-          path: dist/
+          path: |
+            dist/**
+            !dist/linux-unpacked/**
           retention-days: 7
