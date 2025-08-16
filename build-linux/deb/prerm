@@ -1,5 +1,0 @@
-#!/bin/bash
-set -e
-
-# Nothing special needed for removal preparation
-exit 0
