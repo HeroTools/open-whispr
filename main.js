@@ -1,7 +1,7 @@
 const { app, globalShortcut, BrowserWindow } = require("electron");
 const { version } = require("./package.json");
 
-// Handle --version flag for headless testing
+// Handle --version flag
 if (process.argv.includes('--version')) {
   console.log(version);
   process.exit(0);
@@ -88,13 +88,6 @@ async function startApp() {
   // Ensure dock is visible on macOS
   if (process.platform === "darwin" && app.dock) {
     app.dock.show();
-  }
-
-  // Prefer wayland on linux when available (safe fallback to X11 via 'auto')
-  if (process.platform === "linux") {
-    process.env.ELECTRON_OZONE_PLATFORM_HINT = "auto";
-    app.commandLine.appendSwitch("ozone-platform-hint", "auto");
-    app.commandLine.appendSwitch("enable-features", "WaylandWindowDecorations");
   }
 
   // Initialize Whisper manager at startup (don't await to avoid blocking)
