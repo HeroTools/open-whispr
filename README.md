@@ -75,6 +75,25 @@ npm run pack
 
 **Note**: On macOS, you may see a security warning when first opening the unsigned app. Right-click and select "Open" to bypass this.
 
+#### On Debian Linux
+
+```bash
+npm run pack:linux
+```
+
+After finished building, install .deb on system:
+
+```bash
+cp open-whispr_1.0.3_amd64.deb ~/.local/bin/
+sudo dpkg -i ~/.local/bin/open-whispr_1.0.3_amd64.deb
+```
+
+Install dependencies (required to paste text automatically):
+
+```bash
+sudo apt install xdotool
+```
+
 ### Building for Distribution
 
 For maintainers who need to distribute signed builds:
