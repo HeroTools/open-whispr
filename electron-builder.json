@@ -16,6 +16,7 @@
     "src/helpers/**/*",
     "src/hooks/**/*",
     "src/types/**/*",
+    "src/appUtils.js",
     "src/utils.js",
     "src/utils/**/*",
     "src/updater.js",

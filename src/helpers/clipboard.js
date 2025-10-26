@@ -31,22 +31,15 @@ class ClipboardManager {
 
       // Copy text to clipboard first - this always works
       clipboard.writeText(text);
-      this.safeLog(
-        "📋 Text copied to clipboard:",
-        text.substring(0, 50) + "..."
-      );
+      this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
 
       if (process.platform === "darwin") {
         // Check accessibility permissions first
-        this.safeLog(
-          "🔍 Checking accessibility permissions for paste operation..."
-        );
+        this.safeLog("🔍 Checking accessibility permissions for paste operation...");
         const hasPermissions = await this.checkAccessibilityPermissions();
 
         if (!hasPermissions) {
-          this.safeLog(
-            "⚠️ No accessibility permissions - text copied to clipboard only"
-          );
+          this.safeLog("⚠️ No accessibility permissions - text copied to clipboard only");
           const errorMsg =
             "Accessibility permissions required for automatic pasting. Text has been copied to clipboard - please paste manually with Cmd+V.";
           throw new Error(errorMsg);
@@ -136,20 +129,12 @@ class ClipboardManager {
           }, 100);
           resolve();
         } else {
-          reject(
-            new Error(
-              `Windows paste failed with code ${code}. Text is copied to clipboard.`
-            )
-          );
+          reject(new Error(`Windows paste failed with code ${code}. Text is copied to clipboard.`));
         }
       });
 
       pasteProcess.on("error", (error) => {
-        reject(
-          new Error(
-            `Windows paste failed: ${error.message}. Text is copied to clipboard.`
-          )
-        );
+        reject(new Error(`Windows paste failed: ${error.message}. Text is copied to clipboard.`));
       });
     });
   }
@@ -166,20 +151,12 @@ class ClipboardManager {
           }, 100);
           resolve();
         } else {
-          reject(
-            new Error(
-              `Linux paste failed with code ${code}. Text is copied to clipboard.`
-            )
-          );
+          reject(new Error(`Linux paste failed with code ${code}. Text is copied to clipboard.`));
         }
       });
 
       pasteProcess.on("error", (error) => {
-        reject(
-          new Error(
-            `Linux paste failed: ${error.message}. Text is copied to clipboard.`
-          )
-        );
+        reject(new Error(`Linux paste failed: ${error.message}. Text is copied to clipboard.`));
       });
     });
   }
@@ -283,12 +260,7 @@ Would you like to open System Settings now?`;
 
   openSystemSettings() {
     const settingsCommands = [
-      [
-        "open",
-        [
-          "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-        ],
-      ],
+      ["open", ["x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"]],
       ["open", ["-b", "com.apple.systempreferences"]],
       ["open", ["/System/Library/PreferencePanes/Security.prefPane"]],
     ];

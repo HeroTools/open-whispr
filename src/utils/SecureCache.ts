@@ -22,7 +22,7 @@ export class SecureCache<T> {
 
   get(key: string): T | undefined {
     const entry = this.cache.get(key);
-    
+
     if (!entry) {
       return undefined;
     }

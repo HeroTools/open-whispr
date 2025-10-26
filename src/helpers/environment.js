@@ -114,12 +114,12 @@ OPENAI_API_KEY=${apiKey}
   saveAllKeysToEnvFile() {
     try {
       const envPath = path.join(app.getPath("userData"), ".env");
-      
+
       // Build env content with all current keys
       let envContent = `# OpenWhispr Environment Variables
 # This file was created automatically for production use
 `;
-      
+
       if (process.env.OPENAI_API_KEY) {
         envContent += `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}\n`;
       }
@@ -131,7 +131,7 @@ OPENAI_API_KEY=${apiKey}
       }
 
       fs.writeFileSync(envPath, envContent, "utf8");
-      
+
       // Reload the env file
       require("dotenv").config({ path: envPath });
 

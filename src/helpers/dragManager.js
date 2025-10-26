@@ -60,11 +60,7 @@ class DragManager {
     }
 
     this.mouseTrackingInterval = setInterval(() => {
-      if (
-        this.isDragging &&
-        this.targetWindow &&
-        !this.targetWindow.isDestroyed()
-      ) {
+      if (this.isDragging && this.targetWindow && !this.targetWindow.isDestroyed()) {
         this.updateWindowPosition();
       }
     }, 16); // ~60fps

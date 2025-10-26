@@ -1,105 +1,183 @@
-@import "tailwindcss";
-
-:root {
-  /* OpenWhispr Modern Theme - Clean & Professional */
-  --color-primary: #4f46e5;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #171717;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #737373;
-  --color-accent: #f5f5f5;
-  --color-accent-foreground: #171717;
-  --color-destructive: #dc2626;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #e5e5e5;
-  --color-input: #ffffff;
-  --color-ring: #4f46e5;
-  --color-background: #ffffff;
-  --color-foreground: #171717;
-  --color-card: #ffffff;
-  --color-card-foreground: #171717;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #171717;
-  --color-link: #4f46e5;
-  --radius: 0.5rem;
-}
-
-.dark {
-  /* Dark mode - sophisticated and rich */
-  --color-background: oklch(0.08 0 0);
-  --color-foreground: oklch(0.95 0 0);
-  --color-card: oklch(0.12 0 0);
-  --color-card-foreground: oklch(0.95 0 0);
-  --color-popover: oklch(0.12 0 0);
-  --color-popover-foreground: oklch(0.95 0 0);
-  --color-primary: oklch(0.6 0.22 245);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.18 0 0);
-  --color-secondary-foreground: oklch(0.9 0 0);
-  --color-muted: oklch(0.15 0 0);
-  --color-muted-foreground: oklch(0.6 0 0);
-  --color-accent: oklch(0.6 0.22 245);
-  --color-accent-foreground: oklch(0.985 0 0);
-  --color-destructive: oklch(0.7 0.22 25);
-  --color-border: oklch(0.22 0 0);
-  --color-input: oklch(0.18 0 0);
-  --color-ring: oklch(0.6 0.22 245);
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-gray-200 outline-indigo-500/50;
+  :root {
+    /* Primary Colors - Dark Blue */
+    --primary-50: #eff6ff;
+    --primary-100: #dbeafe;
+    --primary-200: #bfdbfe;
+    --primary-300: #93c5fd;
+    --primary-400: #60a5fa;
+    --primary-500: #3b82f6;
+    --primary-600: #2563eb;
+    --primary-700: #1d4ed8;
+    --primary-800: #1e3a8a;
+    --primary-900: #1e2a5a;
+    --primary-950: #172554;
+
+    /* Secondary Colors - Slate Blue Tones */
+    --secondary-50: #f8fafc;
+    --secondary-100: #f1f5f9;
+    --secondary-200: #e2e8f0;
+    --secondary-300: #cbd5e1;
+    --secondary-400: #94a3b8;
+    --secondary-500: #64748b;
+    --secondary-600: #475569;
+    --secondary-700: #334155;
+    --secondary-800: #1e293b;
+    --secondary-900: #0f172a;
+    --secondary-950: #020617;
+
+    /* Background Colors */
+    --background-50: #ffffff;
+    --background-100: #fafafa;
+    --background-200: #f5f5f5;
+    --background-300: #eff6ff;
+    --background-400: #dbeafe;
+    --background-500: #bfdbfe;
+    --background-600: #93c5fd;
+    --background-700: #60a5fa;
+    --background-800: #1e2a5a;
+    --background-900: #172554;
+    --background-950: #0f1729;
+
+    /* Text Colors */
+    --text-50: #fafafa;
+    --text-100: #f5f5f5;
+    --text-200: #e5e5e5;
+    --text-300: #d4d4d4;
+    --text-400: #a3a3a3;
+    --text-500: #737373;
+    --text-600: #525252;
+    --text-700: #334155;
+    --text-800: #1e293b;
+    --text-900: #0f172a;
+    --text-950: #020617;
+
+    /* Status Colors */
+    --success-50: #f0fdf4;
+    --success-100: #dcfce7;
+    --success-200: #bbf7d0;
+    --success-300: #86efac;
+    --success-400: #4ade80;
+    --success-500: #34C759;
+    --success-600: #30B84D;
+    --success-700: #2AA644;
+    --success-800: #166534;
+    --success-900: #14532d;
+    --success-950: #052e16;
+
+    --error-50: #fef2f2;
+    --error-100: #fee2e2;
+    --error-200: #fecaca;
+    --error-300: #fca5a5;
+    --error-400: #f87171;
+    --error-500: #ff3b30;
+    --error-600: #e62e24;
+    --error-700: #d32119;
+    --error-800: #991b1b;
+    --error-900: #7f1d1d;
+    --error-950: #450a0a;
+
+    --warning-50: #fffbeb;
+    --warning-100: #fef3c7;
+    --warning-200: #fde68a;
+    --warning-300: #fcd34d;
+    --warning-400: #fbbf24;
+    --warning-500: #FF9500;
+    --warning-600: #E68A00;
+    --warning-700: #CC7A00;
+    --warning-800: #92400e;
+    --warning-900: #78350f;
+    --warning-950: #451a03;
+
+    /* Border Colors */
+    --border-light: #bfdbfe;
+    --border-default: #93c5fd;
+    --border-dark: #60a5fa;
   }
-  
+
+  :root {
+    /* Apple Typography Scale */
+    font-size: 13px;
+    line-height: 1.47059;
+    letter-spacing: -0.08px;
+  }
+
   body {
-    @apply bg-white text-gray-900;
     margin: 0;
     padding: 0;
-    font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    font-feature-settings: "liga" 1, "kern" 1;
+    background-color: var(--background-50);
+    color: var(--text-800);
+    font-family:
+      -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", Arial,
+      sans-serif;
+    font-feature-settings:
+      "liga" 1,
+      "kern" 1;
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
-  
+
   /* Electron specific styles */
-  html, body, #root {
+  html,
+  body,
+  #root {
     background: transparent;
   }
 }
 
-/* OpenWhispr Brand Typography */
+/* Apple Typography System */
 .brand-heading {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
 .brand-body {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  line-height: 1.6;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.47059;
+  letter-spacing: -0.08px;
 }
 
-.brand-script {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  font-style: italic;
-}
-
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  color: var(--text-800);
 }
 
 h1 {
   font-size: 2.5rem;
   font-weight: 700;
+  letter-spacing: -0.015em;
 }
 
-/* Modern Button Styling - handled by button component */
+h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Apple Button Styling */
 button {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
   cursor: pointer;
+  font-weight: 400;
+  letter-spacing: -0.08px;
 }
 
 /* Ensure all interactive elements have pointer cursor */
@@ -112,93 +190,70 @@ svg:hover,
   cursor: pointer;
 }
 
-/* Embossed paper-like input styling */
-input, textarea {
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  box-shadow: inset 0 1px 3px rgba(43, 31, 20, 0.1);
+/* Apple Input Styling */
+input,
+textarea {
+  font-family:
+    -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 400;
+  letter-spacing: -0.08px;
 }
 
-/* Light mode inputs - embossed parchment */
-:root input, :root textarea {
-  background-color: #F9F6F1;
-  border: 1px solid #DDD4C7;
-  color: #2B1F14;
+input::placeholder,
+textarea::placeholder {
+  opacity: 0.5;
 }
 
-:root input:focus, :root textarea:focus {
-  border-color: #C0A77D;
-  box-shadow: 0 0 0 2px rgba(192, 167, 125, 0.2), inset 0 1px 3px rgba(43, 31, 20, 0.1);
-  background-color: #FFFFFF;
-}
-
-/* Dark mode inputs */
-.dark input, .dark textarea {
-  background-color: oklch(0.15 0 0);
-  border: 1px solid oklch(0.25 0 0);
-  color: oklch(0.9 0 0);
-}
-
-.dark input:focus, .dark textarea:focus {
-  border-color: oklch(0.55 0.25 250);
-  box-shadow: 0 0 0 2px oklch(0.55 0.25 250 / 0.2);
-}
-
-/* Card styling - elevated parchment */
+/* Card Styling */
 .card {
-  background-color: #FFFFFF;
-  border: 1px solid #DDD4C7;
-  border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(43, 31, 20, 0.08), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
-  transition: all 0.2s ease;
+  background-color: var(--background-50);
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-light);
 }
 
-.card:hover {
-  box-shadow: 0 8px 16px rgba(43, 31, 20, 0.1), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
-  transform: translateY(-1px);
-}
-
-/* Link styling */
+/* Link Styling */
 a {
-  color: #2E3659;
+  color: var(--primary-500);
   text-decoration: none;
-  transition: color 0.2s ease;
-  cursor: pointer;
 }
 
 a:hover {
-  color: #4B2E2B;
   text-decoration: underline;
-  cursor: pointer;
 }
 
-/* Status indicators */
-.status-active {
-  color: #4B2E2B;
-  font-weight: 600;
+/* Scrollbar Styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
-.text-brand-primary {
-  color: #2B1F14;
+::-webkit-scrollbar-track {
+  background-color: var(--background-100);
 }
 
-.text-brand-accent {
-  color: #4B2E2B;
+::-webkit-scrollbar-thumb {
+  background-color: var(--primary-300);
+  border-radius: 0.375rem;
 }
 
-.text-brand-highlight {
-  color: #C0A77D;
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--primary-400);
 }
 
-.text-brand-link {
-  color: #2E3659;
+/* Selection Styling */
+::selection {
+  background-color: var(--primary-200);
+  color: var(--text-800);
 }
 
-/* Additional CSS variables for theme support */
-:root {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+::-moz-selection {
+  background-color: var(--primary-200);
+  color: var(--text-800);
+}
+
+/* Focus Visible */
+*:focus-visible {
+  outline-width: 2px;
+  outline-offset: 2px;
+  outline-color: var(--primary-500);
 }

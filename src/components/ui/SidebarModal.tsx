@@ -32,41 +32,33 @@ export default function SidebarModal<T extends string>({
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
-        <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-50 max-h-[90vh] w-[90vw] max-w-5xl translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-white p-0 shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] overflow-hidden">
+        <DialogPrimitive.Overlay className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/30 backdrop-blur-sm" />
+        <DialogPrimitive.Content className="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] fixed top-[50%] left-[50%] z-50 max-h-[90vh] w-[90vw] max-w-5xl translate-x-[-50%] translate-y-[-50%] overflow-hidden rounded-2xl bg-white p-0 shadow-2xl duration-200">
           <div className="relative h-full max-h-[90vh] overflow-hidden">
-            <DialogPrimitive.Close className="absolute right-6 top-6 z-10 rounded-full bg-gray-100 p-2 opacity-70 ring-offset-background transition-all hover:opacity-100 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2">
+            <DialogPrimitive.Close className="ring-offset-background absolute top-6 right-6 z-10 rounded-full bg-gray-100 p-2 opacity-70 transition-all hover:bg-gray-200 hover:opacity-100 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:outline-none">
               <X className="h-4 w-4 text-gray-600" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
 
             <div className="flex h-[90vh]">
               {/* Sidebar */}
-              <div
-                className={`${sidebarWidth} bg-gray-50 border-r border-gray-200 p-4`}
-              >
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 px-2">
-                  {title}
-                </h2>
-                <nav className="space-y-1">
+              <div className={`${sidebarWidth} border-r border-primary-200 bg-primary-50/50 p-6`}>
+                <h2 className="mb-6 px-2 text-xl font-semibold text-primary-900">{title}</h2>
+                <nav className="space-y-1.5">
                   {sidebarItems.map((item) => {
                     const Icon = item.icon;
                     return (
                       <button
                         key={item.id}
                         onClick={() => onSectionChange(item.id)}
-                        className={`w-full flex items-center gap-2 px-3 py-2.5 text-left text-sm rounded-lg transition-all duration-200 ${
+                        className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 text-left text-sm font-medium transition-all duration-200 ${
                           activeSection === item.id
-                            ? "bg-white text-gray-900 shadow-sm border border-gray-200"
-                            : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                            ? "bg-primary-500 text-white shadow-sm shadow-primary-500/20"
+                            : "text-secondary-600 hover:bg-primary-100 hover:text-primary-900"
                         }`}
                       >
-                        <Icon
-                          className={`h-4 w-4 flex-shrink-0 ${
-                            activeSection === item.id ? "text-indigo-600" : ""
-                          }`}
-                        />
-                        <span className="font-medium flex-1">{item.label}</span>
+                        <Icon className="h-5 w-5 flex-shrink-0" />
+                        <span className="flex-1">{item.label}</span>
                       </button>
                     );
                   })}

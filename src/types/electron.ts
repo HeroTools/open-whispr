@@ -121,12 +121,11 @@ declare global {
       onToggleDictation: (callback: () => void) => void;
 
       // Database operations
-      saveTranscription: (
-        text: string
-      ) => Promise<{ id: number; success: boolean }>;
+      saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+      onTranscriptionAdded: (callback: (event: any, result: any) => void) => void;
 
       // API key management
       getOpenAIKey: () => Promise<string>;
@@ -161,10 +160,7 @@ declare global {
       ) => void;
 
       // Whisper operations
-      transcribeLocalWhisper: (
-        audioBlob: Blob | ArrayBuffer,
-        options?: any
-      ) => Promise<any>;
+      transcribeLocalWhisper: (audioBlob: Blob | ArrayBuffer, options?: any) => Promise<any>;
       checkWhisperInstallation: () => Promise<WhisperCheckResult>;
       installWhisper: () => Promise<WhisperInstallResult>;
       onWhisperInstallProgress: (
@@ -176,9 +172,7 @@ declare global {
       ) => void;
       checkModelStatus: (modelName: string) => Promise<WhisperModelResult>;
       listWhisperModels: () => Promise<WhisperModelsListResult>;
-      deleteWhisperModel: (
-        modelName: string
-      ) => Promise<WhisperModelDeleteResult>;
+      deleteWhisperModel: (modelName: string) => Promise<WhisperModelDeleteResult>;
       cancelWhisperDownload: () => Promise<{
         success: boolean;
         message?: string;
@@ -193,14 +187,24 @@ declare global {
       modelDeleteAll: () => Promise<{ success: boolean; error?: string; code?: string }>;
       modelCheckRuntime: () => Promise<boolean>;
       onModelDownloadProgress: (callback: (event: any, data: any) => void) => void;
-      
+
       // Local reasoning
-      processLocalReasoning: (text: string, modelId: string, agentName: string | null, config: any) => Promise<{ success: boolean; text?: string; error?: string }>;
+      processLocalReasoning: (
+        text: string,
+        modelId: string,
+        agentName: string | null,
+        config: any
+      ) => Promise<{ success: boolean; text?: string; error?: string }>;
       checkLocalReasoningAvailable: () => Promise<boolean>;
-      
+
       // Anthropic reasoning
-      processAnthropicReasoning: (text: string, modelId: string, agentName: string | null, config: any) => Promise<{ success: boolean; text?: string; error?: string }>;
-      
+      processAnthropicReasoning: (
+        text: string,
+        modelId: string,
+        agentName: string | null,
+        config: any
+      ) => Promise<{ success: boolean; text?: string; error?: string }>;
+
       // llama.cpp management
       llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;
       llamaCppInstall: () => Promise<{ success: boolean; error?: string }>;
@@ -233,36 +237,32 @@ declare global {
       onUpdateAvailable: (callback: (event: any, info: any) => void) => void;
       onUpdateNotAvailable: (callback: (event: any, info: any) => void) => void;
       onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
-      onUpdateDownloadProgress: (
-        callback: (event: any, progressObj: any) => void
-      ) => void;
+      onUpdateDownloadProgress: (callback: (event: any, progressObj: any) => void) => void;
       onUpdateError: (callback: (event: any, error: any) => void) => void;
 
       // Settings management (used by OnboardingFlow but not in preload.js)
       saveSettings?: (settings: SaveSettings) => Promise<void>;
 
       // External URL operations
-      openExternal: (
-        url: string
-      ) => Promise<{ success: boolean; error?: string } | void>;
+      openExternal: (url: string) => Promise<{ success: boolean; error?: string } | void>;
 
       // Event listener cleanup
       removeAllListeners: (channel: string) => void;
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<void>;
-      
+
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;
       saveGeminiKey: (key: string) => Promise<void>;
-      
+
       // Debug logging
       logReasoning?: (stage: string, details: any) => Promise<void>;
-      
+
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<boolean>;
     };
-    
+
     api?: {
       sendDebugLog: (message: string) => void;
     };

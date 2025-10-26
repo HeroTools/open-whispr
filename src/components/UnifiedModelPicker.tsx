@@ -2,14 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "./ui/button";
 import { Progress } from "./ui/progress";
 import { Alert, AlertDescription } from "./ui/alert";
-import { 
-  RefreshCw, 
-  Download, 
-  Trash2, 
-  AlertCircle,
-  ExternalLink,
-  Globe 
-} from "lucide-react";
+import { RefreshCw, Download, Trash2, AlertCircle, ExternalLink, Globe } from "lucide-react";
 import { useDialogs } from "../hooks/useDialogs";
 import { useToast } from "./ui/Toast";
 import { formatBytes } from "../utils/formatBytes";
@@ -26,7 +19,7 @@ interface Model {
   downloaded?: boolean;
   isDownloaded?: boolean;
   recommended?: boolean;
-  type: 'whisper' | 'llm';
+  type: "whisper" | "llm";
 }
 
 interface DownloadProgress {
@@ -40,7 +33,7 @@ interface DownloadProgress {
 interface UnifiedModelPickerProps {
   selectedModel: string;
   onModelSelect: (modelId: string) => void;
-  modelType: 'whisper' | 'llm';
+  modelType: "whisper" | "llm";
   className?: string;
   variant?: "onboarding" | "settings";
 }
@@ -61,12 +54,6 @@ const VARIANT_STYLES = {
       selected: "text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full font-medium",
       downloaded: "text-xs text-green-600 bg-green-100 px-2 py-1 rounded",
     },
-    buttons: {
-      download: "bg-blue-600 hover:bg-blue-700",
-      select: "border-gray-300 text-gray-700 hover:bg-gray-50",
-      delete: "text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200",
-      refresh: "border-gray-300 text-gray-700 hover:bg-gray-50",
-    },
   },
   settings: {
     container: "bg-white border border-purple-200 rounded-lg overflow-hidden",
@@ -82,12 +69,6 @@ const VARIANT_STYLES = {
     badges: {
       selected: "text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full font-medium",
       downloaded: "text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-md",
-    },
-    buttons: {
-      download: "bg-purple-600 hover:bg-purple-700",
-      select: "border-purple-300 text-purple-700 hover:bg-purple-50",
-      delete: "text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200",
-      refresh: "border-purple-300 text-purple-700 hover:bg-purple-50",
     },
   },
 };
@@ -117,28 +98,28 @@ export function UnifiedModelPickerCompact({
         <button
           key={model.value}
           onClick={() => onModelSelect(model.value)}
-          className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+          className={`w-full rounded-lg border-2 p-3 text-left transition-all ${
             selectedModel === model.value
-              ? 'border-indigo-500 bg-indigo-50'
-              : 'border-gray-200 bg-white hover:border-gray-300'
+              ? "border-primary-500 bg-primary-50"
+              : "border-gray-200 bg-white hover:border-gray-300"
           }`}
         >
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-2">
                 {model.icon ? (
-                  <img src={model.icon} alt="" className="w-4 h-4" aria-hidden="true" />
+                  <img src={model.icon} alt="" className="h-4 w-4" aria-hidden="true" />
                 ) : (
-                  <Globe className="w-4 h-4 text-gray-400" aria-hidden="true" />
+                  <Globe className="h-4 w-4 text-gray-400" aria-hidden="true" />
                 )}
                 <span className="font-medium text-gray-900">{model.label}</span>
               </div>
               {model.description && (
-                <div className="text-xs text-gray-600 mt-1">{model.description}</div>
+                <div className="mt-1 text-xs text-gray-600">{model.description}</div>
               )}
             </div>
             {selectedModel === model.value && (
-              <span className="text-xs text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full font-medium">
+              <span className="rounded-full bg-primary-100 px-2 py-1 text-xs font-medium text-primary-600">
                 ✓ Selected
               </span>
             )}
@@ -170,10 +151,7 @@ export default function UnifiedModelPicker({
     checking: boolean;
   }>({ isInstalled: true, checking: false }); // Default to true for now
 
-  const {
-    showConfirmDialog,
-    showAlertDialog,
-  } = useDialogs();
+  const { showConfirmDialog, showAlertDialog } = useDialogs();
   const { toast } = useToast();
   const styles = useMemo(() => VARIANT_STYLES[variant], [variant]);
 
@@ -202,46 +180,47 @@ export default function UnifiedModelPicker({
   const loadModels = useCallback(async () => {
     try {
       setLoadingModels(true);
-      
-      if (modelType === 'whisper') {
+
+      if (modelType === "whisper") {
         const result = await window.electronAPI.listWhisperModels();
         if (result.success) {
           const whisperModels: Model[] = result.models.map((m: any) => ({
             ...m,
             id: m.model,
             name: m.model.charAt(0).toUpperCase() + m.model.slice(1),
-            size: m.size_mb ? `${m.size_mb}MB` : 'Unknown',
-            description: {
-              tiny: "Fastest, lower quality",
-              base: "Good balance (recommended)",
-              small: "Better quality, slower",
-              medium: "High quality",
-              large: "Best quality, slowest",
-              turbo: "Fast with good quality"
-            }[m.model] || "Model",
-            type: 'whisper' as const,
+            size: m.size_mb ? `${m.size_mb}MB` : "Unknown",
+            description:
+              {
+                tiny: "Fastest, lower quality",
+                base: "Good balance (recommended)",
+                small: "Better quality, slower",
+                medium: "High quality",
+                large: "Best quality, slowest",
+                turbo: "Fast with good quality",
+              }[m.model] || "Model",
+            type: "whisper" as const,
             isDownloaded: m.downloaded,
-            recommended: m.model === 'base'
+            recommended: m.model === "base",
           }));
           setModels(whisperModels);
         }
       } else {
-        console.log('[UnifiedModelPicker] Loading LLM models...');
+        console.log("[UnifiedModelPicker] Loading LLM models...");
         const result = await window.electronAPI.modelGetAll();
-        console.log('[UnifiedModelPicker] Got result:', result);
-        
+        console.log("[UnifiedModelPicker] Got result:", result);
+
         if (!result || !Array.isArray(result)) {
-          console.error('[UnifiedModelPicker] Invalid result format:', result);
+          console.error("[UnifiedModelPicker] Invalid result format:", result);
           setModels([]);
           return;
         }
-        
+
         const llmModels: Model[] = result.map((m: any) => ({
           ...m,
-          type: 'llm' as const,
-          downloaded: m.isDownloaded
+          type: "llm" as const,
+          downloaded: m.isDownloaded,
         }));
-        console.log('[UnifiedModelPicker] Mapped models:', llmModels);
+        console.log("[UnifiedModelPicker] Mapped models:", llmModels);
         setModels(llmModels);
       }
     } catch (error) {
@@ -267,110 +246,119 @@ export default function UnifiedModelPicker({
     };
   }, [loadModels]);
 
-  const handleDownloadProgress = useCallback((_event: any, data: any) => {
-    if (modelType === 'whisper') {
-      // Whisper progress format
-      if (data.type === "progress") {
-        const progress: DownloadProgress = {
-          percentage: data.percentage || 0,
-          downloadedBytes: data.downloaded_bytes || 0,
-          totalBytes: data.total_bytes || 0,
-        };
+  const handleDownloadProgress = useCallback(
+    (_event: any, data: any) => {
+      if (modelType === "whisper") {
+        // Whisper progress format
+        if (data.type === "progress") {
+          const progress: DownloadProgress = {
+            percentage: data.percentage || 0,
+            downloadedBytes: data.downloaded_bytes || 0,
+            totalBytes: data.total_bytes || 0,
+          };
 
-        if (data.speed_mbps && data.speed_mbps > 0) {
-          const remainingBytes = progress.totalBytes - progress.downloadedBytes;
-          progress.eta = (remainingBytes * 8) / (data.speed_mbps * 1_000_000);
-          progress.speed = data.speed_mbps;
+          if (data.speed_mbps && data.speed_mbps > 0) {
+            const remainingBytes = progress.totalBytes - progress.downloadedBytes;
+            progress.eta = (remainingBytes * 8) / (data.speed_mbps * 1_000_000);
+            progress.speed = data.speed_mbps;
+          }
+
+          setDownloadProgress(progress);
+        } else if (data.type === "complete" || data.type === "error") {
+          setDownloadingModel(null);
+          setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
+          loadModels();
         }
-
-        setDownloadProgress(progress);
-      } else if (data.type === "complete" || data.type === "error") {
-        setDownloadingModel(null);
-        setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
-        loadModels();
+      } else {
+        // LLM progress format
+        setDownloadProgress({
+          percentage: data.progress || 0,
+          downloadedBytes: data.downloadedSize || 0,
+          totalBytes: data.totalSize || 0,
+        });
       }
-    } else {
-      // LLM progress format
-      setDownloadProgress({
-        percentage: data.progress || 0,
-        downloadedBytes: data.downloadedSize || 0,
-        totalBytes: data.totalSize || 0,
-      });
-    }
-  }, [modelType, loadModels]);
+    },
+    [modelType, loadModels]
+  );
 
   useEffect(() => {
-    if (modelType === 'whisper') {
+    if (modelType === "whisper") {
       window.electronAPI.onWhisperDownloadProgress(handleDownloadProgress);
     } else {
       window.electronAPI.onModelDownloadProgress(handleDownloadProgress);
     }
   }, [handleDownloadProgress, modelType]);
 
-  const downloadModel = useCallback(async (modelId: string) => {
-    try {
-      setDownloadingModel(modelId);
-      setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
-      onModelSelect(modelId);
+  const downloadModel = useCallback(
+    async (modelId: string) => {
+      try {
+        setDownloadingModel(modelId);
+        setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
+        onModelSelect(modelId);
 
-      if (modelType === 'whisper') {
-        const result = await window.electronAPI.downloadWhisperModel(modelId);
-        if (!result.success && !result.error?.includes("interrupted by user")) {
-          showAlertDialog({
-            title: "Download Failed",
-            description: `Failed to download model: ${result.error}`,
-          });
-        }
-      } else {
-        await window.electronAPI.modelDownload(modelId);
-      }
-      
-      await loadModels();
-    } catch (error: any) {
-      if (!error.toString().includes("interrupted by user")) {
-        showAlertDialog({
-          title: "Download Failed",
-          description: `Failed to download model: ${error}`,
-        });
-      }
-    } finally {
-      setDownloadingModel(null);
-      setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
-    }
-  }, [modelType, onModelSelect, loadModels, showAlertDialog]);
-
-  const deleteModel = useCallback(async (modelId: string) => {
-    showConfirmDialog({
-      title: "Delete Model",
-      description: `Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.`,
-      onConfirm: async () => {
-        try {
-          if (modelType === 'whisper') {
-            const result = await window.electronAPI.deleteWhisperModel(modelId);
-            if (result.success) {
-              toast({
-                title: "Model Deleted",
-                description: `Model deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
-              });
-            }
-          } else {
-            await window.electronAPI.modelDelete(modelId);
-            toast({
-              title: "Model Deleted",
-              description: "Model deleted successfully!",
+        if (modelType === "whisper") {
+          const result = await window.electronAPI.downloadWhisperModel(modelId);
+          if (!result.success && !result.error?.includes("interrupted by user")) {
+            showAlertDialog({
+              title: "Download Failed",
+              description: `Failed to download model: ${result.error}`,
             });
           }
-          loadModels();
-        } catch (error) {
+        } else {
+          await window.electronAPI.modelDownload(modelId);
+        }
+
+        await loadModels();
+      } catch (error: any) {
+        if (!error.toString().includes("interrupted by user")) {
           showAlertDialog({
-            title: "Delete Failed",
-            description: `Failed to delete model: ${error}`,
+            title: "Download Failed",
+            description: `Failed to download model: ${error}`,
           });
         }
-      },
-      variant: "destructive",
-    });
-  }, [modelType, loadModels, showConfirmDialog, showAlertDialog, toast]);
+      } finally {
+        setDownloadingModel(null);
+        setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
+      }
+    },
+    [modelType, onModelSelect, loadModels, showAlertDialog]
+  );
+
+  const deleteModel = useCallback(
+    async (modelId: string) => {
+      showConfirmDialog({
+        title: "Delete Model",
+        description: `Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.`,
+        onConfirm: async () => {
+          try {
+            if (modelType === "whisper") {
+              const result = await window.electronAPI.deleteWhisperModel(modelId);
+              if (result.success) {
+                toast({
+                  title: "Model Deleted",
+                  description: `Model deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
+                });
+              }
+            } else {
+              await window.electronAPI.modelDelete(modelId);
+              toast({
+                title: "Model Deleted",
+                description: "Model deleted successfully!",
+              });
+            }
+            loadModels();
+          } catch (error) {
+            showAlertDialog({
+              title: "Delete Failed",
+              description: `Failed to delete model: ${error}`,
+            });
+          }
+        },
+        variant: "destructive",
+      });
+    },
+    [modelType, loadModels, showConfirmDialog, showAlertDialog, toast]
+  );
 
   const handleInstallLlamaCpp = async () => {
     try {
@@ -390,11 +378,11 @@ export default function UnifiedModelPicker({
   };
 
   // Show llama.cpp installation prompt for LLM models
-  if (modelType === 'llm' && !llamaCppStatus.isInstalled && !llamaCppStatus.checking) {
+  if (modelType === "llm" && !llamaCppStatus.isInstalled && !llamaCppStatus.checking) {
     return (
       <div className={`${styles.container} ${className}`}>
         <div className="p-4">
-          <h3 className="text-lg font-semibold mb-4">Local AI Models</h3>
+          <h3 className="mb-4 text-lg font-semibold">Local AI Models</h3>
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription className="space-y-3">
@@ -405,8 +393,12 @@ export default function UnifiedModelPicker({
                 </Button>
                 <Button
                   variant="link"
-                  className="p-0 h-auto text-primary"
-                  onClick={() => window.electronAPI?.openExternal("https://github.com/ggerganov/llama.cpp#installation")}
+                  className="text-primary h-auto p-0"
+                  onClick={() =>
+                    window.electronAPI?.openExternal(
+                      "https://github.com/ggerganov/llama.cpp#installation"
+                    )
+                  }
                 >
                   Manual installation
                   <ExternalLink className="ml-1 h-3 w-3" />
@@ -429,15 +421,17 @@ export default function UnifiedModelPicker({
 
     return (
       <div className={`${styles.progress} p-3`}>
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <span className={`text-sm font-medium ${styles.progressText}`}>
-            Downloading {models.find(m => m.id === downloadingModel)?.name || downloadingModel}...
+            Downloading {models.find((m) => m.id === downloadingModel)?.name || downloadingModel}...
           </span>
           <span className={`text-xs ${styles.progressText}`}>
-            {progressText}{speedText}{etaText}
+            {progressText}
+            {speedText}
+            {etaText}
           </span>
         </div>
-        <div className={`w-full ${styles.progressBar} rounded-full h-2`}>
+        <div className={`w-full ${styles.progressBar} h-2 rounded-full`}>
           <div
             className={`${styles.progressFill} h-2 rounded-full transition-all duration-300 ease-out`}
             style={{ width: `${Math.min(percentage, 100)}%` }}
@@ -452,17 +446,11 @@ export default function UnifiedModelPicker({
       {progressDisplay}
 
       <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="mb-3 flex items-center justify-between">
           <h5 className={styles.header}>
-            {modelType === 'whisper' ? 'Whisper Models' : 'Local AI Models'}
+            {modelType === "whisper" ? "Whisper Models" : "Local AI Models"}
           </h5>
-          <Button
-            onClick={loadModels}
-            variant="outline"
-            size="sm"
-            disabled={loadingModels}
-            className={styles.buttons.refresh}
-          >
+          <Button onClick={loadModels} variant="outline" size="sm" disabled={loadingModels}>
             <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
             <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
           </Button>
@@ -470,7 +458,7 @@ export default function UnifiedModelPicker({
 
         <div className="space-y-2">
           {models.map((model) => {
-            const modelId = model.id || model.model || '';
+            const modelId = model.id || model.model || "";
             const isSelected = modelId === selectedModel;
             const isDownloading = downloadingModel === modelId;
             const isDownloaded = model.downloaded || model.isDownloaded;
@@ -478,28 +466,24 @@ export default function UnifiedModelPicker({
             return (
               <div
                 key={modelId}
-                className={`flex items-center justify-between p-3 rounded-lg border-2 transition-all ${
+                className={`flex items-center justify-between rounded-lg border-2 p-3 transition-all ${
                   isSelected ? styles.modelCard.selected : styles.modelCard.default
                 }`}
               >
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <span className="font-medium">{model.name}</span>
-                    {isSelected && (
-                      <span className={styles.badges.selected}>✓ Selected</span>
-                    )}
+                    {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
                     {model.recommended && (
-                      <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded">
+                      <span className="bg-primary/10 text-primary rounded px-2 py-1 text-xs">
                         Recommended
                       </span>
                     )}
                   </div>
-                  <div className="flex items-center gap-2 mt-1">
+                  <div className="mt-1 flex items-center gap-2">
                     <p className="text-xs text-gray-600">{model.description}</p>
                     <span className="text-xs text-gray-500">• {model.size}</span>
-                    {isDownloaded && (
-                      <span className={styles.badges.downloaded}>✓ Downloaded</span>
-                    )}
+                    {isDownloaded && <span className={styles.badges.downloaded}>✓ Downloaded</span>}
                   </div>
                 </div>
 
@@ -507,20 +491,14 @@ export default function UnifiedModelPicker({
                   {isDownloaded && (
                     <>
                       {!isSelected && (
-                        <Button
-                          onClick={() => onModelSelect(modelId)}
-                          size="sm"
-                          variant="outline"
-                          className={styles.buttons.select}
-                        >
+                        <Button onClick={() => onModelSelect(modelId)} size="sm" variant="outline">
                           Select
                         </Button>
                       )}
                       <Button
                         onClick={() => deleteModel(modelId)}
                         size="sm"
-                        variant="outline"
-                        className={styles.buttons.delete}
+                        variant="destructive-outline"
                       >
                         <Trash2 size={14} />
                         <span className="ml-1">Delete</span>
@@ -528,17 +506,13 @@ export default function UnifiedModelPicker({
                     </>
                   )}
                   {!isDownloaded && !isDownloading && (
-                    <Button
-                      onClick={() => downloadModel(modelId)}
-                      size="sm"
-                      className={styles.buttons.download}
-                    >
+                    <Button onClick={() => downloadModel(modelId)} size="sm" variant="default">
                       <Download size={14} />
                       <span className="ml-1">Download</span>
                     </Button>
                   )}
                   {isDownloading && (
-                    <Button disabled size="sm" className={styles.buttons.download}>
+                    <Button disabled size="sm" variant="default">
                       {`${Math.round(downloadProgress.percentage)}%`}
                     </Button>
                   )}
@@ -548,8 +522,8 @@ export default function UnifiedModelPicker({
           })}
         </div>
 
-        {modelType === 'llm' && (
-          <div className="mt-6 text-xs text-muted-foreground">
+        {modelType === "llm" && (
+          <div className="text-muted-foreground mt-6 text-xs">
             <p>Models are stored in: ~/.cache/openwhispr/models/</p>
           </div>
         )}

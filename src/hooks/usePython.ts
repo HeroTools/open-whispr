@@ -16,22 +16,22 @@ interface ShowAlertDialog {
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
-  'Permission denied': 'Please run the application as administrator and try again.',
-  'access is denied': 'Please run the application as administrator and try again.',
-  'Network': 'Please check your internet connection and try again.',
-  'No supported package manager': 'Please install Python manually from python.org',
-  'not found in PATH': 'Python installed but not found in PATH. Please restart the application.',
+  "Permission denied": "Please run the application as administrator and try again.",
+  "access is denied": "Please run the application as administrator and try again.",
+  Network: "Please check your internet connection and try again.",
+  "No supported package manager": "Please install Python manually from python.org",
+  "not found in PATH": "Python installed but not found in PATH. Please restart the application.",
 };
 
 function getPythonInstallErrorMessage(error: Error): string {
-  const errorMessage = error.message || '';
-  
+  const errorMessage = error.message || "";
+
   for (const [key, message] of Object.entries(ERROR_MESSAGES)) {
     if (errorMessage.includes(key)) {
       return message;
     }
   }
-  
+
   return `Python installation failed: ${errorMessage}`;
 }
 
@@ -46,16 +46,16 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     if (isChecking) {
       return pythonInfo || { installed: false };
     }
-    
+
     try {
       setIsChecking(true);
-      
+
       if (!window.electronAPI) {
         return { installed: false };
       }
-      
+
       const result = await window.electronAPI.checkPythonInstallation();
-      
+
       if (result) {
         setPythonInstalled(result.installed);
         setPythonInfo(result);
@@ -71,7 +71,6 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
   }, [isChecking, pythonInfo]);
 
   const installPython = useCallback(async () => {
-    
     if (!window.electronAPI) {
       showAlertDialog({
         title: "Installation Error",
@@ -79,9 +78,9 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       });
       return;
     }
-    
+
     let progressListener: ((event: any, data: PythonInstallProgress) => void) | null = null;
-    
+
     try {
       setInstallingPython(true);
       setInstallProgress("Starting Python installation...");
@@ -96,16 +95,16 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       if (window.electronAPI.onPythonInstallProgress) {
         window.electronAPI.onPythonInstallProgress(progressListener);
       }
-      
+
       const result = await window.electronAPI.installPython();
 
       if (result?.success) {
         setPythonInstalled(true);
         setInstallProgress("Python installed successfully!");
-        
+
         // Re-check installation to get updated info
         await checkPythonInstallation();
-        
+
         showAlertDialog({
           title: "Python Installed",
           description: `Python has been installed successfully using ${result.method}!`,
@@ -115,12 +114,12 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       return result;
     } catch (error: any) {
       const errorMessage = getPythonInstallErrorMessage(error);
-      
+
       showAlertDialog({
         title: "Installation Failed",
         description: errorMessage,
       });
-      
+
       throw error;
     } finally {
       setInstallingPython(false);
@@ -137,7 +136,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     const timer = setTimeout(() => {
       checkPythonInstallation();
     }, 100); // Small delay to ensure preload script is ready
-    
+
     return () => clearTimeout(timer);
   }, [checkPythonInstallation]);
 

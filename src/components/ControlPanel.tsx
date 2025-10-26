@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Trash2, RefreshCw, Settings, FileText, Mic, X } from "lucide-react";
@@ -23,7 +23,8 @@ export default function ControlPanel() {
     updateDownloaded: false,
     isDevelopment: false,
   });
-  const isWindows = typeof window !== "undefined" && window.electronAPI?.getPlatform?.() === "win32";
+  const isWindows =
+    typeof window !== "undefined" && window.electronAPI?.getPlatform?.() === "win32";
 
   const {
     confirmDialog,
@@ -38,9 +39,31 @@ export default function ControlPanel() {
     void window.electronAPI.windowClose();
   };
 
+  // Memoize loadTranscriptions to prevent recreating on every render
+  const loadTranscriptions = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const transcriptions = await window.electronAPI.getTranscriptions(50);
+      console.log('[ControlPanel] Loaded transcriptions:', transcriptions.length);
+      setHistory(transcriptions);
+    } catch (error) {
+      console.error('[ControlPanel] Error loading transcriptions:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []); // No dependencies - function never changes
+
   useEffect(() => {
-    // Load transcription history from database
+    // Load transcription history from database on mount
     loadTranscriptions();
+
+    // Listen for new transcriptions (event-based, no polling)
+    const handleTranscriptionAdded = (_event: any, _result: any) => {
+      console.log('[ControlPanel] New transcription added, refreshing list...');
+      loadTranscriptions();
+    };
+
+    window.electronAPI.onTranscriptionAdded(handleTranscriptionAdded);
 
     // Initialize update status
     const initializeUpdateStatus = async () => {
@@ -73,22 +96,12 @@ export default function ControlPanel() {
 
     // Cleanup listeners on unmount
     return () => {
+      window.electronAPI.removeAllListeners?.("transcription-added");
       window.electronAPI.removeAllListeners?.("update-available");
       window.electronAPI.removeAllListeners?.("update-downloaded");
       window.electronAPI.removeAllListeners?.("update-error");
     };
-  }, []);
-
-  const loadTranscriptions = async () => {
-    try {
-      setIsLoading(true);
-      const transcriptions = await window.electronAPI.getTranscriptions(50);
-      setHistory(transcriptions);
-    } catch (error) {
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [loadTranscriptions]); // Include loadTranscriptions as dependency
 
   const copyToClipboard = async (text: string) => {
     try {
@@ -135,8 +148,7 @@ export default function ControlPanel() {
   const deleteTranscription = async (id: number) => {
     showConfirmDialog({
       title: "Delete Transcription",
-      description:
-        "Are you certain you wish to remove this inscription from your records?",
+      description: "Are you certain you wish to remove this inscription from your records?",
       onConfirm: async () => {
         try {
           const result = await window.electronAPI.deleteTranscription(id);
@@ -146,8 +158,7 @@ export default function ControlPanel() {
           } else {
             showAlertDialog({
               title: "Delete Failed",
-              description:
-                "Failed to delete transcription. It may have already been removed.",
+              description: "Failed to delete transcription. It may have already been removed.",
             });
           }
         } catch (error) {
@@ -189,26 +200,21 @@ export default function ControlPanel() {
           <>
             {/* Update notification badge */}
             {!updateStatus.isDevelopment &&
-              (updateStatus.updateAvailable ||
-                updateStatus.updateDownloaded) && (
+              (updateStatus.updateAvailable || updateStatus.updateDownloaded) && (
                 <div className="relative">
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
+                  <div className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-blue-500"></div>
                 </div>
               )}
             <SupportDropdown />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowSettings(!showSettings)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)}>
               <Settings size={16} />
             </Button>
             {isWindows && (
-              <div className="flex items-center gap-1 ml-2">
+              <div className="ml-2 flex items-center gap-1">
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                  className="text-red-600 hover:bg-red-50 hover:text-red-700"
                   onClick={handleClose}
                   aria-label="Close window"
                 >
@@ -224,88 +230,91 @@ export default function ControlPanel() {
 
       {/* Main content */}
       <div className="p-6">
-        <div className="space-y-6 max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
+        <div className="mx-auto max-w-4xl space-y-6">
+          {/* Transcriptions - Modern Clean Design */}
+          <Card className="overflow-hidden border border-primary-200 bg-gradient-to-b from-white to-primary-50/30 shadow-sm">
+            <CardHeader className="border-b border-primary-100 bg-gradient-to-r from-primary-50 to-white pb-5">
               <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText size={18} className="text-indigo-600" />
-                  Recent Transcriptions
-                </CardTitle>
-                <div className="flex gap-2">
-                  <Button onClick={refreshHistory} variant="ghost" size="icon">
-                    <RefreshCw size={16} />
+                <div className="flex-1">
+                  <CardTitle className="text-xl font-semibold tracking-tight text-primary-900">
+                    Recent Transcriptions
+                  </CardTitle>
+                  <p className="mt-1.5 text-sm text-primary-700/70">
+                    Your dictation history {history.length > 0 && `• ${history.length} ${history.length === 1 ? 'item' : 'items'}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={refreshHistory}
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 rounded-lg p-0 text-primary-600 hover:bg-primary-100 hover:text-primary-700"
+                    title="Refresh"
+                  >
+                    <RefreshCw size={18} />
                   </Button>
                   {history.length > 0 && (
                     <Button
                       onClick={clearHistory}
                       variant="ghost"
-                      size="icon"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      size="sm"
+                      className="h-9 w-9 rounded-lg p-0 text-neutral-500 hover:bg-error-50 hover:text-error-600"
+                      title="Clear all"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={18} />
                     </Button>
                   )}
                 </div>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="bg-white/50 px-6 pb-6">
               {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 mx-auto mb-3 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">📝</span>
-                  </div>
-                  <p className="text-neutral-600">Loading transcriptions...</p>
+                <div className="py-16 text-center">
+                  <div className="loader mx-auto mb-4 h-10 w-10 animate-spin rounded-full border-3 border-primary-200 border-t-primary-600" />
+                  <p className="text-sm font-medium text-primary-700/70">Loading transcriptions...</p>
                 </div>
               ) : history.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <Mic className="w-8 h-8 text-neutral-400" />
+                <div className="py-16 text-center">
+                  <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-gradient-to-br from-primary-500 via-primary-600 to-primary-700 shadow-lg">
+                    <Mic className="h-10 w-10 text-white" />
                   </div>
-                  <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                  <h4 className="mb-2 text-lg font-semibold text-primary-900">
                     No transcriptions yet
-                  </h3>
-                  <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
-                    Press your hotkey to start recording and create your first
-                    transcription.
+                  </h4>
+                  <p className="mb-8 text-sm text-primary-700/70">
+                    Start recording to see your transcriptions here
                   </p>
-                  <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
-                    <h4 className="font-medium text-neutral-800 mb-2">
-                      Quick Start:
-                    </h4>
-                    <ol className="text-sm text-neutral-600 text-left space-y-1">
-                      <li>1. Click in any text field</li>
-                      <li>
-                        2. Press{" "}
-                        <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
-                          {hotkey}
-                        </kbd>{" "}
-                        to start recording
-                      </li>
-                      <li>3. Speak your text</li>
-                      <li>
-                        4. Press{" "}
-                        <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
-                          {hotkey}
-                        </kbd>{" "}
-                        again to stop
-                      </li>
-                      <li>5. Your text will appear automatically!</li>
-                    </ol>
+
+                  {/* Quick Start - Clean Card */}
+                  <div className="mx-auto max-w-md rounded-2xl border border-primary-200 bg-gradient-to-br from-white to-primary-50/30 p-6 text-left shadow-sm">
+                    <p className="mb-3 text-sm font-semibold text-primary-900">Quick Start Guide</p>
+                    <p className="text-sm leading-relaxed text-primary-800/80">
+                      Press{" "}
+                      <kbd className="mx-1 rounded-lg border border-primary-300 bg-primary-100 px-2 py-1 font-mono text-xs font-semibold text-primary-700 shadow-sm">
+                        {hotkey}
+                      </kbd>{" "}
+                      to start recording, speak your text, then press{" "}
+                      <kbd className="mx-1 rounded-lg border border-primary-300 bg-primary-100 px-2 py-1 font-mono text-xs font-semibold text-primary-700 shadow-sm">
+                        {hotkey}
+                      </kbd>{" "}
+                      again to stop.
+                    </p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {history.map((item, index) => (
-                    <TranscriptionItem
-                      key={item.id}
-                      item={item}
-                      index={index}
-                      total={history.length}
-                      onCopy={copyToClipboard}
-                      onDelete={deleteTranscription}
-                    />
-                  ))}
+                <div className="space-y-4 pt-6">
+                  <div className="max-h-[520px] space-y-3 overflow-y-auto pr-2">
+                    {history.map((item, index) => (
+                      <TranscriptionItem
+                        key={item.id}
+                        item={item}
+                        index={index}
+                        total={history.length}
+                        onCopy={copyToClipboard}
+                        onDelete={deleteTranscription}
+                      />
+                    ))}
+                  </div>
                 </div>
               )}
             </CardContent>

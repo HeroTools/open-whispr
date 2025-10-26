@@ -12,19 +12,15 @@ function AppRouter() {
 
   // Check if this is the control panel window
   const isControlPanel =
-    window.location.pathname.includes("control") ||
-    window.location.search.includes("panel=true");
+    window.location.pathname.includes("control") || window.location.search.includes("panel=true");
 
   // Check if this is the dictation panel (main app)
   const isDictationPanel = !isControlPanel;
 
   useEffect(() => {
     // Check if onboarding has been completed
-    const onboardingCompleted =
-      localStorage.getItem("onboardingCompleted") === "true";
-    const currentStep = parseInt(
-      localStorage.getItem("onboardingCurrentStep") || "0"
-    );
+    const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
+    const currentStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
 
     if (isControlPanel && !onboardingCompleted) {
       // Show onboarding for control panel if not completed
@@ -46,9 +42,9 @@ function AppRouter() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-b-2 border-indigo-600"></div>
           <p className="text-gray-600">Loading OpenWhispr...</p>
         </div>
       </div>

@@ -8,10 +8,7 @@ interface SettingsModalProps {
   onOpenChange: (open: boolean) => void;
 }
 
-export default function SettingsModal({
-  open,
-  onOpenChange,
-}: SettingsModalProps) {
+export default function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const sidebarItems: SidebarItem<SettingsSectionType>[] = [
     { id: "general", label: "General", icon: Settings },
     { id: "transcription", label: "Transcription Mode", icon: Mic },
@@ -20,8 +17,7 @@ export default function SettingsModal({
     { id: "prompts", label: "AI Prompts", icon: Sparkles },
   ];
 
-  const [activeSection, setActiveSection] =
-    React.useState<SettingsSectionType>("general");
+  const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("general");
 
   return (
     <SidebarModal<SettingsSectionType>

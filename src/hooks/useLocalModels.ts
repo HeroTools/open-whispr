@@ -40,7 +40,7 @@ export function useLocalModels() {
 
     // Set up progress listener
     const handleProgress = (_event: any, data: DownloadProgress) => {
-      setProgressMap(prev => new Map(prev).set(data.modelId, data));
+      setProgressMap((prev) => new Map(prev).set(data.modelId, data));
     };
 
     window.electronAPI.onModelDownloadProgress(handleProgress);
@@ -50,29 +50,38 @@ export function useLocalModels() {
     };
   }, [loadModels]);
 
-  const downloadModel = useCallback(async (modelId: string) => {
-    try {
-      await window.electronAPI.modelDownload(modelId);
-      await loadModels();
-    } catch (err) {
-      setError(`Failed to download model: ${(err as Error).message}`);
-      throw err;
-    }
-  }, [loadModels]);
+  const downloadModel = useCallback(
+    async (modelId: string) => {
+      try {
+        await window.electronAPI.modelDownload(modelId);
+        await loadModels();
+      } catch (err) {
+        setError(`Failed to download model: ${(err as Error).message}`);
+        throw err;
+      }
+    },
+    [loadModels]
+  );
 
-  const deleteModel = useCallback(async (modelId: string) => {
-    try {
-      await window.electronAPI.modelDelete(modelId);
-      await loadModels();
-    } catch (err) {
-      setError(`Failed to delete model: ${(err as Error).message}`);
-      throw err;
-    }
-  }, [loadModels]);
+  const deleteModel = useCallback(
+    async (modelId: string) => {
+      try {
+        await window.electronAPI.modelDelete(modelId);
+        await loadModels();
+      } catch (err) {
+        setError(`Failed to delete model: ${(err as Error).message}`);
+        throw err;
+      }
+    },
+    [loadModels]
+  );
 
-  const getModelProgress = useCallback((modelId: string) => {
-    return progressMap.get(modelId);
-  }, [progressMap]);
+  const getModelProgress = useCallback(
+    (modelId: string) => {
+      return progressMap.get(modelId);
+    },
+    [progressMap]
+  );
 
   const checkRuntimeAvailable = useCallback(async () => {
     try {
@@ -83,14 +92,17 @@ export function useLocalModels() {
     }
   }, []);
 
-  const modelsByProvider = models.reduce((acc, model) => {
-    const providerId = model.id.split('-')[0] || 'other';
-    if (!acc[providerId]) {
-      acc[providerId] = [];
-    }
-    acc[providerId].push(model);
-    return acc;
-  }, {} as Record<string, ModelWithStatus[]>);
+  const modelsByProvider = models.reduce(
+    (acc, model) => {
+      const providerId = model.id.split("-")[0] || "other";
+      if (!acc[providerId]) {
+        acc[providerId] = [];
+      }
+      acc[providerId].push(model);
+      return acc;
+    },
+    {} as Record<string, ModelWithStatus[]>
+  );
 
   return {
     models,

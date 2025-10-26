@@ -13,9 +13,7 @@ class DatabaseManager {
   initDatabase() {
     try {
       const dbFileName =
-        process.env.NODE_ENV === "development"
-          ? "transcriptions-dev.db"
-          : "transcriptions.db";
+        process.env.NODE_ENV === "development" ? "transcriptions-dev.db" : "transcriptions.db";
 
       const dbPath = path.join(app.getPath("userData"), dbFileName);
 
@@ -42,11 +40,8 @@ class DatabaseManager {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
-      const stmt = this.db.prepare(
-        "INSERT INTO transcriptions (text) VALUES (?)"
-      );
+      const stmt = this.db.prepare("INSERT INTO transcriptions (text) VALUES (?)");
       const result = stmt.run(text);
-
 
       return { id: result.lastInsertRowid, success: true };
     } catch (error) {
@@ -60,9 +55,7 @@ class DatabaseManager {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
-      const stmt = this.db.prepare(
-        "SELECT * FROM transcriptions ORDER BY timestamp DESC LIMIT ?"
-      );
+      const stmt = this.db.prepare("SELECT * FROM transcriptions ORDER BY timestamp DESC LIMIT ?");
       const transcriptions = stmt.all(limit);
       return transcriptions;
     } catch (error) {
@@ -92,9 +85,7 @@ class DatabaseManager {
       }
       const stmt = this.db.prepare("DELETE FROM transcriptions WHERE id = ?");
       const result = stmt.run(id);
-      console.log(
-        `🗑️ Deleted transcription ${id}, affected rows: ${result.changes}`
-      );
+      console.log(`🗑️ Deleted transcription ${id}, affected rows: ${result.changes}`);
       return { success: result.changes > 0 };
     } catch (error) {
       console.error("❌ Error deleting transcription:", error);
@@ -107,9 +98,7 @@ class DatabaseManager {
     try {
       const dbPath = path.join(
         app.getPath("userData"),
-        process.env.NODE_ENV === "development"
-          ? "transcriptions-dev.db"
-          : "transcriptions.db"
+        process.env.NODE_ENV === "development" ? "transcriptions-dev.db" : "transcriptions.db"
       );
       if (fs.existsSync(dbPath)) {
         fs.unlinkSync(dbPath);

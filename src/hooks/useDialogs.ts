@@ -32,19 +32,13 @@ export function useDialogs() {
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialogState>(defaultConfirmDialog);
   const [alertDialog, setAlertDialog] = useState<AlertDialogState>(defaultAlertDialog);
 
-  const showConfirmDialog = useCallback(
-    (options: Omit<ConfirmDialogState, "open">) => {
-      setConfirmDialog({ ...options, open: true });
-    },
-    []
-  );
+  const showConfirmDialog = useCallback((options: Omit<ConfirmDialogState, "open">) => {
+    setConfirmDialog({ ...options, open: true });
+  }, []);
 
-  const showAlertDialog = useCallback(
-    (options: Omit<AlertDialogState, "open">) => {
-      setAlertDialog({ ...options, open: true });
-    },
-    []
-  );
+  const showAlertDialog = useCallback((options: Omit<AlertDialogState, "open">) => {
+    setAlertDialog({ ...options, open: true });
+  }, []);
 
   const hideConfirmDialog = useCallback(() => {
     setConfirmDialog(defaultConfirmDialog);

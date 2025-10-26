@@ -28,8 +28,7 @@ export const useWhisper = (
   const checkWhisperInstallation = useCallback(async () => {
     try {
       setCheckingWhisper(true);
-      const result: WhisperCheckResult =
-        await window.electronAPI.checkWhisperInstallation();
+      const result: WhisperCheckResult = await window.electronAPI.checkWhisperInstallation();
       setWhisperInstalled(result.installed && result.working);
     } catch (error) {
       console.error("Error checking Whisper installation:", error);
@@ -44,8 +43,7 @@ export const useWhisper = (
       setInstallingWhisper(true);
       setInstallProgress("Starting Whisper installation...");
 
-      const result: WhisperInstallResult =
-        await window.electronAPI.installWhisper();
+      const result: WhisperInstallResult = await window.electronAPI.installWhisper();
 
       if (result.success) {
         setWhisperInstalled(true);
@@ -79,7 +77,7 @@ export const useWhisper = (
   const setupProgressListener = useCallback(() => {
     // Remove any existing listeners first
     window.electronAPI?.removeAllListeners?.("whisper-install-progress");
-    
+
     window.electronAPI.onWhisperInstallProgress((_, data) => {
       setInstallProgress(data.message);
     });

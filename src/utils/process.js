@@ -2,15 +2,15 @@ const { spawn } = require("child_process");
 
 // Timeout constants
 const TIMEOUTS = {
-  QUICK_CHECK: 5000,      // 5 seconds for quick checks
-  COMMAND: 30000,         // 30 seconds for general commands
-  INSTALL: 300000,        // 5 minutes for installations
-  DOWNLOAD: 600000,       // 10 minutes for downloads
-  PIP_UPGRADE: 60000,     // 1 minute for pip upgrade
+  QUICK_CHECK: 5000, // 5 seconds for quick checks
+  COMMAND: 30000, // 30 seconds for general commands
+  INSTALL: 300000, // 5 minutes for installations
+  DOWNLOAD: 600000, // 10 minutes for downloads
+  PIP_UPGRADE: 60000, // 1 minute for pip upgrade
 };
 
 // Command whitelist for shell operations
-const SAFE_SHELL_COMMANDS = new Set(['brew', 'apt', 'yum', 'pacman']);
+const SAFE_SHELL_COMMANDS = new Set(["brew", "apt", "yum", "pacman"]);
 
 /**
  * Validate command arguments for safety
@@ -24,11 +24,11 @@ function validateCommand(cmd, args, shell) {
   if (shell && !SAFE_SHELL_COMMANDS.has(cmd)) {
     throw new Error(`Shell execution not allowed for command: ${cmd}`);
   }
-  
+
   // Check for dangerous characters in arguments
   const dangerousChars = /[;&|`$<>]/;
-  if (args.some(arg => dangerousChars.test(arg))) {
-    throw new Error('Command arguments contain potentially dangerous characters');
+  if (args.some((arg) => dangerousChars.test(arg))) {
+    throw new Error("Command arguments contain potentially dangerous characters");
   }
 }
 
@@ -43,10 +43,10 @@ function validateCommand(cmd, args, shell) {
  */
 async function runCommand(cmd, args = [], options = {}) {
   const { timeout = TIMEOUTS.COMMAND, shell = false } = options;
-  
+
   // Validate command for security
   validateCommand(cmd, args, shell);
-  
+
   return new Promise((resolve, reject) => {
     let process;
     let stdout = "";
@@ -99,7 +99,7 @@ async function runCommand(cmd, args = [], options = {}) {
       if (completed) return; // Already handled
       completed = true;
       clearTimeout(timer);
-      
+
       if (code === 0) {
         resolve({ success: true, output: stdout });
       } else {

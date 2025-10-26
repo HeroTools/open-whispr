@@ -10,10 +10,10 @@ class LocalReasoningService {
     try {
       // Check if llama.cpp is installed
       await modelManager.ensureLlamaCpp();
-      
+
       // Check if at least one model is downloaded
       const models = await modelManager.getAllModels();
-      return models.some(model => model.isDownloaded);
+      return models.some((model) => model.isDownloaded);
     } catch (error) {
       return false;
     }
@@ -24,9 +24,9 @@ class LocalReasoningService {
       modelId,
       agentName,
       textLength: text.length,
-      hasConfig: Object.keys(config).length > 0
+      hasConfig: Object.keys(config).length > 0,
     });
-    
+
     if (this.isProcessing) {
       throw new Error("Already processing a request");
     }
@@ -37,16 +37,16 @@ class LocalReasoningService {
     try {
       // Get custom prompts from the request context
       const customPrompts = config.customPrompts || null;
-      
+
       // Build the reasoning prompt
       const reasoningPrompt = this.getReasoningPrompt(text, agentName, customPrompts);
-      
+
       debugLogger.logReasoning("LOCAL_BRIDGE_PROMPT", {
         promptLength: reasoningPrompt.length,
         hasAgentName: !!agentName,
-        hasCustomPrompts: !!customPrompts
+        hasCustomPrompts: !!customPrompts,
       });
-      
+
       const inferenceConfig = {
         maxTokens: config.maxTokens || this.calculateMaxTokens(text.length),
         temperature: config.temperature || 0.7,
@@ -55,37 +55,37 @@ class LocalReasoningService {
         repeatPenalty: config.repeatPenalty || 1.1,
         contextSize: config.contextSize || 4096,
         threads: config.threads || 4,
-        systemPrompt: "You are a helpful AI assistant that processes and improves text."
+        systemPrompt: "You are a helpful AI assistant that processes and improves text.",
       };
-      
+
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
         modelId,
-        config: inferenceConfig
+        config: inferenceConfig,
       });
-      
+
       // Run inference
       const result = await modelManager.runInference(modelId, reasoningPrompt, inferenceConfig);
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       debugLogger.logReasoning("LOCAL_BRIDGE_SUCCESS", {
         modelId,
         processingTimeMs: processingTime,
         resultLength: result.length,
-        resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : "")
+        resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
       });
 
       return result;
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       debugLogger.logReasoning("LOCAL_BRIDGE_ERROR", {
         modelId,
         processingTimeMs: processingTime,
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
-      
+
       throw error;
     } finally {
       this.isProcessing = false;
@@ -113,11 +113,9 @@ class LocalReasoningService {
 
     // Check if agent name is mentioned
     if (agentName && text.toLowerCase().includes(agentName.toLowerCase())) {
-      return agentPrompt
-        .replace(/\{\{agentName\}\}/g, agentName)
-        .replace(/\{\{text\}\}/g, text);
+      return agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
     }
-    
+
     return regularPrompt.replace(/\{\{text\}\}/g, text);
   }
 
@@ -127,5 +125,5 @@ class LocalReasoningService {
 }
 
 module.exports = {
-  default: new LocalReasoningService()
+  default: new LocalReasoningService(),
 };

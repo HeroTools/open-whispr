@@ -12,11 +12,7 @@ interface StepProgressProps {
   className?: string;
 }
 
-export default function StepProgress({
-  steps,
-  currentStep,
-  className = "",
-}: StepProgressProps) {
+export default function StepProgress({ steps, currentStep, className = "" }: StepProgressProps) {
   return (
     <div className={`flex items-center justify-between ${className}`}>
       {steps.map((step, index) => {
@@ -28,36 +24,26 @@ export default function StepProgress({
           <div key={index} className="flex">
             <div
               className={`flex items-center gap-2 ${
-                isActive
-                  ? "text-blue-600"
-                  : isCompleted
-                  ? "text-green-600"
-                  : "text-stone-400"
+                isActive ? "text-blue-600" : isCompleted ? "text-green-600" : "text-stone-400"
               }`}
               style={{ fontFamily: "Noto Sans, sans-serif" }}
             >
               <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-200 ${
+                className={`flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full border-2 transition-all duration-200 ${
                   isActive
                     ? "border-blue-600 bg-blue-50 shadow-sm"
                     : isCompleted
-                    ? "border-green-600 bg-green-50 shadow-sm"
-                    : "border-stone-300 bg-white"
+                      ? "border-green-600 bg-green-50 shadow-sm"
+                      : "border-stone-300 bg-white"
                 }`}
               >
-                {isCompleted ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <Icon className="w-4 h-4" />
-                )}
+                {isCompleted ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
               </div>
-              <span className="text-xs font-medium hidden md:block truncate">
-                {step.title}
-              </span>
+              <span className="hidden truncate text-xs font-medium md:block">{step.title}</span>
             </div>
             {index < steps.length - 1 && (
               <div
-                className={`flex-1 h-0.5 mx-3 rounded-full transition-colors duration-200 ${
+                className={`mx-3 h-0.5 flex-1 rounded-full transition-colors duration-200 ${
                   isCompleted ? "bg-green-600" : "bg-stone-300"
                 }`}
               />
