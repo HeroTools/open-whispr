@@ -19,6 +19,13 @@ import PromptStudio from "./ui/PromptStudio";
 import { API_ENDPOINTS } from "../config/constants";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
 import type { UpdateInfoResult } from "../types/electron";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 
 export type SettingsSectionType =
@@ -61,6 +68,7 @@ export default function SettingsPage({
     anthropicApiKey,
     geminiApiKey,
     dictationKey,
+    commandParserModel,
     setUseLocalWhisper,
     setWhisperModel,
     setAllowOpenAIFallback,
@@ -76,6 +84,7 @@ export default function SettingsPage({
     setAnthropicApiKey,
     setGeminiApiKey,
     setDictationKey,
+    setCommandParserModel,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,
@@ -1161,6 +1170,68 @@ export default function SettingsPage({
                 <p className="text-xs text-green-800">
                   Try saying: <span className="font-mono">"Slack message: Hey team, meeting in 5 minutes!"</span>
                 </p>
+              </div>
+            </div>
+
+            <div className="space-y-4 p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+              <div>
+                <h4 className="font-medium text-indigo-900">Command Parser Model</h4>
+                <p className="text-sm text-indigo-800 mt-1">
+                  AI model used to understand voice commands like Slack messages
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-indigo-900">
+                  Select Model
+                </label>
+                <Select
+                  value={commandParserModel}
+                  onValueChange={(value) => {
+                    setCommandParserModel(value);
+                    showAlertDialog({
+                      title: "Command Parser Model Updated",
+                      description: `Voice commands will now be parsed using ${value}`,
+                    });
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-white">
+                    <SelectValue placeholder="Select a model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini-2.5-flash-lite">
+                      Gemini 2.5 Flash Lite (Fast & Cheap)
+                    </SelectItem>
+                    <SelectItem value="gemini-2.5-flash">
+                      Gemini 2.5 Flash (Balanced)
+                    </SelectItem>
+                    <SelectItem value="gpt-4o-mini">
+                      GPT-4o Mini (Fast)
+                    </SelectItem>
+                    <SelectItem value="claude-3-5-haiku-20241022">
+                      Claude 3.5 Haiku (Fast)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="mt-3 p-3 bg-white rounded-md border border-indigo-200">
+                  <p className="text-xs font-medium text-indigo-900 mb-2">
+                    Model Information:
+                  </p>
+                  <div className="text-xs text-indigo-800 space-y-1">
+                    <p>
+                      <span className="font-medium">Current:</span>{" "}
+                      {commandParserModel === "gemini-2.5-flash-lite" && "Gemini 2.5 Flash Lite"}
+                      {commandParserModel === "gemini-2.5-flash" && "Gemini 2.5 Flash"}
+                      {commandParserModel === "gpt-4o-mini" && "GPT-4o Mini"}
+                      {commandParserModel === "claude-3-5-haiku-20241022" && "Claude 3.5 Haiku"}
+                    </p>
+                    <p>
+                      <span className="font-medium">Cost:</span> ~$0.01-0.05 per 1000 commands
+                    </p>
+                    <p className="text-amber-700">
+                      <span className="font-medium">Note:</span> Requires API key for selected provider
+                    </p>
+                  </div>
+                </div>
               </div>
             </div>
 

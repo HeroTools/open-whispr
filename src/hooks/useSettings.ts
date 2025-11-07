@@ -152,6 +152,16 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Command Parser Model
+  const [commandParserModel, setCommandParserModel] = useLocalStorage(
+    "commandParserModel",
+    "gemini-2.5-flash-lite",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   // Computed values
   const reasoningProvider = getModelProvider(reasoningModel);
 
@@ -224,6 +234,7 @@ export function useSettings() {
     anthropicApiKey,
     geminiApiKey,
     dictationKey,
+    commandParserModel,
     setUseLocalWhisper,
     setWhisperModel,
     setAllowOpenAIFallback,
@@ -254,6 +265,7 @@ export function useSettings() {
     setAnthropicApiKey,
     setGeminiApiKey,
     setDictationKey,
+    setCommandParserModel,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,
