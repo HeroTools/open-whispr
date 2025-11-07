@@ -104,10 +104,17 @@ OpenWhispr is an Electron-based desktop dictation application that uses OpenAI W
   - Routes to appropriate integration service
   - Executes via IPC to main process
 
-- **CommandParserService.ts**: AI-powered command parsing
-  - Uses ReasoningService with configurable model
-  - Extracts structured data from natural language
-  - Default: Gemini 2.5 Flash Lite (fast & cheap)
+- **CommandParserService.ts**: AI-powered natural language command parsing
+  - Location: `src/services/CommandParserService.ts`
+  - Uses ReasoningService with configurable model selection
+  - Extracts structured data (message content) from flexible natural language
+  - Pre-validation checks before expensive API calls
+  - API key availability check to prevent unnecessary calls
+  - Default model: Gemini 2.5 Flash Lite (fast & cheap ~$0.000015/request)
+  - Supports: Gemini 2.5 Flash Lite/Flash, GPT-4o Mini, Claude 3.5 Haiku
+  - Uses temporary localStorage swap to inject custom prompts into ReasoningService
+  - Semaphore lock prevents concurrent localStorage manipulation
+  - Low temperature (0.1) for consistent extraction
 
 ### Python Bridge
 
@@ -675,16 +682,28 @@ FFmpeg is bundled with the app and doesn't require system installation:
 ### 3. Command Execution Flow
 
 1. User speaks command → Whisper transcribes
-2. `CommandService.detectCommand()` checks patterns
-3. If command detected:
+2. `CommandService.detectCommand()` checks patterns (e.g., `/^slack.+$/i`)
+3. If broad pattern matches:
+   - **Pre-validation**: `looksLikeSlackCommand()` checks for keywords
+   - **AI Parsing**: Call `CommandParserService.parseSlackCommand()` with user-configured model
+     - Pre-check: Verify API key exists for selected model (prevents wasted calls)
+     - Call ReasoningService with custom extraction prompt
+     - Parse AI response to extract message content
+   - **Fallback**: If AI fails, use regex extraction (`/^slack\s+(?:message|the|to|:)?[:\s]*(.+)$/i`)
+   - Return structured result: `{ isCommand: true, type: 'slack-webhook', message: "..." }`
+4. If command detected:
    - Show countdown toast (5 seconds, cancellable)
-   - Call `CommandParserService` with configurable AI model
-   - AI extracts structured data (e.g., channel, message)
-   - Route to appropriate integration service
-   - Execute via IPC → Main process → External API
+   - After countdown, execute via appropriate service
+   - Route to IPC → Main process → External API (Slack webhook)
    - Show success/error notification
-4. If not command:
+5. If not command:
    - Normal paste flow (clipboard)
+
+**Performance Characteristics**:
+- AI parsing: 200-800ms depending on model
+- Gemini 2.5 Flash Lite (default): ~300-500ms, ~$0.000015/call
+- Fallback regex: <1ms, always available
+- Pre-validation prevents unnecessary API calls when command is malformed
 
 ### 4. Local Whisper Models
 
@@ -798,7 +817,181 @@ Settings stored in localStorage with these keys:
 - Centralized `saveAllKeysToEnvFile()` method ensures consistency
 - Integration tokens (Slack, Discord, etc.) also stored in .env
 
-### 10. Debug Mode
+### 10. AI-Powered Command Parsing
+
+OpenWhispr uses AI models to parse natural language voice commands, providing a flexible and forgiving user experience compared to rigid regex patterns.
+
+**Architecture**:
+- **Service**: `CommandParserService` (`src/services/CommandParserService.ts`)
+- **Integration**: Works with `CommandService` and `ReasoningService`
+- **Strategy**: AI-first with regex fallback for reliability
+
+**How It Works**:
+
+1. **Detection Phase** (CommandService):
+   ```typescript
+   // Broad pattern match (any text starting with "slack")
+   if (text.match(/^slack.+$/i)) {
+     // Potential command detected, proceed to parsing
+   }
+   ```
+
+2. **Pre-Validation** (CommandParserService):
+   ```typescript
+   // Lightweight keyword check before expensive AI call
+   if (CommandParserService.looksLikeSlackCommand(text)) {
+     // Check for keywords: "slack", "send to slack", etc.
+   }
+   ```
+
+3. **API Key Check** (CommandParserService):
+   ```typescript
+   // Verify API key exists before calling AI
+   const hasApiKey = await checkApiKeyAvailable(model);
+   if (!hasApiKey) {
+     throw new Error('API key not configured');
+   }
+   ```
+
+4. **AI Parsing** (CommandParserService):
+   ```typescript
+   // Extract message content using AI
+   const result = await CommandParserService.parseSlackCommand(
+     "slack message: deploy complete",
+     "gemini-2.5-flash-lite"
+   );
+   // Returns: { message: "deploy complete" }
+   ```
+
+   **Custom Prompt Technique**:
+   - Temporarily swaps custom prompt into localStorage
+   - Calls ReasoningService.processText() with extraction instructions
+   - Restores original prompts after completion
+   - Uses semaphore lock to prevent race conditions
+
+5. **Fallback Strategy** (CommandService):
+   ```typescript
+   // If AI fails, use regex extraction
+   const fallbackMatch = text.match(/^slack\s+(?:message|the|to|:)?[:\s]*(.+)$/i);
+   if (fallbackMatch) {
+     const message = fallbackMatch[1].trim();
+     // Use extracted message
+   }
+   ```
+
+**Model Selection**:
+
+User-configurable via Settings UI (`commandParserModel` in localStorage):
+
+| Model | Provider | Speed | Cost | Recommended For |
+|-------|----------|-------|------|-----------------|
+| **gemini-2.5-flash-lite** | Google | ~300-500ms | ~$0.000015/call | Default - best balance |
+| gemini-2.5-flash | Google | ~400-600ms | ~$0.00008/call | Higher accuracy |
+| gpt-4o-mini | OpenAI | ~500-800ms | ~$0.00015/call | OpenAI preference |
+| claude-3-5-haiku | Anthropic | ~400-700ms | ~$0.00008/call | Claude preference |
+
+**Cost Analysis**:
+- At 100 commands/day with default model: ~$0.0015/day (~$0.55/year)
+- Cost is negligible compared to user experience benefits
+
+**Why AI Over Regex**:
+
+1. **Natural Language Flexibility**:
+   - Regex: "slack message: text here" (rigid)
+   - AI: "slack message: text", "send to slack text", "slack text", "post to slack: text" (flexible)
+
+2. **Typo Tolerance**:
+   - AI can understand "slcak message" or "slack mesage"
+   - Regex fails on any deviation
+
+3. **Intent Understanding**:
+   - AI understands "slack the build is done" → "the build is done"
+   - Regex would require complex patterns for every variation
+
+4. **User Experience**:
+   - Users can speak naturally, not memorize syntax
+   - Reduces frustration and learning curve
+
+**Error Handling**:
+
+The system is designed to never fail:
+1. First try: AI parsing with user's selected model
+2. If API key missing: Throw error before API call
+3. If AI fails: Fallback to regex extraction
+4. If regex fails: Show helpful error message
+5. If network error: Show network error message
+
+**Performance Optimizations**:
+
+1. **Pre-validation**: Check keywords before calling AI (saves API calls on malformed input)
+2. **API key check**: Verify key exists before expensive API call
+3. **Low temperature**: 0.1 temperature for consistent, deterministic extraction
+4. **Short max tokens**: 500 tokens max (commands are typically short)
+5. **Caching**: ReasoningService handles rate limiting and caching
+
+**Implementation Details**:
+
+```typescript
+// Example: Adding a new command type
+
+// 1. Add pattern in CommandService
+private static EMAIL_PATTERN = /^(email|send email).+$/i;
+
+// 2. Add parser method in CommandParserService
+static async parseEmailCommand(
+  userInput: string,
+  model: string = 'gemini-2.5-flash-lite'
+): Promise<{ recipient: string; subject: string; body: string }> {
+  const systemPrompt = `Extract email recipient, subject, and body from voice command.
+Output JSON only: { "recipient": "...", "subject": "...", "body": "..." }`;
+
+  const response = await this.processWithCustomPrompt(
+    userInput,
+    systemPrompt,
+    model
+  );
+
+  return JSON.parse(response);
+}
+
+// 3. Add detection in CommandService.detectCommand()
+if (trimmedText.match(this.EMAIL_PATTERN)) {
+  const result = await CommandParserService.parseEmailCommand(trimmedText, model);
+  return {
+    isCommand: true,
+    type: 'email',
+    recipient: result.recipient,
+    subject: result.subject,
+    body: result.body
+  };
+}
+```
+
+**Debugging AI Parsing**:
+
+Enable debug mode to see full parsing flow:
+```bash
+npm run dev -- --debug
+```
+
+Logs show:
+- Input text and length
+- Pre-validation result
+- Model selection
+- API key availability
+- AI response
+- Fallback activation (if needed)
+- Final extracted message
+- Timing information
+
+**Future Enhancements**:
+- Multi-parameter extraction (recipient, channel, priority, etc.)
+- Context-aware parsing (previous commands)
+- Learning from user corrections
+- Local model support (no API calls)
+- Batch processing for multiple commands
+
+### 11. Debug Mode
 
 Enable with `--debug` flag or `OPENWHISPR_DEBUG=true`:
 - Logs saved to platform-specific app data directory
@@ -807,6 +1000,8 @@ Enable with `--debug` flag or `OPENWHISPR_DEBUG=true`:
 - Audio level analysis
 - Complete reasoning pipeline debugging with stage-by-stage logging
 - Command execution flow logging (detection, parsing, execution)
+- AI parser prompt and response logging
+- Performance timing for each stage
 
 ---
 
@@ -819,6 +1014,7 @@ Enable with `--debug` flag or `OPENWHISPR_DEBUG=true`:
 3. **New UI Component**: Follow shadcn/ui patterns in src/components/ui
 4. **New Manager**: Create in src/helpers/, initialize in main.js
 5. **New Integration**: Follow "Adding a New Integration" pattern above
+6. **New Command Type**: Follow AI-powered parsing pattern (see below)
 
 ### Service Layer Patterns
 
@@ -862,26 +1058,67 @@ static async parse[Service]Command(
   model: string = 'gemini-2.5-flash-lite'
 ): Promise<ParsedCommand> {
 
-  const systemPrompt = `[Instructions for AI]
+  // Input validation
+  if (!userInput || typeof userInput !== 'string') {
+    throw new Error('Invalid input: userInput must be a non-empty string');
+  }
+
+  const trimmedInput = userInput.trim();
+  if (!trimmedInput) {
+    throw new Error('Invalid input: userInput cannot be empty or whitespace');
+  }
+
+  // Pre-check: Verify API key before calling
+  const hasApiKey = await this.checkApiKeyAvailable(model);
+  if (!hasApiKey) {
+    throw new Error('API key not configured for selected model');
+  }
+
+  // Define extraction prompt
+  const systemPrompt = `[Clear instructions for AI about what to extract]
+Rules:
+- [Specific rule 1]
+- [Specific rule 2]
+- Return ONLY the extracted data, nothing else
+
+Examples:
+"[input example 1]" → [output 1]
+"[input example 2]" → [output 2]
+
 Output format: { "field1": "value1", "field2": "value2" }`;
 
-  const userPrompt = `User said: "${userInput}"\nExtract data as JSON.`;
+  try {
+    // Call AI with custom prompt
+    const response = await this.processWithCustomPrompt(
+      userInput,
+      systemPrompt,
+      model
+    );
 
-  const response = await ReasoningService.processWithModel(
-    userPrompt,
-    systemPrompt,
-    model
-  );
+    // Parse and validate response
+    const parsed = JSON.parse(response.trim());
 
-  return JSON.parse(response);
+    if (!parsed.field1) {
+      throw new Error('Missing required field');
+    }
+
+    return parsed;
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to parse command: ${errorMessage}`);
+  }
 }
 ```
 
 **Key Principles**:
-- Use configurable model (default: gemini-2.5-flash-lite for speed/cost)
-- Clear system prompt with output format
-- Return structured data (JSON)
-- Handle parsing errors gracefully
+- **Input validation**: Check for empty/invalid input before API calls
+- **API key check**: Verify key exists before expensive AI call (see Section 10)
+- **Clear prompts**: Include rules, examples, and expected output format
+- **Use configurable model**: Default to gemini-2.5-flash-lite for speed/cost
+- **Error handling**: Comprehensive try-catch with descriptive messages
+- **Return structured data**: JSON or typed TypeScript interfaces
+- **Low temperature**: Use 0.1 for deterministic extraction (set in processWithCustomPrompt)
+- **Short max tokens**: 500 tokens for commands (set in processWithCustomPrompt)
 
 ### Testing Checklist
 
@@ -917,14 +1154,23 @@ Output format: { "field1": "value1", "field2": "value2" }`;
    - Check pattern regex in CommandService
    - Enable debug logging to see detection flow
    - Verify AI parser has correct system prompt
+   - Check if fallback regex is working (see logs)
 
-5. **Integration API Fails**:
+5. **AI Parser Fails**:
+   - Verify API key is configured for selected model
+   - Check model name matches available options
+   - Enable debug mode to see AI response
+   - System will automatically fall back to regex
+   - Check network connectivity to AI provider
+   - Review rate limits on AI API
+
+6. **Integration API Fails**:
    - Check credentials stored in .env
    - Verify IPC handlers registered
    - Check network connectivity
    - Review API rate limits
 
-6. **Build Issues**:
+7. **Build Issues**:
    - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
    - Signing requires Apple Developer account
    - ASAR unpacking needed for FFmpeg/Python bridge
@@ -1106,6 +1352,238 @@ Output format: { "field1": "value1", "field2": "value2" }`;
 5. Check debug logs for flow
 6. Verify message/action appears in service
 7. Test error cases (bad credentials, network error)
+
+### Add a new voice command type
+
+**Step-by-step guide for adding AI-powered command parsing:**
+
+1. **Add Detection Pattern** (`src/services/CommandService.ts`):
+   ```typescript
+   // Add broad pattern (line ~11)
+   private static DISCORD_PATTERN = /^discord.+$/i;
+
+   // Add fallback regex (line ~14)
+   private static DISCORD_FALLBACK_PATTERN = /^discord\s+(?:message|to|:)?[:\s]*(.+)$/i;
+   ```
+
+2. **Add Parser Method** (`src/services/CommandParserService.ts`):
+   ```typescript
+   // Add interface (line ~10)
+   export interface DiscordCommandResult {
+     message: string;
+   }
+
+   // Add parser method (line ~273, after parseSlackCommand)
+   static async parseDiscordCommand(
+     userInput: string,
+     model: string = 'gemini-2.5-flash-lite'
+   ): Promise<DiscordCommandResult> {
+     // Input validation
+     if (!userInput || typeof userInput !== 'string') {
+       throw new Error('Invalid input');
+     }
+
+     // Pre-check API key
+     const hasApiKey = await this.checkApiKeyAvailable(model);
+     if (!hasApiKey) {
+       throw new Error('API key not configured');
+     }
+
+     // Define prompt
+     const systemPrompt = `Extract Discord message content from voice command.
+   Rules:
+   - Remove command triggers: "discord message", "send to discord", etc.
+   - Keep message content exactly as spoken
+   - Return ONLY the message text
+
+   Examples:
+   "discord message: server updated" → server updated
+   "send to discord: meeting at 3pm" → meeting at 3pm
+
+   Extracted message:`;
+
+     try {
+       const extractedText = await this.processWithCustomPrompt(
+         userInput,
+         systemPrompt,
+         model
+       );
+
+       const message = extractedText.trim();
+       if (!message) {
+         throw new Error('Could not extract message');
+       }
+
+       return { message };
+     } catch (error) {
+       throw new Error(`Failed to parse: ${error.message}`);
+     }
+   }
+
+   // Add pre-validation method (line ~272, after looksLikeSlackCommand)
+   static looksLikeDiscordCommand(text: string): boolean {
+     const lowerText = text.toLowerCase();
+     const keywords = ['discord', 'send to discord', 'post to discord'];
+     return keywords.some(keyword => lowerText.includes(keyword));
+   }
+   ```
+
+3. **Add Detection Logic** (`src/services/CommandService.ts`):
+   ```typescript
+   // In detectCommand() method (line ~93, after Slack detection)
+   if (trimmedText.match(this.DISCORD_PATTERN)) {
+     console.log('[CommandService] ✓ Detected potential Discord command');
+
+     if (CommandParserService.looksLikeDiscordCommand(trimmedText)) {
+       try {
+         const parserModel = model || 'gemini-2.5-flash-lite';
+         const result = await CommandParserService.parseDiscordCommand(
+           trimmedText,
+           parserModel
+         );
+
+         return {
+           isCommand: true,
+           type: 'discord',
+           message: result.message
+         };
+       } catch (error) {
+         console.error('[CommandService] AI parsing failed:', error);
+         // Fall back to regex
+       }
+     }
+
+     // Fallback regex
+     const fallbackMatch = trimmedText.match(this.DISCORD_FALLBACK_PATTERN);
+     if (fallbackMatch) {
+       return {
+         isCommand: true,
+         type: 'discord',
+         message: fallbackMatch[1].trim()
+       };
+     }
+   }
+   ```
+
+4. **Add Execution Handler** (`src/services/CommandService.ts`):
+   ```typescript
+   // Add method (line ~199, after executeSlackWebhook)
+   static async executeDiscord(
+     message: string,
+     webhookUrl: string
+   ): Promise<CommandExecutionResult> {
+     try {
+       // Validate
+       if (!message?.trim()) {
+         return { success: false, error: 'Message cannot be empty' };
+       }
+
+       if (!webhookUrl) {
+         return { success: false, error: 'Discord webhook not configured' };
+       }
+
+       // Execute via IPC
+       const result = await window.electronAPI.executeDiscordWebhook(
+         message,
+         webhookUrl
+       );
+
+       return result;
+     } catch (error) {
+       return {
+         success: false,
+         error: error instanceof Error ? error.message : 'Unknown error'
+       };
+     }
+   }
+
+   // Update executeCommand() method (line ~210)
+   if (detectionResult.type === 'discord' && detectionResult.message) {
+     return await this.executeDiscord(detectionResult.message, webhookUrl);
+   }
+   ```
+
+5. **Add Type Definitions** (`src/types/commands.ts`):
+   ```typescript
+   // Update CommandType (line ~2)
+   export type CommandType = 'slack-webhook' | 'discord';
+
+   // Update CommandDetectionResult (line ~10)
+   export interface CommandDetectionResult {
+     isCommand: boolean;
+     type?: CommandType;
+     message?: string;
+     error?: string;
+   }
+   ```
+
+6. **Add IPC Handler** (`src/helpers/ipcHandlers.js`):
+   ```javascript
+   // Add handler (after slack-webhook handler)
+   ipcMain.handle("execute-discord-webhook", async (event, message, webhookUrl) => {
+     try {
+       this.debugLogger.log(`[IPC] Discord webhook execution requested`);
+
+       const response = await fetch(webhookUrl, {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ content: message })
+       });
+
+       if (!response.ok) {
+         throw new Error(`Discord API error: ${response.statusText}`);
+       }
+
+       return { success: true };
+     } catch (error) {
+       this.debugLogger.error(`[IPC] Discord webhook failed: ${error.message}`);
+       return { success: false, error: error.message };
+     }
+   });
+   ```
+
+7. **Expose in Preload** (`preload.js`):
+   ```javascript
+   // Add to electronAPI object
+   executeDiscordWebhook: (message, webhookUrl) =>
+     ipcRenderer.invoke("execute-discord-webhook", message, webhookUrl)
+   ```
+
+8. **Add Settings UI** (`src/components/SettingsPage.tsx`):
+   ```tsx
+   // Add state (line ~80)
+   const [discordWebhookUrl, setDiscordWebhookUrl] = useLocalStorage(
+     "discordWebhookUrl",
+     ""
+   );
+
+   // Add UI section (in Integrations tab)
+   <div className="space-y-2">
+     <Label htmlFor="discord-webhook">Discord Webhook URL</Label>
+     <Input
+       id="discord-webhook"
+       type="url"
+       value={discordWebhookUrl}
+       onChange={(e) => setDiscordWebhookUrl(e.target.value)}
+       placeholder="https://discord.com/api/webhooks/..."
+     />
+   </div>
+   ```
+
+9. **Test the Command**:
+   ```bash
+   # Run in debug mode
+   npm run dev -- --debug
+
+   # Say: "discord message: hello world"
+   # Check logs for:
+   # - Pattern detection
+   # - AI parsing
+   # - Webhook execution
+   # - Success/error
+   ```
+
+**Time estimate**: 30-60 minutes for a new command type following this pattern.
 
 ---
 
