@@ -1150,7 +1150,7 @@ export default function SettingsPage({
                     await window.electronAPI?.saveSlackWebhook?.(slackWebhookUrl);
                     showAlertDialog({
                       title: "Slack Webhook Saved",
-                      description: 'You can now say "Send to Parthav: [your message]" to post to Slack.',
+                      description: 'You can now say "Slack message: [your message]" to post to Slack.',
                     });
                   }}
                   disabled={!slackWebhookUrl.trim()}
@@ -1159,7 +1159,7 @@ export default function SettingsPage({
                   Save Slack Webhook
                 </Button>
                 <p className="text-xs text-green-800">
-                  Try saying: <span className="font-mono">"Send to Parthav: Hey team, meeting in 5 minutes!"</span>
+                  Try saying: <span className="font-mono">"Slack message: Hey team, meeting in 5 minutes!"</span>
                 </p>
               </div>
             </div>

@@ -5,7 +5,7 @@
 import type { CommandDetectionResult, CommandExecutionResult } from '../types/commands';
 
 export class CommandService {
-  private static SEND_TO_PARTHAV_PATTERN = /^send to parthav[:\s]+(.+)$/i;
+  private static SLACK_MESSAGE_PATTERN = /^slack message[:\s]+(.+)$/i;
 
   /**
    * Detects if the transcribed text is a command
@@ -13,8 +13,8 @@ export class CommandService {
   static detectCommand(text: string): CommandDetectionResult {
     const trimmedText = text.trim();
 
-    // Check for "send to Parthav" pattern
-    const sendMatch = trimmedText.match(this.SEND_TO_PARTHAV_PATTERN);
+    // Check for "slack message" pattern
+    const sendMatch = trimmedText.match(this.SLACK_MESSAGE_PATTERN);
     if (sendMatch) {
       const message = sendMatch[1].trim();
       if (!message) {
