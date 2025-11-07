@@ -3,35 +3,82 @@
  */
 
 import type { CommandDetectionResult, CommandExecutionResult } from '../types/commands';
+import { CommandParserService } from './CommandParserService';
 
 export class CommandService {
-  private static SLACK_MESSAGE_PATTERN = /^slack message[:.;\s]+(.+)$/i;
+  // Broader pattern to catch any text starting with "slack"
+  // AI will handle the parsing instead of rigid regex
+  private static SLACK_MESSAGE_PATTERN = /^slack.+$/i;
+
+  // Fallback regex for when AI parsing fails
+  private static SLACK_MESSAGE_FALLBACK_PATTERN = /^slack\s+(?:message|the|to|:)?[:\s]*(.+)$/i;
 
   /**
    * Detects if the transcribed text is a command
+   * Now uses AI-powered parsing with regex fallback
    */
-  static detectCommand(text: string): CommandDetectionResult {
+  static async detectCommand(text: string): Promise<CommandDetectionResult> {
     const trimmedText = text.trim();
 
     console.log('[CommandService] Checking text for commands:', trimmedText);
 
-    // Check for "slack message" pattern
-    const sendMatch = trimmedText.match(this.SLACK_MESSAGE_PATTERN);
-    if (sendMatch) {
-      const message = sendMatch[1].trim();
-      console.log('[CommandService] ✓ Slack command detected! Message:', message);
-      if (!message) {
-        console.warn('[CommandService] ✗ No message content found');
+    // Check for broad "slack" pattern
+    if (trimmedText.match(this.SLACK_MESSAGE_PATTERN)) {
+      console.log('[CommandService] ✓ Detected potential Slack command');
+
+      // Pre-validate with lightweight check
+      if (CommandParserService.looksLikeSlackCommand(trimmedText)) {
+        // Try AI parsing first
+        try {
+          console.log('[CommandService] Attempting AI parsing...');
+
+          // TODO: Get model from settings in Phase 4
+          const model = 'gemini-2.5-flash-lite';
+
+          const result = await CommandParserService.parseSlackCommand(trimmedText, model);
+
+          console.log('[CommandService] ✓ AI parsed message:', result.message);
+
+          return {
+            isCommand: true,
+            type: 'slack-webhook',
+            message: result.message
+          };
+        } catch (error) {
+          console.error('[CommandService] ✗ AI parsing failed:', error);
+          console.log('[CommandService] Falling back to regex extraction...');
+          // Continue to fallback regex below
+        }
+      }
+
+      // Fallback: Use regex extraction
+      const fallbackMatch = trimmedText.match(this.SLACK_MESSAGE_FALLBACK_PATTERN);
+      if (fallbackMatch) {
+        const message = fallbackMatch[1].trim();
+        console.log('[CommandService] ✓ Fallback regex extracted message:', message);
+
+        if (!message) {
+          console.warn('[CommandService] ✗ No message content found');
+          return {
+            isCommand: true,
+            type: 'slack-webhook',
+            error: 'No message content found'
+          };
+        }
+
         return {
           isCommand: true,
           type: 'slack-webhook',
-          error: 'No message content found'
+          message
         };
       }
+
+      // Pattern matched "slack" but couldn't extract message
+      console.warn('[CommandService] ✗ Slack keyword found but no message extracted');
       return {
         isCommand: true,
         type: 'slack-webhook',
-        message
+        error: 'Could not extract message from command'
       };
     }
 
@@ -41,14 +88,14 @@ export class CommandService {
   }
 
   /**
-   * Executes a Slack webhook command
+   * Executes a Slack webhook command via IPC to main process
    */
   static async executeSlackWebhook(
     message: string,
     webhookUrl: string
   ): Promise<CommandExecutionResult> {
     try {
-      console.log('[CommandService] Executing Slack webhook...');
+      console.log('[CommandService] Executing Slack webhook via IPC...');
       console.log('[CommandService] Message:', message);
       console.log('[CommandService] Webhook URL:', webhookUrl ? `${webhookUrl.substring(0, 40)}...` : 'NOT SET');
 
@@ -60,35 +107,14 @@ export class CommandService {
         };
       }
 
-      const payload = { text: message };
-      console.log('[CommandService] POST payload:', payload);
+      // Call main process via IPC to execute the webhook
+      // @ts-ignore - electronAPI is exposed via preload
+      const result = await window.electronAPI.executeSlackWebhook(message, webhookUrl);
 
-      const response = await fetch(webhookUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload)
-      });
-
-      console.log('[CommandService] Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[CommandService] ✗ Slack API error:', response.status, errorText);
-        return {
-          success: false,
-          error: `Slack API error: ${response.status} ${errorText}`
-        };
-      }
-
-      console.log('[CommandService] ✓ Message sent successfully to Slack!');
-      return {
-        success: true,
-        message: 'Message sent to Slack'
-      };
+      console.log('[CommandService] IPC result:', result);
+      return result;
     } catch (error) {
-      console.error('[CommandService] ✗ Exception during webhook POST:', error);
+      console.error('[CommandService] ✗ Exception during webhook execution:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error'

@@ -8,6 +8,9 @@ import AudioManager from "./helpers/audioManager";
 import { CommandService } from "./services/CommandService";
 import { CommandToast } from "./components/CommandToast";
 
+console.log('🚀 App.jsx loaded with CommandService support!');
+console.log('CommandService available:', !!CommandService);
+
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
   return (
@@ -190,8 +193,8 @@ export default function App() {
             console.log('[App] Transcription complete:', result.text);
             setTranscript(result.text);
 
-            // Check if this is a command
-            const commandDetection = CommandService.detectCommand(result.text);
+            // Check if this is a command (now async with AI parsing)
+            const commandDetection = await CommandService.detectCommand(result.text);
 
             if (commandDetection.isCommand) {
               console.log('[App] Command detected! Starting execution flow...');
@@ -206,6 +209,8 @@ export default function App() {
               console.log('[App] Fetching webhook URL from settings...');
               const webhookUrl = await window.electronAPI.getSlackWebhook();
               console.log('[App] Webhook URL retrieved:', webhookUrl ? 'SET' : 'NOT SET');
+              console.log('[App] Webhook URL length:', webhookUrl?.length || 0);
+              console.log('[App] Webhook URL preview:', webhookUrl?.substring(0, 50) || 'EMPTY');
 
               // Execute command with countdown
               console.log('[App] Calling CommandService.executeCommand...');
