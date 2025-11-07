@@ -396,6 +396,14 @@ class IPCHandlers {
       return this.environmentManager.saveAnthropicKey(key);
     });
 
+    ipcMain.handle("get-slack-webhook", async (event) => {
+      return this.environmentManager.getSlackWebhookUrl();
+    });
+
+    ipcMain.handle("save-slack-webhook", async (event, url) => {
+      return this.environmentManager.saveSlackWebhookUrl(url);
+    });
+
     // Local reasoning handler
     ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
       try {

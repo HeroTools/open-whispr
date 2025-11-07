@@ -5,6 +5,8 @@ import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import AudioManager from "./helpers/audioManager";
+import { CommandService } from "./services/CommandService";
+import { CommandToast } from "./components/CommandToast";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -89,6 +91,12 @@ export default function App() {
     useWindowDrag();
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
+
+  // Command state
+  const [commandStatus, setCommandStatus] = useState("pending");
+  const [commandCountdown, setCommandCountdown] = useState(5);
+  const [commandMessage, setCommandMessage] = useState("");
+  const abortControllerRef = useRef(null);
 
   const setWindowInteractivity = React.useCallback((shouldCapture) => {
     window.electronAPI?.setMainWindowInteractivity?.(shouldCapture);
@@ -181,18 +189,68 @@ export default function App() {
           if (result.success && result.text) {
             setTranscript(result.text);
 
-            // Paste immediately - don't wait for database save
-            const pastePromise = safePaste(result.text);
+            // Check if this is a command
+            const commandDetection = CommandService.detectCommand(result.text);
 
-            // Save to database in parallel
-            const savePromise = window.electronAPI
-              .saveTranscription(result.text)
-              .catch((err) => {
-                // Failed to save transcription
-              });
+            if (commandDetection.isCommand) {
+              // This is a command - show countdown and execute
+              setCommandStatus("sending");
+              setCommandCountdown(5);
 
-            // Wait for paste to complete, but don't block on database save
-            await pastePromise;
+              // Create abort controller for cancellation
+              abortControllerRef.current = new AbortController();
+
+              // Get webhook URL
+              const webhookUrl = await window.electronAPI.getSlackWebhook();
+
+              // Execute command with countdown
+              const commandResult = await CommandService.executeCommand(
+                commandDetection,
+                webhookUrl,
+                (secondsLeft) => {
+                  setCommandCountdown(secondsLeft);
+                },
+                abortControllerRef.current.signal
+              );
+
+              // Update status based on result
+              if (commandResult.success) {
+                setCommandStatus("sent");
+                // Auto-hide after 1 second
+                setTimeout(() => {
+                  setCommandStatus("pending");
+                }, 1000);
+              } else {
+                setCommandStatus("failed");
+                setCommandMessage(commandResult.error || "Failed to send");
+                // Auto-hide after 3 seconds
+                setTimeout(() => {
+                  setCommandStatus("pending");
+                  setCommandMessage("");
+                }, 3000);
+              }
+
+              // Save to database
+              await window.electronAPI
+                .saveTranscription(result.text)
+                .catch((err) => {
+                  // Failed to save transcription
+                });
+            } else {
+              // Not a command - normal paste flow
+              // Paste immediately - don't wait for database save
+              const pastePromise = safePaste(result.text);
+
+              // Save to database in parallel
+              const savePromise = window.electronAPI
+                .saveTranscription(result.text)
+                .catch((err) => {
+                  // Failed to save transcription
+                });
+
+              // Wait for paste to complete, but don't block on database save
+              await pastePromise;
+            }
           }
         },
       });
@@ -212,6 +270,17 @@ export default function App() {
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
+  };
+
+  const handleCancelCommand = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setCommandStatus("cancelled");
+    // Reset after a short delay
+    setTimeout(() => {
+      setCommandStatus("pending");
+    }, 1000);
   };
 
   useEffect(() => {
@@ -331,6 +400,14 @@ export default function App() {
 
   return (
     <>
+      {/* Command toast notification */}
+      <CommandToast
+        status={commandStatus}
+        countdown={commandCountdown}
+        message={commandMessage}
+        onCancel={handleCancelCommand}
+      />
+
       {/* Fixed bottom-right voice button */}
       <div className="fixed bottom-6 right-6 z-50">
         <div className="relative">

@@ -172,6 +172,20 @@ export default function SettingsPage({
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
 
+  // Slack webhook URL state
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState("");
+
+  // Load Slack webhook URL on mount
+  useEffect(() => {
+    const loadWebhookUrl = async () => {
+      const url = await window.electronAPI?.getSlackWebhook?.();
+      if (url) {
+        setSlackWebhookUrl(url);
+      }
+    };
+    loadWebhookUrl();
+  }, []);
+
   // Defer heavy operations for better performance
   useEffect(() => {
     let mounted = true;
@@ -1113,6 +1127,41 @@ export default function SettingsPage({
               <p className="text-xs text-gray-600 mt-2">
                 Choose a name that feels natural to say and remember
               </p>
+            </div>
+
+            <div className="space-y-4 p-4 bg-green-50 border border-green-200 rounded-xl">
+              <h4 className="font-medium text-green-900">Voice Commands</h4>
+              <p className="text-sm text-green-800 mb-3">
+                Set up Slack integration to send messages with your voice
+              </p>
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-green-900">
+                  Slack Webhook URL
+                </label>
+                <Input
+                  type="password"
+                  placeholder="https://hooks.slack.com/services/..."
+                  value={slackWebhookUrl}
+                  onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                  className="text-sm"
+                />
+                <Button
+                  onClick={async () => {
+                    await window.electronAPI?.saveSlackWebhook?.(slackWebhookUrl);
+                    showAlertDialog({
+                      title: "Slack Webhook Saved",
+                      description: 'You can now say "Send to Parthav: [your message]" to post to Slack.',
+                    });
+                  }}
+                  disabled={!slackWebhookUrl.trim()}
+                  className="w-full"
+                >
+                  Save Slack Webhook
+                </Button>
+                <p className="text-xs text-green-800">
+                  Try saying: <span className="font-mono">"Send to Parthav: Hey team, meeting in 5 minutes!"</span>
+                </p>
+              </div>
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg">

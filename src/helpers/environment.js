@@ -91,6 +91,24 @@ class EnvironmentManager {
     }
   }
 
+  getSlackWebhookUrl() {
+    const webhookUrl = process.env.SLACK_WEBHOOK_URL;
+    return webhookUrl || "";
+  }
+
+  saveSlackWebhookUrl(url) {
+    try {
+      // Update the environment variable in memory for immediate use
+      process.env.SLACK_WEBHOOK_URL = url;
+      // Persist all keys to file
+      this.saveAllKeysToEnvFile();
+      return { success: true };
+    } catch (error) {
+      // Silent error - already throwing
+      throw error;
+    }
+  }
+
   createProductionEnvFile(apiKey) {
     try {
       const envPath = path.join(app.getPath("userData"), ".env");
@@ -114,12 +132,12 @@ OPENAI_API_KEY=${apiKey}
   saveAllKeysToEnvFile() {
     try {
       const envPath = path.join(app.getPath("userData"), ".env");
-      
+
       // Build env content with all current keys
       let envContent = `# OpenWhispr Environment Variables
 # This file was created automatically for production use
 `;
-      
+
       if (process.env.OPENAI_API_KEY) {
         envContent += `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}\n`;
       }
@@ -129,9 +147,12 @@ OPENAI_API_KEY=${apiKey}
       if (process.env.GEMINI_API_KEY) {
         envContent += `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}\n`;
       }
+      if (process.env.SLACK_WEBHOOK_URL) {
+        envContent += `SLACK_WEBHOOK_URL=${process.env.SLACK_WEBHOOK_URL}\n`;
+      }
 
       fs.writeFileSync(envPath, envContent, "utf8");
-      
+
       // Reload the env file
       require("dotenv").config({ path: envPath });
 
