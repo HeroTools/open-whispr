@@ -4,6 +4,7 @@ import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
+import { useSettings } from "./hooks/useSettings";
 import AudioManager from "./helpers/audioManager";
 import { CommandService } from "./services/CommandService";
 import { CommandToast } from "./components/CommandToast";
@@ -94,6 +95,9 @@ export default function App() {
     useWindowDrag();
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
+
+  // Get command parser model from settings
+  const { commandParserModel } = useSettings();
 
   // Command state
   const [commandStatus, setCommandStatus] = useState("pending");
@@ -193,8 +197,12 @@ export default function App() {
             console.log('[App] Transcription complete:', result.text);
             setTranscript(result.text);
 
+            // Get the command parser model from settings (or use default)
+            const modelToUse = commandParserModel || 'gemini-2.5-flash-lite';
+            console.log('[App] Using command parser model:', modelToUse);
+
             // Check if this is a command (now async with AI parsing)
-            const commandDetection = await CommandService.detectCommand(result.text);
+            const commandDetection = await CommandService.detectCommand(result.text, modelToUse);
 
             if (commandDetection.isCommand) {
               console.log('[App] Command detected! Starting execution flow...');

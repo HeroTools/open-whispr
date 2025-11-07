@@ -17,7 +17,7 @@ export class CommandService {
    * Detects if the transcribed text is a command
    * Now uses AI-powered parsing with regex fallback
    */
-  static async detectCommand(text: string): Promise<CommandDetectionResult> {
+  static async detectCommand(text: string, model?: string): Promise<CommandDetectionResult> {
     const trimmedText = text.trim();
 
     console.log('[CommandService] Checking text for commands:', trimmedText);
@@ -32,10 +32,11 @@ export class CommandService {
         try {
           console.log('[CommandService] Attempting AI parsing...');
 
-          // TODO: Get model from settings in Phase 4
-          const model = 'gemini-2.5-flash-lite';
+          // Use provided model or default to gemini-2.5-flash-lite
+          const parserModel = model || 'gemini-2.5-flash-lite';
+          console.log('[CommandService] Using command parser model:', parserModel);
 
-          const result = await CommandParserService.parseSlackCommand(trimmedText, model);
+          const result = await CommandParserService.parseSlackCommand(trimmedText, parserModel);
 
           console.log('[CommandService] ✓ AI parsed message:', result.message);
 
