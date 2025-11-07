@@ -404,6 +404,88 @@ class IPCHandlers {
       return this.environmentManager.saveSlackWebhookUrl(url);
     });
 
+    // Execute Slack webhook from main process
+    ipcMain.handle("execute-slack-webhook", async (event, message, webhookUrl) => {
+      try {
+        console.log('[IPC] Executing Slack webhook from main process...');
+        console.log('[IPC] Message:', message);
+        console.log('[IPC] Webhook URL:', webhookUrl ? `${webhookUrl.substring(0, 40)}...` : 'NOT SET');
+
+        if (!webhookUrl) {
+          console.error('[IPC] ✗ No webhook URL provided!');
+          return {
+            success: false,
+            error: 'Slack webhook URL not configured'
+          };
+        }
+
+        const https = require('https');
+        const { URL } = require('url');
+
+        const parsedUrl = new URL(webhookUrl);
+        const payload = JSON.stringify({ text: message });
+
+        console.log('[IPC] POST payload:', payload);
+
+        return new Promise((resolve) => {
+          const options = {
+            hostname: parsedUrl.hostname,
+            port: parsedUrl.port || 443,
+            path: parsedUrl.pathname + parsedUrl.search,
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(payload)
+            }
+          };
+
+          const req = https.request(options, (res) => {
+            let data = '';
+
+            res.on('data', (chunk) => {
+              data += chunk;
+            });
+
+            res.on('end', () => {
+              console.log('[IPC] Response status:', res.statusCode);
+              console.log('[IPC] Response body:', data);
+
+              if (res.statusCode === 200) {
+                console.log('[IPC] ✓ Message sent successfully to Slack!');
+                resolve({
+                  success: true,
+                  message: 'Message sent to Slack'
+                });
+              } else {
+                console.error('[IPC] ✗ Slack API error:', res.statusCode, data);
+                resolve({
+                  success: false,
+                  error: `Slack API error: ${res.statusCode} ${data}`
+                });
+              }
+            });
+          });
+
+          req.on('error', (error) => {
+            console.error('[IPC] ✗ Request error:', error);
+            resolve({
+              success: false,
+              error: error.message
+            });
+          });
+
+          req.write(payload);
+          req.end();
+        });
+      } catch (error) {
+        console.error('[IPC] ✗ Exception during webhook POST:', error);
+        return {
+          success: false,
+          error: error.message || 'Unknown error'
+        };
+      }
+    });
+
     // Local reasoning handler
     ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
       try {

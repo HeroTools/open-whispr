@@ -116,6 +116,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Slack webhook
   getSlackWebhook: () => ipcRenderer.invoke("get-slack-webhook"),
   saveSlackWebhook: (url) => ipcRenderer.invoke("save-slack-webhook", url),
+  executeSlackWebhook: (message, webhookUrl) => ipcRenderer.invoke("execute-slack-webhook", message, webhookUrl),
 
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 

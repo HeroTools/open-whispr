@@ -19,8 +19,10 @@ export class CommandService {
    */
   static async detectCommand(text: string, model?: string): Promise<CommandDetectionResult> {
     const trimmedText = text.trim();
+    const startTime = Date.now();
 
     console.log('[CommandService] Checking text for commands:', trimmedText);
+    console.log('[CommandService] Text length:', trimmedText.length, 'chars');
 
     // Check for broad "slack" pattern
     if (trimmedText.match(this.SLACK_MESSAGE_PATTERN)) {
@@ -37,8 +39,10 @@ export class CommandService {
           console.log('[CommandService] Using command parser model:', parserModel);
 
           const result = await CommandParserService.parseSlackCommand(trimmedText, parserModel);
+          const aiTime = Date.now() - startTime;
 
           console.log('[CommandService] ✓ AI parsed message:', result.message);
+          console.log('[CommandService] AI parsing took:', aiTime, 'ms');
 
           return {
             isCommand: true,
@@ -79,7 +83,7 @@ export class CommandService {
       return {
         isCommand: true,
         type: 'slack-webhook',
-        error: 'Could not extract message from command'
+        error: 'Try saying: "Slack message: your message here"'
       };
     }
 
@@ -99,6 +103,22 @@ export class CommandService {
       console.log('[CommandService] Executing Slack webhook via IPC...');
       console.log('[CommandService] Message:', message);
       console.log('[CommandService] Webhook URL:', webhookUrl ? `${webhookUrl.substring(0, 40)}...` : 'NOT SET');
+
+      // Validate message
+      if (!message || !message.trim()) {
+        console.error('[CommandService] ✗ Empty message!');
+        return {
+          success: false,
+          error: 'Message cannot be empty'
+        };
+      }
+
+      // Slack has a 4000 character limit for message text
+      const MAX_SLACK_MESSAGE_LENGTH = 4000;
+      if (message.length > MAX_SLACK_MESSAGE_LENGTH) {
+        console.warn('[CommandService] Message too long, truncating...');
+        message = message.substring(0, MAX_SLACK_MESSAGE_LENGTH - 3) + '...';
+      }
 
       if (!webhookUrl) {
         console.error('[CommandService] ✗ No webhook URL configured!');

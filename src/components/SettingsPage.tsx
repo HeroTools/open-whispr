@@ -1188,9 +1188,26 @@ export default function SettingsPage({
                   value={commandParserModel}
                   onValueChange={(value) => {
                     setCommandParserModel(value);
+
+                    // Determine required API key
+                    let requiredKey = '';
+                    if (value.includes('gemini')) requiredKey = 'Gemini';
+                    else if (value.includes('gpt')) requiredKey = 'OpenAI';
+                    else if (value.includes('claude')) requiredKey = 'Anthropic';
+
+                    // Check if key is configured
+                    const hasKey =
+                      (requiredKey === 'Gemini' && geminiApiKey) ||
+                      (requiredKey === 'OpenAI' && openaiApiKey) ||
+                      (requiredKey === 'Anthropic' && anthropicApiKey);
+
                     showAlertDialog({
                       title: "Command Parser Model Updated",
-                      description: `Voice commands will now be parsed using ${value}`,
+                      description: `Voice commands will now be parsed using ${value}.${
+                        !hasKey && requiredKey
+                          ? `\n\nWarning: ${requiredKey} API key not configured. Commands will fall back to regex parsing.`
+                          : ''
+                      }`,
                     });
                   }}
                 >

@@ -361,9 +361,16 @@ export default function App() {
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "Escape") {
-        if (isCommandMenuOpen) {
+        // Priority 1: Cancel active command countdown
+        if (commandStatus === "sending") {
+          handleCancelCommand();
+        }
+        // Priority 2: Close command menu
+        else if (isCommandMenuOpen) {
           setIsCommandMenuOpen(false);
-        } else {
+        }
+        // Priority 3: Hide window
+        else {
           handleClose();
         }
       }
@@ -371,7 +378,7 @@ export default function App() {
 
     document.addEventListener("keydown", handleKeyPress);
     return () => document.removeEventListener("keydown", handleKeyPress);
-  }, [isCommandMenuOpen]);
+  }, [isCommandMenuOpen, commandStatus]);
 
   // Determine current mic state
   const getMicState = () => {

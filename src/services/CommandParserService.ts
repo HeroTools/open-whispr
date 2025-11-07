@@ -12,6 +12,9 @@ export interface SlackCommandResult {
 }
 
 export class CommandParserService {
+  // Semaphore to prevent concurrent localStorage manipulation
+  private static processingLock: Promise<any> | null = null;
+
   /**
    * Custom prompt template for extracting Slack message content
    * This uses the {{text}} placeholder that ReasoningService expects
@@ -59,7 +62,31 @@ Extracted message:`;
     console.log('[CommandParser] Parsing with model:', model);
     console.log('[CommandParser] Input:', userInput);
 
+    // Input validation
+    if (!userInput || typeof userInput !== 'string') {
+      throw new Error('Invalid input: userInput must be a non-empty string');
+    }
+
+    const trimmedInput = userInput.trim();
+    if (!trimmedInput) {
+      throw new Error('Invalid input: userInput cannot be empty or whitespace');
+    }
+
+    // Check for excessive length (prevent token overruns)
+    const MAX_INPUT_LENGTH = 1000; // Reasonable limit for voice commands
+    if (trimmedInput.length > MAX_INPUT_LENGTH) {
+      console.warn('[CommandParser] Input too long, truncating:', trimmedInput.length);
+      // Don't throw - just truncate and continue
+    }
+
     try {
+      // Pre-check: Verify API key is available before attempting AI parsing
+      const hasApiKey = await this.checkApiKeyAvailable(model);
+      if (!hasApiKey) {
+        console.warn('[CommandParser] No API key available for model:', model);
+        throw new Error('API key not configured for selected model');
+      }
+
       // Use the processWithCustomPrompt method to call AI with our specialized prompt
       const extractedText = await this.processWithCustomPrompt(
         userInput,
@@ -85,6 +112,59 @@ Extracted message:`;
   }
 
   /**
+   * Check if API key is available for the given model
+   * This prevents unnecessary API calls when keys aren't configured
+   */
+  private static async checkApiKeyAvailable(model: string): Promise<boolean> {
+    if (typeof window === 'undefined' || !window.electronAPI) {
+      return false;
+    }
+
+    try {
+      // Determine provider from model name
+      const provider = this.getProviderForModel(model);
+
+      // Check if API key exists for this provider
+      let apiKey = '';
+      switch (provider) {
+        case 'gemini':
+          apiKey = await window.electronAPI.getGeminiKey?.() || '';
+          break;
+        case 'openai':
+          apiKey = await window.electronAPI.getOpenAIKey?.() || '';
+          break;
+        case 'anthropic':
+          apiKey = await window.electronAPI.getAnthropicKey?.() || '';
+          break;
+        default:
+          return false;
+      }
+
+      return apiKey.length > 0;
+    } catch (error) {
+      console.error('[CommandParser] Failed to check API key:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Determine the provider for a given model
+   */
+  private static getProviderForModel(model: string): 'gemini' | 'openai' | 'anthropic' | 'unknown' {
+    const lowerModel = model.toLowerCase();
+
+    if (lowerModel.includes('gemini')) {
+      return 'gemini';
+    } else if (lowerModel.includes('gpt') || lowerModel.includes('o1') || lowerModel.includes('o3')) {
+      return 'openai';
+    } else if (lowerModel.includes('claude')) {
+      return 'anthropic';
+    }
+
+    return 'unknown';
+  }
+
+  /**
    * Internal method to process text with a custom system prompt
    *
    * This temporarily stores custom prompts in localStorage, calls ReasoningService,
@@ -101,7 +181,20 @@ Extracted message:`;
     systemPrompt: string,
     model: string
   ): Promise<string> {
+    // Wait for any ongoing processing to complete (prevents race conditions)
+    while (this.processingLock) {
+      await this.processingLock;
+    }
+
+    // Acquire lock
+    let releaseLock: () => void;
+    this.processingLock = new Promise(resolve => {
+      releaseLock = resolve;
+    });
+
     if (typeof window === 'undefined' || !window.localStorage) {
+      releaseLock();
+      this.processingLock = null;
       throw new Error('localStorage not available');
     }
 
@@ -145,6 +238,10 @@ Extracted message:`;
         window.localStorage.removeItem('customPrompts');
       }
       console.log('[CommandParser] Restored original prompts');
+
+      // Release lock
+      releaseLock();
+      this.processingLock = null;
     }
   }
 
