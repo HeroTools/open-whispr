@@ -187,12 +187,14 @@ export default function App() {
         },
         onTranscriptionComplete: async (result) => {
           if (result.success && result.text) {
+            console.log('[App] Transcription complete:', result.text);
             setTranscript(result.text);
 
             // Check if this is a command
             const commandDetection = CommandService.detectCommand(result.text);
 
             if (commandDetection.isCommand) {
+              console.log('[App] Command detected! Starting execution flow...');
               // This is a command - show countdown and execute
               setCommandStatus("sending");
               setCommandCountdown(5);
@@ -201,9 +203,12 @@ export default function App() {
               abortControllerRef.current = new AbortController();
 
               // Get webhook URL
+              console.log('[App] Fetching webhook URL from settings...');
               const webhookUrl = await window.electronAPI.getSlackWebhook();
+              console.log('[App] Webhook URL retrieved:', webhookUrl ? 'SET' : 'NOT SET');
 
               // Execute command with countdown
+              console.log('[App] Calling CommandService.executeCommand...');
               const commandResult = await CommandService.executeCommand(
                 commandDetection,
                 webhookUrl,
@@ -213,14 +218,18 @@ export default function App() {
                 abortControllerRef.current.signal
               );
 
+              console.log('[App] Command execution result:', commandResult);
+
               // Update status based on result
               if (commandResult.success) {
+                console.log('[App] ✓ Command succeeded! Showing success message');
                 setCommandStatus("sent");
                 // Auto-hide after 1 second
                 setTimeout(() => {
                   setCommandStatus("pending");
                 }, 1000);
               } else {
+                console.error('[App] ✗ Command failed:', commandResult.error);
                 setCommandStatus("failed");
                 setCommandMessage(commandResult.error || "Failed to send");
                 // Auto-hide after 3 seconds
@@ -234,9 +243,10 @@ export default function App() {
               await window.electronAPI
                 .saveTranscription(result.text)
                 .catch((err) => {
-                  // Failed to save transcription
+                  console.error('[App] Failed to save transcription to database:', err);
                 });
             } else {
+              console.log('[App] No command detected - performing normal paste');
               // Not a command - normal paste flow
               // Paste immediately - don't wait for database save
               const pastePromise = safePaste(result.text);
@@ -245,7 +255,7 @@ export default function App() {
               const savePromise = window.electronAPI
                 .saveTranscription(result.text)
                 .catch((err) => {
-                  // Failed to save transcription
+                  console.error('[App] Failed to save transcription to database:', err);
                 });
 
               // Wait for paste to complete, but don't block on database save
