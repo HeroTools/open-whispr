@@ -770,6 +770,30 @@ export default function SettingsPage({
                   <span className="mr-2">⚙️</span>
                   Fix Permission Issues
                 </Button>
+                {!permissionsHook.micPermissionGranted && (
+                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
+                    <p className="text-sm text-amber-900">
+                      {permissionsHook.micPermissionError ||
+                        "If macOS never shows the microphone prompt, open Sound settings, pick your microphone, then try the test again."}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={permissionsHook.openSoundInputSettings}
+                      >
+                        Open Sound Input Settings
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={permissionsHook.openMicPrivacySettings}
+                      >
+                        Open Microphone Privacy
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
