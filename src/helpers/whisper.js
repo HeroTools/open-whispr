@@ -17,6 +17,48 @@ class WhisperManager {
     this.pythonInstaller = new PythonInstaller();
   }
 
+  sanitizeErrorMessage(message = "") {
+    if (!message) {
+      return "";
+    }
+    return message.replace(/\x1B\[[0-9;]*m/g, "");
+  }
+
+  shouldRetryWithUserInstall(message = "") {
+    const normalized = this.sanitizeErrorMessage(message).toLowerCase();
+    const shouldUseUser = (
+      normalized.includes("permission denied") ||
+      normalized.includes("access is denied") ||
+      normalized.includes("externally-managed-environment") ||
+      normalized.includes("externally managed environment") ||
+      normalized.includes("pep 668") ||
+      normalized.includes("--break-system-packages")
+    );
+    return shouldUseUser;
+  }
+
+  isTomlResolverError(message = "") {
+    const normalized = this.sanitizeErrorMessage(message).toLowerCase();
+    return (
+      normalized.includes("pyproject.toml") || normalized.includes("tomlerror")
+    );
+  }
+
+  formatWhisperInstallError(message = "") {
+    let formatted = this.sanitizeErrorMessage(message) || "Whisper installation failed.";
+    const lower = formatted.toLowerCase();
+
+    if (lower.includes("microsoft visual c++")) {
+      return "Microsoft Visual C++ build tools required. Install Visual Studio Build Tools.";
+    }
+
+    if (lower.includes("no matching distribution")) {
+      return "Python version incompatible. OpenAI Whisper requires Python 3.8-3.11.";
+    }
+
+    return formatted;
+  }
+
   getWhisperScriptPath() {
     // In production, the file is unpacked from ASAR
     if (process.env.NODE_ENV === "development") {
@@ -753,14 +795,16 @@ class WhisperManager {
     try {
       await this.upgradePip(pythonCmd);
     } catch (error) {
-      debugLogger.log("First pip upgrade attempt failed:", error.message);
+      const cleanUpgradeError = this.sanitizeErrorMessage(error.message);
+      debugLogger.log("First pip upgrade attempt failed:", cleanUpgradeError);
       
       // Try user install for pip upgrade
       try {
         await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
       } catch (userError) {
+        const cleanUserError = this.sanitizeErrorMessage(userError.message);
         // If pip upgrade fails completely, try to detect if it's the TOML error
-        if (error.message.includes("pyproject.toml") || error.message.includes("TomlError")) {
+        if (this.isTomlResolverError(cleanUpgradeError) || this.isTomlResolverError(cleanUserError)) {
           // Try installing with legacy resolver as a workaround
           try {
             await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
@@ -773,36 +817,48 @@ class WhisperManager {
       }
     }
     
-    // Try regular install, then user install if permission issues
-    // Install OpenAI Whisper
-    try {
-      return await runCommand(pythonCmd, ["-m", "pip", "install", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
-    } catch (error) {
-      if (error.message.includes("Permission denied") || error.message.includes("access is denied")) {
-        // Retry with user installation
-        return await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
+    const buildInstallArgs = ({ user = false, legacy = false } = {}) => {
+      const args = ["-m", "pip", "install"];
+      if (legacy) {
+        args.push("--use-deprecated=legacy-resolver");
       }
+      if (user) {
+        args.push("--user");
+      }
+      args.push("-U", "openai-whisper");
+      return args;
+    };
+    
+    try {
+      return await runCommand(pythonCmd, buildInstallArgs(), { timeout: TIMEOUTS.DOWNLOAD });
+    } catch (error) {
+      const cleanMessage = this.sanitizeErrorMessage(error.message);
       
-      // If we still get TOML error after pip upgrade, try legacy resolver for whisper
-      if (error.message.includes("pyproject.toml") || error.message.includes("TomlError")) {
-        // TOML error persists, try legacy resolver
+      if (this.shouldRetryWithUserInstall(cleanMessage)) {
         try {
-          return await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
-        } catch (legacyError) {
-          // Try user install with legacy resolver
-          return await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--use-deprecated=legacy-resolver", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
+          return await runCommand(pythonCmd, buildInstallArgs({ user: true }), { timeout: TIMEOUTS.DOWNLOAD });
+        } catch (userError) {
+          const userMessage = this.sanitizeErrorMessage(userError.message);
+          if (this.isTomlResolverError(userMessage)) {
+            return await runCommand(pythonCmd, buildInstallArgs({ user: true, legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+          }
+          throw new Error(this.formatWhisperInstallError(userMessage));
         }
       }
       
-      // Enhanced error messages for common issues
-      let message = error.message;
-      if (message.includes("Microsoft Visual C++")) {
-        message = "Microsoft Visual C++ build tools required. Install Visual Studio Build Tools.";
-      } else if (message.includes("No matching distribution")) {
-        message = "Python version incompatible. OpenAI Whisper requires Python 3.8-3.11.";
+      if (this.isTomlResolverError(cleanMessage)) {
+        try {
+          return await runCommand(pythonCmd, buildInstallArgs({ legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+        } catch (legacyError) {
+          const legacyMessage = this.sanitizeErrorMessage(legacyError.message);
+          if (this.shouldRetryWithUserInstall(legacyMessage)) {
+            return await runCommand(pythonCmd, buildInstallArgs({ user: true, legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+          }
+          throw new Error(this.formatWhisperInstallError(legacyMessage));
+        }
       }
       
-      throw new Error(message);
+      throw new Error(this.formatWhisperInstallError(cleanMessage));
     }
   }
 
