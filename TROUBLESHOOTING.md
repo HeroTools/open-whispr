@@ -60,4 +60,14 @@ If any of these look wrong (e.g., `x86_64` binaries on an Apple Silicon host), r
 4. Delete `~/Library/Application Support/whisper` if partially downloaded models exist, then try again.
 5. As a last resort, run `scripts/complete-uninstall.sh`, reboot, and rerun onboarding so the installer can download a clean toolchain.
 
+### 5. Local Whisper can't find Python on Windows
+**Symptoms:** The toast shows `Whisper process error: spawn python ENOENT` as soon as transcription starts.
+
+**Resolution:**
+1. Update to the latest desktop build—recent releases probe the Windows `py` launcher plus the common `Python312`/`Python311` folders instead of relying on `python.exe` being on PATH.
+2. Open `cmd` and run `py --version`. If this command fails, reinstall Python 3.11+ from [python.org](https://www.python.org/downloads/windows/) and keep the “Install launcher” checkbox ticked.
+3. If you installed Python to a custom directory, set `OPENWHISPR_PYTHON` to the full path (e.g. `setx OPENWHISPR_PYTHON "D:\\Tools\\Python312\\python.exe"`) and restart the app so the bridge can pick it up.
+4. Re-run the Local Whisper onboarding check or use the Control Panel → Whisper Engine card to verify detection succeeds.
+5. If you would rather stay on cloud transcription, open the Control Panel, toggle off “Use Local Whisper”, or enable “Allow OpenAI fallback” so the app automatically switches to the API whenever Python is missing.
+
 Need deeper help? Capture the diagnostic command output and attach it to an issue so we can see which stage failed.
