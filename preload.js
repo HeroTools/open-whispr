@@ -14,6 +14,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   clearTranscriptions: () => ipcRenderer.invoke("db-clear-transcriptions"),
   deleteTranscription: (id) =>
     ipcRenderer.invoke("db-delete-transcription", id),
+  onTranscriptionAdded: (callback) => {
+    const listener = (_event, transcription) => callback?.(transcription);
+    ipcRenderer.on("transcription-added", listener);
+    return () => ipcRenderer.removeListener("transcription-added", listener);
+  },
+  onTranscriptionDeleted: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("transcription-deleted", listener);
+    return () => ipcRenderer.removeListener("transcription-deleted", listener);
+  },
+  onTranscriptionsCleared: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("transcriptions-cleared", listener);
+    return () =>
+      ipcRenderer.removeListener("transcriptions-cleared", listener);
+  },
 
   // Environment variables
   getOpenAIKey: () => ipcRenderer.invoke("get-openai-key"),

@@ -916,7 +916,20 @@ export default function SettingsPage({
                 <ApiKeyInput
                   apiKey={openaiApiKey}
                   setApiKey={setOpenaiApiKey}
-                  helpText="Supports OpenAI or compatible endpoints"
+                  helpText={
+                    <>
+                      Supports OpenAI or compatible endpoints.{" "}
+                      <a
+                        href="https://platform.openai.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        Get an API key
+                      </a>
+                      .
+                    </>
+                  }
                 />
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-blue-900">

@@ -17,6 +17,48 @@ class WhisperManager {
     this.pythonInstaller = new PythonInstaller();
   }
 
+  sanitizeErrorMessage(message = "") {
+    if (!message) {
+      return "";
+    }
+    return message.replace(/\x1B\[[0-9;]*m/g, "");
+  }
+
+  shouldRetryWithUserInstall(message = "") {
+    const normalized = this.sanitizeErrorMessage(message).toLowerCase();
+    const shouldUseUser = (
+      normalized.includes("permission denied") ||
+      normalized.includes("access is denied") ||
+      normalized.includes("externally-managed-environment") ||
+      normalized.includes("externally managed environment") ||
+      normalized.includes("pep 668") ||
+      normalized.includes("--break-system-packages")
+    );
+    return shouldUseUser;
+  }
+
+  isTomlResolverError(message = "") {
+    const normalized = this.sanitizeErrorMessage(message).toLowerCase();
+    return (
+      normalized.includes("pyproject.toml") || normalized.includes("tomlerror")
+    );
+  }
+
+  formatWhisperInstallError(message = "") {
+    let formatted = this.sanitizeErrorMessage(message) || "Whisper installation failed.";
+    const lower = formatted.toLowerCase();
+
+    if (lower.includes("microsoft visual c++")) {
+      return "Microsoft Visual C++ build tools required. Install Visual Studio Build Tools.";
+    }
+
+    if (lower.includes("no matching distribution")) {
+      return "Python version incompatible. OpenAI Whisper requires Python 3.8-3.11.";
+    }
+
+    return formatted;
+  }
+
   getWhisperScriptPath() {
     // In production, the file is unpacked from ASAR
     if (process.env.NODE_ENV === "development") {
@@ -335,6 +377,23 @@ class WhisperManager {
         if (isResolved) return;
         isResolved = true;
         clearTimeout(timeout);
+
+        if (error.code === "ENOENT") {
+          const platformHelp =
+            process.platform === "win32"
+              ? 'Install Python 3.11+ from python.org with the "Install launcher" option, or set OPENWHISPR_PYTHON to the full path (for example C:\\\\Python312\\\\python.exe).'
+              : "Install Python 3.11+ (for example `brew install python@3.11`) or set OPENWHISPR_PYTHON to the interpreter you want OpenWhispr to use.";
+          const fallbackHelp =
+            "You can also disable Local Whisper or enable the OpenAI fallback in Settings to continue using cloud transcription.";
+          const message = [
+            "Local Whisper could not start because Python was not found on this system.",
+            platformHelp,
+            fallbackHelp,
+          ].join(" ");
+          reject(new Error(message));
+          return;
+        }
+
         reject(new Error(`Whisper process error: ${error.message}`));
       });
     });
@@ -381,30 +440,62 @@ class WhisperManager {
   }
 
   async findPythonExecutable() {
-    // Return cached result if available
     if (this.pythonCmd) {
       return this.pythonCmd;
     }
 
-    const possiblePaths = [
+    const candidateSet = new Set();
+    const addCandidate = (candidate) => {
+      if (!candidate || typeof candidate !== "string") {
+        return;
+      }
+      const sanitized = candidate.trim().replace(/^["']|["']$/g, "");
+      if (sanitized.length === 0) {
+        return;
+      }
+      candidateSet.add(sanitized);
+    };
+
+    if (process.env.OPENWHISPR_PYTHON) {
+      addCandidate(process.env.OPENWHISPR_PYTHON);
+    }
+
+    if (process.platform === "win32") {
+      this.getWindowsPythonCandidates().forEach(addCandidate);
+    }
+
+    const commonCandidates = [
+      "python3.12",
       "python3.11",
+      "python3.10",
       "python3",
       "python",
+      "/usr/bin/python3.12",
       "/usr/bin/python3.11",
+      "/usr/bin/python3.10",
       "/usr/bin/python3",
+      "/usr/local/bin/python3.12",
       "/usr/local/bin/python3.11",
+      "/usr/local/bin/python3.10",
       "/usr/local/bin/python3",
+      "/opt/homebrew/bin/python3.12",
       "/opt/homebrew/bin/python3.11",
+      "/opt/homebrew/bin/python3.10",
       "/opt/homebrew/bin/python3",
       "/usr/bin/python",
       "/usr/local/bin/python",
     ];
+    commonCandidates.forEach(addCandidate);
 
-    for (const pythonPath of possiblePaths) {
+    for (const pythonPath of candidateSet) {
+      if (path.isAbsolute(pythonPath) && !fs.existsSync(pythonPath)) {
+        continue;
+      }
+
       try {
         const version = await this.getPythonVersion(pythonPath);
         if (this.isPythonVersionSupported(version)) {
-          this.pythonCmd = pythonPath; // Cache the result
+          this.pythonCmd = pythonPath;
           return pythonPath;
         }
       } catch (error) {
@@ -413,8 +504,57 @@ class WhisperManager {
     }
 
     throw new Error(
-      "Python 3.x not found. Use installPython() to install it automatically."
+      'Python 3.x not found. Click "Install Python" in Settings or set OPENWHISPR_PYTHON to a valid interpreter path.'
     );
+  }
+
+  getWindowsPythonCandidates() {
+    const candidates = [];
+    const versionSuffixes = ["313", "312", "311", "310", "39", "38"];
+
+    const systemDrive = process.env.SystemDrive || "C:";
+    const windowsDir =
+      process.env.WINDIR || path.join(systemDrive, "Windows");
+
+    candidates.push("py");
+    candidates.push("py.exe");
+    candidates.push("python3");
+    candidates.push("python3.exe");
+    candidates.push("python");
+    candidates.push("python.exe");
+    candidates.push(path.join(windowsDir, "py.exe"));
+
+    const baseDirs = [];
+    if (process.env.LOCALAPPDATA) {
+      baseDirs.push(path.join(process.env.LOCALAPPDATA, "Programs", "Python"));
+      const windowsApps = path.join(
+        process.env.LOCALAPPDATA,
+        "Microsoft",
+        "WindowsApps"
+      );
+      candidates.push(path.join(windowsApps, "python.exe"));
+      candidates.push(path.join(windowsApps, "python3.exe"));
+    }
+    if (process.env.ProgramFiles) {
+      baseDirs.push(process.env.ProgramFiles);
+    }
+    if (process.env["ProgramFiles(x86)"]) {
+      baseDirs.push(process.env["ProgramFiles(x86)"]);
+    }
+    baseDirs.push(systemDrive);
+
+    for (const baseDir of baseDirs) {
+      if (!baseDir) {
+        continue;
+      }
+
+      for (const suffix of versionSuffixes) {
+        const folderName = `Python${suffix}`;
+        candidates.push(path.join(baseDir, folderName, "python.exe"));
+      }
+    }
+
+    return candidates;
   }
 
   async installPython(progressCallback = null) {
@@ -655,14 +795,16 @@ class WhisperManager {
     try {
       await this.upgradePip(pythonCmd);
     } catch (error) {
-      debugLogger.log("First pip upgrade attempt failed:", error.message);
+      const cleanUpgradeError = this.sanitizeErrorMessage(error.message);
+      debugLogger.log("First pip upgrade attempt failed:", cleanUpgradeError);
       
       // Try user install for pip upgrade
       try {
         await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
       } catch (userError) {
+        const cleanUserError = this.sanitizeErrorMessage(userError.message);
         // If pip upgrade fails completely, try to detect if it's the TOML error
-        if (error.message.includes("pyproject.toml") || error.message.includes("TomlError")) {
+        if (this.isTomlResolverError(cleanUpgradeError) || this.isTomlResolverError(cleanUserError)) {
           // Try installing with legacy resolver as a workaround
           try {
             await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
@@ -675,36 +817,48 @@ class WhisperManager {
       }
     }
     
-    // Try regular install, then user install if permission issues
-    // Install OpenAI Whisper
-    try {
-      return await runCommand(pythonCmd, ["-m", "pip", "install", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
-    } catch (error) {
-      if (error.message.includes("Permission denied") || error.message.includes("access is denied")) {
-        // Retry with user installation
-        return await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
+    const buildInstallArgs = ({ user = false, legacy = false } = {}) => {
+      const args = ["-m", "pip", "install"];
+      if (legacy) {
+        args.push("--use-deprecated=legacy-resolver");
       }
+      if (user) {
+        args.push("--user");
+      }
+      args.push("-U", "openai-whisper");
+      return args;
+    };
+    
+    try {
+      return await runCommand(pythonCmd, buildInstallArgs(), { timeout: TIMEOUTS.DOWNLOAD });
+    } catch (error) {
+      const cleanMessage = this.sanitizeErrorMessage(error.message);
       
-      // If we still get TOML error after pip upgrade, try legacy resolver for whisper
-      if (error.message.includes("pyproject.toml") || error.message.includes("TomlError")) {
-        // TOML error persists, try legacy resolver
+      if (this.shouldRetryWithUserInstall(cleanMessage)) {
         try {
-          return await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
-        } catch (legacyError) {
-          // Try user install with legacy resolver
-          return await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--use-deprecated=legacy-resolver", "-U", "openai-whisper"], { timeout: TIMEOUTS.DOWNLOAD });
+          return await runCommand(pythonCmd, buildInstallArgs({ user: true }), { timeout: TIMEOUTS.DOWNLOAD });
+        } catch (userError) {
+          const userMessage = this.sanitizeErrorMessage(userError.message);
+          if (this.isTomlResolverError(userMessage)) {
+            return await runCommand(pythonCmd, buildInstallArgs({ user: true, legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+          }
+          throw new Error(this.formatWhisperInstallError(userMessage));
         }
       }
       
-      // Enhanced error messages for common issues
-      let message = error.message;
-      if (message.includes("Microsoft Visual C++")) {
-        message = "Microsoft Visual C++ build tools required. Install Visual Studio Build Tools.";
-      } else if (message.includes("No matching distribution")) {
-        message = "Python version incompatible. OpenAI Whisper requires Python 3.8-3.11.";
+      if (this.isTomlResolverError(cleanMessage)) {
+        try {
+          return await runCommand(pythonCmd, buildInstallArgs({ legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+        } catch (legacyError) {
+          const legacyMessage = this.sanitizeErrorMessage(legacyError.message);
+          if (this.shouldRetryWithUserInstall(legacyMessage)) {
+            return await runCommand(pythonCmd, buildInstallArgs({ user: true, legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+          }
+          throw new Error(this.formatWhisperInstallError(legacyMessage));
+        }
       }
       
-      throw new Error(message);
+      throw new Error(this.formatWhisperInstallError(cleanMessage));
     }
   }
 

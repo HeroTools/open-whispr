@@ -127,6 +127,15 @@ declare global {
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+      onTranscriptionAdded?: (
+        callback: (item: TranscriptionItem) => void
+      ) => (() => void) | void;
+      onTranscriptionDeleted?: (
+        callback: (payload: { id: number }) => void
+      ) => (() => void) | void;
+      onTranscriptionsCleared?: (
+        callback: (payload: { cleared: number }) => void
+      ) => (() => void) | void;
 
       // API key management
       getOpenAIKey: () => Promise<string>;
@@ -250,7 +259,7 @@ declare global {
       removeAllListeners: (channel: string) => void;
 
       // Hotkey management
-      updateHotkey: (key: string) => Promise<void>;
+      updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
       
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;

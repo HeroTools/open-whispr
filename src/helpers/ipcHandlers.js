@@ -1,4 +1,4 @@
-const { ipcMain, app, shell } = require("electron");
+const { ipcMain, app, shell, BrowserWindow } = require("electron");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 
@@ -90,7 +90,11 @@ class IPCHandlers {
 
     // Database handlers
     ipcMain.handle("db-save-transcription", async (event, text) => {
-      return this.databaseManager.saveTranscription(text);
+      const result = this.databaseManager.saveTranscription(text);
+      if (result?.success && result?.transcription) {
+        this.broadcastToWindows("transcription-added", result.transcription);
+      }
+      return result;
     });
 
     ipcMain.handle("db-get-transcriptions", async (event, limit = 50) => {
@@ -98,11 +102,21 @@ class IPCHandlers {
     });
 
     ipcMain.handle("db-clear-transcriptions", async (event) => {
-      return this.databaseManager.clearTranscriptions();
+      const result = this.databaseManager.clearTranscriptions();
+      if (result?.success) {
+        this.broadcastToWindows("transcriptions-cleared", {
+          cleared: result.cleared,
+        });
+      }
+      return result;
     });
 
     ipcMain.handle("db-delete-transcription", async (event, id) => {
-      return this.databaseManager.deleteTranscription(id);
+      const result = this.databaseManager.deleteTranscription(id);
+      if (result?.success) {
+        this.broadcastToWindows("transcription-deleted", { id });
+      }
+      return result;
     });
 
     // Clipboard handlers
@@ -504,6 +518,15 @@ class IPCHandlers {
     ipcMain.handle("log-reasoning", async (event, stage, details) => {
       debugLogger.logReasoning(stage, details);
       return { success: true };
+    });
+  }
+
+  broadcastToWindows(channel, payload) {
+    const windows = BrowserWindow.getAllWindows();
+    windows.forEach((win) => {
+      if (!win.isDestroyed()) {
+        win.webContents.send(channel, payload);
+      }
     });
   }
 }
