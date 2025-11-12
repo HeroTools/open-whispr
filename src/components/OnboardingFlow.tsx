@@ -296,6 +296,34 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   }, [currentStep]);
 
+  const ensureHotkeyRegistered = useCallback(async () => {
+    if (!window.electronAPI?.updateHotkey) {
+      return true;
+    }
+
+    try {
+      const result = await window.electronAPI.updateHotkey(hotkey);
+      if (result && !result.success) {
+        showAlertDialog({
+          title: "Hotkey Not Registered",
+          description:
+            result.message ||
+            "We couldn't register that key. Please choose another hotkey.",
+        });
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error("Failed to register onboarding hotkey", error);
+      showAlertDialog({
+        title: "Hotkey Error",
+        description:
+          "We couldn't register that key. Please choose another hotkey.",
+      });
+      return false;
+    }
+  }, [hotkey, showAlertDialog]);
+
   const saveSettings = useCallback(async () => {
     const normalizedTranscriptionBase = (transcriptionBaseUrl || '').trim();
     const normalizedReasoningBaseValue = (reasoningBaseUrl || '').trim();
@@ -313,24 +341,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       reasoningModel,
       cloudReasoningBaseUrl: normalizedReasoningBaseValue,
     });
-    setDictationKey(hotkey);
-    try {
-      const result = await window.electronAPI?.updateHotkey?.(hotkey);
-      if (result && !result.success) {
-        showAlertDialog({
-          title: "Hotkey Not Registered",
-          description:
-            result.message ||
-            "We couldn't register that key. Please choose another hotkey.",
-        });
-      }
-    } catch (error) {
-      console.error("Failed to register onboarding hotkey", error);
-      showAlertDialog({
-        title: "Hotkey Error",
-        description: "We couldn't register that key. Please choose another hotkey.",
-      });
+    const hotkeyRegistered = await ensureHotkeyRegistered();
+    if (!hotkeyRegistered) {
+      return false;
     }
+    setDictationKey(hotkey);
     saveAgentName(agentName);
 
     localStorage.setItem(
@@ -342,11 +357,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       permissionsHook.accessibilityPermissionGranted.toString()
     );
     localStorage.setItem("onboardingCompleted", "true");
+    const trimmedApiKey = apiKey.trim();
+    const skipAuth = trimmedApiKey.length === 0;
+    localStorage.setItem("skipAuth", skipAuth.toString());
 
-    if (!useLocalWhisper && apiKey.trim()) {
-      await window.electronAPI.saveOpenAIKey(apiKey);
-      updateApiKeys({ openaiApiKey: apiKey });
+    if (!useLocalWhisper && trimmedApiKey) {
+      await window.electronAPI.saveOpenAIKey(trimmedApiKey);
+      updateApiKeys({ openaiApiKey: trimmedApiKey });
     }
+    return true;
   }, [
     whisperModel,
     hotkey,
@@ -364,21 +383,33 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setDictationKey,
+    ensureHotkeyRegistered,
   ]);
 
-  const nextStep = useCallback(() => {
-    if (currentStep < steps.length - 1) {
-      const newStep = currentStep + 1;
-      setCurrentStep(newStep);
+  const nextStep = useCallback(async () => {
+    if (currentStep >= steps.length - 1) {
+      return;
+    }
 
-      // Show dictation panel when moving from permissions step (3) to hotkey step (4)
-      if (currentStep === 3 && newStep === 4) {
-        if (window.electronAPI?.showDictationPanel) {
-          window.electronAPI.showDictationPanel();
-        }
+    const newStep = currentStep + 1;
+
+    if (currentStep === 4) {
+      const registered = await ensureHotkeyRegistered();
+      if (!registered) {
+        return;
+      }
+      setDictationKey(hotkey);
+    }
+
+    setCurrentStep(newStep);
+
+    // Show dictation panel when moving from permissions step (3) to hotkey step (4)
+    if (currentStep === 3 && newStep === 4) {
+      if (window.electronAPI?.showDictationPanel) {
+        window.electronAPI.showDictationPanel();
       }
     }
-  }, [currentStep, setCurrentStep, steps.length]);
+  }, [currentStep, ensureHotkeyRegistered, hotkey, setCurrentStep, setDictationKey, steps.length]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -388,7 +419,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [currentStep, setCurrentStep]);
 
   const finishOnboarding = useCallback(async () => {
-    await saveSettings();
+    const saved = await saveSettings();
+    if (!saved) {
+      return;
+    }
     // Clear the onboarding step since we're done
     removeCurrentStep();
     onComplete();
@@ -606,7 +640,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   apiKey={apiKey}
                   setApiKey={setApiKey}
                   label="OpenAI API Key"
-                  helpText="Get your API key from platform.openai.com"
+                  helpText={
+                    <>
+                      Need an API key?{" "}
+                      <a
+                        href="https://platform.openai.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-600 underline"
+                      >
+                        platform.openai.com
+                      </a>
+                    </>
+                  }
                 />
 
                 <div className="space-y-2">

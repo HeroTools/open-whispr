@@ -250,7 +250,7 @@ declare global {
       removeAllListeners: (channel: string) => void;
 
       // Hotkey management
-      updateHotkey: (key: string) => Promise<void>;
+      updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
       
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;

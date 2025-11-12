@@ -1,4 +1,3 @@
-import TextCleanup from "../utils/textCleanup";
 import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
@@ -136,24 +135,6 @@ class AudioManager {
       this.isProcessing = false;
       this.onStateChange?.({ isRecording: false, isProcessing: false });
     }
-  }
-
-  static cleanTranscription(text, options = {}) {
-    return TextCleanup.cleanTranscription(text, {
-      removeArtifacts: true,
-      normalizeSpaces: true,
-      fixPunctuation: true,
-      removeFillers: true,
-      removeRepetitions: true,
-      capitalizeFirst: true,
-      addPeriod: false,
-      ...options,
-    });
-  }
-
-  static cleanTranscriptionForAPI(text) {
-    // Minimal cleanup - only normalize spaces for API processing
-    return TextCleanup.normalizeSpaces(text);
   }
 
   async processWithLocalWhisper(audioBlob, model = "base") {
@@ -457,12 +438,13 @@ class AudioManager {
   }
 
   async processTranscription(text, source) {
+    const normalizedText = typeof text === "string" ? text.trim() : "";
     
     // Log incoming transcription
     debugLogger.logReasoning("TRANSCRIPTION_RECEIVED", {
       source,
-      textLength: text.length,
-      textPreview: text.substring(0, 100) + (text.length > 100 ? "..." : ""),
+      textLength: normalizedText.length,
+      textPreview: normalizedText.substring(0, 100) + (normalizedText.length > 100 ? "..." : ""),
       timestamp: new Date().toISOString()
     });
     
@@ -490,7 +472,7 @@ class AudioManager {
     if (useReasoning) {
       try {
         // Minimal cleanup for reasoning models
-        const preparedText = AudioManager.cleanTranscriptionForAPI(text);
+        const preparedText = normalizedText;
         
         debugLogger.logReasoning("SENDING_TO_REASONING", {
           preparedTextLength: preparedText.length,
@@ -523,7 +505,7 @@ class AudioManager {
     });
     
     // Standard cleanup when reasoning is unavailable or fails
-    return AudioManager.cleanTranscription(text);
+    return normalizedText;
   }
 
   async processWithOpenAIAPI(audioBlob) {
