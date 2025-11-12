@@ -88,6 +88,24 @@ npm run pack
 
 **Note**: On macOS, you may see a security warning when first opening the unsigned app. Right-click and select "Open" to bypass this.
 
+#### Debian / Ubuntu (Packaging & Install)
+
+To build and install the `.deb` package on Debian-based distributions:
+
+```bash
+npm run pack:linux
+sudo apt install ./dist/open-whispr_*_amd64.deb
+# or: sudo dpkg -i ./dist/open-whispr_*_amd64.deb
+```
+
+Optional dependencies for automatic paste on X11:
+
+```bash
+sudo apt install xdotool
+```
+
+> ℹ️ On Wayland sessions, `xdotool` only works when running OpenWhispr under XWayland. Without it, dictation still copies text to the clipboard; you just need to paste manually.
+
 ### Building for Distribution
 
 For maintainers who need to distribute signed builds:
