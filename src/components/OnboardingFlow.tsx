@@ -25,7 +25,7 @@ import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
 import StepProgress from "./ui/StepProgress";
-import { AlertDialog } from "./ui/dialog";
+import { AlertDialog, ConfirmDialog } from "./ui/dialog";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useDialogs } from "../hooks/useDialogs";
 import { useWhisper } from "../hooks/useWhisper";
@@ -91,7 +91,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [reasoningBaseUrl, setReasoningBaseUrl] = useState(cloudReasoningBaseUrl);
   const [agentName, setAgentName] = useState("Agent");
   const readableHotkey = formatHotkeyLabel(hotkey);
-  const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
+  const {
+    alertDialog,
+    confirmDialog,
+    showAlertDialog,
+    showConfirmDialog,
+    hideAlertDialog,
+    hideConfirmDialog,
+  } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
   const trimmedReasoningBase = (reasoningBaseUrl || "").trim();
@@ -565,16 +572,29 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                             pythonHook.installPython();
                           }}
                           className="w-full bg-blue-600 hover:bg-blue-700"
-                        >
-                          Install Python
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={() => pythonHook.checkPythonInstallation()}
                           disabled={pythonHook.isChecking}
                         >
-                          {pythonHook.isChecking ? "Rechecking..." : "Recheck for Existing Python"}
+                          {pythonHook.isChecking ? "Please Wait..." : "Install Python"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-center text-indigo-600"
+                          disabled={pythonHook.isChecking}
+                          onClick={() =>
+                            showConfirmDialog({
+                              title: "Use existing Python?",
+                              description:
+                                "We’ll skip the installer and search for the interpreter already on your system (including OPENWHISPR_PYTHON and the Windows py launcher). Continue?",
+                              confirmText: "Use Existing Python",
+                              cancelText: "Keep Installing",
+                              onConfirm: () => {
+                                pythonHook.checkPythonInstallation();
+                              },
+                            })
+                          }
+                        >
+                          Use Existing Python Instead
                         </Button>
                       </div>
                     )}
@@ -1183,6 +1203,16 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => !open && hideConfirmDialog()}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        onConfirm={confirmDialog.onConfirm}
+      />
+
       <AlertDialog
         open={alertDialog.open}
         onOpenChange={(open) => !open && hideAlertDialog()}
