@@ -33,7 +33,14 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-      
+
+    # Linux packaging dependencies
+    - name: Install Linux packaging dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y rpm flatpak flatpak-builder
+
     # macOS code signing setup - industry standard approach
     - name: Setup macOS Code Signing
       if: matrix.os == 'macos-latest' && github.event_name != 'pull_request'
