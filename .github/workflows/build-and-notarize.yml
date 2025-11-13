@@ -45,28 +45,12 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-electron-
 
-    # Linux packaging dependencies
+    # Linux packaging dependencies (rpm for Fedora/RHEL packages)
     - name: Install Linux packaging dependencies
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y rpm flatpak flatpak-builder
-
-    - name: Cache Flatpak runtime
-      if: matrix.os == 'ubuntu-latest'
-      uses: actions/cache@v4
-      with:
-        path: ~/.local/share/flatpak
-        key: ${{ runner.os }}-flatpak-24.08-${{ hashFiles('electron-builder.json') }}
-        restore-keys: |
-          ${{ runner.os }}-flatpak-24.08-
-          ${{ runner.os }}-flatpak-
-
-    - name: Setup Flatpak runtime
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
-        flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+        sudo apt-get install -y rpm
 
     # macOS code signing setup - industry standard approach
     - name: Setup macOS Code Signing

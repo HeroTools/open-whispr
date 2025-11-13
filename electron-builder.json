@@ -69,8 +69,7 @@
       "AppImage",
       "deb",
       "rpm",
-      "tar.gz",
-      "flatpak"
+      "tar.gz"
     ],
     "icon": "src/assets/icon.png",
     "category": "Utility",

@@ -102,15 +102,30 @@ OpenWhispr now supports multiple Linux package formats for maximum compatibility
 **Building Linux Packages**:
 
 ```bash
-# Build all Linux package formats
+# Build default Linux package formats (AppImage, deb, rpm, tar.gz)
 npm run build:linux
 
 # Find packages in dist/:
+# - OpenWhispr-x.x.x-linux-x64.AppImage
 # - OpenWhispr-x.x.x-linux-x64.deb
 # - OpenWhispr-x.x.x-linux-x64.rpm
 # - OpenWhispr-x.x.x-linux-x64.tar.gz
-# - OpenWhispr-x.x.x-linux-x64.flatpak
-# - OpenWhispr-x.x.x-linux-x64.AppImage
+```
+
+**Optional: Building Flatpak** (requires additional setup):
+
+```bash
+# Install Flatpak build tools
+sudo apt install flatpak flatpak-builder  # Debian/Ubuntu
+# OR
+sudo dnf install flatpak flatpak-builder  # Fedora/RHEL
+
+# Add Flathub repository and install runtime
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+
+# Add "flatpak" to linux.target in electron-builder.json, then build
+npm run build:linux
 ```
 
 **Installation Examples**:
