@@ -41,6 +41,12 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y rpm flatpak flatpak-builder
 
+    - name: Setup Flatpak runtime
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+        flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+
     # macOS code signing setup - industry standard approach
     - name: Setup macOS Code Signing
       if: matrix.os == 'macos-latest' && github.event_name != 'pull_request'
