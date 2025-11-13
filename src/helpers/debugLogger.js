@@ -103,6 +103,7 @@ class DebugLogger {
       context,
       ffmpegPath,
       exists: ffmpegPath ? fs.existsSync(ffmpegPath) : false,
+      platform: process.platform,
       ...additionalInfo,
     };
 
@@ -112,7 +113,8 @@ class DebugLogger {
         debugInfo.fileInfo = {
           size: stats.size,
           isFile: stats.isFile(),
-          isExecutable: !!(stats.mode & fs.constants.X_OK),
+          // Skip X_OK check on Windows (not reliable)
+          isExecutable: process.platform !== "win32" ? !!(stats.mode & fs.constants.X_OK) : "N/A (Windows)",
           permissions: stats.mode.toString(8),
           modified: stats.mtime,
         };
@@ -133,28 +135,46 @@ class DebugLogger {
       }
     }
 
-    // Check all possible FFmpeg locations
-    const possiblePaths = [
-      ffmpegPath,
-      ffmpegPath?.replace("app.asar", "app.asar.unpacked"),
-      path.join(
-        process.resourcesPath || "",
-        "app.asar.unpacked",
-        "node_modules",
-        "ffmpeg-static",
-        process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"
-      ),
-      "/usr/local/bin/ffmpeg",
-      "/opt/homebrew/bin/ffmpeg",
-      "/usr/bin/ffmpeg",
-    ].filter(Boolean);
+    // Platform-specific path checks
+    let possiblePaths = [];
+    if (process.platform === "win32") {
+      possiblePaths = [
+        ffmpegPath,
+        ffmpegPath?.replace(/app\.asar([/\\])/, 'app.asar.unpacked$1'),
+        path.join(process.resourcesPath || "", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+        path.join(process.env.ProgramFiles || "C:\\Program Files", "ffmpeg", "bin", "ffmpeg.exe"),
+        "C:\\ffmpeg\\bin\\ffmpeg.exe",
+      ].filter(Boolean);
+    } else {
+      possiblePaths = [
+        ffmpegPath,
+        ffmpegPath?.replace("app.asar", "app.asar.unpacked"),
+        path.join(process.resourcesPath || "", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+        "/usr/local/bin/ffmpeg",
+        "/opt/homebrew/bin/ffmpeg",
+        "/usr/bin/ffmpeg",
+      ].filter(Boolean);
+    }
 
     debugInfo.pathChecks = possiblePaths.map((p) => ({
       path: p,
       exists: fs.existsSync(p),
+      normalized: path.normalize(p),
     }));
 
     this.log(`🎬 FFmpeg Debug - ${context}`, debugInfo);
+  }
+
+  logWindowsPythonSearch(context, details) {
+    if (!this.debugMode || process.platform !== "win32") return;
+
+    this.log(`🐍 Windows Python Search - ${context}`, {
+      ...details,
+      platform: process.platform,
+      PATH: process.env.PATH?.substring(0, 300) + "...",
+      LOCALAPPDATA: process.env.LOCALAPPDATA,
+      ProgramFiles: process.env.ProgramFiles,
+    });
   }
 
   logAudioData(context, audioBlob) {
