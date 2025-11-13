@@ -515,7 +515,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {useLocalWhisper ? (
               <div className="space-y-4">
                 {/* Python Installation Section */}
-                {!pythonHook.pythonInstalled ? (
+                {!pythonHook.hasChecked ? (
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                    </div>
+                    <h3 className="font-semibold text-gray-900">
+                      Looking for Python...
+                    </h3>
+                    <p className="text-sm text-gray-600 max-w-md mx-auto">
+                      OpenWhispr is scanning for your existing Python install (including <code>py.exe</code> and any paths supplied via <code>OPENWHISPR_PYTHON</code>). Sit tight—if we find one, we’ll skip this step automatically.
+                    </p>
+                  </div>
+                ) : !pythonHook.pythonInstalled ? (
                   <div className="text-center space-y-4">
                     <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
                       <Download className="w-8 h-8 text-blue-600" />
@@ -547,14 +559,24 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         </p>
                       </div>
                     ) : (
-                      <Button
-                        onClick={() => {
-                          pythonHook.installPython();
-                        }}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                      >
-                        Install Python
-                      </Button>
+                      <div className="space-y-3">
+                        <Button
+                          onClick={() => {
+                            pythonHook.installPython();
+                          }}
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                        >
+                          Install Python
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => pythonHook.checkPythonInstallation()}
+                          disabled={pythonHook.isChecking}
+                        >
+                          {pythonHook.isChecking ? "Rechecking..." : "Recheck for Existing Python"}
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ) : !whisperHook.whisperInstalled ? (

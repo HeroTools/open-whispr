@@ -41,6 +41,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
   const [installProgress, setInstallProgress] = useState<string>("");
   const [pythonInfo, setPythonInfo] = useState<PythonInstallation | null>(null);
   const [isChecking, setIsChecking] = useState<boolean>(false);
+  const [hasChecked, setHasChecked] = useState<boolean>(false);
 
   const checkPythonInstallation = useCallback(async () => {
     if (isChecking) {
@@ -67,6 +68,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       return { installed: false };
     } finally {
       setIsChecking(false);
+      setHasChecked(true);
     }
   }, [isChecking, pythonInfo]);
 
@@ -149,5 +151,6 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     installPython,
     checkPythonInstallation,
     isChecking,
+    hasChecked,
   };
 }
