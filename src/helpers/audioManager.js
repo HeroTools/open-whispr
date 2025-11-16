@@ -511,14 +511,15 @@ class AudioManager {
   async processWithOpenAIAPI(audioBlob) {
     try {
       // Parallel: get API key (cached) and optimize audio
-      const [apiKey, optimizedAudio] = await Promise.all([
+      const [apiKey, optimizedAudio, model] = await Promise.all([
         this.getAPIKey(),
         this.optimizeAudio(audioBlob),
+        this.getTranscriptionModel()
       ]);
 
       const formData = new FormData();
       formData.append("file", optimizedAudio, "audio.wav");
-      formData.append("model", "whisper-1");
+      formData.append("model", model);
 
       // Add language hint if set (improves processing speed)
       const language = localStorage.getItem("preferredLanguage");
@@ -623,6 +624,27 @@ class AudioManager {
     } catch (error) {
       console.warn('Failed to resolve transcription endpoint:', error);
       return API_ENDPOINTS.TRANSCRIPTION;
+    }
+  }
+
+
+  /**
+   * Resolves the transcription model.
+   * Order of precedence:
+   * 1. `localStorage` (user override)
+   * 2. Default value ('whisper-1')
+   * @returns {string} The resolved transcription model.
+   */
+  getTranscriptionModel() {
+    try {
+      const stored = typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionModel")
+        : null;
+      const trimmed = stored ? stored.trim() : "";
+      return trimmed || "whisper-1";
+    } catch (error) {
+      console.warn('Failed to resolve transcription model:', error);
+      return "whisper-1";
     }
   }
 
