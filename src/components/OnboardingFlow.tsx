@@ -68,6 +68,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     whisperModel,
     preferredLanguage,
     cloudTranscriptionBaseUrl,
+    cloudTranscriptionModel,
     cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
@@ -77,6 +78,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setWhisperModel,
     setPreferredLanguage,
     setCloudTranscriptionBaseUrl,
+    setCloudTranscriptionModel,
     setCloudReasoningBaseUrl,
     setOpenaiApiKey,
     setDictationKey,
@@ -88,6 +90,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [apiKey, setApiKey] = useState(openaiApiKey);
   const [hotkey, setHotkey] = useState(dictationKey || "`");
   const [transcriptionBaseUrl, setTranscriptionBaseUrl] = useState(cloudTranscriptionBaseUrl);
+  const [transcriptionModel, setTranscriptionModel] = useState(cloudTranscriptionModel);
   const [reasoningBaseUrl, setReasoningBaseUrl] = useState(cloudReasoningBaseUrl);
   const [agentName, setAgentName] = useState("Agent");
   const readableHotkey = formatHotkeyLabel(hotkey);
@@ -342,6 +345,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       whisperModel,
       preferredLanguage,
       cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
+      cloudTranscriptionModel: transcriptionModel,
     });
     updateReasoningSettings({
       useReasoningModel,
@@ -383,6 +387,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     useLocalWhisper,
     apiKey,
     transcriptionBaseUrl,
+    transcriptionModel,
     reasoningBaseUrl,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -707,6 +712,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   />
                   <p className="text-xs text-blue-800">Cloud transcription requests default to <code>{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>. Enter an OpenAI-compatible base URL to override.</p>
                 </div>
+
+                <div className="space-y-2">
+                 <label className="block text-sm font-medium text-blue-900">Custom transcription model (optional)</label>
+                 <Input
+                   value={transcriptionModel}
+                   onChange={(event) => setTranscriptionModel(event.target.value)}
+                   placeholder="whisper-1"
+                   className="text-sm"
+                 />
+                 <p className="text-xs text-blue-800">Specify a model for cloud transcription. Defaults to <code>whisper-1</code>.</p>
+               </div>
 
                 <div className="space-y-2">
                   <label className="block text-sm font-medium text-blue-900">Custom reasoning base URL (optional)</label>
