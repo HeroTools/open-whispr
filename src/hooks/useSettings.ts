@@ -11,6 +11,7 @@ export interface TranscriptionSettings {
   fallbackWhisperModel: string;
   preferredLanguage: string;
   cloudTranscriptionBaseUrl?: string;
+  cloudTranscriptionModel?: string;
 }
 
 export interface ReasoningSettings {
@@ -88,6 +89,15 @@ export function useSettings() {
   const [cloudTranscriptionBaseUrl, setCloudTranscriptionBaseUrl] = useLocalStorage(
     "cloudTranscriptionBaseUrl",
     API_ENDPOINTS.TRANSCRIPTION_BASE,
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [cloudTranscriptionModel, setCloudTranscriptionModel] = useLocalStorage(
+    "cloudTranscriptionModel",
+    "whisper-1",
     {
       serialize: String,
       deserialize: String,
@@ -172,6 +182,8 @@ export function useSettings() {
         setPreferredLanguage(settings.preferredLanguage);
       if (settings.cloudTranscriptionBaseUrl !== undefined)
         setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
+      if (settings.cloudTranscriptionModel !== undefined)
+        setCloudTranscriptionBaseUrl(settings.cloudTranscriptionModel);
     },
     [
       setUseLocalWhisper,
@@ -181,6 +193,7 @@ export function useSettings() {
       setFallbackWhisperModel,
       setPreferredLanguage,
       setCloudTranscriptionBaseUrl,
+      setCloudTranscriptionModel,
     ]
   );
 
@@ -216,6 +229,7 @@ export function useSettings() {
     fallbackWhisperModel,
     preferredLanguage,
     cloudTranscriptionBaseUrl,
+    cloudTranscriptionModel,
     cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
@@ -231,6 +245,7 @@ export function useSettings() {
     setFallbackWhisperModel,
     setPreferredLanguage,
     setCloudTranscriptionBaseUrl,
+    setCloudTranscriptionModel,
     setCloudReasoningBaseUrl,
     setUseReasoningModel,
     setReasoningModel,
