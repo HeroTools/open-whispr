@@ -53,6 +53,7 @@ export default function SettingsPage({
     fallbackWhisperModel,
     preferredLanguage,
     cloudTranscriptionBaseUrl,
+    cloudTranscriptionModel,
     cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
@@ -68,6 +69,7 @@ export default function SettingsPage({
     setFallbackWhisperModel,
     setPreferredLanguage,
     setCloudTranscriptionBaseUrl,
+    setCloudTranscriptionModel,
     setCloudReasoningBaseUrl,
     setUseReasoningModel,
     setReasoningModel,
@@ -410,7 +412,7 @@ export default function SettingsPage({
         title: "Key Saved",
         description: `Dictation key saved: ${formatHotkeyLabel(dictationKey)}`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to update hotkey:", error);
       showAlertDialog({
         title: "Error",
@@ -956,6 +958,20 @@ export default function SettingsPage({
                     <code className="ml-1">{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>.
                   </p>
                 </div>
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-blue-900">
+                    Custom Model Name (optional)
+                  </label>
+                  <Input
+                    value={cloudTranscriptionModel}
+                    onChange={(event) => setCloudTranscriptionModel(event.target.value)}
+                    className="text-sm"
+                  />
+                  <p className="text-xs text-blue-800">
+                    Specify the model to use for cloud transcription. Defaults to{" "}
+                    <code className="ml-1">whisper-1</code>.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -994,6 +1010,7 @@ export default function SettingsPage({
                 whisperModel,
                 preferredLanguage,
                 cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
+                cloudTranscriptionModel,
               });
 
               if (!useLocalWhisper && openaiApiKey.trim()) {
