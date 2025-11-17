@@ -215,11 +215,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    setWindowInteractivity(false);
-    return () => setWindowInteractivity(false);
-  }, [setWindowInteractivity]);
-
-  useEffect(() => {
     if (!isCommandMenuOpen) {
       return;
     }
