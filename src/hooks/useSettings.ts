@@ -183,7 +183,7 @@ export function useSettings() {
       if (settings.cloudTranscriptionBaseUrl !== undefined)
         setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
       if (settings.cloudTranscriptionModel !== undefined)
-        setCloudTranscriptionBaseUrl(settings.cloudTranscriptionModel);
+        setCloudTranscriptionModel(settings.cloudTranscriptionModel);
     },
     [
       setUseLocalWhisper,
