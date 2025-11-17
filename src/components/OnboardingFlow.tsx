@@ -686,7 +686,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <ApiKeyInput
                   apiKey={apiKey}
                   setApiKey={setApiKey}
-                  label="OpenAI API Key"
+                  label="OpenAI or Custom API Key"
                   helpText={
                     <>
                       Need an API key?{" "}
@@ -1090,7 +1090,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <span className="font-medium">
                     {useLocalWhisper
                       ? `Local (${whisperModel})`
-                      : "OpenAI Cloud"}
+                      : "Cloud"}
                   </span>
                 </div>
                 {!useLocalWhisper && (
@@ -1103,7 +1103,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <div className="flex justify-between">
                     <span>Custom Endpoint:</span>
                     <span className="font-medium break-all">
-                      {normalizedReasoningBaseUrl || trimmedReasoningBase}
+                      {transcriptionBaseUrl}
                     </span>
                   </div>
                 )}
