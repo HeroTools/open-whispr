@@ -339,6 +339,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const normalizedReasoningBaseValue = (reasoningBaseUrl || '').trim();
 
     setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
+    setCloudTranscriptionModel(transcriptionModel);
     setCloudReasoningBaseUrl(normalizedReasoningBaseValue);
 
     updateTranscriptionSettings({
