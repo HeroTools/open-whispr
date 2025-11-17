@@ -2,6 +2,8 @@ import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
 const isDebugMode = typeof process !== 'undefined' && (process.env.OPENWHISPR_DEBUG === 'true' || process.env.NODE_ENV === 'development');
+const SHORT_CLIP_DURATION_SECONDS = 2.5;
+const REASONING_CACHE_TTL = 30000; // 30 seconds
 
 const debugLogger = {
   logReasoning: async (stage, details) => {
@@ -29,6 +31,9 @@ class AudioManager {
     this.onTranscriptionComplete = null;
     this.cachedApiKey = null;
     this.cachedTranscriptionEndpoint = null;
+    this.recordingStartTime = null;
+    this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
+    this.cachedReasoningPreference = null;
   }
 
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
@@ -48,6 +53,7 @@ class AudioManager {
 
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
+      this.recordingStartTime = Date.now();
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
@@ -63,7 +69,11 @@ class AudioManager {
         if (audioBlob.size === 0) {
         }
         
-        await this.processAudio(audioBlob);
+        const durationSeconds = this.recordingStartTime
+          ? (Date.now() - this.recordingStartTime) / 1000
+          : null;
+        this.recordingStartTime = null;
+        await this.processAudio(audioBlob, { durationSeconds });
 
         // Clean up stream
         stream.getTracks().forEach((track) => track.stop());
@@ -108,16 +118,16 @@ class AudioManager {
     return false;
   }
 
-  async processAudio(audioBlob) {
+  async processAudio(audioBlob, metadata = {}) {
     try {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
 
       let result;
       if (useLocalWhisper) {
-        result = await this.processWithLocalWhisper(audioBlob, whisperModel);
+        result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
       } else {
-        result = await this.processWithOpenAIAPI(audioBlob);
+        result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
       this.onTranscriptionComplete?.(result);
     } catch (error) {
@@ -133,7 +143,7 @@ class AudioManager {
     }
   }
 
-  async processWithLocalWhisper(audioBlob, model = "base") {
+  async processWithLocalWhisper(audioBlob, model = "base", metadata = {}) {
     try {
       const arrayBuffer = await audioBlob.arrayBuffer();
       const language = localStorage.getItem("preferredLanguage");
@@ -173,7 +183,7 @@ class AudioManager {
 
       if (allowOpenAIFallback && isLocalMode) {
         try {
-          const fallbackResult = await this.processWithOpenAIAPI(audioBlob);
+          const fallbackResult = await this.processWithOpenAIAPI(audioBlob, metadata);
           return { ...fallbackResult, source: "openai-fallback" };
         } catch (fallbackError) {
           throw new Error(`Local Whisper failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`);
@@ -330,43 +340,69 @@ class AudioManager {
   }
 
   async isReasoningAvailable() {
-    // Check if we're in renderer process (has localStorage)
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const storedValue = localStorage.getItem("useReasoningModel");
-      
-      // Debug log the actual stored value
-      debugLogger.logReasoning("REASONING_STORAGE_CHECK", {
-        storedValue,
-        typeOfStoredValue: typeof storedValue,
-        isTrue: storedValue === "true",
-        isTruthy: !!storedValue && storedValue !== "false"
-      });
-      
-      // Check for both "true" string and truthy values (but not "false")
-      const useReasoning = storedValue === "true" || (!!storedValue && storedValue !== "false");
-      
-      if (!useReasoning) return false;
-      
-      try {
-        const isAvailable = await ReasoningService.isAvailable();
-        
-        debugLogger.logReasoning("REASONING_AVAILABILITY", {
-          isAvailable,
-          reasoningEnabled: useReasoning,
-          finalDecision: useReasoning && isAvailable
-        });
-        
-        return isAvailable;
-      } catch (error) {
-        debugLogger.logReasoning("REASONING_AVAILABILITY_ERROR", {
-          error: error.message,
-          stack: error.stack
-        });
-        return false;
-      }
+    if (typeof window === "undefined" || !window.localStorage) {
+      return false;
     }
-    // If not in renderer, reasoning is not available
-    return false;
+
+    const storedValue = localStorage.getItem("useReasoningModel");
+    const now = Date.now();
+    const cacheValid =
+      this.reasoningAvailabilityCache &&
+      now < this.reasoningAvailabilityCache.expiresAt &&
+      this.cachedReasoningPreference === storedValue;
+
+    if (cacheValid) {
+      return this.reasoningAvailabilityCache.value;
+    }
+
+    debugLogger.logReasoning("REASONING_STORAGE_CHECK", {
+      storedValue,
+      typeOfStoredValue: typeof storedValue,
+      isTrue: storedValue === "true",
+      isTruthy: !!storedValue && storedValue !== "false",
+    });
+
+    const useReasoning =
+      storedValue === "true" || (!!storedValue && storedValue !== "false");
+
+    if (!useReasoning) {
+      this.reasoningAvailabilityCache = {
+        value: false,
+        expiresAt: now + REASONING_CACHE_TTL,
+      };
+      this.cachedReasoningPreference = storedValue;
+      return false;
+    }
+
+    try {
+      const isAvailable = await ReasoningService.isAvailable();
+
+      debugLogger.logReasoning("REASONING_AVAILABILITY", {
+        isAvailable,
+        reasoningEnabled: useReasoning,
+        finalDecision: useReasoning && isAvailable,
+      });
+
+      this.reasoningAvailabilityCache = {
+        value: isAvailable,
+        expiresAt: now + REASONING_CACHE_TTL,
+      };
+      this.cachedReasoningPreference = storedValue;
+
+      return isAvailable;
+    } catch (error) {
+      debugLogger.logReasoning("REASONING_AVAILABILITY_ERROR", {
+        error: error.message,
+        stack: error.stack,
+      });
+
+      this.reasoningAvailabilityCache = {
+        value: false,
+        expiresAt: now + REASONING_CACHE_TTL,
+      };
+      this.cachedReasoningPreference = storedValue;
+      return false;
+    }
   }
 
   async processTranscription(text, source) {
@@ -433,12 +469,22 @@ class AudioManager {
     return normalizedText;
   }
 
-  async processWithOpenAIAPI(audioBlob) {
+  async processWithOpenAIAPI(audioBlob, metadata = {}) {
+    const language = localStorage.getItem("preferredLanguage");
+    const allowLocalFallback =
+      localStorage.getItem("allowLocalFallback") === "true";
+    const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
+
     try {
-      const language = localStorage.getItem("preferredLanguage");
-      const allowLocalFallback = localStorage.getItem("allowLocalFallback") === "true";
-      const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
-      const shouldOptimize = audioBlob.size > 1024 * 1024;
+
+      const durationSeconds = metadata.durationSeconds ?? null;
+      const shouldSkipOptimizationForDuration =
+        typeof durationSeconds === "number" &&
+        durationSeconds > 0 &&
+        durationSeconds < SHORT_CLIP_DURATION_SECONDS;
+
+      const shouldOptimize =
+        !shouldSkipOptimizationForDuration && audioBlob.size > 1024 * 1024;
 
       const [apiKey, optimizedAudio] = await Promise.all([
         this.getAPIKey(),

@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import AudioManager from "../helpers/audioManager";
 
-export const useAudioRecording = (toast) => {
+export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
   const audioManagerRef = useRef(null);
+  const { onToggle } = options;
 
   useEffect(() => {
     // Initialize AudioManager
@@ -67,7 +68,10 @@ export const useAudioRecording = (toast) => {
       }
     };
 
-    const disposeToggle = window.electronAPI.onToggleDictation(handleToggle);
+    const disposeToggle = window.electronAPI.onToggleDictation(() => {
+      handleToggle();
+      onToggle?.();
+    });
 
     // Set up no-audio-detected listener
     const handleNoAudioDetected = () => {
@@ -91,7 +95,7 @@ export const useAudioRecording = (toast) => {
         audioManagerRef.current.cleanup();
       }
     };
-  }, [toast]);
+  }, [toast, onToggle]);
 
   const startRecording = async () => {
     if (audioManagerRef.current) {
