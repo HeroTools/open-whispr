@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Trash2, RefreshCw, Settings, FileText, Mic, X } from "lucide-react";
+import { Trash2, Settings, FileText, Mic, X } from "lucide-react";
 import SettingsModal from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
@@ -10,10 +10,15 @@ import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useHotkey } from "../hooks/useHotkey";
 import { useToast } from "./ui/Toast";
-import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
+import {
+  useTranscriptions,
+  initializeTranscriptions,
+  removeTranscription as removeFromStore,
+  clearTranscriptions as clearStoreTranscriptions,
+} from "../stores/transcriptionStore";
 
 export default function ControlPanel() {
-  const [history, setHistory] = useState<TranscriptionItemType[]>([]);
+  const history = useTranscriptions();
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const { hotkey } = useHotkey();
@@ -39,7 +44,6 @@ export default function ControlPanel() {
   };
 
   useEffect(() => {
-    // Load transcription history from database
     loadTranscriptions();
 
     // Initialize update status
@@ -67,24 +71,27 @@ export default function ControlPanel() {
       // Update errors are handled by the update service
     };
 
-    window.electronAPI.onUpdateAvailable(handleUpdateAvailable);
-    window.electronAPI.onUpdateDownloaded(handleUpdateDownloaded);
-    window.electronAPI.onUpdateError(handleUpdateError);
+    const disposers = [
+      window.electronAPI.onUpdateAvailable(handleUpdateAvailable),
+      window.electronAPI.onUpdateDownloaded(handleUpdateDownloaded),
+      window.electronAPI.onUpdateError(handleUpdateError),
+    ];
 
     // Cleanup listeners on unmount
     return () => {
-      window.electronAPI.removeAllListeners?.("update-available");
-      window.electronAPI.removeAllListeners?.("update-downloaded");
-      window.electronAPI.removeAllListeners?.("update-error");
+      disposers.forEach((dispose) => dispose?.());
     };
   }, []);
 
   const loadTranscriptions = async () => {
     try {
       setIsLoading(true);
-      const transcriptions = await window.electronAPI.getTranscriptions(50);
-      setHistory(transcriptions);
+      await initializeTranscriptions();
     } catch (error) {
+      showAlertDialog({
+        title: "Unable to load history",
+        description: "Please try again in a moment.",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -116,7 +123,7 @@ export default function ControlPanel() {
       onConfirm: async () => {
         try {
           const result = await window.electronAPI.clearTranscriptions();
-          setHistory([]);
+          clearStoreTranscriptions();
           showAlertDialog({
             title: "History Cleared",
             description: `Successfully cleared ${result.cleared} transcriptions from your chronicles.`,
@@ -141,8 +148,7 @@ export default function ControlPanel() {
         try {
           const result = await window.electronAPI.deleteTranscription(id);
           if (result.success) {
-            // Remove from local state
-            setHistory((prev) => prev.filter((item) => item.id !== id));
+            removeFromStore(id);
           } else {
             showAlertDialog({
               title: "Delete Failed",
@@ -159,10 +165,6 @@ export default function ControlPanel() {
       },
       variant: "destructive",
     });
-  };
-
-  const refreshHistory = async () => {
-    await loadTranscriptions();
   };
 
   return (
@@ -233,9 +235,6 @@ export default function ControlPanel() {
                   Recent Transcriptions
                 </CardTitle>
                 <div className="flex gap-2">
-                  <Button onClick={refreshHistory} variant="ghost" size="icon">
-                    <RefreshCw size={16} />
-                  </Button>
                   {history.length > 0 && (
                     <Button
                       onClick={clearHistory}

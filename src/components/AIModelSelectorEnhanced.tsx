@@ -782,7 +782,19 @@ export default function AIModelSelectorEnhanced({
                             <ApiKeyInput
                               apiKey={openaiApiKey}
                               setApiKey={setOpenaiApiKey}
-                              helpText="Get your API key from platform.openai.com"
+                              helpText={
+                                <>
+                                  Need an API key?{" "}
+                                  <a
+                                    href="https://platform.openai.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline"
+                                  >
+                                    platform.openai.com
+                                  </a>
+                                </>
+                              }
                             />
                           </div>
                         )}

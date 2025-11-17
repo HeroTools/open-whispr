@@ -159,10 +159,8 @@ If you see this status:
 ## 🔧 Advanced Configuration
 
 ### Custom Python Path
-If you need to use a specific Python installation:
-1. Edit `main.js`
-2. Modify the `findPythonExecutable()` function
-3. Add your Python path to the `possiblePaths` array
+If you need to force a specific interpreter, set the `OPENWHISPR_PYTHON` environment variable before launching the app (e.g. `setx OPENWHISPR_PYTHON "C:\\Python312\\python.exe"` on Windows or `export OPENWHISPR_PYTHON=/opt/homebrew/bin/python3.12` on macOS).
+The new detector also scans the Windows `py` launcher plus the usual install folders, so manual code edits are no longer required.
 
 ### Model Storage Location
 Models are downloaded to `~/.cache/whisper/` by default.

@@ -67,10 +67,32 @@
   "linux": {
     "target": [
       "AppImage",
-      "deb"
+      "deb",
+      "rpm",
+      "tar.gz"
     ],
     "icon": "src/assets/icon.png",
-    "category": "Utility"
+    "category": "Utility",
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+  },
+  "flatpak": {
+    "runtime": "org.freedesktop.Platform",
+    "runtimeVersion": "24.08",
+    "sdk": "org.freedesktop.Sdk",
+    "useWaylandFlags": true,
+    "finishArgs": [
+      "--socket=wayland",
+      "--socket=fallback-x11",
+      "--share=network",
+      "--share=ipc",
+      "--device=dri",
+      "--socket=pulseaudio",
+      "--filesystem=home",
+      "--filesystem=xdg-documents",
+      "--filesystem=xdg-download",
+      "--talk-name=org.freedesktop.Notifications",
+      "--talk-name=org.freedesktop.portal.Desktop"
+    ]
   },
   "deb": {
     "afterRemove": "resources/linux/after-remove.sh"

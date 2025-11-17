@@ -4,7 +4,7 @@ import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
-import AudioManager from "./helpers/audioManager";
+import { useAudioRecording } from "./hooks/useAudioRecording";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -73,14 +73,8 @@ const Tooltip = ({ children, content, emoji }) => {
 };
 
 export default function App() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
   const commandMenuRef = useRef(null);
   const buttonRef = useRef(null);
   const { toast } = useToast();
@@ -107,117 +101,22 @@ export default function App() {
     }
   }, [isCommandMenuOpen, isHovered, setWindowInteractivity]);
 
-  const startRecording = async () => {
-    try {
-      setError("");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const handleDictationToggle = React.useCallback(() => {
+    setIsCommandMenuOpen(false);
+    setWindowInteractivity(false);
+  }, [setWindowInteractivity]);
 
-      mediaRecorderRef.current = new window.MediaRecorder(stream);
-      audioChunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        setIsProcessing(true);
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/wav",
-        });
-        // Start processing immediately without waiting
-        processAudio(audioBlob);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Recording error:", err);
-      toast({
-        title: "Recording Error",
-        description: "Failed to access microphone: " + err.message,
-        variant: "destructive",
-      });
+  const { isRecording, isProcessing, toggleListening } = useAudioRecording(
+    toast,
+    {
+      onToggle: handleDictationToggle,
     }
-  };
+  );
 
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      // Don't set processing immediately - let the onstop handler do it
-    }
-  };
-
-  const safePaste = async (text) => {
-    try {
-      await window.electronAPI.pasteText(text);
-    } catch (err) {
-      toast({
-        title: "Paste Error",
-        description:
-          "Failed to paste text. Please check accessibility permissions.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const processAudio = async (audioBlob) => {
-    try {
-      const audioManager = new AudioManager();
-      audioManager.setCallbacks({
-        onStateChange: ({ isRecording, isProcessing }) => {
-          setIsRecording(isRecording);
-          setIsProcessing(isProcessing);
-        },
-        onError: (error) => {
-          toast({
-            title: error.title,
-            description: error.description,
-            variant: "destructive",
-          });
-        },
-        onTranscriptionComplete: async (result) => {
-          if (result.success && result.text) {
-            setTranscript(result.text);
-
-            // Paste immediately - don't wait for database save
-            const pastePromise = safePaste(result.text);
-
-            // Save to database in parallel
-            const savePromise = window.electronAPI
-              .saveTranscription(result.text)
-              .catch((err) => {
-                // Failed to save transcription
-              });
-
-            // Wait for paste to complete, but don't block on database save
-            await pastePromise;
-          }
-        },
-      });
-
-      // Process the audio using our enhanced AudioManager
-      await audioManager.processAudio(audioBlob);
-    } catch (err) {
-      toast({
-        title: "Transcription Error",
-        description: "Transcription failed: " + err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
   };
-
-  useEffect(() => {
-    setWindowInteractivity(false);
-    return () => setWindowInteractivity(false);
-  }, [setWindowInteractivity]);
 
   useEffect(() => {
     if (!isCommandMenuOpen) {
@@ -238,34 +137,6 @@ export default function App() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isCommandMenuOpen]);
-
-  useEffect(() => {
-    let recording = false;
-    const handleToggle = () => {
-      setIsCommandMenuOpen(false);
-      if (!recording && !isRecording && !isProcessing) {
-        startRecording();
-        recording = true;
-      } else if (isRecording) {
-        stopRecording();
-        recording = false;
-      }
-    };
-    window.electronAPI.onToggleDictation(handleToggle);
-    return () => {
-      // No need to remove listener, as it's handled in preload
-    };
-  }, [isRecording, isProcessing]);
-
-  const toggleListening = () => {
-    setIsCommandMenuOpen(false);
-    if (!isRecording && !isProcessing) {
-      startRecording();
-    } else if (isRecording) {
-      stopRecording();
-    }
-  };
-
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "Escape") {
