@@ -181,23 +181,12 @@ export default function App() {
           if (result.success && result.text) {
             setTranscript(result.text);
 
-            // Paste immediately - don't wait for database save
-            const pastePromise = safePaste(result.text);
-
-            // Save to database in parallel
-            const savePromise = window.electronAPI
-              .saveTranscription(result.text)
-              .catch((err) => {
-                // Failed to save transcription
-              });
-
-            // Wait for paste to complete, but don't block on database save
-            await pastePromise;
+            safePaste(result.text);
+            window.electronAPI.saveTranscription(result.text).catch(() => {});
           }
         },
       });
 
-      // Process the audio using our enhanced AudioManager
       await audioManager.processAudio(audioBlob);
     } catch (err) {
       toast({

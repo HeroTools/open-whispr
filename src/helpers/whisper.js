@@ -10,11 +10,12 @@ const debugLogger = require("./debugLogger");
 
 class WhisperManager {
   constructor() {
-    this.pythonCmd = null; // Cache Python executable path
-    this.whisperInstalled = null; // Cache installation status
-    this.isInitialized = false; // Track if startup init completed
-    this.currentDownloadProcess = null; // Track current download process for cancellation
+    this.pythonCmd = null;
+    this.whisperInstalled = null;
+    this.isInitialized = false;
+    this.currentDownloadProcess = null;
     this.pythonInstaller = new PythonInstaller();
+    this.cachedFFmpegPath = null;
   }
 
   sanitizeErrorMessage(message = "") {
@@ -162,88 +163,87 @@ class WhisperManager {
     return tempAudioPath;
   }
 
+  async getFFmpegPath() {
+    if (this.cachedFFmpegPath) {
+      return this.cachedFFmpegPath;
+    }
+
+    let ffmpegPath;
+
+    try {
+      ffmpegPath = require("ffmpeg-static");
+      debugLogger.logFFmpegDebug('Initial ffmpeg-static path', ffmpegPath);
+
+      if (process.platform === "win32" && !ffmpegPath.endsWith(".exe")) {
+        ffmpegPath += ".exe";
+      }
+
+      if (process.env.NODE_ENV !== "development" && !fs.existsSync(ffmpegPath)) {
+        const possiblePaths = [
+          ffmpegPath.replace("app.asar", "app.asar.unpacked"),
+          ffmpegPath.replace(/.*app\.asar/, path.join(__dirname, "..", "..", "app.asar.unpacked")),
+          path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "ffmpeg-static", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg")
+        ];
+
+        debugLogger.log('FFmpeg not found at primary path, checking alternatives');
+
+        for (const possiblePath of possiblePaths) {
+          if (fs.existsSync(possiblePath)) {
+            ffmpegPath = possiblePath;
+            debugLogger.log('FFmpeg found at:', ffmpegPath);
+            break;
+          }
+        }
+      }
+
+      if (!fs.existsSync(ffmpegPath)) {
+        debugLogger.error('Bundled FFmpeg not found at:', ffmpegPath);
+        throw new Error(`Bundled FFmpeg not found at ${ffmpegPath}`);
+      }
+
+      try {
+        fs.accessSync(ffmpegPath, fs.constants.X_OK);
+        debugLogger.log('FFmpeg is executable');
+      } catch (e) {
+        debugLogger.error('FFmpeg exists but is not executable:', e.message);
+        throw new Error(`FFmpeg exists but is not executable: ${ffmpegPath}`);
+      }
+
+    } catch (e) {
+      debugLogger.log('Bundled FFmpeg not available, trying system FFmpeg');
+
+      const systemFFmpeg = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+
+      try {
+        const versionResult = await runCommand(systemFFmpeg, ["--version"], { timeout: TIMEOUTS.QUICK_CHECK });
+        ffmpegPath = systemFFmpeg;
+        debugLogger.log('Using system FFmpeg');
+      } catch (systemError) {
+        debugLogger.error('System FFmpeg also unavailable:', systemError.message);
+        ffmpegPath = systemFFmpeg;
+      }
+    }
+
+    this.cachedFFmpegPath = ffmpegPath;
+    return ffmpegPath;
+  }
+
   async runWhisperProcess(tempAudioPath, model, language) {
     const pythonCmd = await this.findPythonExecutable();
     const whisperScriptPath = this.getWhisperScriptPath();
-    
-    // Check if whisper script exists
+
     if (!fs.existsSync(whisperScriptPath)) {
       throw new Error(`Whisper script not found at: ${whisperScriptPath}`);
     }
-    
+
     const args = [whisperScriptPath, tempAudioPath, "--model", model];
     if (language) {
       args.push("--language", language);
     }
     args.push("--output-format", "json");
 
-
     return new Promise(async (resolve, reject) => {
-      // Get FFmpeg path with robust production/development handling
-      let ffmpegPath;
-
-      try {
-        ffmpegPath = require("ffmpeg-static");
-        debugLogger.logFFmpegDebug('Initial ffmpeg-static path', ffmpegPath);
-        
-        // Add Windows .exe extension if missing
-        if (process.platform === "win32" && !ffmpegPath.endsWith(".exe")) {
-          ffmpegPath += ".exe";
-        }
-
-        if (process.env.NODE_ENV !== "development" && !fs.existsSync(ffmpegPath)) {
-          const possiblePaths = [
-            ffmpegPath.replace("app.asar", "app.asar.unpacked"),
-            ffmpegPath.replace(/.*app\.asar/, path.join(__dirname, "..", "..", "app.asar.unpacked")),
-            path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "ffmpeg-static", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg")
-          ];
-
-          debugLogger.log('FFmpeg not found at primary path, checking alternatives');
-          
-          for (const possiblePath of possiblePaths) {
-            const exists = fs.existsSync(possiblePath);
-            
-            if (exists) {
-              ffmpegPath = possiblePath;
-              debugLogger.log('FFmpeg found at:', ffmpegPath);
-              break;
-            }
-          }
-        }
-
-        // Final validation of bundled FFmpeg
-        if (!fs.existsSync(ffmpegPath)) {
-          debugLogger.error('Bundled FFmpeg not found at:', ffmpegPath);
-          throw new Error(`Bundled FFmpeg not found at ${ffmpegPath}`);
-        }
-        
-        // Validate it's actually executable
-        try {
-          fs.accessSync(ffmpegPath, fs.constants.X_OK);
-          debugLogger.log('FFmpeg is executable');
-        } catch (e) {
-          debugLogger.error('FFmpeg exists but is not executable:', e.message);
-          throw new Error(`FFmpeg exists but is not executable: ${ffmpegPath}`);
-        }
-
-      } catch (e) {
-        debugLogger.log('Bundled FFmpeg not available, trying system FFmpeg');
-        
-        // Try system FFmpeg with validation
-        const systemFFmpeg = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
-        
-        try {
-          const versionResult = await runCommand(systemFFmpeg, ["--version"], { timeout: TIMEOUTS.QUICK_CHECK });
-          ffmpegPath = systemFFmpeg;
-          debugLogger.log('Using system FFmpeg');
-        } catch (systemError) {
-          debugLogger.error('System FFmpeg also unavailable:', systemError.message);
-          ffmpegPath = systemFFmpeg; // Last resort - let Python handle the error
-        }
-      }
-
-      // Enhanced environment setup - Python script checks multiple env vars
-      // Make sure to use absolute paths
+      const ffmpegPath = await this.getFFmpegPath();
       const absoluteFFmpegPath = path.resolve(ffmpegPath);
       const enhancedEnv = {
         ...process.env,
@@ -656,67 +656,13 @@ class WhisperManager {
 
   async checkFFmpegAvailability() {
     debugLogger.logWhisperPipeline('checkFFmpegAvailability - start', {});
-    
+
     try {
       const pythonCmd = await this.findPythonExecutable();
       const whisperScriptPath = this.getWhisperScriptPath();
-
-      // Get FFmpeg path to pass to Python script
-      let ffmpegPath;
-      try {
-        ffmpegPath = require("ffmpeg-static");
-        debugLogger.logFFmpegDebug('checkFFmpegAvailability', ffmpegPath, {
-          NODE_ENV: process.env.NODE_ENV,
-          resourcesPath: process.resourcesPath,
-          __dirname: __dirname
-        });
-        
-        // Always check if the path exists and handle ASAR unpacking
-        if (!fs.existsSync(ffmpegPath)) {
-          debugLogger.log('FFmpeg not found at initial path, checking alternatives');
-          
-          const possiblePaths = [
-            // Direct ASAR replacement
-            ffmpegPath.replace("app.asar", "app.asar.unpacked"),
-            // Alternative ASAR replacement patterns
-            ffmpegPath.replace(/app\.asar[\/\\]/, "app.asar.unpacked/"),
-            // Resources folder fallback
-            process.resourcesPath ? path.join(process.resourcesPath, "app.asar.unpacked", "node_modules", "ffmpeg-static", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg") : null,
-            // Development fallback
-            path.join(__dirname, "..", "..", "node_modules", "ffmpeg-static", process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg")
-          ].filter(Boolean);
-
-          // Check alternative paths
-          debugLogger.log('Checking alternative FFmpeg paths for availability check');
-          
-          for (const possiblePath of possiblePaths) {
-            const exists = fs.existsSync(possiblePath);
-            // Check path existence
-            debugLogger.logFFmpegDebug('Checking availability path', possiblePath);
-            
-            if (exists) {
-              ffmpegPath = possiblePath;
-              // Found FFmpeg
-              debugLogger.log('FFmpeg found for availability check at:', ffmpegPath);
-              break;
-            }
-          }
-        }
-        
-        // Final validation
-        if (!ffmpegPath || !fs.existsSync(ffmpegPath)) {
-          debugLogger.log('FFmpeg not found at any location');
-          ffmpegPath = null;
-        } else {
-          // Using bundled FFmpeg
-        }
-      } catch (e) {
-        debugLogger.log('ffmpeg-static error:', e.message);
-        ffmpegPath = null;
-      }
+      const ffmpegPath = await this.getFFmpegPath();
 
       const result = await new Promise((resolve) => {
-        // Set up environment with FFmpeg path
         const env = {
           ...process.env,
           FFMPEG_PATH: ffmpegPath || "",
