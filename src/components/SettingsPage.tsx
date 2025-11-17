@@ -209,6 +209,7 @@ export default function SettingsPage({
   // Defer heavy operations for better performance
   useEffect(() => {
     let mounted = true;
+    let unsubscribeUpdates;
 
     // Defer version and update checks to improve initial render
     const timer = setTimeout(async () => {
@@ -237,7 +238,7 @@ export default function SettingsPage({
         }
       }
 
-      const unsubscribeUpdates = subscribeToUpdates();
+      unsubscribeUpdates = subscribeToUpdates();
 
       // Check whisper after initial render
       if (mounted) {
