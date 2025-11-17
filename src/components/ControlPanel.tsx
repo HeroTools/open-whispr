@@ -71,15 +71,15 @@ export default function ControlPanel() {
       // Update errors are handled by the update service
     };
 
-    window.electronAPI.onUpdateAvailable(handleUpdateAvailable);
-    window.electronAPI.onUpdateDownloaded(handleUpdateDownloaded);
-    window.electronAPI.onUpdateError(handleUpdateError);
+    const disposers = [
+      window.electronAPI.onUpdateAvailable(handleUpdateAvailable),
+      window.electronAPI.onUpdateDownloaded(handleUpdateDownloaded),
+      window.electronAPI.onUpdateError(handleUpdateError),
+    ];
 
     // Cleanup listeners on unmount
     return () => {
-      window.electronAPI.removeAllListeners?.("update-available");
-      window.electronAPI.removeAllListeners?.("update-downloaded");
-      window.electronAPI.removeAllListeners?.("update-error");
+      disposers.forEach((dispose) => dispose?.());
     };
   }, []);
 

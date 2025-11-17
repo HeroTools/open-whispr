@@ -235,9 +235,9 @@ export default function App() {
         recording = false;
       }
     };
-    window.electronAPI.onToggleDictation(handleToggle);
+    const dispose = window.electronAPI.onToggleDictation(handleToggle);
     return () => {
-      // No need to remove listener, as it's handled in preload
+      dispose?.();
     };
   }, [isRecording, isProcessing]);
 

@@ -67,7 +67,7 @@ export const useAudioRecording = (toast) => {
       }
     };
 
-    window.electronAPI.onToggleDictation(handleToggle);
+    const disposeToggle = window.electronAPI.onToggleDictation(handleToggle);
 
     // Set up no-audio-detected listener
     const handleNoAudioDetected = () => {
@@ -79,10 +79,14 @@ export const useAudioRecording = (toast) => {
       });
     };
 
-    window.electronAPI.onNoAudioDetected?.(handleNoAudioDetected);
+    const disposeNoAudio = window.electronAPI.onNoAudioDetected?.(
+      handleNoAudioDetected
+    );
 
     // Cleanup
     return () => {
+      disposeToggle?.();
+      disposeNoAudio?.();
       if (audioManagerRef.current) {
         audioManagerRef.current.cleanup();
       }

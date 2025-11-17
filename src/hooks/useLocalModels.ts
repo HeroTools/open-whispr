@@ -43,10 +43,12 @@ export function useLocalModels() {
       setProgressMap(prev => new Map(prev).set(data.modelId, data));
     };
 
-    window.electronAPI.onModelDownloadProgress(handleProgress);
+    const disposeProgress = window.electronAPI.onModelDownloadProgress(
+      handleProgress
+    );
 
     return () => {
-      window.electronAPI.removeAllListeners("model-download-progress");
+      disposeProgress?.();
     };
   }, [loadModels]);
 
