@@ -135,34 +135,6 @@ export default function App() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isCommandMenuOpen]);
-
-  useEffect(() => {
-    let recording = false;
-    const handleToggle = () => {
-      setIsCommandMenuOpen(false);
-      if (!recording && !isRecording && !isProcessing) {
-        startRecording();
-        recording = true;
-      } else if (isRecording) {
-        stopRecording();
-        recording = false;
-      }
-    };
-    const dispose = window.electronAPI.onToggleDictation(handleToggle);
-    return () => {
-      dispose?.();
-    };
-  }, [isRecording, isProcessing]);
-
-  const toggleListening = () => {
-    setIsCommandMenuOpen(false);
-    if (!isRecording && !isProcessing) {
-      startRecording();
-    } else if (isRecording) {
-      stopRecording();
-    }
-  };
-
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "Escape") {
