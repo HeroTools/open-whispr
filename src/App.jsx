@@ -101,13 +101,15 @@ export default function App() {
     }
   }, [isCommandMenuOpen, isHovered, setWindowInteractivity]);
 
+  const handleDictationToggle = React.useCallback(() => {
+    setIsCommandMenuOpen(false);
+    setWindowInteractivity(false);
+  }, [setWindowInteractivity]);
+
   const { isRecording, isProcessing, toggleListening } = useAudioRecording(
     toast,
     {
-      onToggle: () => {
-        setIsCommandMenuOpen(false);
-        setWindowInteractivity(false);
-      },
+      onToggle: handleDictationToggle,
     }
   );
 
