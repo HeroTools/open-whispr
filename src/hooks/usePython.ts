@@ -41,6 +41,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
   const [installProgress, setInstallProgress] = useState<string>("");
   const [pythonInfo, setPythonInfo] = useState<PythonInstallation | null>(null);
   const [isChecking, setIsChecking] = useState<boolean>(false);
+  const [hasChecked, setHasChecked] = useState<boolean>(false);
 
   const checkPythonInstallation = useCallback(async () => {
     if (isChecking) {
@@ -67,6 +68,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       return { installed: false };
     } finally {
       setIsChecking(false);
+      setHasChecked(true);
     }
   }, [isChecking, pythonInfo]);
 
@@ -80,6 +82,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     }
 
     let progressListener: ((event: any, data: PythonInstallProgress) => void) | null = null;
+    let disposeProgress: (() => void) | void;
 
     try {
       setInstallingPython(true);
@@ -93,7 +96,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
 
       // Listen for progress updates
       if (window.electronAPI.onPythonInstallProgress) {
-        window.electronAPI.onPythonInstallProgress(progressListener);
+        disposeProgress = window.electronAPI.onPythonInstallProgress(progressListener);
       }
 
       const result = await window.electronAPI.installPython();
@@ -124,9 +127,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     } finally {
       setInstallingPython(false);
       // Clean up the listener
-      if (progressListener) {
-        window.electronAPI?.removeAllListeners?.("python-install-progress");
-      }
+      disposeProgress?.();
     }
   }, [showAlertDialog, checkPythonInstallation]);
 
@@ -148,5 +149,6 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     installPython,
     checkPythonInstallation,
     isChecking,
+    hasChecked,
   };
 }

@@ -1,14 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 import { useToast } from "./components/ui/Toast";
-import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioLevel } from "./hooks/useAudioLevel";
-import AudioManager from "./helpers/audioManager";
+import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useSettings } from "./hooks/useSettings";
-import TranslationService from "./services/TranslationService";
-import { getModelProvider } from "./utils/languages";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -148,16 +145,9 @@ const Tooltip = ({ children, content, emoji }) => {
 };
 
 export default function App() {
-  const [isRecording, setIsRecording] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [error, setError] = useState("");
   const [isHovered, setIsHovered] = useState(false);
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
-  const [audioStream, setAudioStream] = useState(null);
   const [recordingStartTime, setRecordingStartTime] = useState(null);
-  const mediaRecorderRef = useRef(null);
-  const audioChunksRef = useRef([]);
   const commandMenuRef = useRef(null);
   const buttonRef = useRef(null);
   const { toast } = useToast();
@@ -165,9 +155,6 @@ export default function App() {
   const { isDragging, handleMouseDown, handleMouseUp } = useWindowDrag();
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
-
-  // Monitor audio level while recording
-  const audioLevel = useAudioLevel(audioStream, isRecording);
 
   // Translation settings
   const {
@@ -198,221 +185,41 @@ export default function App() {
     }
   }, [isCommandMenuOpen, isHovered, setWindowInteractivity]);
 
-  const startRecording = async () => {
-    try {
-      setError("");
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setAudioStream(stream);
+  const handleDictationToggle = React.useCallback(() => {
+    setIsCommandMenuOpen(false);
+    setWindowInteractivity(false);
+  }, [setWindowInteractivity]);
+
+  const { isRecording, isProcessing, toggleListening, audioStream } = useAudioRecording(
+    toast,
+    {
+      onToggle: handleDictationToggle,
+      // Translation settings
+      enableTranslation,
+      targetLanguage,
+      preferredLanguage,
+      translationModel,
+      openaiApiKey,
+      anthropicApiKey,
+      geminiApiKey,
+    }
+  );
+
+  // Monitor audio level while recording
+  const audioLevel = useAudioLevel(audioStream, isRecording);
+
+  // Track recording start time
+  useEffect(() => {
+    if (isRecording) {
       setRecordingStartTime(Date.now());
-
-      mediaRecorderRef.current = new window.MediaRecorder(stream);
-      audioChunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorderRef.current.onstop = async () => {
-        setIsProcessing(true);
-        setAudioStream(null);
-        setRecordingStartTime(null);
-        const audioBlob = new Blob(audioChunksRef.current, {
-          type: "audio/wav",
-        });
-        // Start processing immediately without waiting
-        processAudio(audioBlob);
-        stream.getTracks().forEach((track) => track.stop());
-      };
-
-      mediaRecorderRef.current.start();
-      setIsRecording(true);
-    } catch (err) {
-      console.error("Recording error:", err);
-      setAudioStream(null);
+    } else {
       setRecordingStartTime(null);
-      toast({
-        title: "Recording Error",
-        description: "Failed to access microphone: " + err.message,
-        variant: "destructive",
-      });
     }
-  };
-
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-      // Don't set processing immediately - let the onstop handler do it
-    }
-  };
-
-  const safePaste = async (text) => {
-    try {
-      await window.electronAPI.pasteText(text);
-    } catch (err) {
-      toast({
-        title: "Paste Error",
-        description: "Failed to paste text. Please check accessibility permissions.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const processAudio = async (audioBlob) => {
-    try {
-      const audioManager = new AudioManager();
-      audioManager.setCallbacks({
-        onStateChange: ({ isRecording, isProcessing }) => {
-          setIsRecording(isRecording);
-          setIsProcessing(isProcessing);
-        },
-        onError: (error) => {
-          toast({
-            title: error.title,
-            description: error.description,
-            variant: "destructive",
-          });
-        },
-        onTranscriptionComplete: async (result) => {
-          console.log("[App] Transcription complete:", {
-            success: result.success,
-            hasText: !!result.text,
-            textLength: result.text?.length,
-            source: result.source
-          });
-
-          if (result.success && result.text) {
-            let finalText = result.text;
-
-            // Debug translation settings
-            console.log("[Translation Debug]", {
-              enableTranslation,
-              targetLanguage,
-              preferredLanguage,
-              translationModel,
-              hasOpenAI: !!openaiApiKey,
-              hasAnthropic: !!anthropicApiKey,
-              hasGemini: !!geminiApiKey,
-              transcribedText: result.text.substring(0, 100),
-              willTranslate: enableTranslation && targetLanguage && targetLanguage !== preferredLanguage
-            });
-
-            // TESTE TEMPORÁRIO: Forçar tradução para debug
-            const forceTranslationTest = false; // Muda para true para testar
-
-            // Translate if enabled and target language is different
-            if ((enableTranslation && targetLanguage && targetLanguage !== preferredLanguage) || forceTranslationTest) {
-              console.log("[Translation] Starting translation...");
-              console.log("[Translation] Using dedicated translation model:", translationModel);
-              try {
-                // Determine which provider and API key to use (based on TRANSLATION model, not reasoning)
-                const provider = getModelProvider(translationModel);
-                let apiKey = "";
-
-                console.log("[Translation] Provider detected:", provider);
-
-                if (provider === "openai") {
-                  apiKey = openaiApiKey;
-                } else if (provider === "anthropic") {
-                  apiKey = anthropicApiKey;
-                } else if (provider === "gemini") {
-                  apiKey = geminiApiKey;
-                }
-
-                console.log("[Translation] Has API key:", !!apiKey);
-
-                if (apiKey) {
-                  console.log("[Translation] Calling translation service...");
-                  const translationResult = await TranslationService.translate({
-                    text: result.text,
-                    sourceLanguage: preferredLanguage,
-                    targetLanguage: targetLanguage,
-                    provider: provider,
-                    apiKey: apiKey,
-                    model: translationModel, // Use dedicated translation model
-                  });
-
-                  console.log("[Translation] Result:", translationResult);
-
-                  if (translationResult.success) {
-                    finalText = translationResult.translatedText;
-                    console.log("[Translation] Success! Translated text:", finalText);
-                  } else {
-                    // If translation fails, show a toast but continue with original text
-                    console.error("[Translation] Failed:", translationResult.error);
-                    toast({
-                      title: "Translation Failed",
-                      description: translationResult.error || "Using original text",
-                      variant: "destructive",
-                    });
-                  }
-                } else {
-                  console.log("[Translation] No API key found, skipping translation");
-                  toast({
-                    title: "Translation Skipped",
-                    description: `No API key found for ${provider}. Using original text.`,
-                    variant: "default",
-                  });
-                }
-              } catch (error) {
-                console.error("Translation error details:", {
-                  error: error.message,
-                  stack: error.stack,
-                  provider: getModelProvider(translationModel),
-                  translationModel,
-                  hasApiKey: !!(provider === "openai" ? openaiApiKey : provider === "anthropic" ? anthropicApiKey : geminiApiKey)
-                });
-
-                toast({
-                  title: "Translation Error",
-                  description: `Failed to translate: ${error.message}`,
-                  variant: "destructive",
-                });
-                // Continue with original text if translation fails
-              }
-            } else {
-              console.log("[Translation] Skipped - conditions not met");
-            }
-
-            setTranscript(finalText);
-
-            // Save to database first to ensure it's available for Control Panel
-            try {
-              console.log('[App] Saving transcription to database...');
-              await window.electronAPI.saveTranscription(finalText);
-              console.log('[App] Transcription saved successfully');
-            } catch (err) {
-              console.error('[App] Failed to save transcription:', err);
-              // Continue even if save fails
-            }
-
-            // Then paste to clipboard
-            await safePaste(finalText);
-          }
-        },
-      });
-
-      // Process the audio using our enhanced AudioManager
-      await audioManager.processAudio(audioBlob);
-    } catch (err) {
-      toast({
-        title: "Transcription Error",
-        description: "Transcription failed: " + err.message,
-        variant: "destructive",
-      });
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  }, [isRecording]);
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
   };
-
-  useEffect(() => {
-    setWindowInteractivity(false);
-    return () => setWindowInteractivity(false);
-  }, [setWindowInteractivity]);
 
   useEffect(() => {
     if (!isCommandMenuOpen) {
@@ -433,34 +240,6 @@ export default function App() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isCommandMenuOpen]);
-
-  useEffect(() => {
-    let recording = false;
-    const handleToggle = () => {
-      setIsCommandMenuOpen(false);
-      if (!recording && !isRecording && !isProcessing) {
-        startRecording();
-        recording = true;
-      } else if (isRecording) {
-        stopRecording();
-        recording = false;
-      }
-    };
-    window.electronAPI.onToggleDictation(handleToggle);
-    return () => {
-      // No need to remove listener, as it's handled in preload
-    };
-  }, [isRecording, isProcessing]);
-
-  const toggleListening = () => {
-    setIsCommandMenuOpen(false);
-    if (!isRecording && !isProcessing) {
-      startRecording();
-    } else if (isRecording) {
-      stopRecording();
-    }
-  };
-
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "Escape") {

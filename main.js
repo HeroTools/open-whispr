@@ -196,7 +196,6 @@ app.on("window-all-closed", () => {
   // On macOS, keep the app running even without windows
 });
 
-// Re-apply always-on-top when app becomes active
 app.on("browser-window-focus", (event, window) => {
   // Only apply always-on-top to the dictation window, not the control panel
   if (windowManager && windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
@@ -205,7 +204,7 @@ app.on("browser-window-focus", (event, window) => {
       windowManager.enforceMainWindowOnTop();
     }
   }
-  
+
   // Control panel doesn't need any special handling on focus
   // It should behave like a normal window
 });

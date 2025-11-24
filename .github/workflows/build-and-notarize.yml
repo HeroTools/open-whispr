@@ -33,7 +33,25 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-      
+
+    # Cache Electron downloads
+    - name: Cache Electron
+      uses: actions/cache@v4
+      with:
+        path: |
+          ${{ runner.os == 'Windows' && '~\AppData\Local\electron\Cache' || '~/.cache/electron' }}
+          ${{ runner.os == 'Windows' && '~\AppData\Local\electron-builder\Cache' || '~/.cache/electron-builder' }}
+        key: ${{ runner.os }}-electron-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-electron-
+
+    # Linux packaging dependencies (rpm for Fedora/RHEL packages)
+    - name: Install Linux packaging dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y rpm
+
     # macOS code signing setup - industry standard approach
     - name: Setup macOS Code Signing
       if: matrix.os == 'macos-latest' && github.event_name != 'pull_request'

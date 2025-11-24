@@ -18,6 +18,19 @@ export default function TranscriptionItem({
   onCopy,
   onDelete,
 }: TranscriptionItemProps) {
+  const timestampSource = item.timestamp.endsWith("Z")
+    ? item.timestamp
+    : `${item.timestamp}Z`;
+  const timestampDate = new Date(timestampSource);
+  const formattedTimestamp = Number.isNaN(timestampDate.getTime())
+    ? item.timestamp
+    : timestampDate.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
   return (
     <div className="group relative overflow-hidden rounded-lg border border-neutral-200 bg-white p-4 transition-all hover:border-neutral-300 hover:shadow-sm">
       {/* Foreground overlay */}
@@ -32,12 +45,7 @@ export default function TranscriptionItem({
               {total - index}
             </span>
             <span className="text-xs font-medium text-neutral-500">
-              {new Date(item.timestamp).toLocaleString("en-US", {
-                month: "short",
-                day: "numeric",
-                hour: "2-digit",
-                minute: "2-digit",
-              })}
+              {formattedTimestamp}
             </span>
           </div>
 

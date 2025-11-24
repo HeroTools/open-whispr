@@ -255,12 +255,6 @@ class WindowManager {
       this.enforceMainWindowOnTop();
     });
 
-    this.mainWindow.on("blur", () => {
-      setTimeout(() => {
-        this.enforceMainWindowOnTop();
-      }, 100);
-    });
-
     this.mainWindow.on("closed", () => {
       this.dragManager.cleanup();
       this.mainWindow = null;

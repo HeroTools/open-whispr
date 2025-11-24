@@ -1,4 +1,5 @@
 import React from "react";
+import WindowControls from "./WindowControls";
 
 interface TitleBarProps {
   title?: string;
@@ -15,6 +16,12 @@ export default function TitleBar({
   className = "",
   actions,
 }: TitleBarProps) {
+  // Get platform info
+  const platform =
+    typeof window !== "undefined" && window.electronAPI?.getPlatform
+      ? window.electronAPI.getPlatform()
+      : "darwin";
+
   return (
     <div className={`border-b border-gray-100 bg-white select-none ${className}`}>
       <div
@@ -27,9 +34,11 @@ export default function TitleBar({
           {children}
         </div>
 
-        {/* Right section - actions */}
+        {/* Right section - actions and window controls */}
         <div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" }}>
           {actions}
+          {/* Show window controls on Linux and Windows (macOS uses native controls) */}
+          {platform !== "darwin" && <WindowControls />}
         </div>
       </div>
     </div>

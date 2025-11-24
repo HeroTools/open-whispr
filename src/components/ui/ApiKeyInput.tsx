@@ -9,7 +9,7 @@ interface ApiKeyInputProps {
   className?: string;
   placeholder?: string;
   label?: string;
-  helpText?: string;
+  helpText?: React.ReactNode;
   variant?: "default" | "purple";
 }
 
@@ -48,7 +48,9 @@ export default function ApiKeyInput({
           Paste
         </Button>
       </div>
-      <p className="mt-2 text-xs text-secondary-500">{helpText}</p>
+      {helpText && (
+        <p className="mt-2 text-xs text-secondary-500">{helpText}</p>
+      )}
     </div>
   );
 }
