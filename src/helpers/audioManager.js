@@ -52,6 +52,7 @@ class AudioManager {
 
 
       this.mediaRecorder = new MediaRecorder(stream);
+      this.mimeType = this.mediaRecorder.mimeType;
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
 
@@ -64,11 +65,11 @@ class AudioManager {
         this.isProcessing = true;
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
-        const audioBlob = new Blob(this.audioChunks, { type: "audio/wav" });
-        
+        const audioBlob = new Blob(this.audioChunks, { type: this.mimeType || "audio/webm" });
+
         if (audioBlob.size === 0) {
         }
-        
+
         const durationSeconds = this.recordingStartTime
           ? (Date.now() - this.recordingStartTime) / 1000
           : null;
@@ -85,11 +86,11 @@ class AudioManager {
 
       return true;
     } catch (error) {
-      
+
       // Provide more specific error messages
       let errorTitle = "Recording Error";
       let errorDescription = `Failed to access microphone: ${error.message}`;
-      
+
       if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
         errorTitle = "Microphone Access Denied";
         errorDescription = "Please grant microphone permission in your system settings and try again.";
@@ -100,7 +101,7 @@ class AudioManager {
         errorTitle = "Microphone In Use";
         errorDescription = "The microphone is being used by another application. Please close other apps and try again.";
       }
-      
+
       this.onError?.({
         title: errorTitle,
         description: errorDescription,
@@ -122,6 +123,10 @@ class AudioManager {
     try {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
+
+
+
+      window.electronAPI?.logPerf?.(`[Perf] processAudio. useLocalWhisper=${useLocalWhisper}, model=${whisperModel}`);
 
       let result;
       if (useLocalWhisper) {
@@ -304,37 +309,45 @@ class AudioManager {
   }
 
   async processWithReasoningModel(text, model, agentName) {
+    const perfStart = Date.now();
+    window.electronAPI?.logPerf?.(`[Perf][Reasoning] Starting reasoning call. Model: ${model}, Text length: ${text.length}`);
+
     debugLogger.logReasoning("CALLING_REASONING_SERVICE", {
       model,
       agentName,
       textLength: text.length
     });
-    
+
     const startTime = Date.now();
-    
+
     try {
+      window.electronAPI?.logPerf?.(`[Perf][Reasoning] About to call ReasoningService.processText...`);
+      const serviceCallStart = Date.now();
       const result = await ReasoningService.processText(text, model, agentName);
-      
+      window.electronAPI?.logPerf?.(`[Perf][Reasoning] ReasoningService.processText returned in: ${Date.now() - serviceCallStart}ms`);
+
       const processingTime = Date.now() - startTime;
-      
+
       debugLogger.logReasoning("REASONING_SERVICE_COMPLETE", {
         model,
         processingTimeMs: processingTime,
         resultLength: result.length,
         success: true
       });
-      
+
+      window.electronAPI?.logPerf?.(`[Perf][Reasoning] Total reasoning time: ${Date.now() - perfStart}ms`);
       return result;
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       debugLogger.logReasoning("REASONING_SERVICE_ERROR", {
         model,
         processingTimeMs: processingTime,
         error: error.message,
         stack: error.stack
       });
-      
+
+      window.electronAPI?.logPerf?.(`[Perf][Reasoning] FAILED in ${Date.now() - perfStart}ms. Error: ${error.message}`);
       throw error;
     }
   }
@@ -424,6 +437,17 @@ class AudioManager {
     const agentName = (typeof window !== 'undefined' && window.localStorage)
       ? (localStorage.getItem("agentName") || null)
       : null;
+
+    // Skip reasoning for very short texts
+    if (normalizedText.length < 10) {
+      debugLogger.logReasoning("SKIPPING_REASONING", {
+        reason: "Text too short",
+        textLength: normalizedText.length,
+        text: normalizedText
+      });
+      return normalizedText;
+    }
+
     const useReasoning = await this.isReasoningAvailable();
 
     debugLogger.logReasoning("REASONING_CHECK", {
@@ -444,13 +468,13 @@ class AudioManager {
         });
 
         const result = await this.processWithReasoningModel(preparedText, reasoningModel, agentName);
-        
+
         debugLogger.logReasoning("REASONING_SUCCESS", {
           resultLength: result.length,
           resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
           processingTime: new Date().toISOString()
         });
-        
+
         return result;
       } catch (error) {
         debugLogger.logReasoning("REASONING_FAILED", {
@@ -466,7 +490,23 @@ class AudioManager {
       reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled"
     });
 
-    return normalizedText;
+    // Apply fast local cleanup to remove filler words
+    return this.cleanupFillerWords(normalizedText);
+  }
+
+  cleanupFillerWords(text) {
+    // Remove common filler words and clean up the text
+    return text
+      // Remove standalone filler words (with word boundaries)
+      .replace(/\b(um|uh|ah|er|like|you know|i mean)\b/gi, '')
+      // Remove repeated filler sounds
+      .replace(/\b(uh+|um+|ah+|er+)\b/gi, '')
+      // Clean up multiple spaces
+      .replace(/\s+/g, ' ')
+      // Clean up spaces before punctuation
+      .replace(/\s+([.,!?;:])/g, '$1')
+      // Trim whitespace
+      .trim();
   }
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
@@ -477,7 +517,10 @@ class AudioManager {
 
     try {
 
+      const startTime = Date.now();
       const durationSeconds = metadata.durationSeconds ?? null;
+      window.electronAPI?.logPerf?.(`[Perf] Starting Cloud Processing. Blob size: ${audioBlob.size} bytes (${(audioBlob.size / 1024).toFixed(1)} KB), Duration: ${durationSeconds ? durationSeconds.toFixed(2) + 's' : 'unknown'}`);
+
       const shouldSkipOptimizationForDuration =
         typeof durationSeconds === "number" &&
         durationSeconds > 0 &&
@@ -486,21 +529,29 @@ class AudioManager {
       const shouldOptimize =
         !shouldSkipOptimizationForDuration && audioBlob.size > 1024 * 1024;
 
+      window.electronAPI?.logPerf?.(`[Perf] Should optimize? ${shouldOptimize} (Duration: ${durationSeconds}s)`);
+
+      const optimizationStart = Date.now();
       const [apiKey, optimizedAudio] = await Promise.all([
         this.getAPIKey(),
         shouldOptimize ? this.optimizeAudio(audioBlob) : Promise.resolve(audioBlob),
       ]);
+      window.electronAPI?.logPerf?.(`[Perf] Optimization/Key fetch took: ${Date.now() - optimizationStart}ms. Final audio size: ${optimizedAudio.size} bytes`);
 
       const formData = new FormData();
-      formData.append("file", optimizedAudio, "audio.wav");
+      const extension = optimizedAudio.type.includes("wav") ? "wav" : "webm";
+      formData.append("file", optimizedAudio, `audio.${extension}`);
       formData.append("model", this.getTranscriptionModel());
 
-      if (language && language !== "auto") {
-        formData.append("language", language);
-      }
 
+      const endpoint = this.getTranscriptionEndpoint();
+      window.electronAPI?.logPerf?.(`[Debug] Transcription Endpoint: ${endpoint}`);
+      window.electronAPI?.logPerf?.(`[Debug] API Key present: ${!!apiKey} (Length: ${apiKey?.length})`);
+      window.electronAPI?.logPerf?.(`[Debug] FormData keys: ${Array.from(formData.keys()).join(", ")}`);
+
+      const apiStart = Date.now();
       const response = await fetch(
-        this.getTranscriptionEndpoint(),
+        endpoint,
         {
           method: "POST",
           headers: {
@@ -510,24 +561,36 @@ class AudioManager {
         }
       );
 
+      window.electronAPI?.logPerf?.(`[Perf] API Response received in: ${Date.now() - apiStart}ms. Status: ${response.status}`);
+
       if (!response.ok) {
         const errorText = await response.text();
         throw new Error(`API Error: ${response.status} ${errorText}`);
       }
 
       const result = await response.json();
+      window.electronAPI?.logPerf?.(`[Perf] Total processing time: ${Date.now() - startTime}ms`);
 
       if (result.text) {
+        window.electronAPI?.logPerf?.(`[Perf] Starting post-processing...`);
+        const postStart = Date.now();
         const text = await this.processTranscription(result.text, "openai");
+        window.electronAPI?.logPerf?.(`[Perf] processTranscription took: ${Date.now() - postStart}ms`);
+
+        const reasoningStart = Date.now();
         const source = await this.isReasoningAvailable() ? "openai-reasoned" : "openai";
+        window.electronAPI?.logPerf?.(`[Perf] isReasoningAvailable check took: ${Date.now() - reasoningStart}ms`);
+        window.electronAPI?.logPerf?.(`[Perf] Total post-processing time: ${Date.now() - postStart}ms`);
         return { success: true, text, source };
       } else {
         throw new Error("No text transcribed");
       }
     } catch (error) {
+      window.electronAPI?.logPerf?.(`[Perf] Cloud Processing FAILED. Error: ${error.message}`);
       const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
 
       if (allowLocalFallback && isOpenAIMode) {
+        window.electronAPI?.logPerf?.(`[Perf] Falling back to Local Whisper...`);
         try {
           const arrayBuffer = await audioBlob.arrayBuffer();
           const options = { model: fallbackModel };

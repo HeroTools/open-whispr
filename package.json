@@ -30,6 +30,7 @@
     "dist": "npm run build:renderer && electron-builder",
     "lint": "cd src && eslint .",
     "preview": "cd src && vite preview",
+    "rebuild": "npx electron-rebuild -f -w better-sqlite3",
     "clean": "node cleanup.js"
   },
   "keywords": [

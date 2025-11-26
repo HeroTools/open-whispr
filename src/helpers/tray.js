@@ -127,6 +127,11 @@ class TrayManager {
         this.tray.setIgnoreDoubleClickEvents(true);
       }
 
+      // On Windows, hide the title that appears above the tray icon
+      if (process.platform === "win32") {
+        this.tray.setTitle("");
+      }
+
       this.updateTrayMenu();
       this.setupTrayEventHandlers();
     } catch (error) {
@@ -278,6 +283,11 @@ class TrayManager {
     const contextMenu = Menu.buildFromTemplate(this.buildContextMenuTemplate());
     this.tray.setToolTip("OpenWhispr - Voice Dictation");
     this.tray.setContextMenu(contextMenu);
+
+    // Ensure title stays empty on Windows (prevent app name from showing)
+    if (process.platform === "win32") {
+      this.tray.setTitle("");
+    }
   }
 
   setupTrayEventHandlers() {

@@ -7,7 +7,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const registerListener = (channel, handlerFactory) => {
   return (callback) => {
     if (typeof callback !== "function") {
-      return () => {};
+      return () => { };
     }
 
     const listener =
@@ -129,7 +129,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // External link opener
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
-  
+
   // Model management functions
   modelGetAll: () => ipcRenderer.invoke("model-get-all"),
   modelCheck: (modelId) => ipcRenderer.invoke("model-check", modelId),
@@ -138,7 +138,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   modelDeleteAll: () => ipcRenderer.invoke("model-delete-all"),
   modelCheckRuntime: () => ipcRenderer.invoke("model-check-runtime"),
   onModelDownloadProgress: registerListener("model-download-progress"),
-  
+
   // Anthropic API
   getAnthropicKey: () => ipcRenderer.invoke("get-anthropic-key"),
   saveAnthropicKey: (key) => ipcRenderer.invoke("save-anthropic-key", key),
@@ -152,24 +152,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
 
   // Local reasoning
-  processLocalReasoning: (text, modelId, agentName, config) => 
+  processLocalReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),
-  checkLocalReasoningAvailable: () => 
+  checkLocalReasoningAvailable: () =>
     ipcRenderer.invoke("check-local-reasoning-available"),
-  
+
   // Anthropic reasoning
   processAnthropicReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
-  
+
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
   llamaCppUninstall: () => ipcRenderer.invoke("llama-cpp-uninstall"),
-  
+
   // Debug logging for reasoning pipeline
-  logReasoning: (stage, details) => 
-    ipcRenderer.invoke("log-reasoning", stage, details),
-  
+  logReasoning: (stage, details) => ipcRenderer.invoke("log-reasoning", stage, details),
+  logPerf: (message) => ipcRenderer.invoke("log-perf", message),
+
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);

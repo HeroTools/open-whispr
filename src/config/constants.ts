@@ -108,8 +108,8 @@ export const CACHE_CONFIG = {
 
 // Retry Configuration
 export const RETRY_CONFIG = {
-  MAX_RETRIES: 3,
-  INITIAL_DELAY: 1000, // 1 second
-  MAX_DELAY: 10000, // 10 seconds
+  MAX_RETRIES: 2, // Reduced from 3
+  INITIAL_DELAY: 500, // Reduced from 1000ms
+  MAX_DELAY: 3000, // Reduced from 10000ms
   BACKOFF_MULTIPLIER: 2,
 } as const;

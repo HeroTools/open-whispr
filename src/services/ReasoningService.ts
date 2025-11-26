@@ -5,13 +5,17 @@ import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, API_VERSIONS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
 // Import debugLogger for comprehensive logging
-const debugLogger = typeof window !== 'undefined' && window.electronAPI 
-  ? { logReasoning: (stage: string, details: any) => {
-      window.electronAPI.logReasoning?.(stage, details).catch(() => {});
-    }}
-  : { logReasoning: (stage: string, details: any) => {
+const debugLogger = typeof window !== 'undefined' && window.electronAPI
+  ? {
+    logReasoning: (stage: string, details: any) => {
+      window.electronAPI.logReasoning?.(stage, details).catch(() => { });
+    }
+  }
+  : {
+    logReasoning: (stage: string, details: any) => {
       console.log(`[REASONING ${stage}]`, details);
-    }};
+    }
+  };
 
 export const DEFAULT_PROMPTS = {
   agent: `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`,
@@ -153,14 +157,14 @@ class ReasoningService extends BaseReasoningService {
           groq: () => window.electronAPI.getGroqKey(),
         };
         apiKey = await keyGetters[provider]();
-        
+
         debugLogger.logReasoning(`${provider.toUpperCase()}_KEY_FETCHED`, {
           provider,
           hasKey: !!apiKey,
           keyLength: apiKey?.length || 0,
           keyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : 'none'
         });
-        
+
         if (apiKey) {
           this.apiKeyCache.set(provider, apiKey);
         }
@@ -172,7 +176,7 @@ class ReasoningService extends BaseReasoningService {
         });
       }
     }
-    
+
     if (!apiKey) {
       const errorMsg = `${provider.charAt(0).toUpperCase() + provider.slice(1)} API key not configured`;
       debugLogger.logReasoning(`${provider.toUpperCase()}_KEY_MISSING`, {
@@ -181,7 +185,7 @@ class ReasoningService extends BaseReasoningService {
       });
       throw new Error(errorMsg);
     }
-    
+
     return apiKey;
   }
 
@@ -205,12 +209,12 @@ class ReasoningService extends BaseReasoningService {
     try {
       let result: string;
       const startTime = Date.now();
-      
+
       debugLogger.logReasoning("ROUTING_TO_PROVIDER", {
         provider,
         model
       });
-      
+
       switch (provider) {
         case "openai":
           result = await this.processWithOpenAI(text, model, agentName, config);
@@ -230,9 +234,9 @@ class ReasoningService extends BaseReasoningService {
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
       }
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       debugLogger.logReasoning("PROVIDER_SUCCESS", {
         provider,
         model,
@@ -240,7 +244,7 @@ class ReasoningService extends BaseReasoningService {
         resultLength: result.length,
         resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : "")
       });
-      
+
       return result;
     } catch (error) {
       debugLogger.logReasoning("PROVIDER_ERROR", {
@@ -265,13 +269,13 @@ class ReasoningService extends BaseReasoningService {
       agentName,
       hasApiKey: false // Will update after fetching
     });
-    
+
     if (this.isProcessing) {
       throw new Error("Already processing a request");
     }
 
     const apiKey = await this.getApiKey('openai');
-    
+
     debugLogger.logReasoning("OPENAI_API_KEY", {
       hasApiKey: !!apiKey,
       keyLength: apiKey?.length || 0
@@ -318,13 +322,22 @@ class ReasoningService extends BaseReasoningService {
 
           for (const { url: endpoint, type } of endpointCandidates) {
             try {
+              // Build request body based on endpoint type
+              const bodyToSend = type === 'chat'
+                ? {
+                  model: requestBody.model,
+                  messages: requestBody.input,
+                  temperature: requestBody.temperature,
+                  store: requestBody.store,
+                }
+                : requestBody;
               const res = await fetch(endpoint, {
                 method: "POST",
                 headers: {
                   "Content-Type": "application/json",
                   Authorization: `Bearer ${apiKey}`,
                 },
-                body: JSON.stringify(requestBody),
+                body: JSON.stringify(bodyToSend),
               });
 
               if (!res.ok) {
@@ -374,7 +387,7 @@ class ReasoningService extends BaseReasoningService {
       // Detect the API response format (Responses API vs Chat Completions)
       const isResponsesApi = Array.isArray(response?.output);
       const isChatCompletions = Array.isArray(response?.choices);
-      
+
       // Log the raw response for debugging
       debugLogger.logReasoning("OPENAI_RAW_RESPONSE", {
         model,
@@ -435,7 +448,7 @@ class ReasoningService extends BaseReasoningService {
           }
         }
       }
-      
+
       debugLogger.logReasoning("OPENAI_RESPONSE", {
         model,
         responseLength: responseText.length,
@@ -443,7 +456,7 @@ class ReasoningService extends BaseReasoningService {
         success: true,
         isEmpty: responseText.length === 0
       });
-      
+
       // If we got an empty response, return the original text as fallback
       if (!responseText) {
         debugLogger.logReasoning("OPENAI_EMPTY_RESPONSE_FALLBACK", {
@@ -453,7 +466,7 @@ class ReasoningService extends BaseReasoningService {
         });
         return text; // Return original text if API returns nothing
       }
-      
+
       return responseText;
     } catch (error) {
       debugLogger.logReasoning("OPENAI_ERROR", {
@@ -478,20 +491,20 @@ class ReasoningService extends BaseReasoningService {
       agentName,
       environment: typeof window !== 'undefined' ? 'browser' : 'node'
     });
-    
+
     // Use IPC to communicate with main process for Anthropic API
     if (typeof window !== 'undefined' && window.electronAPI) {
       const startTime = Date.now();
-      
+
       debugLogger.logReasoning("ANTHROPIC_IPC_CALL", {
         model,
         textLength: text.length
       });
-      
+
       const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, config);
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       if (result.success) {
         debugLogger.logReasoning("ANTHROPIC_SUCCESS", {
           model,
@@ -526,21 +539,21 @@ class ReasoningService extends BaseReasoningService {
       agentName,
       environment: typeof window !== 'undefined' ? 'browser' : 'node'
     });
-    
+
     // Instead of importing directly, we'll use IPC to communicate with main process
     // For local models, we need to use IPC to communicate with the main process
     if (typeof window !== 'undefined' && window.electronAPI) {
       const startTime = Date.now();
-      
+
       debugLogger.logReasoning("LOCAL_IPC_CALL", {
         model,
         textLength: text.length
       });
-      
+
       const result = await window.electronAPI.processLocalReasoning(text, model, agentName, config);
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       if (result.success) {
         debugLogger.logReasoning("LOCAL_SUCCESS", {
           model,
@@ -575,13 +588,13 @@ class ReasoningService extends BaseReasoningService {
       agentName,
       hasApiKey: false
     });
-    
+
     if (this.isProcessing) {
       throw new Error("Already processing a request");
     }
 
     const apiKey = await this.getApiKey('gemini');
-    
+
     debugLogger.logReasoning("GEMINI_API_KEY", {
       hasApiKey: !!apiKey,
       keyLength: apiKey?.length || 0
@@ -623,7 +636,7 @@ class ReasoningService extends BaseReasoningService {
               hasApiKey: !!apiKey,
               requestBody: JSON.stringify(requestBody).substring(0, 200)
             });
-            
+
             const res = await fetch(
               `${API_ENDPOINTS.GEMINI}/models/${model}:generateContent`,
               {
@@ -639,13 +652,13 @@ class ReasoningService extends BaseReasoningService {
             if (!res.ok) {
               const errorText = await res.text();
               let errorData: any = { error: res.statusText };
-              
+
               try {
                 errorData = JSON.parse(errorText);
               } catch {
                 errorData = { error: errorText || res.statusText };
               }
-              
+
               debugLogger.logReasoning("GEMINI_API_ERROR_DETAIL", {
                 status: res.status,
                 statusText: res.statusText,
@@ -653,13 +666,13 @@ class ReasoningService extends BaseReasoningService {
                 errorMessage: errorData.error?.message || errorData.message || errorData.error,
                 fullResponse: errorText.substring(0, 500)
               });
-              
+
               const errorMessage = errorData.error?.message || errorData.message || errorData.error || `Gemini API error: ${res.status}`;
               throw new Error(errorMessage);
             }
 
             const jsonResponse = await res.json();
-            
+
             debugLogger.logReasoning("GEMINI_RAW_RESPONSE", {
               hasResponse: !!jsonResponse,
               responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
@@ -667,7 +680,7 @@ class ReasoningService extends BaseReasoningService {
               candidatesLength: jsonResponse?.candidates?.length || 0,
               fullResponse: JSON.stringify(jsonResponse).substring(0, 500)
             });
-            
+
             return jsonResponse;
           },
           createApiRetryStrategy("Gemini")
@@ -690,7 +703,7 @@ class ReasoningService extends BaseReasoningService {
         });
         throw new Error("Invalid response structure from Gemini API");
       }
-      
+
       // Check if the response has actual content
       const candidate = response.candidates[0];
       if (!candidate.content?.parts?.[0]?.text) {
@@ -701,23 +714,23 @@ class ReasoningService extends BaseReasoningService {
           hasParts: !!candidate.content?.parts,
           response: JSON.stringify(candidate).substring(0, 500)
         });
-        
+
         // If finish reason is MAX_TOKENS, the model hit its limit
         if (candidate.finishReason === "MAX_TOKENS") {
           throw new Error("Gemini reached token limit before generating response. Try a shorter input or increase max tokens.");
         }
         throw new Error("Gemini returned empty response");
       }
-      
+
       const responseText = candidate.content.parts[0].text.trim();
-      
+
       debugLogger.logReasoning("GEMINI_RESPONSE", {
         model,
         responseLength: responseText.length,
         tokensUsed: response.usageMetadata?.totalTokenCount || 0,
         success: true
       });
-      
+
       return responseText;
     } catch (error) {
       debugLogger.logReasoning("GEMINI_ERROR", {
@@ -890,7 +903,7 @@ class ReasoningService extends BaseReasoningService {
       const anthropicKey = await window.electronAPI?.getAnthropicKey?.();
       const geminiKey = await window.electronAPI?.getGeminiKey?.();
       const localAvailable = await window.electronAPI?.checkLocalReasoningAvailable?.();
-      
+
       debugLogger.logReasoning("API_KEY_CHECK", {
         hasOpenAI: !!openaiKey,
         hasAnthropic: !!anthropicKey,
@@ -901,7 +914,7 @@ class ReasoningService extends BaseReasoningService {
         geminiKeyLength: geminiKey?.length || 0,
         geminiKeyPreview: geminiKey ? `${geminiKey.substring(0, 8)}...` : 'none'
       });
-      
+
       return !!(openaiKey || anthropicKey || geminiKey || localAvailable);
     } catch (error) {
       debugLogger.logReasoning("API_KEY_CHECK_ERROR", {
