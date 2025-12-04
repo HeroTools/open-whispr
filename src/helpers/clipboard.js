@@ -20,14 +20,20 @@ class ClipboardManager {
     }
   }
 
-  async pasteText(text) {
+  async pasteText(text, options = {}) {
     try {
-      // Save original clipboard content first
-      const originalClipboard = clipboard.readText();
-      this.safeLog(
-        "💾 Saved original clipboard content:",
-        originalClipboard.substring(0, 50) + "..."
-      );
+      // Option to skip clipboard preservation for faster pasting (saves ~100-200ms)
+      const preserveClipboard = options.preserveClipboard !== false; // Default: true
+
+      let originalClipboard = "";
+      if (preserveClipboard) {
+        // Save original clipboard content first
+        originalClipboard = clipboard.readText();
+        this.safeLog(
+          "💾 Saved original clipboard content:",
+          originalClipboard.substring(0, 50) + "..."
+        );
+      }
 
       // Copy text to clipboard first - this always works
       clipboard.writeText(text);
@@ -53,11 +59,11 @@ class ClipboardManager {
         }
 
         this.safeLog("✅ Permissions granted, attempting to paste...");
-        return await this.pasteMacOS(originalClipboard);
+        return await this.pasteMacOS(originalClipboard, preserveClipboard);
       } else if (process.platform === "win32") {
-        return await this.pasteWindows(originalClipboard);
+        return await this.pasteWindows(originalClipboard, preserveClipboard);
       } else {
-        return await this.pasteLinux(originalClipboard);
+        return await this.pasteLinux(originalClipboard, preserveClipboard);
       }
     } catch (error) {
       throw error;
@@ -121,19 +127,42 @@ class ClipboardManager {
     });
   }
 
-  async pasteWindows(originalClipboard) {
+  async pasteWindows(originalClipboard, preserveClipboard = true) {
     return new Promise((resolve, reject) => {
+      // Optimized: Use -NoProfile and -NonInteractive to skip loading profile scripts
+      // This significantly reduces PowerShell startup time
       const pasteProcess = spawn("powershell", [
+        "-NoProfile",
+        "-NonInteractive",
         "-Command",
         'Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait("^v")',
       ]);
 
+      let hasTimedOut = false;
+
+      // Add timeout to prevent hanging
+      const timeoutId = setTimeout(() => {
+        hasTimedOut = true;
+        pasteProcess.kill("SIGKILL");
+        reject(
+          new Error(
+            "Windows paste timed out after 2 seconds. Text is copied to clipboard."
+          )
+        );
+      }, 2000);
+
       pasteProcess.on("close", (code) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
+
         if (code === 0) {
-          // Text pasted successfully
-          setTimeout(() => {
-            clipboard.writeText(originalClipboard);
-          }, 100);
+          // Only restore clipboard if preserveClipboard is enabled
+          if (preserveClipboard && originalClipboard) {
+            // Reduced delay from 100ms to 50ms for faster clipboard restore
+            setTimeout(() => {
+              clipboard.writeText(originalClipboard);
+            }, 50);
+          }
           resolve();
         } else {
           reject(
@@ -145,6 +174,8 @@ class ClipboardManager {
       });
 
       pasteProcess.on("error", (error) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
         reject(
           new Error(
             `Windows paste failed: ${error.message}. Text is copied to clipboard.`
@@ -175,17 +206,17 @@ class ClipboardManager {
     // Define paste tools in preference order based on display server
     const candidates = isWayland
       ? [
-          // Wayland tools
-          { cmd: "wtype", args: ["-M", "ctrl", "-p", "v", "-m", "ctrl"] },
-          // ydotool requires uinput permissions but included as fallback
-          { cmd: "ydotool", args: ["key", "29:1", "47:1", "47:0", "29:0"] },
-          // X11 fallback for XWayland
-          { cmd: "xdotool", args: ["key", "ctrl+v"] },
-        ]
+        // Wayland tools
+        { cmd: "wtype", args: ["-M", "ctrl", "-p", "v", "-m", "ctrl"] },
+        // ydotool requires uinput permissions but included as fallback
+        { cmd: "ydotool", args: ["key", "29:1", "47:1", "47:0", "29:0"] },
+        // X11 fallback for XWayland
+        { cmd: "xdotool", args: ["key", "ctrl+v"] },
+      ]
       : [
-          // X11 tools
-          { cmd: "xdotool", args: ["key", "ctrl+v"] },
-        ];
+        // X11 tools
+        { cmd: "xdotool", args: ["key", "ctrl+v"] },
+      ];
 
     // Filter to only available tools
     const available = candidates.filter((c) => commandExists(c.cmd));

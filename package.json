@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "compile:globe": "node scripts/build-globe-listener.js",
-    "prestart": "npm run compile:globe",
+    "prestart": "npm run compile:globe && npm run build:renderer",
     "start": "electron .",
     "predev": "npm run compile:globe",
     "dev": "concurrently -k -r \"npm:dev:renderer\" \"npm:dev:main\"",

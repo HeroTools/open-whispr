@@ -1,3 +1,4 @@
+import PerformanceLogger from "./performanceLogger";
 import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
@@ -157,12 +158,27 @@ class AudioManager {
         options.language = language;
       }
 
+      const transcriptionStart = Date.now();
+      window.electronAPI?.logPerf?.(`[Perf] Starting Local Whisper Transcription...`);
+
       const result = await window.electronAPI.transcribeLocalWhisper(
         arrayBuffer,
         options
       );
 
       if (result.success && result.text) {
+        // Log performance metrics from Python if available
+        if (result.performance_metrics) {
+          const metrics = result.performance_metrics;
+          window.electronAPI?.logPerf?.(`[Perf] Local Whisper Complete. Total: ${metrics.total_time_ms}ms`);
+          window.electronAPI?.logPerf?.(`[Perf] Breakdown: Model Loading: ${metrics.steps?.model_loading?.duration_ms}ms, Transcription: ${metrics.steps?.transcription?.duration_ms}ms`);
+
+          // Also log to console for immediate visibility
+          console.log("[Perf] Local Whisper Metrics:", metrics);
+        } else {
+          window.electronAPI?.logPerf?.(`[Perf] Local Whisper Complete in ${Date.now() - transcriptionStart}ms (No detailed metrics returned)`);
+        }
+
         const text = await this.processTranscription(result.text, "local");
         if (text !== null && text !== undefined) {
           return { success: true, text: text || result.text, source: "local" };
@@ -516,6 +532,8 @@ class AudioManager {
     const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
 
     try {
+      // Start performance session
+      PerformanceLogger.startSession("cloud_audio_clip", audioBlob.size);
 
       const startTime = Date.now();
       const durationSeconds = metadata.durationSeconds ?? null;
@@ -531,11 +549,13 @@ class AudioManager {
 
       window.electronAPI?.logPerf?.(`[Perf] Should optimize? ${shouldOptimize} (Duration: ${durationSeconds}s)`);
 
+      PerformanceLogger.startStep("optimization");
       const optimizationStart = Date.now();
       const [apiKey, optimizedAudio] = await Promise.all([
         this.getAPIKey(),
         shouldOptimize ? this.optimizeAudio(audioBlob) : Promise.resolve(audioBlob),
       ]);
+      PerformanceLogger.endStep("optimization", { optimized: shouldOptimize, originalSize: audioBlob.size, finalSize: optimizedAudio.size });
       window.electronAPI?.logPerf?.(`[Perf] Optimization/Key fetch took: ${Date.now() - optimizationStart}ms. Final audio size: ${optimizedAudio.size} bytes`);
 
       const formData = new FormData();
@@ -543,12 +563,12 @@ class AudioManager {
       formData.append("file", optimizedAudio, `audio.${extension}`);
       formData.append("model", this.getTranscriptionModel());
 
-
       const endpoint = this.getTranscriptionEndpoint();
       window.electronAPI?.logPerf?.(`[Debug] Transcription Endpoint: ${endpoint}`);
       window.electronAPI?.logPerf?.(`[Debug] API Key present: ${!!apiKey} (Length: ${apiKey?.length})`);
       window.electronAPI?.logPerf?.(`[Debug] FormData keys: ${Array.from(formData.keys()).join(", ")}`);
 
+      PerformanceLogger.startStep("transcription_api");
       const apiStart = Date.now();
       const response = await fetch(
         endpoint,
@@ -560,6 +580,7 @@ class AudioManager {
           body: formData,
         }
       );
+      PerformanceLogger.endStep("transcription_api", { status: response.status, endpoint });
 
       window.electronAPI?.logPerf?.(`[Perf] API Response received in: ${Date.now() - apiStart}ms. Status: ${response.status}`);
 
@@ -573,8 +594,12 @@ class AudioManager {
 
       if (result.text) {
         window.electronAPI?.logPerf?.(`[Perf] Starting post-processing...`);
+        PerformanceLogger.startStep("post_processing");
         const postStart = Date.now();
         const text = await this.processTranscription(result.text, "openai");
+        PerformanceLogger.endStep("post_processing");
+        PerformanceLogger.endStep("post_processing");
+        // Session is now ended in safePaste to capture total time
         window.electronAPI?.logPerf?.(`[Perf] processTranscription took: ${Date.now() - postStart}ms`);
 
         const reasoningStart = Date.now();
@@ -583,9 +608,11 @@ class AudioManager {
         window.electronAPI?.logPerf?.(`[Perf] Total post-processing time: ${Date.now() - postStart}ms`);
         return { success: true, text, source };
       } else {
+        PerformanceLogger.endSession(false, "No text transcribed");
         throw new Error("No text transcribed");
       }
     } catch (error) {
+      PerformanceLogger.endSession(false, error.message);
       window.electronAPI?.logPerf?.(`[Perf] Cloud Processing FAILED. Error: ${error.message}`);
       const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
 
@@ -691,9 +718,26 @@ class AudioManager {
 
   async safePaste(text) {
     try {
+      PerformanceLogger.startStep("pasting");
+      const pasteStart = Date.now();
+      window.electronAPI?.logPerf?.(`[Perf] Starting paste operation...`);
+
       await window.electronAPI.pasteText(text);
+
+      const pasteDuration = Date.now() - pasteStart;
+      PerformanceLogger.endStep("pasting");
+      window.electronAPI?.logPerf?.(`[Perf] Paste operation took: ${pasteDuration}ms`);
+
+      // Log total time from start of session to paste completion
+      if (PerformanceLogger.currentSession && PerformanceLogger.currentSession.absolute_start_time) {
+        const totalTime = Date.now() - PerformanceLogger.currentSession.absolute_start_time;
+        window.electronAPI?.logPerf?.(`[Perf] ═══ TOTAL TIME (Start to Paste): ${totalTime}ms ═══`);
+        PerformanceLogger.endSession(true);
+      }
+
       return true;
     } catch (error) {
+      PerformanceLogger.endStep("pasting", { error: error.message });
       this.onError?.({
         title: "Paste Error",
         description: `Failed to paste text. Please check accessibility permissions. ${error.message}`,

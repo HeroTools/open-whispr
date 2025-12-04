@@ -537,6 +537,22 @@ class IPCHandlers {
       console.log(message);
       return { success: true };
     });
+
+    ipcMain.handle("log-performance", async (event, sessionData) => {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(process.cwd(), 'performance_logs.jsonl');
+
+        // Append to file
+        fs.appendFileSync(logFile, JSON.stringify(sessionData) + '\n');
+        console.log('[Perf] Wrote session to log file');
+        return { success: true };
+      } catch (error) {
+        console.error('[Perf] Failed to write log file:', error);
+        return { success: false, error: error.message };
+      }
+    });
   }
 
   broadcastToWindows(channel, payload) {

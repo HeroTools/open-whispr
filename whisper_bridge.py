@@ -383,48 +383,31 @@ def delete_model(model_name="base"):
             "success": False
         }
 
-def transcribe_audio(audio_path, model_name="base", language=None):
-    """Transcribe audio file using Whisper with optimizations"""
-    
-    if not os.path.exists(audio_path):
-        return {"error": f"Audio file not found: {audio_path}", "success": False}
-    
-    try:
-        # Load model (uses cache for performance)
-        model = load_model(model_name)
-        if model is None:
-            return {"error": "Failed to load Whisper model", "success": False}
-        
-        options = {
-            "fp16": False,
-            "verbose": False,
-        }
-        if language:
-            options["language"] = language
-            
-        result = model.transcribe(audio_path, **options)
-        
-        text = result.get("text", "").strip()
-        language = result.get("language", "unknown")
-        
-        return {
-            "text": text,
-            "language": language,
-            "success": True
-        }
-        
-    except Exception as e:
-        return {
-            "error": str(e),
-            "success": False
-        }
-
 def check_ffmpeg():
-    """Check if FFmpeg is available and working"""
+    """Check if FFmpeg is available in PATH and return its version."""
     try:
-        import subprocess
-        test_path = ffmpeg_path or "ffmpeg"
+        # Check common FFmpeg executable names
+        ffmpeg_executables = ["ffmpeg", "ffmpeg.exe"]
+        test_path = None
         
+        # Also check the FFMPEG_BINARY env var if set
+        if os.environ.get("FFMPEG_BINARY"):
+            ffmpeg_executables.insert(0, os.environ.get("FFMPEG_BINARY"))
+            
+        import shutil
+        for exe in ffmpeg_executables:
+            if shutil.which(exe):
+                test_path = shutil.which(exe)
+                break
+        
+        if not test_path:
+            return {
+                "available": False,
+                "error": "FFmpeg not found in system PATH",
+                "success": False
+            }
+
+        import subprocess
         result = subprocess.run([test_path, "-version"], 
                               capture_output=True, text=True, timeout=10)
         
@@ -457,6 +440,70 @@ def check_ffmpeg():
     except Exception as e:
         return {
             "available": False,
+            "error": str(e),
+            "success": False
+        }
+
+def transcribe_audio(audio_path, model_name="base", language=None):
+    """Transcribe audio file using Whisper with optimizations and performance tracking"""
+    
+    if not os.path.exists(audio_path):
+        return {"error": f"Audio file not found: {audio_path}", "success": False}
+    
+    try:
+        # Import performance logger
+        from performance_logger import PerformanceLogger, StepTimer
+        
+        # Initialize performance logger
+        perf_logger = PerformanceLogger(console_output=True)
+        perf_logger.start_session(audio_path)
+        
+        # Load model (uses cache for performance)
+        with StepTimer(perf_logger, "model_loading", model=model_name):
+            model = load_model(model_name)
+            if model is None:
+                perf_logger.end_session(success=False, error="Failed to load Whisper model")
+                return {"error": "Failed to load Whisper model", "success": False}
+        
+        # Prepare transcription options
+        options = {
+            "fp16": False,
+            "verbose": False,
+        }
+        if language:
+            options["language"] = language
+        
+        # Perform transcription
+        with StepTimer(perf_logger, "transcription", model=model_name, language=language or "auto"):
+            result = model.transcribe(audio_path, **options)
+        
+        text = result.get("text", "").strip()
+        detected_language = result.get("language", "unknown")
+        
+        # End session and get metrics
+        metrics = perf_logger.end_session(success=True)
+        
+        return {
+            "text": text,
+            "language": detected_language,
+            "success": True,
+            "performance_metrics": {
+                "total_time_ms": metrics["total_time_ms"],
+                "file_size_mb": metrics["file_size_mb"],
+                "steps": metrics["steps"],
+                "breakdown_percent": metrics.get("breakdown_percent", {})
+            }
+        }
+        
+    except Exception as e:
+        # Try to log error if logger exists
+        try:
+            if 'perf_logger' in locals():
+                perf_logger.end_session(success=False, error=str(e))
+        except:
+            pass
+        
+        return {
             "error": str(e),
             "success": False
         }

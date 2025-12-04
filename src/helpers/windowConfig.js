@@ -23,6 +23,9 @@ const MAIN_WINDOW_CONFIG = {
   hasShadow: false, // Remove shadow for cleaner look
   acceptsFirstMouse: true, // Accept clicks even when not focused
   type: process.platform === 'darwin' ? 'panel' : 'normal', // Panel on macOS preserves floating behavior
+  titleBarStyle: 'hidden', // Hide title bar on macOS/Windows
+  autoHideMenuBar: true, // Auto hide menu bar on Windows/Linux
+  thickFrame: false, // Prevent window border on Windows
 };
 
 // Control panel window configuration
@@ -83,7 +86,7 @@ class WindowPositionUtil {
         skipTransformProcessType: true, // Keep Dock/Command-Tab behaviour
       });
       window.setFullScreenable(false);
-      
+
       // Ensure window level is maintained
       if (window.isVisible()) {
         window.setAlwaysOnTop(true, "floating", 1);
@@ -96,13 +99,13 @@ class WindowPositionUtil {
       // Linux and other platforms
       window.setAlwaysOnTop(true, "screen-saver");
     }
-    
+
     // Bring window to front if visible
     if (window.isVisible()) {
       window.moveTop();
     }
   }
-  
+
   static setupControlPanel(window) {
     // Control panel should behave like a normal application window
     // This is only called once during window creation

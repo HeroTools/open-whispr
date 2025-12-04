@@ -169,6 +169,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Debug logging for reasoning pipeline
   logReasoning: (stage, details) => ipcRenderer.invoke("log-reasoning", stage, details),
   logPerf: (message) => ipcRenderer.invoke("log-perf", message),
+  logPerformance: (sessionData) => ipcRenderer.invoke("log-performance", sessionData),
 
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
