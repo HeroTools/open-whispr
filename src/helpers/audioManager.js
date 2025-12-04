@@ -220,7 +220,27 @@ class AudioManager {
       return this.cachedApiKey;
     }
 
-    let apiKey = await window.electronAPI.getOpenAIKey();
+    // Check if we're using Groq endpoint
+    const endpoint = this.getTranscriptionEndpoint();
+    const isGroqEndpoint = endpoint.includes('groq.com');
+
+    let apiKey;
+
+    if (isGroqEndpoint) {
+      // Try to get Groq API key first
+      try {
+        apiKey = await window.electronAPI.getGroqKey();
+        if (apiKey && apiKey.trim() !== "" && apiKey !== "your_groq_api_key_here") {
+          this.cachedApiKey = apiKey;
+          return apiKey;
+        }
+      } catch (error) {
+        console.warn('Groq API key not available, trying OpenAI key as fallback');
+      }
+    }
+
+    // Fallback to OpenAI key
+    apiKey = await window.electronAPI.getOpenAIKey();
     if (
       !apiKey ||
       apiKey.trim() === "" ||
@@ -235,7 +255,7 @@ class AudioManager {
       apiKey === "your_openai_api_key_here"
     ) {
       throw new Error(
-        "OpenAI API key not found. Please set your API key in the .env file or Control Panel."
+        `${isGroqEndpoint ? 'Groq' : 'OpenAI'} API key not found. Please set your API key in the .env file or Control Panel.`
       );
     }
 
@@ -685,19 +705,22 @@ class AudioManager {
         ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
         : "";
       const trimmed = stored.trim();
-      const base = trimmed ? trimmed : API_ENDPOINTS.TRANSCRIPTION_BASE;
+
+      // Default to Groq for faster transcription
+      const base = trimmed ? trimmed : "https://api.groq.com/openai/v1";
       const normalizedBase = normalizeBaseUrl(base);
 
       if (!normalizedBase) {
-        this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
-        return API_ENDPOINTS.TRANSCRIPTION;
+        // Fallback to Groq if normalization fails
+        this.cachedTranscriptionEndpoint = "https://api.groq.com/openai/v1/audio/transcriptions";
+        return this.cachedTranscriptionEndpoint;
       }
 
       const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
       if (!normalizedBase.startsWith('https://') && !isLocalhost) {
-        console.warn('Non-HTTPS endpoint rejected for security. Using default.');
-        this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
-        return API_ENDPOINTS.TRANSCRIPTION;
+        console.warn('Non-HTTPS endpoint rejected for security. Using Groq default.');
+        this.cachedTranscriptionEndpoint = "https://api.groq.com/openai/v1/audio/transcriptions";
+        return this.cachedTranscriptionEndpoint;
       }
 
       let endpoint;
@@ -711,8 +734,9 @@ class AudioManager {
       return endpoint;
     } catch (error) {
       console.warn('Failed to resolve transcription endpoint:', error);
-      this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
-      return API_ENDPOINTS.TRANSCRIPTION;
+      // Fallback to Groq
+      this.cachedTranscriptionEndpoint = "https://api.groq.com/openai/v1/audio/transcriptions";
+      return this.cachedTranscriptionEndpoint;
     }
   }
 
