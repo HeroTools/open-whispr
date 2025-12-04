@@ -12,6 +12,7 @@ const MAIN_WINDOW_CONFIG = {
     sandbox: true,
   },
   frame: false,
+  title: '', // Explicitly set empty title to prevent Windows from showing app name
   alwaysOnTop: true,
   resizable: false,
   transparent: true,

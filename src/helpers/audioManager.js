@@ -35,6 +35,33 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
+
+    // Migration: Clear old OpenAI transcription settings to use Groq
+    this.migrateToGroqTranscription();
+  }
+
+  migrateToGroqTranscription() {
+    if (typeof localStorage === 'undefined') return;
+
+    try {
+      const migrationKey = 'groq_transcription_migrated';
+      const alreadyMigrated = localStorage.getItem(migrationKey);
+
+      if (!alreadyMigrated) {
+        const oldEndpoint = localStorage.getItem('cloudTranscriptionBaseUrl');
+
+        // Only migrate if it was pointing to OpenAI
+        if (oldEndpoint && oldEndpoint.includes('openai.com')) {
+          localStorage.removeItem('cloudTranscriptionBaseUrl');
+          localStorage.removeItem('cloudTranscriptionModel');
+          console.log('[Migration] Switched to Groq Whisper API for faster transcription');
+        }
+
+        localStorage.setItem(migrationKey, 'true');
+      }
+    } catch (error) {
+      // Silently fail migration, will use defaults
+    }
   }
 
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
@@ -670,28 +697,30 @@ class AudioManager {
 
   getTranscriptionModel() {
     try {
-      // Check if a custom model is configured
-      const customModel = typeof localStorage !== "undefined"
-        ? localStorage.getItem("cloudTranscriptionModel") || ""
-        : "";
-
-      if (customModel.trim()) {
-        return customModel.trim();
-      }
-
-      // Auto-detect model based on endpoint
+      // First, check which endpoint we're using
       const endpoint = typeof localStorage !== "undefined"
         ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
         : "";
 
-      if (endpoint.includes("groq.com")) {
-        return "whisper-large-v3-turbo"; // Groq's fast model
+      // If using Groq, return Groq model (override any cached model)
+      if (endpoint.includes("groq.com") || !endpoint) {
+        // Default to Groq's fast model
+        return "whisper-large-v3-turbo"; // Groq's fastest Whisper model
+      }
+
+      // For OpenAI, check if a custom model is configured
+      const customModel = typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionModel") || ""
+        : "";
+
+      if (customModel.trim() && !customModel.includes("whisper-large-v3")) {
+        return customModel.trim();
       }
 
       // Default to OpenAI's model
       return "whisper-1";
     } catch (error) {
-      return "whisper-1";
+      return "whisper-large-v3-turbo"; // Default to Groq
     }
   }
 
