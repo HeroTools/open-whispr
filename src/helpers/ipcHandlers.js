@@ -146,7 +146,7 @@ class IPCHandlers {
           audioBlobSize: audioBlob?.byteLength || audioBlob?.length || 0,
           options
         });
-        
+
         try {
           const result = await this.whisperManager.transcribeLocalWhisper(
             audioBlob,
@@ -159,7 +159,7 @@ class IPCHandlers {
             message: result.message,
             error: result.error
           });
-          
+
           // Check if no audio was detected and send appropriate event
           if (!result.success && result.message === "No audio detected") {
             debugLogger.log('Sending no-audio-detected event to renderer');
@@ -345,11 +345,11 @@ class IPCHandlers {
         );
         return { success: true, path: result };
       } catch (error) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: error.message,
           code: error.code,
-          details: error.details 
+          details: error.details
         };
       }
     });
@@ -360,11 +360,11 @@ class IPCHandlers {
         await modelManager.deleteModel(modelId);
         return { success: true };
       } catch (error) {
-        return { 
-          success: false, 
+        return {
+          success: false,
           error: error.message,
           code: error.code,
-          details: error.details 
+          details: error.details
         };
       }
     });
@@ -390,11 +390,11 @@ class IPCHandlers {
         await modelManager.ensureLlamaCpp();
         return { available: true };
       } catch (error) {
-        return { 
-          available: false, 
+        return {
+          available: false,
           error: error.message,
           code: error.code,
-          details: error.details 
+          details: error.details
         };
       }
     });
@@ -409,6 +409,14 @@ class IPCHandlers {
 
     ipcMain.handle("save-gemini-key", async (event, key) => {
       return this.environmentManager.saveGeminiKey(key);
+    });
+
+    ipcMain.handle("get-groq-key", async (event) => {
+      return this.environmentManager.getGroqKey();
+    });
+
+    ipcMain.handle("save-groq-key", async (event, key) => {
+      return this.environmentManager.saveGroqKey(key);
     });
 
     ipcMain.handle("save-anthropic-key", async (event, key) => {
@@ -430,7 +438,7 @@ class IPCHandlers {
     ipcMain.handle("process-anthropic-reasoning", async (event, text, modelId, agentName, config) => {
       try {
         const apiKey = this.environmentManager.getAnthropicKey();
-        
+
         if (!apiKey) {
           throw new Error("Anthropic API key not configured");
         }
@@ -523,6 +531,27 @@ class IPCHandlers {
     ipcMain.handle("log-reasoning", async (event, stage, details) => {
       debugLogger.logReasoning(stage, details);
       return { success: true };
+    });
+
+    ipcMain.handle("log-perf", async (event, message) => {
+      console.log(message);
+      return { success: true };
+    });
+
+    ipcMain.handle("log-performance", async (event, sessionData) => {
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const logFile = path.join(process.cwd(), 'performance_logs.jsonl');
+
+        // Append to file
+        fs.appendFileSync(logFile, JSON.stringify(sessionData) + '\n');
+        console.log('[Perf] Wrote session to log file');
+        return { success: true };
+      } catch (error) {
+        console.error('[Perf] Failed to write log file:', error);
+        return { success: false, error: error.message };
+      }
     });
   }
 
