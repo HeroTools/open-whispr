@@ -3,11 +3,7 @@ const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
-const {
-  MAIN_WINDOW_CONFIG,
-  CONTROL_PANEL_CONFIG,
-  WindowPositionUtil,
-} = require("./windowConfig");
+const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
 
 class WindowManager {
   constructor() {
@@ -50,16 +46,8 @@ class WindowManager {
     this.mainWindow.webContents.on(
       "did-fail-load",
       async (_event, errorCode, errorDescription, validatedURL) => {
-        console.error(
-          "Failed to load main window:",
-          errorCode,
-          errorDescription,
-          validatedURL
-        );
-        if (
-          process.env.NODE_ENV === "development" &&
-          validatedURL.includes("localhost:5174")
-        ) {
+        console.error("Failed to load main window:", errorCode, errorDescription, validatedURL);
+        if (process.env.NODE_ENV === "development" && validatedURL.includes("localhost:5174")) {
           // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();
@@ -72,12 +60,9 @@ class WindowManager {
       }
     );
 
-    this.mainWindow.webContents.on(
-      "did-finish-load",
-      () => {
-        this.enforceMainWindowOnTop();
-      }
-    );
+    this.mainWindow.webContents.on("did-finish-load", () => {
+      this.enforceMainWindowOnTop();
+    });
   }
 
   setMainWindowInteractivity(shouldCapture) {
@@ -190,9 +175,7 @@ class WindowManager {
     if (process.env.NODE_ENV === "development") {
       const isReady = await DevServerManager.waitForDevServer();
       if (!isReady) {
-        console.error(
-          "Dev server not ready for control panel, loading anyway..."
-        );
+        console.error("Dev server not ready for control panel, loading anyway...");
       }
     }
     this.controlPanelWindow.loadURL(appUrl);

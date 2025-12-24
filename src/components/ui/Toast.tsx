@@ -16,9 +16,7 @@ export interface ToastContextType {
   dismiss: (id?: string) => void;
 }
 
-const ToastContext = React.createContext<ToastContextType | undefined>(
-  undefined
-);
+const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
 
 export const useToast = () => {
   const context = React.useContext(ToastContext);
@@ -28,12 +26,8 @@ export const useToast = () => {
   return context;
 };
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>(
-    []
-  );
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>([]);
 
   const toast = React.useCallback((props: Omit<ToastProps, "id">) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -76,7 +70,7 @@ const ToastViewport: React.FC<{
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+    <div className="fixed right-4 bottom-4 z-50 flex max-w-sm flex-col gap-2">
       {toasts.map((toast) => (
         <Toast key={toast.id} {...toast} onClose={() => onDismiss(toast.id)} />
       ))}
@@ -116,7 +110,7 @@ const Toast: React.FC<ToastProps & { onClose?: () => void }> = ({
       {onClose && (
         <button
           onClick={onClose}
-          className={`absolute right-2 top-2 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${iconClasses[variant]}`}
+          className={`absolute top-2 right-2 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 focus:outline-none ${iconClasses[variant]}`}
         >
           <X className="h-4 w-4" />
           <span className="sr-only">Close</span>

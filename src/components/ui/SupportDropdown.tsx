@@ -15,9 +15,7 @@ interface SupportDropdownProps {
 export default function SupportDropdown({ className }: SupportDropdownProps) {
   const handleContactSupport = async () => {
     try {
-      const result = await window.electronAPI?.openExternal(
-        "mailto:support@openwhispr.com"
-      );
+      const result = await window.electronAPI?.openExternal("mailto:support@openwhispr.com");
       if (!result?.success) {
         console.error("Failed to open email client:", result?.error);
         // Fallback: try opening the email as a web URL
@@ -50,10 +48,7 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
           <HelpCircle size={16} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        className="bg-white border border-gray-200 shadow-lg"
-      >
+      <DropdownMenuContent align="end" className="border border-gray-200 bg-white shadow-lg">
         <DropdownMenuItem
           onClick={handleContactSupport}
           className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50"

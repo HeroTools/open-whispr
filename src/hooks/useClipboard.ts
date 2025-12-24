@@ -2,9 +2,7 @@ import { useCallback } from "react";
 
 export interface UseClipboardReturn {
   pasteFromClipboard: (setter: (value: string) => void) => Promise<void>;
-  pasteFromClipboardWithFallback: (
-    setter: (value: string) => void
-  ) => Promise<void>;
+  pasteFromClipboardWithFallback: (setter: (value: string) => void) => Promise<void>;
 }
 
 export interface UseClipboardProps {
@@ -14,22 +12,19 @@ export interface UseClipboardProps {
 export const useClipboard = (
   showAlertDialog?: UseClipboardProps["showAlertDialog"]
 ): UseClipboardReturn => {
-  const pasteFromClipboard = useCallback(
-    async (setter: (value: string) => void) => {
-      try {
-        const text = await window.electronAPI.readClipboard();
-        if (text && text.trim()) {
-          setter(text.trim());
-        } else {
-          throw new Error("Empty clipboard");
-        }
-      } catch (err) {
-        console.error("Clipboard read failed:", err);
-        throw err;
+  const pasteFromClipboard = useCallback(async (setter: (value: string) => void) => {
+    try {
+      const text = await window.electronAPI.readClipboard();
+      if (text && text.trim()) {
+        setter(text.trim());
+      } else {
+        throw new Error("Empty clipboard");
       }
-    },
-    []
-  );
+    } catch (err) {
+      console.error("Clipboard read failed:", err);
+      throw err;
+    }
+  }, []);
 
   const pasteFromClipboardWithFallback = useCallback(
     async (setter: (value: string) => void) => {
@@ -58,13 +53,10 @@ export const useClipboard = (
       if (showAlertDialog) {
         showAlertDialog({
           title: "Clipboard Paste Failed",
-          description:
-            "Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V.",
+          description: "Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V.",
         });
       } else {
-        alert(
-          "Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V."
-        );
+        alert("Could not paste from clipboard. Please try typing or using Cmd+V/Ctrl+V.");
       }
     },
     [showAlertDialog]

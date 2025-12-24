@@ -156,16 +156,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Anthropic reasoning
   processAnthropicReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
-  
+
+  // Anthropic generic request (for translation)
+  anthropicRequest: (requestBody) =>
+    ipcRenderer.invoke("anthropic-request", requestBody),
+
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
   llamaCppUninstall: () => ipcRenderer.invoke("llama-cpp-uninstall"),
   
   // Debug logging for reasoning pipeline
-  logReasoning: (stage, details) => 
+  logReasoning: (stage, details) =>
     ipcRenderer.invoke("log-reasoning", stage, details),
-  
+
+  // DevTools
+  openDevTools: () => ipcRenderer.invoke("open-devtools"),
+
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);

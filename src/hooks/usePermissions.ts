@@ -19,8 +19,7 @@ export const usePermissions = (
   showAlertDialog?: UsePermissionsProps["showAlertDialog"]
 ): UsePermissionsReturn => {
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
-  const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] =
-    useState(false);
+  const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] = useState(false);
 
   const requestMicPermission = useCallback(async () => {
     try {
@@ -31,8 +30,7 @@ export const usePermissions = (
       if (showAlertDialog) {
         showAlertDialog({
           title: "Microphone Permission Required",
-          description:
-            "Please grant microphone permissions to use voice dictation.",
+          description: "Please grant microphone permissions to use voice dictation.",
         });
       } else {
         alert("Please grant microphone permissions to use voice dictation.");
@@ -64,9 +62,7 @@ export const usePermissions = (
             "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
         });
       } else {
-        alert(
-          "❌ Accessibility permissions needed! Please grant them in System Settings."
-        );
+        alert("❌ Accessibility permissions needed! Please grant them in System Settings.");
       }
     }
   }, [showAlertDialog]);

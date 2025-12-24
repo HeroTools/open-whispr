@@ -32,58 +32,50 @@ export default function TranscriptionItem({
       });
 
   return (
-    <div className="relative bg-gradient-to-b from-blue-50/30 to-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
-      <div className="p-6 pl-16" style={{ paddingTop: "8px" }}>
-        <div className="flex items-start justify-between">
-          <div className="flex-1 mr-3">
-            <div
-              className="flex items-center gap-2 mb-1"
-              style={{ marginTop: "2px", lineHeight: "24px" }}
-            >
-              <span className="text-indigo-600 text-xs font-medium">
-                #{total - index}
-              </span>
-              <div className="w-px h-3 bg-neutral-300" />
-              <span className="text-xs text-neutral-500">
-                {formattedTimestamp}
-              </span>
-            </div>
-            <p
-              className="text-neutral-800 text-sm"
-              style={{
-                fontFamily:
-                  'Noto Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                lineHeight: "24px",
-                textAlign: "left",
-                marginTop: "2px",
-                paddingBottom: "2px",
-              }}
-            >
-              {item.text}
-            </p>
+    <div className="group relative overflow-hidden rounded-lg border border-neutral-200 bg-white p-4 transition-all hover:border-neutral-300 hover:shadow-sm">
+      {/* Foreground overlay */}
+      <div className="pointer-events-none absolute inset-0 rounded-lg bg-gradient-to-br from-white/40 via-transparent to-neutral-50/30" />
+
+      {/* Content - with relative positioning to appear above foreground */}
+      <div className="relative">
+        {/* Header com número e timestamp */}
+        <div className="mb-3 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-neutral-100 text-[10px] font-semibold text-neutral-600">
+              {total - index}
+            </span>
+            <span className="text-xs font-medium text-neutral-500">
+              {formattedTimestamp}
+            </span>
           </div>
-          <div
-            className="flex gap-1 flex-shrink-0"
-            style={{ marginTop: "2px" }}
-          >
+
+          {/* Ações - visíveis no hover ou sempre em mobile */}
+          <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100 sm:opacity-100">
             <Button
               size="icon"
               variant="ghost"
               onClick={() => onCopy(item.text)}
-              className="h-7 w-7"
+              className="h-7 w-7 text-neutral-400 hover:bg-neutral-100 hover:text-neutral-700"
+              title="Copy to clipboard"
             >
-              <Copy size={12} />
+              <Copy size={14} />
             </Button>
             <Button
               size="icon"
               variant="ghost"
               onClick={() => onDelete(item.id)}
-              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
+              className="h-7 w-7 text-neutral-400 hover:bg-error-50 hover:text-error-600"
+              title="Delete transcription"
             >
-              <Trash2 size={12} />
+              <Trash2 size={14} />
             </Button>
           </div>
         </div>
+
+        {/* Texto da transcrição */}
+        <p className="text-sm leading-relaxed text-neutral-700">
+          {item.text}
+        </p>
       </div>
     </div>
   );

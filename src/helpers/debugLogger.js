@@ -44,9 +44,7 @@ class DebugLogger {
 
     const timestamp = new Date().toISOString();
     const message = args
-      .map((arg) =>
-        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-      )
+      .map((arg) => (typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)))
       .join(" ");
 
     const logLine = `[${timestamp}] ${message}\n`;
@@ -82,9 +80,7 @@ class DebugLogger {
     const message =
       "❌ ERROR: " +
       args
-        .map((arg) =>
-          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-        )
+        .map((arg) => (typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)))
         .join(" ");
 
     const logLine = `[${timestamp}] ${message}\n`;
@@ -170,11 +166,7 @@ class DebugLogger {
     if (audioBlob instanceof ArrayBuffer) {
       audioInfo.byteLength = audioBlob.byteLength;
       // Check first few bytes
-      const view = new Uint8Array(
-        audioBlob,
-        0,
-        Math.min(16, audioBlob.byteLength)
-      );
+      const view = new Uint8Array(audioBlob, 0, Math.min(16, audioBlob.byteLength));
       audioInfo.firstBytes = Array.from(view)
         .map((b) => b.toString(16).padStart(2, "0"))
         .join(" ");

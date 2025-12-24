@@ -13,47 +13,45 @@ export default function ProcessingModeSelector({
   className = "",
 }: ProcessingModeSelectorProps) {
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${className}`}>
+    <div className={`grid grid-cols-1 gap-3 md:grid-cols-2 ${className}`}>
       <button
         onClick={() => setUseLocalWhisper(false)}
-        className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
+        className={`cursor-pointer rounded-xl border-2 p-4 text-left transition-all ${
           !useLocalWhisper
-            ? "border-indigo-500 bg-indigo-50"
-            : "border-neutral-200 bg-white hover:border-neutral-300"
+            ? "border-primary-500 bg-primary-50"
+            : "border-primary-200 bg-white hover:border-primary-300"
         }`}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Cloud className="w-6 h-6 text-blue-600" />
-            <h4 className="font-medium text-neutral-900">Cloud Processing</h4>
+            <Cloud className="h-6 w-6 text-primary-600" />
+            <h4 className="font-medium text-primary-900">Cloud Processing</h4>
           </div>
-          <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+          <span className="rounded-full bg-primary-100 px-2 py-1 text-xs text-primary-600">
             Fastest
           </span>
         </div>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-secondary-500">
           Audio sent to OpenAI servers. Faster processing, requires API key.
         </p>
       </button>
 
       <button
         onClick={() => setUseLocalWhisper(true)}
-        className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
+        className={`cursor-pointer rounded-xl border-2 p-4 text-left transition-all ${
           useLocalWhisper
-            ? "border-indigo-500 bg-indigo-50"
-            : "border-neutral-200 bg-white hover:border-neutral-300"
+            ? "border-primary-500 bg-primary-50"
+            : "border-primary-200 bg-white hover:border-primary-300"
         }`}
       >
-        <div className="flex items-center justify-between mb-2">
+        <div className="mb-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Lock className="w-6 h-6 text-blue-600" />
-            <h4 className="font-medium text-neutral-900">Local Processing</h4>
+            <Lock className="h-6 w-6 text-primary-600" />
+            <h4 className="font-medium text-primary-900">Local Processing</h4>
           </div>
-          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-            Private
-          </span>
+          <span className="rounded-full bg-primary-100 px-2 py-1 text-xs text-primary-600">Private</span>
         </div>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm text-secondary-500">
           Audio stays on your device. Complete privacy, works offline.
         </p>
       </button>

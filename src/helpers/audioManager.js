@@ -36,10 +36,12 @@ class AudioManager {
     this.cachedReasoningPreference = null;
   }
 
-  setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
+  setCallbacks({ onStateChange, onError, onTranscriptionComplete, onStreamReady, onStreamEnded }) {
     this.onStateChange = onStateChange;
     this.onError = onError;
     this.onTranscriptionComplete = onTranscriptionComplete;
+    this.onStreamReady = onStreamReady;
+    this.onStreamEnded = onStreamEnded;
   }
 
   async startRecording() {
@@ -50,6 +52,8 @@ class AudioManager {
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
+      // Notify that stream is ready (for audio level monitoring)
+      this.onStreamReady?.(stream);
 
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
@@ -77,6 +81,9 @@ class AudioManager {
 
         // Clean up stream
         stream.getTracks().forEach((track) => track.stop());
+
+        // Notify that stream has ended
+        this.onStreamEnded?.();
       };
 
       this.mediaRecorder.start();

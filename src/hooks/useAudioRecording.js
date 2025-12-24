@@ -1,12 +1,24 @@
 import { useState, useEffect, useRef } from "react";
 import AudioManager from "../helpers/audioManager";
+import TranslationService from "../services/TranslationService";
+import { getModelProvider } from "../utils/languages";
 
 export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [audioStream, setAudioStream] = useState(null);
   const audioManagerRef = useRef(null);
-  const { onToggle } = options;
+  const {
+    onToggle,
+    enableTranslation,
+    targetLanguage,
+    preferredLanguage,
+    translationModel,
+    openaiApiKey,
+    anthropicApiKey,
+    geminiApiKey,
+  } = options;
 
   useEffect(() => {
     // Initialize AudioManager
@@ -18,6 +30,12 @@ export const useAudioRecording = (toast, options = {}) => {
         setIsRecording(isRecording);
         setIsProcessing(isProcessing);
       },
+      onStreamReady: (stream) => {
+        setAudioStream(stream);
+      },
+      onStreamEnded: () => {
+        setAudioStream(null);
+      },
       onError: (error) => {
         toast({
           title: error.title,
@@ -27,19 +45,68 @@ export const useAudioRecording = (toast, options = {}) => {
       },
       onTranscriptionComplete: async (result) => {
         if (result.success) {
-          setTranscript(result.text);
+          let finalText = result.text;
+
+          // Handle translation if enabled
+          if (enableTranslation && targetLanguage && targetLanguage !== preferredLanguage) {
+            try {
+              const provider = getModelProvider(translationModel);
+              let apiKey = "";
+
+              if (provider === "openai") {
+                apiKey = openaiApiKey;
+              } else if (provider === "anthropic") {
+                apiKey = anthropicApiKey;
+              } else if (provider === "gemini") {
+                apiKey = geminiApiKey;
+              }
+
+              if (apiKey) {
+                const translationResult = await TranslationService.translate({
+                  text: result.text,
+                  sourceLanguage: preferredLanguage,
+                  targetLanguage: targetLanguage,
+                  provider: provider,
+                  apiKey: apiKey,
+                  model: translationModel,
+                });
+
+                if (translationResult.success) {
+                  finalText = translationResult.translatedText;
+                } else {
+                  toast({
+                    title: "Translation Failed",
+                    description: translationResult.error || "Using original text",
+                    variant: "destructive",
+                  });
+                }
+              } else {
+                toast({
+                  title: "Translation Skipped",
+                  description: `No API key found for ${provider}. Using original text.`,
+                  variant: "default",
+                });
+              }
+            } catch (error) {
+              console.error("Translation error:", error);
+              toast({
+                title: "Translation Error",
+                description: `Failed to translate: ${error.message}`,
+                variant: "destructive",
+              });
+            }
+          }
+
+          setTranscript(finalText);
 
           // Paste immediately
-          await audioManagerRef.current.safePaste(result.text);
+          await audioManagerRef.current.safePaste(finalText);
 
           // Save to database in parallel
-          audioManagerRef.current.saveTranscription(result.text);
+          audioManagerRef.current.saveTranscription(finalText);
 
           // Show success notification if local fallback was used
-          if (
-            result.source === "openai" &&
-            localStorage.getItem("useLocalWhisper") === "true"
-          ) {
+          if (result.source === "openai" && localStorage.getItem("useLocalWhisper") === "true") {
             toast({
               title: "Fallback Mode",
               description: "Local Whisper failed. Used OpenAI API instead.",
@@ -55,11 +122,7 @@ export const useAudioRecording = (toast, options = {}) => {
     const handleToggle = () => {
       const currentState = audioManagerRef.current.getState();
 
-      if (
-        !recording &&
-        !currentState.isRecording &&
-        !currentState.isProcessing
-      ) {
+      if (!recording && !currentState.isRecording && !currentState.isProcessing) {
         audioManagerRef.current.startRecording();
         recording = true;
       } else if (currentState.isRecording) {
@@ -77,8 +140,7 @@ export const useAudioRecording = (toast, options = {}) => {
     const handleNoAudioDetected = () => {
       toast({
         title: "No Audio Detected",
-        description:
-          "The recording contained no detectable audio. Please try again.",
+        description: "The recording contained no detectable audio. Please try again.",
         variant: "default",
       });
     };
@@ -94,8 +156,9 @@ export const useAudioRecording = (toast, options = {}) => {
       if (audioManagerRef.current) {
         audioManagerRef.current.cleanup();
       }
+      setAudioStream(null);
     };
-  }, [toast, onToggle]);
+  }, [toast, onToggle, enableTranslation, targetLanguage, preferredLanguage, translationModel, openaiApiKey, anthropicApiKey, geminiApiKey]);
 
   const startRecording = async () => {
     if (audioManagerRef.current) {
@@ -123,6 +186,7 @@ export const useAudioRecording = (toast, options = {}) => {
     isRecording,
     isProcessing,
     transcript,
+    audioStream,
     startRecording,
     stopRecording,
     toggleListening,

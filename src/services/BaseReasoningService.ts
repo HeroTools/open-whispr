@@ -11,7 +11,7 @@ export abstract class BaseReasoningService {
    * Get reasoning prompt
    */
   protected getReasoningPrompt(
-    text: string, 
+    text: string,
     agentName: string | null,
     config: ReasoningConfig = {}
   ): string {
@@ -23,15 +23,15 @@ export abstract class BaseReasoningService {
     let agentPrompt = DEFAULT_AGENT_PROMPT;
     let regularPrompt = DEFAULT_REGULAR_PROMPT;
 
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const customPrompts = window.localStorage.getItem('customPrompts');
+    if (typeof window !== "undefined" && window.localStorage) {
+      const customPrompts = window.localStorage.getItem("customPrompts");
       if (customPrompts) {
         try {
           const parsed = JSON.parse(customPrompts);
           agentPrompt = parsed.agent || DEFAULT_AGENT_PROMPT;
           regularPrompt = parsed.regular || DEFAULT_REGULAR_PROMPT;
         } catch (error) {
-          console.error('Failed to parse custom prompts:', error);
+          console.error("Failed to parse custom prompts:", error);
         }
       }
     }
@@ -39,11 +39,9 @@ export abstract class BaseReasoningService {
     // Simple prompt construction
     if (agentName && text.toLowerCase().includes(agentName.toLowerCase())) {
       // Agent-based prompt - replace placeholders
-      return agentPrompt
-        .replace(/\{\{agentName\}\}/g, agentName)
-        .replace(/\{\{text\}\}/g, text);
+      return agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
     }
-    
+
     // Regular prompt - replace placeholders
     return regularPrompt.replace(/\{\{text\}\}/g, text);
   }

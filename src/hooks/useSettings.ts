@@ -11,6 +11,8 @@ export interface TranscriptionSettings {
   fallbackWhisperModel: string;
   preferredLanguage: string;
   cloudTranscriptionBaseUrl?: string;
+  enableTranslation?: boolean;
+  targetLanguage?: string;
 }
 
 export interface ReasoningSettings {
@@ -31,23 +33,15 @@ export interface ApiKeySettings {
 }
 
 export function useSettings() {
-  const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage(
-    "useLocalWhisper",
-    false,
-    {
-      serialize: String,
-      deserialize: (value) => value === "true",
-    }
-  );
+  const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
 
-  const [whisperModel, setWhisperModel] = useLocalStorage(
-    "whisperModel",
-    "base",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [whisperModel, setWhisperModel] = useLocalStorage("whisperModel", "base", {
+    serialize: String,
+    deserialize: String,
+  });
 
   const [allowOpenAIFallback, setAllowOpenAIFallback] = useLocalStorage(
     "allowOpenAIFallback",
@@ -58,14 +52,10 @@ export function useSettings() {
     }
   );
 
-  const [allowLocalFallback, setAllowLocalFallback] = useLocalStorage(
-    "allowLocalFallback",
-    false,
-    {
-      serialize: String,
-      deserialize: (value) => value === "true",
-    }
-  );
+  const [allowLocalFallback, setAllowLocalFallback] = useLocalStorage("allowLocalFallback", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
 
   const [fallbackWhisperModel, setFallbackWhisperModel] = useLocalStorage(
     "fallbackWhisperModel",
@@ -76,14 +66,10 @@ export function useSettings() {
     }
   );
 
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
-    "preferredLanguage",
-    "en",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [preferredLanguage, setPreferredLanguage] = useLocalStorage("preferredLanguage", "en", {
+    serialize: String,
+    deserialize: String,
+  });
 
   const [cloudTranscriptionBaseUrl, setCloudTranscriptionBaseUrl] = useLocalStorage(
     "cloudTranscriptionBaseUrl",
@@ -93,6 +79,16 @@ export function useSettings() {
       deserialize: String,
     }
   );
+
+  const [enableTranslation, setEnableTranslation] = useLocalStorage("enableTranslation", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
+
+  const [targetLanguage, setTargetLanguage] = useLocalStorage("targetLanguage", "en", {
+    serialize: String,
+    deserialize: String,
+  });
 
   const [cloudReasoningBaseUrl, setCloudReasoningBaseUrl] = useLocalStorage(
     "cloudReasoningBaseUrl",
@@ -104,23 +100,21 @@ export function useSettings() {
   );
 
   // Reasoning settings
-  const [useReasoningModel, setUseReasoningModel] = useLocalStorage(
-    "useReasoningModel",
-    true,
-    {
-      serialize: String,
-      deserialize: (value) => value !== "false", // Default true
-    }
-  );
+  const [useReasoningModel, setUseReasoningModel] = useLocalStorage("useReasoningModel", true, {
+    serialize: String,
+    deserialize: (value) => value !== "false", // Default true
+  });
 
-  const [reasoningModel, setReasoningModel] = useLocalStorage(
-    "reasoningModel",
-    "gpt-4o-mini",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [reasoningModel, setReasoningModel] = useLocalStorage("reasoningModel", "gpt-4o-mini", {
+    serialize: String,
+    deserialize: String,
+  });
+
+  // Translation model (separate from reasoning model for performance)
+  const [translationModel, setTranslationModel] = useLocalStorage("translationModel", "gpt-4o-mini", {
+    serialize: String,
+    deserialize: String,
+  });
 
   // API keys
   const [openaiApiKey, setOpenaiApiKey] = useLocalStorage("openaiApiKey", "", {
@@ -128,23 +122,15 @@ export function useSettings() {
     deserialize: String,
   });
 
-  const [anthropicApiKey, setAnthropicApiKey] = useLocalStorage(
-    "anthropicApiKey",
-    "",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [anthropicApiKey, setAnthropicApiKey] = useLocalStorage("anthropicApiKey", "", {
+    serialize: String,
+    deserialize: String,
+  });
 
-  const [geminiApiKey, setGeminiApiKey] = useLocalStorage(
-    "geminiApiKey",
-    "",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [geminiApiKey, setGeminiApiKey] = useLocalStorage("geminiApiKey", "", {
+    serialize: String,
+    deserialize: String,
+  });
 
   // Hotkey
   const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {
@@ -158,10 +144,8 @@ export function useSettings() {
   // Batch operations
   const updateTranscriptionSettings = useCallback(
     (settings: Partial<TranscriptionSettings>) => {
-      if (settings.useLocalWhisper !== undefined)
-        setUseLocalWhisper(settings.useLocalWhisper);
-      if (settings.whisperModel !== undefined)
-        setWhisperModel(settings.whisperModel);
+      if (settings.useLocalWhisper !== undefined) setUseLocalWhisper(settings.useLocalWhisper);
+      if (settings.whisperModel !== undefined) setWhisperModel(settings.whisperModel);
       if (settings.allowOpenAIFallback !== undefined)
         setAllowOpenAIFallback(settings.allowOpenAIFallback);
       if (settings.allowLocalFallback !== undefined)
@@ -172,6 +156,9 @@ export function useSettings() {
         setPreferredLanguage(settings.preferredLanguage);
       if (settings.cloudTranscriptionBaseUrl !== undefined)
         setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
+      if (settings.enableTranslation !== undefined)
+        setEnableTranslation(settings.enableTranslation);
+      if (settings.targetLanguage !== undefined) setTargetLanguage(settings.targetLanguage);
     },
     [
       setUseLocalWhisper,
@@ -181,6 +168,8 @@ export function useSettings() {
       setFallbackWhisperModel,
       setPreferredLanguage,
       setCloudTranscriptionBaseUrl,
+      setEnableTranslation,
+      setTargetLanguage,
     ]
   );
 
@@ -188,8 +177,7 @@ export function useSettings() {
     (settings: Partial<ReasoningSettings>) => {
       if (settings.useReasoningModel !== undefined)
         setUseReasoningModel(settings.useReasoningModel);
-      if (settings.reasoningModel !== undefined)
-        setReasoningModel(settings.reasoningModel);
+      if (settings.reasoningModel !== undefined) setReasoningModel(settings.reasoningModel);
       if (settings.cloudReasoningBaseUrl !== undefined)
         setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
       // reasoningProvider is computed from reasoningModel, not stored separately
@@ -200,10 +188,8 @@ export function useSettings() {
   const updateApiKeys = useCallback(
     (keys: Partial<ApiKeySettings>) => {
       if (keys.openaiApiKey !== undefined) setOpenaiApiKey(keys.openaiApiKey);
-      if (keys.anthropicApiKey !== undefined)
-        setAnthropicApiKey(keys.anthropicApiKey);
-      if (keys.geminiApiKey !== undefined)
-        setGeminiApiKey(keys.geminiApiKey);
+      if (keys.anthropicApiKey !== undefined) setAnthropicApiKey(keys.anthropicApiKey);
+      if (keys.geminiApiKey !== undefined) setGeminiApiKey(keys.geminiApiKey);
     },
     [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey]
   );
@@ -216,9 +202,12 @@ export function useSettings() {
     fallbackWhisperModel,
     preferredLanguage,
     cloudTranscriptionBaseUrl,
+    enableTranslation,
+    targetLanguage,
     cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
+    translationModel,
     reasoningProvider,
     openaiApiKey,
     anthropicApiKey,
@@ -231,11 +220,14 @@ export function useSettings() {
     setFallbackWhisperModel,
     setPreferredLanguage,
     setCloudTranscriptionBaseUrl,
+    setEnableTranslation,
+    setTargetLanguage,
     setCloudReasoningBaseUrl,
     setUseReasoningModel,
     setReasoningModel,
+    setTranslationModel,
     setReasoningProvider: (provider: string) => {
-      if (provider === 'custom') {
+      if (provider === "custom") {
         return;
       }
 
@@ -245,10 +237,7 @@ export function useSettings() {
         gemini: "gemini-2.5-flash",
         local: "llama-3.2-3b",
       };
-      setReasoningModel(
-        providerModels[provider as keyof typeof providerModels] ||
-          "gpt-4o-mini"
-      );
+      setReasoningModel(providerModels[provider as keyof typeof providerModels] || "gpt-4o-mini");
     },
     setOpenaiApiKey,
     setAnthropicApiKey,

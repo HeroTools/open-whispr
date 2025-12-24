@@ -1,9 +1,5 @@
 class DevServerManager {
-  static async waitForDevServer(
-    url = "http://localhost:5174/",
-    maxAttempts = 30,
-    delay = 1000
-  ) {
+  static async waitForDevServer(url = "http://localhost:5174/", maxAttempts = 30, delay = 1000) {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const http = require("http");
@@ -34,9 +30,7 @@ class DevServerManager {
           return true;
         }
       } catch (error) {
-        console.log(
-          `Waiting for dev server... attempt ${i + 1}/${maxAttempts}`
-        );
+        console.log(`Waiting for dev server... attempt ${i + 1}/${maxAttempts}`);
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
@@ -46,22 +40,11 @@ class DevServerManager {
 
   static getAppUrl(isControlPanel = false) {
     if (process.env.NODE_ENV === "development") {
-      return isControlPanel
-        ? "http://localhost:5174/?panel=true"
-        : "http://localhost:5174/";
+      return isControlPanel ? "http://localhost:5174/?panel=true" : "http://localhost:5174/";
     } else {
       const path = require("path");
-      const htmlPath = path.join(
-        __dirname,
-        "..",
-        "..",
-        "src",
-        "dist",
-        "index.html"
-      );
-      const url = isControlPanel
-        ? `file://${htmlPath}?panel=true`
-        : `file://${htmlPath}`;
+      const htmlPath = path.join(__dirname, "..", "..", "src", "dist", "index.html");
+      const url = isControlPanel ? `file://${htmlPath}?panel=true` : `file://${htmlPath}`;
       return url;
     }
   }
