@@ -100,6 +100,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   windowClose: () => ipcRenderer.invoke("window-close"),
   windowIsMaximized: () => ipcRenderer.invoke("window-is-maximized"),
   getPlatform: () => process.platform,
+  appQuit: () => ipcRenderer.invoke("app-quit"),
 
   // Cleanup function
   cleanupApp: () => ipcRenderer.invoke("cleanup-app"),
