@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useState } from "react";
 import WindowControls from "./WindowControls";
+import { Button } from "./ui/button";
+import { Power } from "lucide-react";
+import { ConfirmDialog } from "./ui/dialog";
 
 interface TitleBarProps {
   title?: string;
@@ -16,11 +19,21 @@ export default function TitleBar({
   className = "",
   actions,
 }: TitleBarProps) {
+  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+
   // Get platform info
   const platform =
     typeof window !== "undefined" && window.electronAPI?.getPlatform
       ? window.electronAPI.getPlatform()
       : "darwin";
+
+  const handleQuit = async () => {
+    try {
+      await window.electronAPI?.appQuit?.();
+    } catch {
+      // Silently handle if API not available
+    }
+  };
 
   return (
     <div
@@ -44,10 +57,30 @@ export default function TitleBar({
           style={{ WebkitAppRegion: "no-drag" }}
         >
           {actions}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowQuitConfirm(true)}
+            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+            title="Quit OpenWhispr"
+            aria-label="Quit OpenWhispr"
+          >
+            <Power size={16} />
+          </Button>
           {/* Show window controls on Linux and Windows (macOS uses native controls) */}
           {platform !== "darwin" && <WindowControls />}
         </div>
       </div>
+      <ConfirmDialog
+        open={showQuitConfirm}
+        onOpenChange={setShowQuitConfirm}
+        title="Quit OpenWhispr?"
+        description="This will close OpenWhispr and stop background processes."
+        confirmText="Quit"
+        cancelText="Cancel"
+        onConfirm={handleQuit}
+        variant="destructive"
+      />
     </div>
   );
 }

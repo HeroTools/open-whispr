@@ -231,6 +231,7 @@ declare global {
       setMainWindowInteractivity: (interactive: boolean) => Promise<void>;
 
       // App management
+      appQuit: () => Promise<void>;
       cleanupApp: () => Promise<{ success: boolean; message: string }>;
       getTranscriptionHistory: () => Promise<any[]>;
       clearTranscriptionHistory: () => Promise<void>;
