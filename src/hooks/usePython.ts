@@ -83,6 +83,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     }
     
     let progressListener: ((event: any, data: PythonInstallProgress) => void) | null = null;
+    let disposeProgress: (() => void) | void;
     
     try {
       setInstallingPython(true);
@@ -96,7 +97,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
 
       // Listen for progress updates
       if (window.electronAPI.onPythonInstallProgress) {
-        window.electronAPI.onPythonInstallProgress(progressListener);
+        disposeProgress = window.electronAPI.onPythonInstallProgress(progressListener);
       }
       
       const result = await window.electronAPI.installPython();
@@ -127,9 +128,7 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
     } finally {
       setInstallingPython(false);
       // Clean up the listener
-      if (progressListener) {
-        window.electronAPI?.removeAllListeners?.("python-install-progress");
-      }
+      disposeProgress?.();
     }
   }, [showAlertDialog, checkPythonInstallation]);
 

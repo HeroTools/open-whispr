@@ -268,6 +268,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [displayedReasoningModels, reasoningModel]);
 
   const whisperHook = useWhisper(showAlertDialog);
+  const { setupProgressListener } = whisperHook;
   const pythonHook = usePython(showAlertDialog);
   const permissionsHook = usePermissions(showAlertDialog);
   const { pasteFromClipboard } = useClipboard(showAlertDialog);
@@ -284,12 +285,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   ];
 
   useEffect(() => {
-    whisperHook.setupProgressListener();
+    const dispose = setupProgressListener();
     return () => {
-      // Clean up listeners on unmount
-      window.electronAPI?.removeAllListeners?.("whisper-install-progress");
+      dispose?.();
     };
-  }, []);
+  }, [setupProgressListener]);
 
   const updateProcessingMode = (useLocal: boolean) => {
     updateTranscriptionSettings({ useLocalWhisper: useLocal });

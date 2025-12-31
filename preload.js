@@ -1,10 +1,35 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
+/**
+ * Helper to register an IPC listener and return a cleanup function.
+ * Ensures renderer code can easily remove listeners to avoid leaks.
+ */
+const registerListener = (channel, handlerFactory) => {
+  return (callback) => {
+    if (typeof callback !== "function") {
+      return () => {};
+    }
+
+    const listener =
+      typeof handlerFactory === "function"
+        ? handlerFactory(callback)
+        : (event, ...args) => callback(event, ...args);
+
+    ipcRenderer.on(channel, listener);
+    return () => {
+      ipcRenderer.removeListener(channel, listener);
+    };
+  };
+};
+
 contextBridge.exposeInMainWorld("electronAPI", {
   pasteText: (text) => ipcRenderer.invoke("paste-text", text),
   hideWindow: () => ipcRenderer.invoke("hide-window"),
   showDictationPanel: () => ipcRenderer.invoke("show-dictation-panel"),
-  onToggleDictation: (callback) => ipcRenderer.on("toggle-dictation", callback),
+  onToggleDictation: registerListener(
+    "toggle-dictation",
+    (callback) => () => callback()
+  ),
 
   // Database functions
   saveTranscription: (text) =>
@@ -48,8 +73,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   checkPythonInstallation: () =>
     ipcRenderer.invoke("check-python-installation"),
   installPython: () => ipcRenderer.invoke("install-python"),
-  onPythonInstallProgress: (callback) =>
-    ipcRenderer.on("python-install-progress", callback),
+  onPythonInstallProgress: registerListener("python-install-progress"),
 
   // Local Whisper functions
   transcribeLocalWhisper: (audioBlob, options) =>
@@ -57,12 +81,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   checkWhisperInstallation: () =>
     ipcRenderer.invoke("check-whisper-installation"),
   installWhisper: () => ipcRenderer.invoke("install-whisper"),
-  onWhisperInstallProgress: (callback) =>
-    ipcRenderer.on("whisper-install-progress", callback),
+  onWhisperInstallProgress: registerListener("whisper-install-progress"),
   downloadWhisperModel: (modelName) =>
     ipcRenderer.invoke("download-whisper-model", modelName),
-  onWhisperDownloadProgress: (callback) =>
-    ipcRenderer.on("whisper-download-progress", callback),
+  onWhisperDownloadProgress: registerListener("whisper-download-progress"),
   checkModelStatus: (modelName) =>
     ipcRenderer.invoke("check-model-status", modelName),
   listWhisperModels: () => ipcRenderer.invoke("list-whisper-models"),
@@ -78,6 +100,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   windowClose: () => ipcRenderer.invoke("window-close"),
   windowIsMaximized: () => ipcRenderer.invoke("window-is-maximized"),
   getPlatform: () => process.platform,
+  appQuit: () => ipcRenderer.invoke("app-quit"),
 
   // Cleanup function
   cleanupApp: () => ipcRenderer.invoke("cleanup-app"),
@@ -96,18 +119,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getUpdateInfo: () => ipcRenderer.invoke("get-update-info"),
 
   // Update event listeners
-  onUpdateAvailable: (callback) => ipcRenderer.on("update-available", callback),
-  onUpdateNotAvailable: (callback) =>
-    ipcRenderer.on("update-not-available", callback),
-  onUpdateDownloaded: (callback) =>
-    ipcRenderer.on("update-downloaded", callback),
-  onUpdateDownloadProgress: (callback) =>
-    ipcRenderer.on("update-download-progress", callback),
-  onUpdateError: (callback) => ipcRenderer.on("update-error", callback),
+  onUpdateAvailable: registerListener("update-available"),
+  onUpdateNotAvailable: registerListener("update-not-available"),
+  onUpdateDownloaded: registerListener("update-downloaded"),
+  onUpdateDownloadProgress: registerListener("update-download-progress"),
+  onUpdateError: registerListener("update-error"),
 
   // Audio event listeners
-  onNoAudioDetected: (callback) =>
-    ipcRenderer.on("no-audio-detected", callback),
+  onNoAudioDetected: registerListener("no-audio-detected"),
 
   // External link opener
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
@@ -119,7 +138,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   modelDelete: (modelId) => ipcRenderer.invoke("model-delete", modelId),
   modelDeleteAll: () => ipcRenderer.invoke("model-delete-all"),
   modelCheckRuntime: () => ipcRenderer.invoke("model-check-runtime"),
-  onModelDownloadProgress: (callback) => ipcRenderer.on("model-download-progress", callback),
+  onModelDownloadProgress: registerListener("model-download-progress"),
   
   // Anthropic API
   getAnthropicKey: () => ipcRenderer.invoke("get-anthropic-key"),

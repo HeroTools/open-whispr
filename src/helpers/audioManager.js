@@ -1,18 +1,20 @@
 import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
-// Debug logger for renderer process
+const isDebugMode = typeof process !== 'undefined' && (process.env.OPENWHISPR_DEBUG === 'true' || process.env.NODE_ENV === 'development');
+const SHORT_CLIP_DURATION_SECONDS = 2.5;
+const REASONING_CACHE_TTL = 30000; // 30 seconds
+
 const debugLogger = {
   logReasoning: async (stage, details) => {
+    if (!isDebugMode) return;
+
     if (window.electronAPI?.logReasoning) {
       try {
         await window.electronAPI.logReasoning(stage, details);
       } catch (error) {
-        console.error('Failed to log reasoning:', error);
+        // Silent fail
       }
-    } else {
-      // Fallback to console if IPC not available
-      console.log(`🤖 [REASONING ${stage}]`, details);
     }
   }
 };
@@ -27,10 +29,13 @@ class AudioManager {
     this.onStateChange = null;
     this.onError = null;
     this.onTranscriptionComplete = null;
-    this.cachedApiKey = null; // Cache API key
+    this.cachedApiKey = null;
+    this.cachedTranscriptionEndpoint = null;
+    this.recordingStartTime = null;
+    this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
+    this.cachedReasoningPreference = null;
   }
 
-  // Set callback functions
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
     this.onStateChange = onStateChange;
     this.onError = onError;
@@ -48,6 +53,7 @@ class AudioManager {
 
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
+      this.recordingStartTime = Date.now();
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
@@ -63,7 +69,11 @@ class AudioManager {
         if (audioBlob.size === 0) {
         }
         
-        await this.processAudio(audioBlob);
+        const durationSeconds = this.recordingStartTime
+          ? (Date.now() - this.recordingStartTime) / 1000
+          : null;
+        this.recordingStartTime = null;
+        await this.processAudio(audioBlob, { durationSeconds });
 
         // Clean up stream
         stream.getTracks().forEach((track) => track.stop());
@@ -108,23 +118,19 @@ class AudioManager {
     return false;
   }
 
-  async processAudio(audioBlob) {
+  async processAudio(audioBlob, metadata = {}) {
     try {
-      // Get user preferences
-      const useLocalWhisper =
-        localStorage.getItem("useLocalWhisper") === "true";
+      const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
-      
 
       let result;
       if (useLocalWhisper) {
-        result = await this.processWithLocalWhisper(audioBlob, whisperModel);
+        result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
       } else {
-        result = await this.processWithOpenAIAPI(audioBlob);
+        result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
       this.onTranscriptionComplete?.(result);
     } catch (error) {
-      // Don't show error here if it's "No audio detected" - already shown elsewhere
       if (error.message !== "No audio detected") {
         this.onError?.({
           title: "Transcription Error",
@@ -137,23 +143,9 @@ class AudioManager {
     }
   }
 
-  async processWithLocalWhisper(audioBlob, model = "base") {
-    
-    // Analyze audio levels first
-    const audioAnalysis = await this.analyzeAudioLevels(audioBlob);
-    if (audioAnalysis && audioAnalysis.isSilent) {
-      // Show error to user immediately
-      this.onError?.({
-        title: "No Audio Detected",
-        description: "The recording appears to be silent. Please check that your microphone is working and not muted.",
-      });
-      // Still continue to try transcription in case analysis was wrong
-    }
-    
+  async processWithLocalWhisper(audioBlob, model = "base", metadata = {}) {
     try {
       const arrayBuffer = await audioBlob.arrayBuffer();
-
-      // Get language preference for local Whisper
       const language = localStorage.getItem("preferredLanguage");
       const options = { model };
       if (language && language !== "auto") {
@@ -164,21 +156,15 @@ class AudioManager {
         arrayBuffer,
         options
       );
-      
 
       if (result.success && result.text) {
         const text = await this.processTranscription(result.text, "local");
-        // Allow empty strings as valid responses (reasoning service might return cleaned empty text)
         if (text !== null && text !== undefined) {
           return { success: true, text: text || result.text, source: "local" };
         } else {
           throw new Error("No text transcribed");
         }
-      } else if (
-        result.success === false &&
-        result.message === "No audio detected"
-      ) {
-        // Show specific error to user with more details
+      } else if (result.success === false && result.message === "No audio detected") {
         this.onError?.({
           title: "No Audio Detected",
           description: "The recording contained no detectable audio. Please check your microphone settings.",
@@ -197,7 +183,7 @@ class AudioManager {
 
       if (allowOpenAIFallback && isLocalMode) {
         try {
-          const fallbackResult = await this.processWithOpenAIAPI(audioBlob);
+          const fallbackResult = await this.processWithOpenAIAPI(audioBlob, metadata);
           return { ...fallbackResult, source: "openai-fallback" };
         } catch (fallbackError) {
           throw new Error(`Local Whisper failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`);
@@ -236,38 +222,6 @@ class AudioManager {
     return apiKey;
   }
 
-  async analyzeAudioLevels(audioBlob) {
-    try {
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      
-      const channelData = audioBuffer.getChannelData(0);
-      let sum = 0;
-      let max = 0;
-      
-      for (let i = 0; i < channelData.length; i++) {
-        const sample = Math.abs(channelData[i]);
-        sum += sample;
-        max = Math.max(max, sample);
-      }
-      
-      const average = sum / channelData.length;
-      const duration = audioBuffer.duration;
-      
-      
-      return {
-        duration,
-        averageLevel: average,
-        maxLevel: max,
-        isSilent: max < 0.01
-      };
-    } catch (error) {
-      return null;
-    }
-  }
-
-  // Convert audio to optimal format for API (reduces upload time)
   async optimizeAudio(audioBlob) {
     return new Promise((resolve) => {
       const audioContext = new (window.AudioContext ||
@@ -295,8 +249,6 @@ class AudioManager {
           source.start();
 
           const renderedBuffer = await offlineContext.startRendering();
-
-          // Convert to WAV blob
           const wavBlob = this.audioBufferToWav(renderedBuffer);
           resolve(wavBlob);
         } catch (error) {
@@ -310,7 +262,6 @@ class AudioManager {
     });
   }
 
-  // Convert AudioBuffer to WAV format
   audioBufferToWav(buffer) {
     const length = buffer.length;
     const arrayBuffer = new ArrayBuffer(44 + length * 2);
@@ -318,7 +269,6 @@ class AudioManager {
     const sampleRate = buffer.sampleRate;
     const channelData = buffer.getChannelData(0);
 
-    // WAV header
     const writeString = (offset, string) => {
       for (let i = 0; i < string.length; i++) {
         view.setUint8(offset + i, string.charCodeAt(i));
@@ -339,7 +289,6 @@ class AudioManager {
     writeString(36, "data");
     view.setUint32(40, length * 2, true);
 
-    // Convert samples to 16-bit PCM
     let offset = 44;
     for (let i = 0; i < length; i++) {
       const sample = Math.max(-1, Math.min(1, channelData[i]));
@@ -354,14 +303,7 @@ class AudioManager {
     return new Blob([arrayBuffer], { type: "audio/wav" });
   }
 
-  async processWithReasoningModel(text) {
-    const model = (typeof window !== 'undefined' && window.localStorage)
-      ? (localStorage.getItem("reasoningModel") || "gpt-4o-mini")
-      : "gpt-4o-mini";
-    const agentName = (typeof window !== 'undefined' && window.localStorage)
-      ? (localStorage.getItem("agentName") || null)
-      : null;
-    
+  async processWithReasoningModel(text, model, agentName) {
     debugLogger.logReasoning("CALLING_REASONING_SERVICE", {
       model,
       agentName,
@@ -398,62 +340,83 @@ class AudioManager {
   }
 
   async isReasoningAvailable() {
-    // Check if we're in renderer process (has localStorage)
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const storedValue = localStorage.getItem("useReasoningModel");
-      
-      // Debug log the actual stored value
-      debugLogger.logReasoning("REASONING_STORAGE_CHECK", {
-        storedValue,
-        typeOfStoredValue: typeof storedValue,
-        isTrue: storedValue === "true",
-        isTruthy: !!storedValue && storedValue !== "false"
-      });
-      
-      // Check for both "true" string and truthy values (but not "false")
-      const useReasoning = storedValue === "true" || (!!storedValue && storedValue !== "false");
-      
-      if (!useReasoning) return false;
-      
-      try {
-        const isAvailable = await ReasoningService.isAvailable();
-        
-        debugLogger.logReasoning("REASONING_AVAILABILITY", {
-          isAvailable,
-          reasoningEnabled: useReasoning,
-          finalDecision: useReasoning && isAvailable
-        });
-        
-        return isAvailable;
-      } catch (error) {
-        debugLogger.logReasoning("REASONING_AVAILABILITY_ERROR", {
-          error: error.message,
-          stack: error.stack
-        });
-        return false;
-      }
+    if (typeof window === "undefined" || !window.localStorage) {
+      return false;
     }
-    // If not in renderer, reasoning is not available
-    return false;
+
+    const storedValue = localStorage.getItem("useReasoningModel");
+    const now = Date.now();
+    const cacheValid =
+      this.reasoningAvailabilityCache &&
+      now < this.reasoningAvailabilityCache.expiresAt &&
+      this.cachedReasoningPreference === storedValue;
+
+    if (cacheValid) {
+      return this.reasoningAvailabilityCache.value;
+    }
+
+    debugLogger.logReasoning("REASONING_STORAGE_CHECK", {
+      storedValue,
+      typeOfStoredValue: typeof storedValue,
+      isTrue: storedValue === "true",
+      isTruthy: !!storedValue && storedValue !== "false",
+    });
+
+    const useReasoning =
+      storedValue === "true" || (!!storedValue && storedValue !== "false");
+
+    if (!useReasoning) {
+      this.reasoningAvailabilityCache = {
+        value: false,
+        expiresAt: now + REASONING_CACHE_TTL,
+      };
+      this.cachedReasoningPreference = storedValue;
+      return false;
+    }
+
+    try {
+      const isAvailable = await ReasoningService.isAvailable();
+
+      debugLogger.logReasoning("REASONING_AVAILABILITY", {
+        isAvailable,
+        reasoningEnabled: useReasoning,
+        finalDecision: useReasoning && isAvailable,
+      });
+
+      this.reasoningAvailabilityCache = {
+        value: isAvailable,
+        expiresAt: now + REASONING_CACHE_TTL,
+      };
+      this.cachedReasoningPreference = storedValue;
+
+      return isAvailable;
+    } catch (error) {
+      debugLogger.logReasoning("REASONING_AVAILABILITY_ERROR", {
+        error: error.message,
+        stack: error.stack,
+      });
+
+      this.reasoningAvailabilityCache = {
+        value: false,
+        expiresAt: now + REASONING_CACHE_TTL,
+      };
+      this.cachedReasoningPreference = storedValue;
+      return false;
+    }
   }
 
   async processTranscription(text, source) {
     const normalizedText = typeof text === "string" ? text.trim() : "";
-    
-    // Log incoming transcription
+
     debugLogger.logReasoning("TRANSCRIPTION_RECEIVED", {
       source,
       textLength: normalizedText.length,
       textPreview: normalizedText.substring(0, 100) + (normalizedText.length > 100 ? "..." : ""),
       timestamp: new Date().toISOString()
     });
-    
-    // Check if reasoning should handle cleanup
-    const useReasoning = await this.isReasoningAvailable();
-    
-    // Safe localStorage access
-    const reasoningModel = (typeof window !== 'undefined' && window.localStorage) 
-      ? (localStorage.getItem("reasoningModel") || "gpt-4o-mini") 
+
+    const reasoningModel = (typeof window !== 'undefined' && window.localStorage)
+      ? (localStorage.getItem("reasoningModel") || "gpt-4o-mini")
       : "gpt-4o-mini";
     const reasoningProvider = (typeof window !== 'undefined' && window.localStorage)
       ? (localStorage.getItem("reasoningProvider") || "auto")
@@ -461,26 +424,26 @@ class AudioManager {
     const agentName = (typeof window !== 'undefined' && window.localStorage)
       ? (localStorage.getItem("agentName") || null)
       : null;
-    
+    const useReasoning = await this.isReasoningAvailable();
+
     debugLogger.logReasoning("REASONING_CHECK", {
       useReasoning,
       reasoningModel,
       reasoningProvider,
       agentName
     });
-    
+
     if (useReasoning) {
       try {
-        // Minimal cleanup for reasoning models
         const preparedText = normalizedText;
-        
+
         debugLogger.logReasoning("SENDING_TO_REASONING", {
           preparedTextLength: preparedText.length,
           model: reasoningModel,
           provider: reasoningProvider
         });
-        
-        const result = await this.processWithReasoningModel(preparedText);
+
+        const result = await this.processWithReasoningModel(preparedText, reasoningModel, agentName);
         
         debugLogger.logReasoning("REASONING_SUCCESS", {
           resultLength: result.length,
@@ -496,32 +459,42 @@ class AudioManager {
           fallbackToCleanup: true
         });
         console.error(`Reasoning failed (${source}):`, error.message);
-        // Fall back to standard cleanup
       }
     }
-    
+
     debugLogger.logReasoning("USING_STANDARD_CLEANUP", {
       reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled"
     });
-    
-    // Standard cleanup when reasoning is unavailable or fails
+
     return normalizedText;
   }
 
-  async processWithOpenAIAPI(audioBlob) {
+  async processWithOpenAIAPI(audioBlob, metadata = {}) {
+    const language = localStorage.getItem("preferredLanguage");
+    const allowLocalFallback =
+      localStorage.getItem("allowLocalFallback") === "true";
+    const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
+
     try {
-      // Parallel: get API key (cached) and optimize audio
+
+      const durationSeconds = metadata.durationSeconds ?? null;
+      const shouldSkipOptimizationForDuration =
+        typeof durationSeconds === "number" &&
+        durationSeconds > 0 &&
+        durationSeconds < SHORT_CLIP_DURATION_SECONDS;
+
+      const shouldOptimize =
+        !shouldSkipOptimizationForDuration && audioBlob.size > 1024 * 1024;
+
       const [apiKey, optimizedAudio] = await Promise.all([
         this.getAPIKey(),
-        this.optimizeAudio(audioBlob),
+        shouldOptimize ? this.optimizeAudio(audioBlob) : Promise.resolve(audioBlob),
       ]);
 
       const formData = new FormData();
       formData.append("file", optimizedAudio, "audio.wav");
       formData.append("model", "whisper-1");
 
-      // Add language hint if set (improves processing speed)
-      const language = localStorage.getItem("preferredLanguage");
       if (language && language !== "auto") {
         formData.append("language", language);
       }
@@ -543,7 +516,7 @@ class AudioManager {
       }
 
       const result = await response.json();
-      
+
       if (result.text) {
         const text = await this.processTranscription(result.text, "openai");
         const source = await this.isReasoningAvailable() ? "openai-reasoned" : "openai";
@@ -552,20 +525,11 @@ class AudioManager {
         throw new Error("No text transcribed");
       }
     } catch (error) {
-
-      // Try fallback to Local Whisper ONLY if enabled AND we're in OpenAI mode
-      const allowLocalFallback =
-        localStorage.getItem("allowLocalFallback") === "true";
       const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
 
       if (allowLocalFallback && isOpenAIMode) {
-        const fallbackModel =
-          localStorage.getItem("fallbackWhisperModel") || "base";
         try {
           const arrayBuffer = await audioBlob.arrayBuffer();
-
-          // Get language preference for fallback as well
-          const language = localStorage.getItem("preferredLanguage");
           const options = { model: fallbackModel };
           if (language && language !== "auto") {
             options.language = language;
@@ -582,7 +546,6 @@ class AudioManager {
               return { success: true, text, source: "local-fallback" };
             }
           }
-          // If local fallback fails, throw the original OpenAI error
           throw error;
         } catch (fallbackError) {
           throw new Error(
@@ -596,6 +559,10 @@ class AudioManager {
   }
 
   getTranscriptionEndpoint() {
+    if (this.cachedTranscriptionEndpoint) {
+      return this.cachedTranscriptionEndpoint;
+    }
+
     try {
       const stored = typeof localStorage !== "undefined"
         ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
@@ -605,23 +572,29 @@ class AudioManager {
       const normalizedBase = normalizeBaseUrl(base);
 
       if (!normalizedBase) {
+        this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
         return API_ENDPOINTS.TRANSCRIPTION;
       }
 
-      // Security: Only allow HTTPS endpoints (except localhost for development)
       const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
       if (!normalizedBase.startsWith('https://') && !isLocalhost) {
         console.warn('Non-HTTPS endpoint rejected for security. Using default.');
+        this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
         return API_ENDPOINTS.TRANSCRIPTION;
       }
 
+      let endpoint;
       if (/\/audio\/(transcriptions|translations)$/i.test(normalizedBase)) {
-        return normalizedBase;
+        endpoint = normalizedBase;
+      } else {
+        endpoint = buildApiUrl(normalizedBase, '/audio/transcriptions');
       }
 
-      return buildApiUrl(normalizedBase, '/audio/transcriptions');
+      this.cachedTranscriptionEndpoint = endpoint;
+      return endpoint;
     } catch (error) {
       console.warn('Failed to resolve transcription endpoint:', error);
+      this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
       return API_ENDPOINTS.TRANSCRIPTION;
     }
   }

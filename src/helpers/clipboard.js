@@ -1,5 +1,5 @@
 const { clipboard } = require("electron");
-const { spawn } = require("child_process");
+const { spawn, spawnSync } = require("child_process");
 
 class ClipboardManager {
   constructor() {
@@ -155,33 +155,100 @@ class ClipboardManager {
   }
 
   async pasteLinux(originalClipboard) {
-    return new Promise((resolve, reject) => {
-      const pasteProcess = spawn("xdotool", ["key", "ctrl+v"]);
+    // Helper to check if a command exists
+    const commandExists = (cmd) => {
+      try {
+        const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
+          stdio: "ignore",
+        });
+        return res.status === 0;
+      } catch {
+        return false;
+      }
+    };
 
-      pasteProcess.on("close", (code) => {
-        if (code === 0) {
-          // Text pasted successfully
-          setTimeout(() => {
-            clipboard.writeText(originalClipboard);
-          }, 100);
-          resolve();
-        } else {
-          reject(
-            new Error(
-              `Linux paste failed with code ${code}. Text is copied to clipboard.`
-            )
-          );
-        }
+    // Detect if running on Wayland or X11
+    const isWayland =
+      (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
+      !!process.env.WAYLAND_DISPLAY;
+
+    // Define paste tools in preference order based on display server
+    const candidates = isWayland
+      ? [
+          // Wayland tools
+          { cmd: "wtype", args: ["-M", "ctrl", "-p", "v", "-m", "ctrl"] },
+          // ydotool requires uinput permissions but included as fallback
+          { cmd: "ydotool", args: ["key", "29:1", "47:1", "47:0", "29:0"] },
+          // X11 fallback for XWayland
+          { cmd: "xdotool", args: ["key", "ctrl+v"] },
+        ]
+      : [
+          // X11 tools
+          { cmd: "xdotool", args: ["key", "ctrl+v"] },
+        ];
+
+    // Filter to only available tools
+    const available = candidates.filter((c) => commandExists(c.cmd));
+
+    // Attempt paste with a specific tool
+    const pasteWith = (tool) =>
+      new Promise((resolve, reject) => {
+        const proc = spawn(tool.cmd, tool.args);
+
+        let timedOut = false;
+        const timeoutId = setTimeout(() => {
+          timedOut = true;
+          try {
+            proc.kill("SIGKILL");
+          } catch {
+            // Ignore kill errors
+          }
+        }, 1000);
+
+        proc.on("close", (code) => {
+          if (timedOut)
+            return reject(
+              new Error(`Paste with ${tool.cmd} timed out after 1 second`)
+            );
+          clearTimeout(timeoutId);
+
+          if (code === 0) {
+            // Restore original clipboard after successful paste
+            setTimeout(() => clipboard.writeText(originalClipboard), 100);
+            resolve();
+          } else {
+            reject(new Error(`${tool.cmd} exited with code ${code}`));
+          }
+        });
+
+        proc.on("error", (error) => {
+          if (timedOut) return;
+          clearTimeout(timeoutId);
+          reject(error);
+        });
       });
 
-      pasteProcess.on("error", (error) => {
-        reject(
-          new Error(
-            `Linux paste failed: ${error.message}. Text is copied to clipboard.`
-          )
+    // Try each available tool in order
+    for (const tool of available) {
+      try {
+        await pasteWith(tool);
+        this.safeLog(`✅ Paste successful using ${tool.cmd}`);
+        return; // Success!
+      } catch (error) {
+        this.safeLog(
+          `⚠️ Paste with ${tool.cmd} failed:`,
+          error?.message || error
         );
-      });
-    });
+        // Continue to next tool
+      }
+    }
+
+    // All tools failed - create specific error for renderer to handle
+    const sessionInfo = isWayland ? "Wayland" : "X11";
+    const errorMsg = `Clipboard copied, but paste simulation failed on ${sessionInfo}. Please install ${isWayland ? "wtype or ydotool" : "xdotool"} for automatic pasting, or paste manually with Ctrl+V.`;
+    const err = new Error(errorMsg);
+    err.code = "PASTE_SIMULATION_FAILED";
+    throw err;
   }
 
   async checkAccessibilityPermissions() {

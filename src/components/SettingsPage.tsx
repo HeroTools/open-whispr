@@ -114,57 +114,91 @@ export default function SettingsPage({
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const subscribeToUpdates = useCallback(() => {
-    if (!window.electronAPI) return;
+    if (!window.electronAPI) return () => {};
 
-    window.electronAPI.onUpdateAvailable?.((_event, info) => {
-      setUpdateStatus((prev) => ({ ...prev, updateAvailable: true, updateDownloaded: false }));
-      if (info) {
-        setUpdateInfo({
-          version: info.version || "unknown",
-          releaseDate: info.releaseDate,
-          releaseNotes: info.releaseNotes ?? undefined,
-        });
-      }
-    });
+    const disposers: Array<(() => void) | void> = [];
 
-    window.electronAPI.onUpdateNotAvailable?.(() => {
-      setUpdateStatus((prev) => ({ ...prev, updateAvailable: false, updateDownloaded: false }));
-      setUpdateInfo({});
-      setDownloadingUpdate(false);
-      setInstallInitiated(false);
-      setUpdateDownloadProgress(0);
-    });
+    if (window.electronAPI.onUpdateAvailable) {
+      disposers.push(
+        window.electronAPI.onUpdateAvailable((_event, info) => {
+          setUpdateStatus((prev) => ({
+            ...prev,
+            updateAvailable: true,
+            updateDownloaded: false,
+          }));
+          if (info) {
+            setUpdateInfo({
+              version: info.version || "unknown",
+              releaseDate: info.releaseDate,
+              releaseNotes: info.releaseNotes ?? undefined,
+            });
+          }
+        })
+      );
+    }
 
-    window.electronAPI.onUpdateDownloaded?.((_event, info) => {
-      setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
-      setDownloadingUpdate(false);
-      setInstallInitiated(false);
-      if (info) {
-        setUpdateInfo({
-          version: info.version || "unknown",
-          releaseDate: info.releaseDate,
-          releaseNotes: info.releaseNotes ?? undefined,
-        });
-      }
-    });
+    if (window.electronAPI.onUpdateNotAvailable) {
+      disposers.push(
+        window.electronAPI.onUpdateNotAvailable(() => {
+          setUpdateStatus((prev) => ({
+            ...prev,
+            updateAvailable: false,
+            updateDownloaded: false,
+          }));
+          setUpdateInfo({});
+          setDownloadingUpdate(false);
+          setInstallInitiated(false);
+          setUpdateDownloadProgress(0);
+        })
+      );
+    }
 
-    window.electronAPI.onUpdateDownloadProgress?.((_event, progressObj) => {
-      setUpdateDownloadProgress(progressObj.percent || 0);
-    });
+    if (window.electronAPI.onUpdateDownloaded) {
+      disposers.push(
+        window.electronAPI.onUpdateDownloaded((_event, info) => {
+          setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
+          setDownloadingUpdate(false);
+          setInstallInitiated(false);
+          if (info) {
+            setUpdateInfo({
+              version: info.version || "unknown",
+              releaseDate: info.releaseDate,
+              releaseNotes: info.releaseNotes ?? undefined,
+            });
+          }
+        })
+      );
+    }
 
-    window.electronAPI.onUpdateError?.((_event, error) => {
-      setCheckingForUpdates(false);
-      setDownloadingUpdate(false);
-      setInstallInitiated(false);
-      console.error("Update error:", error);
-      showAlertDialog({
-        title: "Update Error",
-        description:
-          typeof error?.message === "string"
-            ? error.message
-            : "The updater encountered a problem. Please try again or download the latest release manually.",
-      });
-    });
+    if (window.electronAPI.onUpdateDownloadProgress) {
+      disposers.push(
+        window.electronAPI.onUpdateDownloadProgress((_event, progressObj) => {
+          setUpdateDownloadProgress(progressObj.percent || 0);
+        })
+      );
+    }
+
+    if (window.electronAPI.onUpdateError) {
+      disposers.push(
+        window.electronAPI.onUpdateError((_event, error) => {
+          setCheckingForUpdates(false);
+          setDownloadingUpdate(false);
+          setInstallInitiated(false);
+          console.error("Update error:", error);
+          showAlertDialog({
+            title: "Update Error",
+            description:
+              typeof error?.message === "string"
+                ? error.message
+                : "The updater encountered a problem. Please try again or download the latest release manually.",
+          });
+        })
+      );
+    }
+
+    return () => {
+      disposers.forEach((dispose) => dispose?.());
+    };
   }, [showAlertDialog]);
 
   // Local state for provider selection (overrides computed value)
@@ -175,6 +209,7 @@ export default function SettingsPage({
   // Defer heavy operations for better performance
   useEffect(() => {
     let mounted = true;
+    let unsubscribeUpdates;
 
     // Defer version and update checks to improve initial render
     const timer = setTimeout(async () => {
@@ -203,7 +238,7 @@ export default function SettingsPage({
         }
       }
 
-      subscribeToUpdates();
+      unsubscribeUpdates = subscribeToUpdates();
 
       // Check whisper after initial render
       if (mounted) {
@@ -215,13 +250,7 @@ export default function SettingsPage({
       mounted = false;
       clearTimeout(timer);
       // Always clean up update listeners if they exist
-      if (window.electronAPI) {
-        window.electronAPI.removeAllListeners?.("update-available");
-        window.electronAPI.removeAllListeners?.("update-not-available");
-        window.electronAPI.removeAllListeners?.("update-downloaded");
-        window.electronAPI.removeAllListeners?.("update-error");
-        window.electronAPI.removeAllListeners?.("update-download-progress");
-      }
+      unsubscribeUpdates?.();
     };
   }, [whisperHook, subscribeToUpdates]);
 
