@@ -114,7 +114,8 @@ class DebugLogger {
           size: stats.size,
           isFile: stats.isFile(),
           // Skip X_OK check on Windows (not reliable)
-          isExecutable: process.platform !== "win32" ? !!(stats.mode & fs.constants.X_OK) : "N/A (Windows)",
+          isExecutable: process.platform !== "win32" ? !!(stats.mode & fs.constants.X_OK) : false,
+          executableCheckSkipped: process.platform === "win32",
           permissions: stats.mode.toString(8),
           modified: stats.mtime,
         };

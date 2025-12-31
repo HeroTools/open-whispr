@@ -674,12 +674,12 @@ class WhisperManager {
           debugLogger.log(`Querying registry key: ${registryKey}`);
 
           // List all Python versions in registry
-          const { stdout } = await runCommand('reg', ['query', registryKey], {
+          const { output } = await runCommand('reg', ['query', registryKey], {
             timeout: TIMEOUTS.QUICK_CHECK
           });
 
           // Parse version folders (e.g., "3.11", "3.12")
-          const versionMatches = stdout.match(/PythonCore\\([\d.]+)/g);
+          const versionMatches = output.match(/PythonCore\\([\d.]+)/g);
           debugLogger.log(`Found ${versionMatches?.length || 0} Python versions in ${registryKey}`);
 
           if (versionMatches) {
@@ -689,7 +689,7 @@ class WhisperManager {
               // Query InstallPath for this version
               try {
                 const installPathKey = `${registryKey}\\${version}\\InstallPath`;
-                const { stdout: pathOutput } = await runCommand('reg', ['query', installPathKey, '/ve'], {
+                const { output: pathOutput } = await runCommand('reg', ['query', installPathKey, '/ve'], {
                   timeout: TIMEOUTS.QUICK_CHECK
                 });
 
@@ -736,12 +736,12 @@ class WhisperManager {
 
     try {
       // Use 'where' command to find executable in PATH
-      const { stdout } = await runCommand('where', [command], {
+      const { output } = await runCommand('where', [command], {
         timeout: TIMEOUTS.QUICK_CHECK
       });
 
       // 'where' returns multiple paths, take the first one
-      const paths = stdout.trim().split('\n');
+      const paths = output.trim().split('\n');
       if (paths.length > 0) {
         const resolvedPath = paths[0].trim();
         if (fs.existsSync(resolvedPath)) {

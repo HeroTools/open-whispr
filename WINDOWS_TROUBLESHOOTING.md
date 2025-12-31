@@ -102,28 +102,28 @@ Debug mode creates detailed logs for troubleshooting:
 
 ### Method 1: Command Line
 ```batch
-cd "C:\Users\YourName\AppData\Local\Programs\OpenWispr"
+cd "C:\Users\YourName\AppData\Local\Programs\OpenWhispr"
 OpenWhispr.exe --debug
 ```
 
 ### Method 2: Environment Variable
 ```batch
 set OPENWISPR_DEBUG=true
-"C:\Users\YourName\AppData\Local\Programs\OpenWispr\OpenWhispr.exe"
+"C:\Users\YourName\AppData\Local\Programs\OpenWhispr\OpenWhispr.exe"
 ```
 
 ### Method 3: Debug File
 ```batch
-echo. > "%APPDATA%\OpenWispr\ENABLE_DEBUG"
+echo. > "%APPDATA%\OpenWhispr\ENABLE_DEBUG"
 ```
 Then restart OpenWhispr normally.
 
 ### Find Debug Logs
-Logs are saved to: `%APPDATA%\OpenWispr\logs\`
+Logs are saved to: `%APPDATA%\OpenWhispr\logs\`
 
 To open:
 1. Press Win + R
-2. Type: `%APPDATA%\OpenWispr\logs`
+2. Type: `%APPDATA%\OpenWhispr\logs`
 3. Press Enter
 4. Open the most recent `debug-*.log` file
 
@@ -207,7 +207,7 @@ If none of these solutions work:
 1. **Collect Debug Logs**
    - Enable debug mode (see above)
    - Reproduce the issue
-   - Locate log file in `%APPDATA%\OpenWispr\logs`
+   - Locate log file in `%APPDATA%\OpenWhispr\logs`
 
 2. **Report Issue**
    - Go to: https://github.com/HeroTools/open-whispr/issues
@@ -231,8 +231,8 @@ If you want to completely uninstall and start fresh:
 
 ```batch
 # Uninstall OpenWhispr first, then:
-rd /s /q "%APPDATA%\OpenWispr"
-rd /s /q "%LOCALAPPDATA%\OpenWispr"
+rd /s /q "%APPDATA%\OpenWhispr"
+rd /s /q "%LOCALAPPDATA%\OpenWhispr"
 ```
 
 Then reinstall.
