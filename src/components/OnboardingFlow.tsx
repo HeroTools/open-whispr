@@ -78,7 +78,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setPreferredLanguage,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
-    setOpenaiApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -138,6 +137,30 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         : API_ENDPOINTS.OPENAI_BASE;
     return buildApiUrl(base, "/models");
   }, [usingCustomReasoningBase, normalizedReasoningBaseUrl]);
+
+  const persistOpenAIKey = useCallback(
+    async (nextKey: string) => {
+      const trimmedKey = nextKey.trim();
+      if (useLocalWhisper || !trimmedKey) {
+        return false;
+      }
+      if (trimmedKey === openaiApiKey.trim()) {
+        return true;
+      }
+
+      try {
+        if (window.electronAPI?.saveOpenAIKey) {
+          await window.electronAPI.saveOpenAIKey(trimmedKey);
+        }
+        updateApiKeys({ openaiApiKey: trimmedKey });
+        return true;
+      } catch (error) {
+        console.error("Failed to save OpenAI key", error);
+        return false;
+      }
+    },
+    [useLocalWhisper, updateApiKeys, openaiApiKey]
+  );
 
   const reasoningModelRef = useRef(reasoningModel);
   useEffect(() => {
@@ -369,8 +392,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     localStorage.setItem("skipAuth", skipAuth.toString());
 
     if (!useLocalWhisper && trimmedApiKey) {
-      await window.electronAPI.saveOpenAIKey(trimmedApiKey);
-      updateApiKeys({ openaiApiKey: trimmedApiKey });
+      await persistOpenAIKey(trimmedApiKey);
     }
     return true;
   }, [
@@ -386,7 +408,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     reasoningBaseUrl,
     updateTranscriptionSettings,
     updateReasoningSettings,
-    updateApiKeys,
+    persistOpenAIKey,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setDictationKey,
@@ -407,6 +429,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
       setDictationKey(hotkey);
     }
+    if (currentStep === 2 && !useLocalWhisper) {
+      await persistOpenAIKey(apiKey);
+    }
 
     setCurrentStep(newStep);
 
@@ -416,7 +441,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         window.electronAPI.showDictationPanel();
       }
     }
-  }, [currentStep, ensureHotkeyRegistered, hotkey, setCurrentStep, setDictationKey, steps.length]);
+  }, [
+    currentStep,
+    ensureHotkeyRegistered,
+    hotkey,
+    setCurrentStep,
+    setDictationKey,
+    steps.length,
+    useLocalWhisper,
+    persistOpenAIKey,
+    apiKey,
+  ]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
