@@ -71,6 +71,7 @@ export const API_ENDPOINTS = {
   OPENAI_MODELS: buildApiUrl(DEFAULT_OPENAI_BASE, '/models'),
   ANTHROPIC: 'https://api.anthropic.com/v1/messages',
   GEMINI: 'https://generativelanguage.googleapis.com/v1beta',
+  GROQ_BASE: 'https://api.groq.com/openai/v1',
   TRANSCRIPTION_BASE: DEFAULT_TRANSCRIPTION_BASE,
   TRANSCRIPTION: buildApiUrl(DEFAULT_TRANSCRIPTION_BASE, '/audio/transcriptions'),
 } as const;
@@ -107,8 +108,8 @@ export const CACHE_CONFIG = {
 
 // Retry Configuration
 export const RETRY_CONFIG = {
-  MAX_RETRIES: 3,
-  INITIAL_DELAY: 1000, // 1 second
-  MAX_DELAY: 10000, // 10 seconds
+  MAX_RETRIES: 2, // Reduced from 3
+  INITIAL_DELAY: 500, // Reduced from 1000ms
+  MAX_DELAY: 3000, // Reduced from 10000ms
   BACKOFF_MULTIPLIER: 2,
 } as const;

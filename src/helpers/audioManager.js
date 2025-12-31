@@ -1,3 +1,4 @@
+import PerformanceLogger from "./performanceLogger";
 import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 
@@ -34,6 +35,33 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
+
+    // Migration: Clear old OpenAI transcription settings to use Groq
+    this.migrateToGroqTranscription();
+  }
+
+  migrateToGroqTranscription() {
+    if (typeof localStorage === 'undefined') return;
+
+    try {
+      const migrationKey = 'groq_transcription_migrated';
+      const alreadyMigrated = localStorage.getItem(migrationKey);
+
+      if (!alreadyMigrated) {
+        const oldEndpoint = localStorage.getItem('cloudTranscriptionBaseUrl');
+
+        // Only migrate if it was pointing to OpenAI
+        if (oldEndpoint && oldEndpoint.includes('openai.com')) {
+          localStorage.removeItem('cloudTranscriptionBaseUrl');
+          localStorage.removeItem('cloudTranscriptionModel');
+          console.log('[Migration] Switched to Groq Whisper API for faster transcription');
+        }
+
+        localStorage.setItem(migrationKey, 'true');
+      }
+    } catch (error) {
+      // Silently fail migration, will use defaults
+    }
   }
 
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
@@ -52,6 +80,7 @@ class AudioManager {
 
 
       this.mediaRecorder = new MediaRecorder(stream);
+      this.mimeType = this.mediaRecorder.mimeType;
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
 
@@ -64,11 +93,11 @@ class AudioManager {
         this.isProcessing = true;
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
-        const audioBlob = new Blob(this.audioChunks, { type: "audio/wav" });
-        
+        const audioBlob = new Blob(this.audioChunks, { type: this.mimeType || "audio/webm" });
+
         if (audioBlob.size === 0) {
         }
-        
+
         const durationSeconds = this.recordingStartTime
           ? (Date.now() - this.recordingStartTime) / 1000
           : null;
@@ -85,11 +114,11 @@ class AudioManager {
 
       return true;
     } catch (error) {
-      
+
       // Provide more specific error messages
       let errorTitle = "Recording Error";
       let errorDescription = `Failed to access microphone: ${error.message}`;
-      
+
       if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
         errorTitle = "Microphone Access Denied";
         errorDescription = "Please grant microphone permission in your system settings and try again.";
@@ -100,7 +129,7 @@ class AudioManager {
         errorTitle = "Microphone In Use";
         errorDescription = "The microphone is being used by another application. Please close other apps and try again.";
       }
-      
+
       this.onError?.({
         title: errorTitle,
         description: errorDescription,
@@ -122,6 +151,10 @@ class AudioManager {
     try {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
+
+
+
+      window.electronAPI?.logPerf?.(`[Perf] processAudio. useLocalWhisper=${useLocalWhisper}, model=${whisperModel}`);
 
       let result;
       if (useLocalWhisper) {
@@ -152,12 +185,27 @@ class AudioManager {
         options.language = language;
       }
 
+      const transcriptionStart = Date.now();
+      window.electronAPI?.logPerf?.(`[Perf] Starting Local Whisper Transcription...`);
+
       const result = await window.electronAPI.transcribeLocalWhisper(
         arrayBuffer,
         options
       );
 
       if (result.success && result.text) {
+        // Log performance metrics from Python if available
+        if (result.performance_metrics) {
+          const metrics = result.performance_metrics;
+          window.electronAPI?.logPerf?.(`[Perf] Local Whisper Complete. Total: ${metrics.total_time_ms}ms`);
+          window.electronAPI?.logPerf?.(`[Perf] Breakdown: Model Loading: ${metrics.steps?.model_loading?.duration_ms}ms, Transcription: ${metrics.steps?.transcription?.duration_ms}ms`);
+
+          // Also log to console for immediate visibility
+          console.log("[Perf] Local Whisper Metrics:", metrics);
+        } else {
+          window.electronAPI?.logPerf?.(`[Perf] Local Whisper Complete in ${Date.now() - transcriptionStart}ms (No detailed metrics returned)`);
+        }
+
         const text = await this.processTranscription(result.text, "local");
         if (text !== null && text !== undefined) {
           return { success: true, text: text || result.text, source: "local" };
@@ -199,7 +247,27 @@ class AudioManager {
       return this.cachedApiKey;
     }
 
-    let apiKey = await window.electronAPI.getOpenAIKey();
+    // Check if we're using Groq endpoint
+    const endpoint = this.getTranscriptionEndpoint();
+    const isGroqEndpoint = endpoint.includes('groq.com');
+
+    let apiKey;
+
+    if (isGroqEndpoint) {
+      // Try to get Groq API key first
+      try {
+        apiKey = await window.electronAPI.getGroqKey();
+        if (apiKey && apiKey.trim() !== "" && apiKey !== "your_groq_api_key_here") {
+          this.cachedApiKey = apiKey;
+          return apiKey;
+        }
+      } catch (error) {
+        console.warn('Groq API key not available, trying OpenAI key as fallback');
+      }
+    }
+
+    // Fallback to OpenAI key
+    apiKey = await window.electronAPI.getOpenAIKey();
     if (
       !apiKey ||
       apiKey.trim() === "" ||
@@ -214,7 +282,7 @@ class AudioManager {
       apiKey === "your_openai_api_key_here"
     ) {
       throw new Error(
-        "OpenAI API key not found. Please set your API key in the .env file or Control Panel."
+        `${isGroqEndpoint ? 'Groq' : 'OpenAI'} API key not found. Please set your API key in the .env file or Control Panel.`
       );
     }
 
@@ -304,37 +372,45 @@ class AudioManager {
   }
 
   async processWithReasoningModel(text, model, agentName) {
+    const perfStart = Date.now();
+    window.electronAPI?.logPerf?.(`[Perf][Reasoning] Starting reasoning call. Model: ${model}, Text length: ${text.length}`);
+
     debugLogger.logReasoning("CALLING_REASONING_SERVICE", {
       model,
       agentName,
       textLength: text.length
     });
-    
+
     const startTime = Date.now();
-    
+
     try {
+      window.electronAPI?.logPerf?.(`[Perf][Reasoning] About to call ReasoningService.processText...`);
+      const serviceCallStart = Date.now();
       const result = await ReasoningService.processText(text, model, agentName);
-      
+      window.electronAPI?.logPerf?.(`[Perf][Reasoning] ReasoningService.processText returned in: ${Date.now() - serviceCallStart}ms`);
+
       const processingTime = Date.now() - startTime;
-      
+
       debugLogger.logReasoning("REASONING_SERVICE_COMPLETE", {
         model,
         processingTimeMs: processingTime,
         resultLength: result.length,
         success: true
       });
-      
+
+      window.electronAPI?.logPerf?.(`[Perf][Reasoning] Total reasoning time: ${Date.now() - perfStart}ms`);
       return result;
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       debugLogger.logReasoning("REASONING_SERVICE_ERROR", {
         model,
         processingTimeMs: processingTime,
         error: error.message,
         stack: error.stack
       });
-      
+
+      window.electronAPI?.logPerf?.(`[Perf][Reasoning] FAILED in ${Date.now() - perfStart}ms. Error: ${error.message}`);
       throw error;
     }
   }
@@ -424,6 +500,17 @@ class AudioManager {
     const agentName = (typeof window !== 'undefined' && window.localStorage)
       ? (localStorage.getItem("agentName") || null)
       : null;
+
+    // Skip reasoning for very short texts
+    if (normalizedText.length < 10) {
+      debugLogger.logReasoning("SKIPPING_REASONING", {
+        reason: "Text too short",
+        textLength: normalizedText.length,
+        text: normalizedText
+      });
+      return normalizedText;
+    }
+
     const useReasoning = await this.isReasoningAvailable();
 
     debugLogger.logReasoning("REASONING_CHECK", {
@@ -444,13 +531,13 @@ class AudioManager {
         });
 
         const result = await this.processWithReasoningModel(preparedText, reasoningModel, agentName);
-        
+
         debugLogger.logReasoning("REASONING_SUCCESS", {
           resultLength: result.length,
           resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
           processingTime: new Date().toISOString()
         });
-        
+
         return result;
       } catch (error) {
         debugLogger.logReasoning("REASONING_FAILED", {
@@ -466,7 +553,23 @@ class AudioManager {
       reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled"
     });
 
-    return normalizedText;
+    // Apply fast local cleanup to remove filler words
+    return this.cleanupFillerWords(normalizedText);
+  }
+
+  cleanupFillerWords(text) {
+    // Remove common filler words and clean up the text
+    return text
+      // Remove standalone filler words (with word boundaries)
+      .replace(/\b(um|uh|ah|er|like|you know|i mean)\b/gi, '')
+      // Remove repeated filler sounds
+      .replace(/\b(uh+|um+|ah+|er+)\b/gi, '')
+      // Clean up multiple spaces
+      .replace(/\s+/g, ' ')
+      // Clean up spaces before punctuation
+      .replace(/\s+([.,!?;:])/g, '$1')
+      // Trim whitespace
+      .trim();
   }
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
@@ -476,8 +579,13 @@ class AudioManager {
     const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
 
     try {
+      // Start performance session
+      PerformanceLogger.startSession("cloud_audio_clip", audioBlob.size);
 
+      const startTime = Date.now();
       const durationSeconds = metadata.durationSeconds ?? null;
+      window.electronAPI?.logPerf?.(`[Perf] Starting Cloud Processing. Blob size: ${audioBlob.size} bytes (${(audioBlob.size / 1024).toFixed(1)} KB), Duration: ${durationSeconds ? durationSeconds.toFixed(2) + 's' : 'unknown'}`);
+
       const shouldSkipOptimizationForDuration =
         typeof durationSeconds === "number" &&
         durationSeconds > 0 &&
@@ -486,21 +594,31 @@ class AudioManager {
       const shouldOptimize =
         !shouldSkipOptimizationForDuration && audioBlob.size > 1024 * 1024;
 
+      window.electronAPI?.logPerf?.(`[Perf] Should optimize? ${shouldOptimize} (Duration: ${durationSeconds}s)`);
+
+      PerformanceLogger.startStep("optimization");
+      const optimizationStart = Date.now();
       const [apiKey, optimizedAudio] = await Promise.all([
         this.getAPIKey(),
         shouldOptimize ? this.optimizeAudio(audioBlob) : Promise.resolve(audioBlob),
       ]);
+      PerformanceLogger.endStep("optimization", { optimized: shouldOptimize, originalSize: audioBlob.size, finalSize: optimizedAudio.size });
+      window.electronAPI?.logPerf?.(`[Perf] Optimization/Key fetch took: ${Date.now() - optimizationStart}ms. Final audio size: ${optimizedAudio.size} bytes`);
 
       const formData = new FormData();
-      formData.append("file", optimizedAudio, "audio.wav");
-      formData.append("model", "whisper-1");
+      const extension = optimizedAudio.type.includes("wav") ? "wav" : "webm";
+      formData.append("file", optimizedAudio, `audio.${extension}`);
+      formData.append("model", this.getTranscriptionModel());
 
-      if (language && language !== "auto") {
-        formData.append("language", language);
-      }
+      const endpoint = this.getTranscriptionEndpoint();
+      window.electronAPI?.logPerf?.(`[Debug] Transcription Endpoint: ${endpoint}`);
+      window.electronAPI?.logPerf?.(`[Debug] API Key present: ${!!apiKey} (Length: ${apiKey?.length})`);
+      window.electronAPI?.logPerf?.(`[Debug] FormData keys: ${Array.from(formData.keys()).join(", ")}`);
 
+      PerformanceLogger.startStep("transcription_api");
+      const apiStart = Date.now();
       const response = await fetch(
-        this.getTranscriptionEndpoint(),
+        endpoint,
         {
           method: "POST",
           headers: {
@@ -509,6 +627,9 @@ class AudioManager {
           body: formData,
         }
       );
+      PerformanceLogger.endStep("transcription_api", { status: response.status, endpoint });
+
+      window.electronAPI?.logPerf?.(`[Perf] API Response received in: ${Date.now() - apiStart}ms. Status: ${response.status}`);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -516,18 +637,34 @@ class AudioManager {
       }
 
       const result = await response.json();
+      window.electronAPI?.logPerf?.(`[Perf] Total processing time: ${Date.now() - startTime}ms`);
 
       if (result.text) {
+        window.electronAPI?.logPerf?.(`[Perf] Starting post-processing...`);
+        PerformanceLogger.startStep("post_processing");
+        const postStart = Date.now();
         const text = await this.processTranscription(result.text, "openai");
+        PerformanceLogger.endStep("post_processing");
+        PerformanceLogger.endStep("post_processing");
+        // Session is now ended in safePaste to capture total time
+        window.electronAPI?.logPerf?.(`[Perf] processTranscription took: ${Date.now() - postStart}ms`);
+
+        const reasoningStart = Date.now();
         const source = await this.isReasoningAvailable() ? "openai-reasoned" : "openai";
+        window.electronAPI?.logPerf?.(`[Perf] isReasoningAvailable check took: ${Date.now() - reasoningStart}ms`);
+        window.electronAPI?.logPerf?.(`[Perf] Total post-processing time: ${Date.now() - postStart}ms`);
         return { success: true, text, source };
       } else {
+        PerformanceLogger.endSession(false, "No text transcribed");
         throw new Error("No text transcribed");
       }
     } catch (error) {
+      PerformanceLogger.endSession(false, error.message);
+      window.electronAPI?.logPerf?.(`[Perf] Cloud Processing FAILED. Error: ${error.message}`);
       const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
 
       if (allowLocalFallback && isOpenAIMode) {
+        window.electronAPI?.logPerf?.(`[Perf] Falling back to Local Whisper...`);
         try {
           const arrayBuffer = await audioBlob.arrayBuffer();
           const options = { model: fallbackModel };
@@ -558,6 +695,35 @@ class AudioManager {
     }
   }
 
+  getTranscriptionModel() {
+    try {
+      // First, check which endpoint we're using
+      const endpoint = typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
+        : "";
+
+      // If using Groq, return Groq model (override any cached model)
+      if (endpoint.includes("groq.com") || !endpoint) {
+        // Default to Groq's fast model
+        return "whisper-large-v3-turbo"; // Groq's fastest Whisper model
+      }
+
+      // For OpenAI, check if a custom model is configured
+      const customModel = typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionModel") || ""
+        : "";
+
+      if (customModel.trim() && !customModel.includes("whisper-large-v3")) {
+        return customModel.trim();
+      }
+
+      // Default to OpenAI's model
+      return "whisper-1";
+    } catch (error) {
+      return "whisper-large-v3-turbo"; // Default to Groq
+    }
+  }
+
   getTranscriptionEndpoint() {
     if (this.cachedTranscriptionEndpoint) {
       return this.cachedTranscriptionEndpoint;
@@ -568,19 +734,22 @@ class AudioManager {
         ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
         : "";
       const trimmed = stored.trim();
-      const base = trimmed ? trimmed : API_ENDPOINTS.TRANSCRIPTION_BASE;
+
+      // Default to Groq for faster transcription
+      const base = trimmed ? trimmed : "https://api.groq.com/openai/v1";
       const normalizedBase = normalizeBaseUrl(base);
 
       if (!normalizedBase) {
-        this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
-        return API_ENDPOINTS.TRANSCRIPTION;
+        // Fallback to Groq if normalization fails
+        this.cachedTranscriptionEndpoint = "https://api.groq.com/openai/v1/audio/transcriptions";
+        return this.cachedTranscriptionEndpoint;
       }
 
       const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
       if (!normalizedBase.startsWith('https://') && !isLocalhost) {
-        console.warn('Non-HTTPS endpoint rejected for security. Using default.');
-        this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
-        return API_ENDPOINTS.TRANSCRIPTION;
+        console.warn('Non-HTTPS endpoint rejected for security. Using Groq default.');
+        this.cachedTranscriptionEndpoint = "https://api.groq.com/openai/v1/audio/transcriptions";
+        return this.cachedTranscriptionEndpoint;
       }
 
       let endpoint;
@@ -594,16 +763,34 @@ class AudioManager {
       return endpoint;
     } catch (error) {
       console.warn('Failed to resolve transcription endpoint:', error);
-      this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
-      return API_ENDPOINTS.TRANSCRIPTION;
+      // Fallback to Groq
+      this.cachedTranscriptionEndpoint = "https://api.groq.com/openai/v1/audio/transcriptions";
+      return this.cachedTranscriptionEndpoint;
     }
   }
 
   async safePaste(text) {
     try {
+      PerformanceLogger.startStep("pasting");
+      const pasteStart = Date.now();
+      window.electronAPI?.logPerf?.(`[Perf] Starting paste operation...`);
+
       await window.electronAPI.pasteText(text);
+
+      const pasteDuration = Date.now() - pasteStart;
+      PerformanceLogger.endStep("pasting");
+      window.electronAPI?.logPerf?.(`[Perf] Paste operation took: ${pasteDuration}ms`);
+
+      // Log total time from start of session to paste completion
+      if (PerformanceLogger.currentSession && PerformanceLogger.currentSession.absolute_start_time) {
+        const totalTime = Date.now() - PerformanceLogger.currentSession.absolute_start_time;
+        window.electronAPI?.logPerf?.(`[Perf] ═══ TOTAL TIME (Start to Paste): ${totalTime}ms ═══`);
+        PerformanceLogger.endSession(true);
+      }
+
       return true;
     } catch (error) {
+      PerformanceLogger.endStep("pasting", { error: error.message });
       this.onError?.({
         title: "Paste Error",
         description: `Failed to paste text. Please check accessibility permissions. ${error.message}`,
