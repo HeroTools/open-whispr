@@ -268,7 +268,8 @@ class ClipboardManager {
 
           if (code === 0) {
             // Restore original clipboard after successful paste
-            setTimeout(() => clipboard.writeText(originalClipboard), 100);
+            // Delay allows time for X11 to process paste event before clipboard is overwritten
+            setTimeout(() => clipboard.writeText(originalClipboard), 200);
             resolve();
           } else {
             reject(new Error(`${tool.cmd} exited with code ${code}`));
