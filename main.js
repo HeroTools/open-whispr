@@ -21,7 +21,7 @@ process.on("unhandledRejection", (reason, promise) => {
 });
 
 // Import helper modules
-const DebugLogger = require("./src/helpers/debugLogger");
+const debugLogger = require("./src/helpers/debugLogger");
 const EnvironmentManager = require("./src/helpers/environment");
 const WindowManager = require("./src/helpers/windowManager");
 const DatabaseManager = require("./src/helpers/database");
@@ -61,6 +61,7 @@ setupProductionPath();
 
 // Initialize managers
 const environmentManager = new EnvironmentManager();
+debugLogger.refreshLogLevel();
 const windowManager = new WindowManager();
 const hotkeyManager = windowManager.hotkeyManager;
 const databaseManager = new DatabaseManager();

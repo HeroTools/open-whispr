@@ -103,20 +103,19 @@ Debug mode creates detailed logs for troubleshooting:
 ### Method 1: Command Line
 ```batch
 cd "C:\Users\YourName\AppData\Local\Programs\OpenWhispr"
-OpenWhispr.exe --debug
+OpenWhispr.exe --log-level=debug
 ```
 
 ### Method 2: Environment Variable
 ```batch
-set OPENWISPR_DEBUG=true
+set OPENWHISPR_LOG_LEVEL=debug
 "C:\Users\YourName\AppData\Local\Programs\OpenWhispr\OpenWhispr.exe"
 ```
-
-### Method 3: Debug File
-```batch
-echo. > "%APPDATA%\OpenWhispr\ENABLE_DEBUG"
+You can also set it in `%APPDATA%\OpenWhispr\.env`:
 ```
-Then restart OpenWhispr normally.
+OPENWHISPR_LOG_LEVEL=debug
+```
+Then restart OpenWhispr.
 
 ### Find Debug Logs
 Logs are saved to: `%APPDATA%\OpenWhispr\logs\`
