@@ -280,7 +280,14 @@ declare global {
       saveGeminiKey: (key: string) => Promise<void>;
       
       // Debug logging
-      logReasoning?: (stage: string, details: any) => Promise<void>;
+      getLogLevel?: () => Promise<string>;
+      log?: (entry: {
+        level: string;
+        message: string;
+        meta?: any;
+        scope?: string;
+        source?: string;
+      }) => Promise<void>;
       
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<boolean>;

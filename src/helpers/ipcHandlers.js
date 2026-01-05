@@ -523,9 +523,12 @@ class IPCHandlers {
       }
     });
 
-    // Debug logging handler for reasoning pipeline
-    ipcMain.handle("log-reasoning", async (event, stage, details) => {
-      debugLogger.logReasoning(stage, details);
+    ipcMain.handle("get-log-level", async () => {
+      return debugLogger.getLevel();
+    });
+
+    ipcMain.handle("app-log", async (event, entry) => {
+      debugLogger.logEntry(entry);
       return { success: true };
     });
   }

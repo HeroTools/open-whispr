@@ -2,13 +2,7 @@ import modelManager from "../helpers/ModelManager";
 import { inferenceConfig } from "../config/InferenceConfig";
 import { BaseReasoningService } from "./BaseReasoningService";
 import { TOKEN_LIMITS } from "../config/constants";
-
-// Import debugLogger for comprehensive logging
-const debugLogger = {
-  logReasoning: (stage: string, details: any) => {
-    console.log(`[LOCAL_REASONING ${stage}]`, details);
-  }
-};
+import logger from "../utils/logger";
 
 interface LocalReasoningConfig {
   maxTokens?: number;
@@ -23,7 +17,7 @@ class LocalReasoningService extends BaseReasoningService {
     agentName: string | null = null,
     config: LocalReasoningConfig = {}
   ): Promise<string> {
-    debugLogger.logReasoning("LOCAL_MODEL_START", {
+    logger.logReasoning("LOCAL_MODEL_START", {
       modelId,
       agentName,
       textLength: text.length,
@@ -41,7 +35,7 @@ class LocalReasoningService extends BaseReasoningService {
       // Get prompt using the base class method
       const reasoningPrompt = this.getReasoningPrompt(text, agentName, config);
       
-      debugLogger.logReasoning("LOCAL_MODEL_PROMPT_PREPARED", {
+      logger.logReasoning("LOCAL_MODEL_PROMPT_PREPARED", {
         promptLength: reasoningPrompt.length,
         hasAgentName: !!agentName
       });
@@ -57,7 +51,7 @@ class LocalReasoningService extends BaseReasoningService {
         TOKEN_LIMITS.TOKEN_MULTIPLIER
       );
       
-      debugLogger.logReasoning("LOCAL_MODEL_INFERENCE_CONFIG", {
+      logger.logReasoning("LOCAL_MODEL_INFERENCE_CONFIG", {
         modelId,
         maxTokens,
         temperature: config.temperature || inferenceOptions.temperature,
@@ -74,7 +68,7 @@ class LocalReasoningService extends BaseReasoningService {
       
       const processingTime = Date.now() - startTime;
       
-      debugLogger.logReasoning("LOCAL_MODEL_SUCCESS", {
+      logger.logReasoning("LOCAL_MODEL_SUCCESS", {
         modelId,
         processingTimeMs: processingTime,
         resultLength: result.length,
@@ -85,7 +79,7 @@ class LocalReasoningService extends BaseReasoningService {
     } catch (error) {
       const processingTime = Date.now() - startTime;
       
-      debugLogger.logReasoning("LOCAL_MODEL_ERROR", {
+      logger.logReasoning("LOCAL_MODEL_ERROR", {
         modelId,
         processingTimeMs: processingTime,
         error: (error as Error).message,
