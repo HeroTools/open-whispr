@@ -170,7 +170,27 @@ class ClipboardManager {
     // Detect if the focused window is a terminal emulator
     // Terminals use Ctrl+Shift+V for paste (since Ctrl+V/C are used for process control)
     const isTerminal = () => {
+      // Common terminal emulator class names
+      const terminalClasses = [
+        "konsole",
+        "gnome-terminal",
+        "terminal",
+        "kitty",
+        "alacritty",
+        "terminator",
+        "xterm",
+        "urxvt",
+        "rxvt",
+        "tilix",
+        "terminology",
+        "wezterm",
+        "foot",
+        "st",
+        "yakuake",
+      ];
+
       try {
+        // Try xdotool (works on X11 and XWayland)
         if (commandExists("xdotool")) {
           const result = spawnSync("xdotool", [
             "getactivewindow",
@@ -178,31 +198,34 @@ class ClipboardManager {
           ]);
           if (result.status === 0) {
             const className = result.stdout.toString().toLowerCase().trim();
-            // Common terminal emulator class names
-            const terminalClasses = [
-              "konsole",
-              "gnome-terminal",
-              "terminal",
-              "kitty",
-              "alacritty",
-              "terminator",
-              "xterm",
-              "urxvt",
-              "rxvt",
-              "tilix",
-              "terminology",
-              "wezterm",
-              "foot",
-              "st",
-              "yakuake",
-            ];
             const isTerminalWindow = terminalClasses.some((term) =>
               className.includes(term)
             );
             if (isTerminalWindow) {
-              this.safeLog(`🖥️ Terminal detected: ${className}`);
+              this.safeLog(`🖥️ Terminal detected via xdotool: ${className}`);
             }
             return isTerminalWindow;
+          }
+        }
+
+        // Try kdotool for KDE Wayland (if available)
+        if (commandExists("kdotool")) {
+          // First get the active window ID
+          const windowIdResult = spawnSync("kdotool", ["getactivewindow"]);
+          if (windowIdResult.status === 0) {
+            const windowId = windowIdResult.stdout.toString().trim();
+            // Then get the window class name
+            const classResult = spawnSync("kdotool", ["getwindowclassname", windowId]);
+            if (classResult.status === 0) {
+              const className = classResult.stdout.toString().toLowerCase().trim();
+              const isTerminalWindow = terminalClasses.some((term) =>
+                className.includes(term)
+              );
+              if (isTerminalWindow) {
+                this.safeLog(`🖥️ Terminal detected via kdotool: ${className}`);
+              }
+              return isTerminalWindow;
+            }
           }
         }
       } catch (error) {
