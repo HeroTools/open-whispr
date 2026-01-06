@@ -30,16 +30,21 @@ class AudioManager {
 
   async startRecording() {
     try {
-      if (this.isRecording) {
+      if (this.isRecording || this.mediaRecorder?.state === "recording") {
         return false;
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
-      this.recordingStartTime = Date.now();
+      this.recordingStartTime = null;
+
+      this.mediaRecorder.onstart = () => {
+        this.isRecording = true;
+        this.recordingStartTime = Date.now();
+        this.onStateChange?.({ isRecording: true, isProcessing: false });
+      };
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
@@ -60,14 +65,10 @@ class AudioManager {
           : null;
         this.recordingStartTime = null;
         await this.processAudio(audioBlob, { durationSeconds });
-
-        // Clean up stream
         stream.getTracks().forEach((track) => track.stop());
       };
 
       this.mediaRecorder.start();
-      this.isRecording = true;
-      this.onStateChange?.({ isRecording: true, isProcessing: false });
 
       return true;
     } catch (error) {
@@ -96,7 +97,7 @@ class AudioManager {
   }
 
   stopRecording() {
-    if (this.mediaRecorder && this.isRecording) {
+    if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
       this.mediaRecorder.stop();
       // State change will be handled in onstop callback
       return true;
@@ -615,7 +616,7 @@ class AudioManager {
   }
 
   cleanup() {
-    if (this.mediaRecorder && this.isRecording) {
+    if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
       this.stopRecording();
     }
     this.onStateChange = null;
