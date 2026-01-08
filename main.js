@@ -218,16 +218,8 @@ app.on("activate", () => {
       windowManager.createControlPanelWindow();
     }
   } else {
-    // Show control panel when dock icon is clicked (most common user action)
-    if (windowManager && windowManager.controlPanelWindow && !windowManager.controlPanelWindow.isDestroyed()) {
-      windowManager.controlPanelWindow.show();
-      windowManager.controlPanelWindow.focus();
-    } else if (windowManager) {
-      // If control panel doesn't exist, create it
-      windowManager.createControlPanelWindow();
-    }
-    
-    // Ensure dictation panel maintains its always-on-top status
+    // Don't auto-show control panel - user opens via menu bar tray icon
+    // Just ensure dictation panel maintains its always-on-top status
     if (windowManager && windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
       windowManager.enforceMainWindowOnTop();
     }
