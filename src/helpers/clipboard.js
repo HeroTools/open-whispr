@@ -122,7 +122,7 @@ class ClipboardManager {
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
           reject(new Error(errorMsg));
         }, 3000);
-      }, 100);
+      }, 50);
     });
   }
 
