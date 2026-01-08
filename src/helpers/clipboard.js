@@ -1,9 +1,14 @@
 const { clipboard } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 
+const ACCESSIBILITY_CACHE_TTL_MS = 30000;
+const TOOL_CACHE_TTL_MS = 30000;
+
 class ClipboardManager {
   constructor() {
-    // Initialize clipboard manager
+    this.accessibilityCache = { value: null, expiresAt: 0 };
+    this.commandAvailabilityCache = new Map();
+    this.availablePasteToolsCache = new Map();
   }
 
   // Safe logging method - only log in development
@@ -157,12 +162,26 @@ class ClipboardManager {
   async pasteLinux(originalClipboard) {
     // Helper to check if a command exists
     const commandExists = (cmd) => {
+      const now = Date.now();
+      const cached = this.commandAvailabilityCache.get(cmd);
+      if (cached && now < cached.expiresAt) {
+        return cached.exists;
+      }
       try {
         const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
           stdio: "ignore",
         });
-        return res.status === 0;
+        const exists = res.status === 0;
+        this.commandAvailabilityCache.set(cmd, {
+          exists,
+          expiresAt: now + TOOL_CACHE_TTL_MS,
+        });
+        return exists;
       } catch {
+        this.commandAvailabilityCache.set(cmd, {
+          exists: false,
+          expiresAt: now + TOOL_CACHE_TTL_MS,
+        });
         return false;
       }
     };
@@ -264,8 +283,19 @@ class ClipboardManager {
           { cmd: "xdotool", args: ["key", pasteKeys] },
         ];
 
-    // Filter to only available tools
-    const available = candidates.filter((c) => commandExists(c.cmd));
+    // Filter to only available tools (cached by session type)
+    const cacheKey = `${isWayland ? "wayland" : "x11"}:${inTerminal ? "term" : "gui"}`;
+    const cacheEntry = this.availablePasteToolsCache.get(cacheKey);
+    let available;
+    if (cacheEntry && Date.now() < cacheEntry.expiresAt) {
+      available = cacheEntry.tools;
+    } else {
+      available = candidates.filter((c) => commandExists(c.cmd));
+      this.availablePasteToolsCache.set(cacheKey, {
+        tools: available,
+        expiresAt: Date.now() + TOOL_CACHE_TTL_MS,
+      });
+    }
 
     // Attempt paste with a specific tool
     const pasteWith = (tool) =>
@@ -332,6 +362,14 @@ class ClipboardManager {
   async checkAccessibilityPermissions() {
     if (process.platform !== "darwin") return true;
 
+    const now = Date.now();
+    if (
+      now < this.accessibilityCache.expiresAt &&
+      this.accessibilityCache.value !== null
+    ) {
+      return this.accessibilityCache.value;
+    }
+
     return new Promise((resolve) => {
       // Check accessibility permissions
 
@@ -352,15 +390,22 @@ class ClipboardManager {
       });
 
       testProcess.on("close", (code) => {
-        if (code === 0) {
-          resolve(true);
-        } else {
+        const allowed = code === 0;
+        this.accessibilityCache = {
+          value: allowed,
+          expiresAt: Date.now() + ACCESSIBILITY_CACHE_TTL_MS,
+        };
+        if (!allowed) {
           this.showAccessibilityDialog(testError);
-          resolve(false);
         }
+        resolve(allowed);
       });
 
       testProcess.on("error", (error) => {
+        this.accessibilityCache = {
+          value: false,
+          expiresAt: Date.now() + ACCESSIBILITY_CACHE_TTL_MS,
+        };
         resolve(false);
       });
     });
