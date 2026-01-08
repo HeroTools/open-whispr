@@ -90,6 +90,7 @@ export interface PythonInstallation {
   installed: boolean;
   command?: string;
   version?: number;
+  source?: string;
 }
 
 export interface PythonInstallResult {

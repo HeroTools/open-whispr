@@ -1,4 +1,5 @@
 const { spawn } = require("child_process");
+const { app } = require("electron");
 const fs = require("fs");
 const fsPromises = require("fs").promises;
 const os = require("os");
@@ -16,6 +17,9 @@ class WhisperManager {
     this.currentDownloadProcess = null;
     this.pythonInstaller = new PythonInstaller();
     this.cachedFFmpegPath = null;
+    this.bundledPythonPath = null;
+    this.bundledPythonChecked = false;
+    this.venvReadyPromise = null;
   }
 
   sanitizeErrorMessage(message = "") {
@@ -23,19 +27,6 @@ class WhisperManager {
       return "";
     }
     return message.replace(/\x1B\[[0-9;]*m/g, "");
-  }
-
-  shouldRetryWithUserInstall(message = "") {
-    const normalized = this.sanitizeErrorMessage(message).toLowerCase();
-    const shouldUseUser = (
-      normalized.includes("permission denied") ||
-      normalized.includes("access is denied") ||
-      normalized.includes("externally-managed-environment") ||
-      normalized.includes("externally managed environment") ||
-      normalized.includes("pep 668") ||
-      normalized.includes("--break-system-packages")
-    );
-    return shouldUseUser;
   }
 
   isTomlResolverError(message = "") {
@@ -53,11 +44,185 @@ class WhisperManager {
       return "Microsoft Visual C++ build tools required. Install Visual Studio Build Tools.";
     }
 
+    if (
+      lower.includes("externally-managed-environment") ||
+      lower.includes("externally managed environment") ||
+      lower.includes("pep 668") ||
+      lower.includes("--break-system-packages")
+    ) {
+      return "System Python is externally managed (PEP 668). OpenWhispr installs Whisper into an isolated environment by default. If you set OPENWHISPR_PYTHON, unset it or point it to a virtual environment, then try again.";
+    }
+
     if (lower.includes("no matching distribution")) {
-      return "Python version incompatible. OpenAI Whisper requires Python 3.8-3.11.";
+      return "Python version incompatible. Whisper requires a supported Python 3.x runtime.";
     }
 
     return formatted;
+  }
+
+  getUserDataDir() {
+    try {
+      if (app && app.getPath) {
+        return app.getPath("userData");
+      }
+    } catch (error) {
+      // Fall back to home directory
+    }
+    return path.join(os.homedir(), ".openwhispr");
+  }
+
+  getManagedPythonRoot() {
+    return path.join(this.getUserDataDir(), "python");
+  }
+
+  getVenvPath() {
+    return path.join(this.getManagedPythonRoot(), "venv");
+  }
+
+  getVenvPythonPath() {
+    const venvPath = this.getVenvPath();
+    if (process.platform === "win32") {
+      return path.join(venvPath, "Scripts", "python.exe");
+    }
+    const python3Path = path.join(venvPath, "bin", "python3");
+    if (fs.existsSync(python3Path)) {
+      return python3Path;
+    }
+    return path.join(venvPath, "bin", "python");
+  }
+
+  getBundledPythonCandidates() {
+    const baseDirs = [];
+    if (process.resourcesPath) {
+      baseDirs.push(path.join(process.resourcesPath, "python"));
+    }
+    baseDirs.push(path.join(__dirname, "..", "..", "resources", "python"));
+
+    const candidates = [];
+    const uniqueBaseDirs = Array.from(new Set(baseDirs));
+
+    for (const baseDir of uniqueBaseDirs) {
+      if (!baseDir) {
+        continue;
+      }
+      if (process.platform === "win32") {
+        candidates.push(
+          path.join(baseDir, "python.exe"),
+          path.join(baseDir, "python", "python.exe")
+        );
+      } else {
+        candidates.push(
+          path.join(baseDir, "bin", "python3"),
+          path.join(baseDir, "bin", "python"),
+          path.join(baseDir, "python3")
+        );
+      }
+    }
+
+    return candidates;
+  }
+
+  resolveBundledPython() {
+    if (this.bundledPythonChecked) {
+      return this.bundledPythonPath;
+    }
+
+    this.bundledPythonChecked = true;
+    for (const candidate of this.getBundledPythonCandidates()) {
+      if (candidate && fs.existsSync(candidate)) {
+        this.bundledPythonPath = candidate;
+        return candidate;
+      }
+    }
+
+    this.bundledPythonPath = null;
+    return null;
+  }
+
+  normalizePathForCompare(candidate) {
+    if (!candidate) {
+      return "";
+    }
+    const normalized = path.normalize(candidate);
+    return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+  }
+
+  getPythonSource(pythonPath) {
+    const normalizedPath = this.normalizePathForCompare(pythonPath);
+    const normalizedVenv = this.normalizePathForCompare(this.getVenvPath());
+    const bundled = this.resolveBundledPython();
+    const normalizedBundled = this.normalizePathForCompare(bundled);
+    const normalizedOverride = this.normalizePathForCompare(process.env.OPENWHISPR_PYTHON);
+
+    if (normalizedVenv && normalizedPath.startsWith(normalizedVenv)) {
+      return "venv";
+    }
+    if (normalizedBundled && normalizedPath === normalizedBundled) {
+      return "bundled";
+    }
+    if (normalizedOverride && normalizedPath === normalizedOverride) {
+      return "override";
+    }
+    return "system";
+  }
+
+  async ensureManagedVenv() {
+    if (process.env.OPENWHISPR_PYTHON) {
+      return process.env.OPENWHISPR_PYTHON;
+    }
+
+    if (this.venvReadyPromise) {
+      return this.venvReadyPromise;
+    }
+
+    this.venvReadyPromise = (async () => {
+      const venvPath = this.getVenvPath();
+      const venvPython = this.getVenvPythonPath();
+
+      if (fs.existsSync(venvPython)) {
+        const version = await this.getPythonVersion(venvPython);
+        if (this.isPythonVersionSupported(version)) {
+          this.pythonCmd = venvPython;
+          return venvPython;
+        }
+
+        try {
+          fs.rmSync(venvPath, { recursive: true, force: true });
+        } catch (error) {
+          // Continue and attempt to recreate
+        }
+      }
+
+      let basePython;
+      try {
+        basePython = await this.findPythonExecutable({ allowVenv: false });
+      } catch (error) {
+        throw new Error(
+          "Python 3.x not found. Install Python from Settings or set OPENWHISPR_PYTHON to a valid interpreter."
+        );
+      }
+
+      fs.mkdirSync(this.getManagedPythonRoot(), { recursive: true });
+      try {
+        await runCommand(basePython, ["-m", "venv", venvPath], { timeout: TIMEOUTS.INSTALL });
+      } catch (error) {
+        const cleanMessage = this.sanitizeErrorMessage(error.message).toLowerCase();
+        if (cleanMessage.includes("no module named venv")) {
+          throw new Error(
+            "Python venv module missing. Install the venv package for your Python distribution and try again."
+          );
+        }
+        throw error;
+      }
+
+      this.pythonCmd = venvPython;
+      return venvPython;
+    })().catch((error) => {
+      this.venvReadyPromise = null;
+      throw error;
+    });
+
+    return this.venvReadyPromise;
   }
 
   getWhisperScriptPath() {
@@ -565,9 +730,25 @@ class WhisperManager {
     }
   }
 
-  async findPythonExecutable() {
+  async findPythonExecutable(options = {}) {
+    const {
+      allowVenv = true,
+      allowBundled = true,
+      allowOverride = true,
+    } = options;
+
     if (this.pythonCmd) {
-      return this.pythonCmd;
+      const cachedSource = this.getPythonSource(this.pythonCmd);
+      const cachedExists = !path.isAbsolute(this.pythonCmd) || fs.existsSync(this.pythonCmd);
+      if (
+        cachedExists &&
+        (cachedSource !== "venv" || allowVenv) &&
+        (cachedSource !== "bundled" || allowBundled) &&
+        (cachedSource !== "override" || allowOverride)
+      ) {
+        return this.pythonCmd;
+      }
+      this.pythonCmd = null;
     }
 
     const candidateSet = new Set();
@@ -582,8 +763,19 @@ class WhisperManager {
       candidateSet.add(sanitized);
     };
 
-    if (process.env.OPENWHISPR_PYTHON) {
+    if (allowOverride && process.env.OPENWHISPR_PYTHON) {
       addCandidate(process.env.OPENWHISPR_PYTHON);
+    }
+
+    if (allowVenv) {
+      addCandidate(this.getVenvPythonPath());
+    }
+
+    if (allowBundled) {
+      const bundledPython = this.resolveBundledPython();
+      if (bundledPython) {
+        addCandidate(bundledPython);
+      }
     }
 
     if (process.platform === "win32") {
@@ -809,17 +1001,28 @@ class WhisperManager {
     try {
       // Clear cached Python command since we're installing new one
       this.pythonCmd = null;
-      
-      const result = await this.pythonInstaller.installPython(progressCallback);
-      
-      // After installation, try to find Python again
-      try {
-        await this.findPythonExecutable();
-        return result;
-      } catch (findError) {
-        throw new Error("Python installed but not found in PATH. Please restart the application.");
+
+      const bundledPython = this.resolveBundledPython();
+      if (bundledPython) {
+        if (progressCallback) {
+          progressCallback({ stage: "Using bundled Python runtime...", percentage: 40 });
+        }
+
+        await this.ensureManagedVenv();
+
+        if (progressCallback) {
+          progressCallback({ stage: "Python ready", percentage: 100 });
+        }
+
+        return { success: true, method: "bundled" };
       }
-      
+
+      const result = await this.pythonInstaller.installPython(progressCallback);
+
+      // After installation, prepare isolated environment
+      await this.ensureManagedVenv();
+
+      return result;
     } catch (error) {
       console.error("Python installation failed:", error);
       throw error;
@@ -827,7 +1030,20 @@ class WhisperManager {
   }
 
   async checkPythonInstallation() {
-    return await this.pythonInstaller.isPythonInstalled();
+    try {
+      const pythonPath = await this.findPythonExecutable();
+      const version = await this.getPythonVersion(pythonPath);
+      const normalizedVersion = version ? parseFloat(`${version.major}.${version.minor}`) : undefined;
+
+      return {
+        installed: !!version,
+        command: pythonPath,
+        version: normalizedVersion,
+        source: this.getPythonSource(pythonPath),
+      };
+    } catch (error) {
+      return { installed: false };
+    }
   }
 
   async getPythonVersion(pythonPath) {
@@ -994,81 +1210,59 @@ class WhisperManager {
   }
 
   upgradePip(pythonCmd) {
-    return runCommand(pythonCmd, ["-m", "pip", "install", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
+    return runCommand(
+      pythonCmd,
+      ["-m", "pip", "install", "--upgrade", "pip"],
+      { timeout: TIMEOUTS.PIP_UPGRADE }
+    );
   }
 
   // Removed - now using shared runCommand from utils/process.js
 
   async installWhisper() {
-    const pythonCmd = await this.findPythonExecutable();
-    
-    // Upgrade pip first to avoid version issues
+    if (!process.env.OPENWHISPR_PYTHON) {
+      console.log("Preparing isolated Python environment...");
+    }
+
+    const pythonCmd = process.env.OPENWHISPR_PYTHON
+      ? process.env.OPENWHISPR_PYTHON
+      : await this.ensureManagedVenv();
+
+    // Upgrade pip inside the isolated environment to avoid resolver issues
     try {
       await this.upgradePip(pythonCmd);
     } catch (error) {
       const cleanUpgradeError = this.sanitizeErrorMessage(error.message);
-      debugLogger.log("First pip upgrade attempt failed:", cleanUpgradeError);
-      
-      // Try user install for pip upgrade
-      try {
-        await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
-      } catch (userError) {
-        const cleanUserError = this.sanitizeErrorMessage(userError.message);
-        // If pip upgrade fails completely, try to detect if it's the TOML error
-        if (this.isTomlResolverError(cleanUpgradeError) || this.isTomlResolverError(cleanUserError)) {
-          // Try installing with legacy resolver as a workaround
-          try {
-            await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
-          } catch (legacyError) {
-            throw new Error("Failed to upgrade pip. Please manually run: python -m pip install --upgrade pip");
-          }
-        } else {
-          debugLogger.log("Pip upgrade failed completely, attempting to continue");
-        }
-      }
+      debugLogger.log("Pip upgrade failed in managed environment:", cleanUpgradeError);
     }
-    
-    const buildInstallArgs = ({ user = false, legacy = false } = {}) => {
+
+    const buildInstallArgs = ({ legacy = false } = {}) => {
       const args = ["-m", "pip", "install"];
       if (legacy) {
         args.push("--use-deprecated=legacy-resolver");
       }
-      if (user) {
-        args.push("--user");
-      }
       args.push("-U", "openai-whisper");
       return args;
     };
-    
+
     try {
-      return await runCommand(pythonCmd, buildInstallArgs(), { timeout: TIMEOUTS.DOWNLOAD });
+      const result = await runCommand(pythonCmd, buildInstallArgs(), { timeout: TIMEOUTS.DOWNLOAD });
+      this.whisperInstalled = null;
+      return result;
     } catch (error) {
       const cleanMessage = this.sanitizeErrorMessage(error.message);
-      
-      if (this.shouldRetryWithUserInstall(cleanMessage)) {
-        try {
-          return await runCommand(pythonCmd, buildInstallArgs({ user: true }), { timeout: TIMEOUTS.DOWNLOAD });
-        } catch (userError) {
-          const userMessage = this.sanitizeErrorMessage(userError.message);
-          if (this.isTomlResolverError(userMessage)) {
-            return await runCommand(pythonCmd, buildInstallArgs({ user: true, legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
-          }
-          throw new Error(this.formatWhisperInstallError(userMessage));
-        }
-      }
-      
+
       if (this.isTomlResolverError(cleanMessage)) {
         try {
-          return await runCommand(pythonCmd, buildInstallArgs({ legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+          const result = await runCommand(pythonCmd, buildInstallArgs({ legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+          this.whisperInstalled = null;
+          return result;
         } catch (legacyError) {
           const legacyMessage = this.sanitizeErrorMessage(legacyError.message);
-          if (this.shouldRetryWithUserInstall(legacyMessage)) {
-            return await runCommand(pythonCmd, buildInstallArgs({ user: true, legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
-          }
           throw new Error(this.formatWhisperInstallError(legacyMessage));
         }
       }
-      
+
       throw new Error(this.formatWhisperInstallError(cleanMessage));
     }
   }

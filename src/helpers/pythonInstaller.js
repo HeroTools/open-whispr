@@ -205,8 +205,6 @@ class PythonInstaller {
   }
 
   async installPythonLinux(progressCallback = null) {
-    const platform = process.platform;
-    
     try {
       if (progressCallback) {
         progressCallback({ stage: "Detecting Linux distribution...", percentage: 10 });
@@ -222,7 +220,25 @@ class PythonInstaller {
         }
         
         await runCommand("sudo", ["apt", "update"], { timeout: TIMEOUTS.PIP_UPGRADE });
-        await runCommand("sudo", ["apt", "install", "-y", "python3.11", "python3.11-pip", "python3.11-dev"], { timeout: TIMEOUTS.INSTALL });
+
+        const preferredPackages = [
+          "python3.11",
+          "python3.11-pip",
+          "python3.11-dev",
+          "python3.11-venv"
+        ];
+
+        try {
+          await runCommand("sudo", ["apt", "install", "-y", ...preferredPackages], { timeout: TIMEOUTS.INSTALL });
+        } catch (installError) {
+          const fallbackPackages = [
+            "python3",
+            "python3-pip",
+            "python3-dev",
+            "python3-venv"
+          ];
+          await runCommand("sudo", ["apt", "install", "-y", ...fallbackPackages], { timeout: TIMEOUTS.INSTALL });
+        }
         
         if (progressCallback) {
           progressCallback({ stage: "Python installation complete!", percentage: 100 });
@@ -299,59 +315,6 @@ class PythonInstaller {
     }
   }
 
-  async isPythonInstalled() {
-    const possibleCommands = ['python3.11', 'python3', 'python'];
-    
-    // On macOS, also check common Python installation paths
-    const additionalPaths = process.platform === 'darwin' ? [
-      '/usr/local/bin/python3',
-      '/usr/local/bin/python3.11',
-      '/opt/homebrew/bin/python3',
-      '/opt/homebrew/bin/python3.11',
-      '/usr/bin/python3',
-      '/Library/Frameworks/Python.framework/Versions/3.11/bin/python3',
-      '/Library/Frameworks/Python.framework/Versions/3.10/bin/python3',
-      '/Library/Frameworks/Python.framework/Versions/3.9/bin/python3',
-    ] : [];
-    
-    // First check commands in PATH
-    for (const cmd of possibleCommands) {
-      try {
-        const result = await runCommand(cmd, ['--version'], { timeout: TIMEOUTS.QUICK_CHECK });
-        const versionMatch = result.output.match(/Python (\d+\.\d+)/);
-        if (versionMatch) {
-          const version = parseFloat(versionMatch[1]);
-          // Accept any Python 3.x version
-          if (version >= 3.0) {
-            return { installed: true, command: cmd, version: version };
-          }
-        }
-      } catch (error) {
-        continue;
-      }
-    }
-    
-    // Then check absolute paths on macOS
-    for (const fullPath of additionalPaths) {
-      try {
-        const fs = require('fs');
-        if (fs.existsSync(fullPath)) {
-          const result = await runCommand(fullPath, ['--version'], { timeout: TIMEOUTS.QUICK_CHECK });
-          const versionMatch = result.output.match(/Python (\d+\.\d+)/);
-          if (versionMatch) {
-            const version = parseFloat(versionMatch[1]);
-            if (version >= 3.0) {
-              return { installed: true, command: fullPath, version: version };
-            }
-          }
-        }
-      } catch (error) {
-        continue;
-      }
-    }
-    
-    return { installed: false };
-  }
 }
 
 module.exports = PythonInstaller;
