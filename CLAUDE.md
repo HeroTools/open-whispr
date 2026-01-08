@@ -151,7 +151,7 @@ Settings stored in localStorage with these keys:
 - `geminiApiKey`: Encrypted API key
 - `language`: Selected language code
 - `agentName`: User's custom agent name
-- `reasoningModel`: Selected AI model for processing (defaults to gpt-4o-mini)
+- `reasoningModel`: Selected AI model for processing
 - `reasoningProvider`: AI provider (openai/anthropic/gemini/local)
 - `hotkey`: Custom hotkey configuration
 - `hasCompletedOnboarding`: Onboarding completion flag
@@ -169,26 +169,47 @@ Settings stored in localStorage with these keys:
 - Name stored in localStorage and database
 - ReasoningService detects "Hey [AgentName]" patterns
 - AI processes command and removes agent reference from output
-- Supports multiple AI providers:
-  - **OpenAI** (Now using Responses API as of September 2025):
-    - GPT-5 Series (Nano/Mini/Full) - Latest models with fastest performance
-    - GPT-4.1 Series (Nano/Mini/Full) with 1M context window
-    - o-series reasoning models (o3/o3-pro/o4-mini) for deep reasoning tasks
-    - GPT-4o multimodal series (4o/4o-mini) - default model
-    - Legacy support for GPT-4 Turbo, GPT-4 classic, GPT-3.5 Turbo
-  - **Anthropic** (Via IPC bridge to avoid CORS): 
-    - Claude Opus 4.1 (claude-opus-4-1-20250805) - Frontier intelligence
-    - Claude Sonnet 4 (claude-sonnet-4-20250514) - Latest balanced model
-    - Claude 3.5 Sonnet (claude-3-5-sonnet-20241022) - Balanced performance
-    - Claude 3.5 Haiku (claude-3-5-haiku-20241022) - Fast and efficient
+- Supports multiple AI providers (all models defined in `src/models/modelRegistryData.json`):
+  - **OpenAI** (Responses API):
+    - GPT-5.2 (`gpt-5.2`) - Latest flagship reasoning model
+    - GPT-5 Mini (`gpt-5-mini`) - Fast and cost-efficient
+    - GPT-5 Nano (`gpt-5-nano`) - Ultra-fast, low latency
+    - GPT-4.1 Series (`gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`) - Strong baseline with 1M context
+  - **Anthropic** (Via IPC bridge to avoid CORS):
+    - Claude Sonnet 4.5 (`claude-sonnet-4-5`) - Balanced performance
+    - Claude Haiku 4.5 (`claude-haiku-4-5`) - Fast with near-frontier intelligence
+    - Claude Opus 4.5 (`claude-opus-4-5`) - Most capable Claude model
   - **Google Gemini** (Direct API integration):
-    - Gemini 2.5 Pro (gemini-2.5-pro) - Most intelligent with thinking capability
-    - Gemini 2.5 Flash (gemini-2.5-flash) - High-performance with thinking
-    - Gemini 2.5 Flash Lite (gemini-2.5-flash-lite) - Fast and low-cost
-    - Gemini 2.0 Flash (gemini-2.0-flash) - 1M token context
-  - **Local**: Community models via LocalReasoningService (Qwen, LLaMA, Mistral)
+    - Gemini 2.5 Pro (`gemini-2.5-pro`) - Most capable Gemini model
+    - Gemini 2.5 Flash (`gemini-2.5-flash`) - High-performance with thinking
+    - Gemini 2.5 Flash Lite (`gemini-2.5-flash-lite`) - Lowest latency and cost
+    - Gemini 2.0 Flash (`gemini-2.0-flash`) - Fast, long-context option
+  - **Local**: GGUF models via llama.cpp (Qwen, Llama, Mistral, GPT-OSS)
 
-### 8. API Integrations and Updates
+### 8. Model Registry Architecture
+
+All AI model definitions are centralized in `src/models/modelRegistryData.json` as the single source of truth:
+
+```json
+{
+  "cloudProviders": [...],   // OpenAI, Anthropic, Gemini API models
+  "localProviders": [...]    // GGUF models with download URLs
+}
+```
+
+**Key files:**
+- `src/models/modelRegistryData.json` - Single source of truth for all models
+- `src/models/ModelRegistry.ts` - TypeScript wrapper with helper methods
+- `src/config/aiProvidersConfig.ts` - Derives AI_MODES from registry
+- `src/utils/languages.ts` - Derives REASONING_PROVIDERS from registry
+- `src/helpers/modelManagerBridge.js` - Handles local model downloads
+
+**Local model features:**
+- Each model has `hfRepo` for direct HuggingFace download URLs
+- `promptTemplate` defines the chat format (ChatML, Llama, Mistral)
+- Download URLs constructed as: `{baseUrl}/{hfRepo}/resolve/main/{fileName}`
+
+### 9. API Integrations and Updates
 
 **OpenAI Responses API (September 2025)**:
 - Migrated from Chat Completions to new Responses API
@@ -201,7 +222,7 @@ Settings stored in localStorage with these keys:
 **Anthropic Integration**:
 - Routes through IPC handler to avoid CORS issues in renderer process
 - Uses main process for API calls with proper error handling
-- Model names use hyphens (e.g., `claude-3-5-sonnet` not `claude-3.5-sonnet`)
+- Model IDs use alias format (e.g., `claude-sonnet-4-5` not date-suffixed versions)
 
 **Gemini Integration**:
 - Direct API calls from renderer process

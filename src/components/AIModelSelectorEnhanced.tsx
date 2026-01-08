@@ -5,7 +5,7 @@ import { Cloud, Lock, Brain, Zap, Globe, Cpu, Download, Check, Wrench } from 'lu
 import ApiKeyInput from './ui/ApiKeyInput';
 import { UnifiedModelPickerCompact } from './UnifiedModelPicker';
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from '../config/constants';
-import { REASONING_PROVIDERS } from '../utils/languages';
+import { REASONING_PROVIDERS } from '../models/ModelRegistry';
 import { modelRegistry } from '../models/ModelRegistry';
 
 type CloudModelOption = {
@@ -281,10 +281,11 @@ export default function AIModelSelectorEnhanced({
         if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
           setCustomModelOptions(mappedModels);
           if (
+            reasoningModel &&
             mappedModels.length > 0 &&
             !mappedModels.some((model) => model.value === reasoningModel)
           ) {
-            setReasoningModel(mappedModels[0].value);
+            setReasoningModel("");
           }
           setCustomModelsError(null);
           lastLoadedBaseRef.current = normalizedBase;

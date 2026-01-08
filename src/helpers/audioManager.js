@@ -402,14 +402,21 @@ class AudioManager {
     });
 
     const reasoningModel = (typeof window !== 'undefined' && window.localStorage)
-      ? (localStorage.getItem("reasoningModel") || "gpt-4o-mini")
-      : "gpt-4o-mini";
+      ? (localStorage.getItem("reasoningModel") || "")
+      : "";
     const reasoningProvider = (typeof window !== 'undefined' && window.localStorage)
       ? (localStorage.getItem("reasoningProvider") || "auto")
       : "auto";
     const agentName = (typeof window !== 'undefined' && window.localStorage)
       ? (localStorage.getItem("agentName") || null)
       : null;
+    if (!reasoningModel) {
+      logger.logReasoning("REASONING_SKIPPED", {
+        reason: "No reasoning model selected"
+      });
+      return normalizedText;
+    }
+
     const useReasoning = await this.isReasoningAvailable();
 
     logger.logReasoning("REASONING_CHECK", {

@@ -444,8 +444,12 @@ class IPCHandlers {
           ? `You are ${agentName}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n${text}`
           : `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n${text}`;
 
+        if (!modelId) {
+          throw new Error("No model specified for Anthropic API call");
+        }
+
         const requestBody = {
-          model: modelId || "claude-3-5-sonnet-20241022",
+          model: modelId,
           messages: [{ role: "user", content: userPrompt }],
           system: systemPrompt,
           max_tokens: config?.maxTokens || Math.max(100, Math.min(text.length * 2, 4096)),

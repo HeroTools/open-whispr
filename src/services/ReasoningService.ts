@@ -1,4 +1,4 @@
-import { getModelProvider } from "../utils/languages";
+import { getModelProvider } from "../models/ModelRegistry";
 import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
@@ -178,14 +178,18 @@ class ReasoningService extends BaseReasoningService {
 
   async processText(
     text: string,
-    model: string = "gpt-4o-mini",
+    model: string = "",
     agentName: string | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
-    const provider = getModelProvider(model);
+    const trimmedModel = model?.trim?.() || "";
+    if (!trimmedModel) {
+      throw new Error("No reasoning model selected");
+    }
+    const provider = getModelProvider(trimmedModel);
 
     logger.logReasoning("PROVIDER_SELECTION", {
-      model,
+      model: trimmedModel,
       provider,
       agentName,
       hasConfig: Object.keys(config).length > 0,
@@ -204,16 +208,16 @@ class ReasoningService extends BaseReasoningService {
       
       switch (provider) {
         case "openai":
-          result = await this.processWithOpenAI(text, model, agentName, config);
+          result = await this.processWithOpenAI(text, trimmedModel, agentName, config);
           break;
         case "anthropic":
-          result = await this.processWithAnthropic(text, model, agentName, config);
+          result = await this.processWithAnthropic(text, trimmedModel, agentName, config);
           break;
         case "local":
-          result = await this.processWithLocal(text, model, agentName, config);
+          result = await this.processWithLocal(text, trimmedModel, agentName, config);
           break;
         case "gemini":
-          result = await this.processWithGemini(text, model, agentName, config);
+          result = await this.processWithGemini(text, trimmedModel, agentName, config);
           break;
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
@@ -279,7 +283,7 @@ class ReasoningService extends BaseReasoningService {
 
       // Build request body for Responses API
       const requestBody: any = {
-        model: model || "gpt-4o-mini",
+        model,
         input,
         messages: input, // include both for Responses and Chat Completions compatibility
         store: false, // Don't store responses for privacy

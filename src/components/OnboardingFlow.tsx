@@ -33,7 +33,8 @@ import { usePython } from "../hooks/usePython";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
-import { getLanguageLabel, REASONING_PROVIDERS } from "../utils/languages";
+import { getLanguageLabel } from "../utils/languages";
+import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import LanguageSelector from "./ui/LanguageSelector";
 import { UnifiedModelPickerCompact } from "./UnifiedModelPicker";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
@@ -250,8 +251,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
         if (mappedModels.length === 0) {
           setCustomModelsError("No models returned by this endpoint.");
-        } else if (!mappedModels.some((model) => model.value === reasoningModelRef.current)) {
-          updateReasoningSettings({ reasoningModel: mappedModels[0].value });
+        } else if (
+          reasoningModelRef.current &&
+          !mappedModels.some((model) => model.value === reasoningModelRef.current)
+        ) {
+          updateReasoningSettings({ reasoningModel: "" });
         }
       } catch (error) {
         if (isCancelled) {
@@ -279,8 +283,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   useEffect(() => {
     if (!usingCustomReasoningBase && defaultReasoningModels.length > 0) {
-      if (!defaultReasoningModels.some((model) => model.value === reasoningModel)) {
-        updateReasoningSettings({ reasoningModel: defaultReasoningModels[0].value });
+      if (reasoningModel && !defaultReasoningModels.some((model) => model.value === reasoningModel)) {
+        updateReasoningSettings({ reasoningModel: "" });
       }
     }
   }, [usingCustomReasoningBase, defaultReasoningModels, reasoningModel, updateReasoningSettings]);

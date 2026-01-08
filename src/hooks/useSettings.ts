@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useLocalStorage } from "./useLocalStorage";
-import { getModelProvider } from "../utils/languages";
+import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
 
 export interface TranscriptionSettings {
@@ -115,7 +115,7 @@ export function useSettings() {
 
   const [reasoningModel, setReasoningModel] = useLocalStorage(
     "reasoningModel",
-    "gpt-4o-mini",
+    "",
     {
       serialize: String,
       deserialize: String,
@@ -235,20 +235,9 @@ export function useSettings() {
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider: (provider: string) => {
-      if (provider === 'custom') {
-        return;
+      if (provider !== 'custom') {
+        setReasoningModel("");
       }
-
-      const providerModels = {
-        openai: "gpt-4o-mini", // Start with cost-efficient multimodal model
-        anthropic: "claude-3.5-sonnet-20241022",
-        gemini: "gemini-2.5-flash",
-        local: "llama-3.2-3b",
-      };
-      setReasoningModel(
-        providerModels[provider as keyof typeof providerModels] ||
-          "gpt-4o-mini"
-      );
     },
     setOpenaiApiKey,
     setAnthropicApiKey,
