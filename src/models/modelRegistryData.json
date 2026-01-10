@@ -1,4 +1,12 @@
 {
+  "whisperModels": {
+    "tiny": { "name": "Tiny", "description": "Fastest, lower quality", "size": "39MB", "sizeMb": 39 },
+    "base": { "name": "Base", "description": "Good balance", "size": "74MB", "sizeMb": 74, "recommended": true },
+    "small": { "name": "Small", "description": "Better quality, slower", "size": "244MB", "sizeMb": 244 },
+    "medium": { "name": "Medium", "description": "High quality", "size": "769MB", "sizeMb": 769 },
+    "large": { "name": "Large", "description": "Best quality, slowest", "size": "1.5GB", "sizeMb": 1550 },
+    "turbo": { "name": "Turbo", "description": "Fast with good quality", "size": "809MB", "sizeMb": 809 }
+  },
   "transcriptionProviders": [
     {
       "id": "openai",
@@ -172,9 +180,9 @@
           "id": "qwen3-8b-q4_k_m",
           "name": "Qwen3 8B",
           "size": "5.0GB",
-          "sizeBytes": 5368709120,
+          "sizeBytes": 5402263552,
           "description": "Latest Qwen3 with thinking mode support",
-          "fileName": "qwen3-8b-q4_k_m.gguf",
+          "fileName": "Qwen3-8B-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 131072,
           "hfRepo": "Qwen/Qwen3-8B-GGUF",
@@ -184,9 +192,9 @@
           "id": "qwen3-8b-q5_k_m",
           "name": "Qwen3 8B (Q5)",
           "size": "5.9GB",
-          "sizeBytes": 6333399654,
+          "sizeBytes": 6281625600,
           "description": "Higher quality Qwen3 with thinking mode",
-          "fileName": "qwen3-8b-q5_k_m.gguf",
+          "fileName": "Qwen3-8B-Q5_K_M.gguf",
           "quantization": "q5_k_m",
           "contextLength": 131072,
           "hfRepo": "Qwen/Qwen3-8B-GGUF"
@@ -197,7 +205,7 @@
           "size": "2.5GB",
           "sizeBytes": 2684354560,
           "description": "Compact Qwen3 with reasoning capabilities",
-          "fileName": "qwen3-4b-q4_k_m.gguf",
+          "fileName": "Qwen3-4B-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 131072,
           "hfRepo": "Qwen/Qwen3-4B-GGUF"
@@ -206,9 +214,9 @@
           "id": "qwen3-1.7b-q8_0",
           "name": "Qwen3 1.7B",
           "size": "1.8GB",
-          "sizeBytes": 1932735283,
+          "sizeBytes": 1965555712,
           "description": "Small but capable Qwen3 model",
-          "fileName": "qwen3-1.7b-q8_0.gguf",
+          "fileName": "Qwen3-1.7B-Q8_0.gguf",
           "quantization": "q8_0",
           "contextLength": 131072,
           "hfRepo": "Qwen/Qwen3-1.7B-GGUF"
@@ -217,9 +225,9 @@
           "id": "qwen3-0.6b-q8_0",
           "name": "Qwen3 0.6B",
           "size": "0.6GB",
-          "sizeBytes": 644245094,
+          "sizeBytes": 686817280,
           "description": "Tiny Qwen3 for edge devices",
-          "fileName": "qwen3-0.6b-q8_0.gguf",
+          "fileName": "Qwen3-0.6B-Q8_0.gguf",
           "quantization": "q8_0",
           "contextLength": 131072,
           "hfRepo": "Qwen/Qwen3-0.6B-GGUF"
@@ -230,7 +238,7 @@
           "size": "19.8GB",
           "sizeBytes": 21260251955,
           "description": "Most powerful local Qwen3 with deep reasoning",
-          "fileName": "qwen3-32b-q4_k_m.gguf",
+          "fileName": "Qwen3-32B-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 131072,
           "hfRepo": "Qwen/Qwen3-32B-GGUF"
@@ -238,8 +246,8 @@
         {
           "id": "qwen2.5-0.5b-instruct-q5_k_m",
           "name": "Qwen2.5 0.5B",
-          "size": "0.4GB",
-          "sizeBytes": 429496729,
+          "size": "0.5GB",
+          "sizeBytes": 548405248,
           "description": "Smallest model, fast but limited capabilities",
           "fileName": "qwen2.5-0.5b-instruct-q5_k_m.gguf",
           "quantization": "q5_k_m",
@@ -260,8 +268,8 @@
         {
           "id": "qwen2.5-3b-instruct-q5_k_m",
           "name": "Qwen2.5 3B",
-          "size": "2.3GB",
-          "sizeBytes": 2469606195,
+          "size": "2.4GB",
+          "sizeBytes": 2620055552,
           "description": "Balanced model for general use",
           "fileName": "qwen2.5-3b-instruct-q5_k_m.gguf",
           "quantization": "q5_k_m",
@@ -272,23 +280,23 @@
           "id": "qwen2.5-7b-instruct-q4_k_m",
           "name": "Qwen2.5 7B",
           "size": "4.7GB",
-          "sizeBytes": 5046586241,
+          "sizeBytes": 5025128858,
           "description": "Large model with high quality (Q4_K_M)",
-          "fileName": "qwen2.5-7b-instruct-q4_k_m.gguf",
+          "fileName": "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 128000,
-          "hfRepo": "Qwen/Qwen2.5-7B-Instruct-GGUF"
+          "hfRepo": "bartowski/Qwen2.5-7B-Instruct-GGUF"
         },
         {
           "id": "qwen2.5-7b-instruct-q5_k_m",
           "name": "Qwen2.5 7B (Q5)",
           "size": "5.4GB",
-          "sizeBytes": 5798205849,
+          "sizeBytes": 5841530470,
           "description": "Large model, high quality reasoning (Q5_K_M)",
-          "fileName": "qwen2.5-7b-instruct-q5_k_m.gguf",
+          "fileName": "Qwen2.5-7B-Instruct-Q5_K_M.gguf",
           "quantization": "q5_k_m",
           "contextLength": 128000,
-          "hfRepo": "Qwen/Qwen2.5-7B-Instruct-GGUF"
+          "hfRepo": "bartowski/Qwen2.5-7B-Instruct-GGUF"
         }
       ]
     },
@@ -302,7 +310,7 @@
           "id": "mistral-7b-instruct-v0.3-q4_k_m",
           "name": "Mistral 7B Instruct v0.3",
           "size": "4.4GB",
-          "sizeBytes": 4724956928,
+          "sizeBytes": 4692635648,
           "description": "Fast and efficient instruction model",
           "fileName": "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
           "quantization": "q4_k_m",
@@ -314,7 +322,7 @@
           "id": "mistral-7b-instruct-v0.3-q5_k_m",
           "name": "Mistral 7B Instruct v0.3 (Q5)",
           "size": "5.1GB",
-          "sizeBytes": 5477387264,
+          "sizeBytes": 5519900672,
           "description": "Higher quality instruction model",
           "fileName": "Mistral-7B-Instruct-v0.3-Q5_K_M.gguf",
           "quantization": "q5_k_m",
@@ -332,8 +340,8 @@
         {
           "id": "llama-3.2-1b-instruct-q4_k_m",
           "name": "Llama 3.2 1B",
-          "size": "0.9GB",
-          "sizeBytes": 966367642,
+          "size": "0.8GB",
+          "sizeBytes": 847249408,
           "description": "Tiny model for edge devices",
           "fileName": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
           "quantization": "q4_k_m",
@@ -344,7 +352,7 @@
           "id": "llama-3.2-3b-instruct-q4_k_m",
           "name": "Llama 3.2 3B",
           "size": "2.0GB",
-          "sizeBytes": 2147483648,
+          "sizeBytes": 2168958976,
           "description": "Small but capable multilingual model",
           "fileName": "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
           "quantization": "q4_k_m",
@@ -356,7 +364,7 @@
           "id": "llama-3.1-8b-instruct-q4_k_m",
           "name": "Llama 3.1 8B",
           "size": "4.9GB",
-          "sizeBytes": 5260091802,
+          "sizeBytes": 5282717696,
           "description": "Powerful model with great performance",
           "fileName": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
           "quantization": "q4_k_m",

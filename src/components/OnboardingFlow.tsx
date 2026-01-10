@@ -20,7 +20,7 @@ import {
   User,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
-import WhisperModelPicker from "./WhisperModelPicker";
+import LocalWhisperPicker from "./LocalWhisperPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
@@ -36,7 +36,7 @@ import { useSettings } from "../hooks/useSettings";
 import { getLanguageLabel } from "../utils/languages";
 import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import LanguageSelector from "./ui/LanguageSelector";
-import { UnifiedModelPickerCompact } from "./UnifiedModelPicker";
+import ModelCardList from "./ui/ModelCardList";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel } from "../utils/hotkeys";
@@ -701,7 +701,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       </p>
                     </div>
 
-                    <WhisperModelPicker
+                    <LocalWhisperPicker
                       selectedModel={whisperModel}
                       onModelSelect={setWhisperModel}
                       variant="onboarding"
@@ -791,7 +791,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       Using OpenAI defaults from <code>{reasoningModelsEndpoint}</code>.
                     </p>
                   )}
-                  <UnifiedModelPickerCompact
+                  <ModelCardList
                     models={displayedReasoningModels}
                     selectedModel={reasoningModel}
                     onModelSelect={(modelId) =>

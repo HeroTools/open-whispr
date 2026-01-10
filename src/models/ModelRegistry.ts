@@ -1,6 +1,5 @@
 import modelDataRaw from './modelRegistryData.json';
 
-// Types for local models (downloadable GGUF files)
 export interface ModelDefinition {
   id: string;
   name: string;
@@ -31,7 +30,6 @@ export interface ModelProvider {
   getDownloadUrl(model: ModelDefinition): string;
 }
 
-// Types for cloud models (API-based)
 export interface CloudModelDefinition {
   id: string;
   name: string;
@@ -44,7 +42,6 @@ export interface CloudProviderData {
   models: CloudModelDefinition[];
 }
 
-// Types for transcription providers (speech-to-text)
 export interface TranscriptionModelDefinition {
   id: string;
   name: string;
@@ -58,8 +55,18 @@ export interface TranscriptionProviderData {
   models: TranscriptionModelDefinition[];
 }
 
-// Type-safe model registry data structure
+export interface WhisperModelInfo {
+  name: string;
+  description: string;
+  size: string;
+  sizeMb: number;
+  recommended?: boolean;
+}
+
+export type WhisperModelsMap = Record<string, WhisperModelInfo>;
+
 interface ModelRegistryData {
+  whisperModels: WhisperModelsMap;
   transcriptionProviders: TranscriptionProviderData[];
   cloudProviders: CloudProviderData[];
   localProviders: LocalProviderData[];
@@ -150,7 +157,6 @@ class ModelRegistry {
 
 export const modelRegistry = ModelRegistry.getInstance();
 
-// Reasoning providers (flat structure for UI dropdowns)
 export interface ReasoningModel {
   value: string;
   label: string;
@@ -216,18 +222,12 @@ export function getModelProvider(modelId: string): string {
   const model = getAllReasoningModels().find((m) => m.value === modelId);
 
   if (!model) {
-    // Infer provider from model name pattern
     if (modelId.includes("claude")) return "anthropic";
-    // Check for gemini but exclude gemma (which could be Groq or local)
     if (modelId.includes("gemini") && !modelId.includes("gemma")) return "gemini";
-    // OpenAI cloud models (gpt-4.x, gpt-5.x but NOT gpt-oss which could be Groq)
     if ((modelId.includes("gpt-4") || modelId.includes("gpt-5")) && !modelId.includes("gpt-oss")) return "openai";
-    // Groq-specific model patterns (these run on Groq cloud, not local)
-    // Groq models have patterns like "qwen/", "openai/gpt-oss-", "llama-3.1-8b-instant", "llama-3.3-", "mixtral-", "gemma2-"
     if (modelId.includes("qwen/") || modelId.includes("openai/") ||
         modelId.includes("llama-3.1-8b-instant") || modelId.includes("llama-3.3-") ||
         modelId.includes("mixtral-") || modelId.includes("gemma2-")) return "groq";
-    // Local models have patterns like "qwen2.5-", "qwen3-", "llama-3.2-", "mistral-", "gpt-oss-20b-mxfp4"
     if (modelId.includes("qwen") || modelId.includes("llama") ||
         modelId.includes("mistral") || modelId.includes("gpt-oss-20b-mxfp4")) return "local";
   }
@@ -235,7 +235,6 @@ export function getModelProvider(modelId: string): string {
   return model?.provider || "openai";
 }
 
-// Transcription provider helpers
 export function getTranscriptionProviders(): TranscriptionProviderData[] {
   return modelRegistry.getTranscriptionProviders();
 }
@@ -253,3 +252,13 @@ export function getDefaultTranscriptionModel(providerId: string): string {
   const models = getTranscriptionModels(providerId);
   return models[0]?.id || 'gpt-4o-mini-transcribe';
 }
+
+export function getWhisperModels(): WhisperModelsMap {
+  return modelData.whisperModels;
+}
+
+export function getWhisperModelInfo(modelId: string): WhisperModelInfo | undefined {
+  return modelData.whisperModels[modelId];
+}
+
+export const WHISPER_MODEL_INFO = modelData.whisperModels;

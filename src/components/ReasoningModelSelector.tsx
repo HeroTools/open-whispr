@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Cloud, Lock, Download, Check } from 'lucide-react';
+import { Cloud, Lock } from 'lucide-react';
 import ApiKeyInput from './ui/ApiKeyInput';
-import { UnifiedModelPickerCompact } from './UnifiedModelPicker';
-import { ProviderIcon } from './ui/ProviderIcon';
+import ModelCardList from './ui/ModelCardList';
+import LocalModelPicker, { type LocalProvider } from './LocalModelPicker';
 import { ProviderTabs } from './ui/ProviderTabs';
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from '../config/constants';
 import { REASONING_PROVIDERS } from '../models/ModelRegistry';
@@ -57,7 +57,7 @@ const resolveOwnedByIcon = (ownedBy?: string): string | undefined => {
   return undefined;
 };
 
-interface AIModelSelectorEnhancedProps {
+interface ReasoningModelSelectorProps {
   useReasoningModel: boolean;
   setUseReasoningModel: (value: boolean) => void;
   reasoningModel: string;
@@ -74,11 +74,10 @@ interface AIModelSelectorEnhancedProps {
   setGeminiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
-  pasteFromClipboard: (setter: (value: string) => void) => void;
   showAlertDialog: (dialog: { title: string; description: string }) => void;
 }
 
-export default function AIModelSelectorEnhanced({
+export default function ReasoningModelSelector({
   useReasoningModel,
   setUseReasoningModel,
   reasoningModel,
@@ -95,14 +94,10 @@ export default function AIModelSelectorEnhanced({
   setGeminiApiKey,
   groqApiKey,
   setGroqApiKey,
-  pasteFromClipboard,
-  showAlertDialog,
-}: AIModelSelectorEnhancedProps) {
+}: ReasoningModelSelectorProps) {
   const [selectedMode, setSelectedMode] = useState<'cloud' | 'local'>('cloud');
   const [selectedCloudProvider, setSelectedCloudProvider] = useState('openai');
   const [selectedLocalProvider, setSelectedLocalProvider] = useState('qwen');
-  const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
-  const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
   const [customModelOptions, setCustomModelOptions] = useState<CloudModelOption[]>([]);
   const [customModelsLoading, setCustomModelsLoading] = useState(false);
   const [customModelsError, setCustomModelsError] = useState<string | null>(null);
@@ -116,6 +111,7 @@ export default function AIModelSelectorEnhanced({
       isMountedRef.current = false;
     };
   }, []);
+
   useEffect(() => {
     setCustomBaseInput(cloudReasoningBaseUrl);
   }, [cloudReasoningBaseUrl]);
@@ -126,6 +122,7 @@ export default function AIModelSelectorEnhanced({
     [cloudReasoningBaseUrl]
   );
   const latestReasoningBaseRef = useRef(normalizedCustomReasoningBase);
+
   useEffect(() => {
     latestReasoningBaseRef.current = normalizedCustomReasoningBase;
   }, [normalizedCustomReasoningBase]);
@@ -149,13 +146,8 @@ export default function AIModelSelectorEnhanced({
         return;
       }
 
-      if (!force && lastLoadedBaseRef.current === normalizedBase) {
-        return;
-      }
-
-      if (!force && pendingBaseRef.current === normalizedBase) {
-        return;
-      }
+      if (!force && lastLoadedBaseRef.current === normalizedBase) return;
+      if (!force && pendingBaseRef.current === normalizedBase) return;
 
       if (baseOverride !== undefined) {
         latestReasoningBaseRef.current = normalizedBase;
@@ -186,7 +178,6 @@ export default function AIModelSelectorEnhanced({
           return;
         }
 
-        // Security: Only allow HTTPS endpoints (except localhost for development)
         const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
         if (!normalizedBase.startsWith('https://') && !isLocalhost) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
@@ -202,11 +193,7 @@ export default function AIModelSelectorEnhanced({
         }
 
         const modelsUrl = buildApiUrl(normalizedBase, '/models');
-
-        const response = await fetch(modelsUrl, {
-          method: 'GET',
-          headers,
-        });
+        const response = await fetch(modelsUrl, { method: 'GET', headers });
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => '');
@@ -217,26 +204,22 @@ export default function AIModelSelectorEnhanced({
         }
 
         const payload = await response.json().catch(() => ({}));
-
         const rawModels = Array.isArray(payload?.data)
           ? payload.data
           : Array.isArray(payload?.models)
           ? payload.models
           : [];
 
-        const mappedModels = (rawModels as Array<any>)
+        const mappedModels = (rawModels as Array<Record<string, unknown>>)
           .map((item) => {
-            const value = item?.id || item?.name;
-            if (!value) {
-              return null;
-            }
+            const value = (item?.id || item?.name) as string | undefined;
+            if (!value) return null;
             const ownedBy = typeof item?.owned_by === 'string' ? item.owned_by : undefined;
             const icon = resolveOwnedByIcon(ownedBy);
             return {
               value,
-              label: item?.id || item?.name || value,
-              description:
-                item?.description || (ownedBy ? `Owner: ${ownedBy}` : undefined),
+              label: (item?.id || item?.name || value) as string,
+              description: (item?.description as string) || (ownedBy ? `Owner: ${ownedBy}` : undefined),
               icon,
               ownedBy,
             } as CloudModelOption;
@@ -250,15 +233,14 @@ export default function AIModelSelectorEnhanced({
             mappedModels.length > 0 &&
             !mappedModels.some((model) => model.value === reasoningModel)
           ) {
-            setReasoningModel("");
+            setReasoningModel('');
           }
           setCustomModelsError(null);
           lastLoadedBaseRef.current = normalizedBase;
         }
       } catch (error) {
         if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-          const message =
-            (error as Error).message || 'Unable to load models from endpoint.';
+          const message = (error as Error).message || 'Unable to load models from endpoint.';
           const unauthorized = /\b(401|403)\b/.test(message);
           if (unauthorized && !apiKey) {
             setCustomModelsError(
@@ -280,14 +262,13 @@ export default function AIModelSelectorEnhanced({
     },
     [cloudReasoningBaseUrl, openaiApiKey, reasoningModel, setReasoningModel]
   );
+
   const trimmedCustomBase = customBaseInput.trim();
   const hasSavedCustomBase = Boolean((cloudReasoningBaseUrl || '').trim());
-  const isCustomBaseDirty =
-    trimmedCustomBase !== (cloudReasoningBaseUrl || '').trim();
+  const isCustomBaseDirty = trimmedCustomBase !== (cloudReasoningBaseUrl || '').trim();
+
   const displayedCustomModels = useMemo<CloudModelOption[]>(() => {
-    if (isCustomBaseDirty) {
-      return [];
-    }
+    if (isCustomBaseDirty) return [];
     return customModelOptions;
   }, [isCustomBaseDirty, customModelOptions]);
 
@@ -296,11 +277,21 @@ export default function AIModelSelectorEnhanced({
     id,
     name: id === 'custom' ? 'Custom' : REASONING_PROVIDERS[id as keyof typeof REASONING_PROVIDERS]?.name || id,
   }));
-  const localProviderIds = modelRegistry.getAllProviders().map((p) => p.id);
-  const localProviders = localProviderIds.map(id => {
-    const provider = modelRegistry.getProvider(id);
-    return { id, name: provider?.name || id };
-  });
+
+  const localProviders = useMemo<LocalProvider[]>(() => {
+    return modelRegistry.getAllProviders().map((provider) => ({
+      id: provider.id,
+      name: provider.name,
+      models: provider.models.map((model) => ({
+        id: model.id,
+        name: model.name,
+        size: model.size,
+        sizeBytes: model.sizeBytes,
+        description: model.description,
+        recommended: model.recommended,
+      })),
+    }));
+  }, []);
 
   const openaiModelOptions = useMemo<CloudModelOption[]>(() => {
     const iconPath = getProviderIconPath('openai');
@@ -311,25 +302,18 @@ export default function AIModelSelectorEnhanced({
   }, []);
 
   const selectedCloudModels = useMemo<CloudModelOption[]>(() => {
-    if (selectedCloudProvider === 'openai') {
-      return openaiModelOptions;
-    }
-
-    if (selectedCloudProvider === 'custom') {
-      return displayedCustomModels;
-    }
+    if (selectedCloudProvider === 'openai') return openaiModelOptions;
+    if (selectedCloudProvider === 'custom') return displayedCustomModels;
 
     const provider = REASONING_PROVIDERS[selectedCloudProvider as keyof typeof REASONING_PROVIDERS];
-    if (!provider?.models) {
-      return [];
-    }
+    if (!provider?.models) return [];
 
     const iconPath = getProviderIconPath(selectedCloudProvider);
     return provider.models.map((model) => ({
       ...model,
       icon: iconPath,
     }));
-  }, [selectedCloudProvider, openaiModelOptions, customModelOptions]);
+  }, [selectedCloudProvider, openaiModelOptions, displayedCustomModels]);
 
   const handleApplyCustomBase = useCallback(() => {
     const trimmedBase = customBaseInput.trim();
@@ -337,7 +321,7 @@ export default function AIModelSelectorEnhanced({
     setCloudReasoningBaseUrl(trimmedBase);
     lastLoadedBaseRef.current = null;
     loadRemoteModels(trimmedBase, true);
-  }, [customBaseInput, setCustomBaseInput, setCloudReasoningBaseUrl, loadRemoteModels]);
+  }, [customBaseInput, setCloudReasoningBaseUrl, loadRemoteModels]);
 
   const handleResetCustomBase = useCallback(() => {
     const defaultBase = API_ENDPOINTS.OPENAI_BASE;
@@ -345,40 +329,30 @@ export default function AIModelSelectorEnhanced({
     setCloudReasoningBaseUrl(defaultBase);
     lastLoadedBaseRef.current = null;
     loadRemoteModels(defaultBase, true);
-  }, [setCustomBaseInput, setCloudReasoningBaseUrl, loadRemoteModels]);
+  }, [setCloudReasoningBaseUrl, loadRemoteModels]);
 
   const handleRefreshCustomModels = useCallback(() => {
     if (isCustomBaseDirty) {
       handleApplyCustomBase();
       return;
     }
-
-    if (!trimmedCustomBase) {
-      return;
-    }
-
+    if (!trimmedCustomBase) return;
     loadRemoteModels(undefined, true);
   }, [handleApplyCustomBase, isCustomBaseDirty, trimmedCustomBase, loadRemoteModels]);
 
-  // Initialize based on current provider
   useEffect(() => {
-    if (localProviders.includes(localReasoningProvider)) {
+    const localProviderIds = localProviders.map(p => p.id);
+    if (localProviderIds.includes(localReasoningProvider)) {
       setSelectedMode('local');
       setSelectedLocalProvider(localReasoningProvider);
-    } else if (cloudProviders.includes(localReasoningProvider)) {
+    } else if (cloudProviderIds.includes(localReasoningProvider)) {
       setSelectedMode('cloud');
       setSelectedCloudProvider(localReasoningProvider);
     }
-    
-    // Check downloaded models
-    checkDownloadedModels();
-  }, []);
-  
-  useEffect(() => {
-    if (selectedCloudProvider !== 'custom') {
-      return;
-    }
+  }, [localProviders, localReasoningProvider]);
 
+  useEffect(() => {
+    if (selectedCloudProvider !== 'custom') return;
     if (!hasCustomBase) {
       setCustomModelsError(null);
       setCustomModelOptions([]);
@@ -388,49 +362,38 @@ export default function AIModelSelectorEnhanced({
     }
 
     const normalizedBase = normalizedCustomReasoningBase;
-    if (!normalizedBase) {
-      return;
-    }
-
-    if (pendingBaseRef.current === normalizedBase || lastLoadedBaseRef.current === normalizedBase) {
-      return;
-    }
+    if (!normalizedBase) return;
+    if (pendingBaseRef.current === normalizedBase || lastLoadedBaseRef.current === normalizedBase) return;
 
     loadRemoteModels();
   }, [selectedCloudProvider, hasCustomBase, normalizedCustomReasoningBase, loadRemoteModels]);
 
-  // Check which models are downloaded
-  const checkDownloadedModels = async () => {
+  const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
+
+  const loadDownloadedModels = useCallback(async () => {
     try {
       const result = await window.electronAPI?.modelGetAll?.();
       if (result && Array.isArray(result)) {
-        const downloaded = new Set(result.filter(m => m.isDownloaded).map(m => m.id));
+        const downloaded = new Set(
+          result.filter((m: { isDownloaded?: boolean }) => m.isDownloaded).map((m: { id: string }) => m.id)
+        );
         setDownloadedModels(downloaded);
+        return downloaded;
       }
     } catch (error) {
-      console.error('Failed to check downloaded models:', error);
+      console.error('Failed to load downloaded models:', error);
     }
-  };
-  
-  // Handle model download with minimal code
-  const downloadModel = async (modelId: string) => {
-    setDownloadingModel(modelId);
-    try {
-      await window.electronAPI?.modelDownload?.(modelId);
-      setDownloadedModels(prev => new Set([...prev, modelId]));
-      if (!reasoningModel) setReasoningModel(modelId);
-    } catch (error) {
-      console.error('Download failed:', error);
-    } finally {
-      setDownloadingModel(null);
-    }
-  };
+    return new Set<string>();
+  }, []);
+
+  useEffect(() => {
+    loadDownloadedModels();
+  }, [loadDownloadedModels]);
 
   const handleModeChange = async (newMode: 'cloud' | 'local') => {
     setSelectedMode(newMode);
-    
+
     if (newMode === 'cloud') {
-      // Switch to cloud mode
       setLocalReasoningProvider(selectedCloudProvider);
 
       if (selectedCloudProvider === 'custom') {
@@ -451,11 +414,17 @@ export default function AIModelSelectorEnhanced({
         setReasoningModel(provider.models[0].value);
       }
     } else {
-      // Switch to local mode
       setLocalReasoningProvider(selectedLocalProvider);
-      const provider = modelRegistry.getProvider(selectedLocalProvider);
-      if (provider?.models?.length > 0) {
-        setReasoningModel(provider.models[0].id);
+      const downloaded = await loadDownloadedModels();
+      const provider = localProviders.find(p => p.id === selectedLocalProvider);
+      const models = provider?.models ?? [];
+      if (models.length > 0) {
+        const firstDownloaded = models.find(m => downloaded.has(m.id));
+        if (firstDownloaded) {
+          setReasoningModel(firstDownloaded.id);
+        } else {
+          setReasoningModel('');
+        }
       }
     }
   };
@@ -463,8 +432,7 @@ export default function AIModelSelectorEnhanced({
   const handleCloudProviderChange = (provider: string) => {
     setSelectedCloudProvider(provider);
     setLocalReasoningProvider(provider);
-    
-    // Update model to first available
+
     if (provider === 'custom') {
       setCustomBaseInput(cloudReasoningBaseUrl);
       lastLoadedBaseRef.current = null;
@@ -484,34 +452,24 @@ export default function AIModelSelectorEnhanced({
     }
   };
 
-  const handleLocalProviderChange = (provider: string) => {
-    setSelectedLocalProvider(provider);
-    setLocalReasoningProvider(provider);
-    // Update model to first available
-    const providerData = modelRegistry.getProvider(provider);
-    if (providerData?.models?.length > 0) {
-      setReasoningModel(providerData.models[0].id);
+  const handleLocalProviderChange = async (providerId: string) => {
+    setSelectedLocalProvider(providerId);
+    setLocalReasoningProvider(providerId);
+    const downloaded = await loadDownloadedModels();
+    const provider = localProviders.find(p => p.id === providerId);
+    const models = provider?.models ?? [];
+    if (models.length > 0) {
+      const firstDownloaded = models.find(m => downloaded.has(m.id));
+      if (firstDownloaded) {
+        setReasoningModel(firstDownloaded.id);
+      } else {
+        setReasoningModel('');
+      }
     }
-  };
-
-  const getProviderColor = (provider: string) => {
-    const colors: Record<string, string> = {
-      'openai': 'green',
-      'anthropic': 'purple',
-      'gemini': 'blue',
-      'groq': 'orange', // Fast and fiery like Groq
-      'qwen': 'indigo',
-      'mistral': 'orange',
-      'llama': 'blue',
-      'openai-oss': 'teal',
-      'custom': 'cyan'
-    };
-    return colors[provider] || 'gray';
   };
 
   return (
     <div className="space-y-6">
-      {/* Enable/Disable Toggle */}
       <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
         <div>
           <label className="text-sm font-medium text-green-800">
@@ -529,10 +487,10 @@ export default function AIModelSelectorEnhanced({
             onChange={(e) => setUseReasoningModel(e.target.checked)}
           />
           <div className={`w-11 h-6 bg-gray-200 rounded-full transition-colors duration-200 ${
-            useReasoningModel ? "bg-green-600" : "bg-gray-300"
+            useReasoningModel ? 'bg-green-600' : 'bg-gray-300'
           }`}>
             <div className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
-              useReasoningModel ? "translate-x-5" : "translate-x-0"
+              useReasoningModel ? 'translate-x-5' : 'translate-x-0'
             }`} />
           </div>
         </label>
@@ -540,14 +498,13 @@ export default function AIModelSelectorEnhanced({
 
       {useReasoningModel && (
         <>
-          {/* Cloud vs Local Selection */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button
               onClick={() => handleModeChange('cloud')}
               className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
                 selectedMode === 'cloud'
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-neutral-200 bg-white hover:border-neutral-300"
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-neutral-200 bg-white hover:border-neutral-300'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -568,8 +525,8 @@ export default function AIModelSelectorEnhanced({
               onClick={() => handleModeChange('local')}
               className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
                 selectedMode === 'local'
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-neutral-200 bg-white hover:border-neutral-300"
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : 'border-neutral-200 bg-white hover:border-neutral-300'
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -587,10 +544,8 @@ export default function AIModelSelectorEnhanced({
             </button>
           </div>
 
-          {/* Provider Content */}
           {selectedMode === 'cloud' ? (
             <div className="space-y-4">
-              {/* Cloud Provider Tabs */}
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <ProviderTabs
                   providers={cloudProviders}
@@ -600,7 +555,6 @@ export default function AIModelSelectorEnhanced({
                 />
 
                 <div className="p-4">
-                  {/* Use UnifiedModelPickerCompact for cloud models */}
                   {selectedCloudProvider === 'custom' ? (
                     <>
                       <div className="space-y-3">
@@ -650,9 +604,7 @@ export default function AIModelSelectorEnhanced({
                       <div className="space-y-3 pt-4 border-t border-gray-200">
                         <h4 className="text-sm font-medium text-gray-700">Available Models</h4>
                         {!hasCustomBase && (
-                          <p className="text-xs text-amber-600">
-                            Enter a base URL to load models.
-                          </p>
+                          <p className="text-xs text-amber-600">Enter a base URL to load models.</p>
                         )}
                         {hasCustomBase && (
                           <>
@@ -663,13 +615,11 @@ export default function AIModelSelectorEnhanced({
                               <p className="text-xs text-red-600">{customModelsError}</p>
                             )}
                             {!customModelsLoading && !customModelsError && customModelOptions.length === 0 && (
-                              <p className="text-xs text-amber-600">
-                                No models returned by this endpoint.
-                              </p>
+                              <p className="text-xs text-amber-600">No models returned by this endpoint.</p>
                             )}
                           </>
                         )}
-                        <UnifiedModelPickerCompact
+                        <ModelCardList
                           models={selectedCloudModels}
                           selectedModel={reasoningModel}
                           onModelSelect={setReasoningModel}
@@ -680,14 +630,13 @@ export default function AIModelSelectorEnhanced({
                     <>
                       <div className="space-y-3">
                         <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
-                        <UnifiedModelPickerCompact
+                        <ModelCardList
                           models={selectedCloudModels}
                           selectedModel={reasoningModel}
                           onModelSelect={setReasoningModel}
                         />
                       </div>
 
-                  {/* API Key Configuration */}
                       <div className="mt-4 pt-4 border-t border-gray-200">
                         {selectedCloudProvider === 'openai' && (
                           <div className="space-y-3">
@@ -697,7 +646,7 @@ export default function AIModelSelectorEnhanced({
                               setApiKey={setOpenaiApiKey}
                               helpText={
                                 <>
-                                  Need an API key?{" "}
+                                  Need an API key?{' '}
                                   <a
                                     href="https://platform.openai.com"
                                     target="_blank"
@@ -715,75 +664,72 @@ export default function AIModelSelectorEnhanced({
                         {selectedCloudProvider === 'anthropic' && (
                           <div className="space-y-3">
                             <h4 className="font-medium text-gray-900">API Configuration</h4>
-                            <div className="flex gap-2">
-                              <Input
-                                type="password"
-                                placeholder="sk-ant-..."
-                                value={anthropicApiKey}
-                                onChange={(e) => setAnthropicApiKey(e.target.value)}
-                                className="flex-1 text-sm"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => pasteFromClipboard(setAnthropicApiKey)}
-                              >
-                                Paste
-                              </Button>
-                            </div>
-                            <p className="text-xs text-gray-600">
-                              Get your API key from console.anthropic.com
-                            </p>
+                            <ApiKeyInput
+                              apiKey={anthropicApiKey}
+                              setApiKey={setAnthropicApiKey}
+                              placeholder="sk-ant-..."
+                              helpText={
+                                <>
+                                  Need an API key?{' '}
+                                  <a
+                                    href="https://console.anthropic.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline"
+                                  >
+                                    console.anthropic.com
+                                  </a>
+                                </>
+                              }
+                            />
                           </div>
                         )}
 
                         {selectedCloudProvider === 'gemini' && (
                           <div className="space-y-3">
                             <h4 className="font-medium text-gray-900">API Configuration</h4>
-                            <div className="flex gap-2">
-                              <Input
-                                type="password"
-                                placeholder="AIza..."
-                                value={geminiApiKey}
-                                onChange={(e) => setGeminiApiKey(e.target.value)}
-                                className="flex-1 text-sm"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => pasteFromClipboard(setGeminiApiKey)}
-                              >
-                                Paste
-                              </Button>
-                            </div>
-                            <p className="text-xs text-gray-600">
-                              Get your API key from makersuite.google.com/app/apikey
-                            </p>
+                            <ApiKeyInput
+                              apiKey={geminiApiKey}
+                              setApiKey={setGeminiApiKey}
+                              placeholder="AIza..."
+                              helpText={
+                                <>
+                                  Need an API key?{' '}
+                                  <a
+                                    href="https://makersuite.google.com/app/apikey"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline"
+                                  >
+                                    makersuite.google.com
+                                  </a>
+                                </>
+                              }
+                            />
                           </div>
                         )}
 
                         {selectedCloudProvider === 'groq' && (
                           <div className="space-y-3">
                             <h4 className="font-medium text-gray-900">API Configuration</h4>
-                            <div className="flex gap-2">
-                              <Input
-                                type="password"
-                                placeholder="gsk_..."
-                                value={groqApiKey}
-                                onChange={(e) => setGroqApiKey(e.target.value)}
-                                className="flex-1 text-sm"
-                              />
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => pasteFromClipboard(setGroqApiKey)}
-                              >
-                                Paste
-                              </Button>
-                            </div>
-                            <p className="text-xs text-gray-600">
-                              Get your API key from console.groq.com
-                            </p>
+                            <ApiKeyInput
+                              apiKey={groqApiKey}
+                              setApiKey={setGroqApiKey}
+                              placeholder="gsk_..."
+                              helpText={
+                                <>
+                                  Need an API key?{' '}
+                                  <a
+                                    href="https://console.groq.com"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 underline"
+                                  >
+                                    console.groq.com
+                                  </a>
+                                </>
+                              }
+                            />
                           </div>
                         )}
                       </div>
@@ -793,105 +739,16 @@ export default function AIModelSelectorEnhanced({
               </div>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Local Provider Tabs */}
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <ProviderTabs
-                  providers={localProviders}
-                  selectedId={selectedLocalProvider}
-                  onSelect={handleLocalProviderChange}
-                  colorScheme="purple"
-                  scrollable
-                />
-
-                {/* Local Model List with Download */}
-                <div className="p-4">
-                  <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Available Models</h4>
-                    {(() => {
-                      const provider = modelRegistry.getProvider(selectedLocalProvider);
-                      if (!provider || !provider.models) {
-                        return <p className="text-sm text-gray-500">No models available for this provider</p>;
-                      }
-                      
-                      return (
-                        <div className="space-y-2">
-                          {provider.models.map((model) => {
-                            const isDownloaded = downloadedModels.has(model.id);
-                            const isDownloading = downloadingModel === model.id;
-                            const isSelected = reasoningModel === model.id;
-                            
-                            return (
-                              <div
-                                key={model.id}
-                                className={`p-3 rounded-lg border-2 transition-all ${
-                                  isSelected
-                                    ? 'border-purple-500 bg-purple-50'
-                                    : 'border-gray-200 bg-white hover:border-gray-300'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <div className="flex items-center gap-2">
-                                      <ProviderIcon provider={selectedLocalProvider} className="w-4 h-4" />
-                                      <span className="font-medium text-gray-900">{model.name}</span>
-                                    </div>
-                                    <div className="text-xs text-gray-600 mt-1">{model.description}</div>
-                                    <div className="flex items-center gap-2 mt-1">
-                                      <span className="text-xs text-gray-500">Size: {model.size}</span>
-                                      {isDownloaded && (
-                                        <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">
-                                          <Check className="inline w-3 h-3 mr-1" />
-                                          Downloaded
-                                        </span>
-                                      )}
-                                      {model.recommended && (
-                                        <span className="text-xs text-blue-600 bg-blue-100 px-2 py-0.5 rounded">
-                                          Recommended
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    {isDownloaded ? (
-                                      !isSelected && (
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          onClick={() => setReasoningModel(model.id)}
-                                        >
-                                          Select
-                                        </Button>
-                                      )
-                                    ) : (
-                                      <Button
-                                        size="sm"
-                                        variant="default"
-                                        disabled={isDownloading}
-                                        onClick={() => downloadModel(model.id)}
-                                      >
-                                        {isDownloading ? (
-                                          <>Downloading...</>
-                                        ) : (
-                                          <>
-                                            <Download className="w-3 h-3 mr-1" />
-                                            Download
-                                          </>
-                                        )}
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-              </div>
-            </div>
+            <LocalModelPicker
+              providers={localProviders}
+              selectedModel={reasoningModel}
+              selectedProvider={selectedLocalProvider}
+              onModelSelect={setReasoningModel}
+              onProviderSelect={handleLocalProviderChange}
+              modelType="llm"
+              colorScheme="purple"
+              onDownloadComplete={loadDownloadedModels}
+            />
           )}
         </>
       )}
