@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button } from './ui/button';
-import { RefreshCw, Download, Trash2, Check } from 'lucide-react';
-import { ProviderIcon } from './ui/ProviderIcon';
-import { ProviderTabs } from './ui/ProviderTabs';
-import DownloadProgressBar from './ui/DownloadProgressBar';
-import { useDialogs } from '../hooks/useDialogs';
-import { useModelDownload, type ModelType } from '../hooks/useModelDownload';
-import { MODEL_PICKER_COLORS } from '../utils/modelPickerStyles';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Button } from "./ui/button";
+import { RefreshCw, Download, Trash2, Check } from "lucide-react";
+import { ProviderIcon } from "./ui/ProviderIcon";
+import { ProviderTabs } from "./ui/ProviderTabs";
+import DownloadProgressBar from "./ui/DownloadProgressBar";
+import { useDialogs } from "../hooks/useDialogs";
+import { useModelDownload, type ModelType } from "../hooks/useModelDownload";
+import { MODEL_PICKER_COLORS } from "../utils/modelPickerStyles";
 
-type PickerColorScheme = 'purple' | 'indigo';
+type PickerColorScheme = "purple" | "indigo";
 
 export interface LocalModel {
   id: string;
@@ -46,8 +46,8 @@ export default function LocalModelPicker({
   onModelSelect,
   onProviderSelect,
   modelType,
-  colorScheme = 'purple',
-  className = '',
+  colorScheme = "purple",
+  className = "",
   onDownloadComplete,
 }: LocalModelPickerProps) {
   const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
@@ -60,25 +60,29 @@ export default function LocalModelPicker({
     setLoadingModels(true);
     try {
       let downloaded = new Set<string>();
-      if (modelType === 'whisper') {
+      if (modelType === "whisper") {
         const result = await window.electronAPI?.listWhisperModels();
         if (result?.success) {
           downloaded = new Set(
-            result.models.filter((m: { downloaded?: boolean }) => m.downloaded).map((m: { model: string }) => m.model)
+            result.models
+              .filter((m: { downloaded?: boolean }) => m.downloaded)
+              .map((m: { model: string }) => m.model)
           );
         }
       } else {
         const result = await window.electronAPI?.modelGetAll?.();
         if (result && Array.isArray(result)) {
           downloaded = new Set(
-            result.filter((m: { isDownloaded?: boolean }) => m.isDownloaded).map((m: { id: string }) => m.id)
+            result
+              .filter((m: { isDownloaded?: boolean }) => m.isDownloaded)
+              .map((m: { id: string }) => m.id)
           );
         }
       }
       setDownloadedModels(downloaded);
       return downloaded;
     } catch (error) {
-      console.error('Failed to load downloaded models:', error);
+      console.error("Failed to load downloaded models:", error);
       return new Set<string>();
     } finally {
       setLoadingModels(false);
@@ -89,7 +93,7 @@ export default function LocalModelPicker({
     const initAndValidate = async () => {
       const downloaded = await loadDownloadedModels();
       if (selectedModel && !downloaded.has(selectedModel)) {
-        onModelSelect('');
+        onModelSelect("");
       }
     };
     initAndValidate();
@@ -100,45 +104,43 @@ export default function LocalModelPicker({
     onDownloadComplete?.();
   }, [loadDownloadedModels, onDownloadComplete]);
 
-  const {
-    downloadingModel,
-    downloadProgress,
-    downloadModel,
-    deleteModel,
-    isDownloadingModel,
-  } = useModelDownload({
-    modelType,
-    onDownloadComplete: handleDownloadComplete,
-    onModelsCleared: loadDownloadedModels,
-  });
-
-  const handleDownload = useCallback((modelId: string) => {
-    downloadModel(modelId, onModelSelect);
-  }, [downloadModel, onModelSelect]);
-
-  const handleDelete = useCallback((modelId: string) => {
-    showConfirmDialog({
-      title: 'Delete Model',
-      description: "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
-      onConfirm: () => deleteModel(modelId, loadDownloadedModels),
-      variant: 'destructive',
+  const { downloadingModel, downloadProgress, downloadModel, deleteModel, isDownloadingModel } =
+    useModelDownload({
+      modelType,
+      onDownloadComplete: handleDownloadComplete,
+      onModelsCleared: loadDownloadedModels,
     });
-  }, [showConfirmDialog, deleteModel, loadDownloadedModels]);
 
-  const currentProvider = providers.find(p => p.id === selectedProvider);
+  const handleDownload = useCallback(
+    (modelId: string) => {
+      downloadModel(modelId, onModelSelect);
+    },
+    [downloadModel, onModelSelect]
+  );
+
+  const handleDelete = useCallback(
+    (modelId: string) => {
+      showConfirmDialog({
+        title: "Delete Model",
+        description:
+          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        onConfirm: () => deleteModel(modelId, loadDownloadedModels),
+        variant: "destructive",
+      });
+    },
+    [showConfirmDialog, deleteModel, loadDownloadedModels]
+  );
+
+  const currentProvider = providers.find((p) => p.id === selectedProvider);
   const models = currentProvider?.models || [];
 
   const progressDisplay = useMemo(() => {
     if (!downloadingModel) return null;
 
-    const modelName = models.find(m => m.id === downloadingModel)?.name || downloadingModel;
+    const modelName = models.find((m) => m.id === downloadingModel)?.name || downloadingModel;
 
     return (
-      <DownloadProgressBar
-        modelName={modelName}
-        progress={downloadProgress}
-        styles={styles}
-      />
+      <DownloadProgressBar modelName={modelName} progress={downloadProgress} styles={styles} />
     );
   }, [downloadingModel, downloadProgress, models, styles]);
 
@@ -164,8 +166,8 @@ export default function LocalModelPicker({
             disabled={loadingModels}
             className={styles.buttons.refresh}
           >
-            <RefreshCw size={14} className={loadingModels ? 'animate-spin' : ''} />
-            <span className="ml-1">{loadingModels ? 'Checking...' : 'Refresh'}</span>
+            <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
+            <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
           </Button>
         </div>
 
@@ -176,7 +178,8 @@ export default function LocalModelPicker({
             models.map((model) => {
               const isSelected = model.id === selectedModel;
               const isDownloading = isDownloadingModel(model.id);
-              const isDownloaded = downloadedModels.has(model.id) || model.isDownloaded || model.downloaded;
+              const isDownloaded =
+                downloadedModels.has(model.id) || model.isDownloaded || model.downloaded;
 
               return (
                 <div
@@ -190,13 +193,9 @@ export default function LocalModelPicker({
                       <div className="flex items-center gap-2">
                         <ProviderIcon provider={selectedProvider} className="w-4 h-4" />
                         <span className="font-medium text-gray-900">{model.name}</span>
-                        {isSelected && (
-                          <span className={styles.badges.selected}>✓ Selected</span>
-                        )}
+                        {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
                         {model.recommended && (
-                          <span className={styles.badges.recommended}>
-                            Recommended
-                          </span>
+                          <span className={styles.badges.recommended}>Recommended</span>
                         )}
                       </div>
                       <div className="text-xs text-gray-600 mt-1">{model.description}</div>

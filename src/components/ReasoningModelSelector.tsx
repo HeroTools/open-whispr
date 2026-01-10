@@ -1,14 +1,14 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Cloud, Lock } from 'lucide-react';
-import ApiKeyInput from './ui/ApiKeyInput';
-import ModelCardList from './ui/ModelCardList';
-import LocalModelPicker, { type LocalProvider } from './LocalModelPicker';
-import { ProviderTabs } from './ui/ProviderTabs';
-import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from '../config/constants';
-import { REASONING_PROVIDERS } from '../models/ModelRegistry';
-import { modelRegistry } from '../models/ModelRegistry';
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Cloud, Lock } from "lucide-react";
+import ApiKeyInput from "./ui/ApiKeyInput";
+import ModelCardList from "./ui/ModelCardList";
+import LocalModelPicker, { type LocalProvider } from "./LocalModelPicker";
+import { ProviderTabs } from "./ui/ProviderTabs";
+import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { REASONING_PROVIDERS } from "../models/ModelRegistry";
+import { modelRegistry } from "../models/ModelRegistry";
 
 type CloudModelOption = {
   value: string;
@@ -18,32 +18,32 @@ type CloudModelOption = {
   ownedBy?: string;
 };
 
-const ICON_BASE_PATH = '/assets/icons/providers';
+const ICON_BASE_PATH = "/assets/icons/providers";
 
 const PROVIDER_ICON_MAP: Record<string, string> = {
-  openai: 'openai',
-  anthropic: 'anthropic',
-  gemini: 'gemini',
-  groq: 'groq',
-  llama: 'llama',
-  mistral: 'mistral',
-  qwen: 'qwen',
-  'openai-oss': 'openai-oss',
+  openai: "openai",
+  anthropic: "anthropic",
+  gemini: "gemini",
+  groq: "groq",
+  llama: "llama",
+  mistral: "mistral",
+  qwen: "qwen",
+  "openai-oss": "openai-oss",
 };
 
 const OWNED_BY_ICON_RULES: Array<{ match: RegExp; icon: string }> = [
-  { match: /(openai|system|default|gpt|davinci)/, icon: 'openai' },
-  { match: /(azure)/, icon: 'openai' },
-  { match: /(anthropic|claude)/, icon: 'anthropic' },
-  { match: /(google|gemini)/, icon: 'gemini' },
-  { match: /(meta|llama)/, icon: 'llama' },
-  { match: /(mistral)/, icon: 'mistral' },
-  { match: /(qwen|ali|tongyi)/, icon: 'qwen' },
-  { match: /(openrouter|oss)/, icon: 'openai-oss' },
+  { match: /(openai|system|default|gpt|davinci)/, icon: "openai" },
+  { match: /(azure)/, icon: "openai" },
+  { match: /(anthropic|claude)/, icon: "anthropic" },
+  { match: /(google|gemini)/, icon: "gemini" },
+  { match: /(meta|llama)/, icon: "llama" },
+  { match: /(mistral)/, icon: "mistral" },
+  { match: /(qwen|ali|tongyi)/, icon: "qwen" },
+  { match: /(openrouter|oss)/, icon: "openai-oss" },
 ];
 
 const getProviderIconPath = (providerId: string): string => {
-  const iconId = PROVIDER_ICON_MAP[providerId] || 'openai';
+  const iconId = PROVIDER_ICON_MAP[providerId] || "openai";
   return `${ICON_BASE_PATH}/${iconId}.svg`;
 };
 
@@ -95,9 +95,9 @@ export default function ReasoningModelSelector({
   groqApiKey,
   setGroqApiKey,
 }: ReasoningModelSelectorProps) {
-  const [selectedMode, setSelectedMode] = useState<'cloud' | 'local'>('cloud');
-  const [selectedCloudProvider, setSelectedCloudProvider] = useState('openai');
-  const [selectedLocalProvider, setSelectedLocalProvider] = useState('qwen');
+  const [selectedMode, setSelectedMode] = useState<"cloud" | "local">("cloud");
+  const [selectedCloudProvider, setSelectedCloudProvider] = useState("openai");
+  const [selectedLocalProvider, setSelectedLocalProvider] = useState("qwen");
   const [customModelOptions, setCustomModelOptions] = useState<CloudModelOption[]>([]);
   const [customModelsLoading, setCustomModelsLoading] = useState(false);
   const [customModelsError, setCustomModelsError] = useState<string | null>(null);
@@ -127,14 +127,12 @@ export default function ReasoningModelSelector({
     latestReasoningBaseRef.current = normalizedCustomReasoningBase;
   }, [normalizedCustomReasoningBase]);
 
-  const hasCustomBase = normalizedCustomReasoningBase !== '';
-  const effectiveReasoningBase = hasCustomBase
-    ? normalizedCustomReasoningBase
-    : defaultOpenAIBase;
+  const hasCustomBase = normalizedCustomReasoningBase !== "";
+  const effectiveReasoningBase = hasCustomBase ? normalizedCustomReasoningBase : defaultOpenAIBase;
 
   const loadRemoteModels = useCallback(
     async (baseOverride?: string, force = false) => {
-      const rawBase = (baseOverride ?? cloudReasoningBaseUrl) || '';
+      const rawBase = (baseOverride ?? cloudReasoningBaseUrl) || "";
       const normalizedBase = normalizeBaseUrl(rawBase);
 
       if (!normalizedBase) {
@@ -170,18 +168,23 @@ export default function ReasoningModelSelector({
             ? keyFromState
             : await window.electronAPI?.getOpenAIKey?.();
 
-        if (!normalizedBase.includes('://')) {
+        if (!normalizedBase.includes("://")) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-            setCustomModelsError('Enter a full base URL including protocol (e.g. https://server/v1).');
+            setCustomModelsError(
+              "Enter a full base URL including protocol (e.g. https://server/v1)."
+            );
             setCustomModelsLoading(false);
           }
           return;
         }
 
-        const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
-        if (!normalizedBase.startsWith('https://') && !isLocalhost) {
+        const isLocalhost =
+          normalizedBase.includes("://localhost") || normalizedBase.includes("://127.0.0.1");
+        if (!normalizedBase.startsWith("https://") && !isLocalhost) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-            setCustomModelsError('Only HTTPS endpoints are allowed (except localhost for testing).');
+            setCustomModelsError(
+              "Only HTTPS endpoints are allowed (except localhost for testing)."
+            );
             setCustomModelsLoading(false);
           }
           return;
@@ -192,11 +195,11 @@ export default function ReasoningModelSelector({
           headers.Authorization = `Bearer ${apiKey}`;
         }
 
-        const modelsUrl = buildApiUrl(normalizedBase, '/models');
-        const response = await fetch(modelsUrl, { method: 'GET', headers });
+        const modelsUrl = buildApiUrl(normalizedBase, "/models");
+        const response = await fetch(modelsUrl, { method: "GET", headers });
 
         if (!response.ok) {
-          const errorText = await response.text().catch(() => '');
+          const errorText = await response.text().catch(() => "");
           const summary = errorText
             ? `${response.status} ${errorText.slice(0, 200)}`
             : `${response.status} ${response.statusText}`;
@@ -207,19 +210,20 @@ export default function ReasoningModelSelector({
         const rawModels = Array.isArray(payload?.data)
           ? payload.data
           : Array.isArray(payload?.models)
-          ? payload.models
-          : [];
+            ? payload.models
+            : [];
 
         const mappedModels = (rawModels as Array<Record<string, unknown>>)
           .map((item) => {
             const value = (item?.id || item?.name) as string | undefined;
             if (!value) return null;
-            const ownedBy = typeof item?.owned_by === 'string' ? item.owned_by : undefined;
+            const ownedBy = typeof item?.owned_by === "string" ? item.owned_by : undefined;
             const icon = resolveOwnedByIcon(ownedBy);
             return {
               value,
               label: (item?.id || item?.name || value) as string,
-              description: (item?.description as string) || (ownedBy ? `Owner: ${ownedBy}` : undefined),
+              description:
+                (item?.description as string) || (ownedBy ? `Owner: ${ownedBy}` : undefined),
               icon,
               ownedBy,
             } as CloudModelOption;
@@ -233,18 +237,18 @@ export default function ReasoningModelSelector({
             mappedModels.length > 0 &&
             !mappedModels.some((model) => model.value === reasoningModel)
           ) {
-            setReasoningModel('');
+            setReasoningModel("");
           }
           setCustomModelsError(null);
           lastLoadedBaseRef.current = normalizedBase;
         }
       } catch (error) {
         if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-          const message = (error as Error).message || 'Unable to load models from endpoint.';
+          const message = (error as Error).message || "Unable to load models from endpoint.";
           const unauthorized = /\b(401|403)\b/.test(message);
           if (unauthorized && !apiKey) {
             setCustomModelsError(
-              'Endpoint rejected the request (401/403). Add an API key or adjust server auth settings.'
+              "Endpoint rejected the request (401/403). Add an API key or adjust server auth settings."
             );
           } else {
             setCustomModelsError(message);
@@ -264,18 +268,21 @@ export default function ReasoningModelSelector({
   );
 
   const trimmedCustomBase = customBaseInput.trim();
-  const hasSavedCustomBase = Boolean((cloudReasoningBaseUrl || '').trim());
-  const isCustomBaseDirty = trimmedCustomBase !== (cloudReasoningBaseUrl || '').trim();
+  const hasSavedCustomBase = Boolean((cloudReasoningBaseUrl || "").trim());
+  const isCustomBaseDirty = trimmedCustomBase !== (cloudReasoningBaseUrl || "").trim();
 
   const displayedCustomModels = useMemo<CloudModelOption[]>(() => {
     if (isCustomBaseDirty) return [];
     return customModelOptions;
   }, [isCustomBaseDirty, customModelOptions]);
 
-  const cloudProviderIds = ['openai', 'anthropic', 'gemini', 'groq', 'custom'];
-  const cloudProviders = cloudProviderIds.map(id => ({
+  const cloudProviderIds = ["openai", "anthropic", "gemini", "groq", "custom"];
+  const cloudProviders = cloudProviderIds.map((id) => ({
     id,
-    name: id === 'custom' ? 'Custom' : REASONING_PROVIDERS[id as keyof typeof REASONING_PROVIDERS]?.name || id,
+    name:
+      id === "custom"
+        ? "Custom"
+        : REASONING_PROVIDERS[id as keyof typeof REASONING_PROVIDERS]?.name || id,
   }));
 
   const localProviders = useMemo<LocalProvider[]>(() => {
@@ -294,7 +301,7 @@ export default function ReasoningModelSelector({
   }, []);
 
   const openaiModelOptions = useMemo<CloudModelOption[]>(() => {
-    const iconPath = getProviderIconPath('openai');
+    const iconPath = getProviderIconPath("openai");
     return REASONING_PROVIDERS.openai.models.map((model) => ({
       ...model,
       icon: iconPath,
@@ -302,8 +309,8 @@ export default function ReasoningModelSelector({
   }, []);
 
   const selectedCloudModels = useMemo<CloudModelOption[]>(() => {
-    if (selectedCloudProvider === 'openai') return openaiModelOptions;
-    if (selectedCloudProvider === 'custom') return displayedCustomModels;
+    if (selectedCloudProvider === "openai") return openaiModelOptions;
+    if (selectedCloudProvider === "custom") return displayedCustomModels;
 
     const provider = REASONING_PROVIDERS[selectedCloudProvider as keyof typeof REASONING_PROVIDERS];
     if (!provider?.models) return [];
@@ -341,18 +348,18 @@ export default function ReasoningModelSelector({
   }, [handleApplyCustomBase, isCustomBaseDirty, trimmedCustomBase, loadRemoteModels]);
 
   useEffect(() => {
-    const localProviderIds = localProviders.map(p => p.id);
+    const localProviderIds = localProviders.map((p) => p.id);
     if (localProviderIds.includes(localReasoningProvider)) {
-      setSelectedMode('local');
+      setSelectedMode("local");
       setSelectedLocalProvider(localReasoningProvider);
     } else if (cloudProviderIds.includes(localReasoningProvider)) {
-      setSelectedMode('cloud');
+      setSelectedMode("cloud");
       setSelectedCloudProvider(localReasoningProvider);
     }
   }, [localProviders, localReasoningProvider]);
 
   useEffect(() => {
-    if (selectedCloudProvider !== 'custom') return;
+    if (selectedCloudProvider !== "custom") return;
     if (!hasCustomBase) {
       setCustomModelsError(null);
       setCustomModelOptions([]);
@@ -363,7 +370,8 @@ export default function ReasoningModelSelector({
 
     const normalizedBase = normalizedCustomReasoningBase;
     if (!normalizedBase) return;
-    if (pendingBaseRef.current === normalizedBase || lastLoadedBaseRef.current === normalizedBase) return;
+    if (pendingBaseRef.current === normalizedBase || lastLoadedBaseRef.current === normalizedBase)
+      return;
 
     loadRemoteModels();
   }, [selectedCloudProvider, hasCustomBase, normalizedCustomReasoningBase, loadRemoteModels]);
@@ -375,13 +383,15 @@ export default function ReasoningModelSelector({
       const result = await window.electronAPI?.modelGetAll?.();
       if (result && Array.isArray(result)) {
         const downloaded = new Set(
-          result.filter((m: { isDownloaded?: boolean }) => m.isDownloaded).map((m: { id: string }) => m.id)
+          result
+            .filter((m: { isDownloaded?: boolean }) => m.isDownloaded)
+            .map((m: { id: string }) => m.id)
         );
         setDownloadedModels(downloaded);
         return downloaded;
       }
     } catch (error) {
-      console.error('Failed to load downloaded models:', error);
+      console.error("Failed to load downloaded models:", error);
     }
     return new Set<string>();
   }, []);
@@ -390,13 +400,13 @@ export default function ReasoningModelSelector({
     loadDownloadedModels();
   }, [loadDownloadedModels]);
 
-  const handleModeChange = async (newMode: 'cloud' | 'local') => {
+  const handleModeChange = async (newMode: "cloud" | "local") => {
     setSelectedMode(newMode);
 
-    if (newMode === 'cloud') {
+    if (newMode === "cloud") {
       setLocalReasoningProvider(selectedCloudProvider);
 
-      if (selectedCloudProvider === 'custom') {
+      if (selectedCloudProvider === "custom") {
         setCustomBaseInput(cloudReasoningBaseUrl);
         lastLoadedBaseRef.current = null;
         pendingBaseRef.current = null;
@@ -409,21 +419,22 @@ export default function ReasoningModelSelector({
         return;
       }
 
-      const provider = REASONING_PROVIDERS[selectedCloudProvider as keyof typeof REASONING_PROVIDERS];
+      const provider =
+        REASONING_PROVIDERS[selectedCloudProvider as keyof typeof REASONING_PROVIDERS];
       if (provider?.models?.length > 0) {
         setReasoningModel(provider.models[0].value);
       }
     } else {
       setLocalReasoningProvider(selectedLocalProvider);
       const downloaded = await loadDownloadedModels();
-      const provider = localProviders.find(p => p.id === selectedLocalProvider);
+      const provider = localProviders.find((p) => p.id === selectedLocalProvider);
       const models = provider?.models ?? [];
       if (models.length > 0) {
-        const firstDownloaded = models.find(m => downloaded.has(m.id));
+        const firstDownloaded = models.find((m) => downloaded.has(m.id));
         if (firstDownloaded) {
           setReasoningModel(firstDownloaded.id);
         } else {
-          setReasoningModel('');
+          setReasoningModel("");
         }
       }
     }
@@ -433,7 +444,7 @@ export default function ReasoningModelSelector({
     setSelectedCloudProvider(provider);
     setLocalReasoningProvider(provider);
 
-    if (provider === 'custom') {
+    if (provider === "custom") {
       setCustomBaseInput(cloudReasoningBaseUrl);
       lastLoadedBaseRef.current = null;
       pendingBaseRef.current = null;
@@ -456,14 +467,14 @@ export default function ReasoningModelSelector({
     setSelectedLocalProvider(providerId);
     setLocalReasoningProvider(providerId);
     const downloaded = await loadDownloadedModels();
-    const provider = localProviders.find(p => p.id === providerId);
+    const provider = localProviders.find((p) => p.id === providerId);
     const models = provider?.models ?? [];
     if (models.length > 0) {
-      const firstDownloaded = models.find(m => downloaded.has(m.id));
+      const firstDownloaded = models.find((m) => downloaded.has(m.id));
       if (firstDownloaded) {
         setReasoningModel(firstDownloaded.id);
       } else {
-        setReasoningModel('');
+        setReasoningModel("");
       }
     }
   };
@@ -472,9 +483,7 @@ export default function ReasoningModelSelector({
     <div className="space-y-6">
       <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
         <div>
-          <label className="text-sm font-medium text-green-800">
-            Enable AI Text Enhancement
-          </label>
+          <label className="text-sm font-medium text-green-800">Enable AI Text Enhancement</label>
           <p className="text-xs text-green-700">
             Use AI to automatically improve transcription quality
           </p>
@@ -486,12 +495,16 @@ export default function ReasoningModelSelector({
             checked={useReasoningModel}
             onChange={(e) => setUseReasoningModel(e.target.checked)}
           />
-          <div className={`w-11 h-6 bg-gray-200 rounded-full transition-colors duration-200 ${
-            useReasoningModel ? 'bg-green-600' : 'bg-gray-300'
-          }`}>
-            <div className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
-              useReasoningModel ? 'translate-x-5' : 'translate-x-0'
-            }`} />
+          <div
+            className={`w-11 h-6 bg-gray-200 rounded-full transition-colors duration-200 ${
+              useReasoningModel ? "bg-green-600" : "bg-gray-300"
+            }`}
+          >
+            <div
+              className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
+                useReasoningModel ? "translate-x-5" : "translate-x-0"
+              }`}
+            />
           </div>
         </label>
       </div>
@@ -500,11 +513,11 @@ export default function ReasoningModelSelector({
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <button
-              onClick={() => handleModeChange('cloud')}
+              onClick={() => handleModeChange("cloud")}
               className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-                selectedMode === 'cloud'
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-neutral-200 bg-white hover:border-neutral-300'
+                selectedMode === "cloud"
+                  ? "border-indigo-500 bg-indigo-50"
+                  : "border-neutral-200 bg-white hover:border-neutral-300"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -522,11 +535,11 @@ export default function ReasoningModelSelector({
             </button>
 
             <button
-              onClick={() => handleModeChange('local')}
+              onClick={() => handleModeChange("local")}
               className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-                selectedMode === 'local'
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : 'border-neutral-200 bg-white hover:border-neutral-300'
+                selectedMode === "local"
+                  ? "border-indigo-500 bg-indigo-50"
+                  : "border-neutral-200 bg-white hover:border-neutral-300"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
@@ -544,7 +557,7 @@ export default function ReasoningModelSelector({
             </button>
           </div>
 
-          {selectedMode === 'cloud' ? (
+          {selectedMode === "cloud" ? (
             <div className="space-y-4">
               <div className="border border-gray-200 rounded-xl overflow-hidden">
                 <ProviderTabs
@@ -555,7 +568,7 @@ export default function ReasoningModelSelector({
                 />
 
                 <div className="p-4">
-                  {selectedCloudProvider === 'custom' ? (
+                  {selectedCloudProvider === "custom" ? (
                     <>
                       <div className="space-y-3">
                         <h4 className="font-medium text-gray-900">Endpoint Settings</h4>
@@ -579,16 +592,30 @@ export default function ReasoningModelSelector({
                             size="sm"
                             variant="outline"
                             onClick={handleRefreshCustomModels}
-                            disabled={customModelsLoading || (!trimmedCustomBase && !hasSavedCustomBase)}
+                            disabled={
+                              customModelsLoading || (!trimmedCustomBase && !hasSavedCustomBase)
+                            }
                           >
-                            {customModelsLoading ? 'Loading models...' : isCustomBaseDirty ? 'Apply & Refresh' : 'Refresh Models'}
+                            {customModelsLoading
+                              ? "Loading models..."
+                              : isCustomBaseDirty
+                                ? "Apply & Refresh"
+                                : "Refresh Models"}
                           </Button>
                         </div>
                         {isCustomBaseDirty && (
-                          <p className="text-xs text-amber-600">Apply the new base URL to refresh models.</p>
+                          <p className="text-xs text-amber-600">
+                            Apply the new base URL to refresh models.
+                          </p>
                         )}
                         <p className="text-xs text-gray-600">
-                          We'll query <code>{hasCustomBase ? `${effectiveReasoningBase}/models` : `${defaultOpenAIBase}/models`}</code> for available models.
+                          We'll query{" "}
+                          <code>
+                            {hasCustomBase
+                              ? `${effectiveReasoningBase}/models`
+                              : `${defaultOpenAIBase}/models`}
+                          </code>{" "}
+                          for available models.
                         </p>
                       </div>
 
@@ -614,9 +641,13 @@ export default function ReasoningModelSelector({
                             {customModelsError && (
                               <p className="text-xs text-red-600">{customModelsError}</p>
                             )}
-                            {!customModelsLoading && !customModelsError && customModelOptions.length === 0 && (
-                              <p className="text-xs text-amber-600">No models returned by this endpoint.</p>
-                            )}
+                            {!customModelsLoading &&
+                              !customModelsError &&
+                              customModelOptions.length === 0 && (
+                                <p className="text-xs text-amber-600">
+                                  No models returned by this endpoint.
+                                </p>
+                              )}
                           </>
                         )}
                         <ModelCardList
@@ -638,7 +669,7 @@ export default function ReasoningModelSelector({
                       </div>
 
                       <div className="mt-4 pt-4 border-t border-gray-200">
-                        {selectedCloudProvider === 'openai' && (
+                        {selectedCloudProvider === "openai" && (
                           <div className="space-y-3">
                             <h4 className="font-medium text-gray-900">API Configuration</h4>
                             <ApiKeyInput
@@ -646,7 +677,7 @@ export default function ReasoningModelSelector({
                               setApiKey={setOpenaiApiKey}
                               helpText={
                                 <>
-                                  Need an API key?{' '}
+                                  Need an API key?{" "}
                                   <a
                                     href="https://platform.openai.com"
                                     target="_blank"
@@ -661,7 +692,7 @@ export default function ReasoningModelSelector({
                           </div>
                         )}
 
-                        {selectedCloudProvider === 'anthropic' && (
+                        {selectedCloudProvider === "anthropic" && (
                           <div className="space-y-3">
                             <h4 className="font-medium text-gray-900">API Configuration</h4>
                             <ApiKeyInput
@@ -670,7 +701,7 @@ export default function ReasoningModelSelector({
                               placeholder="sk-ant-..."
                               helpText={
                                 <>
-                                  Need an API key?{' '}
+                                  Need an API key?{" "}
                                   <a
                                     href="https://console.anthropic.com"
                                     target="_blank"
@@ -685,7 +716,7 @@ export default function ReasoningModelSelector({
                           </div>
                         )}
 
-                        {selectedCloudProvider === 'gemini' && (
+                        {selectedCloudProvider === "gemini" && (
                           <div className="space-y-3">
                             <h4 className="font-medium text-gray-900">API Configuration</h4>
                             <ApiKeyInput
@@ -694,7 +725,7 @@ export default function ReasoningModelSelector({
                               placeholder="AIza..."
                               helpText={
                                 <>
-                                  Need an API key?{' '}
+                                  Need an API key?{" "}
                                   <a
                                     href="https://makersuite.google.com/app/apikey"
                                     target="_blank"
@@ -709,7 +740,7 @@ export default function ReasoningModelSelector({
                           </div>
                         )}
 
-                        {selectedCloudProvider === 'groq' && (
+                        {selectedCloudProvider === "groq" && (
                           <div className="space-y-3">
                             <h4 className="font-medium text-gray-900">API Configuration</h4>
                             <ApiKeyInput
@@ -718,7 +749,7 @@ export default function ReasoningModelSelector({
                               placeholder="gsk_..."
                               helpText={
                                 <>
-                                  Need an API key?{' '}
+                                  Need an API key?{" "}
                                   <a
                                     href="https://console.groq.com"
                                     target="_blank"

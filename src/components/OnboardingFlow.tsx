@@ -300,7 +300,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   useEffect(() => {
     if (!usingCustomReasoningBase && defaultReasoningModels.length > 0) {
-      if (reasoningModel && !defaultReasoningModels.some((model) => model.value === reasoningModel)) {
+      if (
+        reasoningModel &&
+        !defaultReasoningModels.some((model) => model.value === reasoningModel)
+      ) {
         updateReasoningSettings({ reasoningModel: "" });
       }
     }

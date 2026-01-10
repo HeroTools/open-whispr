@@ -31,9 +31,7 @@ interface SettingsPageProps {
   activeSection?: SettingsSectionType;
 }
 
-export default function SettingsPage({
-  activeSection = "general",
-}: SettingsPageProps) {
+export default function SettingsPage({ activeSection = "general" }: SettingsPageProps) {
   const {
     confirmDialog,
     alertDialog,
@@ -300,7 +298,10 @@ export default function SettingsPage({
       cloudReasoningBaseUrl: normalizedReasoningBase,
     });
 
-    if ((localReasoningProvider === "openai" || localReasoningProvider === "custom") && openaiApiKey) {
+    if (
+      (localReasoningProvider === "openai" || localReasoningProvider === "custom") &&
+      openaiApiKey
+    ) {
       await window.electronAPI?.saveOpenAIKey(openaiApiKey);
     }
     if (localReasoningProvider === "anthropic" && anthropicApiKey) {
@@ -313,8 +314,16 @@ export default function SettingsPage({
       await window.electronAPI?.saveGroqKey(groqApiKey);
     }
 
-    const keysToSave: Partial<{openaiApiKey: string; anthropicApiKey: string; geminiApiKey: string; groqApiKey: string}> = {};
-    if ((localReasoningProvider === "openai" || localReasoningProvider === "custom") && openaiApiKey.trim()) {
+    const keysToSave: Partial<{
+      openaiApiKey: string;
+      anthropicApiKey: string;
+      geminiApiKey: string;
+      groqApiKey: string;
+    }> = {};
+    if (
+      (localReasoningProvider === "openai" || localReasoningProvider === "custom") &&
+      openaiApiKey.trim()
+    ) {
       keysToSave.openaiApiKey = openaiApiKey;
     }
     if (localReasoningProvider === "anthropic" && anthropicApiKey.trim()) {
@@ -866,7 +875,8 @@ export default function SettingsPage({
                 Speech to Text Processing
               </h3>
               <p className="text-sm text-gray-600 mb-4">
-                Choose a cloud provider for fast transcription or use local Whisper models for complete privacy.
+                Choose a cloud provider for fast transcription or use local Whisper models for
+                complete privacy.
               </p>
             </div>
 
@@ -874,7 +884,7 @@ export default function SettingsPage({
               selectedCloudProvider={cloudTranscriptionProvider}
               onCloudProviderSelect={(providerId) => {
                 setCloudTranscriptionProvider(providerId);
-                const provider = getTranscriptionProviders().find(p => p.id === providerId);
+                const provider = getTranscriptionProviders().find((p) => p.id === providerId);
                 if (provider) {
                   setCloudTranscriptionBaseUrl(provider.baseUrl);
                 }

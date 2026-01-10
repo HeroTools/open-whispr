@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Brain, Wrench, HardDrive } from 'lucide-react';
+import { useState } from "react";
+import { Brain, Wrench, HardDrive } from "lucide-react";
 
 interface ProviderIconProps {
   provider: string;
@@ -9,17 +9,18 @@ interface ProviderIconProps {
 export function ProviderIcon({ provider, className = "w-5 h-5" }: ProviderIconProps) {
   const [svgError, setSvgError] = useState(false);
 
-  if (provider === 'custom') {
+  if (provider === "custom") {
     return <Wrench className={className} />;
   }
 
-  if (provider === 'local') {
+  if (provider === "local") {
     return <HardDrive className={className} />;
   }
 
-  const iconPath = provider === 'whisper'
-    ? '/assets/icons/providers/openai.svg'
-    : `/assets/icons/providers/${provider}.svg`;
+  const iconPath =
+    provider === "whisper"
+      ? "/assets/icons/providers/openai.svg"
+      : `/assets/icons/providers/${provider}.svg`;
 
   if (svgError) {
     return <Brain className={className} />;

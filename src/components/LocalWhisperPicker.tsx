@@ -1,12 +1,12 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
-import { Button } from './ui/button';
-import { RefreshCw, Download, Trash2, Check } from 'lucide-react';
-import { ProviderIcon } from './ui/ProviderIcon';
-import DownloadProgressBar from './ui/DownloadProgressBar';
-import { useDialogs } from '../hooks/useDialogs';
-import { useModelDownload } from '../hooks/useModelDownload';
-import { WHISPER_MODEL_INFO } from '../models/ModelRegistry';
-import { MODEL_PICKER_COLORS, type ColorScheme } from '../utils/modelPickerStyles';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Button } from "./ui/button";
+import { RefreshCw, Download, Trash2, Check } from "lucide-react";
+import { ProviderIcon } from "./ui/ProviderIcon";
+import DownloadProgressBar from "./ui/DownloadProgressBar";
+import { useDialogs } from "../hooks/useDialogs";
+import { useModelDownload } from "../hooks/useModelDownload";
+import { WHISPER_MODEL_INFO } from "../models/ModelRegistry";
+import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
 
 interface WhisperModel {
   model: string;
@@ -18,20 +18,20 @@ interface LocalWhisperPickerProps {
   selectedModel: string;
   onModelSelect: (modelId: string) => void;
   className?: string;
-  variant?: 'onboarding' | 'settings';
+  variant?: "onboarding" | "settings";
 }
 
 export default function LocalWhisperPicker({
   selectedModel,
   onModelSelect,
-  className = '',
-  variant = 'settings',
+  className = "",
+  variant = "settings",
 }: LocalWhisperPickerProps) {
   const [models, setModels] = useState<WhisperModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
 
   const { showConfirmDialog } = useDialogs();
-  const colorScheme: ColorScheme = variant === 'settings' ? 'purple' : 'blue';
+  const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
 
   const loadModels = useCallback(async () => {
@@ -42,7 +42,7 @@ export default function LocalWhisperPicker({
         setModels(result.models);
       }
     } catch (error) {
-      console.error('[LocalWhisperPicker] Failed to load models:', error);
+      console.error("[LocalWhisperPicker] Failed to load models:", error);
       setModels([]);
     } finally {
       setLoadingModels(false);
@@ -53,26 +53,25 @@ export default function LocalWhisperPicker({
     loadModels();
   }, [loadModels]);
 
-  const {
-    downloadingModel,
-    downloadProgress,
-    downloadModel,
-    deleteModel,
-    isDownloadingModel,
-  } = useModelDownload({
-    modelType: 'whisper',
-    onDownloadComplete: loadModels,
-    onModelsCleared: loadModels,
-  });
-
-  const handleDelete = useCallback((modelId: string) => {
-    showConfirmDialog({
-      title: 'Delete Model',
-      description: "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
-      onConfirm: () => deleteModel(modelId, loadModels),
-      variant: 'destructive',
+  const { downloadingModel, downloadProgress, downloadModel, deleteModel, isDownloadingModel } =
+    useModelDownload({
+      modelType: "whisper",
+      onDownloadComplete: loadModels,
+      onModelsCleared: loadModels,
     });
-  }, [showConfirmDialog, deleteModel, loadModels]);
+
+  const handleDelete = useCallback(
+    (modelId: string) => {
+      showConfirmDialog({
+        title: "Delete Model",
+        description:
+          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        onConfirm: () => deleteModel(modelId, loadModels),
+        variant: "destructive",
+      });
+    },
+    [showConfirmDialog, deleteModel, loadModels]
+  );
 
   const progressDisplay = useMemo(() => {
     if (!downloadingModel) return null;
@@ -81,11 +80,7 @@ export default function LocalWhisperPicker({
     const modelName = modelInfo?.name || downloadingModel;
 
     return (
-      <DownloadProgressBar
-        modelName={modelName}
-        progress={downloadProgress}
-        styles={styles}
-      />
+      <DownloadProgressBar modelName={modelName} progress={downloadProgress} styles={styles} />
     );
   }, [downloadingModel, downloadProgress, styles]);
 
@@ -103,15 +98,19 @@ export default function LocalWhisperPicker({
             disabled={loadingModels}
             className={styles.buttons.refresh}
           >
-            <RefreshCw size={14} className={loadingModels ? 'animate-spin' : ''} />
-            <span className="ml-1">{loadingModels ? 'Checking...' : 'Refresh'}</span>
+            <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
+            <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
           </Button>
         </div>
 
         <div className="space-y-2">
           {models.map((model) => {
             const modelId = model.model;
-            const info = WHISPER_MODEL_INFO[modelId] || { name: modelId, description: 'Model', size: 'Unknown' };
+            const info = WHISPER_MODEL_INFO[modelId] || {
+              name: modelId,
+              description: "Model",
+              size: "Unknown",
+            };
             const isSelected = modelId === selectedModel;
             const isDownloading = isDownloadingModel(modelId);
             const isDownloaded = model.downloaded;
@@ -128,18 +127,16 @@ export default function LocalWhisperPicker({
                     <div className="flex items-center gap-2">
                       <ProviderIcon provider="whisper" className="w-4 h-4" />
                       <span className="font-medium text-gray-900">{info.name}</span>
-                      {isSelected && (
-                        <span className={styles.badges.selected}>✓ Selected</span>
-                      )}
+                      {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
                       {info.recommended && (
-                        <span className={styles.badges.recommended}>
-                          Recommended
-                        </span>
+                        <span className={styles.badges.recommended}>Recommended</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-xs text-gray-600">{info.description}</span>
-                      <span className="text-xs text-gray-500">• {model.size_mb ? `${model.size_mb}MB` : info.size}</span>
+                      <span className="text-xs text-gray-500">
+                        • {model.size_mb ? `${model.size_mb}MB` : info.size}
+                      </span>
                       {isDownloaded && (
                         <span className={styles.badges.downloaded}>
                           <Check className="inline w-3 h-3 mr-1" />

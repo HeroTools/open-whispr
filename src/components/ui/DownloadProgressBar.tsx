@@ -1,5 +1,5 @@
-import { formatETA, type DownloadProgress } from '../../hooks/useModelDownload';
-import { type ModelPickerStyles } from '../../utils/modelPickerStyles';
+import { formatETA, type DownloadProgress } from "../../hooks/useModelDownload";
+import { type ModelPickerStyles } from "../../utils/modelPickerStyles";
 
 interface DownloadProgressBarProps {
   modelName: string;
@@ -10,8 +10,8 @@ interface DownloadProgressBarProps {
 export function DownloadProgressBar({ modelName, progress, styles }: DownloadProgressBarProps) {
   const { percentage, speed, eta } = progress;
   const progressText = `${Math.round(percentage)}%`;
-  const speedText = speed ? ` • ${speed.toFixed(1)} MB/s` : '';
-  const etaText = eta ? ` • ETA: ${formatETA(eta)}` : '';
+  const speedText = speed ? ` • ${speed.toFixed(1)} MB/s` : "";
+  const etaText = eta ? ` • ETA: ${formatETA(eta)}` : "";
 
   return (
     <div className={`${styles.progress} p-3`}>
@@ -20,7 +20,9 @@ export function DownloadProgressBar({ modelName, progress, styles }: DownloadPro
           Downloading {modelName}...
         </span>
         <span className={`text-xs ${styles.progressText}`}>
-          {progressText}{speedText}{etaText}
+          {progressText}
+          {speedText}
+          {etaText}
         </span>
       </div>
       <div className={`w-full ${styles.progressBar} rounded-full h-2`}>

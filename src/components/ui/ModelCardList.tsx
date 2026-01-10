@@ -1,4 +1,4 @@
-import { Globe } from 'lucide-react';
+import { Globe } from "lucide-react";
 
 export interface ModelCardOption {
   value: string;
@@ -7,7 +7,7 @@ export interface ModelCardOption {
   icon?: string;
 }
 
-type ColorScheme = 'indigo' | 'purple';
+type ColorScheme = "indigo" | "purple";
 
 interface ModelCardListProps {
   models: ModelCardOption[];
@@ -17,20 +17,23 @@ interface ModelCardListProps {
   className?: string;
 }
 
-const COLOR_CONFIG: Record<ColorScheme, {
-  selected: string;
-  default: string;
-  badge: string;
-}> = {
+const COLOR_CONFIG: Record<
+  ColorScheme,
+  {
+    selected: string;
+    default: string;
+    badge: string;
+  }
+> = {
   indigo: {
-    selected: 'border-indigo-500 bg-indigo-50',
-    default: 'border-gray-200 bg-white hover:border-gray-300',
-    badge: 'text-xs text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full font-medium',
+    selected: "border-indigo-500 bg-indigo-50",
+    default: "border-gray-200 bg-white hover:border-gray-300",
+    badge: "text-xs text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full font-medium",
   },
   purple: {
-    selected: 'border-purple-500 bg-purple-50',
-    default: 'border-gray-200 bg-white hover:border-gray-300',
-    badge: 'text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full font-medium',
+    selected: "border-purple-500 bg-purple-50",
+    default: "border-gray-200 bg-white hover:border-gray-300",
+    badge: "text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full font-medium",
   },
 };
 
@@ -38,8 +41,8 @@ export default function ModelCardList({
   models,
   selectedModel,
   onModelSelect,
-  colorScheme = 'indigo',
-  className = '',
+  colorScheme = "indigo",
+  className = "",
 }: ModelCardListProps) {
   const styles = COLOR_CONFIG[colorScheme];
 
@@ -70,9 +73,7 @@ export default function ModelCardList({
                   <div className="text-xs text-gray-600 mt-1">{model.description}</div>
                 )}
               </div>
-              {isSelected && (
-                <span className={styles.badge}>✓ Selected</span>
-              )}
+              {isSelected && <span className={styles.badge}>✓ Selected</span>}
             </div>
           </button>
         );

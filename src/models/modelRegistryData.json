@@ -1,11 +1,37 @@
 {
   "whisperModels": {
-    "tiny": { "name": "Tiny", "description": "Fastest, lower quality", "size": "39MB", "sizeMb": 39 },
-    "base": { "name": "Base", "description": "Good balance", "size": "74MB", "sizeMb": 74, "recommended": true },
-    "small": { "name": "Small", "description": "Better quality, slower", "size": "244MB", "sizeMb": 244 },
+    "tiny": {
+      "name": "Tiny",
+      "description": "Fastest, lower quality",
+      "size": "39MB",
+      "sizeMb": 39
+    },
+    "base": {
+      "name": "Base",
+      "description": "Good balance",
+      "size": "74MB",
+      "sizeMb": 74,
+      "recommended": true
+    },
+    "small": {
+      "name": "Small",
+      "description": "Better quality, slower",
+      "size": "244MB",
+      "sizeMb": 244
+    },
     "medium": { "name": "Medium", "description": "High quality", "size": "769MB", "sizeMb": 769 },
-    "large": { "name": "Large", "description": "Best quality, slowest", "size": "1.5GB", "sizeMb": 1550 },
-    "turbo": { "name": "Turbo", "description": "Fast with good quality", "size": "809MB", "sizeMb": 809 }
+    "large": {
+      "name": "Large",
+      "description": "Best quality, slowest",
+      "size": "1.5GB",
+      "sizeMb": 1550
+    },
+    "turbo": {
+      "name": "Turbo",
+      "description": "Fast with good quality",
+      "size": "809MB",
+      "sizeMb": 809
+    }
   },
   "transcriptionProviders": [
     {

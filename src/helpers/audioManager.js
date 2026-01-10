@@ -16,7 +16,6 @@ const isValidApiKey = (key, provider = "openai") => {
   return key !== placeholder;
 };
 
-
 class AudioManager {
   constructor() {
     this.mediaRecorder = null;
@@ -50,11 +49,10 @@ class AudioManager {
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
-      this.recordingMimeType = this.mediaRecorder.mimeType || 'audio/webm';
+      this.recordingMimeType = this.mediaRecorder.mimeType || "audio/webm";
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
@@ -66,10 +64,10 @@ class AudioManager {
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
-        
+
         if (audioBlob.size === 0) {
         }
-        
+
         const durationSeconds = this.recordingStartTime
           ? (Date.now() - this.recordingStartTime) / 1000
           : null;
@@ -86,22 +84,23 @@ class AudioManager {
 
       return true;
     } catch (error) {
-      
       // Provide more specific error messages
       let errorTitle = "Recording Error";
       let errorDescription = `Failed to access microphone: ${error.message}`;
-      
+
       if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
         errorTitle = "Microphone Access Denied";
-        errorDescription = "Please grant microphone permission in your system settings and try again.";
+        errorDescription =
+          "Please grant microphone permission in your system settings and try again.";
       } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
         errorTitle = "No Microphone Found";
         errorDescription = "No microphone was detected. Please connect a microphone and try again.";
       } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
         errorTitle = "Microphone In Use";
-        errorDescription = "The microphone is being used by another application. Please close other apps and try again.";
+        errorDescription =
+          "The microphone is being used by another application. Please close other apps and try again.";
       }
-      
+
       this.onError?.({
         title: errorTitle,
         description: errorDescription,
@@ -153,10 +152,7 @@ class AudioManager {
         options.language = language;
       }
 
-      const result = await window.electronAPI.transcribeLocalWhisper(
-        arrayBuffer,
-        options
-      );
+      const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
 
       if (result.success && result.text) {
         const text = await this.processTranscription(result.text, "local");
@@ -168,7 +164,8 @@ class AudioManager {
       } else if (result.success === false && result.message === "No audio detected") {
         this.onError?.({
           title: "No Audio Detected",
-          description: "The recording contained no detectable audio. Please check your microphone settings.",
+          description:
+            "The recording contained no detectable audio. Please check your microphone settings.",
         });
         throw new Error("No audio detected");
       } else {
@@ -187,7 +184,9 @@ class AudioManager {
           const fallbackResult = await this.processWithOpenAIAPI(audioBlob, metadata);
           return { ...fallbackResult, source: "openai-fallback" };
         } catch (fallbackError) {
-          throw new Error(`Local Whisper failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`);
+          throw new Error(
+            `Local Whisper failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`
+          );
         }
       } else {
         throw new Error(`Local Whisper failed: ${error.message}`);
@@ -197,9 +196,10 @@ class AudioManager {
 
   async getAPIKey() {
     // Get the current transcription provider
-    const provider = typeof localStorage !== "undefined"
-      ? localStorage.getItem("cloudTranscriptionProvider") || "openai"
-      : "openai";
+    const provider =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionProvider") || "openai"
+        : "openai";
 
     // Check cache (invalidate if provider changed)
     if (this.cachedApiKey !== null && this.cachedApiKeyProvider === provider) {
@@ -226,9 +226,7 @@ class AudioManager {
         apiKey = localStorage.getItem("groqApiKey");
       }
       if (!isValidApiKey(apiKey, "groq")) {
-        throw new Error(
-          "Groq API key not found. Please set your API key in the Control Panel."
-        );
+        throw new Error("Groq API key not found. Please set your API key in the Control Panel.");
       }
     } else {
       // Default to OpenAI
@@ -250,8 +248,7 @@ class AudioManager {
 
   async optimizeAudio(audioBlob) {
     return new Promise((resolve) => {
-      const audioContext = new (window.AudioContext ||
-        window.webkitAudioContext)();
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const reader = new FileReader();
 
       reader.onload = async () => {
@@ -263,11 +260,7 @@ class AudioManager {
           const sampleRate = 16000;
           const channels = 1;
           const length = Math.floor(audioBuffer.duration * sampleRate);
-          const offlineContext = new OfflineAudioContext(
-            channels,
-            length,
-            sampleRate
-          );
+          const offlineContext = new OfflineAudioContext(channels, length, sampleRate);
 
           const source = offlineContext.createBufferSource();
           source.buffer = audioBuffer;
@@ -318,11 +311,7 @@ class AudioManager {
     let offset = 44;
     for (let i = 0; i < length; i++) {
       const sample = Math.max(-1, Math.min(1, channelData[i]));
-      view.setInt16(
-        offset,
-        sample < 0 ? sample * 0x8000 : sample * 0x7fff,
-        true
-      );
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
       offset += 2;
     }
 
@@ -333,34 +322,34 @@ class AudioManager {
     logger.logReasoning("CALLING_REASONING_SERVICE", {
       model,
       agentName,
-      textLength: text.length
+      textLength: text.length,
     });
-    
+
     const startTime = Date.now();
-    
+
     try {
       const result = await ReasoningService.processText(text, model, agentName);
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       logger.logReasoning("REASONING_SERVICE_COMPLETE", {
         model,
         processingTimeMs: processingTime,
         resultLength: result.length,
-        success: true
+        success: true,
       });
-      
+
       return result;
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       logger.logReasoning("REASONING_SERVICE_ERROR", {
         model,
         processingTimeMs: processingTime,
         error: error.message,
-        stack: error.stack
+        stack: error.stack,
       });
-      
+
       throw error;
     }
   }
@@ -388,8 +377,7 @@ class AudioManager {
       isTruthy: !!storedValue && storedValue !== "false",
     });
 
-    const useReasoning =
-      storedValue === "true" || (!!storedValue && storedValue !== "false");
+    const useReasoning = storedValue === "true" || (!!storedValue && storedValue !== "false");
 
     if (!useReasoning) {
       this.reasoningAvailabilityCache = {
@@ -438,21 +426,24 @@ class AudioManager {
       source,
       textLength: normalizedText.length,
       textPreview: normalizedText.substring(0, 100) + (normalizedText.length > 100 ? "..." : ""),
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
     });
 
-    const reasoningModel = (typeof window !== 'undefined' && window.localStorage)
-      ? (localStorage.getItem("reasoningModel") || "")
-      : "";
-    const reasoningProvider = (typeof window !== 'undefined' && window.localStorage)
-      ? (localStorage.getItem("reasoningProvider") || "auto")
-      : "auto";
-    const agentName = (typeof window !== 'undefined' && window.localStorage)
-      ? (localStorage.getItem("agentName") || null)
-      : null;
+    const reasoningModel =
+      typeof window !== "undefined" && window.localStorage
+        ? localStorage.getItem("reasoningModel") || ""
+        : "";
+    const reasoningProvider =
+      typeof window !== "undefined" && window.localStorage
+        ? localStorage.getItem("reasoningProvider") || "auto"
+        : "auto";
+    const agentName =
+      typeof window !== "undefined" && window.localStorage
+        ? localStorage.getItem("agentName") || null
+        : null;
     if (!reasoningModel) {
       logger.logReasoning("REASONING_SKIPPED", {
-        reason: "No reasoning model selected"
+        reason: "No reasoning model selected",
       });
       return normalizedText;
     }
@@ -463,7 +454,7 @@ class AudioManager {
       useReasoning,
       reasoningModel,
       reasoningProvider,
-      agentName
+      agentName,
     });
 
     if (useReasoning) {
@@ -473,30 +464,34 @@ class AudioManager {
         logger.logReasoning("SENDING_TO_REASONING", {
           preparedTextLength: preparedText.length,
           model: reasoningModel,
-          provider: reasoningProvider
+          provider: reasoningProvider,
         });
 
-        const result = await this.processWithReasoningModel(preparedText, reasoningModel, agentName);
-        
+        const result = await this.processWithReasoningModel(
+          preparedText,
+          reasoningModel,
+          agentName
+        );
+
         logger.logReasoning("REASONING_SUCCESS", {
           resultLength: result.length,
           resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
-          processingTime: new Date().toISOString()
+          processingTime: new Date().toISOString(),
         });
-        
+
         return result;
       } catch (error) {
         logger.logReasoning("REASONING_FAILED", {
           error: error.message,
           stack: error.stack,
-          fallbackToCleanup: true
+          fallbackToCleanup: true,
         });
         console.error(`Reasoning failed (${source}):`, error.message);
       }
     }
 
     logger.logReasoning("USING_STANDARD_CLEANUP", {
-      reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled"
+      reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled",
     });
 
     return normalizedText;
@@ -538,11 +533,15 @@ class AudioManager {
       const eventType = payload.type || "unknown";
       eventTypes[eventType] = (eventTypes[eventType] || 0) + 1;
 
-      logger.debug("Stream event received", {
-        type: eventType,
-        eventNumber: eventCount,
-        payloadKeys: Object.keys(payload),
-      }, "transcription");
+      logger.debug(
+        "Stream event received",
+        {
+          type: eventType,
+          eventNumber: eventCount,
+          payloadKeys: Object.keys(payload),
+        },
+        "transcription"
+      );
 
       if (payload.type === "transcript.text.delta" && typeof payload.delta === "string") {
         collectedText += payload.delta;
@@ -554,9 +553,13 @@ class AudioManager {
       }
       if (payload.type === "transcript.text.done" && typeof payload.text === "string") {
         finalText = payload.text;
-        logger.debug("Final transcript received", {
-          textLength: payload.text.length,
-        }, "transcription");
+        logger.debug(
+          "Final transcript received",
+          {
+            textLength: payload.text.length,
+          },
+          "transcription"
+        );
       }
     };
 
@@ -565,12 +568,16 @@ class AudioManager {
     while (true) {
       const { value, done } = await reader.read();
       if (done) {
-        logger.debug("Stream reading complete", {
-          eventCount,
-          eventTypes,
-          collectedTextLength: collectedText.length,
-          hasFinalText: finalText !== null,
-        }, "transcription");
+        logger.debug(
+          "Stream reading complete",
+          {
+            eventCount,
+            eventTypes,
+            collectedTextLength: collectedText.length,
+            hasFinalText: finalText !== null,
+          },
+          "transcription"
+        );
         break;
       }
       const chunk = decoder.decode(value, { stream: true });
@@ -578,16 +585,20 @@ class AudioManager {
 
       // Log first chunk to see format
       if (eventCount === 0 && chunk.length > 0) {
-        logger.debug("First stream chunk received", {
-          chunkLength: chunk.length,
-          chunkPreview: chunk.substring(0, 500),
-        }, "transcription");
+        logger.debug(
+          "First stream chunk received",
+          {
+            chunkLength: chunk.length,
+            chunkPreview: chunk.substring(0, 500),
+          },
+          "transcription"
+        );
       }
 
       // Process complete lines from the buffer
       // Each SSE event is "data: <json>\n" followed by empty line
-      const lines = buffer.split('\n');
-      buffer = '';
+      const lines = buffer.split("\n");
+      buffer = "";
 
       for (const line of lines) {
         const trimmedLine = line.trim();
@@ -598,19 +609,19 @@ class AudioManager {
         }
 
         // Extract data from "data: " prefix
-        let data = '';
-        if (trimmedLine.startsWith('data: ')) {
+        let data = "";
+        if (trimmedLine.startsWith("data: ")) {
           data = trimmedLine.slice(6);
-        } else if (trimmedLine.startsWith('data:')) {
+        } else if (trimmedLine.startsWith("data:")) {
           data = trimmedLine.slice(5).trim();
         } else {
           // Not a data line, could be leftover - keep in buffer
-          buffer += line + '\n';
+          buffer += line + "\n";
           continue;
         }
 
         // Handle [DONE] marker
-        if (data === '[DONE]') {
+        if (data === "[DONE]") {
           finalText = finalText ?? collectedText;
           continue;
         }
@@ -621,30 +632,32 @@ class AudioManager {
           handleEvent(parsed);
         } catch (error) {
           // Incomplete JSON - put back in buffer for next iteration
-          buffer += line + '\n';
+          buffer += line + "\n";
         }
       }
     }
 
     const result = finalText ?? collectedText;
-    logger.debug("Stream processing complete", {
-      resultLength: result.length,
-      usedFinalText: finalText !== null,
-      eventCount,
-      eventTypes,
-    }, "transcription");
+    logger.debug(
+      "Stream processing complete",
+      {
+        resultLength: result.length,
+        usedFinalText: finalText !== null,
+        eventCount,
+        eventTypes,
+      },
+      "transcription"
+    );
 
     return result;
   }
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
     const language = localStorage.getItem("preferredLanguage");
-    const allowLocalFallback =
-      localStorage.getItem("allowLocalFallback") === "true";
+    const allowLocalFallback = localStorage.getItem("allowLocalFallback") === "true";
     const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
 
     try {
-
       const durationSeconds = metadata.durationSeconds ?? null;
       const shouldSkipOptimizationForDuration =
         typeof durationSeconds === "number" &&
@@ -654,26 +667,34 @@ class AudioManager {
       const model = this.getTranscriptionModel();
       const provider = localStorage.getItem("cloudTranscriptionProvider") || "openai";
 
-      logger.debug("Transcription request starting", {
-        provider,
-        model,
-        blobSize: audioBlob.size,
-        blobType: audioBlob.type,
-        durationSeconds,
-        language,
-      }, "transcription");
+      logger.debug(
+        "Transcription request starting",
+        {
+          provider,
+          model,
+          blobSize: audioBlob.size,
+          blobType: audioBlob.type,
+          durationSeconds,
+          language,
+        },
+        "transcription"
+      );
 
       // gpt-4o-transcribe models don't support WAV format - they need webm, mp3, mp4, etc.
       // Only use WAV optimization for whisper-1 and groq models
-      const is4oModel = model.includes('gpt-4o');
-      const shouldOptimize = !is4oModel &&
-        !shouldSkipOptimizationForDuration && audioBlob.size > 1024 * 1024;
+      const is4oModel = model.includes("gpt-4o");
+      const shouldOptimize =
+        !is4oModel && !shouldSkipOptimizationForDuration && audioBlob.size > 1024 * 1024;
 
-      logger.debug("Audio optimization decision", {
-        is4oModel,
-        shouldOptimize,
-        shouldSkipOptimizationForDuration,
-      }, "transcription");
+      logger.debug(
+        "Audio optimization decision",
+        {
+          is4oModel,
+          shouldOptimize,
+          shouldSkipOptimizationForDuration,
+        },
+        "transcription"
+      );
 
       const [apiKey, optimizedAudio] = await Promise.all([
         this.getAPIKey(),
@@ -682,20 +703,29 @@ class AudioManager {
 
       const formData = new FormData();
       // Determine the correct file extension based on the blob type
-      const mimeType = optimizedAudio.type || 'audio/webm';
-      const extension = mimeType.includes('webm') ? 'webm'
-        : mimeType.includes('ogg') ? 'ogg'
-        : mimeType.includes('mp4') ? 'mp4'
-        : mimeType.includes('mpeg') ? 'mp3'
-        : mimeType.includes('wav') ? 'wav'
-        : 'webm';
+      const mimeType = optimizedAudio.type || "audio/webm";
+      const extension = mimeType.includes("webm")
+        ? "webm"
+        : mimeType.includes("ogg")
+          ? "ogg"
+          : mimeType.includes("mp4")
+            ? "mp4"
+            : mimeType.includes("mpeg")
+              ? "mp3"
+              : mimeType.includes("wav")
+                ? "wav"
+                : "webm";
 
-      logger.debug("FormData preparation", {
-        mimeType,
-        extension,
-        optimizedSize: optimizedAudio.size,
-        hasApiKey: !!apiKey,
-      }, "transcription");
+      logger.debug(
+        "FormData preparation",
+        {
+          mimeType,
+          extension,
+          optimizedSize: optimizedAudio.size,
+          hasApiKey: !!apiKey,
+        },
+        "transcription"
+      );
 
       formData.append("file", optimizedAudio, `audio.${extension}`);
       formData.append("model", model);
@@ -711,11 +741,15 @@ class AudioManager {
 
       const endpoint = this.getTranscriptionEndpoint();
 
-      logger.debug("Making transcription API request", {
-        endpoint,
-        shouldStream,
-        model,
-      }, "transcription");
+      logger.debug(
+        "Making transcription API request",
+        {
+          endpoint,
+          shouldStream,
+          model,
+        },
+        "transcription"
+      );
 
       // Build headers - only include Authorization if we have an API key
       const headers = {};
@@ -723,30 +757,35 @@ class AudioManager {
         headers.Authorization = `Bearer ${apiKey}`;
       }
 
-      const response = await fetch(
-        endpoint,
-        {
-          method: "POST",
-          headers,
-          body: formData,
-        }
-      );
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: formData,
+      });
 
       const responseContentType = response.headers.get("content-type") || "";
 
-      logger.debug("Transcription API response received", {
-        status: response.status,
-        statusText: response.statusText,
-        contentType: responseContentType,
-        ok: response.ok,
-      }, "transcription");
+      logger.debug(
+        "Transcription API response received",
+        {
+          status: response.status,
+          statusText: response.statusText,
+          contentType: responseContentType,
+          ok: response.ok,
+        },
+        "transcription"
+      );
 
       if (!response.ok) {
         const errorText = await response.text();
-        logger.error("Transcription API error response", {
-          status: response.status,
-          errorText,
-        }, "transcription");
+        logger.error(
+          "Transcription API error response",
+          {
+            status: response.status,
+            errorText,
+          },
+          "transcription"
+        );
         throw new Error(`API Error: ${response.status} ${errorText}`);
       }
 
@@ -757,63 +796,93 @@ class AudioManager {
         logger.debug("Processing streaming response", { contentType }, "transcription");
         const streamedText = await this.readTranscriptionStream(response);
         result = { text: streamedText };
-        logger.debug("Streaming response parsed", {
-          hasText: !!streamedText,
-          textLength: streamedText?.length
-        }, "transcription");
+        logger.debug(
+          "Streaming response parsed",
+          {
+            hasText: !!streamedText,
+            textLength: streamedText?.length,
+          },
+          "transcription"
+        );
       } else {
         const rawText = await response.text();
-        logger.debug("Raw API response body", {
-          rawText: rawText.substring(0, 1000),
-          fullLength: rawText.length,
-        }, "transcription");
+        logger.debug(
+          "Raw API response body",
+          {
+            rawText: rawText.substring(0, 1000),
+            fullLength: rawText.length,
+          },
+          "transcription"
+        );
 
         try {
           result = JSON.parse(rawText);
         } catch (parseError) {
-          logger.error("Failed to parse JSON response", {
-            parseError: parseError.message,
-            rawText: rawText.substring(0, 500),
-          }, "transcription");
+          logger.error(
+            "Failed to parse JSON response",
+            {
+              parseError: parseError.message,
+              rawText: rawText.substring(0, 500),
+            },
+            "transcription"
+          );
           throw new Error(`Failed to parse API response: ${parseError.message}`);
         }
 
-        logger.debug("Parsed transcription result", {
-          hasText: !!result.text,
-          textLength: result.text?.length,
-          resultKeys: Object.keys(result),
-          fullResult: result,
-        }, "transcription");
+        logger.debug(
+          "Parsed transcription result",
+          {
+            hasText: !!result.text,
+            textLength: result.text?.length,
+            resultKeys: Object.keys(result),
+            fullResult: result,
+          },
+          "transcription"
+        );
       }
 
       // Check for text - handle both empty string and missing field
       if (result.text && result.text.trim().length > 0) {
         const text = await this.processTranscription(result.text, "openai");
-        const source = await this.isReasoningAvailable() ? "openai-reasoned" : "openai";
-        logger.debug("Transcription successful", {
-          originalLength: result.text.length,
-          processedLength: text.length,
-          source,
-        }, "transcription");
+        const source = (await this.isReasoningAvailable()) ? "openai-reasoned" : "openai";
+        logger.debug(
+          "Transcription successful",
+          {
+            originalLength: result.text.length,
+            processedLength: text.length,
+            source,
+          },
+          "transcription"
+        );
         return { success: true, text, source };
       } else {
         // Log at info level so it shows without debug mode
-        logger.info("Transcription returned empty - check audio input", {
-          model,
-          provider,
-          endpoint,
-          blobSize: audioBlob.size,
-          blobType: audioBlob.type,
-          mimeType,
-          extension,
-          resultText: result.text,
-          resultKeys: Object.keys(result),
-        }, "transcription");
-        logger.error("No text in transcription result", {
-          result,
-          resultKeys: Object.keys(result),
-        }, "transcription");
-        throw new Error("No text transcribed - audio may be too short, silent, or in an unsupported format");
+        logger.info(
+          "Transcription returned empty - check audio input",
+          {
+            model,
+            provider,
+            endpoint,
+            blobSize: audioBlob.size,
+            blobType: audioBlob.type,
+            mimeType,
+            extension,
+            resultText: result.text,
+            resultKeys: Object.keys(result),
+          },
+          "transcription"
+        );
+        logger.error(
+          "No text in transcription result",
+          {
+            result,
+            resultKeys: Object.keys(result),
+          },
+          "transcription"
+        );
+        throw new Error(
+          "No text transcribed - audio may be too short, silent, or in an unsupported format"
+        );
       }
     } catch (error) {
       const isOpenAIMode = localStorage.getItem("useLocalWhisper") !== "true";
@@ -826,10 +895,7 @@ class AudioManager {
             options.language = language;
           }
 
-          const result = await window.electronAPI.transcribeLocalWhisper(
-            arrayBuffer,
-            options
-          );
+          const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
 
           if (result.success && result.text) {
             const text = await this.processTranscription(result.text, "local-fallback");
@@ -851,13 +917,15 @@ class AudioManager {
 
   getTranscriptionModel() {
     try {
-      const provider = typeof localStorage !== "undefined"
-        ? localStorage.getItem("cloudTranscriptionProvider") || "openai"
-        : "openai";
+      const provider =
+        typeof localStorage !== "undefined"
+          ? localStorage.getItem("cloudTranscriptionProvider") || "openai"
+          : "openai";
 
-      const model = typeof localStorage !== "undefined"
-        ? localStorage.getItem("cloudTranscriptionModel") || ""
-        : "";
+      const model =
+        typeof localStorage !== "undefined"
+          ? localStorage.getItem("cloudTranscriptionModel") || ""
+          : "";
 
       const trimmedModel = model.trim();
 
@@ -889,18 +957,21 @@ class AudioManager {
 
   getTranscriptionEndpoint() {
     // Get current provider and base URL to check if cache is valid
-    const currentProvider = typeof localStorage !== "undefined"
-      ? localStorage.getItem("cloudTranscriptionProvider") || "openai"
-      : "openai";
-    const currentBaseUrl = typeof localStorage !== "undefined"
-      ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
-      : "";
+    const currentProvider =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionProvider") || "openai"
+        : "openai";
+    const currentBaseUrl =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
+        : "";
 
     // Invalidate cache if provider or base URL changed
-    if (this.cachedTranscriptionEndpoint && (
-      this.cachedEndpointProvider !== currentProvider ||
-      this.cachedEndpointBaseUrl !== currentBaseUrl
-    )) {
+    if (
+      this.cachedTranscriptionEndpoint &&
+      (this.cachedEndpointProvider !== currentProvider ||
+        this.cachedEndpointBaseUrl !== currentBaseUrl)
+    ) {
       this.cachedTranscriptionEndpoint = null;
     }
 
@@ -923,9 +994,10 @@ class AudioManager {
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
 
-      const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
-      if (!normalizedBase.startsWith('https://') && !isLocalhost) {
-        console.warn('Non-HTTPS endpoint rejected for security. Using default.');
+      const isLocalhost =
+        normalizedBase.includes("://localhost") || normalizedBase.includes("://127.0.0.1");
+      if (!normalizedBase.startsWith("https://") && !isLocalhost) {
+        console.warn("Non-HTTPS endpoint rejected for security. Using default.");
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
 
@@ -933,12 +1005,12 @@ class AudioManager {
       if (/\/audio\/(transcriptions|translations)$/i.test(normalizedBase)) {
         endpoint = normalizedBase;
       } else {
-        endpoint = buildApiUrl(normalizedBase, '/audio/transcriptions');
+        endpoint = buildApiUrl(normalizedBase, "/audio/transcriptions");
       }
 
       return cacheResult(endpoint);
     } catch (error) {
-      console.warn('Failed to resolve transcription endpoint:', error);
+      console.warn("Failed to resolve transcription endpoint:", error);
       this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
       this.cachedEndpointProvider = currentProvider;
       this.cachedEndpointBaseUrl = currentBaseUrl;

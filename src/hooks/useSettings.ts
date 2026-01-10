@@ -34,23 +34,15 @@ export interface ApiKeySettings {
 }
 
 export function useSettings() {
-  const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage(
-    "useLocalWhisper",
-    false,
-    {
-      serialize: String,
-      deserialize: (value) => value === "true",
-    }
-  );
+  const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
 
-  const [whisperModel, setWhisperModel] = useLocalStorage(
-    "whisperModel",
-    "base",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [whisperModel, setWhisperModel] = useLocalStorage("whisperModel", "base", {
+    serialize: String,
+    deserialize: String,
+  });
 
   const [allowOpenAIFallback, setAllowOpenAIFallback] = useLocalStorage(
     "allowOpenAIFallback",
@@ -61,14 +53,10 @@ export function useSettings() {
     }
   );
 
-  const [allowLocalFallback, setAllowLocalFallback] = useLocalStorage(
-    "allowLocalFallback",
-    false,
-    {
-      serialize: String,
-      deserialize: (value) => value === "true",
-    }
-  );
+  const [allowLocalFallback, setAllowLocalFallback] = useLocalStorage("allowLocalFallback", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
 
   const [fallbackWhisperModel, setFallbackWhisperModel] = useLocalStorage(
     "fallbackWhisperModel",
@@ -79,14 +67,10 @@ export function useSettings() {
     }
   );
 
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
-    "preferredLanguage",
-    "en",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [preferredLanguage, setPreferredLanguage] = useLocalStorage("preferredLanguage", "en", {
+    serialize: String,
+    deserialize: String,
+  });
 
   const [cloudTranscriptionProvider, setCloudTranscriptionProvider] = useLocalStorage(
     "cloudTranscriptionProvider",
@@ -125,23 +109,15 @@ export function useSettings() {
   );
 
   // Reasoning settings
-  const [useReasoningModel, setUseReasoningModel] = useLocalStorage(
-    "useReasoningModel",
-    true,
-    {
-      serialize: String,
-      deserialize: (value) => value !== "false", // Default true
-    }
-  );
+  const [useReasoningModel, setUseReasoningModel] = useLocalStorage("useReasoningModel", true, {
+    serialize: String,
+    deserialize: (value) => value !== "false", // Default true
+  });
 
-  const [reasoningModel, setReasoningModel] = useLocalStorage(
-    "reasoningModel",
-    "",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [reasoningModel, setReasoningModel] = useLocalStorage("reasoningModel", "", {
+    serialize: String,
+    deserialize: String,
+  });
 
   // API keys
   const [openaiApiKey, setOpenaiApiKey] = useLocalStorage("openaiApiKey", "", {
@@ -149,32 +125,20 @@ export function useSettings() {
     deserialize: String,
   });
 
-  const [anthropicApiKey, setAnthropicApiKey] = useLocalStorage(
-    "anthropicApiKey",
-    "",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [anthropicApiKey, setAnthropicApiKey] = useLocalStorage("anthropicApiKey", "", {
+    serialize: String,
+    deserialize: String,
+  });
 
-  const [geminiApiKey, setGeminiApiKey] = useLocalStorage(
-    "geminiApiKey",
-    "",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [geminiApiKey, setGeminiApiKey] = useLocalStorage("geminiApiKey", "", {
+    serialize: String,
+    deserialize: String,
+  });
 
-  const [groqApiKey, setGroqApiKey] = useLocalStorage(
-    "groqApiKey",
-    "",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
+  const [groqApiKey, setGroqApiKey] = useLocalStorage("groqApiKey", "", {
+    serialize: String,
+    deserialize: String,
+  });
 
   // Hotkey
   const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {
@@ -188,10 +152,8 @@ export function useSettings() {
   // Batch operations
   const updateTranscriptionSettings = useCallback(
     (settings: Partial<TranscriptionSettings>) => {
-      if (settings.useLocalWhisper !== undefined)
-        setUseLocalWhisper(settings.useLocalWhisper);
-      if (settings.whisperModel !== undefined)
-        setWhisperModel(settings.whisperModel);
+      if (settings.useLocalWhisper !== undefined) setUseLocalWhisper(settings.useLocalWhisper);
+      if (settings.whisperModel !== undefined) setWhisperModel(settings.whisperModel);
       if (settings.allowOpenAIFallback !== undefined)
         setAllowOpenAIFallback(settings.allowOpenAIFallback);
       if (settings.allowLocalFallback !== undefined)
@@ -224,8 +186,7 @@ export function useSettings() {
     (settings: Partial<ReasoningSettings>) => {
       if (settings.useReasoningModel !== undefined)
         setUseReasoningModel(settings.useReasoningModel);
-      if (settings.reasoningModel !== undefined)
-        setReasoningModel(settings.reasoningModel);
+      if (settings.reasoningModel !== undefined) setReasoningModel(settings.reasoningModel);
       if (settings.cloudReasoningBaseUrl !== undefined)
         setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
       // reasoningProvider is computed from reasoningModel, not stored separately
@@ -236,12 +197,9 @@ export function useSettings() {
   const updateApiKeys = useCallback(
     (keys: Partial<ApiKeySettings>) => {
       if (keys.openaiApiKey !== undefined) setOpenaiApiKey(keys.openaiApiKey);
-      if (keys.anthropicApiKey !== undefined)
-        setAnthropicApiKey(keys.anthropicApiKey);
-      if (keys.geminiApiKey !== undefined)
-        setGeminiApiKey(keys.geminiApiKey);
-      if (keys.groqApiKey !== undefined)
-        setGroqApiKey(keys.groqApiKey);
+      if (keys.anthropicApiKey !== undefined) setAnthropicApiKey(keys.anthropicApiKey);
+      if (keys.geminiApiKey !== undefined) setGeminiApiKey(keys.geminiApiKey);
+      if (keys.groqApiKey !== undefined) setGroqApiKey(keys.groqApiKey);
     },
     [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey, setGroqApiKey]
   );
@@ -278,7 +236,7 @@ export function useSettings() {
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider: (provider: string) => {
-      if (provider !== 'custom') {
+      if (provider !== "custom") {
         setReasoningModel("");
       }
     },

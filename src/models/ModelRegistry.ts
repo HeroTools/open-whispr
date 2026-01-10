@@ -1,4 +1,4 @@
-import modelDataRaw from './modelRegistryData.json';
+import modelDataRaw from "./modelRegistryData.json";
 
 export interface ModelDefinition {
   id: string;
@@ -76,7 +76,7 @@ const modelData: ModelRegistryData = modelDataRaw as ModelRegistryData;
 
 function createPromptFormatter(template: string): (text: string, systemPrompt: string) => string {
   return (text: string, systemPrompt: string) => {
-    return template.replace('{system}', systemPrompt).replace('{user}', text);
+    return template.replace("{system}", systemPrompt).replace("{user}", text);
   };
 }
 
@@ -149,7 +149,7 @@ class ModelRegistry {
         formatPrompt,
         getDownloadUrl(model: ModelDefinition): string {
           return `${providerData.baseUrl}/${model.hfRepo}/resolve/main/${model.fileName}`;
-        }
+        },
       });
     }
   }
@@ -176,7 +176,7 @@ function buildReasoningProviders(): ReasoningProviders {
   for (const cloudProvider of modelRegistry.getCloudProviders()) {
     providers[cloudProvider.id] = {
       name: cloudProvider.name,
-      models: cloudProvider.models.map(m => ({
+      models: cloudProvider.models.map((m) => ({
         value: m.id,
         label: m.name,
         description: m.description,
@@ -186,7 +186,7 @@ function buildReasoningProviders(): ReasoningProviders {
 
   providers.local = {
     name: "Local AI",
-    models: modelRegistry.getAllModels().map(model => ({
+    models: modelRegistry.getAllModels().map((model) => ({
       value: model.id,
       label: model.name,
       description: `${model.description} (${model.size})`,
@@ -224,12 +224,24 @@ export function getModelProvider(modelId: string): string {
   if (!model) {
     if (modelId.includes("claude")) return "anthropic";
     if (modelId.includes("gemini") && !modelId.includes("gemma")) return "gemini";
-    if ((modelId.includes("gpt-4") || modelId.includes("gpt-5")) && !modelId.includes("gpt-oss")) return "openai";
-    if (modelId.includes("qwen/") || modelId.includes("openai/") ||
-        modelId.includes("llama-3.1-8b-instant") || modelId.includes("llama-3.3-") ||
-        modelId.includes("mixtral-") || modelId.includes("gemma2-")) return "groq";
-    if (modelId.includes("qwen") || modelId.includes("llama") ||
-        modelId.includes("mistral") || modelId.includes("gpt-oss-20b-mxfp4")) return "local";
+    if ((modelId.includes("gpt-4") || modelId.includes("gpt-5")) && !modelId.includes("gpt-oss"))
+      return "openai";
+    if (
+      modelId.includes("qwen/") ||
+      modelId.includes("openai/") ||
+      modelId.includes("llama-3.1-8b-instant") ||
+      modelId.includes("llama-3.3-") ||
+      modelId.includes("mixtral-") ||
+      modelId.includes("gemma2-")
+    )
+      return "groq";
+    if (
+      modelId.includes("qwen") ||
+      modelId.includes("llama") ||
+      modelId.includes("mistral") ||
+      modelId.includes("gpt-oss-20b-mxfp4")
+    )
+      return "local";
   }
 
   return model?.provider || "openai";
@@ -239,8 +251,10 @@ export function getTranscriptionProviders(): TranscriptionProviderData[] {
   return modelRegistry.getTranscriptionProviders();
 }
 
-export function getTranscriptionProvider(providerId: string): TranscriptionProviderData | undefined {
-  return getTranscriptionProviders().find(p => p.id === providerId);
+export function getTranscriptionProvider(
+  providerId: string
+): TranscriptionProviderData | undefined {
+  return getTranscriptionProviders().find((p) => p.id === providerId);
 }
 
 export function getTranscriptionModels(providerId: string): TranscriptionModelDefinition[] {
@@ -250,7 +264,7 @@ export function getTranscriptionModels(providerId: string): TranscriptionModelDe
 
 export function getDefaultTranscriptionModel(providerId: string): string {
   const models = getTranscriptionModels(providerId);
-  return models[0]?.id || 'gpt-4o-mini-transcribe';
+  return models[0]?.id || "gpt-4o-mini-transcribe";
 }
 
 export function getWhisperModels(): WhisperModelsMap {
