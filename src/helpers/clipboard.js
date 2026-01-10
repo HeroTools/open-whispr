@@ -1,5 +1,6 @@
 const { clipboard } = require("electron");
 const { spawn, spawnSync } = require("child_process");
+const { killProcess } = require("../utils/process");
 
 // Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
 const CACHE_TTL_MS = 30000;
@@ -117,7 +118,7 @@ class ClipboardManager {
 
         const timeoutId = setTimeout(() => {
           hasTimedOut = true;
-          pasteProcess.kill("SIGKILL");
+          killProcess(pasteProcess, 'SIGKILL');
           pasteProcess.removeAllListeners();
           const errorMsg =
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
@@ -295,11 +296,7 @@ class ClipboardManager {
         let timedOut = false;
         const timeoutId = setTimeout(() => {
           timedOut = true;
-          try {
-            proc.kill("SIGKILL");
-          } catch {
-            // Ignore kill errors
-          }
+          killProcess(proc, 'SIGKILL');
         }, 1000);
 
         proc.on("close", (code) => {

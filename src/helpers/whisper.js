@@ -6,7 +6,7 @@ const os = require("os");
 const path = require("path");
 const crypto = require("crypto");
 const PythonInstaller = require("./pythonInstaller");
-const { runCommand, TIMEOUTS } = require("../utils/process");
+const { runCommand, killProcess, TIMEOUTS } = require("../utils/process");
 const debugLogger = require("./debugLogger");
 
 // Cache TTL - mirrors CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
@@ -631,7 +631,7 @@ class WhisperManager {
       // Set timeout for longer recordings
       const timeout = setTimeout(() => {
         if (!isResolved) {
-          whisperProcess.kill("SIGTERM");
+          killProcess(whisperProcess, 'SIGTERM');
           reject(new Error("Whisper transcription timed out (20 minutes)"));
         }
       }, TIMEOUTS.TRANSCRIPTION);
@@ -1381,10 +1381,10 @@ class WhisperManager {
         });
 
         const timeout = setTimeout(() => {
-          downloadProcess.kill("SIGTERM");
+          killProcess(downloadProcess, 'SIGTERM');
           setTimeout(() => {
             if (!downloadProcess.killed) {
-              downloadProcess.kill("SIGKILL");
+              killProcess(downloadProcess, 'SIGKILL');
             }
           }, 5000);
           reject(new Error("Model download timed out (10 minutes)"));
@@ -1433,13 +1433,13 @@ class WhisperManager {
   async cancelDownload() {
     if (this.currentDownloadProcess) {
       try {
-        this.currentDownloadProcess.kill("SIGTERM");
+        killProcess(this.currentDownloadProcess, 'SIGTERM');
         setTimeout(() => {
           if (
             this.currentDownloadProcess &&
             !this.currentDownloadProcess.killed
           ) {
-            this.currentDownloadProcess.kill("SIGKILL");
+            killProcess(this.currentDownloadProcess, 'SIGKILL');
           }
         }, 3000);
         return { success: true, message: "Download cancelled" };

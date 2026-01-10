@@ -16,6 +16,20 @@ import time
 import requests
 import gc
 
+def get_whisper_cache_dir():
+    """Get platform-appropriate cache directory for Whisper models"""
+    if sys.platform == "win32":
+        # Windows: use %LOCALAPPDATA%\whisper or fallback to %USERPROFILE%\.cache\whisper
+        local_app_data = os.environ.get("LOCALAPPDATA")
+        if local_app_data:
+            return os.path.join(local_app_data, "whisper")
+        # Fallback to user profile
+        user_profile = os.environ.get("USERPROFILE", os.path.expanduser("~"))
+        return os.path.join(user_profile, ".cache", "whisper")
+    else:
+        # macOS/Linux: use ~/.cache/whisper
+        return get_whisper_cache_dir()
+
 def get_ffmpeg_path():
     """Get path to bundled FFmpeg executable with proper production support"""
     # Check environment variables first
@@ -100,7 +114,7 @@ if ffmpeg_path:
     ffmpeg_dir = os.path.dirname(os.path.abspath(ffmpeg_path))
     current_path = os.environ.get("PATH", "")
     if ffmpeg_dir not in current_path:
-        os.environ["PATH"] = f"{ffmpeg_dir}:{current_path}"
+        os.environ["PATH"] = f"{ffmpeg_dir}{os.pathsep}{current_path}"
     
     # For Whisper library, we need to ensure 'ffmpeg' command works
     # Create a symlink if needed (for macOS/Linux)
@@ -160,7 +174,7 @@ def get_expected_model_size(model_name):
 
 def monitor_download_progress(model_name, expected_size, stop_event):
     """Monitor download progress by watching file size growth"""
-    cache_dir = os.path.expanduser("~/.cache/whisper")
+    cache_dir = get_whisper_cache_dir()
     model_url = whisper._MODELS[model_name]
     model_file = os.path.join(cache_dir, os.path.basename(model_url))
     
@@ -229,7 +243,7 @@ def download_model(model_name="base"):
     
     try:
         # Check if model is already downloaded
-        cache_dir = os.path.expanduser("~/.cache/whisper")
+        cache_dir = get_whisper_cache_dir()
         model_url = whisper._MODELS[model_name]
         model_file = os.path.join(cache_dir, os.path.basename(model_url))
         
@@ -309,7 +323,7 @@ def download_model(model_name="base"):
 def check_model_status(model_name="base"):
     """Check if a model is already downloaded"""
     try:
-        cache_dir = os.path.expanduser("~/.cache/whisper")
+        cache_dir = get_whisper_cache_dir()
         model_url = whisper._MODELS[model_name]
         model_file = os.path.join(cache_dir, os.path.basename(model_url))
         
@@ -347,14 +361,14 @@ def list_models():
     
     return {
         "models": model_info,
-        "cache_dir": os.path.expanduser("~/.cache/whisper"),
+        "cache_dir": get_whisper_cache_dir(),
         "success": True
     }
 
 def delete_model(model_name="base"):
     """Delete a downloaded Whisper model"""
     try:
-        cache_dir = os.path.expanduser("~/.cache/whisper")
+        cache_dir = get_whisper_cache_dir()
         model_url = whisper._MODELS[model_name]
         model_file = os.path.join(cache_dir, os.path.basename(model_url))
         
