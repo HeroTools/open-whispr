@@ -147,7 +147,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Gemini API
   getGeminiKey: () => ipcRenderer.invoke("get-gemini-key"),
   saveGeminiKey: (key) => ipcRenderer.invoke("save-gemini-key", key),
-  
+
+  // Groq API
+  getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
+  saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
+
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),

@@ -415,6 +415,14 @@ class IPCHandlers {
       return this.environmentManager.saveGeminiKey(key);
     });
 
+    ipcMain.handle("get-groq-key", async (event) => {
+      return this.environmentManager.getGroqKey();
+    });
+
+    ipcMain.handle("save-groq-key", async (event, key) => {
+      return this.environmentManager.saveGroqKey(key);
+    });
+
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
     });
