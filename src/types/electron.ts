@@ -295,6 +295,10 @@ declare global {
       
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<boolean>;
+
+      // System settings helpers
+      openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
+      openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
     };
     
     api?: {

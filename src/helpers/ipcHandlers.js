@@ -1,6 +1,49 @@
 const { ipcMain, app, shell, BrowserWindow } = require("electron");
+const { spawn } = require("child_process");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
+
+const runDetachedCommand = (command, args = []) => {
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(command, args, {
+        detached: true,
+        stdio: "ignore",
+      });
+      child.on("error", (error) => {
+        debugLogger.error(`Failed to run ${command}`, error);
+        resolve(false);
+      });
+      child.on("spawn", () => {
+        if (typeof child.unref === "function") {
+          child.unref();
+        }
+        resolve(true);
+      });
+    } catch (error) {
+      debugLogger.error(`Failed to spawn ${command}`, error);
+      resolve(false);
+    }
+  });
+};
+
+const openMacPreference = async (urls = []) => {
+  for (const url of urls) {
+    if (await runDetachedCommand("open", [url])) {
+      return true;
+    }
+  }
+  return runDetachedCommand("open", ["-a", "System Settings"]);
+};
+
+const openLinuxSettings = async (commands = []) => {
+  for (const [command, args] of commands) {
+    if (await runDetachedCommand(command, args)) {
+      return true;
+    }
+  }
+  return false;
+};
 
 class IPCHandlers {
   constructor(managers) {
@@ -139,6 +182,14 @@ class IPCHandlers {
 
     ipcMain.handle("write-clipboard", async (event, text) => {
       return this.clipboardManager.writeClipboard(text);
+    });
+
+    ipcMain.handle("open-microphone-settings", async () => {
+      return this.openPlatformSettings("microphone");
+    });
+
+    ipcMain.handle("open-sound-input-settings", async () => {
+      return this.openPlatformSettings("soundInput");
     });
 
     // Whisper handlers
@@ -539,6 +590,59 @@ class IPCHandlers {
       debugLogger.logEntry(entry);
       return { success: true };
     });
+  }
+
+  async openPlatformSettings(target) {
+    if (process.platform === "darwin") {
+      const urls =
+        target === "microphone"
+          ? [
+              "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+              "x-apple.systempreferences:com.apple.preference.security",
+            ]
+          : [
+              "x-apple.systempreferences:com.apple.preference.sound?input",
+              "x-apple.systempreferences:com.apple.preference.sound",
+            ];
+      const opened = await openMacPreference(urls);
+      return { success: opened };
+    }
+
+    if (process.platform === "win32") {
+      const uri =
+        target === "microphone"
+          ? "ms-settings:privacy-microphone"
+          : "ms-settings:sound";
+      try {
+        await shell.openExternal(uri);
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to open Windows settings", error);
+        return { success: false, error: error.message };
+      }
+    }
+
+    const linuxCommands =
+      target === "microphone"
+        ? [
+            ["gnome-control-center", ["privacy"]],
+            ["kde-open5", ["kcm_users"]],
+          ]
+        : [
+            ["gnome-control-center", ["sound"]],
+            ["kde-open5", ["kcm_pulseaudio"]],
+          ];
+
+    if (await openLinuxSettings(linuxCommands)) {
+      return { success: true };
+    }
+
+    const fallbackMessage =
+      target === "microphone"
+        ? "Open your system privacy settings to enable microphone access."
+        : "Open your system sound settings and select your microphone.";
+
+    return { success: false, error: fallbackMessage };
   }
 
   broadcastToWindows(channel, payload) {

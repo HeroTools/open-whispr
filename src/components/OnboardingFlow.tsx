@@ -24,6 +24,7 @@ import WhisperModelPicker from "./WhisperModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
 import StepProgress from "./ui/StepProgress";
 import { AlertDialog, ConfirmDialog } from "./ui/dialog";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -856,6 +857,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 onRequest={permissionsHook.requestMicPermission}
                 buttonText="Grant Access"
               />
+
+              {!permissionsHook.micPermissionGranted && (
+                <MicPermissionWarning
+                  error={permissionsHook.micPermissionError}
+                  onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                  onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                />
+              )}
 
               <PermissionCard
                 icon={Shield}

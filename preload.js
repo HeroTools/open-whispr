@@ -170,6 +170,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
   
+  // System settings helpers
+  openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
+  openSoundInputSettings: () =>
+    ipcRenderer.invoke("open-sound-input-settings"),
+  
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);

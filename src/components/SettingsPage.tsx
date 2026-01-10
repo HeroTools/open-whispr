@@ -12,6 +12,7 @@ import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
@@ -815,6 +816,13 @@ export default function SettingsPage({
                   <span className="mr-2">⚙️</span>
                   Fix Permission Issues
                 </Button>
+                {!permissionsHook.micPermissionGranted && (
+                  <MicPermissionWarning
+                    error={permissionsHook.micPermissionError}
+                    onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                    onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                  />
+                )}
               </div>
             </div>
 
