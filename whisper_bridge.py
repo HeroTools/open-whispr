@@ -28,7 +28,7 @@ def get_whisper_cache_dir():
         return os.path.join(user_profile, ".cache", "whisper")
     else:
         # macOS/Linux: use ~/.cache/whisper
-        return get_whisper_cache_dir()
+        return os.path.expanduser("~/.cache/whisper")
 
 def get_ffmpeg_path():
     """Get path to bundled FFmpeg executable with proper production support"""
@@ -40,8 +40,10 @@ def get_ffmpeg_path():
     ]
     
     for env_name, env_path in env_paths:
-        if env_path and os.path.exists(env_path) and os.access(env_path, os.X_OK):
-            return env_path
+        # On Windows, skip X_OK check since it doesn't use Unix-style execute permissions
+        if env_path and os.path.exists(env_path):
+            if sys.platform == "win32" or os.access(env_path, os.X_OK):
+                return env_path
     
     # Determine base path
     if getattr(sys, 'frozen', False):
@@ -80,8 +82,10 @@ def get_ffmpeg_path():
     # Try each possible path
     for ffmpeg_path in possible_paths:
         abs_path = os.path.abspath(ffmpeg_path)
-        if os.path.exists(abs_path) and os.access(abs_path, os.X_OK):
-            return abs_path
+        # On Windows, skip X_OK check since it doesn't use Unix-style execute permissions
+        if os.path.exists(abs_path):
+            if sys.platform == "win32" or os.access(abs_path, os.X_OK):
+                return abs_path
     
     # Try system FFmpeg as last resort
     if sys.platform == "darwin":

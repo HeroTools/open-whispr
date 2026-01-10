@@ -130,12 +130,17 @@ class ClipboardManager {
 
   async pasteWindows(originalClipboard) {
     return new Promise((resolve, reject) => {
+      let hasTimedOut = false;
+
       const pasteProcess = spawn("powershell", [
         "-Command",
         'Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait("^v")',
       ]);
 
       pasteProcess.on("close", (code) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
+
         if (code === 0) {
           // Text pasted successfully
           setTimeout(() => {
@@ -145,19 +150,32 @@ class ClipboardManager {
         } else {
           reject(
             new Error(
-              `Windows paste failed with code ${code}. Text is copied to clipboard.`
+              `Windows paste failed with code ${code}. Text is copied to clipboard - please paste manually with Ctrl+V.`
             )
           );
         }
       });
 
       pasteProcess.on("error", (error) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
         reject(
           new Error(
-            `Windows paste failed: ${error.message}. Text is copied to clipboard.`
+            `Windows paste failed: ${error.message}. Text is copied to clipboard - please paste manually with Ctrl+V.`
           )
         );
       });
+
+      const timeoutId = setTimeout(() => {
+        hasTimedOut = true;
+        killProcess(pasteProcess, 'SIGKILL');
+        pasteProcess.removeAllListeners();
+        reject(
+          new Error(
+            "Paste operation timed out. Text is copied to clipboard - please paste manually with Ctrl+V."
+          )
+        );
+      }, 3000);
     });
   }
 

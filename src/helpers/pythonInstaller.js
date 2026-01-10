@@ -284,6 +284,8 @@ class PythonInstaller {
           }
         }
       }
+    } catch (error) {
+      throw new Error(`Linux Python installation failed: ${error.message}`);
     }
   }
 
