@@ -5,6 +5,48 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.15] - 2026-01-05
+
+### Added
+- Button to fully quit OpenWhispr processes from the application
+- Linux terminal detection with automatic paste key switching (Ctrl+Shift+V for terminals)
+
+### Changed
+- Standardized logging on log levels with renderer IPC and `.env` refresh for consistent debug output
+
+### Fixed
+- Use `kdotool` for Wayland terminal detection, improving clipboard paste reliability
+- Increased delay before restoring clipboard to avoid race conditions during paste operations
+- Persist OpenAI key before onboarding test to prevent key loss during setup
+- Windows Python discovery now correctly handles output parsing
+- Keep FFmpeg debug schema as boolean type
+- Fixed OpenWhispr documentation paths
+- Windows: Resolved issue #16 with WAV validation, registry-based Python detection, and normalized FFmpeg paths
+
+## [1.0.13] - 2025-12-24
+
+### Added
+- Enhanced Linux support with Wayland compatibility, multiple package formats (AppImage, deb, rpm, Flatpak), and native window controls
+- Auto-detect existing Python during onboarding and gate the installer with a recheck option
+- "Use Existing Python" skip flow to onboarding with confirmation dialog
+
+### Changed
+- Reuse audio manager and stabilize dictation toggle callback to fix recording latency
+- Add cleanup functions to IPC listeners to prevent memory leaks
+- Make Flatpak opt-in for local builds only
+
+### Fixed
+- Optimized transcription pipeline with caching, batched reads, and non-blocking operations for improved performance
+- Reference error in settings page
+- Removed redundant audio listener causing unnecessary processing
+- Added IPC listener cleanup to prevent memory leaks
+- Performance improvements: removed duplicate useEffect, fixed blur causing re-renders
+
+### CI/CD
+- Add caching for Electron and Flatpak downloads
+- Add Flatpak runtime installation to workflow
+- Add Linux packaging dependencies to GitHub Actions workflow
+
 ## [1.0.12] - 2025-11-13
 
 ### Added
