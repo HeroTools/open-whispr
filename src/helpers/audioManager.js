@@ -43,7 +43,7 @@ class AudioManager {
       "01_start_requested",
       {
         id: session.id,
-        stage: "startRecording invoked (user toggle)",
+        description: "startRecording invoked (user toggle)",
         elapsedMs: 0,
         stageMs: 0,
       },
@@ -86,7 +86,7 @@ class AudioManager {
         this.recordingStartTime = Date.now();
         this.onStateChange?.({ isRecording: true, isProcessing: false });
         this.markLatencyStage("02_media_recorder_started", {
-          stage: "MediaRecorder onstart fired (audio capture active)",
+          description: "MediaRecorder onstart fired (audio capture active)",
         });
       };
 
@@ -100,24 +100,19 @@ class AudioManager {
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: "audio/wav" });
-        
-        if (audioBlob.size === 0) {
-        }
-        
+
         const stopTimestamp = Date.now();
-        const durationSeconds = this.recordingStartTime
-          ? (stopTimestamp - this.recordingStartTime) / 1000
-          : null;
         const recordingDurationMs = this.recordingStartTime
           ? stopTimestamp - this.recordingStartTime
           : null;
+        const durationSeconds = recordingDurationMs ? recordingDurationMs / 1000 : null;
         this.recordingStartTime = null;
         this.markLatencyStage("03_media_recorder_stopped", {
-          stage: "MediaRecorder stopped (audio blob ready)",
+          description: "MediaRecorder stopped (audio blob ready)",
           recordingDurationMs,
         });
         await this.processAudio(audioBlob, { durationSeconds });
-        stream.getTracks().forEach((track) => track.stop());
+        stream?.getTracks()?.forEach((track) => track.stop());
       };
 
       this.mediaRecorder.start();
@@ -126,7 +121,7 @@ class AudioManager {
     } catch (error) {
       this.markLatencyStage(
         "01_start_failed",
-        { stage: "Failed to start recording", error: error.message },
+        { description: "Failed to start recording", error: error.message },
         { total: true, complete: true }
       );
       
@@ -170,13 +165,13 @@ class AudioManager {
       let result;
       if (useLocalWhisper) {
         this.markLatencyStage("04_transcription_request", {
-          stage: "Local Whisper transcription request",
+          description: "Local Whisper transcription request",
           engine: "local",
         });
         result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
       } else {
         this.markLatencyStage("04_transcription_request", {
-          stage: "OpenAI transcription request",
+          description: "OpenAI transcription request",
           engine: "openai",
         });
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
@@ -185,7 +180,7 @@ class AudioManager {
     } catch (error) {
       this.markLatencyStage(
         "05_transcription_failed",
-        { stage: "Transcription failed", error: error.message },
+        { description: "Transcription failed", error: error.message },
         { total: true, complete: true }
       );
       if (error.message !== "No audio detected") {
@@ -216,7 +211,7 @@ class AudioManager {
 
       if (result.success && result.text) {
         this.markLatencyStage("05_transcription_response", {
-          stage: "Transcription response received",
+          description: "Transcription response received",
           source: "local",
           textLength: result.text.length,
         });
@@ -246,7 +241,7 @@ class AudioManager {
       if (allowOpenAIFallback && isLocalMode) {
         try {
           this.markLatencyStage("04_transcription_request_fallback", {
-            stage: "OpenAI fallback transcription request",
+            description: "OpenAI fallback transcription request",
             engine: "openai-fallback",
           });
           const fallbackResult = await this.processWithOpenAIAPI(audioBlob, metadata);
@@ -510,26 +505,26 @@ class AudioManager {
         });
 
         this.markLatencyStage("06_reasoning_request", {
-          stage: "Reasoning request started",
+          description: "Reasoning request started",
           model: reasoningModel,
           provider: reasoningProvider,
         });
         const result = await this.processWithReasoningModel(preparedText, reasoningModel, agentName);
-        
+
         logger.logReasoning("REASONING_SUCCESS", {
           resultLength: result.length,
           resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
           processingTime: new Date().toISOString()
         });
-        
+
         this.markLatencyStage("07_reasoning_response", {
-          stage: "Reasoning response received",
+          description: "Reasoning response received",
           resultLength: result.length,
         });
         return result;
       } catch (error) {
         this.markLatencyStage("07_reasoning_failed", {
-          stage: "Reasoning failed (fallback to cleanup)",
+          description: "Reasoning failed (fallback to cleanup)",
           error: error.message,
         });
         logger.logReasoning("REASONING_FAILED", {
@@ -538,18 +533,15 @@ class AudioManager {
           fallbackToCleanup: true
         });
         console.error(`Reasoning failed (${source}):`, error.message);
+        logger.logReasoning("USING_STANDARD_CLEANUP", { reason: "Reasoning failed" });
+        return normalizedText;
       }
     }
 
-    if (!useReasoning) {
-      this.markLatencyStage("06_reasoning_skipped", {
-        stage: "Reasoning disabled or unavailable",
-      });
-    }
-    logger.logReasoning("USING_STANDARD_CLEANUP", {
-      reason: useReasoning ? "Reasoning failed" : "Reasoning not enabled"
+    this.markLatencyStage("06_reasoning_skipped", {
+      description: "Reasoning disabled or unavailable",
     });
-
+    logger.logReasoning("USING_STANDARD_CLEANUP", { reason: "Reasoning not enabled" });
     return normalizedText;
   }
 
@@ -603,7 +595,7 @@ class AudioManager {
 
       if (result.text) {
         this.markLatencyStage("05_transcription_response", {
-          stage: "Transcription response received",
+          description: "Transcription response received",
           source: "openai",
           textLength: result.text.length,
         });
@@ -619,7 +611,7 @@ class AudioManager {
       if (allowLocalFallback && isOpenAIMode) {
         try {
           this.markLatencyStage("04_transcription_request_fallback", {
-            stage: "Local fallback transcription request",
+            description: "Local fallback transcription request",
             engine: "local-fallback",
           });
           const arrayBuffer = await audioBlob.arrayBuffer();
@@ -635,7 +627,7 @@ class AudioManager {
 
           if (result.success && result.text) {
             this.markLatencyStage("05_transcription_response", {
-              stage: "Transcription response received",
+              description: "Transcription response received",
               source: "local-fallback",
               textLength: result.text.length,
             });
@@ -702,14 +694,14 @@ class AudioManager {
       await window.electronAPI.pasteText(text);
       this.markLatencyStage(
         "08_paste_complete",
-        { stage: "Paste completed", textLength: text?.length || 0 },
+        { description: "Paste completed", textLength: text?.length || 0 },
         { total: true, complete: true }
       );
       return true;
     } catch (error) {
       this.markLatencyStage(
         "08_paste_failed",
-        { stage: "Paste failed", error: error.message },
+        { description: "Paste failed", error: error.message },
         { total: true, complete: true }
       );
       this.onError?.({

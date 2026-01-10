@@ -8,7 +8,8 @@ const PythonInstaller = require("./pythonInstaller");
 const { runCommand, TIMEOUTS } = require("../utils/process");
 const debugLogger = require("./debugLogger");
 
-const FFMPEG_AVAILABILITY_CACHE_TTL = 30000;
+// Cache TTL - mirrors CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
+const CACHE_TTL_MS = 30000;
 
 class WhisperManager {
   constructor() {
@@ -937,7 +938,7 @@ class WhisperManager {
         };
         this.ffmpegAvailabilityCache = {
           result,
-          expiresAt: Date.now() + FFMPEG_AVAILABILITY_CACHE_TTL,
+          expiresAt: Date.now() + CACHE_TTL_MS,
         };
         return result;
       }
@@ -1006,14 +1007,14 @@ class WhisperManager {
 
       this.ffmpegAvailabilityCache = {
         result,
-        expiresAt: Date.now() + FFMPEG_AVAILABILITY_CACHE_TTL,
+        expiresAt: Date.now() + CACHE_TTL_MS,
       };
       return result;
     } catch (error) {
       const result = { available: false, error: error.message };
       this.ffmpegAvailabilityCache = {
         result,
-        expiresAt: Date.now() + FFMPEG_AVAILABILITY_CACHE_TTL,
+        expiresAt: Date.now() + CACHE_TTL_MS,
       };
       return result;
     }

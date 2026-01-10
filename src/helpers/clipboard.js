@@ -1,8 +1,10 @@
 const { clipboard } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 
-const ACCESSIBILITY_CACHE_TTL_MS = 30000;
-const TOOL_CACHE_TTL_MS = 30000;
+// Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
+const CACHE_TTL_MS = 30000;
+// Paste delay before simulating keystroke - mirrors CACHE_CONFIG.PASTE_DELAY_MS
+const PASTE_DELAY_MS = 50;
 
 class ClipboardManager {
   constructor() {
@@ -122,7 +124,7 @@ class ClipboardManager {
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
           reject(new Error(errorMsg));
         }, 3000);
-      }, 50);
+      }, PASTE_DELAY_MS);
     });
   }
 
@@ -174,13 +176,13 @@ class ClipboardManager {
         const exists = res.status === 0;
         this.commandAvailabilityCache.set(cmd, {
           exists,
-          expiresAt: now + TOOL_CACHE_TTL_MS,
+          expiresAt: now + CACHE_TTL_MS,
         });
         return exists;
       } catch {
         this.commandAvailabilityCache.set(cmd, {
           exists: false,
-          expiresAt: now + TOOL_CACHE_TTL_MS,
+          expiresAt: now + CACHE_TTL_MS,
         });
         return false;
       }
@@ -293,7 +295,7 @@ class ClipboardManager {
       available = candidates.filter((c) => commandExists(c.cmd));
       this.availablePasteToolsCache.set(cacheKey, {
         tools: available,
-        expiresAt: Date.now() + TOOL_CACHE_TTL_MS,
+        expiresAt: Date.now() + CACHE_TTL_MS,
       });
     }
 
@@ -393,7 +395,7 @@ class ClipboardManager {
         const allowed = code === 0;
         this.accessibilityCache = {
           value: allowed,
-          expiresAt: Date.now() + ACCESSIBILITY_CACHE_TTL_MS,
+          expiresAt: Date.now() + CACHE_TTL_MS,
         };
         if (!allowed) {
           this.showAccessibilityDialog(testError);
@@ -404,7 +406,7 @@ class ClipboardManager {
       testProcess.on("error", (error) => {
         this.accessibilityCache = {
           value: false,
-          expiresAt: Date.now() + ACCESSIBILITY_CACHE_TTL_MS,
+          expiresAt: Date.now() + CACHE_TTL_MS,
         };
         resolve(false);
       });
