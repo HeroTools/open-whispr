@@ -1,5 +1,6 @@
 const { clipboard } = require("electron");
 const { spawn, spawnSync } = require("child_process");
+const { killProcess } = require("../utils/process");
 
 // Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
 const CACHE_TTL_MS = 30000;
@@ -37,22 +38,15 @@ class ClipboardManager {
 
       // Copy text to clipboard first - this always works
       clipboard.writeText(text);
-      this.safeLog(
-        "📋 Text copied to clipboard:",
-        text.substring(0, 50) + "..."
-      );
+      this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
 
       if (process.platform === "darwin") {
         // Check accessibility permissions first
-        this.safeLog(
-          "🔍 Checking accessibility permissions for paste operation..."
-        );
+        this.safeLog("🔍 Checking accessibility permissions for paste operation...");
         const hasPermissions = await this.checkAccessibilityPermissions();
 
         if (!hasPermissions) {
-          this.safeLog(
-            "⚠️ No accessibility permissions - text copied to clipboard only"
-          );
+          this.safeLog("⚠️ No accessibility permissions - text copied to clipboard only");
           const errorMsg =
             "Accessibility permissions required for automatic pasting. Text has been copied to clipboard - please paste manually with Cmd+V.";
           throw new Error(errorMsg);
@@ -117,7 +111,7 @@ class ClipboardManager {
 
         const timeoutId = setTimeout(() => {
           hasTimedOut = true;
-          pasteProcess.kill("SIGKILL");
+          killProcess(pasteProcess, "SIGKILL");
           pasteProcess.removeAllListeners();
           const errorMsg =
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
@@ -129,12 +123,17 @@ class ClipboardManager {
 
   async pasteWindows(originalClipboard) {
     return new Promise((resolve, reject) => {
+      let hasTimedOut = false;
+
       const pasteProcess = spawn("powershell", [
         "-Command",
         'Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait("^v")',
       ]);
 
       pasteProcess.on("close", (code) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
+
         if (code === 0) {
           // Text pasted successfully
           setTimeout(() => {
@@ -144,19 +143,32 @@ class ClipboardManager {
         } else {
           reject(
             new Error(
-              `Windows paste failed with code ${code}. Text is copied to clipboard.`
+              `Windows paste failed with code ${code}. Text is copied to clipboard - please paste manually with Ctrl+V.`
             )
           );
         }
       });
 
       pasteProcess.on("error", (error) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
         reject(
           new Error(
-            `Windows paste failed: ${error.message}. Text is copied to clipboard.`
+            `Windows paste failed: ${error.message}. Text is copied to clipboard - please paste manually with Ctrl+V.`
           )
         );
       });
+
+      const timeoutId = setTimeout(() => {
+        hasTimedOut = true;
+        killProcess(pasteProcess, "SIGKILL");
+        pasteProcess.removeAllListeners();
+        reject(
+          new Error(
+            "Paste operation timed out. Text is copied to clipboard - please paste manually with Ctrl+V."
+          )
+        );
+      }, 3000);
     });
   }
 
@@ -212,15 +224,10 @@ class ClipboardManager {
       try {
         // Try xdotool (works on X11 and XWayland)
         if (commandExists("xdotool")) {
-          const result = spawnSync("xdotool", [
-            "getactivewindow",
-            "getwindowclassname",
-          ]);
+          const result = spawnSync("xdotool", ["getactivewindow", "getwindowclassname"]);
           if (result.status === 0) {
             const className = result.stdout.toString().toLowerCase().trim();
-            const isTerminalWindow = terminalClasses.some((term) =>
-              className.includes(term)
-            );
+            const isTerminalWindow = terminalClasses.some((term) => className.includes(term));
             if (isTerminalWindow) {
               this.safeLog(`🖥️ Terminal detected via xdotool: ${className}`);
             }
@@ -238,9 +245,7 @@ class ClipboardManager {
             const classResult = spawnSync("kdotool", ["getwindowclassname", windowId]);
             if (classResult.status === 0) {
               const className = classResult.stdout.toString().toLowerCase().trim();
-              const isTerminalWindow = terminalClasses.some((term) =>
-                className.includes(term)
-              );
+              const isTerminalWindow = terminalClasses.some((term) => className.includes(term));
               if (isTerminalWindow) {
                 this.safeLog(`🖥️ Terminal detected via kdotool: ${className}`);
               }
@@ -295,18 +300,11 @@ class ClipboardManager {
         let timedOut = false;
         const timeoutId = setTimeout(() => {
           timedOut = true;
-          try {
-            proc.kill("SIGKILL");
-          } catch {
-            // Ignore kill errors
-          }
+          killProcess(proc, "SIGKILL");
         }, 1000);
 
         proc.on("close", (code) => {
-          if (timedOut)
-            return reject(
-              new Error(`Paste with ${tool.cmd} timed out after 1 second`)
-            );
+          if (timedOut) return reject(new Error(`Paste with ${tool.cmd} timed out after 1 second`));
           clearTimeout(timeoutId);
 
           if (code === 0) {
@@ -333,10 +331,7 @@ class ClipboardManager {
         this.safeLog(`✅ Paste successful using ${tool.cmd}`);
         return; // Success!
       } catch (error) {
-        this.safeLog(
-          `⚠️ Paste with ${tool.cmd} failed:`,
-          error?.message || error
-        );
+        this.safeLog(`⚠️ Paste with ${tool.cmd} failed:`, error?.message || error);
         // Continue to next tool
       }
     }
@@ -353,10 +348,7 @@ class ClipboardManager {
     if (process.platform !== "darwin") return true;
 
     const now = Date.now();
-    if (
-      now < this.accessibilityCache.expiresAt &&
-      this.accessibilityCache.value !== null
-    ) {
+    if (now < this.accessibilityCache.expiresAt && this.accessibilityCache.value !== null) {
       return this.accessibilityCache.value;
     }
 
@@ -463,12 +455,7 @@ Would you like to open System Settings now?`;
 
   openSystemSettings() {
     const settingsCommands = [
-      [
-        "open",
-        [
-          "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-        ],
-      ],
+      ["open", ["x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"]],
       ["open", ["-b", "com.apple.systempreferences"]],
       ["open", ["/System/Library/PreferencePanes/Security.prefPane"]],
     ];

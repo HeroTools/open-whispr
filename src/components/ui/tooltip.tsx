@@ -7,13 +7,10 @@ interface TooltipProps {
 
 export const Tooltip = ({ children, content }: TooltipProps) => {
   const [isVisible, setIsVisible] = useState(false);
-  
+
   return (
     <div className="relative inline-block">
-      <div
-        onMouseEnter={() => setIsVisible(true)}
-        onMouseLeave={() => setIsVisible(false)}
-      >
+      <div onMouseEnter={() => setIsVisible(true)} onMouseLeave={() => setIsVisible(false)}>
         {children}
       </div>
       {isVisible && (

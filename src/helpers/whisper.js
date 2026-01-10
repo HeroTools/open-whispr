@@ -1,11 +1,12 @@
 const { spawn } = require("child_process");
+const { app } = require("electron");
 const fs = require("fs");
 const fsPromises = require("fs").promises;
 const os = require("os");
 const path = require("path");
 const crypto = require("crypto");
 const PythonInstaller = require("./pythonInstaller");
-const { runCommand, TIMEOUTS } = require("../utils/process");
+const { runCommand, killProcess, TIMEOUTS } = require("../utils/process");
 const debugLogger = require("./debugLogger");
 
 // Cache TTL - mirrors CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
@@ -19,6 +20,9 @@ class WhisperManager {
     this.currentDownloadProcess = null;
     this.pythonInstaller = new PythonInstaller();
     this.cachedFFmpegPath = null;
+    this.bundledPythonPath = null;
+    this.bundledPythonChecked = false;
+    this.venvReadyPromise = null;
     this.ffmpegAvailabilityCache = { result: null, expiresAt: 0 };
   }
 
@@ -29,24 +33,9 @@ class WhisperManager {
     return message.replace(/\x1B\[[0-9;]*m/g, "");
   }
 
-  shouldRetryWithUserInstall(message = "") {
-    const normalized = this.sanitizeErrorMessage(message).toLowerCase();
-    const shouldUseUser = (
-      normalized.includes("permission denied") ||
-      normalized.includes("access is denied") ||
-      normalized.includes("externally-managed-environment") ||
-      normalized.includes("externally managed environment") ||
-      normalized.includes("pep 668") ||
-      normalized.includes("--break-system-packages")
-    );
-    return shouldUseUser;
-  }
-
   isTomlResolverError(message = "") {
     const normalized = this.sanitizeErrorMessage(message).toLowerCase();
-    return (
-      normalized.includes("pyproject.toml") || normalized.includes("tomlerror")
-    );
+    return normalized.includes("pyproject.toml") || normalized.includes("tomlerror");
   }
 
   formatWhisperInstallError(message = "") {
@@ -57,11 +46,198 @@ class WhisperManager {
       return "Microsoft Visual C++ build tools required. Install Visual Studio Build Tools.";
     }
 
+    if (
+      lower.includes("externally-managed-environment") ||
+      lower.includes("externally managed environment") ||
+      lower.includes("pep 668") ||
+      lower.includes("--break-system-packages")
+    ) {
+      return "System Python is externally managed (PEP 668). OpenWhispr installs Whisper into an isolated environment by default. If you set OPENWHISPR_PYTHON, unset it or point it to a virtual environment, then try again.";
+    }
+
     if (lower.includes("no matching distribution")) {
-      return "Python version incompatible. OpenAI Whisper requires Python 3.8-3.11.";
+      return "Python version incompatible. Whisper requires a supported Python 3.x runtime.";
     }
 
     return formatted;
+  }
+
+  getUserDataDir() {
+    try {
+      if (app && app.getPath) {
+        return app.getPath("userData");
+      }
+    } catch (error) {
+      // Fall back to home directory
+    }
+    return path.join(os.homedir(), ".openwhispr");
+  }
+
+  getManagedPythonRoot() {
+    return path.join(this.getUserDataDir(), "python");
+  }
+
+  getVenvPath() {
+    return path.join(this.getManagedPythonRoot(), "venv");
+  }
+
+  getVenvPythonPath() {
+    const venvPath = this.getVenvPath();
+    if (process.platform === "win32") {
+      return path.join(venvPath, "Scripts", "python.exe");
+    }
+    const python3Path = path.join(venvPath, "bin", "python3");
+    if (fs.existsSync(python3Path)) {
+      return python3Path;
+    }
+    return path.join(venvPath, "bin", "python");
+  }
+
+  getBundledPythonCandidates() {
+    const baseDirs = [];
+    if (process.resourcesPath) {
+      baseDirs.push(path.join(process.resourcesPath, "python"));
+    }
+    baseDirs.push(path.join(__dirname, "..", "..", "resources", "python"));
+
+    const candidates = [];
+    const uniqueBaseDirs = Array.from(new Set(baseDirs));
+
+    for (const baseDir of uniqueBaseDirs) {
+      if (!baseDir) {
+        continue;
+      }
+      if (process.platform === "win32") {
+        candidates.push(
+          path.join(baseDir, "python.exe"),
+          path.join(baseDir, "python", "python.exe")
+        );
+      } else {
+        candidates.push(
+          path.join(baseDir, "bin", "python3"),
+          path.join(baseDir, "bin", "python"),
+          path.join(baseDir, "python3")
+        );
+      }
+    }
+
+    return candidates;
+  }
+
+  resolveBundledPython() {
+    if (this.bundledPythonChecked) {
+      return this.bundledPythonPath;
+    }
+
+    this.bundledPythonChecked = true;
+    for (const candidate of this.getBundledPythonCandidates()) {
+      if (candidate && fs.existsSync(candidate)) {
+        this.bundledPythonPath = candidate;
+        return candidate;
+      }
+    }
+
+    this.bundledPythonPath = null;
+    return null;
+  }
+
+  normalizePathForCompare(candidate) {
+    if (!candidate) {
+      return "";
+    }
+    const normalized = path.normalize(candidate);
+    return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+  }
+
+  getPythonSource(pythonPath) {
+    const normalizedPath = this.normalizePathForCompare(pythonPath);
+
+    // Check venv first (most common case when using managed environment)
+    const normalizedVenv = this.normalizePathForCompare(this.getVenvPath());
+    if (normalizedVenv && normalizedPath.startsWith(normalizedVenv)) {
+      return "venv";
+    }
+
+    // Check override before bundled (user preference takes priority)
+    if (process.env.OPENWHISPR_PYTHON) {
+      const normalizedOverride = this.normalizePathForCompare(process.env.OPENWHISPR_PYTHON);
+      if (normalizedOverride && normalizedPath === normalizedOverride) {
+        return "override";
+      }
+    }
+
+    // Only check bundled if needed (avoids filesystem scan)
+    if (this.bundledPythonPath || !this.bundledPythonChecked) {
+      const bundled = this.resolveBundledPython();
+      if (bundled) {
+        const normalizedBundled = this.normalizePathForCompare(bundled);
+        if (normalizedBundled && normalizedPath === normalizedBundled) {
+          return "bundled";
+        }
+      }
+    }
+
+    return "system";
+  }
+
+  async ensureManagedVenv() {
+    if (process.env.OPENWHISPR_PYTHON) {
+      return process.env.OPENWHISPR_PYTHON;
+    }
+
+    if (this.venvReadyPromise) {
+      return this.venvReadyPromise;
+    }
+
+    // Assign promise synchronously to prevent race conditions
+    const venvPath = this.getVenvPath();
+    const venvPython = this.getVenvPythonPath();
+
+    this.venvReadyPromise = (async () => {
+      if (fs.existsSync(venvPython)) {
+        const version = await this.getPythonVersion(venvPython);
+        if (this.isPythonVersionSupported(version)) {
+          this.pythonCmd = venvPython;
+          return venvPython;
+        }
+
+        try {
+          fs.rmSync(venvPath, { recursive: true, force: true });
+        } catch (error) {
+          debugLogger.log("Failed to remove outdated venv:", error.message);
+        }
+      }
+
+      let basePython;
+      try {
+        basePython = await this.findPythonExecutable({ allowVenv: false });
+      } catch (error) {
+        throw new Error(
+          "Python 3.x not found. Install Python from Settings or set OPENWHISPR_PYTHON to a valid interpreter."
+        );
+      }
+
+      fs.mkdirSync(this.getManagedPythonRoot(), { recursive: true });
+      try {
+        await runCommand(basePython, ["-m", "venv", venvPath], { timeout: TIMEOUTS.INSTALL });
+      } catch (error) {
+        const cleanMessage = this.sanitizeErrorMessage(error.message).toLowerCase();
+        if (cleanMessage.includes("no module named venv")) {
+          throw new Error(
+            "Python venv module missing. Install the venv package for your Python distribution and try again."
+          );
+        }
+        throw error;
+      }
+
+      this.pythonCmd = venvPython;
+      return venvPython;
+    })().catch((error) => {
+      this.venvReadyPromise = null;
+      throw error;
+    });
+
+    return this.venvReadyPromise;
   }
 
   getWhisperScriptPath() {
@@ -70,11 +246,7 @@ class WhisperManager {
       return path.join(__dirname, "..", "..", "whisper_bridge.py");
     } else {
       // In production, use the unpacked path
-      return path.join(
-        process.resourcesPath,
-        "app.asar.unpacked",
-        "whisper_bridge.py"
-      );
+      return path.join(process.resourcesPath, "app.asar.unpacked", "whisper_bridge.py");
     }
   }
 
@@ -90,34 +262,28 @@ class WhisperManager {
   }
 
   async transcribeLocalWhisper(audioBlob, options = {}) {
-    debugLogger.logWhisperPipeline('transcribeLocalWhisper - start', {
+    debugLogger.logWhisperPipeline("transcribeLocalWhisper - start", {
       options,
       audioBlobType: audioBlob?.constructor?.name,
-      audioBlobSize: audioBlob?.byteLength || audioBlob?.size || 0
+      audioBlobSize: audioBlob?.byteLength || audioBlob?.size || 0,
     });
-    
+
     // First check if FFmpeg is available
     const ffmpegCheck = await this.checkFFmpegAvailability();
-    debugLogger.logWhisperPipeline('FFmpeg availability check', ffmpegCheck);
-    
+    debugLogger.logWhisperPipeline("FFmpeg availability check", ffmpegCheck);
+
     if (!ffmpegCheck.available) {
-      debugLogger.error('FFmpeg not available', ffmpegCheck);
-      throw new Error(`FFmpeg not available: ${ffmpegCheck.error || 'Unknown error'}`);
+      debugLogger.error("FFmpeg not available", ffmpegCheck);
+      throw new Error(`FFmpeg not available: ${ffmpegCheck.error || "Unknown error"}`);
     }
-    
+
     const tempAudioPath = await this.createTempAudioFile(audioBlob);
     const model = options.model || "base";
     const language = options.language || null;
 
     try {
-      const result = await this.runWhisperProcess(
-        tempAudioPath,
-        model,
-        language
-      );
+      const result = await this.runWhisperProcess(tempAudioPath, model, language);
       return this.parseWhisperResult(result);
-    } catch (error) {
-      throw error;
     } finally {
       await this.cleanupTempFile(tempAudioPath);
     }
@@ -128,8 +294,8 @@ class WhisperManager {
     const filename = `whisper_audio_${crypto.randomUUID()}.wav`;
     const tempAudioPath = path.join(tempDir, filename);
 
-    debugLogger.logAudioData('createTempAudioFile', audioBlob);
-    debugLogger.log('Creating temp file at:', tempAudioPath);
+    debugLogger.logAudioData("createTempAudioFile", audioBlob);
+    debugLogger.log("Creating temp file at:", tempAudioPath);
 
     let buffer;
     if (audioBlob instanceof ArrayBuffer) {
@@ -141,29 +307,29 @@ class WhisperManager {
     } else if (audioBlob && audioBlob.buffer) {
       buffer = Buffer.from(audioBlob.buffer);
     } else {
-      debugLogger.error('Unsupported audio data type:', typeof audioBlob, audioBlob);
+      debugLogger.error("Unsupported audio data type:", typeof audioBlob, audioBlob);
       throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
     }
 
-    debugLogger.log('Buffer created, size:', buffer.length);
+    debugLogger.log("Buffer created, size:", buffer.length);
 
     // Validate buffer before writing
     if (!buffer || buffer.length === 0) {
-      debugLogger.error('Buffer is empty before writing');
+      debugLogger.error("Buffer is empty before writing");
       throw new Error("Audio buffer is empty - no audio data received");
     }
 
     // Minimum viable audio file size (WAV header is 44 bytes minimum)
     const MIN_AUDIO_SIZE = 44;
     if (buffer.length < MIN_AUDIO_SIZE) {
-      debugLogger.error('Buffer too small to be valid audio:', buffer.length, 'bytes');
+      debugLogger.error("Buffer too small to be valid audio:", buffer.length, "bytes");
       throw new Error(`Audio data too small (${buffer.length} bytes) - recording may have failed`);
     }
 
     // Validate WAV header if present
     const hasValidWavHeader = this.validateWavHeader(buffer);
     if (!hasValidWavHeader) {
-      debugLogger.log('No valid WAV header detected, buffer may need conversion');
+      debugLogger.log("No valid WAV header detected, buffer may need conversion");
       // Don't throw error - FFmpeg can handle headerless audio data
     }
 
@@ -176,17 +342,17 @@ class WhisperManager {
       size: stats.size,
       isFile: stats.isFile(),
       permissions: stats.mode.toString(8),
-      hasWavHeader: hasValidWavHeader
+      hasWavHeader: hasValidWavHeader,
     };
-    debugLogger.logWhisperPipeline('Temp audio file created', fileInfo);
+    debugLogger.logWhisperPipeline("Temp audio file created", fileInfo);
 
     if (stats.size === 0) {
-      debugLogger.error('Audio file is empty after writing');
+      debugLogger.error("Audio file is empty after writing");
       throw new Error("Audio file is empty - file write failed");
     }
 
     if (stats.size < MIN_AUDIO_SIZE) {
-      debugLogger.error('Audio file too small after writing:', stats.size, 'bytes');
+      debugLogger.error("Audio file too small after writing:", stats.size, "bytes");
       throw new Error(`Audio file too small (${stats.size} bytes) - recording failed`);
     }
 
@@ -200,27 +366,27 @@ class WhisperManager {
       }
 
       // Check RIFF header
-      const riff = buffer.toString('ascii', 0, 4);
-      if (riff !== 'RIFF') {
+      const riff = buffer.toString("ascii", 0, 4);
+      if (riff !== "RIFF") {
         return false;
       }
 
       // Check WAVE format
-      const wave = buffer.toString('ascii', 8, 12);
-      if (wave !== 'WAVE') {
+      const wave = buffer.toString("ascii", 8, 12);
+      if (wave !== "WAVE") {
         return false;
       }
 
       // Check fmt subchunk
-      const fmt = buffer.toString('ascii', 12, 16);
-      if (fmt !== 'fmt ') {
+      const fmt = buffer.toString("ascii", 12, 16);
+      if (fmt !== "fmt ") {
         return false;
       }
 
-      debugLogger.log('Valid WAV header detected');
+      debugLogger.log("Valid WAV header detected");
       return true;
     } catch (error) {
-      debugLogger.error('WAV header validation error:', error.message);
+      debugLogger.error("WAV header validation error:", error.message);
       return false;
     }
   }
@@ -234,7 +400,7 @@ class WhisperManager {
 
     try {
       ffmpegPath = require("ffmpeg-static");
-      debugLogger.logFFmpegDebug('Initial ffmpeg-static path', ffmpegPath);
+      debugLogger.logFFmpegDebug("Initial ffmpeg-static path", ffmpegPath);
 
       // Normalize path separators for cross-platform compatibility
       ffmpegPath = path.normalize(ffmpegPath);
@@ -250,34 +416,38 @@ class WhisperManager {
           try {
             fs.accessSync(ffmpegPath, fs.constants.X_OK);
           } catch (e) {
-            debugLogger.error('FFmpeg exists but is not executable:', e.message);
-            throw new Error('FFmpeg not executable');
+            debugLogger.error("FFmpeg exists but is not executable:", e.message);
+            throw new Error("FFmpeg not executable");
           }
         }
-        debugLogger.log('Found bundled FFmpeg at:', ffmpegPath);
+        debugLogger.log("Found bundled FFmpeg at:", ffmpegPath);
       } else if (process.env.NODE_ENV !== "development") {
         const possiblePaths = [
           ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1"),
           ffmpegPath.replace(/app\.asar/g, "app.asar.unpacked"),
           ffmpegPath.replace(/.*app\.asar/, path.join(__dirname, "..", "..", "app.asar.unpacked")),
-          process.resourcesPath ? path.join(
-            process.resourcesPath,
-            "app.asar.unpacked",
-            "node_modules",
-            "ffmpeg-static",
-            process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"
-          ) : null,
-          process.resourcesPath ? path.join(
-            process.resourcesPath,
-            "app.asar.unpacked",
-            "node_modules",
-            "ffmpeg-static",
-            "bin",
-            process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"
-          ) : null,
+          process.resourcesPath
+            ? path.join(
+                process.resourcesPath,
+                "app.asar.unpacked",
+                "node_modules",
+                "ffmpeg-static",
+                process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"
+              )
+            : null,
+          process.resourcesPath
+            ? path.join(
+                process.resourcesPath,
+                "app.asar.unpacked",
+                "node_modules",
+                "ffmpeg-static",
+                "bin",
+                process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"
+              )
+            : null,
         ].filter(Boolean);
 
-        debugLogger.log('FFmpeg not found at primary path, checking alternatives');
+        debugLogger.log("FFmpeg not found at primary path, checking alternatives");
 
         for (const possiblePath of possiblePaths) {
           const normalizedPath = path.normalize(possiblePath);
@@ -293,17 +463,17 @@ class WhisperManager {
             }
           }
           ffmpegPath = normalizedPath;
-          debugLogger.log('FFmpeg found at:', normalizedPath);
+          debugLogger.log("FFmpeg found at:", normalizedPath);
           break;
         }
       }
 
       if (!ffmpegPath || !fs.existsSync(ffmpegPath)) {
-        debugLogger.log('Bundled FFmpeg not found, trying system FFmpeg');
-        throw new Error('Bundled FFmpeg not found');
+        debugLogger.log("Bundled FFmpeg not found, trying system FFmpeg");
+        throw new Error("Bundled FFmpeg not found");
       }
     } catch (bundledError) {
-      debugLogger.log('Bundled FFmpeg error:', bundledError.message);
+      debugLogger.log("Bundled FFmpeg error:", bundledError.message);
 
       // Try system FFmpeg with enhanced Windows support
       const systemCandidates = await this.getSystemFfmpegCandidates();
@@ -311,7 +481,7 @@ class WhisperManager {
       for (const candidate of systemCandidates) {
         try {
           await runCommand(candidate, ["--version"], { timeout: TIMEOUTS.QUICK_CHECK });
-          debugLogger.log('Using system FFmpeg:', candidate);
+          debugLogger.log("Using system FFmpeg:", candidate);
           ffmpegPath = candidate;
           break;
         } catch (error) {
@@ -320,7 +490,7 @@ class WhisperManager {
       }
 
       if (!ffmpegPath) {
-        debugLogger.error('No FFmpeg found (bundled or system)');
+        debugLogger.error("No FFmpeg found (bundled or system)");
         return null;
       }
     }
@@ -385,16 +555,21 @@ class WhisperManager {
     return new Promise(async (resolve, reject) => {
       const ffmpegPath = await this.getFFmpegPath();
       if (!ffmpegPath) {
-        reject(new Error('FFmpeg not found. Please ensure FFmpeg is installed or bundled correctly.'));
+        reject(
+          new Error("FFmpeg not found. Please ensure FFmpeg is installed or bundled correctly.")
+        );
         return;
       }
 
       let effectiveFfmpegPath = ffmpegPath;
-      if (effectiveFfmpegPath.includes("app.asar") && !effectiveFfmpegPath.includes("app.asar.unpacked")) {
+      if (
+        effectiveFfmpegPath.includes("app.asar") &&
+        !effectiveFfmpegPath.includes("app.asar.unpacked")
+      ) {
         const unpackedPath = effectiveFfmpegPath.replace("app.asar", "app.asar.unpacked");
         if (fs.existsSync(unpackedPath)) {
           effectiveFfmpegPath = unpackedPath;
-          debugLogger.log('Using unpacked FFmpeg path:', unpackedPath);
+          debugLogger.log("Using unpacked FFmpeg path:", unpackedPath);
         }
       }
 
@@ -406,7 +581,7 @@ class WhisperManager {
         FFMPEG_BINARY: absoluteFFmpegPath,
       };
 
-      debugLogger.logFFmpegDebug('Setting FFmpeg env vars', absoluteFFmpegPath);
+      debugLogger.logFFmpegDebug("Setting FFmpeg env vars", absoluteFFmpegPath);
 
       // Add ffmpeg directory to PATH if we have a valid path
       if (ffmpegPath) {
@@ -418,7 +593,7 @@ class WhisperManager {
           enhancedEnv.PATH = `${ffmpegDir}${pathSeparator}${currentPath}`;
         }
       }
-      
+
       // Add common system paths for macOS GUI launches
       if (process.platform === "darwin") {
         const commonPaths = [
@@ -428,15 +603,15 @@ class WhisperManager {
           "/usr/bin",
           "/bin",
           "/usr/sbin",
-          "/sbin"
+          "/sbin",
         ];
-        
+
         const currentPath = enhancedEnv.PATH || "";
-        const pathsToAdd = commonPaths.filter(p => !currentPath.includes(p));
-        
+        const pathsToAdd = commonPaths.filter((p) => !currentPath.includes(p));
+
         if (pathsToAdd.length > 0) {
           enhancedEnv.PATH = `${currentPath}:${pathsToAdd.join(":")}`;
-          debugLogger.log('Added system paths for GUI launch');
+          debugLogger.log("Added system paths for GUI launch");
         }
       }
 
@@ -455,21 +630,21 @@ class WhisperManager {
       // Set timeout for longer recordings
       const timeout = setTimeout(() => {
         if (!isResolved) {
-          whisperProcess.kill("SIGTERM");
-          reject(new Error("Whisper transcription timed out (120 seconds)"));
+          killProcess(whisperProcess, "SIGTERM");
+          reject(new Error("Whisper transcription timed out (20 minutes)"));
         }
-      }, 1200000);
+      }, TIMEOUTS.TRANSCRIPTION);
 
       whisperProcess.stdout.on("data", (data) => {
         stdout += data.toString();
-        debugLogger.logProcessOutput('Whisper', 'stdout', data);
+        debugLogger.logProcessOutput("Whisper", "stdout", data);
       });
 
       whisperProcess.stderr.on("data", (data) => {
         const stderrText = data.toString();
         stderr += stderrText;
 
-        debugLogger.logProcessOutput('Whisper', 'stderr', data);
+        debugLogger.logProcessOutput("Whisper", "stderr", data);
       });
 
       whisperProcess.on("close", (code) => {
@@ -477,14 +652,14 @@ class WhisperManager {
         isResolved = true;
         clearTimeout(timeout);
 
-        debugLogger.logWhisperPipeline('Process closed', {
+        debugLogger.logWhisperPipeline("Process closed", {
           code,
           stdoutLength: stdout.length,
-          stderrLength: stderr.length
+          stderrLength: stderr.length,
         });
 
         if (code === 0) {
-          debugLogger.log('Transcription successful');
+          debugLogger.log("Transcription successful");
           resolve(stdout);
         } else {
           // Better error message for FFmpeg issues
@@ -495,8 +670,7 @@ class WhisperManager {
             stderr.includes("No such file or directory") ||
             stderr.includes("FFmpeg not found")
           ) {
-            errorMessage +=
-              "\n\nFFmpeg issue detected. Try restarting the app or reinstalling.";
+            errorMessage += "\n\nFFmpeg issue detected. Try restarting the app or reinstalling.";
           }
 
           reject(new Error(errorMessage));
@@ -530,7 +704,7 @@ class WhisperManager {
   }
 
   parseWhisperResult(stdout) {
-    debugLogger.logWhisperPipeline('Parsing result', { stdoutLength: stdout.length });
+    debugLogger.logWhisperPipeline("Parsing result", { stdoutLength: stdout.length });
     try {
       // Clean stdout by removing any non-JSON content
       const lines = stdout.split("\n").filter((line) => line.trim());
@@ -550,13 +724,13 @@ class WhisperManager {
       }
 
       const result = JSON.parse(jsonLine);
-      
+
       if (!result.text || result.text.trim().length === 0) {
         return { success: false, message: "No audio detected" };
       }
       return { success: true, text: result.text.trim() };
     } catch (parseError) {
-      debugLogger.error('Failed to parse Whisper output');
+      debugLogger.error("Failed to parse Whisper output");
       throw new Error(`Failed to parse Whisper output: ${parseError.message}`);
     }
   }
@@ -569,9 +743,21 @@ class WhisperManager {
     }
   }
 
-  async findPythonExecutable() {
+  async findPythonExecutable(options = {}) {
+    const { allowVenv = true, allowBundled = true, allowOverride = true } = options;
+
     if (this.pythonCmd) {
-      return this.pythonCmd;
+      const cachedSource = this.getPythonSource(this.pythonCmd);
+      const cachedExists = !path.isAbsolute(this.pythonCmd) || fs.existsSync(this.pythonCmd);
+      if (
+        cachedExists &&
+        (cachedSource !== "venv" || allowVenv) &&
+        (cachedSource !== "bundled" || allowBundled) &&
+        (cachedSource !== "override" || allowOverride)
+      ) {
+        return this.pythonCmd;
+      }
+      this.pythonCmd = null;
     }
 
     const candidateSet = new Set();
@@ -586,8 +772,19 @@ class WhisperManager {
       candidateSet.add(sanitized);
     };
 
-    if (process.env.OPENWHISPR_PYTHON) {
+    if (allowOverride && process.env.OPENWHISPR_PYTHON) {
       addCandidate(process.env.OPENWHISPR_PYTHON);
+    }
+
+    if (allowVenv) {
+      addCandidate(this.getVenvPythonPath());
+    }
+
+    if (allowBundled) {
+      const bundledPython = this.resolveBundledPython();
+      if (bundledPython) {
+        addCandidate(bundledPython);
+      }
     }
 
     if (process.platform === "win32") {
@@ -643,7 +840,9 @@ class WhisperManager {
         const version = await this.getPythonVersion(resolvedPath);
         if (this.isPythonVersionSupported(version)) {
           this.pythonCmd = resolvedPath;
-          debugLogger.log(`Found Python: ${resolvedPath} (version ${version.major}.${version.minor})`);
+          debugLogger.log(
+            `Found Python: ${resolvedPath} (version ${version.major}.${version.minor})`
+          );
           return resolvedPath;
         }
       } catch (error) {
@@ -663,14 +862,14 @@ class WhisperManager {
     }
 
     const candidates = [];
-    debugLogger.logWindowsPythonSearch?.('Starting registry search', { method: 'registry' });
+    debugLogger.logWindowsPythonSearch?.("Starting registry search", { method: "registry" });
 
     try {
       // Query Windows Registry for Python installations
       const registryKeys = [
-        'HKLM\\SOFTWARE\\Python\\PythonCore',
-        'HKCU\\SOFTWARE\\Python\\PythonCore',
-        'HKLM\\SOFTWARE\\Wow6432Node\\Python\\PythonCore',
+        "HKLM\\SOFTWARE\\Python\\PythonCore",
+        "HKCU\\SOFTWARE\\Python\\PythonCore",
+        "HKLM\\SOFTWARE\\Wow6432Node\\Python\\PythonCore",
       ];
 
       for (const registryKey of registryKeys) {
@@ -678,8 +877,8 @@ class WhisperManager {
           debugLogger.log(`Querying registry key: ${registryKey}`);
 
           // List all Python versions in registry
-          const { output } = await runCommand('reg', ['query', registryKey], {
-            timeout: TIMEOUTS.QUICK_CHECK
+          const { output } = await runCommand("reg", ["query", registryKey], {
+            timeout: TIMEOUTS.QUICK_CHECK,
           });
 
           // Parse version folders (e.g., "3.11", "3.12")
@@ -688,20 +887,24 @@ class WhisperManager {
 
           if (versionMatches) {
             for (const match of versionMatches) {
-              const version = match.replace('PythonCore\\', '');
+              const version = match.replace("PythonCore\\", "");
 
               // Query InstallPath for this version
               try {
                 const installPathKey = `${registryKey}\\${version}\\InstallPath`;
-                const { output: pathOutput } = await runCommand('reg', ['query', installPathKey, '/ve'], {
-                  timeout: TIMEOUTS.QUICK_CHECK
-                });
+                const { output: pathOutput } = await runCommand(
+                  "reg",
+                  ["query", installPathKey, "/ve"],
+                  {
+                    timeout: TIMEOUTS.QUICK_CHECK,
+                  }
+                );
 
                 // Extract path from registry output
                 const pathMatch = pathOutput.match(/REG_SZ\s+(.+)/);
                 if (pathMatch && pathMatch[1]) {
                   const installPath = pathMatch[1].trim();
-                  const pythonExe = path.join(installPath, 'python.exe');
+                  const pythonExe = path.join(installPath, "python.exe");
 
                   debugLogger.log(`Checking Python ${version} at: ${pythonExe}`);
 
@@ -722,12 +925,12 @@ class WhisperManager {
         }
       }
     } catch (error) {
-      debugLogger.log('Registry query failed:', error.message);
+      debugLogger.log("Registry query failed:", error.message);
     }
 
-    debugLogger.logWindowsPythonSearch?.('Registry search complete', {
+    debugLogger.logWindowsPythonSearch?.("Registry search complete", {
       foundCount: candidates.length,
-      candidates
+      candidates,
     });
 
     return candidates;
@@ -740,12 +943,12 @@ class WhisperManager {
 
     try {
       // Use 'where' command to find executable in PATH
-      const { output } = await runCommand('where', [command], {
-        timeout: TIMEOUTS.QUICK_CHECK
+      const { output } = await runCommand("where", [command], {
+        timeout: TIMEOUTS.QUICK_CHECK,
       });
 
       // 'where' returns multiple paths, take the first one
-      const paths = output.trim().split('\n');
+      const paths = output.trim().split("\n");
       if (paths.length > 0) {
         const resolvedPath = paths[0].trim();
         if (fs.existsSync(resolvedPath)) {
@@ -765,8 +968,7 @@ class WhisperManager {
     const versionSuffixes = ["313", "312", "311", "310", "39", "38"];
 
     const systemDrive = process.env.SystemDrive || "C:";
-    const windowsDir =
-      process.env.WINDIR || path.join(systemDrive, "Windows");
+    const windowsDir = process.env.WINDIR || path.join(systemDrive, "Windows");
 
     candidates.push("py");
     candidates.push("py.exe");
@@ -779,11 +981,7 @@ class WhisperManager {
     const baseDirs = [];
     if (process.env.LOCALAPPDATA) {
       baseDirs.push(path.join(process.env.LOCALAPPDATA, "Programs", "Python"));
-      const windowsApps = path.join(
-        process.env.LOCALAPPDATA,
-        "Microsoft",
-        "WindowsApps"
-      );
+      const windowsApps = path.join(process.env.LOCALAPPDATA, "Microsoft", "WindowsApps");
       candidates.push(path.join(windowsApps, "python.exe"));
       candidates.push(path.join(windowsApps, "python3.exe"));
     }
@@ -813,17 +1011,46 @@ class WhisperManager {
     try {
       // Clear cached Python command since we're installing new one
       this.pythonCmd = null;
-      
-      const result = await this.pythonInstaller.installPython(progressCallback);
-      
-      // After installation, try to find Python again
-      try {
-        await this.findPythonExecutable();
-        return result;
-      } catch (findError) {
-        throw new Error("Python installed but not found in PATH. Please restart the application.");
+
+      // If OPENWHISPR_PYTHON is set, skip installation and use that
+      if (process.env.OPENWHISPR_PYTHON) {
+        if (progressCallback) {
+          progressCallback({ stage: "Using custom Python override...", percentage: 50 });
+        }
+        const version = await this.getPythonVersion(process.env.OPENWHISPR_PYTHON);
+        if (!this.isPythonVersionSupported(version)) {
+          throw new Error(
+            `OPENWHISPR_PYTHON points to an invalid or unsupported Python. ` +
+              `Ensure it exists and is Python 3.x, or unset the variable.`
+          );
+        }
+        if (progressCallback) {
+          progressCallback({ stage: "Python ready", percentage: 100 });
+        }
+        return { success: true, method: "override" };
       }
-      
+
+      const bundledPython = this.resolveBundledPython();
+      if (bundledPython) {
+        if (progressCallback) {
+          progressCallback({ stage: "Using bundled Python runtime...", percentage: 40 });
+        }
+
+        await this.ensureManagedVenv();
+
+        if (progressCallback) {
+          progressCallback({ stage: "Python ready", percentage: 100 });
+        }
+
+        return { success: true, method: "bundled" };
+      }
+
+      const result = await this.pythonInstaller.installPython(progressCallback);
+
+      // After installation, prepare isolated environment
+      await this.ensureManagedVenv();
+
+      return result;
     } catch (error) {
       console.error("Python installation failed:", error);
       throw error;
@@ -831,21 +1058,34 @@ class WhisperManager {
   }
 
   async checkPythonInstallation() {
-    return await this.pythonInstaller.isPythonInstalled();
+    try {
+      const pythonPath = await this.findPythonExecutable();
+      const version = await this.getPythonVersion(pythonPath);
+      const normalizedVersion = version
+        ? parseFloat(`${version.major}.${version.minor}`)
+        : undefined;
+
+      return {
+        installed: !!version,
+        command: pythonPath,
+        version: normalizedVersion,
+        source: this.getPythonSource(pythonPath),
+      };
+    } catch (error) {
+      return { installed: false };
+    }
   }
 
   async getPythonVersion(pythonPath) {
     return new Promise((resolve) => {
       // Use shell: false on Windows to ensure exact path is used
-      const spawnOptions = process.platform === "win32"
-        ? { windowsHide: true, shell: false }
-        : {};
+      const spawnOptions = process.platform === "win32" ? { windowsHide: true, shell: false } : {};
 
       const testProcess = spawn(pythonPath, ["--version"], spawnOptions);
       let output = "";
 
-      testProcess.stdout.on("data", (data) => output += data);
-      testProcess.stderr.on("data", (data) => output += data);
+      testProcess.stdout.on("data", (data) => (output += data));
+      testProcess.stderr.on("data", (data) => (output += data));
 
       testProcess.on("close", (code) => {
         if (code === 0) {
@@ -878,10 +1118,7 @@ class WhisperManager {
       const pythonCmd = await this.findPythonExecutable();
 
       const result = await new Promise((resolve) => {
-        const checkProcess = spawn(pythonCmd, [
-          "-c",
-          'import whisper; print("OK")',
-        ]);
+        const checkProcess = spawn(pythonCmd, ["-c", 'import whisper; print("OK")']);
 
         let output = "";
         checkProcess.stdout.on("data", (data) => {
@@ -915,7 +1152,7 @@ class WhisperManager {
   }
 
   async checkFFmpegAvailability() {
-    debugLogger.logWhisperPipeline('checkFFmpegAvailability - start', {});
+    debugLogger.logWhisperPipeline("checkFFmpegAvailability - start", {});
 
     try {
       const now = Date.now();
@@ -931,10 +1168,10 @@ class WhisperManager {
       const whisperScriptPath = this.getWhisperScriptPath();
       const ffmpegPath = await this.getFFmpegPath();
       if (!ffmpegPath) {
-        debugLogger.log('FFmpeg not found by resolver');
+        debugLogger.log("FFmpeg not found by resolver");
         const result = {
           available: false,
-          error: "FFmpeg not found"
+          error: "FFmpeg not found",
         };
         this.ffmpegAvailabilityCache = {
           result,
@@ -943,22 +1180,18 @@ class WhisperManager {
         return result;
       }
 
-      debugLogger.log('FFmpeg resolved for availability check:', ffmpegPath);
+      debugLogger.log("FFmpeg resolved for availability check:", ffmpegPath);
 
       const result = await new Promise((resolve) => {
         const env = {
           ...process.env,
           FFMPEG_PATH: ffmpegPath || "",
           FFMPEG_EXECUTABLE: ffmpegPath || "",
-          FFMPEG_BINARY: ffmpegPath || ""
+          FFMPEG_BINARY: ffmpegPath || "",
         };
 
-        const checkProcess = spawn(pythonCmd, [
-          whisperScriptPath,
-          "--mode",
-          "check-ffmpeg",
-        ], {
-          env: env
+        const checkProcess = spawn(pythonCmd, [whisperScriptPath, "--mode", "check-ffmpeg"], {
+          env: env,
         });
 
         let output = "";
@@ -973,26 +1206,26 @@ class WhisperManager {
         });
 
         checkProcess.on("close", (code) => {
-          debugLogger.logWhisperPipeline('FFmpeg check process closed', {
+          debugLogger.logWhisperPipeline("FFmpeg check process closed", {
             code,
             outputLength: output.length,
-            stderrLength: stderr.length
+            stderrLength: stderr.length,
           });
-          
+
           if (code === 0) {
             try {
               const result = JSON.parse(output);
-              debugLogger.log('FFmpeg check result:', result);
+              debugLogger.log("FFmpeg check result:", result);
               resolve(result);
             } catch (parseError) {
-              debugLogger.error('Failed to parse FFmpeg check result:', parseError);
+              debugLogger.error("Failed to parse FFmpeg check result:", parseError);
               resolve({
                 available: false,
                 error: "Failed to parse FFmpeg check result",
               });
             }
           } else {
-            debugLogger.error('FFmpeg check failed with code:', code, 'stderr:', stderr);
+            debugLogger.error("FFmpeg check failed with code:", code, "stderr:", stderr);
             resolve({
               available: false,
               error: stderr || "FFmpeg check failed",
@@ -1021,81 +1254,69 @@ class WhisperManager {
   }
 
   upgradePip(pythonCmd) {
-    return runCommand(pythonCmd, ["-m", "pip", "install", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
+    return runCommand(pythonCmd, ["-m", "pip", "install", "--upgrade", "pip"], {
+      timeout: TIMEOUTS.PIP_UPGRADE,
+    });
   }
 
-  // Removed - now using shared runCommand from utils/process.js
-
   async installWhisper() {
-    const pythonCmd = await this.findPythonExecutable();
-    
-    // Upgrade pip first to avoid version issues
+    let pythonCmd;
+
+    if (process.env.OPENWHISPR_PYTHON) {
+      // Validate the override path before using it
+      const overridePath = process.env.OPENWHISPR_PYTHON;
+      const version = await this.getPythonVersion(overridePath);
+      if (!this.isPythonVersionSupported(version)) {
+        throw new Error(
+          `OPENWHISPR_PYTHON points to an invalid or unsupported Python: ${overridePath}. ` +
+            `Ensure it exists and is Python 3.x, or unset the variable to use the managed environment.`
+        );
+      }
+      pythonCmd = overridePath;
+    } else {
+      console.log("Preparing isolated Python environment...");
+      pythonCmd = await this.ensureManagedVenv();
+    }
+
+    // Upgrade pip inside the isolated environment to avoid resolver issues
     try {
       await this.upgradePip(pythonCmd);
     } catch (error) {
       const cleanUpgradeError = this.sanitizeErrorMessage(error.message);
-      debugLogger.log("First pip upgrade attempt failed:", cleanUpgradeError);
-      
-      // Try user install for pip upgrade
-      try {
-        await runCommand(pythonCmd, ["-m", "pip", "install", "--user", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
-      } catch (userError) {
-        const cleanUserError = this.sanitizeErrorMessage(userError.message);
-        // If pip upgrade fails completely, try to detect if it's the TOML error
-        if (this.isTomlResolverError(cleanUpgradeError) || this.isTomlResolverError(cleanUserError)) {
-          // Try installing with legacy resolver as a workaround
-          try {
-            await runCommand(pythonCmd, ["-m", "pip", "install", "--use-deprecated=legacy-resolver", "--upgrade", "pip"], { timeout: TIMEOUTS.PIP_UPGRADE });
-          } catch (legacyError) {
-            throw new Error("Failed to upgrade pip. Please manually run: python -m pip install --upgrade pip");
-          }
-        } else {
-          debugLogger.log("Pip upgrade failed completely, attempting to continue");
-        }
-      }
+      debugLogger.log("Pip upgrade failed in managed environment:", cleanUpgradeError);
     }
-    
-    const buildInstallArgs = ({ user = false, legacy = false } = {}) => {
+
+    const buildInstallArgs = ({ legacy = false } = {}) => {
       const args = ["-m", "pip", "install"];
       if (legacy) {
         args.push("--use-deprecated=legacy-resolver");
       }
-      if (user) {
-        args.push("--user");
-      }
       args.push("-U", "openai-whisper");
       return args;
     };
-    
+
     try {
-      return await runCommand(pythonCmd, buildInstallArgs(), { timeout: TIMEOUTS.DOWNLOAD });
+      const result = await runCommand(pythonCmd, buildInstallArgs(), {
+        timeout: TIMEOUTS.DOWNLOAD,
+      });
+      this.whisperInstalled = null;
+      return result;
     } catch (error) {
       const cleanMessage = this.sanitizeErrorMessage(error.message);
-      
-      if (this.shouldRetryWithUserInstall(cleanMessage)) {
-        try {
-          return await runCommand(pythonCmd, buildInstallArgs({ user: true }), { timeout: TIMEOUTS.DOWNLOAD });
-        } catch (userError) {
-          const userMessage = this.sanitizeErrorMessage(userError.message);
-          if (this.isTomlResolverError(userMessage)) {
-            return await runCommand(pythonCmd, buildInstallArgs({ user: true, legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
-          }
-          throw new Error(this.formatWhisperInstallError(userMessage));
-        }
-      }
-      
+
       if (this.isTomlResolverError(cleanMessage)) {
         try {
-          return await runCommand(pythonCmd, buildInstallArgs({ legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
+          const result = await runCommand(pythonCmd, buildInstallArgs({ legacy: true }), {
+            timeout: TIMEOUTS.DOWNLOAD,
+          });
+          this.whisperInstalled = null;
+          return result;
         } catch (legacyError) {
           const legacyMessage = this.sanitizeErrorMessage(legacyError.message);
-          if (this.shouldRetryWithUserInstall(legacyMessage)) {
-            return await runCommand(pythonCmd, buildInstallArgs({ user: true, legacy: true }), { timeout: TIMEOUTS.DOWNLOAD });
-          }
           throw new Error(this.formatWhisperInstallError(legacyMessage));
         }
       }
-      
+
       throw new Error(this.formatWhisperInstallError(cleanMessage));
     }
   }
@@ -1105,13 +1326,7 @@ class WhisperManager {
       const pythonCmd = await this.findPythonExecutable();
       const whisperScriptPath = this.getWhisperScriptPath();
 
-      const args = [
-        whisperScriptPath,
-        "--mode",
-        "download",
-        "--model",
-        modelName,
-      ];
+      const args = [whisperScriptPath, "--mode", "download", "--model", modelName];
 
       return new Promise((resolve, reject) => {
         const downloadProcess = spawn(pythonCmd, args);
@@ -1149,8 +1364,19 @@ class WhisperManager {
           }
         });
 
+        const timeout = setTimeout(() => {
+          killProcess(downloadProcess, "SIGTERM");
+          setTimeout(() => {
+            if (!downloadProcess.killed) {
+              killProcess(downloadProcess, "SIGKILL");
+            }
+          }, 5000);
+          reject(new Error("Model download timed out (10 minutes)"));
+        }, TIMEOUTS.DOWNLOAD);
+
         downloadProcess.on("close", (code) => {
-          this.currentDownloadProcess = null; // Clear process reference
+          clearTimeout(timeout);
+          this.currentDownloadProcess = null;
 
           if (code === 0) {
             try {
@@ -1158,11 +1384,7 @@ class WhisperManager {
               resolve(result);
             } catch (parseError) {
               console.error("Failed to parse download result:", parseError);
-              reject(
-                new Error(
-                  `Failed to parse download result: ${parseError.message}`
-                )
-              );
+              reject(new Error(`Failed to parse download result: ${parseError.message}`));
             }
           } else {
             // Handle cancellation cases (SIGTERM, SIGKILL, or null exit codes)
@@ -1176,23 +1398,10 @@ class WhisperManager {
         });
 
         downloadProcess.on("error", (error) => {
+          clearTimeout(timeout);
           this.currentDownloadProcess = null;
           console.error("Model download process error:", error);
           reject(new Error(`Model download process error: ${error.message}`));
-        });
-
-        const timeout = setTimeout(() => {
-          downloadProcess.kill("SIGTERM");
-          setTimeout(() => {
-            if (!downloadProcess.killed) {
-              downloadProcess.kill("SIGKILL");
-            }
-          }, 5000);
-          reject(new Error("Model download timed out (20 minutes)"));
-        }, 1200000);
-
-        downloadProcess.on("close", () => {
-          clearTimeout(timeout);
         });
       });
     } catch (error) {
@@ -1204,13 +1413,10 @@ class WhisperManager {
   async cancelDownload() {
     if (this.currentDownloadProcess) {
       try {
-        this.currentDownloadProcess.kill("SIGTERM");
+        killProcess(this.currentDownloadProcess, "SIGTERM");
         setTimeout(() => {
-          if (
-            this.currentDownloadProcess &&
-            !this.currentDownloadProcess.killed
-          ) {
-            this.currentDownloadProcess.kill("SIGKILL");
+          if (this.currentDownloadProcess && !this.currentDownloadProcess.killed) {
+            killProcess(this.currentDownloadProcess, "SIGKILL");
           }
         }, 3000);
         return { success: true, message: "Download cancelled" };
@@ -1223,155 +1429,61 @@ class WhisperManager {
     }
   }
 
-  async checkModelStatus(modelName) {
-    try {
-      const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = this.getWhisperScriptPath();
+  /**
+   * Helper method to run whisper_bridge.py commands and parse JSON output.
+   * Reduces code duplication across model management methods.
+   */
+  async runWhisperBridgeCommand(args, operationName) {
+    const pythonCmd = await this.findPythonExecutable();
+    const whisperScriptPath = this.getWhisperScriptPath();
+    const fullArgs = [whisperScriptPath, ...args];
 
-      const args = [whisperScriptPath, "--mode", "check", "--model", modelName];
+    return new Promise((resolve, reject) => {
+      const childProcess = spawn(pythonCmd, fullArgs);
+      let stdout = "";
+      let stderr = "";
 
-      return new Promise((resolve, reject) => {
-        const checkProcess = spawn(pythonCmd, args);
-
-        let stdout = "";
-        let stderr = "";
-
-        checkProcess.stdout.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        checkProcess.stderr.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        checkProcess.on("close", (code) => {
-          if (code === 0) {
-            try {
-              const result = JSON.parse(stdout);
-              resolve(result);
-            } catch (parseError) {
-              console.error("Failed to parse model status:", parseError);
-              reject(
-                new Error(`Failed to parse model status: ${parseError.message}`)
-              );
-            }
-          } else {
-            console.error("Model status check failed with code:", code);
-            reject(
-              new Error(`Model status check failed (code ${code}): ${stderr}`)
-            );
-          }
-        });
-
-        checkProcess.on("error", (error) => {
-              reject(new Error(`Model status check error: ${error.message}`));
-        });
+      childProcess.stdout.on("data", (data) => {
+        stdout += data.toString();
       });
-    } catch (error) {
-      throw error;
-    }
+
+      childProcess.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      childProcess.on("close", (code) => {
+        if (code === 0) {
+          try {
+            resolve(JSON.parse(stdout));
+          } catch (parseError) {
+            console.error(`Failed to parse ${operationName} result:`, parseError);
+            reject(new Error(`Failed to parse ${operationName} result: ${parseError.message}`));
+          }
+        } else {
+          console.error(`${operationName} failed with code:`, code);
+          reject(new Error(`${operationName} failed (code ${code}): ${stderr}`));
+        }
+      });
+
+      childProcess.on("error", (error) => {
+        reject(new Error(`${operationName} error: ${error.message}`));
+      });
+    });
+  }
+
+  async checkModelStatus(modelName) {
+    return this.runWhisperBridgeCommand(
+      ["--mode", "check", "--model", modelName],
+      "Model status check"
+    );
   }
 
   async listWhisperModels() {
-    try {
-      const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = this.getWhisperScriptPath();
-
-      const args = [whisperScriptPath, "--mode", "list"];
-
-      return new Promise((resolve, reject) => {
-        const listProcess = spawn(pythonCmd, args);
-
-        let stdout = "";
-        let stderr = "";
-
-        listProcess.stdout.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        listProcess.stderr.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        listProcess.on("close", (code) => {
-          if (code === 0) {
-            try {
-              const result = JSON.parse(stdout);
-              resolve(result);
-            } catch (parseError) {
-              console.error("Failed to parse model list:", parseError);
-              reject(
-                new Error(`Failed to parse model list: ${parseError.message}`)
-              );
-            }
-          } else {
-            console.error("Model list failed with code:", code);
-            reject(new Error(`Model list failed (code ${code}): ${stderr}`));
-          }
-        });
-
-        listProcess.on("error", (error) => {
-              reject(new Error(`Model list error: ${error.message}`));
-        });
-      });
-    } catch (error) {
-      throw error;
-    }
+    return this.runWhisperBridgeCommand(["--mode", "list"], "Model list");
   }
 
   async deleteWhisperModel(modelName) {
-    try {
-      const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = this.getWhisperScriptPath();
-
-      const args = [
-        whisperScriptPath,
-        "--mode",
-        "delete",
-        "--model",
-        modelName,
-      ];
-
-      return new Promise((resolve, reject) => {
-        const deleteProcess = spawn(pythonCmd, args);
-
-        let stdout = "";
-        let stderr = "";
-
-        deleteProcess.stdout.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        deleteProcess.stderr.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        deleteProcess.on("close", (code) => {
-          if (code === 0) {
-            try {
-              const result = JSON.parse(stdout);
-              resolve(result);
-            } catch (parseError) {
-              console.error("Failed to parse delete result:", parseError);
-              reject(
-                new Error(
-                  `Failed to parse delete result: ${parseError.message}`
-                )
-              );
-            }
-          } else {
-            console.error("Model delete failed with code:", code);
-            reject(new Error(`Model delete failed (code ${code}): ${stderr}`));
-          }
-        });
-
-        deleteProcess.on("error", (error) => {
-              reject(new Error(`Model delete error: ${error.message}`));
-        });
-      });
-    } catch (error) {
-      throw error;
-    }
+    return this.runWhisperBridgeCommand(["--mode", "delete", "--model", modelName], "Model delete");
   }
 }
 

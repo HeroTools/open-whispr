@@ -11,9 +11,7 @@ class AppUtils {
     try {
       const dbPath = path.join(
         app.getPath("userData"),
-        process.env.NODE_ENV === "development"
-          ? "transcriptions-dev.db"
-          : "transcriptions.db"
+        process.env.NODE_ENV === "development" ? "transcriptions-dev.db" : "transcriptions.db"
       );
       if (fs.existsSync(dbPath)) {
         fs.unlinkSync(dbPath);

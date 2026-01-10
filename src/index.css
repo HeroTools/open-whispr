@@ -51,41 +51,90 @@
   * {
     @apply border-gray-200 outline-indigo-500/50;
   }
-  
+
   body {
     @apply bg-white text-gray-900;
     margin: 0;
     padding: 0;
-    font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    font-feature-settings: "liga" 1, "kern" 1;
+    font-family:
+      "Noto Sans",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+    font-feature-settings:
+      "liga" 1,
+      "kern" 1;
     text-rendering: optimizeLegibility;
   }
-  
+
   /* Electron specific styles */
-  html, body, #root {
+  html,
+  body,
+  #root {
     background: transparent;
   }
 }
 
 /* OpenWhispr Brand Typography */
 .brand-heading {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    "Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .brand-body {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    "Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   line-height: 1.6;
 }
 
 .brand-script {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    "Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   font-style: italic;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family:
+    "Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -98,7 +147,15 @@ h1 {
 
 /* Modern Button Styling - handled by button component */
 button {
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    "Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   cursor: pointer;
 }
 
@@ -113,86 +170,105 @@ svg:hover,
 }
 
 /* Embossed paper-like input styling */
-input, textarea {
+input,
+textarea {
   border-radius: 8px;
   transition: all 0.2s ease;
-  font-family: 'Noto Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    "Noto Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    sans-serif;
   box-shadow: inset 0 1px 3px rgba(43, 31, 20, 0.1);
 }
 
 /* Light mode inputs - embossed parchment */
-:root input, :root textarea {
-  background-color: #F9F6F1;
-  border: 1px solid #DDD4C7;
-  color: #2B1F14;
+:root input,
+:root textarea {
+  background-color: #f9f6f1;
+  border: 1px solid #ddd4c7;
+  color: #2b1f14;
 }
 
-:root input:focus, :root textarea:focus {
-  border-color: #C0A77D;
-  box-shadow: 0 0 0 2px rgba(192, 167, 125, 0.2), inset 0 1px 3px rgba(43, 31, 20, 0.1);
-  background-color: #FFFFFF;
+:root input:focus,
+:root textarea:focus {
+  border-color: #c0a77d;
+  box-shadow:
+    0 0 0 2px rgba(192, 167, 125, 0.2),
+    inset 0 1px 3px rgba(43, 31, 20, 0.1);
+  background-color: #ffffff;
 }
 
 /* Dark mode inputs */
-.dark input, .dark textarea {
+.dark input,
+.dark textarea {
   background-color: oklch(0.15 0 0);
   border: 1px solid oklch(0.25 0 0);
   color: oklch(0.9 0 0);
 }
 
-.dark input:focus, .dark textarea:focus {
+.dark input:focus,
+.dark textarea:focus {
   border-color: oklch(0.55 0.25 250);
   box-shadow: 0 0 0 2px oklch(0.55 0.25 250 / 0.2);
 }
 
 /* Card styling - elevated parchment */
 .card {
-  background-color: #FFFFFF;
-  border: 1px solid #DDD4C7;
+  background-color: #ffffff;
+  border: 1px solid #ddd4c7;
   border-radius: 12px;
-  box-shadow: 0 4px 8px rgba(43, 31, 20, 0.08), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  box-shadow:
+    0 4px 8px rgba(43, 31, 20, 0.08),
+    0 1px 0 rgba(255, 255, 255, 0.5) inset;
   transition: all 0.2s ease;
 }
 
 .card:hover {
-  box-shadow: 0 8px 16px rgba(43, 31, 20, 0.1), 0 1px 0 rgba(255, 255, 255, 0.5) inset;
+  box-shadow:
+    0 8px 16px rgba(43, 31, 20, 0.1),
+    0 1px 0 rgba(255, 255, 255, 0.5) inset;
   transform: translateY(-1px);
 }
 
 /* Link styling */
 a {
-  color: #2E3659;
+  color: #2e3659;
   text-decoration: none;
   transition: color 0.2s ease;
   cursor: pointer;
 }
 
 a:hover {
-  color: #4B2E2B;
+  color: #4b2e2b;
   text-decoration: underline;
   cursor: pointer;
 }
 
 /* Status indicators */
 .status-active {
-  color: #4B2E2B;
+  color: #4b2e2b;
   font-weight: 600;
 }
 
 .text-brand-primary {
-  color: #2B1F14;
+  color: #2b1f14;
 }
 
 .text-brand-accent {
-  color: #4B2E2B;
+  color: #4b2e2b;
 }
 
 .text-brand-highlight {
-  color: #C0A77D;
+  color: #c0a77d;
 }
 
 .text-brand-link {
-  color: #2E3659;
+  color: #2e3659;
 }
 
 /* Additional CSS variables for theme support */

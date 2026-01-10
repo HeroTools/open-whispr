@@ -161,8 +161,7 @@ export default function ControlPanel() {
   const deleteTranscription = async (id: number) => {
     showConfirmDialog({
       title: "Delete Transcription",
-      description:
-        "Are you certain you wish to remove this inscription from your records?",
+      description: "Are you certain you wish to remove this inscription from your records?",
       onConfirm: async () => {
         try {
           const result = await window.electronAPI.deleteTranscription(id);
@@ -171,8 +170,7 @@ export default function ControlPanel() {
           } else {
             showAlertDialog({
               title: "Delete Failed",
-              description:
-                "Failed to delete transcription. It may have already been removed.",
+              description: "Failed to delete transcription. It may have already been removed.",
             });
           }
         } catch (error) {
@@ -317,11 +315,7 @@ export default function ControlPanel() {
                 </Button>
               )}
             <SupportDropdown />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowSettings(!showSettings)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)}>
               <Settings size={16} />
             </Button>
           </>
@@ -371,13 +365,10 @@ export default function ControlPanel() {
                     No transcriptions yet
                   </h3>
                   <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
-                    Press your hotkey to start recording and create your first
-                    transcription.
+                    Press your hotkey to start recording and create your first transcription.
                   </p>
                   <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
-                    <h4 className="font-medium text-neutral-800 mb-2">
-                      Quick Start:
-                    </h4>
+                    <h4 className="font-medium text-neutral-800 mb-2">Quick Start:</h4>
                     <ol className="text-sm text-neutral-600 text-left space-y-1">
                       <li>1. Click in any text field</li>
                       <li>

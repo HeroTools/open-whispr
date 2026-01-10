@@ -10,7 +10,7 @@ import os from "os";
 
 // Only import unzipper in main process
 let unzipper: any;
-if (typeof window === 'undefined') {
+if (typeof window === "undefined") {
   unzipper = require("unzipper");
 }
 
@@ -63,14 +63,14 @@ class LlamaCppInstaller {
   }
 
   async getVersion(): Promise<string | null> {
-    if (!await this.isInstalled()) {
+    if (!(await this.isInstalled())) {
       return null;
     }
 
     return new Promise((resolve) => {
       const proc = spawn(this.binPath!, ["--version"]);
       let output = "";
-      
+
       proc.stdout.on("data", (data) => {
         output += data.toString();
       });
@@ -88,7 +88,7 @@ class LlamaCppInstaller {
 
   getDownloadUrl(): string {
     const baseUrl = "https://github.com/ggerganov/llama.cpp/releases/latest/download";
-    
+
     if (this.platform === "darwin") {
       return `${baseUrl}/llama-${this.arch === "arm64" ? "arm64" : "x64"}-apple-darwin.zip`;
     } else if (this.platform === "linux") {
@@ -96,53 +96,56 @@ class LlamaCppInstaller {
     } else if (this.platform === "win32") {
       return `${baseUrl}/llama-x64-windows.zip`;
     }
-    
+
     throw new Error(`Unsupported platform: ${this.platform}`);
   }
 
   async download(url: string, destPath: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const file = createWriteStream(destPath);
-      
-      https.get(url, (response) => {
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          const redirectUrl = response.headers.location;
-          if (redirectUrl) {
-            this.download(redirectUrl, destPath).then(resolve).catch(reject);
+
+      https
+        .get(url, (response) => {
+          if (response.statusCode === 302 || response.statusCode === 301) {
+            const redirectUrl = response.headers.location;
+            if (redirectUrl) {
+              this.download(redirectUrl, destPath).then(resolve).catch(reject);
+              return;
+            }
+          }
+
+          if (response.statusCode !== 200) {
+            reject(new Error(`Download failed with status: ${response.statusCode}`));
             return;
           }
-        }
 
-        if (response.statusCode !== 200) {
-          reject(new Error(`Download failed with status: ${response.statusCode}`));
-          return;
-        }
+          response.pipe(file);
 
-        response.pipe(file);
-        
-        file.on("finish", () => {
-          file.close();
-          resolve();
-        });
+          file.on("finish", () => {
+            file.close();
+            resolve();
+          });
 
-        file.on("error", (err) => {
-          fs.unlink(destPath, () => {});
-          reject(err);
-        });
-      }).on("error", reject);
+          file.on("error", (err) => {
+            fs.unlink(destPath, () => {});
+            reject(err);
+          });
+        })
+        .on("error", reject);
     });
   }
 
   async extract(archivePath: string): Promise<void> {
     await this.ensureInstallDir();
-    
+
     if (archivePath.endsWith(".tar.gz")) {
       await tar.x({
         file: archivePath,
         cwd: this.installDir,
       });
     } else if (archivePath.endsWith(".zip")) {
-      await fs.createReadStream(archivePath)
+      await fs
+        .createReadStream(archivePath)
         .pipe(unzipper.Extract({ path: this.installDir }))
         .promise();
     } else {
@@ -191,9 +194,9 @@ class LlamaCppInstaller {
       }
     } catch (error: any) {
       console.error("llama.cpp installation error:", error);
-      return { 
-        success: false, 
-        error: error.message || "Installation failed" 
+      return {
+        success: false,
+        error: error.message || "Installation failed",
       };
     }
   }
@@ -204,9 +207,9 @@ class LlamaCppInstaller {
       this.binPath = null;
       return { success: true };
     } catch (error: any) {
-      return { 
-        success: false, 
-        error: error.message || "Uninstall failed" 
+      return {
+        success: false,
+        error: error.message || "Uninstall failed",
       };
     }
   }
