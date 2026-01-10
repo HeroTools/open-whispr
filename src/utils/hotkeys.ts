@@ -59,7 +59,7 @@ export function formatHotkeyLabel(hotkey?: string | null): string {
 
   // Handle special GLOBE key for macOS
   if (hotkey === "GLOBE") {
-    return "Globe";
+    return "Globe/Fn";
   }
 
   // Handle compound hotkeys (contains "+")

@@ -1,13 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { formatHotkeyLabel } from "../../utils/hotkeys";
 
-/**
- * Layout-independent key code to key name mapping.
- * Uses e.code (physical key) instead of e.key (layout-dependent character)
- * to ensure hotkeys work correctly across different keyboard layouts.
- */
 const CODE_TO_KEY: Record<string, string> = {
-  // Number row
   Backquote: "`",
   Digit1: "1",
   Digit2: "2",
@@ -21,7 +15,6 @@ const CODE_TO_KEY: Record<string, string> = {
   Digit0: "0",
   Minus: "-",
   Equal: "=",
-
   // QWERTY row
   KeyQ: "Q",
   KeyW: "W",
@@ -36,7 +29,6 @@ const CODE_TO_KEY: Record<string, string> = {
   BracketLeft: "[",
   BracketRight: "]",
   Backslash: "\\",
-
   // ASDF row
   KeyA: "A",
   KeyS: "S",
@@ -49,7 +41,6 @@ const CODE_TO_KEY: Record<string, string> = {
   KeyL: "L",
   Semicolon: ";",
   Quote: "'",
-
   // ZXCV row
   KeyZ: "Z",
   KeyX: "X",
@@ -61,14 +52,12 @@ const CODE_TO_KEY: Record<string, string> = {
   Comma: ",",
   Period: ".",
   Slash: "/",
-
   // Special keys
   Space: "Space",
   Escape: "Esc",
   Tab: "Tab",
   Enter: "Enter",
   Backspace: "Backspace",
-
   // Function keys
   F1: "F1",
   F2: "F2",
@@ -82,14 +71,12 @@ const CODE_TO_KEY: Record<string, string> = {
   F10: "F10",
   F11: "F11",
   F12: "F12",
-
   // Arrow keys
   ArrowUp: "Up",
   ArrowDown: "Down",
   ArrowLeft: "Left",
   ArrowRight: "Right",
-
-  // Other common keys
+  // Navigation keys
   Insert: "Insert",
   Delete: "Delete",
   Home: "Home",
@@ -98,9 +85,6 @@ const CODE_TO_KEY: Record<string, string> = {
   PageDown: "PageDown",
 };
 
-/**
- * Keys that should be ignored when pressed alone (modifier-only presses)
- */
 const MODIFIER_CODES = new Set([
   "ShiftLeft",
   "ShiftRight",
@@ -117,163 +101,232 @@ export interface HotkeyInputProps {
   value: string;
   onChange: (hotkey: string) => void;
   onBlur?: () => void;
-  placeholder?: string;
-  className?: string;
   disabled?: boolean;
   autoFocus?: boolean;
 }
 
-/**
- * Maps a keyboard event to an Electron-compatible accelerator string.
- * Uses physical key codes for layout independence.
- *
- * @example
- * // Returns "CommandOrControl+Shift+K" when Cmd+Shift+K is pressed on macOS
- * // Returns "CommandOrControl+Shift+K" when Ctrl+Shift+K is pressed on Windows/Linux
- */
 export function mapKeyboardEventToHotkey(e: KeyboardEvent): string | null {
-  // Ignore modifier-only key presses
   if (MODIFIER_CODES.has(e.code)) {
     return null;
   }
 
-  // Get the base key from code
   const baseKey = CODE_TO_KEY[e.code];
   if (!baseKey) {
     return null;
   }
 
-  // Build modifier array using Electron's cross-platform convention
   const modifiers: string[] = [];
 
-  // CommandOrControl: Cmd on macOS, Ctrl on Windows/Linux
   if (e.ctrlKey || e.metaKey) {
     modifiers.push("CommandOrControl");
   }
-
   if (e.altKey) {
     modifiers.push("Alt");
   }
-
   if (e.shiftKey) {
     modifiers.push("Shift");
   }
 
-  // Combine modifiers and base key
-  if (modifiers.length > 0) {
-    return [...modifiers, baseKey].join("+");
-  }
-
-  // Single key (no modifiers)
-  return baseKey;
+  return modifiers.length > 0 ? [...modifiers, baseKey].join("+") : baseKey;
 }
 
-/**
- * HotkeyInput - A keyboard capture component for compound hotkeys.
- *
- * Supports:
- * - Single keys (e.g., "F1", "`")
- * - Compound keys (e.g., "CommandOrControl+Shift+K")
- * - Layout-independent key detection using e.code
- * - Cross-platform compatibility with Electron's accelerator format
- */
 export function HotkeyInput({
   value,
   onChange,
   onBlur,
-  placeholder = "Press a key combination...",
-  className = "",
   disabled = false,
   autoFocus = false,
 }: HotkeyInputProps) {
-  const [isFocused, setIsFocused] = useState(false);
   const [isCapturing, setIsCapturing] = useState(false);
-  const inputRef = useRef<HTMLDivElement>(null);
+  const [activeModifiers, setActiveModifiers] = useState<Set<string>>(
+    new Set()
+  );
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isMac =
+    typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
       if (disabled) return;
-
-      // Prevent default behavior for most keys
       e.preventDefault();
       e.stopPropagation();
 
-      // Convert keyboard event to native KeyboardEvent for mapping
-      const nativeEvent = e.nativeEvent;
-      const hotkey = mapKeyboardEventToHotkey(nativeEvent);
+      const mods = new Set<string>();
+      if (e.ctrlKey || e.metaKey) mods.add(isMac ? "Cmd" : "Ctrl");
+      if (e.altKey) mods.add(isMac ? "Option" : "Alt");
+      if (e.shiftKey) mods.add("Shift");
+      setActiveModifiers(mods);
 
+      const hotkey = mapKeyboardEventToHotkey(e.nativeEvent);
       if (hotkey) {
         onChange(hotkey);
         setIsCapturing(false);
+        setActiveModifiers(new Set());
+        containerRef.current?.blur();
       }
     },
-    [disabled, onChange]
+    [disabled, onChange, isMac]
   );
 
-  const handleFocus = useCallback(() => {
-    setIsFocused(true);
-    setIsCapturing(true);
+  const handleKeyUp = useCallback(() => {
+    setActiveModifiers(new Set());
   }, []);
 
+  const handleFocus = useCallback(() => {
+    if (!disabled) {
+      setIsCapturing(true);
+    }
+  }, [disabled]);
+
   const handleBlur = useCallback(() => {
-    setIsFocused(false);
     setIsCapturing(false);
+    setActiveModifiers(new Set());
     onBlur?.();
   }, [onBlur]);
 
-  // Auto-focus support
   useEffect(() => {
-    if (autoFocus && inputRef.current) {
-      inputRef.current.focus();
+    if (autoFocus && containerRef.current) {
+      containerRef.current.focus();
     }
   }, [autoFocus]);
 
-  const displayValue = value ? formatHotkeyLabel(value) : "";
-  const isMac =
-    typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
+  useEffect(() => {
+    if (!isCapturing || !isMac) return;
+
+    const dispose = window.electronAPI?.onGlobeKeyPressed?.(() => {
+      onChange("GLOBE");
+      setIsCapturing(false);
+      setActiveModifiers(new Set());
+      containerRef.current?.blur();
+    });
+
+    return () => dispose?.();
+  }, [isCapturing, isMac, onChange]);
+
+  const displayValue = formatHotkeyLabel(value);
+  const isGlobe = value === "GLOBE";
+
+  const hotkeyParts = value?.includes("+") ? displayValue.split("+") : [];
 
   return (
-    <div
-      ref={inputRef}
-      tabIndex={disabled ? -1 : 0}
-      role="button"
-      aria-label="Press a key combination to set hotkey"
-      onKeyDown={handleKeyDown}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      className={`
-        relative flex items-center justify-center
-        w-full px-4 py-3
-        text-center text-lg font-mono
-        border-2 rounded-lg
-        transition-all duration-200
-        cursor-pointer select-none
-        focus:outline-none
-        ${
-          disabled
-            ? "bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed"
-            : isFocused
-            ? "bg-indigo-50 border-indigo-400 ring-2 ring-indigo-200"
-            : "bg-white border-gray-300 hover:border-gray-400"
-        }
-        ${className}
-      `}
-    >
-      {isCapturing && !displayValue ? (
-        <span className="text-indigo-600 animate-pulse">{placeholder}</span>
-      ) : displayValue ? (
-        <span className="text-gray-900">{displayValue}</span>
-      ) : (
-        <span className="text-gray-400">{placeholder}</span>
-      )}
+    <div className="space-y-3">
+      <div
+        ref={containerRef}
+        tabIndex={disabled ? -1 : 0}
+        role="button"
+        aria-label="Press a key combination to set hotkey"
+        onKeyDown={handleKeyDown}
+        onKeyUp={handleKeyUp}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        className={`
+          relative overflow-hidden
+          rounded-xl border-2
+          transition-all duration-300 ease-out
+          cursor-pointer select-none
+          focus:outline-none
+          ${
+            disabled
+              ? "bg-gray-50 border-gray-200 cursor-not-allowed opacity-60"
+              : isCapturing
+                ? "bg-gradient-to-br from-indigo-50 to-purple-50 border-indigo-400 shadow-lg shadow-indigo-100"
+                : "bg-white border-gray-200 hover:border-gray-300 hover:shadow-md"
+          }
+        `}
+      >
+        {isCapturing && (
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-500 animate-pulse" />
+        )}
 
-      {isFocused && (
-        <div className="absolute -bottom-6 left-0 right-0 text-center">
-          <span className="text-xs text-indigo-600">
-            {isMac ? "Try Cmd+Shift+K or any key" : "Try Ctrl+Shift+K or any key"}
-          </span>
+        <div className="px-6 py-5">
+          {isCapturing ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+                <span className="text-sm font-medium text-gray-600">
+                  Recording
+                </span>
+              </div>
+
+              {activeModifiers.size > 0 ? (
+                <div className="flex items-center justify-center gap-1.5">
+                  {Array.from(activeModifiers).map((mod) => (
+                    <kbd
+                      key={mod}
+                      className="px-2.5 py-1.5 bg-indigo-100 border border-indigo-200 rounded-lg text-sm font-semibold text-indigo-700 shadow-sm"
+                    >
+                      {mod}
+                    </kbd>
+                  ))}
+                  <span className="text-indigo-400 font-medium">+</span>
+                  <span className="px-2.5 py-1.5 border-2 border-dashed border-indigo-300 rounded-lg text-sm text-indigo-400">
+                    key
+                  </span>
+                </div>
+              ) : (
+                <p className="text-center text-gray-500">
+                  Press any key or combination
+                </p>
+              )}
+
+              <p className="text-xs text-center text-gray-400">
+                {isMac ? "Try ⌘⇧K or ⌥Space" : "Try Ctrl+Shift+K or Alt+Space"}
+              </p>
+            </div>
+          ) : value ? (
+            <div className="flex flex-col items-center gap-2">
+              {hotkeyParts.length > 0 ? (
+                <div className="flex items-center justify-center gap-1.5">
+                  {hotkeyParts.map((part, i) => (
+                    <React.Fragment key={part}>
+                      {i > 0 && (
+                        <span className="text-gray-300 font-medium">+</span>
+                      )}
+                      <kbd className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-base font-semibold text-gray-800 shadow-sm">
+                        {part}
+                      </kbd>
+                    </React.Fragment>
+                  ))}
+                </div>
+              ) : isGlobe ? (
+                <div className="flex items-center gap-2">
+                  <kbd className="px-4 py-2 bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200 rounded-xl text-2xl shadow-sm">
+                    🌐
+                  </kbd>
+                  <span className="text-sm font-medium text-gray-600">
+                    Globe/Fn
+                  </span>
+                </div>
+              ) : (
+                <kbd className="px-5 py-3 bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200 rounded-xl text-xl font-bold text-gray-800 shadow-sm min-w-[60px] text-center">
+                  {displayValue}
+                </kbd>
+              )}
+
+              <p className="text-xs text-gray-400">Click to change</p>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 py-2">
+              <div className="flex items-center gap-2 text-gray-400">
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707"
+                  />
+                </svg>
+                <span className="font-medium">Click to set hotkey</span>
+              </div>
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }

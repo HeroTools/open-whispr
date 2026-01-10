@@ -161,6 +161,15 @@ trayManager.setWindowManager(windowManager);
 
   if (process.platform === "darwin") {
     globeKeyManager.on("globe-down", () => {
+      // Forward to control panel for hotkey capture
+      if (
+        windowManager.controlPanelWindow &&
+        !windowManager.controlPanelWindow.isDestroyed()
+      ) {
+        windowManager.controlPanelWindow.webContents.send("globe-key-pressed");
+      }
+
+      // Handle dictation toggle if Globe is the current hotkey
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (
           windowManager.mainWindow &&

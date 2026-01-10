@@ -261,6 +261,9 @@ declare global {
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
 
+      // Globe key listener for hotkey capture (macOS only)
+      onGlobeKeyPressed?: (callback: () => void) => () => void;
+
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;
       saveGeminiKey: (key: string) => Promise<void>;

@@ -12,7 +12,7 @@ import {
   Download,
   Key,
   Shield,
-  Keyboard,
+  Command,
   TestTube,
   Sparkles,
   Lock,
@@ -37,7 +37,6 @@ import { useSettings } from "../hooks/useSettings";
 import { getLanguageLabel, REASONING_PROVIDERS } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 import { UnifiedModelPickerCompact } from "./UnifiedModelPicker";
-const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
@@ -318,7 +317,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Privacy", icon: Lock },
     { title: "Setup", icon: Settings },
     { title: "Permissions", icon: Shield },
-    { title: "Hotkey", icon: Keyboard },
+    { title: "Hotkey", icon: Command },
     { title: "Test", icon: TestTube },
     { title: "Agent Name", icon: User },
     { title: "Finish", icon: Check },
@@ -918,60 +917,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Hotkey</h2>
               <p className="text-gray-600">
-                Press any key or key combination (like Cmd+Shift+K) to set your dictation hotkey
+                Set the key combination you'll use to start and stop dictation
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Activation Key
-                </label>
-                <HotkeyInput
-                  value={hotkey}
-                  onChange={async (newHotkey) => {
-                    // Immediately register the new hotkey
-                    const success = await registerHotkey(newHotkey);
-                    if (success) {
-                      setHotkey(newHotkey);
-                    }
-                  }}
-                  placeholder="Click here and press a key combination..."
-                  disabled={isHotkeyRegistering}
-                />
-                <p className="text-xs text-gray-500 mt-6">
-                  Supports single keys (F1, `) or combinations (Cmd+Shift+K)
-                </p>
-              </div>
-
-              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                <h4 className="font-medium text-indigo-900 mb-3">
-                  Current hotkey:
-                </h4>
-                <div className="flex items-center justify-center">
-                  <kbd className="px-4 py-2 bg-white border-2 border-indigo-300 rounded-lg font-mono text-xl font-semibold text-indigo-900 shadow-sm">
-                    {formatHotkeyLabel(hotkey)}
-                  </kbd>
-                </div>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-3">
-                  Or click a key on the keyboard:
-                </h4>
-                <React.Suspense fallback={<div>Loading keyboard...</div>}>
-                  <InteractiveKeyboard
-                    selectedKey={hotkey}
-                    setSelectedKey={async (key) => {
-                      const success = await registerHotkey(key);
-                      if (success) {
-                        setHotkey(key);
-                      }
-                    }}
-                  />
-                </React.Suspense>
-              </div>
-            </div>
+            <HotkeyInput
+              value={hotkey}
+              onChange={async (newHotkey) => {
+                const success = await registerHotkey(newHotkey);
+                if (success) {
+                  setHotkey(newHotkey);
+                }
+              }}
+              disabled={isHotkeyRegistering}
+            />
           </div>
         );
 

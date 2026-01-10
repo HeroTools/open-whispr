@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Keyboard, Mic, Shield } from "lucide-react";
+import { RefreshCw, Download, Command, Mic, Shield } from "lucide-react";
 import WhisperModelPicker from "./WhisperModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
@@ -22,7 +22,6 @@ import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
 import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
-const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 
 export type SettingsSectionType =
   | "general"
@@ -120,7 +119,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     onSuccess: (registeredHotkey) => {
       setDictationKey(registeredHotkey);
     },
-    showSuccessToast: true,
+    showSuccessToast: false,
     showErrorToast: true,
     showAlert: showAlertDialog,
   });
@@ -718,55 +717,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   Configure the key or key combination you press to start and stop voice dictation.
                 </p>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Activation Key
-                  </label>
-                  <HotkeyInput
-                    value={dictationKey}
-                    onChange={async (newHotkey) => {
-                      await registerHotkey(newHotkey);
-                    }}
-                    placeholder="Click here and press a key combination..."
-                    disabled={isHotkeyRegistering}
-                  />
-                  <p className="text-xs text-gray-500 mt-6">
-                    Supports single keys (F1, `) or combinations (Cmd+Shift+K)
-                  </p>
-                </div>
-
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                  <h4 className="font-medium text-indigo-900 mb-3">
-                    Current hotkey:
-                  </h4>
-                  <div className="flex items-center justify-center">
-                    <kbd className="px-4 py-2 bg-white border-2 border-indigo-300 rounded-lg font-mono text-xl font-semibold text-indigo-900 shadow-sm">
-                      {formatHotkeyLabel(dictationKey)}
-                    </kbd>
-                  </div>
-                </div>
-
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-3">
-                    Or click a key on the keyboard:
-                  </h4>
-                  <React.Suspense
-                    fallback={
-                      <div className="h-32 flex items-center justify-center text-gray-500">
-                        Loading keyboard...
-                      </div>
-                    }
-                  >
-                    <InteractiveKeyboard
-                      selectedKey={dictationKey}
-                      setSelectedKey={async (key) => {
-                        await registerHotkey(key);
-                      }}
-                    />
-                  </React.Suspense>
-                </div>
-              </div>
+              <HotkeyInput
+                value={dictationKey}
+                onChange={async (newHotkey) => {
+                  await registerHotkey(newHotkey);
+                }}
+                disabled={isHotkeyRegistering}
+              />
             </div>
 
             {/* Permissions Section */}
@@ -824,7 +781,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
                 <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
                   <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <Keyboard className="w-4 h-4 text-white" />
+                    <Command className="w-4 h-4 text-white" />
                   </div>
                   <p className="font-medium text-gray-800 mb-1">Default Hotkey</p>
                   <p className="text-gray-600 font-mono text-xs">
