@@ -300,11 +300,14 @@ export default function UnifiedModelPicker({
   }, [modelType, loadModels]);
 
   useEffect(() => {
-    if (modelType === 'whisper') {
-      window.electronAPI.onWhisperDownloadProgress(handleDownloadProgress);
-    } else {
-      window.electronAPI.onModelDownloadProgress(handleDownloadProgress);
-    }
+    const dispose =
+      modelType === 'whisper'
+        ? window.electronAPI.onWhisperDownloadProgress(handleDownloadProgress)
+        : window.electronAPI.onModelDownloadProgress(handleDownloadProgress);
+
+    return () => {
+      dispose?.();
+    };
   }, [handleDownloadProgress, modelType]);
 
   const downloadModel = useCallback(async (modelId: string) => {

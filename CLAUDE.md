@@ -216,7 +216,7 @@ Settings stored in localStorage with these keys:
 
 ### 9. Debug Mode
 
-Enable with `--debug` flag or `OPENWHISPR_DEBUG=true`:
+Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `.env`):
 - Logs saved to platform-specific app data directory
 - Comprehensive logging of audio pipeline
 - FFmpeg path resolution details

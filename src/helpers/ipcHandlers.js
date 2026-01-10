@@ -79,6 +79,10 @@ class IPCHandlers {
       return false;
     });
 
+    ipcMain.handle("app-quit", () => {
+      app.quit();
+    });
+
     ipcMain.handle("hide-window", () => {
       if (process.platform === "darwin") {
         this.windowManager.hideDictationPanel();
@@ -123,11 +127,12 @@ class IPCHandlers {
       }
     });
 
-    // Database handlers
     ipcMain.handle("db-save-transcription", async (event, text) => {
       const result = this.databaseManager.saveTranscription(text);
       if (result?.success && result?.transcription) {
-        this.broadcastToWindows("transcription-added", result.transcription);
+        setImmediate(() => {
+          this.broadcastToWindows("transcription-added", result.transcription);
+        });
       }
       return result;
     });
@@ -139,8 +144,10 @@ class IPCHandlers {
     ipcMain.handle("db-clear-transcriptions", async (event) => {
       const result = this.databaseManager.clearTranscriptions();
       if (result?.success) {
-        this.broadcastToWindows("transcriptions-cleared", {
-          cleared: result.cleared,
+        setImmediate(() => {
+          this.broadcastToWindows("transcriptions-cleared", {
+            cleared: result.cleared,
+          });
         });
       }
       return result;
@@ -149,7 +156,9 @@ class IPCHandlers {
     ipcMain.handle("db-delete-transcription", async (event, id) => {
       const result = this.databaseManager.deleteTranscription(id);
       if (result?.success) {
-        this.broadcastToWindows("transcription-deleted", { id });
+        setImmediate(() => {
+          this.broadcastToWindows("transcription-deleted", { id });
+        });
       }
       return result;
     });
@@ -557,9 +566,12 @@ class IPCHandlers {
       }
     });
 
-    // Debug logging handler for reasoning pipeline
-    ipcMain.handle("log-reasoning", async (event, stage, details) => {
-      debugLogger.logReasoning(stage, details);
+    ipcMain.handle("get-log-level", async () => {
+      return debugLogger.getLevel();
+    });
+
+    ipcMain.handle("app-log", async (event, entry) => {
+      debugLogger.logEntry(entry);
       return { success: true };
     });
   }

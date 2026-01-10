@@ -25,7 +25,7 @@ import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
 import StepProgress from "./ui/StepProgress";
-import { AlertDialog } from "./ui/dialog";
+import { AlertDialog, ConfirmDialog } from "./ui/dialog";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useDialogs } from "../hooks/useDialogs";
 import { useWhisper } from "../hooks/useWhisper";
@@ -78,7 +78,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setPreferredLanguage,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
-    setOpenaiApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -91,7 +90,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [reasoningBaseUrl, setReasoningBaseUrl] = useState(cloudReasoningBaseUrl);
   const [agentName, setAgentName] = useState("Agent");
   const readableHotkey = formatHotkeyLabel(hotkey);
-  const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
+  const {
+    alertDialog,
+    confirmDialog,
+    showAlertDialog,
+    showConfirmDialog,
+    hideAlertDialog,
+    hideConfirmDialog,
+  } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
   const trimmedReasoningBase = (reasoningBaseUrl || "").trim();
@@ -131,6 +137,30 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         : API_ENDPOINTS.OPENAI_BASE;
     return buildApiUrl(base, "/models");
   }, [usingCustomReasoningBase, normalizedReasoningBaseUrl]);
+
+  const persistOpenAIKey = useCallback(
+    async (nextKey: string) => {
+      const trimmedKey = nextKey.trim();
+      if (useLocalWhisper || !trimmedKey) {
+        return false;
+      }
+      if (trimmedKey === openaiApiKey.trim()) {
+        return true;
+      }
+
+      try {
+        if (window.electronAPI?.saveOpenAIKey) {
+          await window.electronAPI.saveOpenAIKey(trimmedKey);
+        }
+        updateApiKeys({ openaiApiKey: trimmedKey });
+        return true;
+      } catch (error) {
+        console.error("Failed to save OpenAI key", error);
+        return false;
+      }
+    },
+    [useLocalWhisper, updateApiKeys, openaiApiKey]
+  );
 
   const reasoningModelRef = useRef(reasoningModel);
   useEffect(() => {
@@ -261,6 +291,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [displayedReasoningModels, reasoningModel]);
 
   const whisperHook = useWhisper(showAlertDialog);
+  const { setupProgressListener } = whisperHook;
   const pythonHook = usePython(showAlertDialog);
   const permissionsHook = usePermissions(showAlertDialog);
   const { pasteFromClipboard } = useClipboard(showAlertDialog);
@@ -277,12 +308,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   ];
 
   useEffect(() => {
-    whisperHook.setupProgressListener();
+    const dispose = setupProgressListener();
     return () => {
-      // Clean up listeners on unmount
-      window.electronAPI?.removeAllListeners?.("whisper-install-progress");
+      dispose?.();
     };
-  }, []);
+  }, [setupProgressListener]);
 
   const updateProcessingMode = (useLocal: boolean) => {
     updateTranscriptionSettings({ useLocalWhisper: useLocal });
@@ -362,8 +392,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     localStorage.setItem("skipAuth", skipAuth.toString());
 
     if (!useLocalWhisper && trimmedApiKey) {
-      await window.electronAPI.saveOpenAIKey(trimmedApiKey);
-      updateApiKeys({ openaiApiKey: trimmedApiKey });
+      await persistOpenAIKey(trimmedApiKey);
     }
     return true;
   }, [
@@ -379,7 +408,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     reasoningBaseUrl,
     updateTranscriptionSettings,
     updateReasoningSettings,
-    updateApiKeys,
+    persistOpenAIKey,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setDictationKey,
@@ -400,6 +429,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
       setDictationKey(hotkey);
     }
+    if (currentStep === 2 && !useLocalWhisper) {
+      await persistOpenAIKey(apiKey);
+    }
 
     setCurrentStep(newStep);
 
@@ -409,7 +441,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         window.electronAPI.showDictationPanel();
       }
     }
-  }, [currentStep, ensureHotkeyRegistered, hotkey, setCurrentStep, setDictationKey, steps.length]);
+  }, [
+    currentStep,
+    ensureHotkeyRegistered,
+    hotkey,
+    setCurrentStep,
+    setDictationKey,
+    steps.length,
+    useLocalWhisper,
+    persistOpenAIKey,
+    apiKey,
+  ]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -515,7 +557,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {useLocalWhisper ? (
               <div className="space-y-4">
                 {/* Python Installation Section */}
-                {!pythonHook.pythonInstalled ? (
+                {!pythonHook.hasChecked ? (
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                    </div>
+                    <h3 className="font-semibold text-gray-900">
+                      Looking for Python...
+                    </h3>
+                    <p className="text-sm text-gray-600 max-w-md mx-auto">
+                      OpenWhispr is scanning for your existing Python install (including <code>py.exe</code> and any paths supplied via <code>OPENWHISPR_PYTHON</code>). Sit tight—if we find one, we’ll skip this step automatically.
+                    </p>
+                  </div>
+                ) : !pythonHook.pythonInstalled ? (
                   <div className="text-center space-y-4">
                     <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
                       <Download className="w-8 h-8 text-blue-600" />
@@ -547,14 +601,37 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         </p>
                       </div>
                     ) : (
-                      <Button
-                        onClick={() => {
-                          pythonHook.installPython();
-                        }}
-                        className="w-full bg-blue-600 hover:bg-blue-700"
-                      >
-                        Install Python
-                      </Button>
+                      <div className="space-y-3">
+                        <Button
+                          onClick={() => {
+                            pythonHook.installPython();
+                          }}
+                          className="w-full bg-blue-600 hover:bg-blue-700"
+                          disabled={pythonHook.isChecking}
+                        >
+                          {pythonHook.isChecking ? "Please Wait..." : "Install Python"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-center text-indigo-600"
+                          disabled={pythonHook.isChecking}
+                          onClick={() =>
+                            showConfirmDialog({
+                              title: "Use existing Python?",
+                              description:
+                                "We’ll skip the installer and search for the interpreter already on your system (including OPENWHISPR_PYTHON and the Windows py launcher). Continue?",
+                              confirmText: "Use Existing Python",
+                              cancelText: "Keep Installing",
+                              onConfirm: () => {
+                                pythonHook.checkPythonInstallation();
+                              },
+                            })
+                          }
+                        >
+                          Use Existing Python Instead
+                        </Button>
+                      </div>
                     )}
                   </div>
                 ) : !whisperHook.whisperInstalled ? (
@@ -1186,6 +1263,16 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => !open && hideConfirmDialog()}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        onConfirm={confirmDialog.onConfirm}
+      />
+
       <AlertDialog
         open={alertDialog.open}
         onOpenChange={(open) => !open && hideAlertDialog()}

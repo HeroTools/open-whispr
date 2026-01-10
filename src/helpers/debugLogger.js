@@ -2,32 +2,66 @@ const fs = require("fs");
 const path = require("path");
 const { app } = require("electron");
 
+const LOG_LEVELS = {
+  trace: 10,
+  debug: 20,
+  info: 30,
+  warn: 40,
+  error: 50,
+  fatal: 60,
+};
+
+const normalizeLevel = (value) => {
+  if (!value) return null;
+  const lower = String(value).toLowerCase();
+  return Object.prototype.hasOwnProperty.call(LOG_LEVELS, lower) ? lower : null;
+};
+
+const readArgLogLevel = () => {
+  const argv = process.argv || [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === "--log-level" && argv[i + 1]) {
+      return argv[i + 1];
+    }
+    if (arg.startsWith("--log-level=")) {
+      return arg.split("=", 2)[1];
+    }
+  }
+  return null;
+};
+
 class DebugLogger {
   constructor() {
-    // Only enable debug mode when explicitly requested
-    this.debugMode =
-      process.env.OPENWISPR_DEBUG === "true" ||
-      process.argv.includes("--debug") ||
-      this.checkDebugFile();
+    this.logLevel = this.resolveLogLevel();
+    this.levelValue = LOG_LEVELS[this.logLevel] || LOG_LEVELS.info;
+    this.debugMode = this.isDebugEnabled();
     this.logFile = null;
     this.logStream = null;
+    this.fileLoggingEnabled = false;
 
     if (this.debugMode) {
-      // Create logs directory
+      this.initializeFileLogging();
+    }
+  }
+
+  initializeFileLogging() {
+    if (this.fileLoggingEnabled) return;
+
+    try {
       const logsDir = path.join(app.getPath("userData"), "logs");
       if (!fs.existsSync(logsDir)) {
         fs.mkdirSync(logsDir, { recursive: true });
       }
 
-      // Create log file with timestamp
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       this.logFile = path.join(logsDir, `debug-${timestamp}.log`);
 
-      // Create write stream for better performance
       this.logStream = fs.createWriteStream(this.logFile, { flags: "a" });
+      this.fileLoggingEnabled = true;
 
-      this.log("🚀 Debug logging enabled", `Log file: ${this.logFile}`);
-      this.log("System Info:", {
+      this.debug("Debug logging enabled", { logFile: this.logFile });
+      this.info("System Info", {
         platform: process.platform,
         nodeVersion: process.version,
         electronVersion: process.versions.electron,
@@ -36,73 +70,160 @@ class DebugLogger {
         resourcesPath: process.resourcesPath,
         environment: process.env.NODE_ENV,
       });
+    } catch (error) {
+      this.fileLoggingEnabled = false;
+      console.error("Failed to initialize debug logging:", error);
+    }
+  }
+
+  resolveLogLevel() {
+    const argLevel = normalizeLevel(readArgLogLevel());
+    if (argLevel) {
+      return argLevel;
+    }
+
+    const envLevel = normalizeLevel(
+      process.env.OPENWHISPR_LOG_LEVEL || process.env.LOG_LEVEL
+    );
+    if (envLevel) {
+      return envLevel;
+    }
+
+    return "info";
+  }
+
+  refreshLogLevel() {
+    const nextLevel = this.resolveLogLevel();
+    if (nextLevel === this.logLevel) return;
+
+    this.logLevel = nextLevel;
+    this.levelValue = LOG_LEVELS[this.logLevel] || LOG_LEVELS.info;
+    this.debugMode = this.isDebugEnabled();
+
+    if (this.debugMode && !this.fileLoggingEnabled) {
+      this.initializeFileLogging();
+    }
+  }
+
+  getLevel() {
+    return this.logLevel;
+  }
+
+  isDebugEnabled() {
+    return this.levelValue <= LOG_LEVELS.debug;
+  }
+
+  shouldLog(level) {
+    const normalized = normalizeLevel(level) || "info";
+    return LOG_LEVELS[normalized] >= this.levelValue;
+  }
+
+  formatArgs(args) {
+    return args
+      .map((arg) => {
+        if (typeof arg === "object") {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (error) {
+            return String(arg);
+          }
+        }
+        return String(arg);
+      })
+      .join(" ");
+  }
+
+  formatMeta(meta) {
+    if (meta === undefined) return "";
+    if (typeof meta === "string") return meta;
+    try {
+      return JSON.stringify(meta, null, 2);
+    } catch (error) {
+      return String(meta);
+    }
+  }
+
+  write(level, message, meta, scope, source) {
+    const normalized = normalizeLevel(level) || "info";
+    if (!this.shouldLog(normalized)) return;
+
+    const timestamp = new Date().toISOString();
+    const scopeTag = scope ? `[${scope}]` : "";
+    const sourceTag = source ? `[${source}]` : "";
+    const levelTag = `[${normalized.toUpperCase()}]`;
+    const baseLine = `[${timestamp}] ${levelTag}${scopeTag}${sourceTag} ${message}`;
+    const metaText = this.formatMeta(meta);
+    const logLine = metaText ? `${baseLine} ${metaText}\n` : `${baseLine}\n`;
+
+    const consoleFn =
+      normalized === "error" || normalized === "fatal"
+        ? console.error
+        : normalized === "warn"
+          ? console.warn
+          : console.log;
+
+    if (meta !== undefined) {
+      consoleFn(`${levelTag}${scopeTag}${sourceTag} ${message}`, meta);
+    } else {
+      consoleFn(`${levelTag}${scopeTag}${sourceTag} ${message}`);
+    }
+
+    if (this.logStream) {
+      this.logStream.write(logLine);
     }
   }
 
   log(...args) {
-    if (!this.debugMode) return;
+    this.write("debug", this.formatArgs(args));
+  }
 
-    const timestamp = new Date().toISOString();
-    const message = args
-      .map((arg) =>
-        typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-      )
-      .join(" ");
+  debug(message, meta, scope, source) {
+    this.write("debug", message, meta, scope, source);
+  }
 
-    const logLine = `[${timestamp}] ${message}\n`;
+  trace(message, meta, scope, source) {
+    this.write("trace", message, meta, scope, source);
+  }
 
-    console.log(...args);
+  info(message, meta, scope, source) {
+    this.write("info", message, meta, scope, source);
+  }
 
-    if (this.logStream) {
-      this.logStream.write(logLine);
-    }
+  warn(message, meta, scope, source) {
+    this.write("warn", message, meta, scope, source);
   }
 
   logReasoning(stage, details) {
-    if (!this.debugMode) return;
-
-    const reasoningInfo = {
-      stage,
-      timestamp: new Date().toISOString(),
-      ...details,
-    };
-
-    // Special formatting for reasoning logs to make them stand out
-    console.log(`\n🤖 === REASONING ${stage.toUpperCase()} ===`);
-    console.log(reasoningInfo);
-    console.log(`================================\n`);
-
-    this.log(`🤖 Reasoning Pipeline - ${stage}`, reasoningInfo);
+    this.debug(stage, details, "reasoning");
   }
 
   error(...args) {
-    if (!this.debugMode) return;
+    const message = `ERROR: ${this.formatArgs(args)}`;
+    this.write("error", message);
+  }
 
-    const timestamp = new Date().toISOString();
-    const message =
-      "❌ ERROR: " +
-      args
-        .map((arg) =>
-          typeof arg === "object" ? JSON.stringify(arg, null, 2) : String(arg)
-        )
-        .join(" ");
+  fatal(...args) {
+    const message = `FATAL: ${this.formatArgs(args)}`;
+    this.write("fatal", message);
+  }
 
-    const logLine = `[${timestamp}] ${message}\n`;
-
-    console.error(...args);
-
-    if (this.logStream) {
-      this.logStream.write(logLine);
-    }
+  logEntry(entry) {
+    if (!entry || typeof entry !== "object") return;
+    const normalized = normalizeLevel(entry.level) || "info";
+    const message = entry.message ? String(entry.message) : "";
+    const scope = entry.scope ? String(entry.scope) : undefined;
+    const source = entry.source ? String(entry.source) : "renderer";
+    this.write(normalized, message, entry.meta, scope, source);
   }
 
   logFFmpegDebug(context, ffmpegPath, additionalInfo = {}) {
-    if (!this.debugMode) return;
+    if (!this.isDebugEnabled()) return;
 
     const debugInfo = {
       context,
       ffmpegPath,
       exists: ffmpegPath ? fs.existsSync(ffmpegPath) : false,
+      platform: process.platform,
       ...additionalInfo,
     };
 
@@ -112,7 +233,9 @@ class DebugLogger {
         debugInfo.fileInfo = {
           size: stats.size,
           isFile: stats.isFile(),
-          isExecutable: !!(stats.mode & fs.constants.X_OK),
+          // Skip X_OK check on Windows (not reliable)
+          isExecutable: process.platform !== "win32" ? !!(stats.mode & fs.constants.X_OK) : false,
+          executableCheckSkipped: process.platform === "win32",
           permissions: stats.mode.toString(8),
           modified: stats.mtime,
         };
@@ -133,32 +256,50 @@ class DebugLogger {
       }
     }
 
-    // Check all possible FFmpeg locations
-    const possiblePaths = [
-      ffmpegPath,
-      ffmpegPath?.replace("app.asar", "app.asar.unpacked"),
-      path.join(
-        process.resourcesPath || "",
-        "app.asar.unpacked",
-        "node_modules",
-        "ffmpeg-static",
-        process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg"
-      ),
-      "/usr/local/bin/ffmpeg",
-      "/opt/homebrew/bin/ffmpeg",
-      "/usr/bin/ffmpeg",
-    ].filter(Boolean);
+    // Platform-specific path checks
+    let possiblePaths = [];
+    if (process.platform === "win32") {
+      possiblePaths = [
+        ffmpegPath,
+        ffmpegPath?.replace(/app\.asar([/\\])/, 'app.asar.unpacked$1'),
+        path.join(process.resourcesPath || "", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+        path.join(process.env.ProgramFiles || "C:\\Program Files", "ffmpeg", "bin", "ffmpeg.exe"),
+        "C:\\ffmpeg\\bin\\ffmpeg.exe",
+      ].filter(Boolean);
+    } else {
+      possiblePaths = [
+        ffmpegPath,
+        ffmpegPath?.replace("app.asar", "app.asar.unpacked"),
+        path.join(process.resourcesPath || "", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+        "/usr/local/bin/ffmpeg",
+        "/opt/homebrew/bin/ffmpeg",
+        "/usr/bin/ffmpeg",
+      ].filter(Boolean);
+    }
 
     debugInfo.pathChecks = possiblePaths.map((p) => ({
       path: p,
       exists: fs.existsSync(p),
+      normalized: path.normalize(p),
     }));
 
-    this.log(`🎬 FFmpeg Debug - ${context}`, debugInfo);
+    this.debug(`FFmpeg Debug - ${context}`, debugInfo, "ffmpeg");
+  }
+
+  logWindowsPythonSearch(context, details) {
+    if (!this.isDebugEnabled() || process.platform !== "win32") return;
+
+    this.debug(`Windows Python Search - ${context}`, {
+      ...details,
+      platform: process.platform,
+      PATH: process.env.PATH?.substring(0, 300) + "...",
+      LOCALAPPDATA: process.env.LOCALAPPDATA,
+      ProgramFiles: process.env.ProgramFiles,
+    }, "python");
   }
 
   logAudioData(context, audioBlob) {
-    if (!this.debugMode) return;
+    if (!this.isDebugEnabled()) return;
 
     const audioInfo = {
       context,
@@ -186,13 +327,13 @@ class DebugLogger {
         .join(" ");
     }
 
-    this.log("🔊 Audio Data Debug", audioInfo);
+    this.debug("Audio Data Debug", audioInfo, "audio");
   }
 
   logProcessStart(command, args, options = {}) {
-    if (!this.debugMode) return;
+    if (!this.isDebugEnabled()) return;
 
-    this.log("🚀 Starting process", {
+    this.debug("Starting process", {
       command,
       args,
       cwd: options.cwd || process.cwd(),
@@ -202,22 +343,21 @@ class DebugLogger {
         FFMPEG_BINARY: options.env?.FFMPEG_BINARY,
         PATH_preview: options.env?.PATH?.substring(0, 200) + "...",
       },
-    });
+    }, "process");
   }
 
   logProcessOutput(processName, type, data) {
-    if (!this.debugMode) return;
+    if (!this.isDebugEnabled()) return;
 
     const output = data.toString().trim();
     if (output) {
-      this.log(`📝 ${processName} ${type}:`, output);
+      this.debug(`${processName} ${type}`, output, "process");
     }
   }
 
   logWhisperPipeline(stage, details) {
-    if (!this.debugMode) return;
-
-    this.log(`🎙️ Whisper Pipeline - ${stage}`, details);
+    if (!this.isDebugEnabled()) return;
+    this.debug(`Whisper Pipeline - ${stage}`, details, "whisper");
   }
 
   getLogPath() {
@@ -225,7 +365,7 @@ class DebugLogger {
   }
 
   isEnabled() {
-    return this.debugMode;
+    return this.isDebugEnabled();
   }
 
   close() {
@@ -236,14 +376,6 @@ class DebugLogger {
     }
   }
 
-  checkDebugFile() {
-    try {
-      const debugFilePath = path.join(app.getPath("userData"), "ENABLE_DEBUG");
-      return fs.existsSync(debugFilePath);
-    } catch (e) {
-      return false;
-    }
-  }
 }
 
 // Singleton instance

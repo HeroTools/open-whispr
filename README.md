@@ -88,6 +88,106 @@ npm run pack
 
 **Note**: On macOS, you may see a security warning when first opening the unsigned app. Right-click and select "Open" to bypass this.
 
+#### Linux (Multiple Package Formats)
+
+OpenWhispr now supports multiple Linux package formats for maximum compatibility:
+
+**Available Formats**:
+- `.deb` - Debian, Ubuntu, Linux Mint, Pop!_OS
+- `.rpm` - Fedora, Red Hat, CentOS, openSUSE
+- `.tar.gz` - Universal archive (works on any distro)
+- `.flatpak` - Sandboxed cross-distro package
+- `AppImage` - Portable single-file executable
+
+**Building Linux Packages**:
+
+```bash
+# Build default Linux package formats (AppImage, deb, rpm, tar.gz)
+npm run build:linux
+
+# Find packages in dist/:
+# - OpenWhispr-x.x.x-linux-x64.AppImage
+# - OpenWhispr-x.x.x-linux-x64.deb
+# - OpenWhispr-x.x.x-linux-x64.rpm
+# - OpenWhispr-x.x.x-linux-x64.tar.gz
+```
+
+**Optional: Building Flatpak** (requires additional setup):
+
+```bash
+# Install Flatpak build tools
+sudo apt install flatpak flatpak-builder  # Debian/Ubuntu
+# OR
+sudo dnf install flatpak flatpak-builder  # Fedora/RHEL
+
+# Add Flathub repository and install runtime
+flatpak remote-add --user --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+flatpak install --user -y flathub org.freedesktop.Platform//24.08 org.freedesktop.Sdk//24.08
+
+# Add "flatpak" to linux.target in electron-builder.json, then build
+npm run build:linux
+```
+
+**Installation Examples**:
+
+```bash
+# Debian/Ubuntu
+sudo apt install ./dist/OpenWhispr-*-linux-x64.deb
+
+# Fedora/RHEL
+sudo dnf install ./dist/OpenWhispr-*-linux-x64.rpm
+
+# Universal tar.gz (no root required)
+tar -xzf dist/OpenWhispr-*-linux-x64.tar.gz
+cd OpenWhispr-*/
+./openwhispr
+
+# Flatpak
+flatpak install --user ./dist/OpenWhispr-*-linux-x64.flatpak
+
+# AppImage (existing method)
+chmod +x dist/OpenWhispr-*.AppImage
+./dist/OpenWhispr-*.AppImage
+```
+
+**Optional Dependencies for Automatic Paste**:
+
+The clipboard paste feature requires platform-specific tools:
+
+**X11 (Traditional Linux Desktop)**:
+```bash
+# Debian/Ubuntu
+sudo apt install xdotool
+
+# Fedora/RHEL
+sudo dnf install xdotool
+
+# Arch
+sudo pacman -S xdotool
+```
+
+**Wayland (Modern Linux Desktop)**:
+```bash
+# Debian/Ubuntu
+sudo apt install wtype
+
+# Fedora/RHEL
+sudo dnf install wtype
+
+# Arch
+sudo pacman -S wtype
+
+# Alternative: ydotool (requires uinput permissions)
+sudo apt install ydotool  # or equivalent for your distro
+
+# On KDE Wayland you will additionally need `kdotool` to detect if a terminal is focused for automatically pasting with Ctrl+Shift+V instead of Ctrl+V. Automatic terminal detection on non-KDE Wayland is not yet supported.
+sudo apt install kdotool # or equivalent for your distro
+```
+
+> ℹ️ **Note**: OpenWhispr automatically detects your display server (X11 vs Wayland) and uses the appropriate paste tool. If no paste tool is installed, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
+
+> 🔒 **Flatpak Security**: The Flatpak package includes sandboxing with explicit permissions for microphone, clipboard, and file access. See [electron-builder.json](electron-builder.json) for the complete permission list.
+
 ### Building for Distribution
 
 For maintainers who need to distribute signed builds:
