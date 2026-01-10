@@ -11,10 +11,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
 - 🤖 **Multi-Provider AI Processing**: Choose between OpenAI, Anthropic Claude, Google Gemini, or local models
 - 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
-- 🧠 **Latest AI Models** (September 2025):
-  - **OpenAI**: GPT-5 Series, GPT-4.1 Series, o-series reasoning models (o3/o4-mini)
-  - **Anthropic**: Claude Opus 4.1, Claude Sonnet 4, Claude 3.5 Sonnet/Haiku
-  - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite with thinking capability, Gemini 2.0 Flash
+- 🧠 **Multi-Provider AI**:
+  - **OpenAI**: GPT-5, GPT-4.1, o-series reasoning models
+  - **Anthropic**: Claude Opus 4.5, Claude Sonnet 4.5
+  - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite
+  - **Groq**: Ultra-fast inference with Llama and Mixtral models
   - **Local**: Qwen, LLaMA, Mistral models via llama.cpp
 - 🔒 **Privacy-First**: Local processing keeps your voice data completely private
 - 🎨 **Modern UI**: Built with React 19, TypeScript, and Tailwind CSS v4
@@ -28,6 +29,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
 - 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
 - 🌐 **Globe Key Toggle (macOS)**: Optional Fn/Globe key listener for a hardware-level dictation trigger
+- ⌨️ **Compound Hotkeys**: Support for multi-key combinations like `Cmd+Shift+K`
 
 ## Prerequisites
 
@@ -249,13 +251,11 @@ Once you've named your agent during setup, you can interact with it using multip
 - "Hey [AgentName], convert this to bullet points"
 
 **🤖 AI Provider Options**:
-- **OpenAI**: 
-  - GPT-5 Series (Nano/Mini/Full) - Latest generation with deep reasoning
-  - GPT-4.1 Series - Enhanced coding with 1M token context
-  - o3/o4 Series - Advanced reasoning models with longer thinking
-- **Anthropic**: Claude Opus 4.1, Sonnet 4 - Frontier intelligence models
-- **Google**: Gemini 2.5 Pro/Flash - Advanced multi-modal capabilities
-- **Local**: Community models for complete privacy
+- **OpenAI**: GPT-5, GPT-4.1, o-series reasoning models
+- **Anthropic**: Claude Opus 4.5, Sonnet 4.5, Haiku 4.5
+- **Google**: Gemini 2.5 Pro/Flash/Flash-Lite
+- **Groq**: Ultra-fast Llama and Mixtral inference
+- **Local**: Qwen, LLaMA, Mistral via llama.cpp
 
 **📝 Regular Dictation** (for normal text):
 - "This is just normal text I want transcribed"
@@ -523,12 +523,10 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.0.4
+OpenWhispr is actively maintained and ready for production use. Current version: 1.1.0
 
 - ✅ Core functionality complete
-- ✅ Cross-platform support
+- ✅ Cross-platform support (macOS, Windows, Linux)
 - ✅ Local and cloud processing
-- ✅ Automatic Python/Whisper installation
-- ✅ Agent naming system
-- ✅ Draggable interface
-- 🚧 Continuous improvements and bug fixes
+- ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Local)
+- ✅ Compound hotkey support

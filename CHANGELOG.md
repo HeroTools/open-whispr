@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-01-10
+
+### Added
+- **Compound Hotkey Support**: Use multi-key combinations like `Cmd+Shift+K` or `Ctrl+Alt+D` for dictation
+- **Groq API Integration**: Ultra-fast AI inference with Groq's cloud API
+- **Auto-Update UI**: Download progress bars and install button in settings
+- **Recording Cancellation**: Cancel an in-progress recording without transcribing
+- **Release Notes Viewer**: Markdown-rendered release notes in settings
+
+### Changed
+- **Major Hotkey Refactor**: Complete rewrite of hotkey selection with improved reliability and validation
+- **Consolidated Model Registry**: Single source of truth for all AI models (`modelRegistryData.json`)
+- **Unified Model Picker**: Reusable component for both transcription and reasoning model selection
+- **Improved Latency Logging**: Numbered stage logs for recording, transcription, reasoning, and paste timing
+- **Reduced Paste Delay**: Lowered from 100ms to 50ms for faster text insertion
+- **Code Quality**: Added ESLint, Prettier for JS/TS, and Ruff for Python
+
+### Fixed
+- **Windows 11 Compatibility**: Fixed PATH separator, cache directories, and process termination
+- **Python Virtual Environment**: Fixed race condition and added Arch Linux venv support
+- **Microphone Detection**: Improved onboarding flow for missing inputs with deep-linking to system settings
+- **Recording State Alignment**: Recording now aligns to MediaRecorder's actual start/stop events
+- **Caching Optimizations**: Cached accessibility, paste tool, and FFmpeg checks to reduce process spawns
+- **Window Titles**: Electron window titles now set correctly after page load
+
 ## [1.0.15] - 2026-01-05
 
 ### Added
