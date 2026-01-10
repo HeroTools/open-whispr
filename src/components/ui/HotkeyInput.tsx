@@ -138,12 +138,9 @@ export function HotkeyInput({
   autoFocus = false,
 }: HotkeyInputProps) {
   const [isCapturing, setIsCapturing] = useState(false);
-  const [activeModifiers, setActiveModifiers] = useState<Set<string>>(
-    new Set()
-  );
+  const [activeModifiers, setActiveModifiers] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
-  const isMac =
-    typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
+  const isMac = typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -243,9 +240,7 @@ export function HotkeyInput({
             <div className="space-y-3">
               <div className="flex items-center justify-center gap-2">
                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
-                <span className="text-sm font-medium text-gray-600">
-                  Recording
-                </span>
+                <span className="text-sm font-medium text-gray-600">Recording</span>
               </div>
 
               {activeModifiers.size > 0 ? (
@@ -264,9 +259,7 @@ export function HotkeyInput({
                   </span>
                 </div>
               ) : (
-                <p className="text-center text-gray-500">
-                  Press any key or combination
-                </p>
+                <p className="text-center text-gray-500">Press any key or combination</p>
               )}
 
               <p className="text-xs text-center text-gray-400">
@@ -279,9 +272,7 @@ export function HotkeyInput({
                 <div className="flex items-center justify-center gap-1.5">
                   {hotkeyParts.map((part, i) => (
                     <React.Fragment key={part}>
-                      {i > 0 && (
-                        <span className="text-gray-300 font-medium">+</span>
-                      )}
+                      {i > 0 && <span className="text-gray-300 font-medium">+</span>}
                       <kbd className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-lg text-base font-semibold text-gray-800 shadow-sm">
                         {part}
                       </kbd>
@@ -293,9 +284,7 @@ export function HotkeyInput({
                   <kbd className="px-4 py-2 bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200 rounded-xl text-2xl shadow-sm">
                     🌐
                   </kbd>
-                  <span className="text-sm font-medium text-gray-600">
-                    Globe/Fn
-                  </span>
+                  <span className="text-sm font-medium text-gray-600">Globe/Fn</span>
                 </div>
               ) : (
                 <kbd className="px-5 py-3 bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200 rounded-xl text-xl font-bold text-gray-800 shadow-sm min-w-[60px] text-center">
@@ -308,12 +297,7 @@ export function HotkeyInput({
           ) : (
             <div className="flex flex-col items-center gap-2 py-2">
               <div className="flex items-center gap-2 text-gray-400">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"

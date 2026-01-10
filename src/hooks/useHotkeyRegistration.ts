@@ -66,13 +66,7 @@ export interface UseHotkeyRegistrationResult {
 export function useHotkeyRegistration(
   options: UseHotkeyRegistrationOptions = {}
 ): UseHotkeyRegistrationResult {
-  const {
-    onSuccess,
-    onError,
-    showSuccessToast = true,
-    showErrorToast = true,
-    showAlert,
-  } = options;
+  const { onSuccess, onError, showSuccessToast = true, showErrorToast = true, showAlert } = options;
 
   const [isRegistering, setIsRegistering] = useState(false);
   const [lastError, setLastError] = useState<string | null>(null);
@@ -121,8 +115,7 @@ export function useHotkeyRegistration(
 
         if (!result?.success) {
           const errorMsg =
-            result?.message ||
-            "This key could not be registered. Please choose a different key.";
+            result?.message || "This key could not be registered. Please choose a different key.";
           setLastError(errorMsg);
 
           if (showErrorToast && showAlert) {
@@ -149,9 +142,7 @@ export function useHotkeyRegistration(
         return true;
       } catch (error) {
         const errorMsg =
-          error instanceof Error
-            ? error.message
-            : "Failed to register hotkey. Please try again.";
+          error instanceof Error ? error.message : "Failed to register hotkey. Please try again.";
         setLastError(errorMsg);
 
         if (showErrorToast && showAlert) {
