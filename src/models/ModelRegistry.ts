@@ -191,8 +191,14 @@ export function getModelProvider(modelId: string): string {
   if (!model) {
     // Infer provider from model name pattern
     if (modelId.includes("claude")) return "anthropic";
-    if (modelId.includes("gemini")) return "gemini";
+    // Check for gemini but exclude gemma (which could be Groq or local)
+    if (modelId.includes("gemini") && !modelId.includes("gemma")) return "gemini";
     if (modelId.includes("gpt-4") || modelId.includes("gpt-5")) return "openai";
+    // Groq-specific model patterns (these run on Groq cloud, not local)
+    // Groq models have patterns like "qwen/", "llama3-", "mixtral-", "gemma2-"
+    if (modelId.includes("qwen/") || modelId.includes("llama3-") ||
+        modelId.includes("mixtral-") || modelId.includes("gemma2-")) return "groq";
+    // Local models have patterns like "qwen2.5-", "llama-3.2-", "mistral-"
     if (modelId.includes("qwen") || modelId.includes("llama") || modelId.includes("mistral")) return "local";
   }
 

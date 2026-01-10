@@ -82,6 +82,42 @@
           "description": "Fast, long-context option"
         }
       ]
+    },
+    {
+      "id": "groq",
+      "name": "Groq",
+      "models": [
+        {
+          "id": "qwen/qwen3-32b",
+          "name": "Qwen3 32B",
+          "description": "Powerful reasoning model"
+        },
+        {
+          "id": "llama-3.3-70b-versatile",
+          "name": "LLaMA 3.3 70B",
+          "description": "Meta's latest versatile model"
+        },
+        {
+          "id": "llama3-70b-8192",
+          "name": "LLaMA 3 70B",
+          "description": "8K context, balanced performance"
+        },
+        {
+          "id": "llama3-8b-8192",
+          "name": "LLaMA 3 8B",
+          "description": "Fast and efficient"
+        },
+        {
+          "id": "mixtral-8x7b-32768",
+          "name": "Mixtral 8x7B",
+          "description": "32K context, mixture of experts"
+        },
+        {
+          "id": "gemma2-9b-it",
+          "name": "Gemma 2 9B",
+          "description": "Google's efficient model"
+        }
+      ]
     }
   ],
   "localProviders": [
