@@ -2,7 +2,7 @@ import { getModelProvider } from "../utils/languages";
 import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
-import { API_ENDPOINTS, API_VERSIONS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
 
 export const DEFAULT_PROMPTS = {
@@ -70,15 +70,6 @@ class ReasoningService extends BaseReasoningService {
     return candidates;
   }
 
-  private getOpenAIModelsEndpoint(): string {
-    const base = this.getConfiguredOpenAIBase();
-    const lower = base.toLowerCase();
-    if (lower.endsWith('/models')) {
-      return base;
-    }
-    return buildApiUrl(base, '/models');
-  }
-
   private getStoredOpenAiPreference(base: string): 'responses' | 'chat' | undefined {
     if (this.openAiEndpointPreference.has(base)) {
       return this.openAiEndpointPreference.get(base);
@@ -144,7 +135,7 @@ class ReasoningService extends BaseReasoningService {
           gemini: () => window.electronAPI.getGeminiKey(),
           groq: () => window.electronAPI.getGroqKey(),
         };
-        apiKey = await keyGetters[provider]();
+        apiKey = await keyGetters[provider]() ?? undefined;
         
         logger.logReasoning(`${provider.toUpperCase()}_KEY_FETCHED`, {
           provider,
@@ -175,6 +166,131 @@ class ReasoningService extends BaseReasoningService {
     }
     
     return apiKey;
+  }
+
+  /**
+   * Shared helper for OpenAI-compatible Chat Completions API calls.
+   * Used by Groq and as fallback for OpenAI.
+   */
+  private async callChatCompletionsApi(
+    endpoint: string,
+    apiKey: string,
+    model: string,
+    text: string,
+    agentName: string | null,
+    config: ReasoningConfig,
+    providerName: string
+  ): Promise<string> {
+    const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
+    const userPrompt = this.getReasoningPrompt(text, agentName, config);
+
+    const messages = [
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ];
+
+    const requestBody: any = {
+      model,
+      messages,
+      temperature: config.temperature ?? 0.3,
+      max_tokens: config.maxTokens || Math.max(
+        4096,
+        this.calculateMaxTokens(
+          text.length,
+          TOKEN_LIMITS.MIN_TOKENS,
+          TOKEN_LIMITS.MAX_TOKENS,
+          TOKEN_LIMITS.TOKEN_MULTIPLIER
+        )
+      ),
+    };
+
+    logger.logReasoning(`${providerName.toUpperCase()}_REQUEST`, {
+      endpoint,
+      model,
+      hasApiKey: !!apiKey,
+      requestBody: JSON.stringify(requestBody).substring(0, 200)
+    });
+
+    const response = await withRetry(
+      async () => {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(requestBody),
+        });
+
+        if (!res.ok) {
+          const errorText = await res.text();
+          let errorData: any = { error: res.statusText };
+
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || res.statusText };
+          }
+
+          logger.logReasoning(`${providerName.toUpperCase()}_API_ERROR_DETAIL`, {
+            status: res.status,
+            statusText: res.statusText,
+            error: errorData,
+            errorMessage: errorData.error?.message || errorData.message || errorData.error,
+            fullResponse: errorText.substring(0, 500)
+          });
+
+          const errorMessage = errorData.error?.message || errorData.message || errorData.error || `${providerName} API error: ${res.status}`;
+          throw new Error(errorMessage);
+        }
+
+        const jsonResponse = await res.json();
+
+        logger.logReasoning(`${providerName.toUpperCase()}_RAW_RESPONSE`, {
+          hasResponse: !!jsonResponse,
+          responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
+          hasChoices: !!jsonResponse?.choices,
+          choicesLength: jsonResponse?.choices?.length || 0,
+          fullResponse: JSON.stringify(jsonResponse).substring(0, 500)
+        });
+
+        return jsonResponse;
+      },
+      createApiRetryStrategy()
+    );
+
+    // Extract text from Chat Completions format
+    if (!response.choices || !response.choices[0]) {
+      logger.logReasoning(`${providerName.toUpperCase()}_RESPONSE_ERROR`, {
+        model,
+        response: JSON.stringify(response).substring(0, 500),
+        hasChoices: !!response.choices,
+        choicesCount: response.choices?.length || 0
+      });
+      throw new Error(`Invalid response structure from ${providerName} API`);
+    }
+
+    const choice = response.choices[0];
+    const responseText = choice.message?.content?.trim() || "";
+
+    if (!responseText) {
+      logger.logReasoning(`${providerName.toUpperCase()}_EMPTY_RESPONSE`, {
+        model,
+        finishReason: choice.finish_reason,
+        hasMessage: !!choice.message,
+        response: JSON.stringify(choice).substring(0, 500)
+      });
+      throw new Error(`${providerName} returned empty response`);
+    }
+
+    logger.logReasoning(`${providerName.toUpperCase()}_RESPONSE`, {
+      model,
+      responseLength: responseText.length,
+      tokensUsed: response.usage?.total_tokens || 0,
+      success: true
+    });
+
+    return responseText;
   }
 
   async processText(
@@ -360,7 +476,7 @@ class ReasoningService extends BaseReasoningService {
 
           throw lastError || new Error('No OpenAI endpoint responded');
         },
-        createApiRetryStrategy("OpenAI")
+        createApiRetryStrategy()
       );
 
       // Detect the API response format (Responses API vs Chat Completions)
@@ -662,7 +778,7 @@ class ReasoningService extends BaseReasoningService {
             
             return jsonResponse;
           },
-          createApiRetryStrategy("Gemini")
+          createApiRetryStrategy()
         );
       } catch (fetchError) {
         logger.logReasoning("GEMINI_FETCH_ERROR", {
@@ -729,140 +845,18 @@ class ReasoningService extends BaseReasoningService {
     agentName: string | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
-    logger.logReasoning("GROQ_START", {
-      model,
-      agentName,
-      hasApiKey: false
-    });
+    logger.logReasoning("GROQ_START", { model, agentName });
 
     if (this.isProcessing) {
       throw new Error("Already processing a request");
     }
 
-    // Groq uses its own API key
     const apiKey = await this.getApiKey('groq');
-
-    logger.logReasoning("GROQ_API_KEY", {
-      hasApiKey: !!apiKey,
-      keyLength: apiKey?.length || 0
-    });
-
     this.isProcessing = true;
 
     try {
-      const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
-
-      // Build messages array for Chat Completions format
-      const messages = [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt }
-      ];
-
-      const requestBody: any = {
-        model: model,
-        messages,
-        temperature: config.temperature || 0.6,
-        max_tokens: config.maxTokens || Math.max(
-          4096,
-          this.calculateMaxTokens(
-            text.length,
-            TOKEN_LIMITS.MIN_TOKENS,
-            TOKEN_LIMITS.MAX_TOKENS,
-            TOKEN_LIMITS.TOKEN_MULTIPLIER
-          )
-        ),
-      };
-
       const endpoint = buildApiUrl(API_ENDPOINTS.GROQ_BASE, '/chat/completions');
-
-      logger.logReasoning("GROQ_REQUEST", {
-        endpoint,
-        model,
-        hasApiKey: !!apiKey,
-        requestBody: JSON.stringify(requestBody).substring(0, 200)
-      });
-
-      const response = await withRetry(
-        async () => {
-          const res = await fetch(endpoint, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${apiKey}`,
-            },
-            body: JSON.stringify(requestBody),
-          });
-
-          if (!res.ok) {
-            const errorText = await res.text();
-            let errorData: any = { error: res.statusText };
-
-            try {
-              errorData = JSON.parse(errorText);
-            } catch {
-              errorData = { error: errorText || res.statusText };
-            }
-
-            logger.logReasoning("GROQ_API_ERROR_DETAIL", {
-              status: res.status,
-              statusText: res.statusText,
-              error: errorData,
-              errorMessage: errorData.error?.message || errorData.message || errorData.error,
-              fullResponse: errorText.substring(0, 500)
-            });
-
-            const errorMessage = errorData.error?.message || errorData.message || errorData.error || `Groq API error: ${res.status}`;
-            throw new Error(errorMessage);
-          }
-
-          const jsonResponse = await res.json();
-
-          logger.logReasoning("GROQ_RAW_RESPONSE", {
-            hasResponse: !!jsonResponse,
-            responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
-            hasChoices: !!jsonResponse?.choices,
-            choicesLength: jsonResponse?.choices?.length || 0,
-            fullResponse: JSON.stringify(jsonResponse).substring(0, 500)
-          });
-
-          return jsonResponse;
-        },
-        createApiRetryStrategy("Groq")
-      );
-
-      // Extract text from Chat Completions format
-      if (!response.choices || !response.choices[0]) {
-        logger.logReasoning("GROQ_RESPONSE_ERROR", {
-          model,
-          response: JSON.stringify(response).substring(0, 500),
-          hasChoices: !!response.choices,
-          choicesCount: response.choices?.length || 0
-        });
-        throw new Error("Invalid response structure from Groq API");
-      }
-
-      const choice = response.choices[0];
-      const responseText = choice.message?.content?.trim() || "";
-
-      if (!responseText) {
-        logger.logReasoning("GROQ_EMPTY_RESPONSE", {
-          model,
-          finishReason: choice.finish_reason,
-          hasMessage: !!choice.message,
-          response: JSON.stringify(choice).substring(0, 500)
-        });
-        throw new Error("Groq returned empty response");
-      }
-
-      logger.logReasoning("GROQ_RESPONSE", {
-        model,
-        responseLength: responseText.length,
-        tokensUsed: response.usage?.total_tokens || 0,
-        success: true
-      });
-
-      return responseText;
+      return await this.callChatCompletionsApi(endpoint, apiKey, model, text, agentName, config, "Groq");
     } catch (error) {
       logger.logReasoning("GROQ_ERROR", {
         model,
@@ -881,20 +875,18 @@ class ReasoningService extends BaseReasoningService {
       const openaiKey = await window.electronAPI?.getOpenAIKey?.();
       const anthropicKey = await window.electronAPI?.getAnthropicKey?.();
       const geminiKey = await window.electronAPI?.getGeminiKey?.();
+      const groqKey = await window.electronAPI?.getGroqKey?.();
       const localAvailable = await window.electronAPI?.checkLocalReasoningAvailable?.();
-      
+
       logger.logReasoning("API_KEY_CHECK", {
         hasOpenAI: !!openaiKey,
         hasAnthropic: !!anthropicKey,
         hasGemini: !!geminiKey,
-        hasLocal: !!localAvailable,
-        openAIKeyLength: openaiKey?.length || 0,
-        anthropicKeyLength: anthropicKey?.length || 0,
-        geminiKeyLength: geminiKey?.length || 0,
-        geminiKeyPreview: geminiKey ? `${geminiKey.substring(0, 8)}...` : 'none'
+        hasGroq: !!groqKey,
+        hasLocal: !!localAvailable
       });
-      
-      return !!(openaiKey || anthropicKey || geminiKey || localAvailable);
+
+      return !!(openaiKey || anthropicKey || geminiKey || groqKey || localAvailable);
     } catch (error) {
       logger.logReasoning("API_KEY_CHECK_ERROR", {
         error: (error as Error).message,

@@ -184,16 +184,7 @@ export default function AIModelSelectorEnhanced({
       const rawBase = (baseOverride ?? cloudReasoningBaseUrl) || '';
       const normalizedBase = normalizeBaseUrl(rawBase);
 
-      console.log('[loadRemoteModels] Called with:', {
-        baseOverride,
-        force,
-        rawBase,
-        normalizedBase,
-        cloudReasoningBaseUrl
-      });
-
       if (!normalizedBase) {
-        console.log('[loadRemoteModels] No normalized base, clearing models');
         if (isMountedRef.current) {
           setCustomModelsLoading(false);
           setCustomModelsError(null);
@@ -203,12 +194,10 @@ export default function AIModelSelectorEnhanced({
       }
 
       if (!force && lastLoadedBaseRef.current === normalizedBase) {
-        console.log('[loadRemoteModels] Already loaded this base, skipping');
         return;
       }
 
       if (!force && pendingBaseRef.current === normalizedBase) {
-        console.log('[loadRemoteModels] Already pending for this base, skipping');
         return;
       }
 
@@ -233,14 +222,7 @@ export default function AIModelSelectorEnhanced({
             ? keyFromState
             : await window.electronAPI?.getOpenAIKey?.();
 
-        console.log('[loadRemoteModels] API Key status:', {
-          hasKeyFromState: !!keyFromState,
-          hasKeyFromElectron: !!apiKey,
-          keyLength: apiKey?.length || 0
-        });
-
         if (!normalizedBase.includes('://')) {
-          console.error('[loadRemoteModels] Invalid URL - missing protocol:', normalizedBase);
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
             setCustomModelsError('Enter a full base URL including protocol (e.g. https://server/v1).');
             setCustomModelsLoading(false);
@@ -251,7 +233,6 @@ export default function AIModelSelectorEnhanced({
         // Security: Only allow HTTPS endpoints (except localhost for development)
         const isLocalhost = normalizedBase.includes('://localhost') || normalizedBase.includes('://127.0.0.1');
         if (!normalizedBase.startsWith('https://') && !isLocalhost) {
-          console.error('[loadRemoteModels] Non-HTTPS endpoint rejected:', normalizedBase);
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
             setCustomModelsError('Only HTTPS endpoints are allowed (except localhost for testing).');
             setCustomModelsLoading(false);
@@ -265,14 +246,11 @@ export default function AIModelSelectorEnhanced({
         }
 
         const modelsUrl = buildApiUrl(normalizedBase, '/models');
-        console.log('[loadRemoteModels] Fetching models from:', modelsUrl, 'with headers:', headers);
 
         const response = await fetch(modelsUrl, {
           method: 'GET',
           headers,
         });
-
-        console.log('[loadRemoteModels] Response status:', response.status, response.statusText);
 
         if (!response.ok) {
           const errorText = await response.text().catch(() => '');
@@ -283,15 +261,12 @@ export default function AIModelSelectorEnhanced({
         }
 
         const payload = await response.json().catch(() => ({}));
-        console.log('[loadRemoteModels] Payload received:', payload);
 
         const rawModels = Array.isArray(payload?.data)
           ? payload.data
           : Array.isArray(payload?.models)
           ? payload.models
           : [];
-
-        console.log('[loadRemoteModels] Raw models count:', rawModels.length);
 
         const mappedModels = (rawModels as Array<any>)
           .map((item) => {
@@ -312,23 +287,18 @@ export default function AIModelSelectorEnhanced({
           })
           .filter(Boolean) as CloudModelOption[];
 
-        console.log('[loadRemoteModels] Mapped models:', mappedModels.length, mappedModels.slice(0, 3));
-
         if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-          console.log('[loadRemoteModels] Setting custom model options:', mappedModels.length);
           setCustomModelOptions(mappedModels);
           if (
             mappedModels.length > 0 &&
             !mappedModels.some((model) => model.value === reasoningModel)
           ) {
-            console.log('[loadRemoteModels] Auto-selecting first model:', mappedModels[0].value);
             setReasoningModel(mappedModels[0].value);
           }
           setCustomModelsError(null);
           lastLoadedBaseRef.current = normalizedBase;
         }
       } catch (error) {
-        console.error('[loadRemoteModels] Error:', error);
         if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
           const message =
             (error as Error).message || 'Unable to load models from endpoint.';
