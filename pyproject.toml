@@ -1,0 +1,23 @@
+[tool.ruff]
+# Relaxed Python linting and formatting
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+# Only catch important issues, not style nitpicks
+select = [
+    "E",   # pycodestyle errors (syntax issues)
+    "F",   # pyflakes (undefined names, unused imports)
+    "W",   # pycodestyle warnings
+]
+ignore = [
+    "E501",  # line too long (let formatter handle it)
+    "E402",  # module level import not at top
+    "W503",  # line break before binary operator
+]
+
+[tool.ruff.format]
+# Use double quotes like Prettier
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
