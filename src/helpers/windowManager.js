@@ -106,7 +106,16 @@ class WindowManager {
   }
 
   async initializeHotkey() {
+    let lastToggleTime = 0;
+    const DEBOUNCE_MS = 150; 
+
     const callback = () => {
+      const now = Date.now();
+      if (now - lastToggleTime < DEBOUNCE_MS) {
+        return;
+      }
+      lastToggleTime = now;
+
       if (!this.mainWindow.isVisible()) {
         this.mainWindow.show();
       }
@@ -117,7 +126,16 @@ class WindowManager {
   }
 
   async updateHotkey(hotkey) {
+    let lastToggleTime = 0;
+    const DEBOUNCE_MS = 150; 
+
     const callback = () => {
+      const now = Date.now();
+      if (now - lastToggleTime < DEBOUNCE_MS) {
+        return;
+      }
+      lastToggleTime = now;
+
       if (!this.mainWindow.isVisible()) {
         this.mainWindow.show();
       }

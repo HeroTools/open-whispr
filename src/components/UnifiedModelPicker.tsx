@@ -196,11 +196,20 @@ export default function UnifiedModelPicker({
       if (modelType === "whisper") {
         const result = await window.electronAPI.listWhisperModels();
         if (result.success) {
+          // Estimated sizes in MB for each model (used when actual size not available)
+          const modelSizes: Record<string, number> = {
+            tiny: 39,
+            base: 74,
+            small: 244,
+            medium: 769,
+            large: 1550,
+            turbo: 809,
+          };
           const whisperModels: Model[] = result.models.map((m: any) => ({
             ...m,
             id: m.model,
             name: m.model.charAt(0).toUpperCase() + m.model.slice(1),
-            size: m.size_mb ? `${m.size_mb}MB` : "Unknown",
+            size: m.size_mb ? `${m.size_mb}MB` : `~${modelSizes[m.model as keyof typeof modelSizes] || "?"}MB`,
             description:
               {
                 tiny: "Fastest, lower quality",

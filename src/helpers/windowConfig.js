@@ -15,8 +15,7 @@ const MAIN_WINDOW_CONFIG = {
   frame: false,
   alwaysOnTop: true,
   resizable: false,
-  transparent: process.platform !== "win32",
-  ...(process.platform === "win32" ? { backgroundColor: "#1a1a1a" } : {}),
+  transparent: true,
   show: false, // Start hidden, show after setup
   skipTaskbar: false, // Keep visible in Dock/taskbar so app stays discoverable
   focusable: true,

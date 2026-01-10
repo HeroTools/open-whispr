@@ -153,7 +153,6 @@ export default function App() {
 
   const micState = getMicState();
 
-  // Get microphone button properties based on state
   const getMicButtonProps = () => {
     const baseClasses =
       "rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden border-2 border-white/70 cursor-pointer";
