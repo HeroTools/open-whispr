@@ -207,7 +207,7 @@ class AudioManager {
         });
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
-      this.onTranscriptionComplete?.(result);
+      await this.onTranscriptionComplete?.(result);
     } catch (error) {
       this.markLatencyStage(
         "05_transcription_failed",

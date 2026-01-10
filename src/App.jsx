@@ -218,7 +218,7 @@ export default function App() {
           }}
         >
           {isRecording && isHovered && (
-            <Tooltip content="Stop recording">
+            <Tooltip content="Cancel recording">
               <button
                 aria-label="Cancel recording"
                 onClick={(e) => {
