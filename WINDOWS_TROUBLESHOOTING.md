@@ -4,6 +4,29 @@ This guide addresses common Windows-specific issues in OpenWhispr.
 
 ## Quick Fixes
 
+### Issue: "App starts but no window appears"
+
+**Symptoms:**
+- OpenWhispr.exe runs in Task Manager, but no window shows up
+- You only see background processes or a tray icon
+
+**Solutions:**
+
+1. **Check the system tray**
+   - Click the ^ caret in the Windows tray
+   - Look for the OpenWhispr icon
+   - Click it to open the Control Panel
+
+2. **Start with debug logging**
+   - Open Command Prompt in the install directory
+   - Run: `OpenWhispr.exe --log-level=debug`
+   - Check logs in: `%APPDATA%\OpenWhispr\logs`
+
+3. **Disable GPU acceleration**
+   - Some Windows 11 builds have GPU/driver issues with Electron
+   - Run: `OpenWhispr.exe --disable-gpu`
+   - If that works, keep using the flag and report your GPU model
+
 ### Issue: "No transcriptions" or "Audio file is empty"
 
 **Symptoms:**

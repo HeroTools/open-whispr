@@ -15,11 +15,12 @@ const MAIN_WINDOW_CONFIG = {
   frame: false,
   alwaysOnTop: true,
   resizable: false,
-  transparent: true,
+  transparent: process.platform !== 'win32',
+  ...(process.platform === 'win32' ? { backgroundColor: '#1a1a1a' } : {}),
   show: false, // Start hidden, show after setup
   skipTaskbar: false, // Keep visible in Dock/taskbar so app stays discoverable
   focusable: true,
-  visibleOnAllWorkspaces: true,
+  visibleOnAllWorkspaces: process.platform !== 'win32', 
   fullScreenable: false,
   hasShadow: false, // Remove shadow for cleaner look
   acceptsFirstMouse: true, // Accept clicks even when not focused
@@ -42,9 +43,15 @@ const CONTROL_PANEL_CONFIG = {
   title: "Control Panel",
   resizable: true,
   show: false,
-  titleBarStyle: "hiddenInset",
-  trafficLightPosition: { x: 20, y: 20 },
-  frame: false,
+  // macOS-specific options
+  ...(process.platform === 'darwin' ? {
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 20, y: 20 },
+    frame: false,
+  } : {
+    // Windows/Linux: use standard frame for reliability
+    frame: true,
+  }),
   transparent: false,
   backgroundColor: "#ffffff",
   minimizable: true,
@@ -90,9 +97,7 @@ class WindowPositionUtil {
         window.setAlwaysOnTop(true, "floating", 1);
       }
     } else if (process.platform === 'win32') {
-      // Windows-specific always-on-top
-      window.setAlwaysOnTop(true, "screen-saver");
-      // Don't skip taskbar on Windows to maintain visibility
+      window.setAlwaysOnTop(true, "pop-up-menu");
     } else {
       // Linux and other platforms
       window.setAlwaysOnTop(true, "screen-saver");

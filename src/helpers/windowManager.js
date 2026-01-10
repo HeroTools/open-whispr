@@ -1,4 +1,4 @@
-const { app, screen, BrowserWindow } = require("electron");
+const { app, screen, BrowserWindow, dialog } = require("electron");
 const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
@@ -18,6 +18,7 @@ class WindowManager {
     this.dragManager = new DragManager();
     this.isQuitting = false;
     this.isMainWindowInteractive = false;
+    this.loadErrorShown = false;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -28,15 +29,23 @@ class WindowManager {
     const display = screen.getPrimaryDisplay();
     const position = WindowPositionUtil.getMainWindowPosition(display);
 
+    console.log("[WindowManager] Creating main window with position:", position);
+    console.log("[WindowManager] Display bounds:", display.bounds);
+    console.log("[WindowManager] Display workArea:", display.workArea);
+    console.log("[WindowManager] Platform:", process.platform);
+
     this.mainWindow = new BrowserWindow({
       ...MAIN_WINDOW_CONFIG,
       ...position,
     });
 
+    console.log("[WindowManager] Main window created, id:", this.mainWindow.id);
+
     if (process.platform === "darwin") {
       this.mainWindow.setSkipTaskbar(false);
     } else if (process.platform === "win32") {
-      this.mainWindow.setSkipTaskbar(true);
+      // Keep in taskbar on Windows for discoverability
+      this.mainWindow.setSkipTaskbar(false);
     }
 
     this.setMainWindowInteractivity(false);
@@ -49,7 +58,10 @@ class WindowManager {
 
     this.mainWindow.webContents.on(
       "did-fail-load",
-      async (_event, errorCode, errorDescription, validatedURL) => {
+      async (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+        if (!isMainFrame) {
+          return;
+        }
         console.error(
           "Failed to load main window:",
           errorCode,
@@ -68,6 +80,13 @@ class WindowManager {
               this.mainWindow.reload();
             }
           }, 2000);
+        } else {
+          this.showLoadFailureDialog(
+            "Dictation panel",
+            errorCode,
+            errorDescription,
+            validatedURL
+          );
         }
       }
     );
@@ -150,7 +169,25 @@ class WindowManager {
 
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
+    const visibilityTimer = setTimeout(() => {
+      if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) {
+        return;
+      }
+      if (!this.controlPanelWindow.isVisible()) {
+        console.warn(
+          "Control panel did not become visible in time; forcing show"
+        );
+        this.controlPanelWindow.show();
+        this.controlPanelWindow.focus();
+      }
+    }, 10000);
+
+    const clearVisibilityTimer = () => {
+      clearTimeout(visibilityTimer);
+    };
+
     this.controlPanelWindow.once("ready-to-show", () => {
+      clearVisibilityTimer();
       if (process.platform === "win32") {
         this.controlPanelWindow.setSkipTaskbar(false);
       }
@@ -176,6 +213,7 @@ class WindowManager {
     });
 
     this.controlPanelWindow.on("closed", () => {
+      clearVisibilityTimer();
       this.controlPanelWindow = null;
     });
 
@@ -183,8 +221,37 @@ class WindowManager {
     MenuManager.setupControlPanelMenu(this.controlPanelWindow);
 
     this.controlPanelWindow.webContents.on("did-finish-load", () => {
+      clearVisibilityTimer();
       this.controlPanelWindow.setTitle("Control Panel");
     });
+
+    this.controlPanelWindow.webContents.on(
+      "did-fail-load",
+      (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
+        if (!isMainFrame) {
+          return;
+        }
+        clearVisibilityTimer();
+        console.error(
+          "Failed to load control panel:",
+          errorCode,
+          errorDescription,
+          validatedURL
+        );
+        if (process.env.NODE_ENV !== "development") {
+          this.showLoadFailureDialog(
+            "Control panel",
+            errorCode,
+            errorDescription,
+            validatedURL
+          );
+        }
+        if (!this.controlPanelWindow.isVisible()) {
+          this.controlPanelWindow.show();
+          this.controlPanelWindow.focus();
+        }
+      }
+    );
 
     console.log("📱 Loading control panel content...");
     await this.loadControlPanel();
@@ -288,6 +355,25 @@ class WindowManager {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       WindowPositionUtil.setupAlwaysOnTop(this.mainWindow);
     }
+  }
+
+  showLoadFailureDialog(windowName, errorCode, errorDescription, validatedURL) {
+    if (this.loadErrorShown) {
+      return;
+    }
+    this.loadErrorShown = true;
+    const detailLines = [
+      `Window: ${windowName}`,
+      `Error ${errorCode}: ${errorDescription}`,
+      validatedURL ? `URL: ${validatedURL}` : null,
+      "Try reinstalling the app or launching with --log-level=debug.",
+    ].filter(Boolean);
+    dialog.showMessageBox({
+      type: "error",
+      title: "OpenWhispr failed to load",
+      message: "OpenWhispr could not load its UI.",
+      detail: detailLines.join("\n"),
+    });
   }
 }
 
