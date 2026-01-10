@@ -52,7 +52,7 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y rpm
 
-    # macOS code signing setup - industry standard approach
+    # macOS code signing setup
     - name: Setup macOS Code Signing
       if: matrix.os == 'macos-latest' && github.event_name != 'pull_request'
       env:

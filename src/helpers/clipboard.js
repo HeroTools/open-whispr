@@ -167,24 +167,101 @@ class ClipboardManager {
       }
     };
 
+    // Detect if the focused window is a terminal emulator
+    // Terminals use Ctrl+Shift+V for paste (since Ctrl+V/C are used for process control)
+    const isTerminal = () => {
+      // Common terminal emulator class names
+      const terminalClasses = [
+        "konsole",
+        "gnome-terminal",
+        "terminal",
+        "kitty",
+        "alacritty",
+        "terminator",
+        "xterm",
+        "urxvt",
+        "rxvt",
+        "tilix",
+        "terminology",
+        "wezterm",
+        "foot",
+        "st",
+        "yakuake",
+      ];
+
+      try {
+        // Try xdotool (works on X11 and XWayland)
+        if (commandExists("xdotool")) {
+          const result = spawnSync("xdotool", [
+            "getactivewindow",
+            "getwindowclassname",
+          ]);
+          if (result.status === 0) {
+            const className = result.stdout.toString().toLowerCase().trim();
+            const isTerminalWindow = terminalClasses.some((term) =>
+              className.includes(term)
+            );
+            if (isTerminalWindow) {
+              this.safeLog(`🖥️ Terminal detected via xdotool: ${className}`);
+            }
+            return isTerminalWindow;
+          }
+        }
+
+        // Try kdotool for KDE Wayland (if available)
+        if (commandExists("kdotool")) {
+          // First get the active window ID
+          const windowIdResult = spawnSync("kdotool", ["getactivewindow"]);
+          if (windowIdResult.status === 0) {
+            const windowId = windowIdResult.stdout.toString().trim();
+            // Then get the window class name
+            const classResult = spawnSync("kdotool", ["getwindowclassname", windowId]);
+            if (classResult.status === 0) {
+              const className = classResult.stdout.toString().toLowerCase().trim();
+              const isTerminalWindow = terminalClasses.some((term) =>
+                className.includes(term)
+              );
+              if (isTerminalWindow) {
+                this.safeLog(`🖥️ Terminal detected via kdotool: ${className}`);
+              }
+              return isTerminalWindow;
+            }
+          }
+        }
+      } catch (error) {
+        // Silent fallback - if detection fails, assume non-terminal
+      }
+      return false;
+    };
+
     // Detect if running on Wayland or X11
     const isWayland =
       (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
       !!process.env.WAYLAND_DISPLAY;
 
+    const inTerminal = isTerminal();
+    const pasteKeys = inTerminal ? "ctrl+shift+v" : "ctrl+v";
+
     // Define paste tools in preference order based on display server
     const candidates = isWayland
       ? [
           // Wayland tools
-          { cmd: "wtype", args: ["-M", "ctrl", "-p", "v", "-m", "ctrl"] },
+          inTerminal
+            ? {
+                cmd: "wtype",
+                args: ["-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"],
+              }
+            : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
           // ydotool requires uinput permissions but included as fallback
-          { cmd: "ydotool", args: ["key", "29:1", "47:1", "47:0", "29:0"] },
+          inTerminal
+            ? { cmd: "ydotool", args: ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] }
+            : { cmd: "ydotool", args: ["key", "29:1", "47:1", "47:0", "29:0"] },
           // X11 fallback for XWayland
-          { cmd: "xdotool", args: ["key", "ctrl+v"] },
+          { cmd: "xdotool", args: ["key", pasteKeys] },
         ]
       : [
           // X11 tools
-          { cmd: "xdotool", args: ["key", "ctrl+v"] },
+          { cmd: "xdotool", args: ["key", pasteKeys] },
         ];
 
     // Filter to only available tools
@@ -214,7 +291,8 @@ class ClipboardManager {
 
           if (code === 0) {
             // Restore original clipboard after successful paste
-            setTimeout(() => clipboard.writeText(originalClipboard), 100);
+            // Delay allows time for X11 to process paste event before clipboard is overwritten
+            setTimeout(() => clipboard.writeText(originalClipboard), 200);
             resolve();
           } else {
             reject(new Error(`${tool.cmd} exited with code ${code}`));

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Trash2, Settings, FileText, Mic, X } from "lucide-react";
+import { Trash2, Settings, FileText, Mic } from "lucide-react";
 import SettingsModal from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
@@ -28,7 +28,6 @@ export default function ControlPanel() {
     updateDownloaded: false,
     isDevelopment: false,
   });
-  const isWindows = typeof window !== "undefined" && window.electronAPI?.getPlatform?.() === "win32";
 
   const {
     confirmDialog,
@@ -38,10 +37,6 @@ export default function ControlPanel() {
     hideConfirmDialog,
     hideAlertDialog,
   } = useDialogs();
-
-  const handleClose = () => {
-    void window.electronAPI.windowClose();
-  };
 
   useEffect(() => {
     loadTranscriptions();
@@ -205,19 +200,6 @@ export default function ControlPanel() {
             >
               <Settings size={16} />
             </Button>
-            {isWindows && (
-              <div className="flex items-center gap-1 ml-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                  onClick={handleClose}
-                  aria-label="Close window"
-                >
-                  <X size={14} />
-                </Button>
-              </div>
-            )}
           </>
         }
       />

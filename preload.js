@@ -100,6 +100,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   windowClose: () => ipcRenderer.invoke("window-close"),
   windowIsMaximized: () => ipcRenderer.invoke("window-is-maximized"),
   getPlatform: () => process.platform,
+  appQuit: () => ipcRenderer.invoke("app-quit"),
 
   // Cleanup function
   cleanupApp: () => ipcRenderer.invoke("cleanup-app"),
@@ -166,9 +167,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
   llamaCppUninstall: () => ipcRenderer.invoke("llama-cpp-uninstall"),
   
-  // Debug logging for reasoning pipeline
-  logReasoning: (stage, details) => 
-    ipcRenderer.invoke("log-reasoning", stage, details),
+  getLogLevel: () => ipcRenderer.invoke("get-log-level"),
+  log: (entry) => ipcRenderer.invoke("app-log", entry),
   
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {

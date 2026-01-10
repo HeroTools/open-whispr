@@ -231,6 +231,7 @@ declare global {
       setMainWindowInteractivity: (interactive: boolean) => Promise<void>;
 
       // App management
+      appQuit: () => Promise<void>;
       cleanupApp: () => Promise<{ success: boolean; message: string }>;
       getTranscriptionHistory: () => Promise<any[]>;
       clearTranscriptionHistory: () => Promise<void>;
@@ -279,7 +280,14 @@ declare global {
       saveGeminiKey: (key: string) => Promise<void>;
       
       // Debug logging
-      logReasoning?: (stage: string, details: any) => Promise<void>;
+      getLogLevel?: () => Promise<string>;
+      log?: (entry: {
+        level: string;
+        message: string;
+        meta?: any;
+        scope?: string;
+        source?: string;
+      }) => Promise<void>;
       
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<boolean>;
