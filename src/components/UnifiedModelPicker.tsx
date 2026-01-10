@@ -209,7 +209,9 @@ export default function UnifiedModelPicker({
             ...m,
             id: m.model,
             name: m.model.charAt(0).toUpperCase() + m.model.slice(1),
-            size: m.size_mb ? `${m.size_mb}MB` : `~${modelSizes[m.model as keyof typeof modelSizes] || "?"}MB`,
+            size: m.size_mb
+              ? `${m.size_mb}MB`
+              : `~${modelSizes[m.model as keyof typeof modelSizes] || "?"}MB`,
             description:
               {
                 tiny: "Fastest, lower quality",

@@ -105,11 +105,11 @@ class WindowManager {
     this.mainWindow.loadURL(appUrl);
   }
 
-  async initializeHotkey() {
+  createHotkeyCallback() {
     let lastToggleTime = 0;
-    const DEBOUNCE_MS = 150; 
+    const DEBOUNCE_MS = 150;
 
-    const callback = () => {
+    return () => {
       const now = Date.now();
       if (now - lastToggleTime < DEBOUNCE_MS) {
         return;
@@ -121,28 +121,14 @@ class WindowManager {
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
+  }
 
-    await this.hotkeyManager.initializeHotkey(this.mainWindow, callback);
+  async initializeHotkey() {
+    await this.hotkeyManager.initializeHotkey(this.mainWindow, this.createHotkeyCallback());
   }
 
   async updateHotkey(hotkey) {
-    let lastToggleTime = 0;
-    const DEBOUNCE_MS = 150; 
-
-    const callback = () => {
-      const now = Date.now();
-      if (now - lastToggleTime < DEBOUNCE_MS) {
-        return;
-      }
-      lastToggleTime = now;
-
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
-      }
-      this.mainWindow.webContents.send("toggle-dictation");
-    };
-
-    return await this.hotkeyManager.updateHotkey(hotkey, callback);
+    return await this.hotkeyManager.updateHotkey(hotkey, this.createHotkeyCallback());
   }
 
   async startWindowDrag() {
