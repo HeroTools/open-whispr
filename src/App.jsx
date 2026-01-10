@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
-import { X } from "lucide-react";
 import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
@@ -100,7 +99,7 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, toggleListening, cancelRecording } = useAudioRecording(toast, {
+  const { isRecording, isProcessing, toggleListening } = useAudioRecording(toast, {
     onToggle: handleDictationToggle,
   });
 
@@ -206,20 +205,6 @@ export default function App() {
             }
           }}
         >
-          {isRecording && isHovered && (
-            <Tooltip content="Cancel recording">
-              <button
-                aria-label="Cancel recording"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  cancelRecording();
-                }}
-                className="w-7 h-7 rounded-full bg-neutral-800/90 hover:bg-red-500 border border-white/20 hover:border-red-400 flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
-              >
-                <X size={12} strokeWidth={2.5} color="white" />
-              </button>
-            </Tooltip>
-          )}
           <Tooltip content={micProps.tooltip}>
             <button
               ref={buttonRef}

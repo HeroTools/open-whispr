@@ -12,7 +12,7 @@ import {
   Download,
   Key,
   Shield,
-  Keyboard,
+  Command,
   TestTube,
   Sparkles,
   Lock,
@@ -37,10 +37,11 @@ import { useSettings } from "../hooks/useSettings";
 import { getLanguageLabel, REASONING_PROVIDERS } from "../utils/languages";
 import LanguageSelector from "./ui/LanguageSelector";
 import { UnifiedModelPickerCompact } from "./UnifiedModelPicker";
-const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
-import { formatHotkeyLabel } from "../utils/hotkeys";
+import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { HotkeyInput } from "./ui/HotkeyInput";
+import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -99,6 +100,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     hideConfirmDialog,
   } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
+
+  // Ref to prevent React.StrictMode double-invocation of auto-registration
+  const autoRegisterInFlightRef = useRef(false);
+  const hotkeyStepInitializedRef = useRef(false);
+
+  // Shared hotkey registration hook
+  const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
+    onSuccess: (registeredHotkey) => {
+      setHotkey(registeredHotkey);
+      setDictationKey(registeredHotkey);
+    },
+    showSuccessToast: false, // Don't show toast during onboarding auto-registration
+    showErrorToast: false,
+  });
 
   const trimmedReasoningBase = (reasoningBaseUrl || "").trim();
   const normalizedReasoningBaseUrl = useMemo(
@@ -302,7 +317,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Privacy", icon: Lock },
     { title: "Setup", icon: Settings },
     { title: "Permissions", icon: Shield },
-    { title: "Hotkey", icon: Keyboard },
+    { title: "Hotkey", icon: Command },
     { title: "Test", icon: TestTube },
     { title: "Agent Name", icon: User },
     { title: "Finish", icon: Check },
@@ -326,6 +341,45 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
     }
   }, [currentStep]);
+
+  // Auto-register default hotkey when entering the hotkey step (step 4)
+  useEffect(() => {
+    if (currentStep !== 4) {
+      // Reset initialization flag when leaving step 4
+      hotkeyStepInitializedRef.current = false;
+      return;
+    }
+
+    // Prevent double-invocation from React.StrictMode
+    if (autoRegisterInFlightRef.current || hotkeyStepInitializedRef.current) {
+      return;
+    }
+
+    const autoRegisterDefaultHotkey = async () => {
+      autoRegisterInFlightRef.current = true;
+      hotkeyStepInitializedRef.current = true;
+
+      try {
+        // Get platform-appropriate default hotkey
+        const defaultHotkey = getDefaultHotkey();
+
+        // Only auto-register if no hotkey is currently set or it's the old default
+        if (!hotkey || hotkey === "`" || hotkey === "GLOBE") {
+          // Try to register the default hotkey silently
+          const success = await registerHotkey(defaultHotkey);
+          if (success) {
+            setHotkey(defaultHotkey);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to auto-register default hotkey:", error);
+      } finally {
+        autoRegisterInFlightRef.current = false;
+      }
+    };
+
+    void autoRegisterDefaultHotkey();
+  }, [currentStep, hotkey, registerHotkey]);
 
   const ensureHotkeyRegistered = useCallback(async () => {
     if (!window.electronAPI?.updateHotkey) {
@@ -863,33 +917,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Hotkey</h2>
               <p className="text-gray-600">
-                Select which key you want to press to start/stop dictation
+                Set the key combination you'll use to start and stop dictation
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Activation Key
-                </label>
-                <Input
-                  placeholder="Default: ` (backtick)"
-                  value={hotkey}
-                  onChange={(e) => setHotkey(e.target.value)}
-                  className="text-center text-lg font-mono"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Press this key from anywhere to start/stop dictation
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-3">Click any key to select it:</h4>
-                <React.Suspense fallback={<div>Loading keyboard...</div>}>
-                  <InteractiveKeyboard selectedKey={hotkey} setSelectedKey={setHotkey} />
-                </React.Suspense>
-              </div>
-            </div>
+            <HotkeyInput
+              value={hotkey}
+              onChange={async (newHotkey) => {
+                const success = await registerHotkey(newHotkey);
+                if (success) {
+                  setHotkey(newHotkey);
+                }
+              }}
+              disabled={isHotkeyRegistering}
+            />
           </div>
         );
 

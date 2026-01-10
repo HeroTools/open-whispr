@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Keyboard, Mic, Shield } from "lucide-react";
+import { RefreshCw, Download, Command, Mic, Shield } from "lucide-react";
 import WhisperModelPicker from "./WhisperModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
@@ -20,7 +20,8 @@ import PromptStudio from "./ui/PromptStudio";
 import { API_ENDPOINTS } from "../config/constants";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
 import type { UpdateInfoResult } from "../types/electron";
-const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
+import { HotkeyInput } from "./ui/HotkeyInput";
+import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 
 export type SettingsSectionType =
   | "general"
@@ -112,6 +113,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const { pasteFromClipboardWithFallback } = useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Shared hotkey registration hook
+  const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
+    onSuccess: (registeredHotkey) => {
+      setDictationKey(registeredHotkey);
+    },
+    showSuccessToast: false,
+    showErrorToast: true,
+    showAlert: showAlertDialog,
+  });
 
   const subscribeToUpdates = useCallback(() => {
     if (!window.electronAPI) return () => {};
@@ -446,32 +457,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     });
   };
 
-  const saveKey = async () => {
-    try {
-      const result = await window.electronAPI?.updateHotkey(dictationKey);
-
-      if (!result?.success) {
-        showAlertDialog({
-          title: "Hotkey Not Saved",
-          description:
-            result?.message || "This key could not be registered. Please choose a different key.",
-        });
-        return;
-      }
-
-      showAlertDialog({
-        title: "Key Saved",
-        description: `Dictation key saved: ${formatHotkeyLabel(dictationKey)}`,
-      });
-    } catch (error) {
-      console.error("Failed to update hotkey:", error);
-      showAlertDialog({
-        title: "Error",
-        description: `Failed to update hotkey: ${error.message}`,
-      });
-    }
-  };
-
   const handleRemoveModels = useCallback(() => {
     if (isRemovingModels) return;
 
@@ -729,43 +714,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Dictation Hotkey</h3>
                 <p className="text-sm text-gray-600 mb-6">
-                  Configure the key you press to start and stop voice dictation.
+                  Configure the key or key combination you press to start and stop voice dictation.
                 </p>
               </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Activation Key
-                  </label>
-                  <Input
-                    placeholder="Default: ` (backtick)"
-                    value={dictationKey}
-                    onChange={(e) => setDictationKey(e.target.value)}
-                    className="text-center text-lg font-mono"
-                  />
-                  <p className="text-xs text-gray-500 mt-2">
-                    Press this key from anywhere to start/stop dictation
-                  </p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-3">Click any key to select it:</h4>
-                  <React.Suspense
-                    fallback={
-                      <div className="h-32 flex items-center justify-center text-gray-500">
-                        Loading keyboard...
-                      </div>
-                    }
-                  >
-                    <InteractiveKeyboard
-                      selectedKey={dictationKey}
-                      setSelectedKey={setDictationKey}
-                    />
-                  </React.Suspense>
-                </div>
-                <Button onClick={saveKey} disabled={!dictationKey.trim()} className="w-full">
-                  Save Hotkey
-                </Button>
-              </div>
+              <HotkeyInput
+                value={dictationKey}
+                onChange={async (newHotkey) => {
+                  await registerHotkey(newHotkey);
+                }}
+                disabled={isHotkeyRegistering}
+              />
             </div>
 
             {/* Permissions Section */}
@@ -823,7 +781,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
                 <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
                   <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <Keyboard className="w-4 h-4 text-white" />
+                    <Command className="w-4 h-4 text-white" />
                   </div>
                   <p className="font-medium text-gray-800 mb-1">Default Hotkey</p>
                   <p className="text-gray-600 font-mono text-xs">
