@@ -832,7 +832,10 @@ export default function AIModelSelectorEnhanced({
                               >
                                 <div className="flex items-center justify-between">
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900">{model.name}</div>
+                                    <div className="flex items-center gap-2">
+                                      <ProviderIcon provider={selectedLocalProvider} className="w-4 h-4" />
+                                      <span className="font-medium text-gray-900">{model.name}</span>
+                                    </div>
                                     <div className="text-xs text-gray-600 mt-1">{model.description}</div>
                                     <div className="flex items-center gap-2 mt-1">
                                       <span className="text-xs text-gray-500">Size: {model.size}</span>

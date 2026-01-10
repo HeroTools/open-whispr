@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { RefreshCw, Download, Keyboard, Mic, Shield } from "lucide-react";
+import { ProviderIcon } from "./ui/ProviderIcon";
 import WhisperModelPicker from "./WhisperModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
@@ -1060,7 +1061,10 @@ export default function SettingsPage({
                                       : 'border-gray-200 bg-white hover:border-gray-300'
                                   }`}
                                 >
-                                  <div className="font-medium text-gray-900">{model.name}</div>
+                                  <div className="flex items-center gap-2">
+                                    <ProviderIcon provider={cloudTranscriptionProvider} className="w-4 h-4" />
+                                    <span className="font-medium text-gray-900">{model.name}</span>
+                                  </div>
                                   <div className="text-xs text-gray-600 mt-1">{model.description}</div>
                                 </button>
                               );
