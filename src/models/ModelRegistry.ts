@@ -193,13 +193,16 @@ export function getModelProvider(modelId: string): string {
     if (modelId.includes("claude")) return "anthropic";
     // Check for gemini but exclude gemma (which could be Groq or local)
     if (modelId.includes("gemini") && !modelId.includes("gemma")) return "gemini";
-    if (modelId.includes("gpt-4") || modelId.includes("gpt-5")) return "openai";
+    // OpenAI cloud models (gpt-4.x, gpt-5.x but NOT gpt-oss which could be Groq)
+    if ((modelId.includes("gpt-4") || modelId.includes("gpt-5")) && !modelId.includes("gpt-oss")) return "openai";
     // Groq-specific model patterns (these run on Groq cloud, not local)
-    // Groq models have patterns like "qwen/", "llama3-", "mixtral-", "gemma2-"
-    if (modelId.includes("qwen/") || modelId.includes("llama3-") ||
+    // Groq models have patterns like "qwen/", "openai/gpt-oss-", "llama-3.1-8b-instant", "llama-3.3-", "mixtral-", "gemma2-"
+    if (modelId.includes("qwen/") || modelId.includes("openai/") ||
+        modelId.includes("llama-3.1-8b-instant") || modelId.includes("llama-3.3-") ||
         modelId.includes("mixtral-") || modelId.includes("gemma2-")) return "groq";
-    // Local models have patterns like "qwen2.5-", "llama-3.2-", "mistral-"
-    if (modelId.includes("qwen") || modelId.includes("llama") || modelId.includes("mistral")) return "local";
+    // Local models have patterns like "qwen2.5-", "qwen3-", "llama-3.2-", "mistral-", "gpt-oss-20b-mxfp4"
+    if (modelId.includes("qwen") || modelId.includes("llama") ||
+        modelId.includes("mistral") || modelId.includes("gpt-oss-20b-mxfp4")) return "local";
   }
 
   return model?.provider || "openai";
