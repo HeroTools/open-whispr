@@ -19,6 +19,7 @@ import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
 import { API_ENDPOINTS } from "../config/constants";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
+import { MarkdownRenderer } from "./ui/MarkdownRenderer";
 import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
@@ -701,7 +702,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     {updateInfo.releaseNotes && (
                       <div className="text-sm text-blue-800">
                         <p className="font-medium mb-1">What's New:</p>
-                        <div className="whitespace-pre-wrap">{updateInfo.releaseNotes}</div>
+                        <MarkdownRenderer content={updateInfo.releaseNotes} />
                       </div>
                     )}
                   </div>
