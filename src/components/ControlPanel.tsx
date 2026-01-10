@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Trash2, Settings, FileText, Mic, Download, RefreshCw, Loader2 } from "lucide-react";
@@ -31,6 +31,7 @@ export default function ControlPanel() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [isInstalling, setIsInstalling] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState(0);
+  const isInstallingRef = useRef(false);
 
   const {
     confirmDialog,
@@ -194,11 +195,13 @@ export default function ControlPanel() {
           "The update will be installed and the app will restart. Make sure you've saved any work.",
         onConfirm: async () => {
           setIsInstalling(true);
+          isInstallingRef.current = true;
           try {
             await window.electronAPI.installUpdate();
             // Set a timeout to show an alert if the app doesn't restart
             setTimeout(() => {
-              if (isInstalling) {
+              if (isInstallingRef.current) {
+                isInstallingRef.current = false;
                 setIsInstalling(false);
                 showAlertDialog({
                   title: "Update Installation",
@@ -208,6 +211,7 @@ export default function ControlPanel() {
               }
             }, 10000);
           } catch (error) {
+            isInstallingRef.current = false;
             setIsInstalling(false);
             toast({
               title: "Install Failed",
@@ -306,8 +310,6 @@ export default function ControlPanel() {
                   className={`gap-1.5 text-xs ${
                     updateStatus.updateDownloaded
                       ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : isDownloading
-                      ? "border-blue-300 text-blue-600"
                       : "border-blue-300 text-blue-600 hover:bg-blue-50"
                   }`}
                 >
