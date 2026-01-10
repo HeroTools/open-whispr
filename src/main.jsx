@@ -12,19 +12,15 @@ function AppRouter() {
 
   // Check if this is the control panel window
   const isControlPanel =
-    window.location.pathname.includes("control") ||
-    window.location.search.includes("panel=true");
+    window.location.pathname.includes("control") || window.location.search.includes("panel=true");
 
   // Check if this is the dictation panel (main app)
   const isDictationPanel = !isControlPanel;
 
   useEffect(() => {
     // Check if onboarding has been completed
-    const onboardingCompleted =
-      localStorage.getItem("onboardingCompleted") === "true";
-    const currentStep = parseInt(
-      localStorage.getItem("onboardingCurrentStep") || "0"
-    );
+    const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
+    const currentStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
 
     if (isControlPanel && !onboardingCompleted) {
       // Show onboarding for control panel if not completed

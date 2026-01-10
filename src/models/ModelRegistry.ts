@@ -109,7 +109,7 @@ class ModelRegistry {
 
   getModel(modelId: string): { model: ModelDefinition; provider: ModelProvider } | undefined {
     for (const provider of this.providers.values()) {
-      const model = provider.models.find(m => m.id === modelId);
+      const model = provider.models.find((m) => m.id === modelId);
       if (model) {
         return { model, provider };
       }

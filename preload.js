@@ -169,7 +169,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
-  
+
+  // Globe key listener for hotkey capture (macOS only)
+  onGlobeKeyPressed: (callback) => {
+    const listener = () => callback?.();
+    ipcRenderer.on("globe-key-pressed", listener);
+    return () => ipcRenderer.removeListener("globe-key-pressed", listener);
+  },
+
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);

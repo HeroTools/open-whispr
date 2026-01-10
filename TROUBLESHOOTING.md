@@ -55,10 +55,11 @@ If any of these look wrong (e.g., `x86_64` binaries on an Apple Silicon host), r
 
 **Resolution:**
 1. Verify you have a working Python 3: `python3 --version` and `which python3`. Apple Silicon should point to `/usr/bin/python3` or a Homebrew arm64 path.
-2. Install Xcode Command Line Tools (`xcode-select --install`) so compilation helpers are available.
-3. From the running app, open Settings → Whisper Models and click “Install Python” (uses the IPC bridge) or manually run the helper script `python3 setup.py` if supplied.
-4. Delete `~/Library/Application Support/whisper` if partially downloaded models exist, then try again.
-5. As a last resort, run `scripts/complete-uninstall.sh`, reboot, and rerun onboarding so the installer can download a clean toolchain.
+2. OpenWhispr creates an isolated virtual environment under your user data directory. If it fails, delete the app’s `python/venv` folder and retry.
+3. From the running app, open Settings → Whisper Models and click “Install Python” (uses the IPC bridge) or install Python manually from python.org.
+4. If you see a “externally managed environment / PEP 668” error, you are trying to install into system Python. Use the app’s install button or unset `OPENWHISPR_PYTHON`.
+5. Delete `~/Library/Application Support/whisper` if partially downloaded models exist, then try again.
+6. As a last resort, run `scripts/complete-uninstall.sh`, reboot, and rerun onboarding so the installer can download a clean toolchain.
 
 ### 5. Local Whisper can't find Python on Windows
 **Symptoms:** The toast shows `Whisper process error: spawn python ENOENT` as soon as transcription starts.

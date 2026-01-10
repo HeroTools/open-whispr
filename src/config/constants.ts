@@ -7,16 +7,16 @@ export const normalizeBaseUrl = (value?: string | null): string => {
 
   // Remove common API endpoint suffixes to get the base URL
   const suffixReplacements: Array<[RegExp, string]> = [
-    [/\/v1\/chat\/completions$/i, '/v1'],
-    [/\/chat\/completions$/i, ''],
-    [/\/v1\/responses$/i, '/v1'],
-    [/\/responses$/i, ''],
-    [/\/v1\/models$/i, '/v1'],
-    [/\/models$/i, ''],
-    [/\/v1\/audio\/transcriptions$/i, '/v1'],
-    [/\/audio\/transcriptions$/i, ''],
-    [/\/v1\/audio\/translations$/i, '/v1'],
-    [/\/audio\/translations$/i, ''],
+    [/\/v1\/chat\/completions$/i, "/v1"],
+    [/\/chat\/completions$/i, ""],
+    [/\/v1\/responses$/i, "/v1"],
+    [/\/responses$/i, ""],
+    [/\/v1\/models$/i, "/v1"],
+    [/\/models$/i, ""],
+    [/\/v1\/audio\/transcriptions$/i, "/v1"],
+    [/\/audio\/transcriptions$/i, ""],
+    [/\/v1\/audio\/translations$/i, "/v1"],
+    [/\/audio\/translations$/i, ""],
   ];
 
   for (const [pattern, replacement] of suffixReplacements) {
@@ -33,7 +33,7 @@ export const buildApiUrl = (base: string, path: string): string => {
   if (!path) {
     return normalizedBase;
   }
-  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
   return `${normalizedBase}${normalizedPath}`;
 };
 
@@ -50,11 +50,8 @@ const computeBaseUrl = (candidates: Array<string | undefined>, fallback: string)
 };
 
 const DEFAULT_OPENAI_BASE = computeBaseUrl(
-  [
-    env.OPENWHISPR_OPENAI_BASE_URL as string | undefined,
-    env.OPENAI_BASE_URL as string | undefined,
-  ],
-  'https://api.openai.com/v1'
+  [env.OPENWHISPR_OPENAI_BASE_URL as string | undefined, env.OPENAI_BASE_URL as string | undefined],
+  "https://api.openai.com/v1"
 );
 
 const DEFAULT_TRANSCRIPTION_BASE = computeBaseUrl(
@@ -67,18 +64,18 @@ const DEFAULT_TRANSCRIPTION_BASE = computeBaseUrl(
 
 export const API_ENDPOINTS = {
   OPENAI_BASE: DEFAULT_OPENAI_BASE,
-  OPENAI: buildApiUrl(DEFAULT_OPENAI_BASE, '/responses'),
-  OPENAI_MODELS: buildApiUrl(DEFAULT_OPENAI_BASE, '/models'),
-  ANTHROPIC: 'https://api.anthropic.com/v1/messages',
-  GEMINI: 'https://generativelanguage.googleapis.com/v1beta',
-  GROQ_BASE: 'https://api.groq.com/openai/v1',
+  OPENAI: buildApiUrl(DEFAULT_OPENAI_BASE, "/responses"),
+  OPENAI_MODELS: buildApiUrl(DEFAULT_OPENAI_BASE, "/models"),
+  ANTHROPIC: "https://api.anthropic.com/v1/messages",
+  GEMINI: "https://generativelanguage.googleapis.com/v1beta",
+  GROQ_BASE: "https://api.groq.com/openai/v1",
   TRANSCRIPTION_BASE: DEFAULT_TRANSCRIPTION_BASE,
-  TRANSCRIPTION: buildApiUrl(DEFAULT_TRANSCRIPTION_BASE, '/audio/transcriptions'),
+  TRANSCRIPTION: buildApiUrl(DEFAULT_TRANSCRIPTION_BASE, "/audio/transcriptions"),
 } as const;
 
 export const API_VERSIONS = {
-  ANTHROPIC: '2023-06-01',
-  GEMINI: 'v1beta',
+  ANTHROPIC: "2023-06-01",
+  GEMINI: "v1beta",
 } as const;
 
 // Model Configuration
@@ -104,6 +101,8 @@ export const TOKEN_LIMITS = {
 export const CACHE_CONFIG = {
   API_KEY_TTL: 3600000, // 1 hour in milliseconds
   MODEL_CACHE_SIZE: 3, // Maximum models to keep in memory
+  AVAILABILITY_CHECK_TTL: 30000, // 30s for accessibility, FFmpeg, tool availability checks
+  PASTE_DELAY_MS: 50, // Delay before paste simulation to allow clipboard to settle
 } as const;
 
 // Retry Configuration

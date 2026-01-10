@@ -42,12 +42,8 @@ export default function SidebarModal<T extends string>({
 
             <div className="flex h-[90vh]">
               {/* Sidebar */}
-              <div
-                className={`${sidebarWidth} bg-gray-50 border-r border-gray-200 p-4`}
-              >
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 px-2">
-                  {title}
-                </h2>
+              <div className={`${sidebarWidth} bg-gray-50 border-r border-gray-200 p-4`}>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4 px-2">{title}</h2>
                 <nav className="space-y-1">
                   {sidebarItems.map((item) => {
                     const Icon = item.icon;

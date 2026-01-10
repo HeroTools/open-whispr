@@ -44,7 +44,6 @@ Note: Make sure you have the necessary system permissions for:
 - Microphone access
 - Accessibility permissions (for text pasting)
 
-For local Whisper processing, you'll also need:
-- Python 3 (install via Homebrew: brew install python3)
-- OpenAI Whisper (install via: pip3 install openai-whisper)
+For local Whisper processing, OpenWhispr will create an isolated Python environment automatically.
+If you want to use a custom interpreter, set OPENWHISPR_PYTHON to a valid Python 3.x path.
 `);

@@ -412,21 +412,23 @@ DEBUG=false
 
 For local processing, OpenWhispr offers automated setup:
 
-1. **Automatic Python Installation** (if needed):
-   - The app will detect if Python is missing
-   - Offers to install Python 3.11 automatically
-   - macOS: Uses Homebrew if available, otherwise official installer
-   - Windows: Downloads and installs official Python
-   - Linux: Uses system package manager (apt, yum, or pacman)
+1. **Isolated Python Environment** (default):
+   - The app creates a per-user virtual environment under your app data folder
+   - Uses a bundled Python runtime if present; otherwise uses system Python only to create the venv
+   - No system-wide `pip install` is performed
 
 2. **Automatic Whisper Setup**:
-   - Installs OpenAI Whisper package via pip
+   - Installs OpenAI Whisper inside the isolated environment
    - Downloads your chosen model on first use
    - Handles all transcription locally
 
+Optional override: set `OPENWHISPR_PYTHON` to force a specific Python interpreter (advanced use).
+
+Release packaging note: place a per-platform Python runtime under `resources/python` to bundle it with the app.
+
 **Requirements**:
 - Sufficient disk space for models (39MB - 1.5GB depending on model)
-- Admin/sudo access may be required for Python installation
+- Admin/sudo access may be required only if you choose to install system Python
 
 ### Customization
 
@@ -477,8 +479,8 @@ OpenWhispr is designed with privacy and security in mind:
    - Set key through Control Panel or .env file
    - Check logs for "OpenAI API Key present: Yes/No"
 4. **Local Whisper installation**: 
-   - Ensure Python 3.7+ is installed
-   - Use Control Panel to install Whisper automatically
+   - OpenWhispr creates an isolated Python environment automatically
+   - Use Control Panel to install Whisper into that environment
    - Check available disk space for models
 5. **Global hotkey conflicts**: Change the hotkey in the Control Panel - any key can be used
 6. **Text not pasting**: Check accessibility permissions and try manual paste with Cmd+V
@@ -488,7 +490,7 @@ OpenWhispr is designed with privacy and security in mind:
 
 - Check the [Issues](https://github.com/your-repo/open-whispr/issues) page
 - Review the console logs for debugging information
-- For local processing: Ensure Python and pip are working
+- For local processing: Ensure the managed Python environment initializes successfully
 - For cloud processing: Verify your OpenAI API key and billing status
 - Check the Control Panel for system status and diagnostics
 

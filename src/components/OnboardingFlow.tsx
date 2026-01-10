@@ -12,7 +12,7 @@ import {
   Download,
   Key,
   Shield,
-  Keyboard,
+  Command,
   TestTube,
   Sparkles,
   Lock,
@@ -24,6 +24,7 @@ import LocalWhisperPicker from "./LocalWhisperPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
 import StepProgress from "./ui/StepProgress";
 import { AlertDialog, ConfirmDialog } from "./ui/dialog";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -39,13 +40,14 @@ import LanguageSelector from "./ui/LanguageSelector";
 import ModelCardList from "./ui/ModelCardList";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
-import { formatHotkeyLabel } from "../utils/hotkeys";
+import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { HotkeyInput } from "./ui/HotkeyInput";
+import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
 }
-
 
 type ReasoningModelOption = {
   value: string;
@@ -100,6 +102,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     hideConfirmDialog,
   } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
+
+  // Ref to prevent React.StrictMode double-invocation of auto-registration
+  const autoRegisterInFlightRef = useRef(false);
+  const hotkeyStepInitializedRef = useRef(false);
+
+  // Shared hotkey registration hook
+  const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
+    onSuccess: (registeredHotkey) => {
+      setHotkey(registeredHotkey);
+      setDictationKey(registeredHotkey);
+    },
+    showSuccessToast: false, // Don't show toast during onboarding auto-registration
+    showErrorToast: false,
+  });
 
   const trimmedReasoningBase = (reasoningBaseUrl || "").trim();
   const normalizedReasoningBaseUrl = useMemo(
@@ -188,10 +204,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setCustomModelsError(null);
       try {
         // Security: Only allow HTTPS endpoints (except localhost for development)
-        const isLocalhost = normalizedReasoningBaseUrl.includes('://localhost') ||
-                           normalizedReasoningBaseUrl.includes('://127.0.0.1');
-        if (!normalizedReasoningBaseUrl.startsWith('https://') && !isLocalhost) {
-          throw new Error('Only HTTPS endpoints are allowed (except localhost for testing).');
+        const isLocalhost =
+          normalizedReasoningBaseUrl.includes("://localhost") ||
+          normalizedReasoningBaseUrl.includes("://127.0.0.1");
+        if (!normalizedReasoningBaseUrl.startsWith("https://") && !isLocalhost) {
+          throw new Error("Only HTTPS endpoints are allowed (except localhost for testing).");
         }
 
         const headers: Record<string, string> = {};
@@ -219,8 +236,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         const rawModels = Array.isArray(payload?.data)
           ? payload.data
           : Array.isArray(payload?.models)
-          ? payload.models
-          : [];
+            ? payload.models
+            : [];
 
         const mappedModels = (rawModels as Array<any>)
           .map((item) => {
@@ -305,7 +322,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Privacy", icon: Lock },
     { title: "Setup", icon: Settings },
     { title: "Permissions", icon: Shield },
-    { title: "Hotkey", icon: Keyboard },
+    { title: "Hotkey", icon: Command },
     { title: "Test", icon: TestTube },
     { title: "Agent Name", icon: User },
     { title: "Finish", icon: Check },
@@ -330,6 +347,45 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   }, [currentStep]);
 
+  // Auto-register default hotkey when entering the hotkey step (step 4)
+  useEffect(() => {
+    if (currentStep !== 4) {
+      // Reset initialization flag when leaving step 4
+      hotkeyStepInitializedRef.current = false;
+      return;
+    }
+
+    // Prevent double-invocation from React.StrictMode
+    if (autoRegisterInFlightRef.current || hotkeyStepInitializedRef.current) {
+      return;
+    }
+
+    const autoRegisterDefaultHotkey = async () => {
+      autoRegisterInFlightRef.current = true;
+      hotkeyStepInitializedRef.current = true;
+
+      try {
+        // Get platform-appropriate default hotkey
+        const defaultHotkey = getDefaultHotkey();
+
+        // Only auto-register if no hotkey is currently set or it's the old default
+        if (!hotkey || hotkey === "`" || hotkey === "GLOBE") {
+          // Try to register the default hotkey silently
+          const success = await registerHotkey(defaultHotkey);
+          if (success) {
+            setHotkey(defaultHotkey);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to auto-register default hotkey:", error);
+      } finally {
+        autoRegisterInFlightRef.current = false;
+      }
+    };
+
+    void autoRegisterDefaultHotkey();
+  }, [currentStep, hotkey, registerHotkey]);
+
   const ensureHotkeyRegistered = useCallback(async () => {
     if (!window.electronAPI?.updateHotkey) {
       return true;
@@ -341,8 +397,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         showAlertDialog({
           title: "Hotkey Not Registered",
           description:
-            result.message ||
-            "We couldn't register that key. Please choose another hotkey.",
+            result.message || "We couldn't register that key. Please choose another hotkey.",
         });
         return false;
       }
@@ -351,16 +406,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       console.error("Failed to register onboarding hotkey", error);
       showAlertDialog({
         title: "Hotkey Error",
-        description:
-          "We couldn't register that key. Please choose another hotkey.",
+        description: "We couldn't register that key. Please choose another hotkey.",
       });
       return false;
     }
   }, [hotkey, showAlertDialog]);
 
   const saveSettings = useCallback(async () => {
-    const normalizedTranscriptionBase = (transcriptionBaseUrl || '').trim();
-    const normalizedReasoningBaseValue = (reasoningBaseUrl || '').trim();
+    const normalizedTranscriptionBase = (transcriptionBaseUrl || "").trim();
+    const normalizedReasoningBaseValue = (reasoningBaseUrl || "").trim();
 
     setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
     setCloudReasoningBaseUrl(normalizedReasoningBaseValue);
@@ -382,10 +436,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setDictationKey(hotkey);
     saveAgentName(agentName);
 
-    localStorage.setItem(
-      "micPermissionGranted",
-      permissionsHook.micPermissionGranted.toString()
-    );
+    localStorage.setItem("micPermissionGranted", permissionsHook.micPermissionGranted.toString());
     localStorage.setItem(
       "accessibilityPermissionGranted",
       permissionsHook.accessibilityPermissionGranted.toString()
@@ -478,10 +529,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     switch (currentStep) {
       case 0: // Welcome
         return (
-          <div
-            className="text-center space-y-6"
-            style={{ fontFamily: "Noto Sans, sans-serif" }}
-          >
+          <div className="text-center space-y-6" style={{ fontFamily: "Noto Sans, sans-serif" }}>
             <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
               <Sparkles className="w-8 h-8 text-blue-600" />
             </div>
@@ -492,18 +540,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               >
                 Welcome to OpenWhispr
               </h2>
-              <p
-                className="text-stone-600"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
-              >
+              <p className="text-stone-600" style={{ fontFamily: "Noto Sans, sans-serif" }}>
                 Let's set up your voice dictation in just a few simple steps.
               </p>
             </div>
             <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200/60">
-              <p
-                className="text-sm text-blue-800"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
-              >
+              <p className="text-sm text-blue-800" style={{ fontFamily: "Noto Sans, sans-serif" }}>
                 🎤 Turn your voice into text instantly
                 <br />
                 ⚡ Works anywhere on your computer
@@ -516,10 +558,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       case 1: // Choose Mode
         return (
-          <div
-            className="space-y-6"
-            style={{ fontFamily: "Noto Sans, sans-serif" }}
-          >
+          <div className="space-y-6" style={{ fontFamily: "Noto Sans, sans-serif" }}>
             <div className="text-center">
               <h2
                 className="text-2xl font-bold text-stone-900 mb-2"
@@ -527,10 +566,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               >
                 Choose Your Processing Mode
               </h2>
-              <p
-                className="text-stone-600"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
-              >
+              <p className="text-stone-600" style={{ fontFamily: "Noto Sans, sans-serif" }}>
                 How would you like to convert your speech to text?
               </p>
             </div>
@@ -547,9 +583,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {useLocalWhisper
-                  ? "Local Processing Setup"
-                  : "Cloud Processing Setup"}
+                {useLocalWhisper ? "Local Processing Setup" : "Cloud Processing Setup"}
               </h2>
               <p className="text-gray-600">
                 {useLocalWhisper
@@ -566,11 +600,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center">
                       <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
                     </div>
-                    <h3 className="font-semibold text-gray-900">
-                      Looking for Python...
-                    </h3>
+                    <h3 className="font-semibold text-gray-900">Looking for Python...</h3>
                     <p className="text-sm text-gray-600 max-w-md mx-auto">
-                      OpenWhispr is scanning for your existing Python install (including <code>py.exe</code> and any paths supplied via <code>OPENWHISPR_PYTHON</code>). Sit tight—if we find one, we’ll skip this step automatically.
+                      OpenWhispr is scanning for your existing Python install (including{" "}
+                      <code>py.exe</code> and any paths supplied via <code>OPENWHISPR_PYTHON</code>
+                      ). Sit tight—if we find one, we’ll skip this step automatically.
                     </p>
                   </div>
                 ) : !pythonHook.pythonInstalled ? (
@@ -579,11 +613,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       <Download className="w-8 h-8 text-blue-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">
-                        Install Python
-                      </h3>
+                      <h3 className="font-semibold text-gray-900 mb-2">Install Python</h3>
                       <p className="text-sm text-gray-600 mb-4">
-                        Python is required for local processing. We'll install it automatically for you.
+                        Python is required for local processing. We'll install it automatically for
+                        you.
                       </p>
                     </div>
 
@@ -591,9 +624,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       <div className="bg-blue-50 p-4 rounded-lg">
                         <div className="flex items-center justify-center gap-3 mb-3">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                          <span className="font-medium text-blue-900">
-                            Installing Python...
-                          </span>
+                          <span className="font-medium text-blue-900">Installing Python...</span>
                         </div>
                         {pythonHook.installProgress && (
                           <div className="text-xs text-blue-600 bg-white p-2 rounded font-mono">
@@ -644,9 +675,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       <Download className="w-8 h-8 text-purple-600" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">
-                        Install Whisper
-                      </h3>
+                      <h3 className="font-semibold text-gray-900 mb-2">Install Whisper</h3>
                       <p className="text-sm text-gray-600 mb-4">
                         Python is ready! Now we'll install Whisper for speech recognition.
                       </p>
@@ -656,9 +685,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       <div className="bg-purple-50 p-4 rounded-lg">
                         <div className="flex items-center justify-center gap-3 mb-3">
                           <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
-                          <span className="font-medium text-purple-900">
-                            Installing...
-                          </span>
+                          <span className="font-medium text-purple-900">Installing...</span>
                         </div>
                         {whisperHook.installProgress && (
                           <div className="text-xs text-purple-600 bg-white p-2 rounded font-mono">
@@ -670,10 +697,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         </p>
                       </div>
                     ) : (
-                      <Button
-                        onClick={whisperHook.installWhisper}
-                        className="w-full"
-                      >
+                      <Button onClick={whisperHook.installWhisper} className="w-full">
                         Install Whisper
                       </Button>
                     )}
@@ -684,12 +708,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
                         <Check className="w-8 h-8 text-green-600" />
                       </div>
-                      <h3 className="font-semibold text-green-900 mb-2">
-                        Whisper Installed!
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        Now choose your model quality:
-                      </p>
+                      <h3 className="font-semibold text-green-900 mb-2">Whisper Installed!</h3>
+                      <p className="text-sm text-gray-600">Now choose your model quality:</p>
                     </div>
 
                     <div>
@@ -737,25 +757,36 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 />
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">Custom transcription base URL (optional)</label>
+                  <label className="block text-sm font-medium text-blue-900">
+                    Custom transcription base URL (optional)
+                  </label>
                   <Input
                     value={transcriptionBaseUrl}
                     onChange={(event) => setTranscriptionBaseUrl(event.target.value)}
                     placeholder="https://api.openai.com/v1"
                     className="text-sm"
                   />
-                  <p className="text-xs text-blue-800">Cloud transcription requests default to <code>{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>. Enter an OpenAI-compatible base URL to override.</p>
+                  <p className="text-xs text-blue-800">
+                    Cloud transcription requests default to{" "}
+                    <code>{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>. Enter an OpenAI-compatible base
+                    URL to override.
+                  </p>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">Custom reasoning base URL (optional)</label>
+                  <label className="block text-sm font-medium text-blue-900">
+                    Custom reasoning base URL (optional)
+                  </label>
                   <Input
                     value={reasoningBaseUrl}
                     onChange={(event) => setReasoningBaseUrl(event.target.value)}
                     placeholder="https://api.openai.com/v1"
                     className="text-sm"
                   />
-                  <p className="text-xs text-blue-800">We'll load AI models from this endpoint's /v1/models route during setup. Leave empty to use the default OpenAI endpoint.</p>
+                  <p className="text-xs text-blue-800">
+                    We'll load AI models from this endpoint's /v1/models route during setup. Leave
+                    empty to use the default OpenAI endpoint.
+                  </p>
                 </div>
 
                 <div className="space-y-3 pt-4 border-t border-blue-100">
@@ -801,9 +832,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </div>
 
                 <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">
-                    How to get your API key:
-                  </h4>
+                  <h4 className="font-medium text-blue-900 mb-2">How to get your API key:</h4>
                   <ol className="text-sm text-blue-800 space-y-1">
                     <li>1. Go to platform.openai.com</li>
                     <li>2. Sign in to your account</li>
@@ -817,9 +846,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             {/* Language Selection - shown for both modes */}
             <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900 mb-3">
-                🌍 Preferred Language
-              </h4>
+              <h4 className="font-medium text-gray-900 mb-3">🌍 Preferred Language</h4>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Which language do you primarily speak?
               </label>
@@ -843,9 +870,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Grant Permissions
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Grant Permissions</h2>
               <p className="text-gray-600">
                 OpenWhispr needs a couple of permissions to work properly
               </p>
@@ -861,6 +886,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 buttonText="Grant Access"
               />
 
+              {!permissionsHook.micPermissionGranted && (
+                <MicPermissionWarning
+                  error={permissionsHook.micPermissionError}
+                  onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                  onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                />
+              )}
+
               <PermissionCard
                 icon={Shield}
                 title="Accessibility Permission"
@@ -872,9 +905,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </div>
 
             <div className="bg-amber-50 p-4 rounded-lg">
-              <h4 className="font-medium text-amber-900 mb-2">
-                🔒 Privacy Note
-              </h4>
+              <h4 className="font-medium text-amber-900 mb-2">🔒 Privacy Note</h4>
               <p className="text-sm text-amber-800">
                 OpenWhispr only uses these permissions for dictation.
                 {useLocalWhisper
@@ -889,48 +920,28 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                Choose Your Hotkey
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Hotkey</h2>
               <p className="text-gray-600">
-                Select which key you want to press to start/stop dictation
+                Set the key combination you'll use to start and stop dictation
               </p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Activation Key
-                </label>
-                <Input
-                  placeholder="Default: ` (backtick)"
-                  value={hotkey}
-                  onChange={(e) => setHotkey(e.target.value)}
-                  className="text-center text-lg font-mono"
-                />
-                <p className="text-xs text-gray-500 mt-2">
-                  Press this key from anywhere to start/stop dictation
-                </p>
-              </div>
-
-              <div className="bg-gray-50 p-4 rounded-lg">
-                <h4 className="font-medium text-gray-900 mb-3">
-                  Click any key to select it:
-                </h4>
-                <React.Suspense fallback={<div>Loading keyboard...</div>}>
-                  <InteractiveKeyboard selectedKey={hotkey} setSelectedKey={setHotkey} />
-                </React.Suspense>
-              </div>
-            </div>
+            <HotkeyInput
+              value={hotkey}
+              onChange={async (newHotkey) => {
+                const success = await registerHotkey(newHotkey);
+                if (success) {
+                  setHotkey(newHotkey);
+                }
+              }}
+              disabled={isHotkeyRegistering}
+            />
           </div>
         );
 
       case 5: // Test & Practice
         return (
-          <div
-            className="space-y-6"
-            style={{ fontFamily: "Noto Sans, sans-serif" }}
-          >
+          <div className="space-y-6" style={{ fontFamily: "Noto Sans, sans-serif" }}>
             <div className="text-center">
               <h2
                 className="text-2xl font-bold text-stone-900 mb-2"
@@ -938,10 +949,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               >
                 Test & Practice
               </h2>
-              <p
-                className="text-stone-600"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
-              >
+              <p className="text-stone-600" style={{ fontFamily: "Noto Sans, sans-serif" }}>
                 Let's test your setup and practice using OpenWhispr
               </p>
             </div>
@@ -958,8 +966,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   className="text-sm text-blue-800 mb-4"
                   style={{ fontFamily: "Noto Sans, sans-serif" }}
                 >
-                  <strong>Step 1:</strong> Click in the text area below to place
-                  your cursor there.
+                  <strong>Step 1:</strong> Click in the text area below to place your cursor there.
                   <br />
                   <strong>Step 2:</strong> Press{" "}
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
@@ -971,8 +978,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
                     {readableHotkey}
                   </kbd>{" "}
-                  again to stop and see your transcribed text appear where your
-                  cursor is!
+                  again to stop and see your transcribed text appear where your cursor is!
                 </p>
 
                 <div className="space-y-4">
@@ -1032,10 +1038,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     </kbd>{" "}
                     again to stop
                   </li>
-                  <li>
-                    5. Your text will automatically appear where you were
-                    typing!
-                  </li>
+                  <li>5. Your text will automatically appear where you were typing!</li>
                 </ol>
               </div>
             </div>
@@ -1046,44 +1049,32 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">
-                Name Your Agent
-              </h2>
+              <h2 className="text-2xl font-bold text-stone-900 mb-2">Name Your Agent</h2>
               <p className="text-stone-600">
-                Give your agent a name so you can address it specifically when
-                giving instructions.
+                Give your agent a name so you can address it specifically when giving instructions.
               </p>
             </div>
 
             <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">
-                💡 How this helps:
-              </h4>
+              <h4 className="font-medium text-purple-900 mb-3">💡 How this helps:</h4>
               <ul className="text-sm text-purple-800 space-y-1">
                 <li>
-                  • Say "Hey {agentName || "Agent"}, write a formal email" for
-                  specific instructions
+                  • Say "Hey {agentName || "Agent"}, write a formal email" for specific instructions
                 </li>
-                <li>
-                  • Use the name to distinguish between dictation and commands
-                </li>
+                <li>• Use the name to distinguish between dictation and commands</li>
                 <li>• Makes interactions feel more natural and personal</li>
               </ul>
             </div>
 
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Agent Name
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Agent Name</label>
               <Input
                 placeholder="e.g., Assistant, Jarvis, Alex..."
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
                 className="text-center text-lg font-mono"
               />
-              <p className="text-xs text-gray-500 mt-2">
-                You can change this anytime in settings
-              </p>
+              <p className="text-xs text-gray-500 mt-2">You can change this anytime in settings</p>
             </div>
           </div>
         );
@@ -1095,25 +1086,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Check className="w-8 h-8 text-green-600" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                You're All Set!
-              </h2>
-              <p className="text-gray-600">
-                OpenWhispr is now configured and ready to use.
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">You're All Set!</h2>
+              <p className="text-gray-600">OpenWhispr is now configured and ready to use.</p>
             </div>
 
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-3">
-                Your Setup Summary:
-              </h3>
+              <h3 className="font-semibold text-gray-900 mb-3">Your Setup Summary:</h3>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Processing:</span>
                   <span className="font-medium">
-                    {useLocalWhisper
-                      ? `Local (${whisperModel})`
-                      : "OpenAI Cloud"}
+                    {useLocalWhisper ? `Local (${whisperModel})` : "OpenAI Cloud"}
                   </span>
                 </div>
                 {!useLocalWhisper && (
@@ -1132,15 +1115,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 )}
                 <div className="flex justify-between">
                   <span>Hotkey:</span>
-                  <kbd className="bg-white px-2 py-1 rounded text-xs font-mono">
-                    {hotkey}
-                  </kbd>
+                  <kbd className="bg-white px-2 py-1 rounded text-xs font-mono">{hotkey}</kbd>
                 </div>
                 <div className="flex justify-between">
                   <span>Language:</span>
-                  <span className="font-medium">
-                    {getLanguageLabel(preferredLanguage)}
-                  </span>
+                  <span className="font-medium">{getLanguageLabel(preferredLanguage)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Agent Name:</span>
@@ -1160,8 +1139,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Pro tip:</strong> You can always change these settings
-                later in the Control Panel.
+                <strong>Pro tip:</strong> You can always change these settings later in the Control
+                Panel.
               </p>
             </div>
           </div>
@@ -1192,16 +1171,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           if (!isValidReasoningBase) {
             return false;
           }
-          return (
-            customReasoningModels.length > 0 &&
-            !customModelsLoading &&
-            !customModelsError
-          );
+          return customReasoningModels.length > 0 && !customModelsLoading && !customModelsError;
         }
       case 3:
         return (
-          permissionsHook.micPermissionGranted &&
-          permissionsHook.accessibilityPermissionGranted
+          permissionsHook.micPermissionGranted && permissionsHook.accessibilityPermissionGranted
         );
       case 4:
         return hotkey.trim() !== "";
@@ -1281,10 +1255,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex-1 px-6 md:pl-16 md:pr-6 py-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           <Card className="bg-white/95 backdrop-blur-xl border border-stone-200/60 shadow-lg rounded-2xl overflow-hidden">
-            <CardContent
-              className="p-12 md:p-16"
-              style={{ fontFamily: "Noto Sans, sans-serif" }}
-            >
+            <CardContent className="p-12 md:p-16" style={{ fontFamily: "Noto Sans, sans-serif" }}>
               <div className="space-y-8">{renderStep()}</div>
             </CardContent>
           </Card>
