@@ -71,6 +71,7 @@ export const API_ENDPOINTS = {
   OPENAI_MODELS: buildApiUrl(DEFAULT_OPENAI_BASE, '/models'),
   ANTHROPIC: 'https://api.anthropic.com/v1/messages',
   GEMINI: 'https://generativelanguage.googleapis.com/v1beta',
+  GROQ_BASE: 'https://api.groq.com/openai/v1',
   TRANSCRIPTION_BASE: DEFAULT_TRANSCRIPTION_BASE,
   TRANSCRIPTION: buildApiUrl(DEFAULT_TRANSCRIPTION_BASE, '/audio/transcriptions'),
 } as const;
