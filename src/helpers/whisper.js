@@ -149,20 +149,32 @@ class WhisperManager {
 
   getPythonSource(pythonPath) {
     const normalizedPath = this.normalizePathForCompare(pythonPath);
-    const normalizedVenv = this.normalizePathForCompare(this.getVenvPath());
-    const bundled = this.resolveBundledPython();
-    const normalizedBundled = this.normalizePathForCompare(bundled);
-    const normalizedOverride = this.normalizePathForCompare(process.env.OPENWHISPR_PYTHON);
 
+    // Check venv first (most common case when using managed environment)
+    const normalizedVenv = this.normalizePathForCompare(this.getVenvPath());
     if (normalizedVenv && normalizedPath.startsWith(normalizedVenv)) {
       return "venv";
     }
-    if (normalizedBundled && normalizedPath === normalizedBundled) {
-      return "bundled";
+
+    // Check override before bundled (user preference takes priority)
+    if (process.env.OPENWHISPR_PYTHON) {
+      const normalizedOverride = this.normalizePathForCompare(process.env.OPENWHISPR_PYTHON);
+      if (normalizedOverride && normalizedPath === normalizedOverride) {
+        return "override";
+      }
     }
-    if (normalizedOverride && normalizedPath === normalizedOverride) {
-      return "override";
+
+    // Only check bundled if needed (avoids filesystem scan)
+    if (this.bundledPythonPath || !this.bundledPythonChecked) {
+      const bundled = this.resolveBundledPython();
+      if (bundled) {
+        const normalizedBundled = this.normalizePathForCompare(bundled);
+        if (normalizedBundled && normalizedPath === normalizedBundled) {
+          return "bundled";
+        }
+      }
     }
+
     return "system";
   }
 
@@ -175,10 +187,11 @@ class WhisperManager {
       return this.venvReadyPromise;
     }
 
-    this.venvReadyPromise = (async () => {
-      const venvPath = this.getVenvPath();
-      const venvPython = this.getVenvPythonPath();
+    // Assign promise synchronously to prevent race conditions
+    const venvPath = this.getVenvPath();
+    const venvPython = this.getVenvPythonPath();
 
+    this.venvReadyPromise = (async () => {
       if (fs.existsSync(venvPython)) {
         const version = await this.getPythonVersion(venvPython);
         if (this.isPythonVersionSupported(version)) {
@@ -189,7 +202,7 @@ class WhisperManager {
         try {
           fs.rmSync(venvPath, { recursive: true, force: true });
         } catch (error) {
-          // Continue and attempt to recreate
+          debugLogger.log("Failed to remove outdated venv:", error.message);
         }
       }
 
@@ -277,8 +290,6 @@ class WhisperManager {
         language
       );
       return this.parseWhisperResult(result);
-    } catch (error) {
-      throw error;
     } finally {
       await this.cleanupTempFile(tempAudioPath);
     }
@@ -617,9 +628,9 @@ class WhisperManager {
       const timeout = setTimeout(() => {
         if (!isResolved) {
           whisperProcess.kill("SIGTERM");
-          reject(new Error("Whisper transcription timed out (120 seconds)"));
+          reject(new Error("Whisper transcription timed out (20 minutes)"));
         }
-      }, 1200000);
+      }, TIMEOUTS.TRANSCRIPTION);
 
       whisperProcess.stdout.on("data", (data) => {
         stdout += data.toString();
@@ -1217,8 +1228,6 @@ class WhisperManager {
     );
   }
 
-  // Removed - now using shared runCommand from utils/process.js
-
   async installWhisper() {
     if (!process.env.OPENWHISPR_PYTHON) {
       console.log("Preparing isolated Python environment...");
@@ -1316,8 +1325,19 @@ class WhisperManager {
           }
         });
 
+        const timeout = setTimeout(() => {
+          downloadProcess.kill("SIGTERM");
+          setTimeout(() => {
+            if (!downloadProcess.killed) {
+              downloadProcess.kill("SIGKILL");
+            }
+          }, 5000);
+          reject(new Error("Model download timed out (20 minutes)"));
+        }, TIMEOUTS.DOWNLOAD);
+
         downloadProcess.on("close", (code) => {
-          this.currentDownloadProcess = null; // Clear process reference
+          clearTimeout(timeout);
+          this.currentDownloadProcess = null;
 
           if (code === 0) {
             try {
@@ -1343,23 +1363,10 @@ class WhisperManager {
         });
 
         downloadProcess.on("error", (error) => {
+          clearTimeout(timeout);
           this.currentDownloadProcess = null;
           console.error("Model download process error:", error);
           reject(new Error(`Model download process error: ${error.message}`));
-        });
-
-        const timeout = setTimeout(() => {
-          downloadProcess.kill("SIGTERM");
-          setTimeout(() => {
-            if (!downloadProcess.killed) {
-              downloadProcess.kill("SIGKILL");
-            }
-          }, 5000);
-          reject(new Error("Model download timed out (20 minutes)"));
-        }, 1200000);
-
-        downloadProcess.on("close", () => {
-          clearTimeout(timeout);
         });
       });
     } catch (error) {
@@ -1390,155 +1397,67 @@ class WhisperManager {
     }
   }
 
-  async checkModelStatus(modelName) {
-    try {
-      const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = this.getWhisperScriptPath();
+  /**
+   * Helper method to run whisper_bridge.py commands and parse JSON output.
+   * Reduces code duplication across model management methods.
+   */
+  async runWhisperBridgeCommand(args, operationName) {
+    const pythonCmd = await this.findPythonExecutable();
+    const whisperScriptPath = this.getWhisperScriptPath();
+    const fullArgs = [whisperScriptPath, ...args];
 
-      const args = [whisperScriptPath, "--mode", "check", "--model", modelName];
+    return new Promise((resolve, reject) => {
+      const process = spawn(pythonCmd, fullArgs);
+      let stdout = "";
+      let stderr = "";
 
-      return new Promise((resolve, reject) => {
-        const checkProcess = spawn(pythonCmd, args);
-
-        let stdout = "";
-        let stderr = "";
-
-        checkProcess.stdout.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        checkProcess.stderr.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        checkProcess.on("close", (code) => {
-          if (code === 0) {
-            try {
-              const result = JSON.parse(stdout);
-              resolve(result);
-            } catch (parseError) {
-              console.error("Failed to parse model status:", parseError);
-              reject(
-                new Error(`Failed to parse model status: ${parseError.message}`)
-              );
-            }
-          } else {
-            console.error("Model status check failed with code:", code);
-            reject(
-              new Error(`Model status check failed (code ${code}): ${stderr}`)
-            );
-          }
-        });
-
-        checkProcess.on("error", (error) => {
-              reject(new Error(`Model status check error: ${error.message}`));
-        });
+      process.stdout.on("data", (data) => {
+        stdout += data.toString();
       });
-    } catch (error) {
-      throw error;
-    }
+
+      process.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      process.on("close", (code) => {
+        if (code === 0) {
+          try {
+            resolve(JSON.parse(stdout));
+          } catch (parseError) {
+            console.error(`Failed to parse ${operationName} result:`, parseError);
+            reject(new Error(`Failed to parse ${operationName} result: ${parseError.message}`));
+          }
+        } else {
+          console.error(`${operationName} failed with code:`, code);
+          reject(new Error(`${operationName} failed (code ${code}): ${stderr}`));
+        }
+      });
+
+      process.on("error", (error) => {
+        reject(new Error(`${operationName} error: ${error.message}`));
+      });
+    });
+  }
+
+  async checkModelStatus(modelName) {
+    return this.runWhisperBridgeCommand(
+      ["--mode", "check", "--model", modelName],
+      "Model status check"
+    );
   }
 
   async listWhisperModels() {
-    try {
-      const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = this.getWhisperScriptPath();
-
-      const args = [whisperScriptPath, "--mode", "list"];
-
-      return new Promise((resolve, reject) => {
-        const listProcess = spawn(pythonCmd, args);
-
-        let stdout = "";
-        let stderr = "";
-
-        listProcess.stdout.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        listProcess.stderr.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        listProcess.on("close", (code) => {
-          if (code === 0) {
-            try {
-              const result = JSON.parse(stdout);
-              resolve(result);
-            } catch (parseError) {
-              console.error("Failed to parse model list:", parseError);
-              reject(
-                new Error(`Failed to parse model list: ${parseError.message}`)
-              );
-            }
-          } else {
-            console.error("Model list failed with code:", code);
-            reject(new Error(`Model list failed (code ${code}): ${stderr}`));
-          }
-        });
-
-        listProcess.on("error", (error) => {
-              reject(new Error(`Model list error: ${error.message}`));
-        });
-      });
-    } catch (error) {
-      throw error;
-    }
+    return this.runWhisperBridgeCommand(
+      ["--mode", "list"],
+      "Model list"
+    );
   }
 
   async deleteWhisperModel(modelName) {
-    try {
-      const pythonCmd = await this.findPythonExecutable();
-      const whisperScriptPath = this.getWhisperScriptPath();
-
-      const args = [
-        whisperScriptPath,
-        "--mode",
-        "delete",
-        "--model",
-        modelName,
-      ];
-
-      return new Promise((resolve, reject) => {
-        const deleteProcess = spawn(pythonCmd, args);
-
-        let stdout = "";
-        let stderr = "";
-
-        deleteProcess.stdout.on("data", (data) => {
-          stdout += data.toString();
-        });
-
-        deleteProcess.stderr.on("data", (data) => {
-          stderr += data.toString();
-        });
-
-        deleteProcess.on("close", (code) => {
-          if (code === 0) {
-            try {
-              const result = JSON.parse(stdout);
-              resolve(result);
-            } catch (parseError) {
-              console.error("Failed to parse delete result:", parseError);
-              reject(
-                new Error(
-                  `Failed to parse delete result: ${parseError.message}`
-                )
-              );
-            }
-          } else {
-            console.error("Model delete failed with code:", code);
-            reject(new Error(`Model delete failed (code ${code}): ${stderr}`));
-          }
-        });
-
-        deleteProcess.on("error", (error) => {
-              reject(new Error(`Model delete error: ${error.message}`));
-        });
-      });
-    } catch (error) {
-      throw error;
-    }
+    return this.runWhisperBridgeCommand(
+      ["--mode", "delete", "--model", modelName],
+      "Model delete"
+    );
   }
 }
 

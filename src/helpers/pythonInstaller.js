@@ -9,8 +9,6 @@ class PythonInstaller {
     this.pythonVersion = "3.11.9"; // Latest stable version compatible with Whisper
   }
 
-  // Removed - now using shared runCommand from utils/process.js
-
   async downloadFile(url, outputPath, progressCallback = null) {
     return new Promise((resolve, reject) => {
       const file = fs.createWriteStream(outputPath);
@@ -272,7 +270,7 @@ class PythonInstaller {
               progressCallback({ stage: "Installing Python via pacman...", percentage: 30 });
             }
             
-            await runCommand("sudo", ["pacman", "-S", "--noconfirm", "python", "python-pip"], { timeout: TIMEOUTS.INSTALL });
+            await runCommand("sudo", ["pacman", "-S", "--noconfirm", "python", "python-pip", "python-virtualenv"], { timeout: TIMEOUTS.INSTALL });
             
             if (progressCallback) {
               progressCallback({ stage: "Python installation complete!", percentage: 100 });
@@ -285,33 +283,25 @@ class PythonInstaller {
           }
         }
       }
-      
-    } catch (error) {
-      throw error;
     }
   }
 
   async installPython(progressCallback = null) {
     const platform = process.platform;
-    
-    try {
-      if (progressCallback) {
-        progressCallback({ stage: "Starting Python installation...", percentage: 5 });
-      }
-      
-      switch (platform) {
-        case 'darwin':
-          return await this.installPythonMacOS(progressCallback);
-        case 'win32':
-          return await this.installPythonWindows(progressCallback);
-        case 'linux':
-          return await this.installPythonLinux(progressCallback);
-        default:
-          throw new Error(`Unsupported platform: ${platform}`);
-      }
-      
-    } catch (error) {
-      throw error;
+
+    if (progressCallback) {
+      progressCallback({ stage: "Starting Python installation...", percentage: 5 });
+    }
+
+    switch (platform) {
+      case 'darwin':
+        return await this.installPythonMacOS(progressCallback);
+      case 'win32':
+        return await this.installPythonWindows(progressCallback);
+      case 'linux':
+        return await this.installPythonLinux(progressCallback);
+      default:
+        throw new Error(`Unsupported platform: ${platform}`);
     }
   }
 
