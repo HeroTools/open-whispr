@@ -15,7 +15,14 @@ interface KeyProps {
   displayValue?: React.ReactNode;
 }
 
-const Key: React.FC<KeyProps> = ({ keyValue, isSelected, onClick, width = "w-12", disabled = false, displayValue }) => {
+const Key: React.FC<KeyProps> = ({
+  keyValue,
+  isSelected,
+  onClick,
+  width = "w-12",
+  disabled = false,
+  displayValue,
+}) => {
   const [isPressed, setIsPressed] = useState(false);
 
   const handleClick = () => {
@@ -33,20 +40,20 @@ const Key: React.FC<KeyProps> = ({ keyValue, isSelected, onClick, width = "w-12"
         ${width} h-12 rounded-lg font-mono text-sm font-medium
         transition-all duration-150 ease-in-out
         transform active:scale-95
-        ${isPressed ? 'translate-y-1 shadow-inner' : 'translate-y-0 shadow-lg'}
+        ${isPressed ? "translate-y-1 shadow-inner" : "translate-y-0 shadow-lg"}
         hover:translate-y-0.5 hover:shadow-md
         focus:outline-none focus:ring-2 focus:ring-indigo-300
         ${
           isSelected
-            ? 'bg-indigo-500 text-white border-2 border-indigo-600'
+            ? "bg-indigo-500 text-white border-2 border-indigo-600"
             : disabled
-            ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-            : 'bg-white text-gray-800 border-2 border-gray-300 hover:border-gray-400'
+              ? "bg-gray-300 text-gray-500 cursor-not-allowed"
+              : "bg-white text-gray-800 border-2 border-gray-300 hover:border-gray-400"
         }
-        ${isPressed ? 'bg-gray-100' : ''}
+        ${isPressed ? "bg-gray-100" : ""}
       `}
     >
-      {displayValue ?? (keyValue === 'Space' ? '' : keyValue)}
+      {displayValue ?? (keyValue === "Space" ? "" : keyValue)}
     </button>
   );
 };
@@ -54,15 +61,29 @@ const Key: React.FC<KeyProps> = ({ keyValue, isSelected, onClick, width = "w-12"
 export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps) {
   const isMac = typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
   const canUseGlobe = isMac;
-  const functionKeys = ['Esc', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'];
-  
-  const numberRow = ['`', '1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
-  
-  const qwertyRow = ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P', '[', ']', '\\'];
-  
-  const asdfRow = ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L', ';', "'"];
-  
-  const zxcvRow = ['Z', 'X', 'C', 'V', 'B', 'N', 'M', ',', '.', '/'];
+  const functionKeys = [
+    "Esc",
+    "F1",
+    "F2",
+    "F3",
+    "F4",
+    "F5",
+    "F6",
+    "F7",
+    "F8",
+    "F9",
+    "F10",
+    "F11",
+    "F12",
+  ];
+
+  const numberRow = ["`", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="];
+
+  const qwertyRow = ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "[", "]", "\\"];
+
+  const asdfRow = ["A", "S", "D", "F", "G", "H", "J", "K", "L", ";", "'"];
+
+  const zxcvRow = ["Z", "X", "C", "V", "B", "N", "M", ",", ".", "/"];
 
   const handleKeyClick = (key: string) => {
     setSelectedKey(key);
@@ -70,7 +91,7 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
 
   useEffect(() => {
     if (!canUseGlobe && selectedKey === "GLOBE") {
-      setSelectedKey('`');
+      setSelectedKey("`");
     }
   }, [canUseGlobe, selectedKey, setSelectedKey]);
 
@@ -84,7 +105,7 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
             keyValue={key}
             isSelected={selectedKey === key}
             onClick={() => handleKeyClick(key)}
-            width={key === 'Esc' ? 'w-14' : 'w-12'}
+            width={key === "Esc" ? "w-14" : "w-12"}
           />
         ))}
       </div>
@@ -101,8 +122,8 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
         ))}
         <Key
           keyValue="Backspace"
-          isSelected={selectedKey === 'Backspace'}
-          onClick={() => handleKeyClick('Backspace')}
+          isSelected={selectedKey === "Backspace"}
+          onClick={() => handleKeyClick("Backspace")}
           width="w-20"
           disabled
         />
@@ -112,8 +133,8 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
       <div className="flex justify-center gap-1 mb-2">
         <Key
           keyValue="Tab"
-          isSelected={selectedKey === 'Tab'}
-          onClick={() => handleKeyClick('Tab')}
+          isSelected={selectedKey === "Tab"}
+          onClick={() => handleKeyClick("Tab")}
           width="w-16"
           disabled
         />
@@ -131,8 +152,8 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
       <div className="flex justify-center gap-1 mb-2">
         <Key
           keyValue="Caps"
-          isSelected={selectedKey === 'CapsLock'}
-          onClick={() => handleKeyClick('CapsLock')}
+          isSelected={selectedKey === "CapsLock"}
+          onClick={() => handleKeyClick("CapsLock")}
           width="w-18"
           disabled
         />
@@ -146,8 +167,8 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
         ))}
         <Key
           keyValue="Enter"
-          isSelected={selectedKey === 'Enter'}
-          onClick={() => handleKeyClick('Enter')}
+          isSelected={selectedKey === "Enter"}
+          onClick={() => handleKeyClick("Enter")}
           width="w-20"
           disabled
         />
@@ -157,8 +178,8 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
       <div className="flex justify-center gap-1 mb-2">
         <Key
           keyValue="Shift"
-          isSelected={selectedKey === 'Shift'}
-          onClick={() => handleKeyClick('Shift')}
+          isSelected={selectedKey === "Shift"}
+          onClick={() => handleKeyClick("Shift")}
           width="w-24"
           disabled
         />
@@ -173,7 +194,7 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
         <Key
           keyValue="Shift"
           isSelected={false}
-          onClick={() => handleKeyClick('Shift')}
+          onClick={() => handleKeyClick("Shift")}
           width="w-24"
           disabled
         />
@@ -183,23 +204,31 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
       <div className="flex justify-center gap-1">
         <Key
           keyValue="Ctrl"
-          isSelected={selectedKey === 'Ctrl'}
-          onClick={() => handleKeyClick('Ctrl')}
+          isSelected={selectedKey === "Ctrl"}
+          onClick={() => handleKeyClick("Ctrl")}
           width="w-16"
           disabled
         />
         {canUseGlobe ? (
           <Key
             keyValue="GLOBE"
-            displayValue={<span role="img" aria-label="Globe">🌐</span>}
-            isSelected={selectedKey === 'GLOBE'}
-            onClick={() => handleKeyClick('GLOBE')}
+            displayValue={
+              <span role="img" aria-label="Globe">
+                🌐
+              </span>
+            }
+            isSelected={selectedKey === "GLOBE"}
+            onClick={() => handleKeyClick("GLOBE")}
             width="w-16"
           />
         ) : (
           <Key
             keyValue="Globe"
-            displayValue={<span role="img" aria-label="Globe">🌐</span>}
+            displayValue={
+              <span role="img" aria-label="Globe">
+                🌐
+              </span>
+            }
             isSelected={false}
             onClick={() => {}}
             width="w-16"
@@ -208,28 +237,28 @@ export default function Keyboard({ selectedKey, setSelectedKey }: KeyboardProps)
         )}
         <Key
           keyValue="Alt"
-          isSelected={selectedKey === 'Alt'}
-          onClick={() => handleKeyClick('Alt')}
+          isSelected={selectedKey === "Alt"}
+          onClick={() => handleKeyClick("Alt")}
           width="w-16"
           disabled
         />
         <Key
           keyValue="Space"
-          isSelected={selectedKey === 'Space'}
-          onClick={() => handleKeyClick('Space')}
+          isSelected={selectedKey === "Space"}
+          onClick={() => handleKeyClick("Space")}
           width="w-64"
         />
         <Key
           keyValue="Alt"
           isSelected={false}
-          onClick={() => handleKeyClick('Alt')}
+          onClick={() => handleKeyClick("Alt")}
           width="w-16"
           disabled
         />
         <Key
           keyValue="Ctrl"
           isSelected={false}
-          onClick={() => handleKeyClick('Ctrl')}
+          onClick={() => handleKeyClick("Ctrl")}
           width="w-16"
           disabled
         />

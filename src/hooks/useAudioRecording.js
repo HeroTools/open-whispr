@@ -36,10 +36,7 @@ export const useAudioRecording = (toast, options = {}) => {
           audioManagerRef.current.saveTranscription(result.text);
 
           // Show success notification if local fallback was used
-          if (
-            result.source === "openai" &&
-            localStorage.getItem("useLocalWhisper") === "true"
-          ) {
+          if (result.source === "openai" && localStorage.getItem("useLocalWhisper") === "true") {
             toast({
               title: "Fallback Mode",
               description: "Local Whisper failed. Used OpenAI API instead.",
@@ -55,11 +52,7 @@ export const useAudioRecording = (toast, options = {}) => {
     const handleToggle = () => {
       const currentState = audioManagerRef.current.getState();
 
-      if (
-        !recording &&
-        !currentState.isRecording &&
-        !currentState.isProcessing
-      ) {
+      if (!recording && !currentState.isRecording && !currentState.isProcessing) {
         audioManagerRef.current.startRecording();
         recording = true;
       } else if (currentState.isRecording) {
@@ -77,15 +70,12 @@ export const useAudioRecording = (toast, options = {}) => {
     const handleNoAudioDetected = () => {
       toast({
         title: "No Audio Detected",
-        description:
-          "The recording contained no detectable audio. Please try again.",
+        description: "The recording contained no detectable audio. Please try again.",
         variant: "default",
       });
     };
 
-    const disposeNoAudio = window.electronAPI.onNoAudioDetected?.(
-      handleNoAudioDetected
-    );
+    const disposeNoAudio = window.electronAPI.onNoAudioDetected?.(handleNoAudioDetected);
 
     // Cleanup
     return () => {

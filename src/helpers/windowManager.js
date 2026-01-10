@@ -3,11 +3,7 @@ const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
-const {
-  MAIN_WINDOW_CONFIG,
-  CONTROL_PANEL_CONFIG,
-  WindowPositionUtil,
-} = require("./windowConfig");
+const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
 
 class WindowManager {
   constructor() {
@@ -62,16 +58,8 @@ class WindowManager {
         if (!isMainFrame) {
           return;
         }
-        console.error(
-          "Failed to load main window:",
-          errorCode,
-          errorDescription,
-          validatedURL
-        );
-        if (
-          process.env.NODE_ENV === "development" &&
-          validatedURL.includes("localhost:5174")
-        ) {
+        console.error("Failed to load main window:", errorCode, errorDescription, validatedURL);
+        if (process.env.NODE_ENV === "development" && validatedURL.includes("localhost:5174")) {
           // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();
@@ -81,23 +69,15 @@ class WindowManager {
             }
           }, 2000);
         } else {
-          this.showLoadFailureDialog(
-            "Dictation panel",
-            errorCode,
-            errorDescription,
-            validatedURL
-          );
+          this.showLoadFailureDialog("Dictation panel", errorCode, errorDescription, validatedURL);
         }
       }
     );
 
-    this.mainWindow.webContents.on(
-      "did-finish-load",
-      () => {
-        this.mainWindow.setTitle("Voice Recorder");
-        this.enforceMainWindowOnTop();
-      }
-    );
+    this.mainWindow.webContents.on("did-finish-load", () => {
+      this.mainWindow.setTitle("Voice Recorder");
+      this.enforceMainWindowOnTop();
+    });
   }
 
   setMainWindowInteractivity(shouldCapture) {
@@ -174,9 +154,7 @@ class WindowManager {
         return;
       }
       if (!this.controlPanelWindow.isVisible()) {
-        console.warn(
-          "Control panel did not become visible in time; forcing show"
-        );
+        console.warn("Control panel did not become visible in time; forcing show");
         this.controlPanelWindow.show();
         this.controlPanelWindow.focus();
       }
@@ -232,19 +210,9 @@ class WindowManager {
           return;
         }
         clearVisibilityTimer();
-        console.error(
-          "Failed to load control panel:",
-          errorCode,
-          errorDescription,
-          validatedURL
-        );
+        console.error("Failed to load control panel:", errorCode, errorDescription, validatedURL);
         if (process.env.NODE_ENV !== "development") {
-          this.showLoadFailureDialog(
-            "Control panel",
-            errorCode,
-            errorDescription,
-            validatedURL
-          );
+          this.showLoadFailureDialog("Control panel", errorCode, errorDescription, validatedURL);
         }
         if (!this.controlPanelWindow.isVisible()) {
           this.controlPanelWindow.show();
@@ -262,9 +230,7 @@ class WindowManager {
     if (process.env.NODE_ENV === "development") {
       const isReady = await DevServerManager.waitForDevServer();
       if (!isReady) {
-        console.error(
-          "Dev server not ready for control panel, loading anyway..."
-        );
+        console.error("Dev server not ready for control panel, loading anyway...");
       }
     }
     this.controlPanelWindow.loadURL(appUrl);

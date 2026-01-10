@@ -78,11 +78,8 @@ export const usePermissions = (
   showAlertDialog?: UsePermissionsProps["showAlertDialog"]
 ): UsePermissionsReturn => {
   const [micPermissionGranted, setMicPermissionGranted] = useState(false);
-  const [micPermissionError, setMicPermissionError] = useState<string | null>(
-    null
-  );
-  const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] =
-    useState(false);
+  const [micPermissionError, setMicPermissionError] = useState<string | null>(null);
+  const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] = useState(false);
 
   const openMicPrivacySettings = useCallback(async () => {
     try {
@@ -101,10 +98,7 @@ export const usePermissions = (
   }, []);
 
   const requestMicPermission = useCallback(async () => {
-    if (
-      !navigator?.mediaDevices ||
-      typeof navigator.mediaDevices.getUserMedia !== "function"
-    ) {
+    if (!navigator?.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
       const message =
         "Microphone APIs are unavailable in this environment. Please restart the app.";
       setMicPermissionError(message);
@@ -165,9 +159,7 @@ export const usePermissions = (
             "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
         });
       } else {
-        alert(
-          "❌ Accessibility permissions needed! Please grant them in System Settings."
-        );
+        alert("❌ Accessibility permissions needed! Please grant them in System Settings.");
       }
     }
   }, [showAlertDialog]);
