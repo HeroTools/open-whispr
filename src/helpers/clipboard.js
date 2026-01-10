@@ -10,7 +10,6 @@ class ClipboardManager {
   constructor() {
     this.accessibilityCache = { value: null, expiresAt: 0 };
     this.commandAvailabilityCache = new Map();
-    this.availablePasteToolsCache = new Map();
   }
 
   // Safe logging method - only log in development
@@ -285,19 +284,8 @@ class ClipboardManager {
           { cmd: "xdotool", args: ["key", pasteKeys] },
         ];
 
-    // Filter to only available tools (cached by session type)
-    const cacheKey = `${isWayland ? "wayland" : "x11"}:${inTerminal ? "term" : "gui"}`;
-    const cacheEntry = this.availablePasteToolsCache.get(cacheKey);
-    let available;
-    if (cacheEntry && Date.now() < cacheEntry.expiresAt) {
-      available = cacheEntry.tools;
-    } else {
-      available = candidates.filter((c) => commandExists(c.cmd));
-      this.availablePasteToolsCache.set(cacheKey, {
-        tools: available,
-        expiresAt: Date.now() + CACHE_TTL_MS,
-      });
-    }
+    // Filter to only available tools (commandExists is already cached)
+    const available = candidates.filter((c) => commandExists(c.cmd));
 
     // Attempt paste with a specific tool
     const pasteWith = (tool) =>

@@ -70,7 +70,7 @@ class AudioManager {
 
   async startRecording() {
     try {
-      if (this.isRecording || this.mediaRecorder?.state === "recording") {
+      if (this.isRecording || this.isProcessing || this.mediaRecorder?.state === "recording") {
         return false;
       }
 
@@ -157,6 +157,37 @@ class AudioManager {
     return false;
   }
 
+  cancelRecording() {
+    if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+      // Remove the onstop handler to prevent processing
+      this.mediaRecorder.onstop = () => {
+        // Discard audio - just reset state without processing
+        this.isRecording = false;
+        this.isProcessing = false;
+        this.audioChunks = [];
+        this.recordingStartTime = null;
+        this.onStateChange?.({ isRecording: false, isProcessing: false });
+
+        // Log cancellation
+        this.markLatencyStage(
+          "03_recording_cancelled",
+          { description: "Recording cancelled by user" },
+          { total: true, complete: true }
+        );
+      };
+
+      this.mediaRecorder.stop();
+
+      // Stop all tracks immediately
+      if (this.mediaRecorder.stream) {
+        this.mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      }
+
+      return true;
+    }
+    return false;
+  }
+
   async processAudio(audioBlob, metadata = {}) {
     try {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
@@ -192,6 +223,14 @@ class AudioManager {
     } finally {
       this.isProcessing = false;
       this.onStateChange?.({ isRecording: false, isProcessing: false });
+      // Complete session if not already completed by safePaste or error handler
+      if (this.latencySession) {
+        this.markLatencyStage(
+          "09_processing_complete",
+          { description: "Audio processing finished (session cleanup)" },
+          { total: true, complete: true }
+        );
+      }
     }
   }
 

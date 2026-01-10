@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
+import { X } from "lucide-react";
 import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
@@ -106,13 +107,12 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, toggleListening } = useAudioRecording(
+  const { isRecording, isProcessing, toggleListening, cancelRecording } = useAudioRecording(
     toast,
     {
       onToggle: handleDictationToggle,
     }
   );
-
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
@@ -137,6 +137,7 @@ export default function App() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [isCommandMenuOpen]);
+
   useEffect(() => {
     const handleKeyPress = (e) => {
       if (e.key === "Escape") {
@@ -161,7 +162,6 @@ export default function App() {
   };
 
   const micState = getMicState();
-  const isListening = isRecording || isProcessing;
 
   // Get microphone button properties based on state
   const getMicButtonProps = () => {
@@ -204,7 +204,33 @@ export default function App() {
     <>
       {/* Fixed bottom-right voice button */}
       <div className="fixed bottom-6 right-6 z-50">
-        <div className="relative">
+        <div
+          className="relative flex items-center gap-2"
+          onMouseEnter={() => {
+            setIsHovered(true);
+            setWindowInteractivity(true);
+          }}
+          onMouseLeave={() => {
+            setIsHovered(false);
+            if (!isCommandMenuOpen) {
+              setWindowInteractivity(false);
+            }
+          }}
+        >
+          {isRecording && isHovered && (
+            <Tooltip content="Stop recording">
+              <button
+                aria-label="Cancel recording"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelRecording();
+                }}
+                className="w-7 h-7 rounded-full bg-neutral-800/90 hover:bg-red-500 border border-white/20 hover:border-red-400 flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
+              >
+                <X size={12} strokeWidth={2.5} color="white" />
+              </button>
+            </Tooltip>
+          )}
           <Tooltip content={micProps.tooltip}>
             <button
               ref={buttonRef}
@@ -242,16 +268,6 @@ export default function App() {
                 if (!hasDragged) {
                   setWindowInteractivity(true);
                   setIsCommandMenuOpen((prev) => !prev);
-                }
-              }}
-              onMouseEnter={() => {
-                setIsHovered(true);
-                setWindowInteractivity(true);
-              }}
-              onMouseLeave={() => {
-                setIsHovered(false);
-                if (!isCommandMenuOpen) {
-                  setWindowInteractivity(false);
                 }
               }}
               onFocus={() => setIsHovered(true)}
