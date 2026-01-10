@@ -38,8 +38,10 @@ import LanguageSelector from "./ui/LanguageSelector";
 import { UnifiedModelPickerCompact } from "./UnifiedModelPicker";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
-import { formatHotkeyLabel } from "../utils/hotkeys";
+import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { HotkeyInput } from "./ui/HotkeyInput";
+import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -99,6 +101,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     hideConfirmDialog,
   } = useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
+
+  // Ref to prevent React.StrictMode double-invocation of auto-registration
+  const autoRegisterInFlightRef = useRef(false);
+  const hotkeyStepInitializedRef = useRef(false);
+
+  // Shared hotkey registration hook
+  const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
+    onSuccess: (registeredHotkey) => {
+      setHotkey(registeredHotkey);
+      setDictationKey(registeredHotkey);
+    },
+    showSuccessToast: false, // Don't show toast during onboarding auto-registration
+    showErrorToast: false,
+  });
 
   const trimmedReasoningBase = (reasoningBaseUrl || "").trim();
   const normalizedReasoningBaseUrl = useMemo(
@@ -325,6 +341,45 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
     }
   }, [currentStep]);
+
+  // Auto-register default hotkey when entering the hotkey step (step 4)
+  useEffect(() => {
+    if (currentStep !== 4) {
+      // Reset initialization flag when leaving step 4
+      hotkeyStepInitializedRef.current = false;
+      return;
+    }
+
+    // Prevent double-invocation from React.StrictMode
+    if (autoRegisterInFlightRef.current || hotkeyStepInitializedRef.current) {
+      return;
+    }
+
+    const autoRegisterDefaultHotkey = async () => {
+      autoRegisterInFlightRef.current = true;
+      hotkeyStepInitializedRef.current = true;
+
+      try {
+        // Get platform-appropriate default hotkey
+        const defaultHotkey = getDefaultHotkey();
+
+        // Only auto-register if no hotkey is currently set or it's the old default
+        if (!hotkey || hotkey === "`" || hotkey === "GLOBE") {
+          // Try to register the default hotkey silently
+          const success = await registerHotkey(defaultHotkey);
+          if (success) {
+            setHotkey(defaultHotkey);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to auto-register default hotkey:", error);
+      } finally {
+        autoRegisterInFlightRef.current = false;
+      }
+    };
+
+    void autoRegisterDefaultHotkey();
+  }, [currentStep, hotkey, registerHotkey]);
 
   const ensureHotkeyRegistered = useCallback(async () => {
     if (!window.electronAPI?.updateHotkey) {
@@ -889,7 +944,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Choose Your Hotkey
               </h2>
               <p className="text-gray-600">
-                Select which key you want to press to start/stop dictation
+                Press any key or key combination (like Cmd+Shift+K) to set your dictation hotkey
               </p>
             </div>
 
@@ -898,23 +953,48 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Activation Key
                 </label>
-                <Input
-                  placeholder="Default: ` (backtick)"
+                <HotkeyInput
                   value={hotkey}
-                  onChange={(e) => setHotkey(e.target.value)}
-                  className="text-center text-lg font-mono"
+                  onChange={async (newHotkey) => {
+                    // Immediately register the new hotkey
+                    const success = await registerHotkey(newHotkey);
+                    if (success) {
+                      setHotkey(newHotkey);
+                    }
+                  }}
+                  placeholder="Click here and press a key combination..."
+                  disabled={isHotkeyRegistering}
                 />
-                <p className="text-xs text-gray-500 mt-2">
-                  Press this key from anywhere to start/stop dictation
+                <p className="text-xs text-gray-500 mt-6">
+                  Supports single keys (F1, `) or combinations (Cmd+Shift+K)
                 </p>
+              </div>
+
+              <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                <h4 className="font-medium text-indigo-900 mb-3">
+                  Current hotkey:
+                </h4>
+                <div className="flex items-center justify-center">
+                  <kbd className="px-4 py-2 bg-white border-2 border-indigo-300 rounded-lg font-mono text-xl font-semibold text-indigo-900 shadow-sm">
+                    {formatHotkeyLabel(hotkey)}
+                  </kbd>
+                </div>
               </div>
 
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="font-medium text-gray-900 mb-3">
-                  Click any key to select it:
+                  Or click a key on the keyboard:
                 </h4>
                 <React.Suspense fallback={<div>Loading keyboard...</div>}>
-                  <InteractiveKeyboard selectedKey={hotkey} setSelectedKey={setHotkey} />
+                  <InteractiveKeyboard
+                    selectedKey={hotkey}
+                    setSelectedKey={async (key) => {
+                      const success = await registerHotkey(key);
+                      if (success) {
+                        setHotkey(key);
+                      }
+                    }}
+                  />
                 </React.Suspense>
               </div>
             </div>
