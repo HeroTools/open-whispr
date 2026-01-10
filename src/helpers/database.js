@@ -47,8 +47,12 @@ class DatabaseManager {
       );
       const result = stmt.run(text);
 
+      const fetchStmt = this.db.prepare(
+        "SELECT * FROM transcriptions WHERE id = ?"
+      );
+      const transcription = fetchStmt.get(result.lastInsertRowid);
 
-      return { id: result.lastInsertRowid, success: true };
+      return { id: result.lastInsertRowid, success: true, transcription };
     } catch (error) {
       console.error("Error saving transcription:", error.message);
       throw error;
@@ -95,7 +99,7 @@ class DatabaseManager {
       console.log(
         `🗑️ Deleted transcription ${id}, affected rows: ${result.changes}`
       );
-      return { success: result.changes > 0 };
+      return { success: result.changes > 0, id };
     } catch (error) {
       console.error("❌ Error deleting transcription:", error);
       throw error;

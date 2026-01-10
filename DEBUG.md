@@ -5,34 +5,50 @@
 When experiencing issues like "no audio detected", you can enable verbose debug logging to help diagnose the problem.
 
 ### Method 1: Command Line Flag
-Run the app with the `--debug` flag:
+Run the app with the `--log-level=debug` flag:
 ```bash
 # macOS
-/Applications/OpenWhispr.app/Contents/MacOS/OpenWhispr --debug
+/Applications/OpenWhispr.app/Contents/MacOS/OpenWhispr --log-level=debug
 
 # Windows
-OpenWhispr.exe --debug
+OpenWhispr.exe --log-level=debug
 ```
 
 ### Method 2: Environment Variable
-Set the `OPENWHISPR_DEBUG` environment variable:
+Set the `OPENWHISPR_LOG_LEVEL=debug` environment variable:
 ```bash
 # macOS/Linux
-export OPENWhISPR_DEBUG=true
+export OPENWHISPR_LOG_LEVEL=debug
 open /Applications/OpenWhispr.app
 
 # Windows
-set OPENWhISPR_DEBUG=true
+set OPENWHISPR_LOG_LEVEL=debug
 OpenWhispr.exe
 ```
+You can also put `OPENWHISPR_LOG_LEVEL=debug` in the app's `.env` file and restart:
+
+- **macOS**: `~/Library/Application Support/OpenWhispr/.env`
+- **Windows**: `%APPDATA%\OpenWhispr\.env`
+- **Linux**: `~/.config/OpenWhispr/.env`
 
 ## Finding the Debug Logs
 
 When debug mode is enabled, logs are saved to:
 
-- **macOS**: `~/Library/Application Support/open-whispr/logs/debug-[timestamp].log`
-- **Windows**: `%APPDATA%/open-whispr/logs/debug-[timestamp].log`
-- **Linux**: `~/.config/open-whispr/logs/debug-[timestamp].log`
+- **macOS**: `~/Library/Application Support/OpenWhispr/logs/debug-[timestamp].log`
+- **Windows**: `%APPDATA%\OpenWhispr\logs\debug-[timestamp].log`
+- **Linux**: `~/.config/OpenWhispr/logs/debug-[timestamp].log`
+
+## Log Levels (Quick Guide)
+
+Log levels control how verbose logging is. Setting `--log-level=debug` means you'll see everything at `debug` and above.
+
+- `trace`: very detailed, internal flow (most verbose)
+- `debug`: detailed diagnostics for troubleshooting
+- `info`: normal operational events
+- `warn`: something unexpected, but the app can continue
+- `error`: a failure occurred
+- `fatal`: the app can't continue
 
 ## What the Logs Include
 
@@ -166,5 +182,5 @@ When reporting issues:
 ## Disabling Debug Mode
 
 Debug mode is disabled by default. To ensure it's off:
-- Don't use the `--debug` flag
-- Unset the environment variable: `unset OPENWHISPR_DEBUG`
+- Don't use `--log-level=debug`
+- Unset the environment variable: `unset OPENWHISPR_LOG_LEVEL`

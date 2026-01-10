@@ -12,10 +12,12 @@ import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
+import { API_ENDPOINTS } from "../config/constants";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
 import type { UpdateInfoResult } from "../types/electron";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
@@ -51,12 +53,15 @@ export default function SettingsPage({
     allowLocalFallback,
     fallbackWhisperModel,
     preferredLanguage,
+    cloudTranscriptionBaseUrl,
+    cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
     openaiApiKey,
     anthropicApiKey,
     geminiApiKey,
+    groqApiKey,
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
@@ -64,12 +69,15 @@ export default function SettingsPage({
     setAllowLocalFallback,
     setFallbackWhisperModel,
     setPreferredLanguage,
+    setCloudTranscriptionBaseUrl,
+    setCloudReasoningBaseUrl,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider,
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,
+    setGroqApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -109,57 +117,91 @@ export default function SettingsPage({
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const subscribeToUpdates = useCallback(() => {
-    if (!window.electronAPI) return;
+    if (!window.electronAPI) return () => {};
 
-    window.electronAPI.onUpdateAvailable?.((_event, info) => {
-      setUpdateStatus((prev) => ({ ...prev, updateAvailable: true, updateDownloaded: false }));
-      if (info) {
-        setUpdateInfo({
-          version: info.version || "unknown",
-          releaseDate: info.releaseDate,
-          releaseNotes: info.releaseNotes ?? undefined,
-        });
-      }
-    });
+    const disposers: Array<(() => void) | void> = [];
 
-    window.electronAPI.onUpdateNotAvailable?.(() => {
-      setUpdateStatus((prev) => ({ ...prev, updateAvailable: false, updateDownloaded: false }));
-      setUpdateInfo({});
-      setDownloadingUpdate(false);
-      setInstallInitiated(false);
-      setUpdateDownloadProgress(0);
-    });
+    if (window.electronAPI.onUpdateAvailable) {
+      disposers.push(
+        window.electronAPI.onUpdateAvailable((_event, info) => {
+          setUpdateStatus((prev) => ({
+            ...prev,
+            updateAvailable: true,
+            updateDownloaded: false,
+          }));
+          if (info) {
+            setUpdateInfo({
+              version: info.version || "unknown",
+              releaseDate: info.releaseDate,
+              releaseNotes: info.releaseNotes ?? undefined,
+            });
+          }
+        })
+      );
+    }
 
-    window.electronAPI.onUpdateDownloaded?.((_event, info) => {
-      setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
-      setDownloadingUpdate(false);
-      setInstallInitiated(false);
-      if (info) {
-        setUpdateInfo({
-          version: info.version || "unknown",
-          releaseDate: info.releaseDate,
-          releaseNotes: info.releaseNotes ?? undefined,
-        });
-      }
-    });
+    if (window.electronAPI.onUpdateNotAvailable) {
+      disposers.push(
+        window.electronAPI.onUpdateNotAvailable(() => {
+          setUpdateStatus((prev) => ({
+            ...prev,
+            updateAvailable: false,
+            updateDownloaded: false,
+          }));
+          setUpdateInfo({});
+          setDownloadingUpdate(false);
+          setInstallInitiated(false);
+          setUpdateDownloadProgress(0);
+        })
+      );
+    }
 
-    window.electronAPI.onUpdateDownloadProgress?.((_event, progressObj) => {
-      setUpdateDownloadProgress(progressObj.percent || 0);
-    });
+    if (window.electronAPI.onUpdateDownloaded) {
+      disposers.push(
+        window.electronAPI.onUpdateDownloaded((_event, info) => {
+          setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
+          setDownloadingUpdate(false);
+          setInstallInitiated(false);
+          if (info) {
+            setUpdateInfo({
+              version: info.version || "unknown",
+              releaseDate: info.releaseDate,
+              releaseNotes: info.releaseNotes ?? undefined,
+            });
+          }
+        })
+      );
+    }
 
-    window.electronAPI.onUpdateError?.((_event, error) => {
-      setCheckingForUpdates(false);
-      setDownloadingUpdate(false);
-      setInstallInitiated(false);
-      console.error("Update error:", error);
-      showAlertDialog({
-        title: "Update Error",
-        description:
-          typeof error?.message === "string"
-            ? error.message
-            : "The updater encountered a problem. Please try again or download the latest release manually.",
-      });
-    });
+    if (window.electronAPI.onUpdateDownloadProgress) {
+      disposers.push(
+        window.electronAPI.onUpdateDownloadProgress((_event, progressObj) => {
+          setUpdateDownloadProgress(progressObj.percent || 0);
+        })
+      );
+    }
+
+    if (window.electronAPI.onUpdateError) {
+      disposers.push(
+        window.electronAPI.onUpdateError((_event, error) => {
+          setCheckingForUpdates(false);
+          setDownloadingUpdate(false);
+          setInstallInitiated(false);
+          console.error("Update error:", error);
+          showAlertDialog({
+            title: "Update Error",
+            description:
+              typeof error?.message === "string"
+                ? error.message
+                : "The updater encountered a problem. Please try again or download the latest release manually.",
+          });
+        })
+      );
+    }
+
+    return () => {
+      disposers.forEach((dispose) => dispose?.());
+    };
   }, [showAlertDialog]);
 
   // Local state for provider selection (overrides computed value)
@@ -170,6 +212,7 @@ export default function SettingsPage({
   // Defer heavy operations for better performance
   useEffect(() => {
     let mounted = true;
+    let unsubscribeUpdates;
 
     // Defer version and update checks to improve initial render
     const timer = setTimeout(async () => {
@@ -198,7 +241,7 @@ export default function SettingsPage({
         }
       }
 
-      subscribeToUpdates();
+      unsubscribeUpdates = subscribeToUpdates();
 
       // Check whisper after initial render
       if (mounted) {
@@ -210,13 +253,7 @@ export default function SettingsPage({
       mounted = false;
       clearTimeout(timer);
       // Always clean up update listeners if they exist
-      if (window.electronAPI) {
-        window.electronAPI.removeAllListeners?.("update-available");
-        window.electronAPI.removeAllListeners?.("update-not-available");
-        window.electronAPI.removeAllListeners?.("update-downloaded");
-        window.electronAPI.removeAllListeners?.("update-error");
-        window.electronAPI.removeAllListeners?.("update-download-progress");
-      }
+      unsubscribeUpdates?.();
     };
   }, [whisperHook, subscribeToUpdates]);
 
@@ -247,14 +284,18 @@ export default function SettingsPage({
   }, [installInitiated, showAlertDialog]);
 
   const saveReasoningSettings = useCallback(async () => {
-    // Update reasoning settings
-    updateReasoningSettings({ 
-      useReasoningModel, 
-      reasoningModel
+    const normalizedReasoningBase = (cloudReasoningBaseUrl || '').trim();
+    setCloudReasoningBaseUrl(normalizedReasoningBase);
+
+    // Update reasoning settings including the base URL
+    updateReasoningSettings({
+      useReasoningModel,
+      reasoningModel,
+      cloudReasoningBaseUrl: normalizedReasoningBase
     });
-    
-    // Save API keys to backend based on provider
-    if (localReasoningProvider === "openai" && openaiApiKey) {
+
+    // Save API keys to backend based on provider (including custom)
+    if ((localReasoningProvider === "openai" || localReasoningProvider === "custom") && openaiApiKey) {
       await window.electronAPI?.saveOpenAIKey(openaiApiKey);
     }
     if (localReasoningProvider === "anthropic" && anthropicApiKey) {
@@ -263,35 +304,54 @@ export default function SettingsPage({
     if (localReasoningProvider === "gemini" && geminiApiKey) {
       await window.electronAPI?.saveGeminiKey(geminiApiKey);
     }
-    
-    updateApiKeys({
-      ...(localReasoningProvider === "openai" &&
-        openaiApiKey.trim() && { openaiApiKey }),
-      ...(localReasoningProvider === "anthropic" &&
-        anthropicApiKey.trim() && { anthropicApiKey }),
-      ...(localReasoningProvider === "gemini" &&
-        geminiApiKey.trim() && { geminiApiKey }),
-    });
-    
+    if (localReasoningProvider === "groq" && groqApiKey) {
+      await window.electronAPI?.saveGroqKey(groqApiKey);
+    }
+
+    // Update API keys in state (for custom provider, save the API key used)
+    const keysToSave: Partial<{openaiApiKey: string; anthropicApiKey: string; geminiApiKey: string; groqApiKey: string}> = {};
+    if ((localReasoningProvider === "openai" || localReasoningProvider === "custom") && openaiApiKey.trim()) {
+      keysToSave.openaiApiKey = openaiApiKey;
+    }
+    if (localReasoningProvider === "anthropic" && anthropicApiKey.trim()) {
+      keysToSave.anthropicApiKey = anthropicApiKey;
+    }
+    if (localReasoningProvider === "gemini" && geminiApiKey.trim()) {
+      keysToSave.geminiApiKey = geminiApiKey;
+    }
+    if (localReasoningProvider === "groq" && groqApiKey.trim()) {
+      keysToSave.groqApiKey = groqApiKey;
+    }
+    updateApiKeys(keysToSave);
+
     // Save the provider separately since it's computed from the model
     localStorage.setItem("reasoningProvider", localReasoningProvider);
+
+    const providerLabel =
+      localReasoningProvider === 'custom'
+        ? 'Custom'
+        : REASONING_PROVIDERS[
+            localReasoningProvider as keyof typeof REASONING_PROVIDERS
+          ]?.name || localReasoningProvider;
 
     showAlertDialog({
       title: "Reasoning Settings Saved",
       description: `AI text enhancement ${
         useReasoningModel ? "enabled" : "disabled"
       } with ${
-        REASONING_PROVIDERS[
-          localReasoningProvider as keyof typeof REASONING_PROVIDERS
-        ]?.name || localReasoningProvider
+        providerLabel
       } ${reasoningModel}`,
     });
   }, [
     useReasoningModel,
     reasoningModel,
     localReasoningProvider,
+    cloudReasoningBaseUrl,
     openaiApiKey,
     anthropicApiKey,
+    geminiApiKey,
+    groqApiKey,
+    setCloudReasoningBaseUrl,
     updateReasoningSettings,
     updateApiKeys,
     showAlertDialog,
@@ -756,6 +816,13 @@ export default function SettingsPage({
                   <span className="mr-2">⚙️</span>
                   Fix Permission Issues
                 </Button>
+                {!permissionsHook.micPermissionGranted && (
+                  <MicPermissionWarning
+                    error={permissionsHook.micPermissionError}
+                    onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                    onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                  />
+                )}
               </div>
             </div>
 
@@ -898,24 +965,50 @@ export default function SettingsPage({
 
             {!useLocalWhisper && (
               <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <h4 className="font-medium text-blue-900">OpenAI API Setup</h4>
+                <h4 className="font-medium text-blue-900">OpenAI-Compatible Cloud Setup</h4>
                 <ApiKeyInput
                   apiKey={openaiApiKey}
                   setApiKey={setOpenaiApiKey}
                   helpText={
                     <>
-                      Get your API key from{" "}
+                      Supports OpenAI or compatible endpoints.{" "}
                       <a
                         href="https://platform.openai.com"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-600 hover:text-blue-700 underline"
+                        className="text-blue-600 underline"
                       >
-                        platform.openai.com
+                        Get an API key
                       </a>
+                      .
                     </>
                   }
                 />
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-blue-900">
+                    Custom Base URL (optional)
+                  </label>
+                  <Input
+                    value={cloudTranscriptionBaseUrl}
+                    onChange={(event) => setCloudTranscriptionBaseUrl(event.target.value)}
+                    placeholder="https://api.openai.com/v1"
+                    className="text-sm"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCloudTranscriptionBaseUrl(API_ENDPOINTS.TRANSCRIPTION_BASE)}
+                    >
+                      Reset to Default
+                    </Button>
+                  </div>
+                  <p className="text-xs text-blue-800">
+                    Requests for cloud transcription use this OpenAI-compatible base URL. Leave empty to fall back to
+                    <code className="ml-1">{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -946,21 +1039,33 @@ export default function SettingsPage({
 
           <Button
             onClick={() => {
+              const normalizedTranscriptionBase = (cloudTranscriptionBaseUrl || '').trim();
+              setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
+
               updateTranscriptionSettings({
                 useLocalWhisper,
                 whisperModel,
                 preferredLanguage,
+                cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
               });
 
               if (!useLocalWhisper && openaiApiKey.trim()) {
                 updateApiKeys({ openaiApiKey });
               }
 
+              const descriptionParts = [
+                `Transcription mode: ${useLocalWhisper ? 'Local Whisper' : 'Cloud'}.`,
+                `Language: ${preferredLanguage}.`,
+              ];
+
+              if (!useLocalWhisper) {
+                const baseLabel = normalizedTranscriptionBase || API_ENDPOINTS.TRANSCRIPTION_BASE;
+                descriptionParts.push(`Endpoint: ${baseLabel}.`);
+              }
+
               showAlertDialog({
                 title: "Settings Saved",
-                description: `Transcription mode: ${
-                  useLocalWhisper ? "Local Whisper" : "OpenAI API"
-                }. Language: ${preferredLanguage}.`,
+                description: descriptionParts.join(' '),
               });
             }}
             className="w-full"
@@ -990,6 +1095,8 @@ export default function SettingsPage({
                 setUseReasoningModel(value);
                 updateReasoningSettings({ useReasoningModel: value });
               }}
+              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
               reasoningModel={reasoningModel}
               setReasoningModel={setReasoningModel}
               localReasoningProvider={localReasoningProvider}
@@ -1000,6 +1107,8 @@ export default function SettingsPage({
               setAnthropicApiKey={setAnthropicApiKey}
               geminiApiKey={geminiApiKey}
               setGeminiApiKey={setGeminiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
               pasteFromClipboard={pasteFromClipboardWithFallback}
               showAlertDialog={showAlertDialog}
             />

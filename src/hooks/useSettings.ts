@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 import { getModelProvider } from "../utils/languages";
+import { API_ENDPOINTS } from "../config/constants";
 
 export interface TranscriptionSettings {
   useLocalWhisper: boolean;
@@ -9,12 +10,14 @@ export interface TranscriptionSettings {
   allowLocalFallback: boolean;
   fallbackWhisperModel: string;
   preferredLanguage: string;
+  cloudTranscriptionBaseUrl?: string;
 }
 
 export interface ReasoningSettings {
   useReasoningModel: boolean;
   reasoningModel: string;
   reasoningProvider: string;
+  cloudReasoningBaseUrl?: string;
 }
 
 export interface HotkeySettings {
@@ -25,6 +28,7 @@ export interface ApiKeySettings {
   openaiApiKey: string;
   anthropicApiKey: string;
   geminiApiKey: string;
+  groqApiKey: string;
 }
 
 export function useSettings() {
@@ -82,6 +86,24 @@ export function useSettings() {
     }
   );
 
+  const [cloudTranscriptionBaseUrl, setCloudTranscriptionBaseUrl] = useLocalStorage(
+    "cloudTranscriptionBaseUrl",
+    API_ENDPOINTS.TRANSCRIPTION_BASE,
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [cloudReasoningBaseUrl, setCloudReasoningBaseUrl] = useLocalStorage(
+    "cloudReasoningBaseUrl",
+    API_ENDPOINTS.OPENAI_BASE,
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   // Reasoning settings
   const [useReasoningModel, setUseReasoningModel] = useLocalStorage(
     "useReasoningModel",
@@ -125,6 +147,15 @@ export function useSettings() {
     }
   );
 
+  const [groqApiKey, setGroqApiKey] = useLocalStorage(
+    "groqApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   // Hotkey
   const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {
     serialize: String,
@@ -149,6 +180,8 @@ export function useSettings() {
         setFallbackWhisperModel(settings.fallbackWhisperModel);
       if (settings.preferredLanguage !== undefined)
         setPreferredLanguage(settings.preferredLanguage);
+      if (settings.cloudTranscriptionBaseUrl !== undefined)
+        setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
     },
     [
       setUseLocalWhisper,
@@ -157,6 +190,7 @@ export function useSettings() {
       setAllowLocalFallback,
       setFallbackWhisperModel,
       setPreferredLanguage,
+      setCloudTranscriptionBaseUrl,
     ]
   );
 
@@ -166,9 +200,11 @@ export function useSettings() {
         setUseReasoningModel(settings.useReasoningModel);
       if (settings.reasoningModel !== undefined)
         setReasoningModel(settings.reasoningModel);
+      if (settings.cloudReasoningBaseUrl !== undefined)
+        setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
       // reasoningProvider is computed from reasoningModel, not stored separately
     },
-    [setUseReasoningModel, setReasoningModel]
+    [setUseReasoningModel, setReasoningModel, setCloudReasoningBaseUrl]
   );
 
   const updateApiKeys = useCallback(
@@ -178,8 +214,10 @@ export function useSettings() {
         setAnthropicApiKey(keys.anthropicApiKey);
       if (keys.geminiApiKey !== undefined)
         setGeminiApiKey(keys.geminiApiKey);
+      if (keys.groqApiKey !== undefined)
+        setGroqApiKey(keys.groqApiKey);
     },
-    [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey]
+    [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey, setGroqApiKey]
   );
 
   return {
@@ -189,12 +227,15 @@ export function useSettings() {
     allowLocalFallback,
     fallbackWhisperModel,
     preferredLanguage,
+    cloudTranscriptionBaseUrl,
+    cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
     openaiApiKey,
     anthropicApiKey,
     geminiApiKey,
+    groqApiKey,
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
@@ -202,13 +243,20 @@ export function useSettings() {
     setAllowLocalFallback,
     setFallbackWhisperModel,
     setPreferredLanguage,
+    setCloudTranscriptionBaseUrl,
+    setCloudReasoningBaseUrl,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider: (provider: string) => {
+      if (provider === 'custom') {
+        return;
+      }
+
       const providerModels = {
         openai: "gpt-4o-mini", // Start with cost-efficient multimodal model
         anthropic: "claude-3.5-sonnet-20241022",
         gemini: "gemini-2.5-flash",
+        groq: "qwen/qwen3-32b", // Groq's powerful reasoning model
         local: "llama-3.2-3b",
       };
       setReasoningModel(
@@ -219,6 +267,7 @@ export function useSettings() {
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,
+    setGroqApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,

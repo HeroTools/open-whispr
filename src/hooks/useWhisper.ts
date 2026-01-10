@@ -10,7 +10,7 @@ export interface UseWhisperReturn {
 
   checkWhisperInstallation: () => Promise<void>;
   installWhisper: () => Promise<void>;
-  setupProgressListener: () => void;
+  setupProgressListener: () => (() => void) | void;
 }
 
 export interface UseWhisperProps {
@@ -77,12 +77,15 @@ export const useWhisper = (
   }, [showAlertDialog]);
 
   const setupProgressListener = useCallback(() => {
-    // Remove any existing listeners first
-    window.electronAPI?.removeAllListeners?.("whisper-install-progress");
-    
-    window.electronAPI.onWhisperInstallProgress((_, data) => {
+    if (!window.electronAPI?.onWhisperInstallProgress) {
+      return;
+    }
+
+    const dispose = window.electronAPI.onWhisperInstallProgress((_, data) => {
       setInstallProgress(data.message);
     });
+
+    return () => dispose?.();
   }, []);
 
   // Check Whisper installation on mount

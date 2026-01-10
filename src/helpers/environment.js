@@ -91,6 +91,24 @@ class EnvironmentManager {
     }
   }
 
+  getGroqKey() {
+    const apiKey = process.env.GROQ_API_KEY;
+    return apiKey || "";
+  }
+
+  saveGroqKey(key) {
+    try {
+      // Update the environment variable in memory for immediate use
+      process.env.GROQ_API_KEY = key;
+      // Persist all keys to file
+      this.saveAllKeysToEnvFile();
+      return { success: true };
+    } catch (error) {
+      // Silent error - already throwing
+      throw error;
+    }
+  }
+
   createProductionEnvFile(apiKey) {
     try {
       const envPath = path.join(app.getPath("userData"), ".env");
@@ -128,6 +146,9 @@ OPENAI_API_KEY=${apiKey}
       }
       if (process.env.GEMINI_API_KEY) {
         envContent += `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}\n`;
+      }
+      if (process.env.GROQ_API_KEY) {
+        envContent += `GROQ_API_KEY=${process.env.GROQ_API_KEY}\n`;
       }
 
       fs.writeFileSync(envPath, envContent, "utf8");

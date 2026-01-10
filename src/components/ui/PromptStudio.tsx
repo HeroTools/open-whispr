@@ -24,6 +24,24 @@ interface PromptStudioProps {
 }
 
 
+type ProviderConfig = {
+  label: string;
+  apiKeyStorageKey?: string;
+  baseStorageKey?: string;
+};
+
+const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
+  openai: { label: "OpenAI", apiKeyStorageKey: "openaiApiKey" },
+  anthropic: { label: "Anthropic", apiKeyStorageKey: "anthropicApiKey" },
+  gemini: { label: "Gemini", apiKeyStorageKey: "geminiApiKey" },
+  custom: {
+    label: "Custom endpoint",
+    apiKeyStorageKey: "openaiApiKey",
+    baseStorageKey: "cloudReasoningBaseUrl",
+  },
+  local: { label: "Local" },
+};
+
 export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const [activeTab, setActiveTab] = useState<"current" | "edit" | "test">("current");
   const [editedAgentPrompt, setEditedAgentPrompt] = useState(DEFAULT_PROMPTS.agent);
@@ -90,18 +108,27 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         return;
       }
       
-      // Check if we have the required API key (only for cloud providers)
-      if (reasoningProvider !== "local") {
-        const apiKey = reasoningProvider === "openai" 
-          ? localStorage.getItem("openaiApiKey")
-          : localStorage.getItem("anthropicApiKey");
-          
-        if (!apiKey || apiKey.trim() === "") {
-          setTestResult(`⚠️ No ${reasoningProvider === "openai" ? "OpenAI" : "Anthropic"} API key found. Add it in AI Models settings.`);
+      const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
+        label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
+      };
+      const providerLabel = providerConfig.label;
+
+      if (providerConfig.baseStorageKey) {
+        const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
+        if (!baseUrl) {
+          setTestResult(`⚠️ ${providerLabel} base URL missing. Add it in AI Models settings.`);
           return;
         }
       }
-      
+
+      if (providerConfig.apiKeyStorageKey) {
+        const apiKey = localStorage.getItem(providerConfig.apiKeyStorageKey);
+        if (!apiKey || apiKey.trim() === "") {
+          setTestResult(`⚠️ No ${providerLabel} API key found. Add it in AI Models settings.`);
+          return;
+        }
+      }
+
       // Save current prompts temporarily so the test uses them
       const currentCustomPrompts = localStorage.getItem("customPrompts");
       localStorage.setItem("customPrompts", JSON.stringify({
@@ -280,6 +307,13 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
     const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
     const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
+    const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
+      label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
+    };
+    const providerLabel = providerConfig.label;
+    const providerEndpoint = providerConfig.baseStorageKey
+      ? (localStorage.getItem(providerConfig.baseStorageKey) || "").trim()
+      : "";
     
     return (
       <div className="space-y-6">
@@ -316,7 +350,12 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               </div>
               <div>
                 <span className="text-gray-600">Provider:</span>
-                <span className="ml-2 font-medium capitalize">{reasoningProvider}</span>
+                <span className="ml-2 font-medium capitalize">{providerLabel}</span>
+                {providerConfig.baseStorageKey && (
+                  <div className="text-xs text-gray-500 mt-1 break-all">
+                    Endpoint: {providerEndpoint || "Not configured"}
+                  </div>
+                )}
               </div>
             </div>
             

@@ -118,7 +118,7 @@ declare global {
       pasteText: (text: string) => Promise<void>;
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
-      onToggleDictation: (callback: () => void) => void;
+      onToggleDictation: (callback: () => void) => (() => void) | void;
 
       // Database operations
       saveTranscription: (
@@ -127,6 +127,15 @@ declare global {
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+      onTranscriptionAdded?: (
+        callback: (item: TranscriptionItem) => void
+      ) => (() => void) | void;
+      onTranscriptionDeleted?: (
+        callback: (payload: { id: number }) => void
+      ) => (() => void) | void;
+      onTranscriptionsCleared?: (
+        callback: (payload: { cleared: number }) => void
+      ) => (() => void) | void;
 
       // API key management
       getOpenAIKey: () => Promise<string>;
@@ -152,13 +161,16 @@ declare global {
         text?: string;
         error?: string;
       }>;
+      onNoAudioDetected: (
+        callback: (event: any, data?: any) => void
+      ) => (() => void) | void;
 
       // Python operations
       checkPythonInstallation: () => Promise<PythonInstallation>;
       installPython: () => Promise<PythonInstallResult>;
       onPythonInstallProgress: (
         callback: (event: any, data: PythonInstallProgressData) => void
-      ) => void;
+      ) => (() => void) | void;
 
       // Whisper operations
       transcribeLocalWhisper: (
@@ -169,11 +181,11 @@ declare global {
       installWhisper: () => Promise<WhisperInstallResult>;
       onWhisperInstallProgress: (
         callback: (event: any, data: WhisperInstallProgressData) => void
-      ) => void;
+      ) => (() => void) | void;
       downloadWhisperModel: (modelName: string) => Promise<WhisperModelResult>;
       onWhisperDownloadProgress: (
         callback: (event: any, data: WhisperDownloadProgressData) => void
-      ) => void;
+      ) => (() => void) | void;
       checkModelStatus: (modelName: string) => Promise<WhisperModelResult>;
       listWhisperModels: () => Promise<WhisperModelsListResult>;
       deleteWhisperModel: (
@@ -192,7 +204,9 @@ declare global {
       modelDelete: (modelId: string) => Promise<void>;
       modelDeleteAll: () => Promise<{ success: boolean; error?: string; code?: string }>;
       modelCheckRuntime: () => Promise<boolean>;
-      onModelDownloadProgress: (callback: (event: any, data: any) => void) => void;
+      onModelDownloadProgress: (
+        callback: (event: any, data: any) => void
+      ) => (() => void) | void;
       
       // Local reasoning
       processLocalReasoning: (text: string, modelId: string, agentName: string | null, config: any) => Promise<{ success: boolean; text?: string; error?: string }>;
@@ -211,11 +225,13 @@ declare global {
       windowMaximize: () => Promise<void>;
       windowClose: () => Promise<void>;
       windowIsMaximized: () => Promise<boolean>;
+      getPlatform: () => string;
       startWindowDrag: () => Promise<void>;
       stopWindowDrag: () => Promise<void>;
       setMainWindowInteractivity: (interactive: boolean) => Promise<void>;
 
       // App management
+      appQuit: () => Promise<void>;
       cleanupApp: () => Promise<{ success: boolean; message: string }>;
       getTranscriptionHistory: () => Promise<any[]>;
       clearTranscriptionHistory: () => Promise<void>;
@@ -229,13 +245,21 @@ declare global {
       getUpdateInfo: () => Promise<UpdateInfoResult | null>;
 
       // Update event listeners
-      onUpdateAvailable: (callback: (event: any, info: any) => void) => void;
-      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => void;
-      onUpdateDownloaded: (callback: (event: any, info: any) => void) => void;
+      onUpdateAvailable: (
+        callback: (event: any, info: any) => void
+      ) => (() => void) | void;
+      onUpdateNotAvailable: (
+        callback: (event: any, info: any) => void
+      ) => (() => void) | void;
+      onUpdateDownloaded: (
+        callback: (event: any, info: any) => void
+      ) => (() => void) | void;
       onUpdateDownloadProgress: (
         callback: (event: any, progressObj: any) => void
-      ) => void;
-      onUpdateError: (callback: (event: any, error: any) => void) => void;
+      ) => (() => void) | void;
+      onUpdateError: (
+        callback: (event: any, error: any) => void
+      ) => (() => void) | void;
 
       // Settings management (used by OnboardingFlow but not in preload.js)
       saveSettings?: (settings: SaveSettings) => Promise<void>;
@@ -254,12 +278,27 @@ declare global {
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;
       saveGeminiKey: (key: string) => Promise<void>;
-      
+
+      // Groq API key management
+      getGroqKey: () => Promise<string | null>;
+      saveGroqKey: (key: string) => Promise<void>;
+
       // Debug logging
-      logReasoning?: (stage: string, details: any) => Promise<void>;
+      getLogLevel?: () => Promise<string>;
+      log?: (entry: {
+        level: string;
+        message: string;
+        meta?: any;
+        scope?: string;
+        source?: string;
+      }) => Promise<void>;
       
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<boolean>;
+
+      // System settings helpers
+      openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
+      openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
     };
     
     api?: {

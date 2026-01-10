@@ -8,6 +8,7 @@ class TrayManager {
     this.mainWindow = null;
     this.controlPanelWindow = null;
     this.windowManager = null;
+    this.attachedControlPanels = new WeakSet();
   }
 
   setWindows(mainWindow, controlPanelWindow) {
@@ -21,6 +22,10 @@ class TrayManager {
       this.mainWindow.on("restore", () => this.updateTrayMenu?.());
     }
 
+    if (this.controlPanelWindow) {
+      this.attachControlPanelListeners(this.controlPanelWindow);
+    }
+
     this.updateTrayMenu?.();
   }
 
@@ -32,8 +37,82 @@ class TrayManager {
     this.createControlPanelCallback = callback;
   }
 
+
+  attachControlPanelListeners(window) {
+    if (!window || this.attachedControlPanels.has(window)) {
+      return;
+    }
+
+    this.attachedControlPanels.add(window);
+
+    window.on("show", () => {
+      if (process.platform === "win32") {
+        window.setSkipTaskbar(false);
+      }
+      this.updateTrayMenu?.();
+    });
+
+    window.on("hide", () => {
+      this.updateTrayMenu?.();
+    });
+
+    window.on("destroyed", () => {
+      this.controlPanelWindow = null;
+      this.updateTrayMenu?.();
+    });
+  }
+
+  async showControlPanelFromTray() {
+    try {
+      if (this.windowManager) {
+        this.controlPanelWindow =
+          this.windowManager.controlPanelWindow || this.controlPanelWindow;
+      }
+      this.attachControlPanelListeners(this.controlPanelWindow);
+
+      if (
+        this.controlPanelWindow &&
+        !this.controlPanelWindow.isDestroyed()
+      ) {
+        if (process.platform === "win32") {
+          this.controlPanelWindow.setSkipTaskbar(false);
+        }
+        if (!this.controlPanelWindow.isVisible()) {
+          this.controlPanelWindow.show();
+        }
+        this.controlPanelWindow.focus();
+        return;
+      }
+
+      if (this.createControlPanelCallback) {
+        await this.createControlPanelCallback();
+        if (this.windowManager) {
+          this.controlPanelWindow =
+            this.windowManager.controlPanelWindow || this.controlPanelWindow;
+        }
+        this.attachControlPanelListeners(this.controlPanelWindow);
+
+        if (
+          this.controlPanelWindow &&
+          !this.controlPanelWindow.isDestroyed()
+        ) {
+          if (process.platform === "win32") {
+            this.controlPanelWindow.setSkipTaskbar(false);
+          }
+          this.controlPanelWindow.show();
+          this.controlPanelWindow.focus();
+        }
+        return;
+      }
+
+      console.error("No control panel callback available");
+    } catch (error) {
+      console.error("Failed to open control panel:", error);
+    }
+  }
+
   async createTray() {
-    if (process.platform !== "darwin") return;
+    if (process.platform !== "darwin" && process.platform !== "win32") return;
 
     try {
       const trayIcon = await this.loadTrayIcon();
@@ -44,7 +123,10 @@ class TrayManager {
 
       this.tray = new Tray(trayIcon);
 
-      this.tray.setIgnoreDoubleClickEvents(true);
+      if (process.platform === "darwin") {
+        this.tray.setIgnoreDoubleClickEvents(true);
+      }
+
       this.updateTrayMenu();
       this.setupTrayEventHandlers();
     } catch (error) {
@@ -53,58 +135,74 @@ class TrayManager {
   }
 
   async loadTrayIcon() {
-    if (process.env.NODE_ENV === "development") {
-      const iconPath = path.join(
-        __dirname,
-        "..",
-        "assets",
-        "iconTemplate@3x.png"
-      );
-      if (fs.existsSync(iconPath)) {
-        const icon = nativeImage.createFromPath(iconPath);
-        icon.setTemplateImage(true);
-        return icon;
+    const platform = process.platform;
+    const isDevelopment = process.env.NODE_ENV === "development";
+
+    const candidatePaths = [];
+
+    if (platform === "darwin") {
+      if (isDevelopment) {
+        candidatePaths.push(
+          path.join(__dirname, "..", "assets", "iconTemplate@3x.png")
+        );
       } else {
-        console.error("Tray icon not found at:", iconPath);
-        return this.createFallbackIcon();
+        candidatePaths.push(
+          path.join(process.resourcesPath, "src", "assets", "iconTemplate@3x.png"),
+          path.join(process.resourcesPath, "assets", "iconTemplate@3x.png"),
+          path.join(
+            process.resourcesPath,
+            "app.asar.unpacked",
+            "src",
+            "assets",
+            "iconTemplate@3x.png"
+          ),
+          path.join(__dirname, "..", "..", "src", "assets", "iconTemplate@3x.png"),
+          path.join(app.getAppPath(), "src", "assets", "iconTemplate@3x.png")
+        );
       }
     } else {
-      // In production, the icon should be in extraResources
-      const possiblePaths = [
-        // Most likely location: extraResources
-        path.join(process.resourcesPath, "src", "assets", "iconTemplate@3x.png"),
-        // Alternative locations
-        path.join(process.resourcesPath, "assets", "iconTemplate@3x.png"),
-        path.join(
-          process.resourcesPath,
-          "app.asar.unpacked",
-          "src",
-          "assets",
-          "iconTemplate@3x.png"
-        ),
-        path.join(__dirname, "..", "..", "src", "assets", "iconTemplate@3x.png"),
-        path.join(app.getAppPath(), "src", "assets", "iconTemplate@3x.png"),
-      ];
-      
-      console.log("Looking for tray icon in production...");
-      for (const testPath of possiblePaths) {
-        try {
-          if (fs.existsSync(testPath)) {
-            console.log("✅ Found tray icon at:", testPath);
-            const icon = nativeImage.createFromPath(testPath);
-            icon.setTemplateImage(true);
+      const fileName = platform === "win32" ? "icon.ico" : "icon.png";
+      if (isDevelopment) {
+        candidatePaths.push(
+          path.join(__dirname, "..", "assets", fileName),
+          path.join(__dirname, "..", "assets", "icon.png")
+        );
+      } else {
+        candidatePaths.push(
+          path.join(process.resourcesPath, "src", "assets", fileName),
+          path.join(process.resourcesPath, "assets", fileName),
+          path.join(
+            process.resourcesPath,
+            "app.asar.unpacked",
+            "src",
+            "assets",
+            fileName
+          ),
+          path.join(__dirname, "..", "..", "src", "assets", fileName),
+          path.join(app.getAppPath(), "src", "assets", fileName)
+        );
+      }
+    }
+
+    for (const testPath of candidatePaths) {
+      try {
+        if (fs.existsSync(testPath)) {
+          const icon = nativeImage.createFromPath(testPath);
+          if (icon && !icon.isEmpty()) {
+            if (platform === "darwin") {
+              icon.setTemplateImage(true);
+            }
+            console.log("Using tray icon:", testPath);
             return icon;
           }
-        } catch (e) {
-          console.log("❌ Error checking path:", testPath, e.message);
         }
+      } catch (error) {
+        console.error("Error checking tray icon path:", testPath, error.message);
       }
-
-      console.error("Could not find tray icon in any expected location");
-      console.log("Tried paths:", possiblePaths);
-
-      return this.createFallbackIcon();
     }
+
+    console.error("Could not find tray icon in any expected location");
+    return this.createFallbackIcon();
   }
 
   createFallbackIcon() {
@@ -160,40 +258,7 @@ class TrayManager {
       {
         label: "Open Control Panel",
         click: async () => {
-          try {
-            // Check if control panel window exists and is valid
-            if (
-              this.controlPanelWindow &&
-              !this.controlPanelWindow.isDestroyed()
-            ) {
-              if (!this.controlPanelWindow.isVisible()) {
-                this.controlPanelWindow.show();
-              }
-              this.controlPanelWindow.focus();
-            } else if (this.createControlPanelCallback) {
-              // Clear stale reference if window was destroyed
-              if (
-                this.controlPanelWindow &&
-                this.controlPanelWindow.isDestroyed()
-              ) {
-                this.controlPanelWindow = null;
-              }
-
-              await this.createControlPanelCallback();
-
-              // After creation, focus the window if it exists
-              if (
-                this.controlPanelWindow &&
-                !this.controlPanelWindow.isDestroyed()
-              ) {
-                this.controlPanelWindow.focus();
-              }
-            } else {
-              console.error("No control panel callback available");
-            }
-          } catch (error) {
-            console.error("Failed to open control panel:", error);
-          }
+          await this.showControlPanelFromTray();
         },
       },
       { type: "separator" },
@@ -216,9 +281,22 @@ class TrayManager {
   }
 
   setupTrayEventHandlers() {
-    this.tray.on("click", () => {
-      this.tray?.popUpContextMenu();
-    });
+    if (!this.tray) {
+      return;
+    }
+
+    if (process.platform === "win32") {
+      this.tray.on("click", () => {
+        void this.showControlPanelFromTray();
+      });
+      this.tray.on("right-click", () => {
+        this.tray?.popUpContextMenu();
+      });
+    } else {
+      this.tray.on("click", () => {
+        this.tray?.popUpContextMenu();
+      });
+    }
 
     this.tray.on("destroyed", () => {
       console.log("Tray icon destroyed");

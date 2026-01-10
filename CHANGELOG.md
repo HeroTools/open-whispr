@@ -5,6 +5,105 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.15] - 2026-01-05
+
+### Added
+- Button to fully quit OpenWhispr processes from the application
+- Linux terminal detection with automatic paste key switching (Ctrl+Shift+V for terminals)
+
+### Changed
+- Standardized logging on log levels with renderer IPC and `.env` refresh for consistent debug output
+
+### Fixed
+- Use `kdotool` for Wayland terminal detection, improving clipboard paste reliability
+- Increased delay before restoring clipboard to avoid race conditions during paste operations
+- Persist OpenAI key before onboarding test to prevent key loss during setup
+- Windows Python discovery now correctly handles output parsing
+- Keep FFmpeg debug schema as boolean type
+- Fixed OpenWhispr documentation paths
+- Windows: Resolved issue #16 with WAV validation, registry-based Python detection, and normalized FFmpeg paths
+
+## [1.0.13] - 2025-12-24
+
+### Added
+- Enhanced Linux support with Wayland compatibility, multiple package formats (AppImage, deb, rpm, Flatpak), and native window controls
+- Auto-detect existing Python during onboarding and gate the installer with a recheck option
+- "Use Existing Python" skip flow to onboarding with confirmation dialog
+
+### Changed
+- Reuse audio manager and stabilize dictation toggle callback to fix recording latency
+- Add cleanup functions to IPC listeners to prevent memory leaks
+- Make Flatpak opt-in for local builds only
+
+### Fixed
+- Optimized transcription pipeline with caching, batched reads, and non-blocking operations for improved performance
+- Reference error in settings page
+- Removed redundant audio listener causing unnecessary processing
+- Added IPC listener cleanup to prevent memory leaks
+- Performance improvements: removed duplicate useEffect, fixed blur causing re-renders
+
+### CI/CD
+- Add caching for Electron and Flatpak downloads
+- Add Flatpak runtime installation to workflow
+- Add Linux packaging dependencies to GitHub Actions workflow
+
+## [1.0.12] - 2025-11-13
+
+### Added
+- Added `scripts/complete-uninstall.sh` plus a new TROUBLESHOOTING guide so you can collect arch diagnostics, clean caches, and reset permissions before reinstalling stubborn builds.
+- Control Panel history now auto-refreshes through a shared store and IPC events, so new, deleted, or cleared transcripts sync instantly without a manual refresh.
+- Distribution artifacts now include both Apple Silicon and Intel macOS DMG/ZIP outputs, and the README documents Debian/Ubuntu packaging along with optional `xdotool` support.
+
+### Changed
+- The onboarding flow now validates dictation hotkeys before letting you continue, remembers whether cloud auth was skipped, and only persists sanitized API keys once supplied.
+- History entries normalize timestamps and no longer run the removed legacy text cleanup helper, so the UI shows the exact Whisper output that was saved.
+
+### Fixed
+- Local Whisper now finds Python on Windows more reliably by scanning typical install paths, honoring `OPENWHISPR_PYTHON`, and surfacing actionable ENOENT guidance.
+- Whisper installs automatically retry pip operations that hit PEP‑668, TOML, or permission errors, sanitizing the output and falling back to `--user` + legacy resolver when needed.
+
+## [1.0.11] - 2025-10-13
+
+### Added
+- Settings, onboarding, and the AI model selector now accept OpenAI-compatible custom base URLs for both transcription and reasoning providers, complete with validation and reset helpers.
+- Windows now gets full tray behavior: closing the control panel hides it to the tray, left-click reopens it, and the UI adds a native close button.
+
+### Changed
+- ReasoningService sends both `input` and `messages` payloads and automatically falls back between `/responses` and `/chat/completions` so older OpenAI-compatible endpoints keep working.
+
+### Fixed
+- Successful endpoint detection is cached per base URL, so the app remembers whether to call `/responses` or `/chat/completions` instead of retrying the wrong path forever.
+- Custom endpoint fields now enforce HTTPS (with localhost as the lone exception) across the UI and services, preventing API keys from ever leaving over plain HTTP.
+
+## [1.0.10] - 2025-10-07
+
+### Added
+- Added a `compile:globe` build step that emits a macOS Globe listener binary into `resources/bin` before every dev, pack, or dist command so the hotkey ships with all builds.
+
+### Fixed
+- Globe key failures now raise a macOS dialog, verify the bundled binary is executable, and kill/restart the listener cleanly so the shortcut survives packaging.
+
+## [1.0.9] - 2025-10-07
+
+### Changed
+- Simplified the release workflow by removing the bespoke GitHub release job and letting electron-builder upload draft releases directly.
+
+## [1.0.8] - 2025-10-03
+
+### Fixed
+- Globe/Fn hotkey reliability improved by showing the dictation panel before toggling, making focus optional, and surfacing listener spawn errors instead of failing silently.
+
+## [1.0.7] - 2025-10-03
+
+### Added
+- Settings update controls now show download progress bars, install countdowns, and clearer messaging while fetching or installing new builds.
+
+### Changed
+- Auto-update internals now track listeners, cache the last release metadata, and keep auto-download/auto-install disabled until the user explicitly triggers an update, eliminating the previous memory leaks.
+
+### Fixed
+- `Install & Restart` now emits `before-quit`, enables `autoInstallOnAppQuit`, logs progress, and calls `quitAndInstall(false, true)` so updates actually apply when quitting or pressing the button.
+
 ## [1.0.6] - 2025-09-11
 
 ### Added

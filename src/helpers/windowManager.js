@@ -35,6 +35,8 @@ class WindowManager {
 
     if (process.platform === "darwin") {
       this.mainWindow.setSkipTaskbar(false);
+    } else if (process.platform === "win32") {
+      this.mainWindow.setSkipTaskbar(true);
     }
 
     this.setMainWindowInteractivity(false);
@@ -73,6 +75,7 @@ class WindowManager {
     this.mainWindow.webContents.on(
       "did-finish-load",
       () => {
+        this.mainWindow.setTitle("Voice Recorder");
         this.enforceMainWindowOnTop();
       }
     );
@@ -182,8 +185,17 @@ class WindowManager {
     });
 
     this.controlPanelWindow.once("ready-to-show", () => {
+      if (process.platform === "win32") {
+        this.controlPanelWindow.setSkipTaskbar(false);
+      }
       this.controlPanelWindow.show();
       this.controlPanelWindow.focus();
+    });
+
+    this.controlPanelWindow.on("show", () => {
+      if (process.platform === "win32") {
+        this.controlPanelWindow.setSkipTaskbar(false);
+      }
     });
 
     this.controlPanelWindow.on("close", (event) => {
@@ -192,7 +204,7 @@ class WindowManager {
         if (process.platform === "darwin") {
           this.controlPanelWindow.minimize();
         } else {
-          this.controlPanelWindow.hide();
+          this.hideControlPanelToTray();
         }
       }
     });
@@ -203,6 +215,10 @@ class WindowManager {
 
     // Set up menu for control panel to ensure text input works
     MenuManager.setupControlPanelMenu(this.controlPanelWindow);
+
+    this.controlPanelWindow.webContents.on("did-finish-load", () => {
+      this.controlPanelWindow.setTitle("Control Panel");
+    });
 
     console.log("📱 Loading control panel content...");
     await this.loadControlPanel();
@@ -235,6 +251,18 @@ class WindowManager {
         this.mainWindow.focus();
       }
     }
+  }
+
+  hideControlPanelToTray() {
+    if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) {
+      return;
+    }
+
+    if (process.platform === "win32") {
+      this.controlPanelWindow.setSkipTaskbar(true);
+    }
+
+    this.controlPanelWindow.hide();
   }
 
   hideDictationPanel() {
@@ -281,12 +309,6 @@ class WindowManager {
 
     this.mainWindow.on("focus", () => {
       this.enforceMainWindowOnTop();
-    });
-
-    this.mainWindow.on("blur", () => {
-      setTimeout(() => {
-        this.enforceMainWindowOnTop();
-      }, 100);
     });
 
     this.mainWindow.on("closed", () => {

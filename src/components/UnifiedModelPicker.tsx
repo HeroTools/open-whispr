@@ -7,7 +7,8 @@ import {
   Download, 
   Trash2, 
   AlertCircle,
-  ExternalLink 
+  ExternalLink,
+  Globe 
 } from "lucide-react";
 import { useDialogs } from "../hooks/useDialogs";
 import { useToast } from "./ui/Toast";
@@ -107,7 +108,7 @@ export function UnifiedModelPickerCompact({
 }: {
   selectedModel: string;
   onModelSelect: (modelId: string) => void;
-  models: Array<{ value: string; label: string; description?: string }>;
+  models: Array<{ value: string; label: string; description?: string; icon?: string }>;
   className?: string;
 }) {
   return (
@@ -124,7 +125,14 @@ export function UnifiedModelPickerCompact({
         >
           <div className="flex items-center justify-between">
             <div>
-              <div className="font-medium text-gray-900">{model.label}</div>
+              <div className="flex items-center gap-2">
+                {model.icon ? (
+                  <img src={model.icon} alt="" className="w-4 h-4" aria-hidden="true" />
+                ) : (
+                  <Globe className="w-4 h-4 text-gray-400" aria-hidden="true" />
+                )}
+                <span className="font-medium text-gray-900">{model.label}</span>
+              </div>
               {model.description && (
                 <div className="text-xs text-gray-600 mt-1">{model.description}</div>
               )}
@@ -292,11 +300,14 @@ export default function UnifiedModelPicker({
   }, [modelType, loadModels]);
 
   useEffect(() => {
-    if (modelType === 'whisper') {
-      window.electronAPI.onWhisperDownloadProgress(handleDownloadProgress);
-    } else {
-      window.electronAPI.onModelDownloadProgress(handleDownloadProgress);
-    }
+    const dispose =
+      modelType === 'whisper'
+        ? window.electronAPI.onWhisperDownloadProgress(handleDownloadProgress)
+        : window.electronAPI.onModelDownloadProgress(handleDownloadProgress);
+
+    return () => {
+      dispose?.();
+    };
   }, [handleDownloadProgress, modelType]);
 
   const downloadModel = useCallback(async (modelId: string) => {

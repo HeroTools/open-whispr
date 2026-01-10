@@ -18,6 +18,19 @@ export default function TranscriptionItem({
   onCopy,
   onDelete,
 }: TranscriptionItemProps) {
+  const timestampSource = item.timestamp.endsWith("Z")
+    ? item.timestamp
+    : `${item.timestamp}Z`;
+  const timestampDate = new Date(timestampSource);
+  const formattedTimestamp = Number.isNaN(timestampDate.getTime())
+    ? item.timestamp
+    : timestampDate.toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+
   return (
     <div className="relative bg-gradient-to-b from-blue-50/30 to-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
       <div className="p-6 pl-16" style={{ paddingTop: "8px" }}>
@@ -32,12 +45,7 @@ export default function TranscriptionItem({
               </span>
               <div className="w-px h-3 bg-neutral-300" />
               <span className="text-xs text-neutral-500">
-                {new Date(item.timestamp + "Z").toLocaleString("en-US", {
-                  month: "short",
-                  day: "numeric",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
+                {formattedTimestamp}
               </span>
             </div>
             <p
