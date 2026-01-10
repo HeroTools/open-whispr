@@ -113,7 +113,6 @@ export default function App() {
     }
   );
 
-
   const handleClose = () => {
     window.electronAPI.hideWindow();
   };
@@ -161,7 +160,6 @@ export default function App() {
   };
 
   const micState = getMicState();
-  const isListening = isRecording || isProcessing;
 
   // Get microphone button properties based on state
   const getMicButtonProps = () => {
@@ -327,10 +325,10 @@ export default function App() {
               <button
                 className="w-full px-3 py-2 text-left text-sm hover:bg-white/10 focus:bg-white/10 focus:outline-none"
                 onClick={() => {
-                setIsCommandMenuOpen(false);
-                setWindowInteractivity(false);
-                handleClose();
-              }}
+                  setIsCommandMenuOpen(false);
+                  setWindowInteractivity(false);
+                  handleClose();
+                }}
               >
                 Hide this for now
               </button>

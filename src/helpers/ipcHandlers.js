@@ -250,7 +250,6 @@ class IPCHandlers {
 
         return result;
       } catch (error) {
-
         // Send error event
         event.sender.send("whisper-download-progress", {
           type: "error",
