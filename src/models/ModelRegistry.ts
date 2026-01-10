@@ -1,4 +1,4 @@
-import modelData from './modelRegistryData.json';
+import modelDataRaw from './modelRegistryData.json';
 
 // Types for local models (downloadable GGUF files)
 export interface ModelDefinition {
@@ -43,6 +43,29 @@ export interface CloudProviderData {
   name: string;
   models: CloudModelDefinition[];
 }
+
+// Types for transcription providers (speech-to-text)
+export interface TranscriptionModelDefinition {
+  id: string;
+  name: string;
+  description: string;
+}
+
+export interface TranscriptionProviderData {
+  id: string;
+  name: string;
+  baseUrl: string;
+  models: TranscriptionModelDefinition[];
+}
+
+// Type-safe model registry data structure
+interface ModelRegistryData {
+  transcriptionProviders: TranscriptionProviderData[];
+  cloudProviders: CloudProviderData[];
+  localProviders: LocalProviderData[];
+}
+
+const modelData: ModelRegistryData = modelDataRaw as ModelRegistryData;
 
 function createPromptFormatter(template: string): (text: string, systemPrompt: string) => string {
   return (text: string, systemPrompt: string) => {
@@ -98,11 +121,15 @@ class ModelRegistry {
   }
 
   getCloudProviders(): CloudProviderData[] {
-    return modelData.cloudProviders as CloudProviderData[];
+    return modelData.cloudProviders;
+  }
+
+  getTranscriptionProviders(): TranscriptionProviderData[] {
+    return modelData.transcriptionProviders;
   }
 
   private registerProvidersFromData() {
-    const localProviders = modelData.localProviders as LocalProviderData[];
+    const localProviders = modelData.localProviders;
 
     for (const providerData of localProviders) {
       const formatPrompt = createPromptFormatter(providerData.promptTemplate);
@@ -206,4 +233,23 @@ export function getModelProvider(modelId: string): string {
   }
 
   return model?.provider || "openai";
+}
+
+// Transcription provider helpers
+export function getTranscriptionProviders(): TranscriptionProviderData[] {
+  return modelRegistry.getTranscriptionProviders();
+}
+
+export function getTranscriptionProvider(providerId: string): TranscriptionProviderData | undefined {
+  return getTranscriptionProviders().find(p => p.id === providerId);
+}
+
+export function getTranscriptionModels(providerId: string): TranscriptionModelDefinition[] {
+  const provider = getTranscriptionProvider(providerId);
+  return provider?.models || [];
+}
+
+export function getDefaultTranscriptionModel(providerId: string): string {
+  const models = getTranscriptionModels(providerId);
+  return models[0]?.id || 'gpt-4o-mini-transcribe';
 }

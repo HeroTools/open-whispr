@@ -6,13 +6,14 @@ import WhisperModelPicker from "./WhisperModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import { ProviderTabs } from "./ui/ProviderTabs";
 import { useSettings } from "../hooks/useSettings";
 import { useDialogs } from "../hooks/useDialogs";
 import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
-import { REASONING_PROVIDERS } from "../models/ModelRegistry";
+import { REASONING_PROVIDERS, getTranscriptionProviders, getTranscriptionModels } from "../models/ModelRegistry";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
@@ -20,6 +21,14 @@ import { API_ENDPOINTS } from "../config/constants";
 import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
 import type { UpdateInfoResult } from "../types/electron";
 const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
+
+// Custom transcription provider constant
+const CUSTOM_TRANSCRIPTION_PROVIDER = {
+  id: 'custom',
+  name: 'Custom',
+  baseUrl: '',
+  models: []
+} as const;
 
 export type SettingsSectionType =
   | "general"
@@ -52,6 +61,8 @@ export default function SettingsPage({
     allowLocalFallback,
     fallbackWhisperModel,
     preferredLanguage,
+    cloudTranscriptionProvider,
+    cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     useReasoningModel,
@@ -68,6 +79,8 @@ export default function SettingsPage({
     setAllowLocalFallback,
     setFallbackWhisperModel,
     setPreferredLanguage,
+    setCloudTranscriptionProvider,
+    setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setUseReasoningModel,
@@ -956,50 +969,145 @@ export default function SettingsPage({
             </div>
 
             {!useLocalWhisper && (
-              <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <h4 className="font-medium text-blue-900">OpenAI-Compatible Cloud Setup</h4>
-                <ApiKeyInput
-                  apiKey={openaiApiKey}
-                  setApiKey={setOpenaiApiKey}
-                  helpText={
-                    <>
-                      Supports OpenAI or compatible endpoints.{" "}
-                      <a
-                        href="https://platform.openai.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        Get an API key
-                      </a>
-                      .
-                    </>
-                  }
-                />
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">
-                    Custom Base URL (optional)
-                  </label>
-                  <Input
-                    value={cloudTranscriptionBaseUrl}
-                    onChange={(event) => setCloudTranscriptionBaseUrl(event.target.value)}
-                    placeholder="https://api.openai.com/v1"
-                    className="text-sm"
+              <div className="space-y-4">
+                <h4 className="font-medium text-gray-900">Cloud Transcription Provider</h4>
+
+                {/* Provider Tabs */}
+                <div className="border border-gray-200 rounded-xl overflow-hidden">
+                  <ProviderTabs
+                    providers={[...getTranscriptionProviders(), CUSTOM_TRANSCRIPTION_PROVIDER]}
+                    selectedId={cloudTranscriptionProvider}
+                    onSelect={(providerId) => {
+                      setCloudTranscriptionProvider(providerId);
+                      if (providerId !== 'custom') {
+                        const provider = getTranscriptionProviders().find(p => p.id === providerId);
+                        const models = getTranscriptionModels(providerId);
+                        setCloudTranscriptionModel(models[0]?.id || '');
+                        if (provider) {
+                          setCloudTranscriptionBaseUrl(provider.baseUrl);
+                        }
+                      }
+                    }}
+                    colorScheme="indigo"
                   />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCloudTranscriptionBaseUrl(API_ENDPOINTS.TRANSCRIPTION_BASE)}
-                    >
-                      Reset to Default
-                    </Button>
+
+                  <div className="p-4">
+                    {cloudTranscriptionProvider === 'custom' ? (
+                      <>
+                        {/* Custom Endpoint Settings */}
+                        <div className="space-y-3">
+                          <h4 className="font-medium text-gray-900">Endpoint Settings</h4>
+                          <Input
+                            value={cloudTranscriptionBaseUrl}
+                            onChange={(event) => setCloudTranscriptionBaseUrl(event.target.value)}
+                            placeholder="https://api.openai.com/v1"
+                            className="text-sm"
+                          />
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setCloudTranscriptionBaseUrl(API_ENDPOINTS.TRANSCRIPTION_BASE);
+                              }}
+                            >
+                              Reset to Default
+                            </Button>
+                          </div>
+                          <p className="text-xs text-gray-600">
+                            Use a custom OpenAI-compatible endpoint for transcription.
+                          </p>
+                        </div>
+
+                        <div className="space-y-3 pt-4 border-t border-gray-200">
+                          <h4 className="font-medium text-gray-900">Authentication</h4>
+                          <ApiKeyInput
+                            apiKey={openaiApiKey}
+                            setApiKey={setOpenaiApiKey}
+                            helpText="Optional. Added as a Bearer token for your custom endpoint."
+                          />
+                        </div>
+
+                        <div className="space-y-3 pt-4 border-t border-gray-200">
+                          <h4 className="font-medium text-gray-900">Model Name</h4>
+                          <Input
+                            value={cloudTranscriptionModel}
+                            onChange={(event) => setCloudTranscriptionModel(event.target.value)}
+                            placeholder="whisper-1"
+                            className="text-sm"
+                          />
+                          <p className="text-xs text-gray-600">
+                            Enter the model name supported by your custom endpoint.
+                          </p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Model Selection */}
+                        <div className="space-y-3">
+                          <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
+                          <div className="space-y-2">
+                            {getTranscriptionModels(cloudTranscriptionProvider).map((model) => {
+                              const isSelected = cloudTranscriptionModel === model.id;
+                              return (
+                                <button
+                                  key={model.id}
+                                  onClick={() => setCloudTranscriptionModel(model.id)}
+                                  className={`w-full p-3 rounded-lg border-2 transition-all text-left ${
+                                    isSelected
+                                      ? 'border-indigo-500 bg-indigo-50'
+                                      : 'border-gray-200 bg-white hover:border-gray-300'
+                                  }`}
+                                >
+                                  <div className="font-medium text-gray-900">{model.name}</div>
+                                  <div className="text-xs text-gray-600 mt-1">{model.description}</div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        {/* API Key Configuration */}
+                        <div className="mt-4 pt-4 border-t border-gray-200">
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-gray-900">API Configuration</h4>
+                            <ApiKeyInput
+                              apiKey={cloudTranscriptionProvider === "groq" ? groqApiKey : openaiApiKey}
+                              setApiKey={cloudTranscriptionProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
+                              helpText={
+                                cloudTranscriptionProvider === "groq" ? (
+                                  <>
+                                    Need an API key?{" "}
+                                    <a
+                                      href="https://console.groq.com"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 underline"
+                                    >
+                                      console.groq.com
+                                    </a>
+                                  </>
+                                ) : (
+                                  <>
+                                    Need an API key?{" "}
+                                    <a
+                                      href="https://platform.openai.com"
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 underline"
+                                    >
+                                      platform.openai.com
+                                    </a>
+                                  </>
+                                )
+                              }
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
-                  <p className="text-xs text-blue-800">
-                    Requests for cloud transcription use this OpenAI-compatible base URL. Leave empty to fall back to
-                    <code className="ml-1">{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>.
-                  </p>
                 </div>
               </div>
             )}

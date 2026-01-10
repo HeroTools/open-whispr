@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Cloud, Lock, Brain, Zap, Globe, Cpu, Download, Check, Wrench } from 'lucide-react';
+import { Cloud, Lock, Download, Check } from 'lucide-react';
 import ApiKeyInput from './ui/ApiKeyInput';
 import { UnifiedModelPickerCompact } from './UnifiedModelPicker';
+import { ProviderIcon } from './ui/ProviderIcon';
+import { ProviderTabs } from './ui/ProviderTabs';
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from '../config/constants';
 import { REASONING_PROVIDERS } from '../models/ModelRegistry';
 import { modelRegistry } from '../models/ModelRegistry';
@@ -75,52 +77,6 @@ interface AIModelSelectorEnhancedProps {
   pasteFromClipboard: (setter: (value: string) => void) => void;
   showAlertDialog: (dialog: { title: string; description: string }) => void;
 }
-
-// Provider Icon Component  
-const ProviderIcon = ({ provider }: { provider: string }) => {
-  const iconClass = "w-5 h-5";
-  const [svgError, setSvgError] = React.useState(false);
-
-  if (provider === 'custom') {
-    return <Wrench className={iconClass} />;
-  }
-
-  // Default fallback icons for each provider
-  const getFallbackIcon = () => {
-    switch (provider) {
-      // Cloud providers
-      case 'openai': return <Brain className={iconClass} />;
-      case 'anthropic': return <Zap className={iconClass} />;
-      case 'gemini': return <Globe className={iconClass} />;
-      case 'groq': return <Zap className={iconClass} />; // Lightning fast inference
-      // Local providers
-      case 'qwen': return <Brain className={iconClass} />;
-      case 'mistral': return <Zap className={iconClass} />;
-      case 'llama': return <Cpu className={iconClass} />;
-      case 'openai-oss': return <Globe className={iconClass} />;
-      case 'custom': return <Wrench className={iconClass} />;
-      default: return <Brain className={iconClass} />;
-    }
-  };
-  
-  // Try to load SVG if it exists and we haven't had an error
-  if (!svgError) {
-    return (
-      <>
-        <img 
-          src={`/assets/icons/providers/${provider}.svg`}
-          alt={`${provider} icon`}
-          className={iconClass}
-          onError={() => setSvgError(true)}
-          style={{ display: svgError ? 'none' : 'block' }}
-        />
-        {svgError && getFallbackIcon()}
-      </>
-    );
-  }
-  
-  return getFallbackIcon();
-};
 
 export default function AIModelSelectorEnhanced({
   useReasoningModel,
@@ -335,8 +291,16 @@ export default function AIModelSelectorEnhanced({
     return customModelOptions;
   }, [isCustomBaseDirty, customModelOptions]);
 
-  const cloudProviders = ['openai', 'anthropic', 'gemini', 'groq', 'custom'];
-  const localProviders = modelRegistry.getAllProviders().map((p) => p.id);
+  const cloudProviderIds = ['openai', 'anthropic', 'gemini', 'groq', 'custom'];
+  const cloudProviders = cloudProviderIds.map(id => ({
+    id,
+    name: id === 'custom' ? 'Custom' : REASONING_PROVIDERS[id as keyof typeof REASONING_PROVIDERS]?.name || id,
+  }));
+  const localProviderIds = modelRegistry.getAllProviders().map((p) => p.id);
+  const localProviders = localProviderIds.map(id => {
+    const provider = modelRegistry.getProvider(id);
+    return { id, name: provider?.name || id };
+  });
 
   const openaiModelOptions = useMemo<CloudModelOption[]>(() => {
     const iconPath = getProviderIconPath('openai');
@@ -628,34 +592,12 @@ export default function AIModelSelectorEnhanced({
             <div className="space-y-4">
               {/* Cloud Provider Tabs */}
               <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <div className="flex bg-gray-50 border-b border-gray-200">
-                  {cloudProviders.map((provider) => {
-                    const isSelected = selectedCloudProvider === provider;
-                    const color = getProviderColor(provider);
-                    const providerDisplayName =
-                      provider === 'custom'
-                        ? 'Custom'
-                        : REASONING_PROVIDERS[provider as keyof typeof REASONING_PROVIDERS]?.name || provider;
-                    return (
-                      <button
-                        key={provider}
-                        onClick={() => handleCloudProviderChange(provider)}
-                        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all ${
-                          isSelected
-                            ? `text-${color}-700 border-b-2`
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                        style={isSelected ? {
-                          borderBottomColor: `rgb(99 102 241)`,
-                          backgroundColor: 'rgb(238 242 255)'
-                        } : {}}
-                      >
-                        <ProviderIcon provider={provider} />
-                        <span>{providerDisplayName}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <ProviderTabs
+                  providers={cloudProviders}
+                  selectedId={selectedCloudProvider}
+                  onSelect={handleCloudProviderChange}
+                  colorScheme="indigo"
+                />
 
                 <div className="p-4">
                   {/* Use UnifiedModelPickerCompact for cloud models */}
@@ -854,30 +796,13 @@ export default function AIModelSelectorEnhanced({
             <div className="space-y-4">
               {/* Local Provider Tabs */}
               <div className="border border-gray-200 rounded-xl overflow-hidden">
-                <div className="flex bg-gray-50 border-b border-gray-200 overflow-x-auto">
-                  {localProviders.map((provider) => {
-                    const isSelected = selectedLocalProvider === provider;
-                    const providerData = modelRegistry.getProvider(provider);
-                    return (
-                      <button
-                        key={provider}
-                        onClick={() => handleLocalProviderChange(provider)}
-                        className={`flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${
-                          isSelected
-                            ? 'text-purple-700 border-b-2'
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                        style={isSelected ? {
-                          borderBottomColor: 'rgb(147 51 234)',
-                          backgroundColor: 'rgb(250 245 255)'
-                        } : {}}
-                      >
-                        <ProviderIcon provider={provider} />
-                        <span>{providerData?.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <ProviderTabs
+                  providers={localProviders}
+                  selectedId={selectedLocalProvider}
+                  onSelect={handleLocalProviderChange}
+                  colorScheme="purple"
+                  scrollable
+                />
 
                 {/* Local Model List with Download */}
                 <div className="p-4">

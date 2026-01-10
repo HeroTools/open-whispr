@@ -10,6 +10,8 @@ export interface TranscriptionSettings {
   allowLocalFallback: boolean;
   fallbackWhisperModel: string;
   preferredLanguage: string;
+  cloudTranscriptionProvider: string;
+  cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
 }
 
@@ -80,6 +82,24 @@ export function useSettings() {
   const [preferredLanguage, setPreferredLanguage] = useLocalStorage(
     "preferredLanguage",
     "en",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [cloudTranscriptionProvider, setCloudTranscriptionProvider] = useLocalStorage(
+    "cloudTranscriptionProvider",
+    "openai",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [cloudTranscriptionModel, setCloudTranscriptionModel] = useLocalStorage(
+    "cloudTranscriptionModel",
+    "gpt-4o-mini-transcribe",
     {
       serialize: String,
       deserialize: String,
@@ -180,6 +200,10 @@ export function useSettings() {
         setFallbackWhisperModel(settings.fallbackWhisperModel);
       if (settings.preferredLanguage !== undefined)
         setPreferredLanguage(settings.preferredLanguage);
+      if (settings.cloudTranscriptionProvider !== undefined)
+        setCloudTranscriptionProvider(settings.cloudTranscriptionProvider);
+      if (settings.cloudTranscriptionModel !== undefined)
+        setCloudTranscriptionModel(settings.cloudTranscriptionModel);
       if (settings.cloudTranscriptionBaseUrl !== undefined)
         setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
     },
@@ -190,6 +214,8 @@ export function useSettings() {
       setAllowLocalFallback,
       setFallbackWhisperModel,
       setPreferredLanguage,
+      setCloudTranscriptionProvider,
+      setCloudTranscriptionModel,
       setCloudTranscriptionBaseUrl,
     ]
   );
@@ -227,6 +253,8 @@ export function useSettings() {
     allowLocalFallback,
     fallbackWhisperModel,
     preferredLanguage,
+    cloudTranscriptionProvider,
+    cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     useReasoningModel,
@@ -243,6 +271,8 @@ export function useSettings() {
     setAllowLocalFallback,
     setFallbackWhisperModel,
     setPreferredLanguage,
+    setCloudTranscriptionProvider,
+    setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setUseReasoningModel,

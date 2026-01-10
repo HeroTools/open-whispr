@@ -30,8 +30,30 @@ class ReasoningService extends BaseReasoningService {
     try {
       const stored = window.localStorage.getItem('cloudReasoningBaseUrl') || '';
       const trimmed = stored.trim();
-      const candidate = trimmed || API_ENDPOINTS.OPENAI_BASE;
-      const normalized = normalizeBaseUrl(candidate) || API_ENDPOINTS.OPENAI_BASE;
+
+      // If no custom URL is stored, use the default
+      if (!trimmed) {
+        return API_ENDPOINTS.OPENAI_BASE;
+      }
+
+      const normalized = normalizeBaseUrl(trimmed) || API_ENDPOINTS.OPENAI_BASE;
+
+      // Don't use the custom URL if it's a known non-OpenAI provider URL
+      // These should be handled by their dedicated provider methods
+      const knownNonOpenAIUrls = [
+        'api.groq.com',
+        'api.anthropic.com',
+        'generativelanguage.googleapis.com',
+      ];
+
+      const isKnownNonOpenAI = knownNonOpenAIUrls.some(url => normalized.includes(url));
+      if (isKnownNonOpenAI) {
+        logger.logReasoning('OPENAI_BASE_REJECTED', {
+          reason: 'Custom URL is a known non-OpenAI provider, using default OpenAI endpoint',
+          attempted: normalized
+        });
+        return API_ENDPOINTS.OPENAI_BASE;
+      }
 
       // Security: Only allow HTTPS endpoints (except localhost for development)
       const isLocalhost = normalized.includes('://localhost') || normalized.includes('://127.0.0.1');
@@ -395,25 +417,14 @@ class ReasoningService extends BaseReasoningService {
       const systemPrompt = "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
       const userPrompt = this.getReasoningPrompt(text, agentName, config);
 
-      // Build input array for Responses API
-      const input = [
+      // Build messages array (used by both APIs)
+      const messages = [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt }
       ];
 
-      // Build request body for Responses API
-      const requestBody: any = {
-        model,
-        input,
-        messages: input, // include both for Responses and Chat Completions compatibility
-        store: false, // Don't store responses for privacy
-      };
-
       // Add temperature for older models (GPT-4 and earlier)
       const isOlderModel = model && (model.startsWith('gpt-4') || model.startsWith('gpt-3'));
-      if (isOlderModel) {
-        requestBody.temperature = config.temperature || 0.3;
-      }
 
       const openAiBase = this.getConfiguredOpenAIBase();
       const endpointCandidates = this.getOpenAIEndpointCandidates(openAiBase);
@@ -430,6 +441,21 @@ class ReasoningService extends BaseReasoningService {
 
           for (const { url: endpoint, type } of endpointCandidates) {
             try {
+              // Build request body based on endpoint type
+              const requestBody: any = { model };
+
+              if (type === 'responses') {
+                // Responses API uses 'input' parameter
+                requestBody.input = messages;
+                requestBody.store = false;
+              } else {
+                // Chat Completions API uses 'messages' parameter
+                requestBody.messages = messages;
+                if (isOlderModel) {
+                  requestBody.temperature = config.temperature || 0.3;
+                }
+              }
+
               const res = await fetch(endpoint, {
                 method: "POST",
                 headers: {
