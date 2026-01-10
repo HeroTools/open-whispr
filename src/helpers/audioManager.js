@@ -479,7 +479,7 @@ class AudioManager {
 
       const formData = new FormData();
       formData.append("file", optimizedAudio, "audio.wav");
-      formData.append("model", "whisper-1");
+      formData.append("model", this.getTranscriptionModel());
 
       if (language && language !== "auto") {
         formData.append("language", language);
@@ -541,6 +541,33 @@ class AudioManager {
       }
 
       throw error;
+    }
+  }
+
+  getTranscriptionModel() {
+    try {
+      // Check if a custom model is configured
+      const customModel = typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionModel") || ""
+        : "";
+
+      if (customModel.trim()) {
+        return customModel.trim();
+      }
+
+      // Auto-detect model based on endpoint
+      const endpoint = typeof localStorage !== "undefined"
+        ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
+        : "";
+
+      if (endpoint.includes("groq.com")) {
+        return "whisper-large-v3-turbo"; // Groq's fast model
+      }
+
+      // Default to OpenAI's model
+      return "whisper-1";
+    } catch (error) {
+      return "whisper-1";
     }
   }
 
