@@ -1360,7 +1360,7 @@ class WhisperManager {
               downloadProcess.kill("SIGKILL");
             }
           }, 5000);
-          reject(new Error("Model download timed out (20 minutes)"));
+          reject(new Error("Model download timed out (10 minutes)"));
         }, TIMEOUTS.DOWNLOAD);
 
         downloadProcess.on("close", (code) => {
@@ -1435,19 +1435,19 @@ class WhisperManager {
     const fullArgs = [whisperScriptPath, ...args];
 
     return new Promise((resolve, reject) => {
-      const process = spawn(pythonCmd, fullArgs);
+      const childProcess = spawn(pythonCmd, fullArgs);
       let stdout = "";
       let stderr = "";
 
-      process.stdout.on("data", (data) => {
+      childProcess.stdout.on("data", (data) => {
         stdout += data.toString();
       });
 
-      process.stderr.on("data", (data) => {
+      childProcess.stderr.on("data", (data) => {
         stderr += data.toString();
       });
 
-      process.on("close", (code) => {
+      childProcess.on("close", (code) => {
         if (code === 0) {
           try {
             resolve(JSON.parse(stdout));
@@ -1461,7 +1461,7 @@ class WhisperManager {
         }
       });
 
-      process.on("error", (error) => {
+      childProcess.on("error", (error) => {
         reject(new Error(`${operationName} error: ${error.message}`));
       });
     });

@@ -271,7 +271,7 @@ class PythonInstaller {
               progressCallback({ stage: "Installing Python via pacman...", percentage: 30 });
             }
             
-            await runCommand("sudo", ["pacman", "-S", "--noconfirm", "python", "python-pip", "python-virtualenv"], { timeout: TIMEOUTS.INSTALL });
+            await runCommand("sudo", ["pacman", "-S", "--noconfirm", "python", "python-pip"], { timeout: TIMEOUTS.INSTALL });
             
             if (progressCallback) {
               progressCallback({ stage: "Python installation complete!", percentage: 100 });
