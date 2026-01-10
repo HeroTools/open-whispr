@@ -253,7 +253,8 @@ class PythonInstaller {
             progressCallback({ stage: "Installing Python via yum...", percentage: 30 });
           }
           
-          await runCommand("sudo", ["yum", "install", "-y", "python311", "python311-pip", "python311-devel"], { timeout: TIMEOUTS.INSTALL });
+          // Note: python311-libs typically includes venv on RHEL/Fedora, but we add it explicitly for safety
+          await runCommand("sudo", ["yum", "install", "-y", "python311", "python311-pip", "python311-devel", "python311-libs"], { timeout: TIMEOUTS.INSTALL });
           
           if (progressCallback) {
             progressCallback({ stage: "Python installation complete!", percentage: 100 });

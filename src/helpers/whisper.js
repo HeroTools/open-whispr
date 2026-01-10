@@ -1013,6 +1013,24 @@ class WhisperManager {
       // Clear cached Python command since we're installing new one
       this.pythonCmd = null;
 
+      // If OPENWHISPR_PYTHON is set, skip installation and use that
+      if (process.env.OPENWHISPR_PYTHON) {
+        if (progressCallback) {
+          progressCallback({ stage: "Using custom Python override...", percentage: 50 });
+        }
+        const version = await this.getPythonVersion(process.env.OPENWHISPR_PYTHON);
+        if (!this.isPythonVersionSupported(version)) {
+          throw new Error(
+            `OPENWHISPR_PYTHON points to an invalid or unsupported Python. ` +
+            `Ensure it exists and is Python 3.x, or unset the variable.`
+          );
+        }
+        if (progressCallback) {
+          progressCallback({ stage: "Python ready", percentage: 100 });
+        }
+        return { success: true, method: "override" };
+      }
+
       const bundledPython = this.resolveBundledPython();
       if (bundledPython) {
         if (progressCallback) {
@@ -1229,13 +1247,23 @@ class WhisperManager {
   }
 
   async installWhisper() {
-    if (!process.env.OPENWHISPR_PYTHON) {
-      console.log("Preparing isolated Python environment...");
-    }
+    let pythonCmd;
 
-    const pythonCmd = process.env.OPENWHISPR_PYTHON
-      ? process.env.OPENWHISPR_PYTHON
-      : await this.ensureManagedVenv();
+    if (process.env.OPENWHISPR_PYTHON) {
+      // Validate the override path before using it
+      const overridePath = process.env.OPENWHISPR_PYTHON;
+      const version = await this.getPythonVersion(overridePath);
+      if (!this.isPythonVersionSupported(version)) {
+        throw new Error(
+          `OPENWHISPR_PYTHON points to an invalid or unsupported Python: ${overridePath}. ` +
+          `Ensure it exists and is Python 3.x, or unset the variable to use the managed environment.`
+        );
+      }
+      pythonCmd = overridePath;
+    } else {
+      console.log("Preparing isolated Python environment...");
+      pythonCmd = await this.ensureManagedVenv();
+    }
 
     // Upgrade pip inside the isolated environment to avoid resolver issues
     try {
