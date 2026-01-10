@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Trash2, Settings, FileText, Mic } from "lucide-react";
+import { Trash2, Settings, FileText, Mic, Download, RefreshCw, Loader2 } from "lucide-react";
 import SettingsModal from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
@@ -28,6 +28,10 @@ export default function ControlPanel() {
     updateDownloaded: false,
     isDevelopment: false,
   });
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const isInstallingRef = useRef(false);
 
   const {
     confirmDialog,
@@ -59,17 +63,39 @@ export default function ControlPanel() {
     };
 
     const handleUpdateDownloaded = (_event: any, _info: any) => {
+      setIsDownloading(false);
+      setDownloadProgress(100);
       setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
+      toast({
+        title: "Update Ready",
+        description: "Click 'Install Update' to restart and apply the update.",
+        variant: "success",
+      });
     };
 
     const handleUpdateError = (_event: any, _error: any) => {
-      // Update errors are handled by the update service
+      setIsDownloading(false);
+      setIsInstalling(false);
+      toast({
+        title: "Update Error",
+        description: "Failed to update. Please try again later.",
+        variant: "destructive",
+      });
+    };
+
+    const handleDownloadProgress = (_event: any, progressObj: any) => {
+      if (progressObj?.percent != null) {
+        const newProgress = Math.round(progressObj.percent);
+        setDownloadProgress((prev) => (newProgress > prev ? newProgress : prev));
+        setIsDownloading(true);
+      }
     };
 
     const disposers = [
       window.electronAPI.onUpdateAvailable(handleUpdateAvailable),
       window.electronAPI.onUpdateDownloaded(handleUpdateDownloaded),
       window.electronAPI.onUpdateError(handleUpdateError),
+      window.electronAPI.onUpdateDownloadProgress(handleDownloadProgress),
     ];
 
     // Cleanup listeners on unmount
@@ -160,6 +186,94 @@ export default function ControlPanel() {
     });
   };
 
+  const handleUpdateClick = async () => {
+    if (updateStatus.updateDownloaded) {
+      // Show confirmation dialog before installing
+      showConfirmDialog({
+        title: "Install Update",
+        description:
+          "The update will be installed and the app will restart. Make sure you've saved any work.",
+        onConfirm: async () => {
+          setIsInstalling(true);
+          isInstallingRef.current = true;
+          try {
+            await window.electronAPI.installUpdate();
+            // Set a timeout to show an alert if the app doesn't restart
+            setTimeout(() => {
+              if (isInstallingRef.current) {
+                isInstallingRef.current = false;
+                setIsInstalling(false);
+                showAlertDialog({
+                  title: "Update Installation",
+                  description:
+                    "The app may not have restarted automatically. Please quit and reopen the app to complete the update.",
+                });
+              }
+            }, 10000);
+          } catch (error) {
+            isInstallingRef.current = false;
+            setIsInstalling(false);
+            toast({
+              title: "Install Failed",
+              description: "Failed to install update. Please try again.",
+              variant: "destructive",
+            });
+          }
+        },
+      });
+    } else if (updateStatus.updateAvailable && !isDownloading) {
+      // Start download
+      setIsDownloading(true);
+      setDownloadProgress(0);
+      try {
+        await window.electronAPI.downloadUpdate();
+      } catch (error) {
+        setIsDownloading(false);
+        toast({
+          title: "Download Failed",
+          description: "Failed to download update. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const getUpdateButtonContent = () => {
+    if (isInstalling) {
+      return (
+        <>
+          <Loader2 size={14} className="animate-spin" />
+          <span>Installing...</span>
+        </>
+      );
+    }
+    if (isDownloading) {
+      return (
+        <>
+          <Loader2 size={14} className="animate-spin" />
+          <span>{downloadProgress}%</span>
+        </>
+      );
+    }
+    if (updateStatus.updateDownloaded) {
+      return (
+        <>
+          <RefreshCw size={14} />
+          <span>Install Update</span>
+        </>
+      );
+    }
+    if (updateStatus.updateAvailable) {
+      return (
+        <>
+          <Download size={14} />
+          <span>Update Available</span>
+        </>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <ConfirmDialog
@@ -182,12 +296,25 @@ export default function ControlPanel() {
       <TitleBar
         actions={
           <>
-            {/* Update notification badge */}
+            {/* Update button */}
             {!updateStatus.isDevelopment &&
-              (updateStatus.updateAvailable || updateStatus.updateDownloaded) && (
-                <div className="relative">
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                </div>
+              (updateStatus.updateAvailable ||
+                updateStatus.updateDownloaded ||
+                isDownloading ||
+                isInstalling) && (
+                <Button
+                  variant={updateStatus.updateDownloaded ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleUpdateClick}
+                  disabled={isInstalling || isDownloading}
+                  className={`gap-1.5 text-xs ${
+                    updateStatus.updateDownloaded
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "border-blue-300 text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  {getUpdateButtonContent()}
+                </Button>
               )}
             <SupportDropdown />
             <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)}>
