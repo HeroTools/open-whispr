@@ -2,9 +2,9 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { RefreshCw, Download, Command, Mic, Shield } from "lucide-react";
-import WhisperModelPicker from "./WhisperModelPicker";
-import ProcessingModeSelector from "./ui/ProcessingModeSelector";
-import ApiKeyInput from "./ui/ApiKeyInput";
+import MarkdownRenderer from "./ui/MarkdownRenderer";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
+import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
 import { useDialogs } from "../hooks/useDialogs";
@@ -12,14 +12,12 @@ import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
-import MicPermissionWarning from "./ui/MicPermissionWarning";
-import { REASONING_PROVIDERS } from "../utils/languages";
+import { REASONING_PROVIDERS, getTranscriptionProviders } from "../models/ModelRegistry";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
 import { API_ENDPOINTS } from "../config/constants";
-import AIModelSelectorEnhanced from "./AIModelSelectorEnhanced";
-import { MarkdownRenderer } from "./ui/MarkdownRenderer";
+import ReasoningModelSelector from "./ReasoningModelSelector";
 import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
@@ -36,7 +34,6 @@ interface SettingsPageProps {
 }
 
 export default function SettingsPage({ activeSection = "general" }: SettingsPageProps) {
-  // Use custom hooks
   const {
     confirmDialog,
     alertDialog,
@@ -53,6 +50,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     allowLocalFallback,
     fallbackWhisperModel,
     preferredLanguage,
+    cloudTranscriptionProvider,
+    cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     useReasoningModel,
@@ -69,6 +68,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAllowLocalFallback,
     setFallbackWhisperModel,
     setPreferredLanguage,
+    setCloudTranscriptionProvider,
+    setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setUseReasoningModel,
@@ -84,7 +85,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     updateApiKeys,
   } = useSettings();
 
-  // Update state
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [updateStatus, setUpdateStatus] = useState<{
     updateAvailable: boolean;
@@ -111,7 +111,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const whisperHook = useWhisper(showAlertDialog);
   const permissionsHook = usePermissions(showAlertDialog);
-  const { pasteFromClipboardWithFallback } = useClipboard(showAlertDialog);
+  useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -213,17 +213,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     };
   }, [showAlertDialog]);
 
-  // Local state for provider selection (overrides computed value)
   const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
 
-  // Defer heavy operations for better performance
   useEffect(() => {
     let mounted = true;
     let unsubscribeUpdates;
 
-    // Defer version and update checks to improve initial render
     const timer = setTimeout(async () => {
       if (!mounted) return;
 
@@ -255,7 +252,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
       unsubscribeUpdates = subscribeToUpdates();
 
-      // Check whisper after initial render
       if (mounted) {
         whisperHook.checkWhisperInstallation();
       }
@@ -264,7 +260,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     return () => {
       mounted = false;
       clearTimeout(timer);
-      // Always clean up update listeners if they exist
       unsubscribeUpdates?.();
     };
   }, [whisperHook, subscribeToUpdates]);
@@ -299,14 +294,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     const normalizedReasoningBase = (cloudReasoningBaseUrl || "").trim();
     setCloudReasoningBaseUrl(normalizedReasoningBase);
 
-    // Update reasoning settings including the base URL
     updateReasoningSettings({
       useReasoningModel,
       reasoningModel,
       cloudReasoningBaseUrl: normalizedReasoningBase,
     });
 
-    // Save API keys to backend based on provider (including custom)
     if (
       (localReasoningProvider === "openai" || localReasoningProvider === "custom") &&
       openaiApiKey
@@ -323,7 +316,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       await window.electronAPI?.saveGroqKey(groqApiKey);
     }
 
-    // Update API keys in state (for custom provider, save the API key used)
     const keysToSave: Partial<{
       openaiApiKey: string;
       anthropicApiKey: string;
@@ -347,7 +339,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     }
     updateApiKeys(keysToSave);
 
-    // Save the provider separately since it's computed from the model
     localStorage.setItem("reasoningProvider", localReasoningProvider);
 
     const providerLabel =
@@ -379,7 +370,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const saveApiKey = useCallback(async () => {
     try {
-      // Save all API keys to backend
       if (openaiApiKey) {
         await window.electronAPI?.saveOpenAIKey(openaiApiKey);
       }
@@ -506,7 +496,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       case "general":
         return (
           <div className="space-y-8">
-            {/* App Updates Section */}
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">App Updates</h3>
@@ -710,7 +699,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </div>
             </div>
 
-            {/* Hotkey Section */}
             <div className="border-t pt-8">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Dictation Hotkey</h3>
@@ -727,7 +715,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               />
             </div>
 
-            {/* Permissions Section */}
             <div className="border-t pt-8">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Permissions</h3>
@@ -770,7 +757,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </div>
             </div>
 
-            {/* About Section */}
             <div className="border-t pt-8">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">About OpenWhispr</h3>
@@ -805,7 +791,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </div>
               </div>
 
-              {/* System Actions */}
               <div className="space-y-3">
                 <Button
                   onClick={() => {
@@ -888,90 +873,39 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
                 Speech to Text Processing
               </h3>
-              <ProcessingModeSelector
-                useLocalWhisper={useLocalWhisper}
-                setUseLocalWhisper={(value) => {
-                  setUseLocalWhisper(value);
-                  updateTranscriptionSettings({ useLocalWhisper: value });
-                }}
-              />
+              <p className="text-sm text-gray-600 mb-4">
+                Choose a cloud provider for fast transcription or use local Whisper models for
+                complete privacy.
+              </p>
             </div>
 
-            {!useLocalWhisper && (
-              <div className="space-y-4 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <h4 className="font-medium text-blue-900">OpenAI-Compatible Cloud Setup</h4>
-                <ApiKeyInput
-                  apiKey={openaiApiKey}
-                  setApiKey={setOpenaiApiKey}
-                  helpText={
-                    <>
-                      Supports OpenAI or compatible endpoints.{" "}
-                      <a
-                        href="https://platform.openai.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        Get an API key
-                      </a>
-                      .
-                    </>
-                  }
-                />
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">
-                    Custom Base URL (optional)
-                  </label>
-                  <Input
-                    value={cloudTranscriptionBaseUrl}
-                    onChange={(event) => setCloudTranscriptionBaseUrl(event.target.value)}
-                    placeholder="https://api.openai.com/v1"
-                    className="text-sm"
-                  />
-                  <div className="flex items-center gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCloudTranscriptionBaseUrl(API_ENDPOINTS.TRANSCRIPTION_BASE)}
-                    >
-                      Reset to Default
-                    </Button>
-                  </div>
-                  <p className="text-xs text-blue-800">
-                    Requests for cloud transcription use this OpenAI-compatible base URL. Leave
-                    empty to fall back to
-                    <code className="ml-1">{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {useLocalWhisper && whisperHook.whisperInstalled && (
-              <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-                <h4 className="font-medium text-purple-900">Local Whisper Model</h4>
-                <WhisperModelPicker
-                  selectedModel={whisperModel}
-                  onModelSelect={setWhisperModel}
-                  variant="settings"
-                />
-              </div>
-            )}
-
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900">Preferred Language</h4>
-              <LanguageSelector
-                value={preferredLanguage}
-                onChange={(value) => {
-                  setPreferredLanguage(value);
-                  updateTranscriptionSettings({ preferredLanguage: value });
-                }}
-                className="w-full"
-              />
-            </div>
+            <TranscriptionModelPicker
+              selectedCloudProvider={cloudTranscriptionProvider}
+              onCloudProviderSelect={(providerId) => {
+                setCloudTranscriptionProvider(providerId);
+                const provider = getTranscriptionProviders().find((p) => p.id === providerId);
+                if (provider) {
+                  setCloudTranscriptionBaseUrl(provider.baseUrl);
+                }
+              }}
+              selectedCloudModel={cloudTranscriptionModel}
+              onCloudModelSelect={setCloudTranscriptionModel}
+              selectedLocalModel={whisperModel}
+              onLocalModelSelect={setWhisperModel}
+              useLocalWhisper={useLocalWhisper}
+              onModeChange={(isLocal) => {
+                setUseLocalWhisper(isLocal);
+                updateTranscriptionSettings({ useLocalWhisper: isLocal });
+              }}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              variant="settings"
+            />
 
             <Button
               onClick={() => {
@@ -1023,7 +957,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </p>
             </div>
 
-            <AIModelSelectorEnhanced
+            <ReasoningModelSelector
               useReasoningModel={useReasoningModel}
               setUseReasoningModel={(value) => {
                 setUseReasoningModel(value);
@@ -1043,7 +977,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setGeminiApiKey={setGeminiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
-              pasteFromClipboard={pasteFromClipboardWithFallback}
               showAlertDialog={showAlertDialog}
             />
 

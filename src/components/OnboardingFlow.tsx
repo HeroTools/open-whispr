@@ -20,7 +20,7 @@ import {
   User,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
-import WhisperModelPicker from "./WhisperModelPicker";
+import LocalWhisperPicker from "./LocalWhisperPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
@@ -34,9 +34,10 @@ import { usePython } from "../hooks/usePython";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
-import { getLanguageLabel, REASONING_PROVIDERS } from "../utils/languages";
+import { getLanguageLabel } from "../utils/languages";
+import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import LanguageSelector from "./ui/LanguageSelector";
-import { UnifiedModelPickerCompact } from "./UnifiedModelPicker";
+import ModelCardList from "./ui/ModelCardList";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
@@ -266,8 +267,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
         if (mappedModels.length === 0) {
           setCustomModelsError("No models returned by this endpoint.");
-        } else if (!mappedModels.some((model) => model.value === reasoningModelRef.current)) {
-          updateReasoningSettings({ reasoningModel: mappedModels[0].value });
+        } else if (
+          reasoningModelRef.current &&
+          !mappedModels.some((model) => model.value === reasoningModelRef.current)
+        ) {
+          updateReasoningSettings({ reasoningModel: "" });
         }
       } catch (error) {
         if (isCancelled) {
@@ -295,8 +299,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   useEffect(() => {
     if (!usingCustomReasoningBase && defaultReasoningModels.length > 0) {
-      if (!defaultReasoningModels.some((model) => model.value === reasoningModel)) {
-        updateReasoningSettings({ reasoningModel: defaultReasoningModels[0].value });
+      if (
+        reasoningModel &&
+        !defaultReasoningModels.some((model) => model.value === reasoningModel)
+      ) {
+        updateReasoningSettings({ reasoningModel: "" });
       }
     }
   }, [usingCustomReasoningBase, defaultReasoningModels, reasoningModel, updateReasoningSettings]);
@@ -716,7 +723,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       </p>
                     </div>
 
-                    <WhisperModelPicker
+                    <LocalWhisperPicker
                       selectedModel={whisperModel}
                       onModelSelect={setWhisperModel}
                       variant="onboarding"
@@ -817,7 +824,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       Using OpenAI defaults from <code>{reasoningModelsEndpoint}</code>.
                     </p>
                   )}
-                  <UnifiedModelPickerCompact
+                  <ModelCardList
                     models={displayedReasoningModels}
                     selectedModel={reasoningModel}
                     onModelSelect={(modelId) =>

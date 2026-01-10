@@ -1,6 +1,6 @@
 import { useCallback } from "react";
 import { useLocalStorage } from "./useLocalStorage";
-import { getModelProvider } from "../utils/languages";
+import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
 
 export interface TranscriptionSettings {
@@ -10,6 +10,8 @@ export interface TranscriptionSettings {
   allowLocalFallback: boolean;
   fallbackWhisperModel: string;
   preferredLanguage: string;
+  cloudTranscriptionProvider: string;
+  cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
 }
 
@@ -70,6 +72,24 @@ export function useSettings() {
     deserialize: String,
   });
 
+  const [cloudTranscriptionProvider, setCloudTranscriptionProvider] = useLocalStorage(
+    "cloudTranscriptionProvider",
+    "openai",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [cloudTranscriptionModel, setCloudTranscriptionModel] = useLocalStorage(
+    "cloudTranscriptionModel",
+    "gpt-4o-mini-transcribe",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   const [cloudTranscriptionBaseUrl, setCloudTranscriptionBaseUrl] = useLocalStorage(
     "cloudTranscriptionBaseUrl",
     API_ENDPOINTS.TRANSCRIPTION_BASE,
@@ -94,7 +114,7 @@ export function useSettings() {
     deserialize: (value) => value !== "false", // Default true
   });
 
-  const [reasoningModel, setReasoningModel] = useLocalStorage("reasoningModel", "gpt-4o-mini", {
+  const [reasoningModel, setReasoningModel] = useLocalStorage("reasoningModel", "", {
     serialize: String,
     deserialize: String,
   });
@@ -142,6 +162,10 @@ export function useSettings() {
         setFallbackWhisperModel(settings.fallbackWhisperModel);
       if (settings.preferredLanguage !== undefined)
         setPreferredLanguage(settings.preferredLanguage);
+      if (settings.cloudTranscriptionProvider !== undefined)
+        setCloudTranscriptionProvider(settings.cloudTranscriptionProvider);
+      if (settings.cloudTranscriptionModel !== undefined)
+        setCloudTranscriptionModel(settings.cloudTranscriptionModel);
       if (settings.cloudTranscriptionBaseUrl !== undefined)
         setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
     },
@@ -152,6 +176,8 @@ export function useSettings() {
       setAllowLocalFallback,
       setFallbackWhisperModel,
       setPreferredLanguage,
+      setCloudTranscriptionProvider,
+      setCloudTranscriptionModel,
       setCloudTranscriptionBaseUrl,
     ]
   );
@@ -185,6 +211,8 @@ export function useSettings() {
     allowLocalFallback,
     fallbackWhisperModel,
     preferredLanguage,
+    cloudTranscriptionProvider,
+    cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     useReasoningModel,
@@ -201,23 +229,16 @@ export function useSettings() {
     setAllowLocalFallback,
     setFallbackWhisperModel,
     setPreferredLanguage,
+    setCloudTranscriptionProvider,
+    setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider: (provider: string) => {
-      if (provider === "custom") {
-        return;
+      if (provider !== "custom") {
+        setReasoningModel("");
       }
-
-      const providerModels = {
-        openai: "gpt-4o-mini", // Start with cost-efficient multimodal model
-        anthropic: "claude-3.5-sonnet-20241022",
-        gemini: "gemini-2.5-flash",
-        groq: "qwen/qwen3-32b", // Groq's powerful reasoning model
-        local: "llama-3.2-3b",
-      };
-      setReasoningModel(providerModels[provider as keyof typeof providerModels] || "gpt-4o-mini");
     },
     setOpenaiApiKey,
     setAnthropicApiKey,

@@ -6,75 +6,10 @@ const https = require("https");
 const { app } = require("electron");
 
 // Import the model registry data directly
-let modelRegistryData;
-try {
-  modelRegistryData = require("../models/modelRegistryData.json");
-  console.log("[ModelManager] Loaded registry data successfully");
-} catch (error) {
-  console.error("[ModelManager] Failed to load registry data:", error);
-  // Fallback to inline data
-  modelRegistryData = {
-    providers: [
-      {
-        id: "qwen",
-        name: "Qwen",
-        baseUrl: "https://huggingface.co",
-        models: [
-          {
-            id: "qwen2.5-0.5b-instruct-q5_k_m",
-            name: "Qwen2.5 0.5B",
-            size: "0.4GB",
-            sizeBytes: 429496729,
-            description: "Smallest model, fast but limited capabilities",
-            fileName: "qwen2.5-0.5b-instruct-q5_k_m.gguf",
-            quantization: "q5_k_m",
-            contextLength: 32768,
-          },
-          {
-            id: "qwen2.5-1.5b-instruct-q5_k_m",
-            name: "Qwen2.5 1.5B",
-            size: "1.3GB",
-            sizeBytes: 1395864371,
-            description: "Small model, good for basic tasks",
-            fileName: "qwen2.5-1.5b-instruct-q5_k_m.gguf",
-            quantization: "q5_k_m",
-            contextLength: 32768,
-          },
-          {
-            id: "qwen2.5-3b-instruct-q5_k_m",
-            name: "Qwen2.5 3B",
-            size: "2.3GB",
-            sizeBytes: 2469606195,
-            description: "Balanced model for general use",
-            fileName: "qwen2.5-3b-instruct-q5_k_m.gguf",
-            quantization: "q5_k_m",
-            contextLength: 32768,
-          },
-          {
-            id: "qwen2.5-7b-instruct-q4km",
-            name: "Qwen2.5 7B",
-            size: "4.7GB",
-            sizeBytes: 5046586241,
-            description: "Large model with high quality (Q4_K_M quantization)",
-            fileName: "qwen2.5-7b-instruct-q4_k_m.gguf",
-            quantization: "q4_k_m",
-            contextLength: 128000,
-            recommended: true,
-          },
-          {
-            id: "qwen2.5-7b-instruct-q5_k_m",
-            name: "Qwen2.5 7B",
-            size: "5.4GB",
-            sizeBytes: 5798205849,
-            description: "Large model, high quality reasoning (Q5_K_M quantization)",
-            fileName: "qwen2.5-7b-instruct-q5_k_m.gguf",
-            quantization: "q5_k_m",
-            contextLength: 128000,
-          },
-        ],
-      },
-    ],
-  };
+const modelRegistryData = require("../models/modelRegistryData.json");
+
+function getLocalProviders() {
+  return modelRegistryData.localProviders || [];
 }
 
 class ModelError extends Error {
@@ -118,11 +53,8 @@ class ModelManager {
     try {
       const models = [];
 
-      console.log("[ModelManager] Getting all models from registry");
-      console.log("[ModelManager] Registry data:", modelRegistryData);
-
       // Get all models from registry
-      for (const provider of modelRegistryData.providers) {
+      for (const provider of getLocalProviders()) {
         for (const model of provider.models) {
           const modelPath = path.join(this.modelsDir, model.fileName);
           const isDownloaded = await this.checkFileExists(modelPath);
@@ -137,7 +69,6 @@ class ModelManager {
         }
       }
 
-      console.log("[ModelManager] Found models:", models.length);
       return models;
     } catch (error) {
       console.error("[ModelManager] Error getting all models:", error);
@@ -167,7 +98,7 @@ class ModelManager {
   }
 
   findModelById(modelId) {
-    for (const provider of modelRegistryData.providers) {
+    for (const provider of getLocalProviders()) {
       const model = provider.models.find((m) => m.id === modelId);
       if (model) {
         return { model, provider };
@@ -223,12 +154,8 @@ class ModelManager {
   }
 
   getDownloadUrl(provider, model) {
-    // Based on the provider type, construct the download URL
-    if (provider.id === "qwen") {
-      return `https://huggingface.co/Qwen/Qwen2.5-${model.name.split(" ")[1]}-Instruct-GGUF/resolve/main/${model.fileName}`;
-    }
-    // Add more providers as needed
-    throw new ModelError(`Unknown provider: ${provider.id}`, "UNKNOWN_PROVIDER");
+    const baseUrl = provider.baseUrl || "https://huggingface.co";
+    return `${baseUrl}/${model.hfRepo}/resolve/main/${model.fileName}`;
   }
 
   async downloadFile(url, destPath, onProgress) {
@@ -444,10 +371,10 @@ class ModelManager {
   }
 
   formatPrompt(provider, text, systemPrompt) {
-    if (provider.id === "qwen") {
-      return `<|im_start|>system\n${systemPrompt}<|im_end|>\n<|im_start|>user\n${text}<|im_end|>\n<|im_start|>assistant\n`;
+    if (provider.promptTemplate) {
+      return provider.promptTemplate.replace("{system}", systemPrompt).replace("{user}", text);
     }
-    // Add more providers as needed
+    // Fallback for providers without template
     return `${systemPrompt}\n\n${text}`;
   }
 }

@@ -90,7 +90,6 @@ class WindowManager {
     } else {
       this.mainWindow.setIgnoreMouseEvents(true, { forward: true });
     }
-
     this.isMainWindowInteractive = shouldCapture;
   }
 

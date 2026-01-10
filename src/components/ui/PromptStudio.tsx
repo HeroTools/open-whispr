@@ -101,13 +101,18 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     try {
       // Check if reasoning model is enabled and if we have the necessary settings
       const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-      const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
+      const reasoningModel = localStorage.getItem("reasoningModel") || "";
       const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
 
       if (!useReasoningModel) {
         setTestResult(
           "⚠️ AI text enhancement is disabled. Enable it in AI Models settings to test prompts."
         );
+        return;
+      }
+
+      if (!reasoningModel) {
+        setTestResult("⚠️ No reasoning model selected. Choose one in AI Models settings.");
         return;
       }
 
@@ -318,7 +323,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
   const renderTestPlayground = () => {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-    const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
+    const reasoningModel = localStorage.getItem("reasoningModel") || "";
     const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
     const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
       label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
