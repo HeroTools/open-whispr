@@ -12,6 +12,7 @@ import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
@@ -800,28 +801,11 @@ export default function SettingsPage({
                   Fix Permission Issues
                 </Button>
                 {!permissionsHook.micPermissionGranted && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-                    <p className="text-sm text-amber-900">
-                      {permissionsHook.micPermissionError ||
-                        "If macOS never shows the microphone prompt, open Sound settings, pick your microphone, then try the test again."}
-                    </p>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={permissionsHook.openSoundInputSettings}
-                      >
-                        Open Sound Input Settings
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={permissionsHook.openMicPrivacySettings}
-                      >
-                        Open Microphone Privacy
-                      </Button>
-                    </div>
-                  </div>
+                  <MicPermissionWarning
+                    error={permissionsHook.micPermissionError}
+                    onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                    onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                  />
                 )}
               </div>
             </div>

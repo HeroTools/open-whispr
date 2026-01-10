@@ -24,6 +24,7 @@ import WhisperModelPicker from "./WhisperModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
 import StepProgress from "./ui/StepProgress";
 import { AlertDialog, ConfirmDialog } from "./ui/dialog";
 import { useLocalStorage } from "../hooks/useLocalStorage";
@@ -858,28 +859,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               />
 
               {!permissionsHook.micPermissionGranted && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-                  <p className="text-sm text-amber-900">
-                    {permissionsHook.micPermissionError ||
-                      "If the prompt doesn’t appear, open Sound settings, select your microphone, then try Grant Access again."}
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={permissionsHook.openSoundInputSettings}
-                    >
-                      Open Sound Input Settings
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={permissionsHook.openMicPrivacySettings}
-                    >
-                      Open Microphone Privacy
-                    </Button>
-                  </div>
-                </div>
+                <MicPermissionWarning
+                  error={permissionsHook.micPermissionError}
+                  onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                  onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                />
               )}
 
               <PermissionCard

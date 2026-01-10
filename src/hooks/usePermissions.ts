@@ -18,42 +18,60 @@ export interface UsePermissionsProps {
   showAlertDialog: (dialog: { title: string; description?: string }) => void;
 }
 
-const DEFAULT_MIC_MESSAGE =
-  "If nothing pops up, open System Settings → Sound → Input, choose your microphone, then click Grant Access again.";
-
 const stopTracks = (stream?: MediaStream) => {
   try {
     stream?.getTracks?.().forEach((track) => track.stop());
-  } catch (error) {
+  } catch {
     // ignore track cleanup errors
   }
 };
 
-const describeMicError = (error: any): string => {
-  if (!error) {
-    return DEFAULT_MIC_MESSAGE;
+const getPlatformSettingsPath = (): string => {
+  if (typeof navigator !== "undefined") {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("win")) return "Settings → Privacy → Microphone";
+    if (ua.includes("linux")) return "your system sound settings";
+  }
+  return "System Settings → Sound → Input";
+};
+
+const getPlatformPrivacyPath = (): string => {
+  if (typeof navigator !== "undefined") {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("win")) return "Settings → Privacy → Microphone";
+    if (ua.includes("linux")) return "your system privacy settings";
+  }
+  return "System Settings → Privacy & Security → Microphone";
+};
+
+const describeMicError = (error: unknown): string => {
+  if (!error || typeof error !== "object") {
+    return "Microphone access failed. Please try again.";
   }
 
-  const name = error?.name || "";
-  const message = (error?.message || "").toLowerCase();
+  const err = error as { name?: string; message?: string };
+  const name = err.name || "";
+  const message = (err.message || "").toLowerCase();
+  const settingsPath = getPlatformSettingsPath();
+  const privacyPath = getPlatformPrivacyPath();
 
   if (name === "NotFoundError") {
-    return "No microphones were detected. Connect or select a microphone in System Settings → Sound → Input.";
+    return `No microphones were detected. Connect or select a microphone in ${settingsPath}.`;
   }
 
   if (name === "NotAllowedError" || name === "SecurityError") {
-    return "Permission was denied. Open System Settings → Privacy & Security → Microphone and allow OpenWhispr.";
+    return `Permission was denied. Open ${privacyPath} and allow OpenWhispr.`;
   }
 
   if (name === "NotReadableError" || name === "AbortError") {
-    return "macOS could not start the selected microphone. Choose an input device in System Settings → Sound → Input, then rerun the test.";
+    return `Could not start the selected microphone. Choose an input device in ${settingsPath}, then rerun the test.`;
   }
 
   if (message.includes("no audio input") || message.includes("not available")) {
-    return "No active audio input was found. Pick a microphone in System Settings → Sound → Input.";
+    return `No active audio input was found. Pick a microphone in ${settingsPath}.`;
   }
 
-  return `Microphone access failed: ${error?.message || "Unknown error"}. Select a different input device and try again.`;
+  return `Microphone access failed: ${err.message || "Unknown error"}. Select a different input device and try again.`;
 };
 
 export const usePermissions = (
@@ -104,27 +122,6 @@ export const usePermissions = (
     setMicPermissionError(null);
 
     try {
-      if (typeof navigator.mediaDevices.enumerateDevices === "function") {
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioInputs = devices.filter(
-          (device) => device.kind === "audioinput"
-        );
-        if (audioInputs.length === 0) {
-          const message =
-            "No microphones were found. Connect or select a microphone in System Settings → Sound → Input.";
-          setMicPermissionError(message);
-          if (showAlertDialog) {
-            showAlertDialog({
-              title: "No Microphone Detected",
-              description: message,
-            });
-          } else {
-            alert(message);
-          }
-          return;
-        }
-      }
-
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stopTracks(stream);
       setMicPermissionGranted(true);

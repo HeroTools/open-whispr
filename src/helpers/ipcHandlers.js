@@ -4,33 +4,41 @@ const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 
 const runDetachedCommand = (command, args = []) => {
-  try {
-    const child = spawn(command, args, {
-      detached: true,
-      stdio: "ignore",
-    });
-    if (typeof child.unref === "function") {
-      child.unref();
+  return new Promise((resolve) => {
+    try {
+      const child = spawn(command, args, {
+        detached: true,
+        stdio: "ignore",
+      });
+      child.on("error", (error) => {
+        debugLogger.error(`Failed to run ${command}`, error);
+        resolve(false);
+      });
+      child.on("spawn", () => {
+        if (typeof child.unref === "function") {
+          child.unref();
+        }
+        resolve(true);
+      });
+    } catch (error) {
+      debugLogger.error(`Failed to spawn ${command}`, error);
+      resolve(false);
     }
-    return true;
-  } catch (error) {
-    debugLogger.error(`Failed to run ${command}`, error);
-    return false;
-  }
+  });
 };
 
-const openMacPreference = (urls = []) => {
+const openMacPreference = async (urls = []) => {
   for (const url of urls) {
-    if (runDetachedCommand("open", [url])) {
+    if (await runDetachedCommand("open", [url])) {
       return true;
     }
   }
   return runDetachedCommand("open", ["-a", "System Settings"]);
 };
 
-const openLinuxSettings = (commands = []) => {
+const openLinuxSettings = async (commands = []) => {
   for (const [command, args] of commands) {
-    if (runDetachedCommand(command, args)) {
+    if (await runDetachedCommand(command, args)) {
       return true;
     }
   }
@@ -576,7 +584,7 @@ class IPCHandlers {
     });
   }
 
-  openPlatformSettings(target) {
+  async openPlatformSettings(target) {
     if (process.platform === "darwin") {
       const urls =
         target === "microphone"
@@ -588,8 +596,8 @@ class IPCHandlers {
               "x-apple.systempreferences:com.apple.preference.sound?input",
               "x-apple.systempreferences:com.apple.preference.sound",
             ];
-      openMacPreference(urls);
-      return { success: true };
+      const opened = await openMacPreference(urls);
+      return { success: opened };
     }
 
     if (process.platform === "win32") {
@@ -598,7 +606,7 @@ class IPCHandlers {
           ? "ms-settings:privacy-microphone"
           : "ms-settings:sound";
       try {
-        shell.openExternal(uri);
+        await shell.openExternal(uri);
         return { success: true };
       } catch (error) {
         debugLogger.error("Failed to open Windows settings", error);
@@ -609,15 +617,15 @@ class IPCHandlers {
     const linuxCommands =
       target === "microphone"
         ? [
-            ["xdg-open", ["gnome-control-center", "privacy"]],
             ["gnome-control-center", ["privacy"]],
+            ["kde-open5", ["kcm_users"]],
           ]
         : [
-            ["xdg-open", ["gnome-control-center", "sound"]],
             ["gnome-control-center", ["sound"]],
+            ["kde-open5", ["kcm_pulseaudio"]],
           ];
 
-    if (openLinuxSettings(linuxCommands)) {
+    if (await openLinuxSettings(linuxCommands)) {
       return { success: true };
     }
 
