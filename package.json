@@ -29,9 +29,9 @@
     "predist": "npm run compile:globe",
     "dist": "npm run build:renderer && electron-builder",
     "format:js": "eslint . --fix && cd src && eslint . --fix && prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "format:py": "python -m ruff check --fix *.py && python -m ruff format *.py",
+    "format:py": "python3 -m ruff check --fix *.py && python3 -m ruff format *.py",
     "format": "npm run format:js && npm run format:py",
-    "format:check": "eslint . && cd src && eslint . && prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\" && python -m ruff check *.py",
+    "format:check": "eslint . && cd src && eslint . && prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\" && python3 -m ruff check *.py",
     "preview": "cd src && vite preview",
     "clean": "node cleanup.js"
   },

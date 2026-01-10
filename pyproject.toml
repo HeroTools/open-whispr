@@ -13,7 +13,6 @@ select = [
 ignore = [
     "E501",  # line too long (let formatter handle it)
     "E402",  # module level import not at top
-    "W503",  # line break before binary operator
 ]
 
 [tool.ruff.format]
