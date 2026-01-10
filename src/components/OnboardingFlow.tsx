@@ -38,7 +38,6 @@ import { getLanguageLabel } from "../utils/languages";
 import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import LanguageSelector from "./ui/LanguageSelector";
 import ModelCardList from "./ui/ModelCardList";
-const InteractiveKeyboard = React.lazy(() => import("./ui/Keyboard"));
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";

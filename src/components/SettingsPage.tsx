@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Keyboard, Mic, Shield } from "lucide-react";
+import { RefreshCw, Download, Command, Mic, Shield } from "lucide-react";
+import MarkdownRenderer from "./ui/MarkdownRenderer";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
