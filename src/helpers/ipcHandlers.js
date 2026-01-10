@@ -575,6 +575,7 @@ class IPCHandlers {
 
     ipcMain.handle("llama-cpp-uninstall", async () => {
       try {
+        const llamaCppInstaller = require("./llamaCppInstaller").default;
         const result = await llamaCppInstaller.uninstall();
         return result;
       } catch (error) {
