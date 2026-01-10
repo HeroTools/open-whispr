@@ -181,14 +181,14 @@ class UpdateManager {
 
             if (this.isDownloading) {
               return {
-                success: false,
+                success: true,
                 message: "Download already in progress",
               };
             }
 
             if (this.updateDownloaded) {
               return {
-                success: false,
+                success: true,
                 message: "Update already downloaded. Ready to install.",
               };
             }

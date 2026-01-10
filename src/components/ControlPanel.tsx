@@ -84,8 +84,10 @@ export default function ControlPanel() {
     };
 
     const handleDownloadProgress = (_event: any, progressObj: any) => {
-      if (progressObj?.percent) {
-        setDownloadProgress(Math.round(progressObj.percent));
+      if (progressObj?.percent != null) {
+        const newProgress = Math.round(progressObj.percent);
+        setDownloadProgress((prev) => (newProgress > prev ? newProgress : prev));
+        setIsDownloading(true);
       }
     };
 
@@ -304,7 +306,7 @@ export default function ControlPanel() {
                   variant={updateStatus.updateDownloaded ? "default" : "outline"}
                   size="sm"
                   onClick={handleUpdateClick}
-                  disabled={isInstalling}
+                  disabled={isInstalling || isDownloading}
                   className={`gap-1.5 text-xs ${
                     updateStatus.updateDownloaded
                       ? "bg-blue-600 hover:bg-blue-700 text-white"
