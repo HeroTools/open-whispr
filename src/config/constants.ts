@@ -71,6 +71,7 @@ export const API_ENDPOINTS = {
   OPENAI_MODELS: buildApiUrl(DEFAULT_OPENAI_BASE, '/models'),
   ANTHROPIC: 'https://api.anthropic.com/v1/messages',
   GEMINI: 'https://generativelanguage.googleapis.com/v1beta',
+  GROQ_BASE: 'https://api.groq.com/openai/v1',
   TRANSCRIPTION_BASE: DEFAULT_TRANSCRIPTION_BASE,
   TRANSCRIPTION: buildApiUrl(DEFAULT_TRANSCRIPTION_BASE, '/audio/transcriptions'),
 } as const;
@@ -103,6 +104,8 @@ export const TOKEN_LIMITS = {
 export const CACHE_CONFIG = {
   API_KEY_TTL: 3600000, // 1 hour in milliseconds
   MODEL_CACHE_SIZE: 3, // Maximum models to keep in memory
+  AVAILABILITY_CHECK_TTL: 30000, // 30s for accessibility, FFmpeg, tool availability checks
+  PASTE_DELAY_MS: 50, // Delay before paste simulation to allow clipboard to settle
 } as const;
 
 // Retry Configuration

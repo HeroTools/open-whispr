@@ -22,6 +22,7 @@ const PROVIDER_ICON_MAP: Record<string, string> = {
   openai: 'openai',
   anthropic: 'anthropic',
   gemini: 'gemini',
+  groq: 'groq',
   llama: 'llama',
   mistral: 'mistral',
   qwen: 'qwen',
@@ -69,6 +70,8 @@ interface AIModelSelectorEnhancedProps {
   setAnthropicApiKey: (key: string) => void;
   geminiApiKey: string;
   setGeminiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
   pasteFromClipboard: (setter: (value: string) => void) => void;
   showAlertDialog: (dialog: { title: string; description: string }) => void;
 }
@@ -89,6 +92,7 @@ const ProviderIcon = ({ provider }: { provider: string }) => {
       case 'openai': return <Brain className={iconClass} />;
       case 'anthropic': return <Zap className={iconClass} />;
       case 'gemini': return <Globe className={iconClass} />;
+      case 'groq': return <Zap className={iconClass} />; // Lightning fast inference
       // Local providers
       case 'qwen': return <Brain className={iconClass} />;
       case 'mistral': return <Zap className={iconClass} />;
@@ -133,6 +137,8 @@ export default function AIModelSelectorEnhanced({
   setAnthropicApiKey,
   geminiApiKey,
   setGeminiApiKey,
+  groqApiKey,
+  setGroqApiKey,
   pasteFromClipboard,
   showAlertDialog,
 }: AIModelSelectorEnhancedProps) {
@@ -239,7 +245,9 @@ export default function AIModelSelectorEnhanced({
           headers.Authorization = `Bearer ${apiKey}`;
         }
 
-        const response = await fetch(buildApiUrl(normalizedBase, '/models'), {
+        const modelsUrl = buildApiUrl(normalizedBase, '/models');
+
+        const response = await fetch(modelsUrl, {
           method: 'GET',
           headers,
         });
@@ -253,6 +261,7 @@ export default function AIModelSelectorEnhanced({
         }
 
         const payload = await response.json().catch(() => ({}));
+
         const rawModels = Array.isArray(payload?.data)
           ? payload.data
           : Array.isArray(payload?.models)
@@ -325,7 +334,7 @@ export default function AIModelSelectorEnhanced({
     return customModelOptions;
   }, [isCustomBaseDirty, customModelOptions]);
 
-  const cloudProviders = ['openai', 'anthropic', 'gemini', 'custom'];
+  const cloudProviders = ['openai', 'anthropic', 'gemini', 'groq', 'custom'];
   const localProviders = modelRegistry.getAllProviders().map((p) => p.id);
 
   const openaiModelOptions = useMemo<CloudModelOption[]>(() => {
@@ -523,8 +532,9 @@ export default function AIModelSelectorEnhanced({
   const getProviderColor = (provider: string) => {
     const colors: Record<string, string> = {
       'openai': 'green',
-      'anthropic': 'purple', 
+      'anthropic': 'purple',
       'gemini': 'blue',
+      'groq': 'orange', // Fast and fiery like Groq
       'qwen': 'indigo',
       'mistral': 'orange',
       'llama': 'blue',
@@ -805,6 +815,31 @@ export default function AIModelSelectorEnhanced({
                             </div>
                             <p className="text-xs text-gray-600">
                               Get your API key from makersuite.google.com/app/apikey
+                            </p>
+                          </div>
+                        )}
+
+                        {selectedCloudProvider === 'groq' && (
+                          <div className="space-y-3">
+                            <h4 className="font-medium text-gray-900">API Configuration</h4>
+                            <div className="flex gap-2">
+                              <Input
+                                type="password"
+                                placeholder="gsk_..."
+                                value={groqApiKey}
+                                onChange={(e) => setGroqApiKey(e.target.value)}
+                                className="flex-1 text-sm"
+                              />
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => pasteFromClipboard(setGroqApiKey)}
+                              >
+                                Paste
+                              </Button>
+                            </div>
+                            <p className="text-xs text-gray-600">
+                              Get your API key from console.groq.com
                             </p>
                           </div>
                         )}

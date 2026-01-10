@@ -12,6 +12,7 @@ import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
+import MicPermissionWarning from "./ui/MicPermissionWarning";
 import { REASONING_PROVIDERS } from "../utils/languages";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
@@ -60,6 +61,7 @@ export default function SettingsPage({
     openaiApiKey,
     anthropicApiKey,
     geminiApiKey,
+    groqApiKey,
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
@@ -75,6 +77,7 @@ export default function SettingsPage({
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,
+    setGroqApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -284,15 +287,15 @@ export default function SettingsPage({
     const normalizedReasoningBase = (cloudReasoningBaseUrl || '').trim();
     setCloudReasoningBaseUrl(normalizedReasoningBase);
 
-    // Update reasoning settings
-    updateReasoningSettings({ 
-      useReasoningModel, 
+    // Update reasoning settings including the base URL
+    updateReasoningSettings({
+      useReasoningModel,
       reasoningModel,
       cloudReasoningBaseUrl: normalizedReasoningBase
     });
-    
-    // Save API keys to backend based on provider
-    if (localReasoningProvider === "openai" && openaiApiKey) {
+
+    // Save API keys to backend based on provider (including custom)
+    if ((localReasoningProvider === "openai" || localReasoningProvider === "custom") && openaiApiKey) {
       await window.electronAPI?.saveOpenAIKey(openaiApiKey);
     }
     if (localReasoningProvider === "anthropic" && anthropicApiKey) {
@@ -301,16 +304,26 @@ export default function SettingsPage({
     if (localReasoningProvider === "gemini" && geminiApiKey) {
       await window.electronAPI?.saveGeminiKey(geminiApiKey);
     }
-    
-    updateApiKeys({
-      ...(localReasoningProvider === "openai" &&
-        openaiApiKey.trim() && { openaiApiKey }),
-      ...(localReasoningProvider === "anthropic" &&
-        anthropicApiKey.trim() && { anthropicApiKey }),
-      ...(localReasoningProvider === "gemini" &&
-        geminiApiKey.trim() && { geminiApiKey }),
-    });
-    
+    if (localReasoningProvider === "groq" && groqApiKey) {
+      await window.electronAPI?.saveGroqKey(groqApiKey);
+    }
+
+    // Update API keys in state (for custom provider, save the API key used)
+    const keysToSave: Partial<{openaiApiKey: string; anthropicApiKey: string; geminiApiKey: string; groqApiKey: string}> = {};
+    if ((localReasoningProvider === "openai" || localReasoningProvider === "custom") && openaiApiKey.trim()) {
+      keysToSave.openaiApiKey = openaiApiKey;
+    }
+    if (localReasoningProvider === "anthropic" && anthropicApiKey.trim()) {
+      keysToSave.anthropicApiKey = anthropicApiKey;
+    }
+    if (localReasoningProvider === "gemini" && geminiApiKey.trim()) {
+      keysToSave.geminiApiKey = geminiApiKey;
+    }
+    if (localReasoningProvider === "groq" && groqApiKey.trim()) {
+      keysToSave.groqApiKey = groqApiKey;
+    }
+    updateApiKeys(keysToSave);
+
     // Save the provider separately since it's computed from the model
     localStorage.setItem("reasoningProvider", localReasoningProvider);
 
@@ -333,8 +346,12 @@ export default function SettingsPage({
     useReasoningModel,
     reasoningModel,
     localReasoningProvider,
+    cloudReasoningBaseUrl,
     openaiApiKey,
     anthropicApiKey,
+    geminiApiKey,
+    groqApiKey,
+    setCloudReasoningBaseUrl,
     updateReasoningSettings,
     updateApiKeys,
     showAlertDialog,
@@ -799,6 +816,13 @@ export default function SettingsPage({
                   <span className="mr-2">⚙️</span>
                   Fix Permission Issues
                 </Button>
+                {!permissionsHook.micPermissionGranted && (
+                  <MicPermissionWarning
+                    error={permissionsHook.micPermissionError}
+                    onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                    onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                  />
+                )}
               </div>
             </div>
 
@@ -1083,6 +1107,8 @@ export default function SettingsPage({
               setAnthropicApiKey={setAnthropicApiKey}
               geminiApiKey={geminiApiKey}
               setGeminiApiKey={setGeminiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
               pasteFromClipboard={pasteFromClipboardWithFallback}
               showAlertDialog={showAlertDialog}
             />

@@ -182,6 +182,41 @@ export const REASONING_PROVIDERS = {
       },
     ],
   },
+  groq: {
+    name: "Groq",
+    models: [
+      {
+        value: "qwen/qwen3-32b",
+        label: "Qwen3 32B",
+        description: "Powerful reasoning model (default)",
+      },
+      {
+        value: "llama-3.3-70b-versatile",
+        label: "LLaMA 3.3 70B",
+        description: "Meta's latest versatile model",
+      },
+      {
+        value: "llama3-70b-8192",
+        label: "LLaMA 3 70B",
+        description: "8K context, balanced performance",
+      },
+      {
+        value: "llama3-8b-8192",
+        label: "LLaMA 3 8B",
+        description: "Fast and efficient",
+      },
+      {
+        value: "mixtral-8x7b-32768",
+        label: "Mixtral 8x7B",
+        description: "32K context, mixture of experts",
+      },
+      {
+        value: "gemma2-9b-it",
+        label: "Gemma 2 9B",
+        description: "Google's efficient model",
+      },
+    ],
+  },
   local: {
     name: "Local AI",
     models: [], // Will be populated dynamically
@@ -215,14 +250,17 @@ export const getReasoningModelLabel = (modelId: string): string => {
 export const getModelProvider = (modelId: string): string => {
   const allModels = getAllReasoningModels();
   const model = allModels.find((m) => m.value === modelId);
-  
+
   // If model not found, try to infer from model name
   if (!model) {
     if (modelId.includes("claude")) return "anthropic";
-    if (modelId.includes("gemini")) return "gemini";
+    if (modelId.includes("gemini") && !modelId.includes("gemma")) return "gemini";
     if (modelId.includes("gpt") || modelId.includes("o3") || modelId.includes("o4") || modelId.includes("o1")) return "openai";
-    if (modelId.includes("qwen") || modelId.includes("llama") || modelId.includes("mistral")) return "local";
+    // Groq-specific models (these run on Groq cloud, not local)
+    if (modelId.includes("qwen/") || modelId.includes("llama") || modelId.includes("mixtral") || modelId.includes("gemma")) return "groq";
+    // Other qwen, llama, mistral without slash are local
+    if (modelId.includes("qwen") || modelId.includes("mistral")) return "local";
   }
-  
+
   return model?.provider || "openai";
 };

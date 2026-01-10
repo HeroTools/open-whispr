@@ -28,6 +28,7 @@ export interface ApiKeySettings {
   openaiApiKey: string;
   anthropicApiKey: string;
   geminiApiKey: string;
+  groqApiKey: string;
 }
 
 export function useSettings() {
@@ -146,6 +147,15 @@ export function useSettings() {
     }
   );
 
+  const [groqApiKey, setGroqApiKey] = useLocalStorage(
+    "groqApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   // Hotkey
   const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {
     serialize: String,
@@ -204,8 +214,10 @@ export function useSettings() {
         setAnthropicApiKey(keys.anthropicApiKey);
       if (keys.geminiApiKey !== undefined)
         setGeminiApiKey(keys.geminiApiKey);
+      if (keys.groqApiKey !== undefined)
+        setGroqApiKey(keys.groqApiKey);
     },
-    [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey]
+    [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey, setGroqApiKey]
   );
 
   return {
@@ -223,6 +235,7 @@ export function useSettings() {
     openaiApiKey,
     anthropicApiKey,
     geminiApiKey,
+    groqApiKey,
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
@@ -243,6 +256,7 @@ export function useSettings() {
         openai: "gpt-4o-mini", // Start with cost-efficient multimodal model
         anthropic: "claude-3.5-sonnet-20241022",
         gemini: "gemini-2.5-flash",
+        groq: "qwen/qwen3-32b", // Groq's powerful reasoning model
         local: "llama-3.2-3b",
       };
       setReasoningModel(
@@ -253,6 +267,7 @@ export function useSettings() {
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,
+    setGroqApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,

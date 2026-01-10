@@ -279,7 +279,11 @@ declare global {
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;
       saveGeminiKey: (key: string) => Promise<void>;
-      
+
+      // Groq API key management
+      getGroqKey: () => Promise<string | null>;
+      saveGroqKey: (key: string) => Promise<void>;
+
       // Debug logging
       getLogLevel?: () => Promise<string>;
       log?: (entry: {
@@ -292,6 +296,10 @@ declare global {
       
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<boolean>;
+
+      // System settings helpers
+      openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
+      openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
     };
     
     api?: {

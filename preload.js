@@ -147,7 +147,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Gemini API
   getGeminiKey: () => ipcRenderer.invoke("get-gemini-key"),
   saveGeminiKey: (key) => ipcRenderer.invoke("save-gemini-key", key),
-  
+
+  // Groq API
+  getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
+  saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
+
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),
@@ -165,6 +169,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
+  
+  // System settings helpers
+  openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
+  openSoundInputSettings: () =>
+    ipcRenderer.invoke("open-sound-input-settings"),
   
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {

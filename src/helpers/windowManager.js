@@ -75,6 +75,7 @@ class WindowManager {
     this.mainWindow.webContents.on(
       "did-finish-load",
       () => {
+        this.mainWindow.setTitle("Voice Recorder");
         this.enforceMainWindowOnTop();
       }
     );
@@ -180,6 +181,10 @@ class WindowManager {
 
     // Set up menu for control panel to ensure text input works
     MenuManager.setupControlPanelMenu(this.controlPanelWindow);
+
+    this.controlPanelWindow.webContents.on("did-finish-load", () => {
+      this.controlPanelWindow.setTitle("Control Panel");
+    });
 
     console.log("📱 Loading control panel content...");
     await this.loadControlPanel();
