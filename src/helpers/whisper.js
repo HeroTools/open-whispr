@@ -8,6 +8,9 @@ const PythonInstaller = require("./pythonInstaller");
 const { runCommand, TIMEOUTS } = require("../utils/process");
 const debugLogger = require("./debugLogger");
 
+// Cache TTL - mirrors CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
+const CACHE_TTL_MS = 30000;
+
 class WhisperManager {
   constructor() {
     this.pythonCmd = null;
@@ -16,6 +19,7 @@ class WhisperManager {
     this.currentDownloadProcess = null;
     this.pythonInstaller = new PythonInstaller();
     this.cachedFFmpegPath = null;
+    this.ffmpegAvailabilityCache = { result: null, expiresAt: 0 };
   }
 
   sanitizeErrorMessage(message = "") {
@@ -914,15 +918,29 @@ class WhisperManager {
     debugLogger.logWhisperPipeline('checkFFmpegAvailability - start', {});
 
     try {
+      const now = Date.now();
+      if (
+        this.ffmpegAvailabilityCache &&
+        now < this.ffmpegAvailabilityCache.expiresAt &&
+        this.ffmpegAvailabilityCache.result !== null
+      ) {
+        return this.ffmpegAvailabilityCache.result;
+      }
+
       const pythonCmd = await this.findPythonExecutable();
       const whisperScriptPath = this.getWhisperScriptPath();
       const ffmpegPath = await this.getFFmpegPath();
       if (!ffmpegPath) {
         debugLogger.log('FFmpeg not found by resolver');
-        return {
+        const result = {
           available: false,
           error: "FFmpeg not found"
         };
+        this.ffmpegAvailabilityCache = {
+          result,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        };
+        return result;
       }
 
       debugLogger.log('FFmpeg resolved for availability check:', ffmpegPath);
@@ -987,9 +1005,18 @@ class WhisperManager {
         });
       });
 
+      this.ffmpegAvailabilityCache = {
+        result,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      };
       return result;
     } catch (error) {
-      return { available: false, error: error.message };
+      const result = { available: false, error: error.message };
+      this.ffmpegAvailabilityCache = {
+        result,
+        expiresAt: Date.now() + CACHE_TTL_MS,
+      };
+      return result;
     }
   }
 

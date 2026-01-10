@@ -1,9 +1,15 @@
 const { clipboard } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 
+// Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
+const CACHE_TTL_MS = 30000;
+// Paste delay before simulating keystroke - mirrors CACHE_CONFIG.PASTE_DELAY_MS
+const PASTE_DELAY_MS = 50;
+
 class ClipboardManager {
   constructor() {
-    // Initialize clipboard manager
+    this.accessibilityCache = { value: null, expiresAt: 0 };
+    this.commandAvailabilityCache = new Map();
   }
 
   // Safe logging method - only log in development
@@ -117,7 +123,7 @@ class ClipboardManager {
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
           reject(new Error(errorMsg));
         }, 3000);
-      }, 100);
+      }, PASTE_DELAY_MS);
     });
   }
 
@@ -157,12 +163,26 @@ class ClipboardManager {
   async pasteLinux(originalClipboard) {
     // Helper to check if a command exists
     const commandExists = (cmd) => {
+      const now = Date.now();
+      const cached = this.commandAvailabilityCache.get(cmd);
+      if (cached && now < cached.expiresAt) {
+        return cached.exists;
+      }
       try {
         const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
           stdio: "ignore",
         });
-        return res.status === 0;
+        const exists = res.status === 0;
+        this.commandAvailabilityCache.set(cmd, {
+          exists,
+          expiresAt: now + CACHE_TTL_MS,
+        });
+        return exists;
       } catch {
+        this.commandAvailabilityCache.set(cmd, {
+          exists: false,
+          expiresAt: now + CACHE_TTL_MS,
+        });
         return false;
       }
     };
@@ -264,7 +284,7 @@ class ClipboardManager {
           { cmd: "xdotool", args: ["key", pasteKeys] },
         ];
 
-    // Filter to only available tools
+    // Filter to only available tools (commandExists is already cached)
     const available = candidates.filter((c) => commandExists(c.cmd));
 
     // Attempt paste with a specific tool
@@ -332,6 +352,14 @@ class ClipboardManager {
   async checkAccessibilityPermissions() {
     if (process.platform !== "darwin") return true;
 
+    const now = Date.now();
+    if (
+      now < this.accessibilityCache.expiresAt &&
+      this.accessibilityCache.value !== null
+    ) {
+      return this.accessibilityCache.value;
+    }
+
     return new Promise((resolve) => {
       // Check accessibility permissions
 
@@ -352,15 +380,22 @@ class ClipboardManager {
       });
 
       testProcess.on("close", (code) => {
-        if (code === 0) {
-          resolve(true);
-        } else {
+        const allowed = code === 0;
+        this.accessibilityCache = {
+          value: allowed,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        };
+        if (!allowed) {
           this.showAccessibilityDialog(testError);
-          resolve(false);
         }
+        resolve(allowed);
       });
 
       testProcess.on("error", (error) => {
+        this.accessibilityCache = {
+          value: false,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        };
         resolve(false);
       });
     });
