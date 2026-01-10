@@ -37,7 +37,6 @@ class TrayManager {
     this.createControlPanelCallback = callback;
   }
 
-
   attachControlPanelListeners(window) {
     if (!window || this.attachedControlPanels.has(window)) {
       return;
@@ -65,15 +64,11 @@ class TrayManager {
   async showControlPanelFromTray() {
     try {
       if (this.windowManager) {
-        this.controlPanelWindow =
-          this.windowManager.controlPanelWindow || this.controlPanelWindow;
+        this.controlPanelWindow = this.windowManager.controlPanelWindow || this.controlPanelWindow;
       }
       this.attachControlPanelListeners(this.controlPanelWindow);
 
-      if (
-        this.controlPanelWindow &&
-        !this.controlPanelWindow.isDestroyed()
-      ) {
+      if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
         if (process.platform === "win32") {
           this.controlPanelWindow.setSkipTaskbar(false);
         }
@@ -92,10 +87,7 @@ class TrayManager {
         }
         this.attachControlPanelListeners(this.controlPanelWindow);
 
-        if (
-          this.controlPanelWindow &&
-          !this.controlPanelWindow.isDestroyed()
-        ) {
+        if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
           if (process.platform === "win32") {
             this.controlPanelWindow.setSkipTaskbar(false);
           }
@@ -142,9 +134,7 @@ class TrayManager {
 
     if (platform === "darwin") {
       if (isDevelopment) {
-        candidatePaths.push(
-          path.join(__dirname, "..", "assets", "iconTemplate@3x.png")
-        );
+        candidatePaths.push(path.join(__dirname, "..", "assets", "iconTemplate@3x.png"));
       } else {
         candidatePaths.push(
           path.join(process.resourcesPath, "src", "assets", "iconTemplate@3x.png"),
@@ -171,13 +161,7 @@ class TrayManager {
         candidatePaths.push(
           path.join(process.resourcesPath, "src", "assets", fileName),
           path.join(process.resourcesPath, "assets", fileName),
-          path.join(
-            process.resourcesPath,
-            "app.asar.unpacked",
-            "src",
-            "assets",
-            fileName
-          ),
+          path.join(process.resourcesPath, "app.asar.unpacked", "src", "assets", fileName),
           path.join(__dirname, "..", "..", "src", "assets", fileName),
           path.join(app.getAppPath(), "src", "assets", fileName)
         );
@@ -225,11 +209,10 @@ class TrayManager {
       console.warn("Canvas not available, creating minimal fallback icon");
       // Create a minimal 16x16 black square PNG as fallback
       const pngData = Buffer.from([
-        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d,
-        0x49, 0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10,
-        0x08, 0x02, 0x00, 0x00, 0x00, 0x90, 0x91, 0x68, 0x36, 0x00, 0x00, 0x00,
-        0x0c, 0x49, 0x44, 0x41, 0x54, 0x28, 0x53, 0x63, 0x08, 0x05, 0x00, 0x00,
-        0x02, 0x00, 0x01, 0xe5, 0x27, 0xde, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x49,
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x10, 0x00, 0x00, 0x00, 0x10, 0x08, 0x02, 0x00, 0x00, 0x00, 0x90,
+        0x91, 0x68, 0x36, 0x00, 0x00, 0x00, 0x0c, 0x49, 0x44, 0x41, 0x54, 0x28, 0x53, 0x63, 0x08,
+        0x05, 0x00, 0x00, 0x02, 0x00, 0x01, 0xe5, 0x27, 0xde, 0xfc, 0x00, 0x00, 0x00, 0x00, 0x49,
         0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
       ]);
 

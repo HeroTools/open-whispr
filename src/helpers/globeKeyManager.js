@@ -29,9 +29,7 @@ class GlobeKeyManager extends EventEmitter {
     try {
       fs.accessSync(listenerPath, fs.constants.X_OK);
     } catch (accessError) {
-      this.reportError(
-        new Error(`macOS Globe listener is not executable: ${listenerPath}`)
-      );
+      this.reportError(new Error(`macOS Globe listener is not executable: ${listenerPath}`));
       return;
     }
 
@@ -115,12 +113,7 @@ class GlobeKeyManager extends EventEmitter {
         path.join(process.resourcesPath, "bin", "macos-globe-listener"),
         path.join(process.resourcesPath, "resources", "macos-globe-listener"),
         path.join(process.resourcesPath, "resources", "bin", "macos-globe-listener"),
-        path.join(
-          process.resourcesPath,
-          "app.asar.unpacked",
-          "resources",
-          "macos-globe-listener"
-        ),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "macos-globe-listener"),
         path.join(
           process.resourcesPath,
           "app.asar.unpacked",
@@ -131,9 +124,7 @@ class GlobeKeyManager extends EventEmitter {
       ].forEach((candidate) => candidates.add(candidate));
     }
 
-    const candidatePaths = [
-      ...candidates,
-    ];
+    const candidatePaths = [...candidates];
 
     for (const candidate of candidatePaths) {
       try {

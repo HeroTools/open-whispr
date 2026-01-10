@@ -31,7 +31,8 @@
   "extraResources": [
     "src/assets/**/*",
     "resources/macos-globe-listener.swift",
-    "resources/bin/macos-globe-listener"
+    "resources/bin/macos-globe-listener",
+    "resources/python/**/*"
   ],
   "mac": {
     "category": "public.app-category.productivity",

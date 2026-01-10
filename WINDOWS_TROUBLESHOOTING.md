@@ -4,6 +4,29 @@ This guide addresses common Windows-specific issues in OpenWhispr.
 
 ## Quick Fixes
 
+### Issue: "App starts but no window appears"
+
+**Symptoms:**
+- OpenWhispr.exe runs in Task Manager, but no window shows up
+- You only see background processes or a tray icon
+
+**Solutions:**
+
+1. **Check the system tray**
+   - Click the ^ caret in the Windows tray
+   - Look for the OpenWhispr icon
+   - Click it to open the Control Panel
+
+2. **Start with debug logging**
+   - Open Command Prompt in the install directory
+   - Run: `OpenWhispr.exe --log-level=debug`
+   - Check logs in: `%APPDATA%\OpenWhispr\logs`
+
+3. **Disable GPU acceleration**
+   - Some Windows 11 builds have GPU/driver issues with Electron
+   - Run: `OpenWhispr.exe --disable-gpu`
+   - If that works, keep using the flag and report your GPU model
+
 ### Issue: "No transcriptions" or "Audio file is empty"
 
 **Symptoms:**
@@ -47,21 +70,25 @@ This guide addresses common Windows-specific issues in OpenWhispr.
    - Wait for installation to complete
    - Restart OpenWhispr
 
-2. **Manual Python Installation**
+2. **Use the isolated environment (recommended)**
+   - OpenWhispr installs Whisper into a per-user virtual environment automatically
+   - If you set `OPENWHISPR_PYTHON`, unset it and restart so the app can manage its own environment
+
+3. **Manual Python Installation**
    - Download Python 3.11+ from [python.org](https://www.python.org/downloads/)
    - **IMPORTANT**: Check "Add Python to PATH" during installation
    - Choose "Install for all users" if you have admin rights
    - After installation, restart your computer
    - Restart OpenWhispr
 
-3. **Verify Python Installation**
+4. **Verify Python Installation**
    - Open Command Prompt (Win + R, type `cmd`)
    - Type: `python --version`
    - Should show: `Python 3.x.x`
    - Type: `where python`
    - Should show path to python.exe
 
-4. **Set Python Path Manually**
+5. **Set Python Path Manually**
    - Find your Python installation (usually `C:\Users\YourName\AppData\Local\Programs\Python\Python311\python.exe`)
    - Create/edit `.env` file in OpenWhispr directory
    - Add: `OPENWHISPR_PYTHON=C:\Path\To\Your\python.exe`

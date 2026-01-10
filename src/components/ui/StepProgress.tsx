@@ -12,11 +12,7 @@ interface StepProgressProps {
   className?: string;
 }
 
-export default function StepProgress({
-  steps,
-  currentStep,
-  className = "",
-}: StepProgressProps) {
+export default function StepProgress({ steps, currentStep, className = "" }: StepProgressProps) {
   return (
     <div className={`flex items-center justify-between ${className}`}>
       {steps.map((step, index) => {
@@ -28,11 +24,7 @@ export default function StepProgress({
           <div key={index} className="flex">
             <div
               className={`flex items-center gap-2 ${
-                isActive
-                  ? "text-blue-600"
-                  : isCompleted
-                  ? "text-green-600"
-                  : "text-stone-400"
+                isActive ? "text-blue-600" : isCompleted ? "text-green-600" : "text-stone-400"
               }`}
               style={{ fontFamily: "Noto Sans, sans-serif" }}
             >
@@ -41,19 +33,13 @@ export default function StepProgress({
                   isActive
                     ? "border-blue-600 bg-blue-50 shadow-sm"
                     : isCompleted
-                    ? "border-green-600 bg-green-50 shadow-sm"
-                    : "border-stone-300 bg-white"
+                      ? "border-green-600 bg-green-50 shadow-sm"
+                      : "border-stone-300 bg-white"
                 }`}
               >
-                {isCompleted ? (
-                  <Check className="w-4 h-4" />
-                ) : (
-                  <Icon className="w-4 h-4" />
-                )}
+                {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
               </div>
-              <span className="text-xs font-medium hidden md:block truncate">
-                {step.title}
-              </span>
+              <span className="text-xs font-medium hidden md:block truncate">{step.title}</span>
             </div>
             {index < steps.length - 1 && (
               <div

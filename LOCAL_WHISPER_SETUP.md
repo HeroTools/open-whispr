@@ -82,14 +82,17 @@ The following are now **bundled with the app** and require no user installation:
 - ✅ **Python Bridge Script**: Included in the app bundle
 - ✅ **App Integration**: Fully implemented
 
-### 🔧 Optional Dependencies (For Local Whisper)
+### 🔧 Isolated Python Environment (Default)
 
-For **local Whisper processing**, users still need:
+For **local Whisper processing**, OpenWhispr now:
 
-- ✅ **Python 3**: Installed via Homebrew or system package manager
-- ✅ **OpenAI Whisper**: Installed via `pip3 install openai-whisper`
+- ✅ Creates a per-user virtual environment automatically
+- ✅ Installs OpenAI Whisper inside that environment
+- ✅ Avoids modifying system Python (no global `pip install`)
 
-**Note**: FFmpeg is now bundled, so users no longer need to install it separately!
+If you want to force a specific interpreter, set `OPENWHISPR_PYTHON` to a Python 3.x path before launching the app.
+
+**Note**: FFmpeg is bundled, so users no longer need to install it separately.
 
 ## 🧪 Testing Your Setup
 
@@ -160,7 +163,13 @@ If you see this status:
 
 ### Custom Python Path
 If you need to force a specific interpreter, set the `OPENWHISPR_PYTHON` environment variable before launching the app (e.g. `setx OPENWHISPR_PYTHON "C:\\Python312\\python.exe"` on Windows or `export OPENWHISPR_PYTHON=/opt/homebrew/bin/python3.12` on macOS).
-The new detector also scans the Windows `py` launcher plus the usual install folders, so manual code edits are no longer required.
+When this is set, OpenWhispr will use that interpreter directly instead of its managed virtual environment, so ensure Whisper is installed in that environment.
+
+### Managed Python Environment Location
+The isolated environment lives under your app data directory:
+- macOS: `~/Library/Application Support/OpenWhispr/python/venv`
+- Windows: `%APPDATA%\\OpenWhispr\\python\\venv`
+- Linux: `~/.config/OpenWhispr/python/venv`
 
 ### Model Storage Location
 Models are downloaded to `~/.cache/whisper/` by default.
