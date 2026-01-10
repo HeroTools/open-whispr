@@ -129,7 +129,7 @@ export const REASONING_PROVIDERS = {
         value: "gpt-4o",
         label: "GPT-4o",
         description: "Multimodal with vision support",
-      }
+      },
     ],
   },
   anthropic: {
@@ -225,7 +225,7 @@ export const REASONING_PROVIDERS = {
 
 // Dynamically populate local models from registry
 const localModels = modelRegistry.getAllModels();
-REASONING_PROVIDERS.local.models = localModels.map(model => ({
+REASONING_PROVIDERS.local.models = localModels.map((model) => ({
   value: model.id,
   label: model.name,
   description: `${model.description} (${model.size})`,
@@ -255,9 +255,21 @@ export const getModelProvider = (modelId: string): string => {
   if (!model) {
     if (modelId.includes("claude")) return "anthropic";
     if (modelId.includes("gemini") && !modelId.includes("gemma")) return "gemini";
-    if (modelId.includes("gpt") || modelId.includes("o3") || modelId.includes("o4") || modelId.includes("o1")) return "openai";
+    if (
+      modelId.includes("gpt") ||
+      modelId.includes("o3") ||
+      modelId.includes("o4") ||
+      modelId.includes("o1")
+    )
+      return "openai";
     // Groq-specific models (these run on Groq cloud, not local)
-    if (modelId.includes("qwen/") || modelId.includes("llama") || modelId.includes("mixtral") || modelId.includes("gemma")) return "groq";
+    if (
+      modelId.includes("qwen/") ||
+      modelId.includes("llama") ||
+      modelId.includes("mixtral") ||
+      modelId.includes("gemma")
+    )
+      return "groq";
     // Other qwen, llama, mistral without slash are local
     if (modelId.includes("qwen") || modelId.includes("mistral")) return "local";
   }

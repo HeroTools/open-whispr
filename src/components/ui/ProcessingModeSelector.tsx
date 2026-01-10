@@ -49,9 +49,7 @@ export default function ProcessingModeSelector({
             <Lock className="w-6 h-6 text-blue-600" />
             <h4 className="font-medium text-neutral-900">Local Processing</h4>
           </div>
-          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-            Private
-          </span>
+          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Private</span>
         </div>
         <p className="text-sm text-neutral-600">
           Audio stays on your device. Complete privacy, works offline.

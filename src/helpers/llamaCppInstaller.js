@@ -10,7 +10,7 @@ const os = require("os");
 
 // Only import unzipper in main process
 let unzipper;
-if (typeof window === 'undefined') {
+if (typeof window === "undefined") {
   unzipper = require("unzipper");
 }
 
@@ -54,7 +54,7 @@ class LlamaCppInstaller {
           return true;
         }
       }
-      
+
       // Then check for local installation
       const binaryPath = this.getInstalledBinaryPath();
       await fsPromises.access(binaryPath, fs.constants.X_OK);
@@ -69,14 +69,15 @@ class LlamaCppInstaller {
     return new Promise((resolve) => {
       // Cross-platform command resolution
       const checkCmd = this.platform === "win32" ? "where" : "which";
-      const binaryNames = this.platform === "win32" 
-        ? ["llama-cli.exe", "llama.exe"]
-        : ["llama-cli", "llama", "llama.cpp"];
-      
+      const binaryNames =
+        this.platform === "win32"
+          ? ["llama-cli.exe", "llama.exe"]
+          : ["llama-cli", "llama", "llama.cpp"];
+
       // Try each possible binary name
       let found = false;
       let remaining = binaryNames.length;
-      
+
       for (const name of binaryNames) {
         const proc = spawn(checkCmd, [name], {
           shell: true,
@@ -91,7 +92,7 @@ class LlamaCppInstaller {
         proc.on("close", (code) => {
           if (!found && code === 0 && output) {
             found = true;
-            resolve(output.trim().split('\n')[0]);
+            resolve(output.trim().split("\n")[0]);
           }
           remaining--;
           if (remaining === 0 && !found) {
@@ -117,7 +118,7 @@ class LlamaCppInstaller {
   async getVersion() {
     try {
       const binaryPath = this.binPath || this.getInstalledBinaryPath();
-      
+
       return new Promise((resolve, reject) => {
         const proc = spawn(binaryPath, ["--version"], {
           shell: false,
@@ -176,52 +177,57 @@ class LlamaCppInstaller {
   async downloadBinary(url, destPath) {
     return new Promise((resolve, reject) => {
       const file = createWriteStream(destPath);
-      
-      https.get(url, (response) => {
-        if (response.statusCode === 302 || response.statusCode === 301) {
-          // Handle redirect
-          https.get(response.headers.location, (redirectResponse) => {
-            redirectResponse.pipe(file);
+
+      https
+        .get(url, (response) => {
+          if (response.statusCode === 302 || response.statusCode === 301) {
+            // Handle redirect
+            https
+              .get(response.headers.location, (redirectResponse) => {
+                redirectResponse.pipe(file);
+                file.on("finish", () => {
+                  file.close();
+                  resolve();
+                });
+              })
+              .on("error", reject);
+          } else if (response.statusCode === 200) {
+            response.pipe(file);
             file.on("finish", () => {
               file.close();
               resolve();
             });
-          }).on("error", reject);
-        } else if (response.statusCode === 200) {
-          response.pipe(file);
-          file.on("finish", () => {
-            file.close();
-            resolve();
-          });
-        } else {
-          reject(new Error(`Failed to download: HTTP ${response.statusCode}`));
-        }
-      }).on("error", reject);
+          } else {
+            reject(new Error(`Failed to download: HTTP ${response.statusCode}`));
+          }
+        })
+        .on("error", reject);
     });
   }
 
   async install() {
     try {
       await this.ensureInstallDir();
-      
+
       // For now, return a message about manual installation
       // since we don't have a real binary distribution yet
       return {
         success: false,
-        message: "Please install llama.cpp manually using Homebrew (macOS) or from source. Run: brew install llama.cpp",
+        message:
+          "Please install llama.cpp manually using Homebrew (macOS) or from source. Run: brew install llama.cpp",
       };
-      
+
       // Future implementation:
       // const url = this.getReleaseUrl();
       // const binaryPath = this.getInstalledBinaryPath();
-      // 
+      //
       // await this.downloadBinary(url, binaryPath);
-      // 
+      //
       // // Make executable on Unix-like systems
       // if (this.platform !== "win32") {
       //   await fsPromises.chmod(binaryPath, 0o755);
       // }
-      // 
+      //
       // this.binPath = binaryPath;
       // return { success: true, path: binaryPath };
     } catch (error) {
@@ -251,14 +257,14 @@ class LlamaCppInstaller {
     if (this.binPath) {
       return this.binPath;
     }
-    
+
     // Check for system installation first
     const systemPath = await this.getSystemBinaryPath();
     if (systemPath) {
       this.binPath = systemPath;
       return systemPath;
     }
-    
+
     // Fall back to local installation
     return this.getInstalledBinaryPath();
   }

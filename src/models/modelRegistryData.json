@@ -49,7 +49,7 @@
         {
           "id": "qwen2.5-7b-instruct-q5_k_m",
           "name": "Qwen2.5 7B",
-          "size": "5.4GB", 
+          "size": "5.4GB",
           "sizeBytes": 5798205849,
           "description": "Large model, high quality reasoning (Q5_K_M quantization)",
           "fileName": "qwen2.5-7b-instruct-q5_k_m.gguf",

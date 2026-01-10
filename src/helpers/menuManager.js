@@ -57,10 +57,7 @@ class MenuManager {
             { type: "separator" },
             {
               label: "Speech",
-              submenu: [
-                { role: "startSpeaking" },
-                { role: "stopSpeaking" },
-              ],
+              submenu: [{ role: "startSpeaking" }, { role: "stopSpeaking" }],
             },
           ],
         },
@@ -102,7 +99,7 @@ class MenuManager {
           ],
         },
       ];
-      
+
       const menu = Menu.buildFromTemplate(template);
       Menu.setApplicationMenu(menu);
     } else {
@@ -140,7 +137,7 @@ class MenuManager {
           ],
         },
       ];
-      
+
       const menu = Menu.buildFromTemplate(template);
       controlPanelWindow.setMenu(menu);
     }

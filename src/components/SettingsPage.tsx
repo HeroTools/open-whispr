@@ -33,9 +33,7 @@ interface SettingsPageProps {
   activeSection?: SettingsSectionType;
 }
 
-export default function SettingsPage({
-  activeSection = "general",
-}: SettingsPageProps) {
+export default function SettingsPage({ activeSection = "general" }: SettingsPageProps) {
   // Use custom hooks
   const {
     confirmDialog,
@@ -107,8 +105,7 @@ export default function SettingsPage({
       : "~/.cache/openwhispr/models";
 
   const isUpdateAvailable =
-    !updateStatus.isDevelopment &&
-    (updateStatus.updateAvailable || updateStatus.updateDownloaded);
+    !updateStatus.isDevelopment && (updateStatus.updateAvailable || updateStatus.updateDownloaded);
 
   const whisperHook = useWhisper(showAlertDialog);
   const permissionsHook = usePermissions(showAlertDialog);
@@ -229,7 +226,10 @@ export default function SettingsPage({
           updateAvailable: prev.updateAvailable || statusResult.updateAvailable,
           updateDownloaded: prev.updateDownloaded || statusResult.updateDownloaded,
         }));
-        if ((statusResult.updateAvailable || statusResult.updateDownloaded) && window.electronAPI?.getUpdateInfo) {
+        if (
+          (statusResult.updateAvailable || statusResult.updateDownloaded) &&
+          window.electronAPI?.getUpdateInfo
+        ) {
           const info = await window.electronAPI.getUpdateInfo();
           if (info) {
             setUpdateInfo({
@@ -284,18 +284,21 @@ export default function SettingsPage({
   }, [installInitiated, showAlertDialog]);
 
   const saveReasoningSettings = useCallback(async () => {
-    const normalizedReasoningBase = (cloudReasoningBaseUrl || '').trim();
+    const normalizedReasoningBase = (cloudReasoningBaseUrl || "").trim();
     setCloudReasoningBaseUrl(normalizedReasoningBase);
 
     // Update reasoning settings including the base URL
     updateReasoningSettings({
       useReasoningModel,
       reasoningModel,
-      cloudReasoningBaseUrl: normalizedReasoningBase
+      cloudReasoningBaseUrl: normalizedReasoningBase,
     });
 
     // Save API keys to backend based on provider (including custom)
-    if ((localReasoningProvider === "openai" || localReasoningProvider === "custom") && openaiApiKey) {
+    if (
+      (localReasoningProvider === "openai" || localReasoningProvider === "custom") &&
+      openaiApiKey
+    ) {
       await window.electronAPI?.saveOpenAIKey(openaiApiKey);
     }
     if (localReasoningProvider === "anthropic" && anthropicApiKey) {
@@ -309,8 +312,16 @@ export default function SettingsPage({
     }
 
     // Update API keys in state (for custom provider, save the API key used)
-    const keysToSave: Partial<{openaiApiKey: string; anthropicApiKey: string; geminiApiKey: string; groqApiKey: string}> = {};
-    if ((localReasoningProvider === "openai" || localReasoningProvider === "custom") && openaiApiKey.trim()) {
+    const keysToSave: Partial<{
+      openaiApiKey: string;
+      anthropicApiKey: string;
+      geminiApiKey: string;
+      groqApiKey: string;
+    }> = {};
+    if (
+      (localReasoningProvider === "openai" || localReasoningProvider === "custom") &&
+      openaiApiKey.trim()
+    ) {
       keysToSave.openaiApiKey = openaiApiKey;
     }
     if (localReasoningProvider === "anthropic" && anthropicApiKey.trim()) {
@@ -328,17 +339,14 @@ export default function SettingsPage({
     localStorage.setItem("reasoningProvider", localReasoningProvider);
 
     const providerLabel =
-      localReasoningProvider === 'custom'
-        ? 'Custom'
-        : REASONING_PROVIDERS[
-            localReasoningProvider as keyof typeof REASONING_PROVIDERS
-          ]?.name || localReasoningProvider;
+      localReasoningProvider === "custom"
+        ? "Custom"
+        : REASONING_PROVIDERS[localReasoningProvider as keyof typeof REASONING_PROVIDERS]?.name ||
+          localReasoningProvider;
 
     showAlertDialog({
       title: "Reasoning Settings Saved",
-      description: `AI text enhancement ${
-        useReasoningModel ? "enabled" : "disabled"
-      } with ${
+      description: `AI text enhancement ${useReasoningModel ? "enabled" : "disabled"} with ${
         providerLabel
       } ${reasoningModel}`,
     });
@@ -369,7 +377,7 @@ export default function SettingsPage({
       if (geminiApiKey) {
         await window.electronAPI?.saveGeminiKey(geminiApiKey);
       }
-      
+
       updateApiKeys({ openaiApiKey, anthropicApiKey, geminiApiKey });
       updateTranscriptionSettings({ allowLocalFallback, fallbackWhisperModel });
 
@@ -377,15 +385,15 @@ export default function SettingsPage({
         if (openaiApiKey) {
           await window.electronAPI?.createProductionEnvFile(openaiApiKey);
         }
-        
+
         const savedKeys: string[] = [];
         if (openaiApiKey) savedKeys.push("OpenAI");
         if (anthropicApiKey) savedKeys.push("Anthropic");
         if (geminiApiKey) savedKeys.push("Gemini");
-        
+
         showAlertDialog({
           title: "API Keys Saved",
-          description: `${savedKeys.join(", ")} API key${savedKeys.length > 1 ? 's' : ''} saved successfully! Your credentials have been securely recorded.${
+          description: `${savedKeys.join(", ")} API key${savedKeys.length > 1 ? "s" : ""} saved successfully! Your credentials have been securely recorded.${
             allowLocalFallback ? " Local Whisper fallback is enabled." : ""
           }`,
         });
@@ -446,8 +454,7 @@ export default function SettingsPage({
         showAlertDialog({
           title: "Hotkey Not Saved",
           description:
-            result?.message ||
-            "This key could not be registered. Please choose a different key.",
+            result?.message || "This key could not be registered. Please choose a different key.",
         });
         return;
       }
@@ -470,8 +477,7 @@ export default function SettingsPage({
 
     showConfirmDialog({
       title: "Remove downloaded models?",
-      description:
-        `This deletes all locally cached Whisper models (${cachePathHint}) and frees disk space. You can download them again from the model picker.`,
+      description: `This deletes all locally cached Whisper models (${cachePathHint}) and frees disk space. You can download them again from the model picker.`,
       confirmText: "Delete Models",
       variant: "destructive",
       onConfirm: () => {
@@ -483,8 +489,7 @@ export default function SettingsPage({
               showAlertDialog({
                 title: "Unable to Remove Models",
                 description:
-                  result?.error ||
-                  "Something went wrong while deleting the cached models.",
+                  result?.error || "Something went wrong while deleting the cached models.",
               });
               return;
             }
@@ -518,22 +523,15 @@ export default function SettingsPage({
             {/* App Updates Section */}
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  App Updates
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">App Updates</h3>
                 <p className="text-sm text-gray-600 mb-4">
-                  Keep OpenWhispr up to date with the latest features and
-                  improvements.
+                  Keep OpenWhispr up to date with the latest features and improvements.
                 </p>
               </div>
               <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
                 <div>
-                  <p className="text-sm font-medium text-neutral-800">
-                    Current Version
-                  </p>
-                  <p className="text-xs text-neutral-600">
-                    {currentVersion || "Loading..."}
-                  </p>
+                  <p className="text-sm font-medium text-neutral-800">Current Version</p>
+                  <p className="text-xs text-neutral-600">{currentVersion || "Loading..."}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {updateStatus.isDevelopment ? (
@@ -556,11 +554,10 @@ export default function SettingsPage({
                   onClick={async () => {
                     setCheckingForUpdates(true);
                     try {
-                      const result =
-                        await window.electronAPI?.checkForUpdates();
+                      const result = await window.electronAPI?.checkForUpdates();
                       if (result?.updateAvailable) {
                         setUpdateInfo({
-                          version: result.version || 'unknown',
+                          version: result.version || "unknown",
                           releaseDate: result.releaseDate,
                           releaseNotes: result.releaseNotes,
                         });
@@ -571,13 +568,12 @@ export default function SettingsPage({
                         }));
                         showAlertDialog({
                           title: "Update Available",
-                          description: `Update available: v${result.version || 'new version'}`,
+                          description: `Update available: v${result.version || "new version"}`,
                         });
                       } else {
                         showAlertDialog({
                           title: "No Updates",
-                          description:
-                            result?.message || "No updates available",
+                          description: result?.message || "No updates available",
                         });
                       }
                     } catch (error: any) {
@@ -632,7 +628,7 @@ export default function SettingsPage({
                       ) : (
                         <>
                           <Download size={16} className="mr-2" />
-                          Download Update{updateInfo.version ? ` v${updateInfo.version}` : ''}
+                          Download Update{updateInfo.version ? ` v${updateInfo.version}` : ""}
                         </>
                       )}
                     </Button>
@@ -642,7 +638,9 @@ export default function SettingsPage({
                         <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
                           <div
                             className="h-full bg-green-600 transition-all duration-200"
-                            style={{ width: `${Math.min(100, Math.max(0, updateDownloadProgress))}%` }}
+                            style={{
+                              width: `${Math.min(100, Math.max(0, updateDownloadProgress))}%`,
+                            }}
                           />
                         </div>
                         <p className="text-xs text-neutral-600 text-right">
@@ -658,7 +656,7 @@ export default function SettingsPage({
                     onClick={() => {
                       showConfirmDialog({
                         title: "Install Update",
-                        description: `Ready to install update${updateInfo.version ? ` v${updateInfo.version}` : ''}. The app will restart to complete installation.`,
+                        description: `Ready to install update${updateInfo.version ? ` v${updateInfo.version}` : ""}. The app will restart to complete installation.`,
                         confirmText: "Install & Restart",
                         onConfirm: async () => {
                           try {
@@ -709,9 +707,7 @@ export default function SettingsPage({
 
                 {updateInfo.version && (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2">
-                      Update v{updateInfo.version}
-                    </h4>
+                    <h4 className="font-medium text-blue-900 mb-2">Update v{updateInfo.version}</h4>
                     {updateInfo.releaseDate && (
                       <p className="text-sm text-blue-700 mb-2">
                         Released: {new Date(updateInfo.releaseDate).toLocaleDateString()}
@@ -731,9 +727,7 @@ export default function SettingsPage({
             {/* Hotkey Section */}
             <div className="border-t pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Dictation Hotkey
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Dictation Hotkey</h3>
                 <p className="text-sm text-gray-600 mb-6">
                   Configure the key you press to start and stop voice dictation.
                 </p>
@@ -754,9 +748,7 @@ export default function SettingsPage({
                   </p>
                 </div>
                 <div className="bg-gray-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-gray-900 mb-3">
-                    Click any key to select it:
-                  </h4>
+                  <h4 className="font-medium text-gray-900 mb-3">Click any key to select it:</h4>
                   <React.Suspense
                     fallback={
                       <div className="h-32 flex items-center justify-center text-gray-500">
@@ -770,11 +762,7 @@ export default function SettingsPage({
                     />
                   </React.Suspense>
                 </div>
-                <Button
-                  onClick={saveKey}
-                  disabled={!dictationKey.trim()}
-                  className="w-full"
-                >
+                <Button onClick={saveKey} disabled={!dictationKey.trim()} className="w-full">
                   Save Hotkey
                 </Button>
               </div>
@@ -783,12 +771,9 @@ export default function SettingsPage({
             {/* Permissions Section */}
             <div className="border-t pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Permissions
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Permissions</h3>
                 <p className="text-sm text-gray-600 mb-6">
-                  Test and manage app permissions for microphone and
-                  accessibility.
+                  Test and manage app permissions for microphone and accessibility.
                 </p>
               </div>
               <div className="space-y-3">
@@ -829,13 +814,10 @@ export default function SettingsPage({
             {/* About Section */}
             <div className="border-t pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  About OpenWhispr
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">About OpenWhispr</h3>
                 <p className="text-sm text-gray-600 mb-6">
-                  OpenWhispr converts your speech to text using AI. Press your
-                  hotkey, speak, and we'll type what you said wherever your
-                  cursor is.
+                  OpenWhispr converts your speech to text using AI. Press your hotkey, speak, and
+                  we'll type what you said wherever your cursor is.
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
@@ -843,9 +825,7 @@ export default function SettingsPage({
                   <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
                     <Keyboard className="w-4 h-4 text-white" />
                   </div>
-                  <p className="font-medium text-gray-800 mb-1">
-                    Default Hotkey
-                  </p>
+                  <p className="font-medium text-gray-800 mb-1">Default Hotkey</p>
                   <p className="text-gray-600 font-mono text-xs">
                     {formatHotkeyLabel(dictationKey)}
                   </p>
@@ -855,9 +835,7 @@ export default function SettingsPage({
                     <span className="text-white text-sm">🏷️</span>
                   </div>
                   <p className="font-medium text-gray-800 mb-1">Version</p>
-                  <p className="text-gray-600 text-xs">
-                    {currentVersion || "0.1.0"}
-                  </p>
+                  <p className="text-gray-600 text-xs">{currentVersion || "0.1.0"}</p>
                 </div>
                 <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
                   <div className="w-8 h-8 mx-auto mb-2 bg-green-600 rounded-lg flex items-center justify-center">
@@ -901,8 +879,7 @@ export default function SettingsPage({
                           .then(() => {
                             showAlertDialog({
                               title: "Cleanup Completed",
-                              description:
-                                "✅ Cleanup completed! All app data has been removed.",
+                              description: "✅ Cleanup completed! All app data has been removed.",
                             });
                             setTimeout(() => {
                               window.location.reload();
@@ -929,7 +906,8 @@ export default function SettingsPage({
               <div className="space-y-3 mt-6 p-4 bg-rose-50 border border-rose-200 rounded-xl">
                 <h4 className="font-medium text-rose-900">Local Model Storage</h4>
                 <p className="text-sm text-rose-800">
-                  Remove all downloaded Whisper models from your cache directory to reclaim disk space. You can re-download any model later.
+                  Remove all downloaded Whisper models from your cache directory to reclaim disk
+                  space. You can re-download any model later.
                 </p>
                 <Button
                   variant="destructive"
@@ -1005,7 +983,8 @@ export default function SettingsPage({
                     </Button>
                   </div>
                   <p className="text-xs text-blue-800">
-                    Requests for cloud transcription use this OpenAI-compatible base URL. Leave empty to fall back to
+                    Requests for cloud transcription use this OpenAI-compatible base URL. Leave
+                    empty to fall back to
                     <code className="ml-1">{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>.
                   </p>
                 </div>
@@ -1013,79 +992,75 @@ export default function SettingsPage({
             )}
 
             {useLocalWhisper && whisperHook.whisperInstalled && (
-            <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900">
-                Local Whisper Model
-              </h4>
-              <WhisperModelPicker
-                selectedModel={whisperModel}
-                onModelSelect={setWhisperModel}
-                variant="settings"
+              <div className="space-y-4 p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                <h4 className="font-medium text-purple-900">Local Whisper Model</h4>
+                <WhisperModelPicker
+                  selectedModel={whisperModel}
+                  onModelSelect={setWhisperModel}
+                  variant="settings"
+                />
+              </div>
+            )}
+
+            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+              <h4 className="font-medium text-gray-900">Preferred Language</h4>
+              <LanguageSelector
+                value={preferredLanguage}
+                onChange={(value) => {
+                  setPreferredLanguage(value);
+                  updateTranscriptionSettings({ preferredLanguage: value });
+                }}
+                className="w-full"
               />
             </div>
-          )}
 
-          <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-            <h4 className="font-medium text-gray-900">Preferred Language</h4>
-            <LanguageSelector
-              value={preferredLanguage}
-              onChange={(value) => {
-                setPreferredLanguage(value);
-                updateTranscriptionSettings({ preferredLanguage: value });
+            <Button
+              onClick={() => {
+                const normalizedTranscriptionBase = (cloudTranscriptionBaseUrl || "").trim();
+                setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
+
+                updateTranscriptionSettings({
+                  useLocalWhisper,
+                  whisperModel,
+                  preferredLanguage,
+                  cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
+                });
+
+                if (!useLocalWhisper && openaiApiKey.trim()) {
+                  updateApiKeys({ openaiApiKey });
+                }
+
+                const descriptionParts = [
+                  `Transcription mode: ${useLocalWhisper ? "Local Whisper" : "Cloud"}.`,
+                  `Language: ${preferredLanguage}.`,
+                ];
+
+                if (!useLocalWhisper) {
+                  const baseLabel = normalizedTranscriptionBase || API_ENDPOINTS.TRANSCRIPTION_BASE;
+                  descriptionParts.push(`Endpoint: ${baseLabel}.`);
+                }
+
+                showAlertDialog({
+                  title: "Settings Saved",
+                  description: descriptionParts.join(" "),
+                });
               }}
               className="w-full"
-            />
+            >
+              Save Transcription Settings
+            </Button>
           </div>
-
-          <Button
-            onClick={() => {
-              const normalizedTranscriptionBase = (cloudTranscriptionBaseUrl || '').trim();
-              setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
-
-              updateTranscriptionSettings({
-                useLocalWhisper,
-                whisperModel,
-                preferredLanguage,
-                cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
-              });
-
-              if (!useLocalWhisper && openaiApiKey.trim()) {
-                updateApiKeys({ openaiApiKey });
-              }
-
-              const descriptionParts = [
-                `Transcription mode: ${useLocalWhisper ? 'Local Whisper' : 'Cloud'}.`,
-                `Language: ${preferredLanguage}.`,
-              ];
-
-              if (!useLocalWhisper) {
-                const baseLabel = normalizedTranscriptionBase || API_ENDPOINTS.TRANSCRIPTION_BASE;
-                descriptionParts.push(`Endpoint: ${baseLabel}.`);
-              }
-
-              showAlertDialog({
-                title: "Settings Saved",
-                description: descriptionParts.join(' '),
-              });
-            }}
-            className="w-full"
-          >
-            Save Transcription Settings
-          </Button>
-        </div>
-      );
+        );
 
       case "aiModels":
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                AI Text Enhancement
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Text Enhancement</h3>
               <p className="text-sm text-gray-600 mb-6">
-                Configure how AI models clean up and format your transcriptions.
-                This handles commands like "scratch that", creates proper lists,
-                and fixes obvious errors while preserving your natural tone.
+                Configure how AI models clean up and format your transcriptions. This handles
+                commands like "scratch that", creates proper lists, and fixes obvious errors while
+                preserving your natural tone.
               </p>
             </div>
 
@@ -1123,35 +1098,27 @@ export default function SettingsPage({
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Agent Configuration
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Agent Configuration</h3>
               <p className="text-sm text-gray-600 mb-6">
-                Customize your AI assistant's name and behavior to make
-                interactions more personal and effective.
+                Customize your AI assistant's name and behavior to make interactions more personal
+                and effective.
               </p>
             </div>
 
             <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">
-                💡 How to use agent names:
-              </h4>
+              <h4 className="font-medium text-purple-900 mb-3">💡 How to use agent names:</h4>
               <ul className="text-sm text-purple-800 space-y-2">
+                <li>• Say "Hey {agentName}, write a formal email" for specific instructions</li>
                 <li>
-                  • Say "Hey {agentName}, write a formal email" for specific
-                  instructions
+                  • Use "Hey {agentName}, format this as a list" for text enhancement commands
                 </li>
                 <li>
-                  • Use "Hey {agentName}, format this as a list" for text
-                  enhancement commands
+                  • The agent will recognize when you're addressing it directly vs. dictating
+                  content
                 </li>
                 <li>
-                  • The agent will recognize when you're addressing it directly
-                  vs. dictating content
-                </li>
-                <li>
-                  • Makes conversations feel more natural and helps distinguish
-                  commands from dictation
+                  • Makes conversations feel more natural and helps distinguish commands from
+                  dictation
                 </li>
               </ul>
             </div>
@@ -1184,42 +1151,28 @@ export default function SettingsPage({
             </div>
 
             <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">
-                🎯 Example Usage:
-              </h4>
+              <h4 className="font-medium text-blue-900 mb-2">🎯 Example Usage:</h4>
               <div className="text-sm text-blue-800 space-y-1">
-                <p>
-                  • "Hey {agentName}, write an email to my team about the
-                  meeting"
-                </p>
-                <p>
-                  • "Hey {agentName}, make this more professional" (after
-                  dictating text)
-                </p>
+                <p>• "Hey {agentName}, write an email to my team about the meeting"</p>
+                <p>• "Hey {agentName}, make this more professional" (after dictating text)</p>
                 <p>• "Hey {agentName}, convert this to bullet points"</p>
-                <p>
-                  • Regular dictation: "This is just normal text" (no agent name
-                  needed)
-                </p>
+                <p>• Regular dictation: "This is just normal text" (no agent name needed)</p>
               </div>
             </div>
           </div>
         );
 
-
       case "prompts":
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                AI Prompt Management
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Prompt Management</h3>
               <p className="text-sm text-gray-600 mb-6">
-                View and customize the prompts that power OpenWhispr's AI text processing. 
-                Adjust these to change how your transcriptions are formatted and enhanced.
+                View and customize the prompts that power OpenWhispr's AI text processing. Adjust
+                these to change how your transcriptions are formatted and enhanced.
               </p>
             </div>
-            
+
             <PromptStudio />
           </div>
         );

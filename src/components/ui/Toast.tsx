@@ -16,9 +16,7 @@ export interface ToastContextType {
   dismiss: (id?: string) => void;
 }
 
-const ToastContext = React.createContext<ToastContextType | undefined>(
-  undefined
-);
+const ToastContext = React.createContext<ToastContextType | undefined>(undefined);
 
 export const useToast = () => {
   const context = React.useContext(ToastContext);
@@ -28,12 +26,8 @@ export const useToast = () => {
   return context;
 };
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => {
-  const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>(
-    []
-  );
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>([]);
 
   const toast = React.useCallback((props: Omit<ToastProps, "id">) => {
     const id = Math.random().toString(36).substr(2, 9);

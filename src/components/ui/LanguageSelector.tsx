@@ -36,10 +36,7 @@ export default function LanguageSelector({
   }, [isOpen]);
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target as Node)
-      ) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setSearchQuery("");
       }
@@ -60,15 +57,11 @@ export default function LanguageSelector({
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev < filteredLanguages.length - 1 ? prev + 1 : 0
-        );
+        setHighlightedIndex((prev) => (prev < filteredLanguages.length - 1 ? prev + 1 : 0));
         break;
       case "ArrowUp":
         e.preventDefault();
-        setHighlightedIndex((prev) =>
-          prev > 0 ? prev - 1 : filteredLanguages.length - 1
-        );
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filteredLanguages.length - 1));
         break;
       case "Enter":
         e.preventDefault();
@@ -143,9 +136,7 @@ export default function LanguageSelector({
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filteredLanguages.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500">
-                No languages found
-              </div>
+              <div className="px-3 py-2 text-sm text-gray-500">No languages found</div>
             ) : (
               <div role="listbox">
                 {filteredLanguages.map((language, index) => (
@@ -160,9 +151,7 @@ export default function LanguageSelector({
                     aria-selected={language.value === value}
                   >
                     {language.label}
-                    {language.value === value && (
-                      <span className="ml-2 text-blue-500">✓</span>
-                    )}
+                    {language.value === value && <span className="ml-2 text-blue-500">✓</span>}
                   </button>
                 ))}
               </div>

@@ -21,9 +21,9 @@ class LocalReasoningService extends BaseReasoningService {
       modelId,
       agentName,
       textLength: text.length,
-      configKeys: Object.keys(config)
+      configKeys: Object.keys(config),
     });
-    
+
     if (this.isProcessing) {
       throw new Error("Already processing a request");
     }
@@ -34,28 +34,30 @@ class LocalReasoningService extends BaseReasoningService {
     try {
       // Get prompt using the base class method
       const reasoningPrompt = this.getReasoningPrompt(text, agentName, config);
-      
+
       logger.logReasoning("LOCAL_MODEL_PROMPT_PREPARED", {
         promptLength: reasoningPrompt.length,
-        hasAgentName: !!agentName
+        hasAgentName: !!agentName,
       });
 
       // Get optimized config for reasoning use case
-      const inferenceOptions = inferenceConfig.getConfigForUseCase('reasoning');
-      
+      const inferenceOptions = inferenceConfig.getConfigForUseCase("reasoning");
+
       // Calculate max tokens with configurable limits
-      const maxTokens = config.maxTokens || this.calculateMaxTokens(
-        text.length,
-        TOKEN_LIMITS.MIN_TOKENS,
-        TOKEN_LIMITS.MAX_TOKENS,
-        TOKEN_LIMITS.TOKEN_MULTIPLIER
-      );
-      
+      const maxTokens =
+        config.maxTokens ||
+        this.calculateMaxTokens(
+          text.length,
+          TOKEN_LIMITS.MIN_TOKENS,
+          TOKEN_LIMITS.MAX_TOKENS,
+          TOKEN_LIMITS.TOKEN_MULTIPLIER
+        );
+
       logger.logReasoning("LOCAL_MODEL_INFERENCE_CONFIG", {
         modelId,
         maxTokens,
         temperature: config.temperature || inferenceOptions.temperature,
-        contextSize: config.contextSize || TOKEN_LIMITS.REASONING_CONTEXT_SIZE
+        contextSize: config.contextSize || TOKEN_LIMITS.REASONING_CONTEXT_SIZE,
       });
 
       // Run inference
@@ -65,27 +67,27 @@ class LocalReasoningService extends BaseReasoningService {
         temperature: config.temperature || inferenceOptions.temperature,
         contextSize: config.contextSize || TOKEN_LIMITS.REASONING_CONTEXT_SIZE,
       });
-      
+
       const processingTime = Date.now() - startTime;
-      
+
       logger.logReasoning("LOCAL_MODEL_SUCCESS", {
         modelId,
         processingTimeMs: processingTime,
         resultLength: result.length,
-        resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : "")
+        resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
       });
 
       return result;
     } catch (error) {
       const processingTime = Date.now() - startTime;
-      
+
       logger.logReasoning("LOCAL_MODEL_ERROR", {
         modelId,
         processingTimeMs: processingTime,
         error: (error as Error).message,
-        stack: (error as Error).stack
+        stack: (error as Error).stack,
       });
-      
+
       console.error("LocalReasoningService error:", error);
       throw error;
     } finally {
@@ -108,7 +110,7 @@ class LocalReasoningService extends BaseReasoningService {
   async getDownloadedModels() {
     try {
       const modelsWithStatus = await modelManager.getModelsWithStatus();
-      return modelsWithStatus.filter(model => model.isDownloaded);
+      return modelsWithStatus.filter((model) => model.isDownloaded);
     } catch (error) {
       console.error("Failed to get downloaded models:", error);
       return [];
