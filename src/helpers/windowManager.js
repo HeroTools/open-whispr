@@ -185,11 +185,7 @@ class WindowManager {
     this.controlPanelWindow.on("close", (event) => {
       if (!this.isQuitting) {
         event.preventDefault();
-        if (process.platform === "darwin") {
-          this.controlPanelWindow.minimize();
-        } else {
-          this.hideControlPanelToTray();
-        }
+        this.hideControlPanelToTray();
       }
     });
 
@@ -265,6 +261,11 @@ class WindowManager {
     }
 
     this.controlPanelWindow.hide();
+
+    // On macOS, hide from Dock when control panel is hidden
+    if (process.platform === "darwin") {
+      app.dock.hide();
+    }
   }
 
   hideDictationPanel() {

@@ -72,6 +72,10 @@ class TrayManager {
         if (process.platform === "win32") {
           this.controlPanelWindow.setSkipTaskbar(false);
         }
+        // On macOS, show Dock icon when opening control panel
+        if (process.platform === "darwin") {
+          app.dock.show();
+        }
         if (!this.controlPanelWindow.isVisible()) {
           this.controlPanelWindow.show();
         }
@@ -90,6 +94,10 @@ class TrayManager {
         if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
           if (process.platform === "win32") {
             this.controlPanelWindow.setSkipTaskbar(false);
+          }
+          // On macOS, show Dock icon when opening control panel
+          if (process.platform === "darwin") {
+            app.dock.show();
           }
           this.controlPanelWindow.show();
           this.controlPanelWindow.focus();
