@@ -104,6 +104,16 @@ export interface PythonInstallProgressData {
   percentage: number;
 }
 
+export interface PasteToolsResult {
+  platform: "darwin" | "win32" | "linux";
+  available: boolean;
+  method: string | null;
+  requiresPermission: boolean;
+  isWayland?: boolean;
+  tools?: string[];
+  recommendedInstall?: string;
+}
+
 // Additional interface missing from preload.js
 export interface SaveSettings {
   useLocalWhisper: boolean;
@@ -144,6 +154,7 @@ declare global {
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
       pasteFromClipboard: () => Promise<{ success: boolean; error?: string }>;
       pasteFromClipboardWithFallback: () => Promise<{ success: boolean; error?: string }>;
+      checkPasteTools: () => Promise<PasteToolsResult>;
 
       // Settings
       getSettings: () => Promise<any>;
