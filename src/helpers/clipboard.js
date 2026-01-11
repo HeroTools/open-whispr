@@ -507,6 +507,74 @@ Would you like to open System Settings now?`;
       throw error;
     }
   }
+
+  /**
+   * Check availability of paste tools on the current platform.
+   * Returns platform-specific information about paste capability.
+   */
+  checkPasteTools() {
+    const platform = process.platform;
+
+    // macOS uses AppleScript - always available, but needs accessibility permission
+    if (platform === "darwin") {
+      return {
+        platform: "darwin",
+        available: true,
+        method: "applescript",
+        requiresPermission: true,
+        tools: [],
+      };
+    }
+
+    // Windows uses PowerShell SendKeys - always available
+    if (platform === "win32") {
+      return {
+        platform: "win32",
+        available: true,
+        method: "powershell",
+        requiresPermission: false,
+        tools: [],
+      };
+    }
+
+    // Linux - check for available paste tools
+    const isWayland =
+      (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
+      !!process.env.WAYLAND_DISPLAY;
+
+    const commandExists = (cmd) => {
+      try {
+        const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
+          stdio: "ignore",
+        });
+        return res.status === 0;
+      } catch {
+        return false;
+      }
+    };
+
+    // Check which tools are available
+    const tools = [];
+    const toolsToCheck = isWayland
+      ? ["wtype", "ydotool", "xdotool"] // xdotool as fallback for XWayland
+      : ["xdotool"];
+
+    for (const tool of toolsToCheck) {
+      if (commandExists(tool)) {
+        tools.push(tool);
+      }
+    }
+
+    return {
+      platform: "linux",
+      available: tools.length > 0,
+      method: tools.length > 0 ? tools[0] : null,
+      requiresPermission: false,
+      isWayland,
+      tools,
+      recommendedInstall: isWayland ? "wtype" : "xdotool",
+    };
+  }
 }
 
 module.exports = ClipboardManager;
