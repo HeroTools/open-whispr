@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
+import { X } from "lucide-react";
 import { useToast } from "./components/ui/Toast";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
@@ -52,9 +53,7 @@ const AudioLevelIndicator = ({ level }) => {
   return (
     <div className="flex items-center justify-center gap-0.5">
       {[...Array(barCount)].map((_, i) => {
-        // Each bar has a threshold - it lights up when level exceeds it
-        const threshold = (i + 1) / barCount;
-        const isActive = level > (i * 0.15);
+        const isActive = level > i * 0.15;
         // Height varies based on level and position
         const heightFactor = isActive ? Math.min(1, (level - i * 0.15) * 3 + 0.3) : 0.3;
         const height = minHeight + (maxHeight - minHeight) * heightFactor;
@@ -130,7 +129,7 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, audioLevel, toggleListening } = useAudioRecording(toast, {
+  const { isRecording, isProcessing, audioLevel, toggleListening, cancelRecording } = useAudioRecording(toast, {
     onToggle: handleDictationToggle,
   });
 
@@ -236,6 +235,20 @@ export default function App() {
             }
           }}
         >
+          {isRecording && isHovered && (
+            <Tooltip content="Cancel recording">
+              <button
+                aria-label="Cancel recording"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  cancelRecording();
+                }}
+                className="w-7 h-7 rounded-full bg-neutral-800/90 hover:bg-red-500 border border-white/20 hover:border-red-400 flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
+              >
+                <X size={12} strokeWidth={2.5} color="white" />
+              </button>
+            </Tooltip>
+          )}
           <Tooltip content={micProps.tooltip}>
             <button
               ref={buttonRef}

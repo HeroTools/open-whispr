@@ -50,7 +50,7 @@ class AudioManager {
 
   async startRecording() {
     try {
-      if (this.isRecording) {
+      if (this.isRecording || this.isProcessing || this.mediaRecorder?.state === "recording") {
         return false;
       }
 
@@ -75,9 +75,6 @@ class AudioManager {
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
-
-        if (audioBlob.size === 0) {
-        }
 
         const durationSeconds = this.recordingStartTime
           ? (Date.now() - this.recordingStartTime) / 1000
@@ -121,7 +118,7 @@ class AudioManager {
   }
 
   stopRecording() {
-    if (this.mediaRecorder && this.isRecording) {
+    if (this.mediaRecorder?.state === "recording") {
       this.mediaRecorder.stop();
       // State change will be handled in onstop callback
       return true;
@@ -177,6 +174,29 @@ class AudioManager {
 
     this.analyser = null;
     this.onAudioLevel?.(0);
+  }
+
+  cancelRecording() {
+    if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+      this.cleanupAudioAnalysis();
+
+      this.mediaRecorder.onstop = () => {
+        this.isRecording = false;
+        this.isProcessing = false;
+        this.audioChunks = [];
+        this.recordingStartTime = null;
+        this.onStateChange?.({ isRecording: false, isProcessing: false });
+      };
+
+      this.mediaRecorder.stop();
+
+      if (this.mediaRecorder.stream) {
+        this.mediaRecorder.stream.getTracks().forEach((track) => track.stop());
+      }
+
+      return true;
+    }
+    return false;
   }
 
   async processAudio(audioBlob, metadata = {}) {
@@ -1160,7 +1180,7 @@ class AudioManager {
   }
 
   cleanup() {
-    if (this.mediaRecorder && this.isRecording) {
+    if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
     }
     this.cleanupAudioAnalysis();
