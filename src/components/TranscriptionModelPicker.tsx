@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
-import { Download, Trash2, Check, Cloud, Lock } from "lucide-react";
+import { Download, Trash2, Check, Cloud, Lock, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import ModelCardList from "./ui/ModelCardList";
@@ -78,15 +78,36 @@ export default function TranscriptionModelPicker({
   const isLoadingRef = useRef(false);
   const loadLocalModelsRef = useRef<(() => Promise<void>) | null>(null);
   const ensureValidCloudSelectionRef = useRef<(() => void) | null>(null);
+  const selectedLocalModelRef = useRef(selectedLocalModel);
+  const onLocalModelSelectRef = useRef(onLocalModelSelect);
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
-
   const cloudProviders = useMemo(() => getTranscriptionProviders(), []);
 
+  useEffect(() => {
+    selectedLocalModelRef.current = selectedLocalModel;
+  }, [selectedLocalModel]);
+  useEffect(() => {
+    onLocalModelSelectRef.current = onLocalModelSelect;
+  }, [onLocalModelSelect]);
+
+  const validateAndSelectModel = useCallback((loadedModels: WhisperModel[]) => {
+    const current = selectedLocalModelRef.current;
+    if (!current) return;
+
+    const downloaded = loadedModels.filter((m) => m.downloaded);
+    const isCurrentDownloaded = loadedModels.find((m) => m.model === current)?.downloaded;
+
+    if (!isCurrentDownloaded && downloaded.length > 0) {
+      onLocalModelSelectRef.current(downloaded[0].model);
+    } else if (!isCurrentDownloaded && downloaded.length === 0) {
+      onLocalModelSelectRef.current("");
+    }
+  }, []);
+
   const loadLocalModels = useCallback(async () => {
-    // Prevent concurrent loading
     if (isLoadingRef.current) return;
     isLoadingRef.current = true;
 
@@ -94,6 +115,7 @@ export default function TranscriptionModelPicker({
       const result = await window.electronAPI?.listWhisperModels();
       if (result?.success) {
         setLocalModels(result.models);
+        validateAndSelectModel(result.models);
       }
     } catch (error) {
       console.error("[TranscriptionModelPicker] Failed to load models:", error);
@@ -101,7 +123,7 @@ export default function TranscriptionModelPicker({
     } finally {
       isLoadingRef.current = false;
     }
-  }, []);
+  }, [validateAndSelectModel]);
 
   const ensureValidCloudSelection = useCallback(() => {
     const isValidProvider = VALID_CLOUD_PROVIDER_IDS.includes(selectedCloudProvider);
@@ -128,16 +150,13 @@ export default function TranscriptionModelPicker({
     onCloudModelSelect,
   ]);
 
-  // Keep refs in sync to avoid stale closures in the mode-switching effect
   useEffect(() => {
     loadLocalModelsRef.current = loadLocalModels;
   }, [loadLocalModels]);
-
   useEffect(() => {
     ensureValidCloudSelectionRef.current = ensureValidCloudSelection;
   }, [ensureValidCloudSelection]);
 
-  // Only load models once on mount when in local mode, or when switching to local mode
   useEffect(() => {
     if (useLocalWhisper) {
       if (!hasLoadedRef.current) {
@@ -145,7 +164,7 @@ export default function TranscriptionModelPicker({
         loadLocalModelsRef.current?.();
       }
     } else {
-      hasLoadedRef.current = false; // Reset when switching to cloud
+      hasLoadedRef.current = false;
       ensureValidCloudSelectionRef.current?.();
     }
   }, [useLocalWhisper]);
@@ -156,18 +175,23 @@ export default function TranscriptionModelPicker({
     return () => window.removeEventListener("openwhispr-models-cleared", handleModelsCleared);
   }, [loadLocalModels]);
 
-  const { downloadingModel, downloadProgress, downloadModel, deleteModel, isDownloadingModel } =
-    useModelDownload({
-      modelType: "whisper",
-      onDownloadComplete: loadLocalModels,
-    });
+  const {
+    downloadingModel,
+    downloadProgress,
+    downloadModel,
+    deleteModel,
+    isDownloadingModel,
+    cancelDownload,
+    isCancelling,
+  } = useModelDownload({
+    modelType: "whisper",
+    onDownloadComplete: loadLocalModels,
+  });
 
   const handleModeChange = useCallback(
     (isLocal: boolean) => {
       onModeChange(isLocal);
-      if (!isLocal) {
-        ensureValidCloudSelection();
-      }
+      if (!isLocal) ensureValidCloudSelection();
     },
     [onModeChange, ensureValidCloudSelection]
   );
@@ -187,7 +211,6 @@ export default function TranscriptionModelPicker({
     (providerId: string) => {
       const tab = LOCAL_PROVIDER_TABS.find((t) => t.id === providerId);
       if (tab?.disabled) return;
-
       setInternalLocalProvider(providerId);
       onLocalProviderSelect?.(providerId);
     },
@@ -200,16 +223,25 @@ export default function TranscriptionModelPicker({
         title: "Delete Model",
         description:
           "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
-        onConfirm: () => deleteModel(modelId, loadLocalModels),
+        onConfirm: async () => {
+          await deleteModel(modelId, async () => {
+            const result = await window.electronAPI?.listWhisperModels();
+            if (result?.success) {
+              setLocalModels(result.models);
+              validateAndSelectModel(result.models);
+            }
+          });
+        },
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteModel, loadLocalModels]
+    [showConfirmDialog, deleteModel, validateAndSelectModel]
   );
 
-  const currentCloudProvider = useMemo<TranscriptionProviderData | undefined>(() => {
-    return cloudProviders.find((p) => p.id === selectedCloudProvider);
-  }, [cloudProviders, selectedCloudProvider]);
+  const currentCloudProvider = useMemo<TranscriptionProviderData | undefined>(
+    () => cloudProviders.find((p) => p.id === selectedCloudProvider),
+    [cloudProviders, selectedCloudProvider]
+  );
 
   const cloudModelOptions = useMemo(() => {
     if (!currentCloudProvider) return [];
@@ -223,108 +255,111 @@ export default function TranscriptionModelPicker({
 
   const progressDisplay = useMemo(() => {
     if (!downloadingModel || !useLocalWhisper) return null;
-
     const modelInfo = WHISPER_MODEL_INFO[downloadingModel];
-    const modelName = modelInfo?.name || downloadingModel;
-
     return (
-      <DownloadProgressBar modelName={modelName} progress={downloadProgress} styles={styles} />
+      <DownloadProgressBar
+        modelName={modelInfo?.name || downloadingModel}
+        progress={downloadProgress}
+        styles={styles}
+      />
     );
   }, [downloadingModel, downloadProgress, useLocalWhisper, styles]);
 
-  const renderLocalModels = () => {
-    return (
-      <div className="space-y-2">
-        {localModels.map((model) => {
-          const modelId = model.model;
-          const info = WHISPER_MODEL_INFO[modelId] || {
-            name: modelId,
-            description: "Model",
-            size: "Unknown",
-          };
-          const isSelected = modelId === selectedLocalModel;
-          const isDownloading = isDownloadingModel(modelId);
-          const isDownloaded = model.downloaded;
+  const renderLocalModels = () => (
+    <div className="space-y-2">
+      {localModels.map((model) => {
+        const modelId = model.model;
+        const info = WHISPER_MODEL_INFO[modelId] || {
+          name: modelId,
+          description: "Model",
+          size: "Unknown",
+        };
+        const isSelected = modelId === selectedLocalModel;
+        const isDownloading = isDownloadingModel(modelId);
+        const isDownloaded = model.downloaded;
 
-          return (
-            <div
-              key={modelId}
-              className={`p-3 rounded-lg border-2 transition-all ${
-                isSelected ? styles.modelCard.selected : styles.modelCard.default
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <ProviderIcon provider="whisper" className="w-4 h-4" />
-                    <span className="font-medium text-gray-900">{info.name}</span>
-                    {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
-                    {info.recommended && (
-                      <span className={styles.badges.recommended}>Recommended</span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="text-xs text-gray-600">{info.description}</span>
-                    <span className="text-xs text-gray-500">
-                      • {model.size_mb ? `${model.size_mb}MB` : info.size}
-                    </span>
-                    {isDownloaded && (
-                      <span className={styles.badges.downloaded}>
-                        <Check className="inline w-3 h-3 mr-1" />
-                        Downloaded
-                      </span>
-                    )}
-                  </div>
+        return (
+          <div
+            key={modelId}
+            className={`p-3 rounded-lg border-2 transition-all ${
+              isSelected ? styles.modelCard.selected : styles.modelCard.default
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <ProviderIcon provider="whisper" className="w-4 h-4" />
+                  <span className="font-medium text-gray-900">{info.name}</span>
+                  {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
+                  {info.recommended && (
+                    <span className={styles.badges.recommended}>Recommended</span>
+                  )}
                 </div>
-
-                <div className="flex gap-2">
-                  {isDownloaded ? (
-                    <>
-                      {!isSelected && (
-                        <Button
-                          onClick={() => onLocalModelSelect(modelId)}
-                          size="sm"
-                          variant="outline"
-                          className={styles.buttons.select}
-                        >
-                          Select
-                        </Button>
-                      )}
-                      <Button
-                        onClick={() => handleDelete(modelId)}
-                        size="sm"
-                        variant="outline"
-                        className={styles.buttons.delete}
-                      >
-                        <Trash2 size={14} />
-                        <span className="ml-1">Delete</span>
-                      </Button>
-                    </>
-                  ) : (
-                    <Button
-                      onClick={() => downloadModel(modelId, onLocalModelSelect)}
-                      size="sm"
-                      disabled={isDownloading}
-                      className={styles.buttons.download}
-                    >
-                      {isDownloading ? (
-                        `${Math.round(downloadProgress.percentage)}%`
-                      ) : (
-                        <>
-                          <Download size={14} />
-                          <span className="ml-1">Download</span>
-                        </>
-                      )}
-                    </Button>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-xs text-gray-600">{info.description}</span>
+                  <span className="text-xs text-gray-500">
+                    • {model.size_mb ? `${model.size_mb}MB` : info.size}
+                  </span>
+                  {isDownloaded && (
+                    <span className={styles.badges.downloaded}>
+                      <Check className="inline w-3 h-3 mr-1" />
+                      Downloaded
+                    </span>
                   )}
                 </div>
               </div>
+
+              <div className="flex gap-2">
+                {isDownloaded ? (
+                  <>
+                    {!isSelected && (
+                      <Button
+                        onClick={() => onLocalModelSelect(modelId)}
+                        size="sm"
+                        variant="outline"
+                        className={styles.buttons.select}
+                      >
+                        Select
+                      </Button>
+                    )}
+                    <Button
+                      onClick={() => handleDelete(modelId)}
+                      size="sm"
+                      variant="outline"
+                      className={styles.buttons.delete}
+                    >
+                      <Trash2 size={14} />
+                      <span className="ml-1">Delete</span>
+                    </Button>
+                  </>
+                ) : isDownloading ? (
+                  <Button
+                    onClick={cancelDownload}
+                    disabled={isCancelling}
+                    size="sm"
+                    variant="outline"
+                    className="text-red-600 border-red-300 hover:bg-red-50"
+                  >
+                    <X size={14} />
+                    <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={() => downloadModel(modelId, onLocalModelSelect)}
+                    size="sm"
+                    className={styles.buttons.download}
+                  >
+                    <Download size={14} />
+                    <span className="ml-1">Download</span>
+                  </Button>
+                )}
+              </div>
             </div>
-          );
-        })}
-      </div>
-    );
-  };
+          </div>
+        );
+      })}
+    </div>
+  );
 
   const renderLocalProviderTab = (
     provider: (typeof LOCAL_PROVIDER_TABS)[0],

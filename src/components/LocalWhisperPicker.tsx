@@ -33,24 +33,47 @@ export default function LocalWhisperPicker({
   const [models, setModels] = useState<WhisperModel[]>([]);
   const hasLoadedRef = useRef(false);
   const downloadingModelRef = useRef<string | null>(null);
+  const selectedModelRef = useRef(selectedModel);
+  const onModelSelectRef = useRef(onModelSelect);
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
+
+  useEffect(() => {
+    selectedModelRef.current = selectedModel;
+  }, [selectedModel]);
+  useEffect(() => {
+    onModelSelectRef.current = onModelSelect;
+  }, [onModelSelect]);
+
+  const validateAndSelectModel = useCallback((loadedModels: WhisperModel[]) => {
+    const current = selectedModelRef.current;
+    if (!current) return;
+
+    const downloaded = loadedModels.filter((m) => m.downloaded);
+    const isCurrentDownloaded = loadedModels.find((m) => m.model === current)?.downloaded;
+
+    if (!isCurrentDownloaded && downloaded.length > 0) {
+      onModelSelectRef.current(downloaded[0].model);
+    } else if (!isCurrentDownloaded && downloaded.length === 0) {
+      onModelSelectRef.current("");
+    }
+  }, []);
 
   const loadModels = useCallback(async () => {
     try {
       const result = await window.electronAPI?.listWhisperModels();
       if (result?.success) {
         setModels(result.models);
+        validateAndSelectModel(result.models);
       }
     } catch (error) {
       console.error("[LocalWhisperPicker] Failed to load models:", error);
       setModels([]);
     }
-  }, []);
+  }, [validateAndSelectModel]);
 
-  // Only load models once on mount to prevent re-renders
   useEffect(() => {
     if (!hasLoadedRef.current) {
       hasLoadedRef.current = true;
@@ -70,7 +93,6 @@ export default function LocalWhisperPicker({
     modelType: "whisper",
     onDownloadComplete: () => {
       loadModels();
-      // Notify parent when a model is downloaded (use ref to avoid stale closure)
       if (downloadingModelRef.current && onModelDownloaded) {
         onModelDownloaded(downloadingModelRef.current);
       }
@@ -78,7 +100,6 @@ export default function LocalWhisperPicker({
     onModelsCleared: loadModels,
   });
 
-  // Keep ref in sync with downloadingModel to avoid stale closure in onDownloadComplete
   useEffect(() => {
     downloadingModelRef.current = downloadingModel;
   }, [downloadingModel]);
@@ -89,21 +110,30 @@ export default function LocalWhisperPicker({
         title: "Delete Model",
         description:
           "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
-        onConfirm: () => deleteModel(modelId, loadModels),
+        onConfirm: async () => {
+          await deleteModel(modelId, async () => {
+            const result = await window.electronAPI?.listWhisperModels();
+            if (result?.success) {
+              setModels(result.models);
+              validateAndSelectModel(result.models);
+            }
+          });
+        },
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteModel, loadModels]
+    [showConfirmDialog, deleteModel, validateAndSelectModel]
   );
 
   const progressDisplay = useMemo(() => {
     if (!downloadingModel) return null;
-
     const modelInfo = WHISPER_MODEL_INFO[downloadingModel];
-    const modelName = modelInfo?.name || downloadingModel;
-
     return (
-      <DownloadProgressBar modelName={modelName} progress={downloadProgress} styles={styles} />
+      <DownloadProgressBar
+        modelName={modelInfo?.name || downloadingModel}
+        progress={downloadProgress}
+        styles={styles}
+      />
     );
   }, [downloadingModel, downloadProgress, styles]);
 
