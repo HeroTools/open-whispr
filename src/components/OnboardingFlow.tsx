@@ -52,12 +52,22 @@ type ReasoningModelOption = {
 };
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
+  // Max valid step index for the current onboarding flow (6 steps, index 0-5)
+  const MAX_STEP = 5;
+
   const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
     "onboardingCurrentStep",
     0,
     {
       serialize: String,
-      deserialize: (value) => parseInt(value, 10),
+      deserialize: (value) => {
+        const parsed = parseInt(value, 10);
+        // Clamp to valid range to handle users upgrading from older versions
+        // with different step counts
+        if (isNaN(parsed) || parsed < 0) return 0;
+        if (parsed > MAX_STEP) return MAX_STEP;
+        return parsed;
+      },
     }
   );
 

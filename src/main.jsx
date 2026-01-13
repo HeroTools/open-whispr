@@ -20,7 +20,9 @@ function AppRouter() {
   useEffect(() => {
     // Check if onboarding has been completed
     const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
-    const currentStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
+    // Clamp step to valid range (0-5) for current 6-step onboarding
+    const rawStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
+    const currentStep = Math.max(0, Math.min(rawStep, 5));
 
     if (isControlPanel && !onboardingCompleted) {
       // Show onboarding for control panel if not completed
