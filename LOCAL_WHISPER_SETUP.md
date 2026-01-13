@@ -1,6 +1,6 @@
 # Local Whisper Setup
 
-OpenWhispr supports local speech-to-text processing using OpenAI's Whisper models. This keeps your audio completely private—nothing leaves your device.
+OpenWhispr supports local speech-to-text processing using whisper.cpp. This keeps your audio completely private—nothing leaves your device.
 
 ## Quick Start
 
@@ -16,54 +16,40 @@ The first transcription will download the model automatically.
 
 | Model  | Size   | Speed    | Quality | RAM    | Best For              |
 |--------|--------|----------|---------|--------|-----------------------|
-| tiny   | 39MB   | Fastest  | Basic   | ~1GB   | Quick notes           |
-| base   | 74MB   | Fast     | Good    | ~1GB   | **Recommended**       |
-| small  | 244MB  | Medium   | Better  | ~2GB   | Professional use      |
-| medium | 769MB  | Slow     | High    | ~5GB   | High accuracy         |
-| large  | 1.5GB  | Slowest  | Best    | ~10GB  | Maximum quality       |
-| turbo  | 809MB  | Fast     | High    | ~6GB   | Best speed/quality    |
+| tiny   | 75MB   | Fastest  | Basic   | ~1GB   | Quick notes           |
+| base   | 142MB  | Fast     | Good    | ~1GB   | **Recommended**       |
+| small  | 466MB  | Medium   | Better  | ~2GB   | Professional use      |
+| medium | 1.5GB  | Slow     | High    | ~5GB   | High accuracy         |
+| large  | 3GB    | Slowest  | Best    | ~10GB  | Maximum quality       |
 
 ## How It Works
 
-OpenWhispr automatically:
-1. Creates an isolated Python virtual environment (no system modifications)
-2. Installs Whisper and dependencies into that environment
-3. Downloads the selected model on first use
-4. Processes audio locally using FFmpeg (bundled with the app)
+OpenWhispr uses whisper.cpp, a high-performance C++ implementation of OpenAI's Whisper model:
+
+1. whisper.cpp binary is bundled with the app (or uses system installation as fallback)
+2. GGML models are downloaded on first use to `~/.cache/openwhispr/whisper-models/`
+3. Audio is processed locally using FFmpeg (bundled with the app)
 
 ## Requirements
 
-- **Disk Space**: 39MB–1.5GB depending on model
+- **Disk Space**: 75MB–3GB depending on model
 - **RAM**: 1GB–10GB depending on model
-- **Python**: System Python 3.7+ (used only to create the venv)
+- **No additional dependencies required** - whisper.cpp is bundled
 
 ## File Locations
 
 | Data              | macOS                                        | Windows                              | Linux                           |
 |-------------------|----------------------------------------------|--------------------------------------|---------------------------------|
-| Virtual Env       | `~/Library/Application Support/OpenWhispr/python/venv` | `%APPDATA%\OpenWhispr\python\venv` | `~/.config/OpenWhispr/python/venv` |
-| Models            | `~/.cache/whisper/`                          | `%USERPROFILE%\.cache\whisper\`      | `~/.cache/whisper/`             |
-
-## Advanced: Custom Python
-
-To use a specific Python interpreter instead of the managed venv:
-
-```bash
-# macOS/Linux
-export OPENWHISPR_PYTHON=/usr/local/bin/python3.11
-
-# Windows (permanent)
-setx OPENWHISPR_PYTHON "C:\Python311\python.exe"
-```
-
-When set, OpenWhispr uses this interpreter directly. Ensure Whisper is installed in that environment.
+| Models            | `~/.cache/openwhispr/whisper-models/`        | `%USERPROFILE%\.cache\openwhispr\whisper-models\` | `~/.cache/openwhispr/whisper-models/` |
 
 ## Troubleshooting
 
 ### "Not Found" Status
 1. Click **Recheck Installation** in Control Panel
 2. Restart the app
-3. Check console logs for Python/Whisper errors
+3. If bundled binary fails, install via package manager:
+   - macOS: `brew install whisper-cpp`
+   - Linux: Build from source at https://github.com/ggml-org/whisper.cpp
 
 ### Transcription Fails
 1. Verify microphone permissions

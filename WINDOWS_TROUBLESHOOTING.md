@@ -20,15 +20,15 @@
 2. Verify mic is selected: Sound settings → Input
 3. Test recording in Windows Voice Recorder first
 
-### Python Not Found
+### whisper.cpp Not Working
 
-**Symptoms:** "spawn python ENOENT" error
+**Symptoms:** Local transcription fails
 
 **Solutions:**
-1. Use OpenWhispr's built-in Python installer (Control Panel → Settings)
-2. Or install Python 3.11+ from [python.org](https://python.org) with "Add to PATH" checked
-3. Verify: `python --version` in Command Prompt
-4. Set custom path: `setx OPENWHISPR_PYTHON "C:\Path\To\python.exe"`
+1. whisper.cpp is bundled with the app - try reinstalling
+2. Check antivirus isn't blocking the whisper-cpp executable
+3. Clear model cache: delete `%USERPROFILE%\.cache\openwhispr\whisper-models`
+4. Try cloud mode as fallback
 
 ### FFmpeg Issues
 
@@ -56,9 +56,9 @@ Logs saved to: `%APPDATA%\OpenWhispr\logs\`
 | Error | Meaning | Fix |
 |-------|---------|-----|
 | Audio buffer empty | Mic not capturing | Check permissions, try different mic |
-| Python version check failed | Python not responding | Reinstall Python, check PATH |
+| whisper.cpp not found | Binary not accessible | Reinstall app, check antivirus |
 | FFmpeg not found | Can't find FFmpeg | Reinstall app, check antivirus |
-| Whisper installation failed | Can't install Whisper | Check Python, internet; try cloud mode |
+| Model download failed | Can't download GGML model | Check internet; try cloud mode |
 
 ## Windows-Specific Tips
 

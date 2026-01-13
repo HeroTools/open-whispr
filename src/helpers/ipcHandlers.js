@@ -87,7 +87,7 @@ class IPCHandlers {
         }
         return { success: true };
       } catch (error) {
-        console.error("Failed to save settings:", error);
+        debugLogger.error("Failed to save settings:", error);
         return { success: false, error: error.message };
       }
     });
@@ -180,55 +180,6 @@ class IPCHandlers {
       return this.whisperManager.checkWhisperInstallation();
     });
 
-    ipcMain.handle("check-python-installation", async (event) => {
-      return this.whisperManager.checkPythonInstallation();
-    });
-
-    ipcMain.handle("install-python", async (event) => {
-      try {
-        const result = await this.whisperManager.installPython((progress) => {
-          event.sender.send("python-install-progress", {
-            type: "progress",
-            stage: progress.stage,
-            percentage: progress.percentage,
-          });
-        });
-        return result;
-      } catch (error) {
-        throw error;
-      }
-    });
-
-    ipcMain.handle("install-whisper", async (event) => {
-      try {
-        // Set up progress forwarding for installation
-        const originalConsoleLog = console.log;
-        console.log = (...args) => {
-          const message = args.join(" ");
-          if (
-            message.includes("Installing") ||
-            message.includes("Downloading") ||
-            message.includes("Collecting")
-          ) {
-            event.sender.send("whisper-install-progress", {
-              type: "progress",
-              message: message,
-            });
-          }
-          originalConsoleLog(...args);
-        };
-
-        const result = await this.whisperManager.installWhisper();
-
-        // Restore original console.log
-        console.log = originalConsoleLog;
-
-        return result;
-      } catch (error) {
-        throw error;
-      }
-    });
-
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
       try {
         const result = await this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
@@ -266,6 +217,10 @@ class IPCHandlers {
 
     ipcMain.handle("delete-whisper-model", async (event, modelName) => {
       return this.whisperManager.deleteWhisperModel(modelName);
+    });
+
+    ipcMain.handle("delete-all-whisper-models", async () => {
+      return this.whisperManager.deleteAllWhisperModels();
     });
 
     ipcMain.handle("cancel-whisper-download", async (event) => {
@@ -311,13 +266,13 @@ class IPCHandlers {
     // Model management handlers
     ipcMain.handle("model-get-all", async () => {
       try {
-        console.log("[IPC] model-get-all called");
+        debugLogger.debug("model-get-all called", undefined, "ipc");
         const modelManager = require("./modelManagerBridge").default;
         const models = await modelManager.getModelsWithStatus();
-        console.log("[IPC] Returning models:", models.length);
+        debugLogger.debug("Returning models", { count: models.length }, "ipc");
         return models;
       } catch (error) {
-        console.error("[IPC] Error in model-get-all:", error);
+        debugLogger.error("Error in model-get-all:", error);
         throw error;
       }
     });
@@ -530,6 +485,7 @@ class IPCHandlers {
 
     ipcMain.handle("llama-cpp-uninstall", async () => {
       try {
+        const llamaCppInstaller = require("./llamaCppInstaller").default;
         const result = await llamaCppInstaller.uninstall();
         return result;
       } catch (error) {

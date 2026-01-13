@@ -44,6 +44,6 @@ Note: Make sure you have the necessary system permissions for:
 - Microphone access
 - Accessibility permissions (for text pasting)
 
-For local Whisper processing, OpenWhispr will create an isolated Python environment automatically.
-If you want to use a custom interpreter, set OPENWHISPR_PYTHON to a valid Python 3.x path.
+For local Whisper processing, OpenWhispr uses whisper.cpp (bundled with the app).
+Models are downloaded automatically on first use.
 `);

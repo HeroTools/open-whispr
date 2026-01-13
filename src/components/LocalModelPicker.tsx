@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "./ui/button";
-import { RefreshCw, Download, Trash2, Check } from "lucide-react";
+import { RefreshCw, Download, Trash2, Check, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
+import { ConfirmDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload, type ModelType } from "../hooks/useModelDownload";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
@@ -51,7 +52,7 @@ export default function LocalModelPicker({
   const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
   const [loadingModels, setLoadingModels] = useState(false);
 
-  const { showConfirmDialog } = useDialogs();
+  const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
 
   const loadDownloadedModels = useCallback(async () => {
@@ -102,12 +103,19 @@ export default function LocalModelPicker({
     onDownloadComplete?.();
   }, [loadDownloadedModels, onDownloadComplete]);
 
-  const { downloadingModel, downloadProgress, downloadModel, deleteModel, isDownloadingModel } =
-    useModelDownload({
-      modelType,
-      onDownloadComplete: handleDownloadComplete,
-      onModelsCleared: loadDownloadedModels,
-    });
+  const {
+    downloadingModel,
+    downloadProgress,
+    downloadModel,
+    deleteModel,
+    isDownloadingModel,
+    cancelDownload,
+    isCancelling,
+  } = useModelDownload({
+    modelType,
+    onDownloadComplete: handleDownloadComplete,
+    onModelsCleared: loadDownloadedModels,
+  });
 
   const handleDownload = useCallback(
     (modelId: string) => {
@@ -162,7 +170,7 @@ export default function LocalModelPicker({
             variant="outline"
             size="sm"
             disabled={loadingModels}
-            className={styles.buttons.refresh}
+            className={`${styles.buttons.refresh} min-w-[105px] transition-colors`}
           >
             <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
             <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
@@ -231,21 +239,25 @@ export default function LocalModelPicker({
                             <span className="ml-1">Delete</span>
                           </Button>
                         </>
+                      ) : isDownloading ? (
+                        <Button
+                          onClick={cancelDownload}
+                          disabled={isCancelling}
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          <X size={14} />
+                          <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
+                        </Button>
                       ) : (
                         <Button
                           onClick={() => handleDownload(model.id)}
                           size="sm"
-                          disabled={isDownloading}
                           className={styles.buttons.download}
                         >
-                          {isDownloading ? (
-                            `${Math.round(downloadProgress.percentage)}%`
-                          ) : (
-                            <>
-                              <Download size={14} />
-                              <span className="ml-1">Download</span>
-                            </>
-                          )}
+                          <Download size={14} />
+                          <span className="ml-1">Download</span>
                         </Button>
                       )}
                     </div>
@@ -256,6 +268,17 @@ export default function LocalModelPicker({
           )}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => !open && hideConfirmDialog()}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        onConfirm={confirmDialog.onConfirm}
+        variant={confirmDialog.variant}
+      />
     </div>
   );
 }

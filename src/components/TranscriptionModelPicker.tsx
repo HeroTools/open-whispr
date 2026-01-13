@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
 import { RefreshCw, Download, Trash2, Check, Cloud, Lock } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
@@ -6,6 +6,7 @@ import { ProviderTabs } from "./ui/ProviderTabs";
 import ModelCardList from "./ui/ModelCardList";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import ApiKeyInput from "./ui/ApiKeyInput";
+import { ConfirmDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload } from "../hooks/useModelDownload";
 import {
@@ -74,14 +75,22 @@ export default function TranscriptionModelPicker({
   const [localModels, setLocalModels] = useState<WhisperModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
+  const hasLoadedRef = useRef(false);
+  const isLoadingRef = useRef(false);
+  const loadLocalModelsRef = useRef<(() => Promise<void>) | null>(null);
+  const ensureValidCloudSelectionRef = useRef<(() => void) | null>(null);
 
-  const { showConfirmDialog } = useDialogs();
+  const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
 
   const cloudProviders = useMemo(() => getTranscriptionProviders(), []);
 
   const loadLocalModels = useCallback(async () => {
+    // Prevent concurrent loading
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+
     try {
       setLoadingModels(true);
       const result = await window.electronAPI?.listWhisperModels();
@@ -93,6 +102,7 @@ export default function TranscriptionModelPicker({
       setLocalModels([]);
     } finally {
       setLoadingModels(false);
+      isLoadingRef.current = false;
     }
   }, []);
 
@@ -121,13 +131,27 @@ export default function TranscriptionModelPicker({
     onCloudModelSelect,
   ]);
 
+  // Keep refs in sync to avoid stale closures in the mode-switching effect
+  useEffect(() => {
+    loadLocalModelsRef.current = loadLocalModels;
+  }, [loadLocalModels]);
+
+  useEffect(() => {
+    ensureValidCloudSelectionRef.current = ensureValidCloudSelection;
+  }, [ensureValidCloudSelection]);
+
+  // Only load models once on mount when in local mode, or when switching to local mode
   useEffect(() => {
     if (useLocalWhisper) {
-      loadLocalModels();
+      if (!hasLoadedRef.current) {
+        hasLoadedRef.current = true;
+        loadLocalModelsRef.current?.();
+      }
     } else {
-      ensureValidCloudSelection();
+      hasLoadedRef.current = false; // Reset when switching to cloud
+      ensureValidCloudSelectionRef.current?.();
     }
-  }, [useLocalWhisper, loadLocalModels, ensureValidCloudSelection]);
+  }, [useLocalWhisper]);
 
   useEffect(() => {
     const handleModelsCleared = () => loadLocalModels();
@@ -470,10 +494,10 @@ export default function TranscriptionModelPicker({
                 variant="outline"
                 size="sm"
                 disabled={loadingModels}
-                className={styles.buttons.refresh}
+                className={`${styles.buttons.refresh} min-w-[105px] justify-center transition-colors`}
               >
                 <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
-                <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
+                <span>{loadingModels ? "Checking..." : "Refresh"}</span>
               </Button>
             </div>
 
@@ -484,6 +508,17 @@ export default function TranscriptionModelPicker({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => !open && hideConfirmDialog()}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        onConfirm={confirmDialog.onConfirm}
+        variant={confirmDialog.variant}
+      />
     </div>
   );
 }

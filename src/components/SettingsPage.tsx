@@ -459,7 +459,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       onConfirm: () => {
         setIsRemovingModels(true);
         window.electronAPI
-          ?.modelDeleteAll?.()
+          ?.deleteAllWhisperModels?.()
           .then((result) => {
             if (!result?.success) {
               showAlertDialog({

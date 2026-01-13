@@ -49,7 +49,7 @@ Look for:
 
 ### Transcription Fails
 Look for:
-- `Whisper stderr:` → Python/FFmpeg errors
+- `Whisper stderr:` → whisper.cpp/FFmpeg errors
 - `Process closed with code: [non-zero]` → Process failure
 - `Failed to parse Whisper output` → Invalid JSON
 

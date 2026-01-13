@@ -296,22 +296,6 @@ class DebugLogger {
     this.debug(`FFmpeg Debug - ${context}`, debugInfo, "ffmpeg");
   }
 
-  logWindowsPythonSearch(context, details) {
-    if (!this.isDebugEnabled() || process.platform !== "win32") return;
-
-    this.debug(
-      `Windows Python Search - ${context}`,
-      {
-        ...details,
-        platform: process.platform,
-        PATH: process.env.PATH?.substring(0, 300) + "...",
-        LOCALAPPDATA: process.env.LOCALAPPDATA,
-        ProgramFiles: process.env.ProgramFiles,
-      },
-      "python"
-    );
-  }
-
   logAudioData(context, audioBlob) {
     if (!this.isDebugEnabled()) return;
 

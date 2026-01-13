@@ -45,6 +45,8 @@ export function useModelDownload({
     downloadedBytes: 0,
     totalBytes: 0,
   });
+  const [isCancelling, setIsCancelling] = useState(false);
+  const isCancellingRef = useRef(false);
 
   const { showAlertDialog } = useDialogs();
   const { toast } = useToast();
@@ -68,14 +70,14 @@ export function useModelDownload({
   const handleWhisperProgress = useCallback(
     (_event: unknown, data: WhisperDownloadProgressData) => {
       if (data.type === "progress") {
-        const progress: DownloadProgress = {
+        setDownloadProgress({
           percentage: data.percentage || 0,
           downloadedBytes: data.downloaded_bytes || 0,
           totalBytes: data.total_bytes || 0,
-        };
-
-        setDownloadProgress(progress);
+        });
       } else if (data.type === "complete" || data.type === "error") {
+        // Skip if cancellation is handling cleanup
+        if (isCancellingRef.current) return;
         setDownloadingModel(null);
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
         onDownloadCompleteRef.current?.();
@@ -186,6 +188,30 @@ export function useModelDownload({
     [modelType, toast, showAlertDialog]
   );
 
+  const cancelDownload = useCallback(async () => {
+    if (!downloadingModel) return;
+
+    setIsCancelling(true);
+    isCancellingRef.current = true;
+    try {
+      if (modelType === "whisper") {
+        await window.electronAPI?.cancelWhisperDownload();
+      }
+      toast({
+        title: "Download Cancelled",
+        description: "The download has been cancelled.",
+      });
+    } catch (error) {
+      console.error("Failed to cancel download:", error);
+    } finally {
+      setIsCancelling(false);
+      isCancellingRef.current = false;
+      setDownloadingModel(null);
+      setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
+      onDownloadCompleteRef.current?.();
+    }
+  }, [downloadingModel, modelType, toast]);
+
   const isDownloading = downloadingModel !== null;
   const isDownloadingModel = useCallback(
     (modelId: string) => downloadingModel === modelId,
@@ -197,8 +223,10 @@ export function useModelDownload({
     downloadProgress,
     isDownloading,
     isDownloadingModel,
+    isCancelling,
     downloadModel,
     deleteModel,
+    cancelDownload,
     formatETA,
   };
 }

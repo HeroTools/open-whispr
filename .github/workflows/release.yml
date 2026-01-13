@@ -40,7 +40,10 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-      
+
+    - name: Download whisper.cpp binaries
+      run: node scripts/download-whisper-cpp.js
+
     # macOS code signing setup (same as build workflow)
     - name: Setup macOS Code Signing
       if: matrix.os == 'macos-latest'

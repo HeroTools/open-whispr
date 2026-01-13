@@ -5,12 +5,6 @@ export interface TranscriptionItem {
   created_at: string;
 }
 
-export interface WhisperInstallResult {
-  success: boolean;
-  message: string;
-  output: string;
-}
-
 export interface WhisperCheckResult {
   installed: boolean;
   working: boolean;
@@ -80,30 +74,6 @@ export interface WhisperDownloadProgressData {
   result?: any;
 }
 
-export interface WhisperInstallProgressData {
-  type: string;
-  message: string;
-  output?: string;
-}
-
-export interface PythonInstallation {
-  installed: boolean;
-  command?: string;
-  version?: number;
-  source?: string;
-}
-
-export interface PythonInstallResult {
-  success: boolean;
-  method: string;
-}
-
-export interface PythonInstallProgressData {
-  type: string;
-  stage: string;
-  percentage: number;
-}
-
 export interface PasteToolsResult {
   platform: "darwin" | "win32" | "linux";
   available: boolean;
@@ -169,20 +139,9 @@ declare global {
       }>;
       onNoAudioDetected: (callback: (event: any, data?: any) => void) => (() => void) | void;
 
-      // Python operations
-      checkPythonInstallation: () => Promise<PythonInstallation>;
-      installPython: () => Promise<PythonInstallResult>;
-      onPythonInstallProgress: (
-        callback: (event: any, data: PythonInstallProgressData) => void
-      ) => (() => void) | void;
-
-      // Whisper operations
+      // Whisper operations (whisper.cpp)
       transcribeLocalWhisper: (audioBlob: Blob | ArrayBuffer, options?: any) => Promise<any>;
       checkWhisperInstallation: () => Promise<WhisperCheckResult>;
-      installWhisper: () => Promise<WhisperInstallResult>;
-      onWhisperInstallProgress: (
-        callback: (event: any, data: WhisperInstallProgressData) => void
-      ) => (() => void) | void;
       downloadWhisperModel: (modelName: string) => Promise<WhisperModelResult>;
       onWhisperDownloadProgress: (
         callback: (event: any, data: WhisperDownloadProgressData) => void
@@ -190,6 +149,13 @@ declare global {
       checkModelStatus: (modelName: string) => Promise<WhisperModelResult>;
       listWhisperModels: () => Promise<WhisperModelsListResult>;
       deleteWhisperModel: (modelName: string) => Promise<WhisperModelDeleteResult>;
+      deleteAllWhisperModels: () => Promise<{
+        success: boolean;
+        deleted_count?: number;
+        freed_bytes?: number;
+        freed_mb?: number;
+        error?: string;
+      }>;
       cancelWhisperDownload: () => Promise<{
         success: boolean;
         message?: string;
