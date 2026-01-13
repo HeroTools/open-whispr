@@ -34,6 +34,7 @@ export interface CloudModelDefinition {
   id: string;
   name: string;
   description: string;
+  disableThinking?: boolean;
 }
 
 export interface CloudProviderData {
@@ -276,3 +277,11 @@ export function getWhisperModelInfo(modelId: string): WhisperModelInfo | undefin
 }
 
 export const WHISPER_MODEL_INFO = modelData.whisperModels;
+
+export function getCloudModel(modelId: string): CloudModelDefinition | undefined {
+  for (const provider of modelData.cloudProviders) {
+    const model = provider.models.find((m) => m.id === modelId);
+    if (model) return model;
+  }
+  return undefined;
+}

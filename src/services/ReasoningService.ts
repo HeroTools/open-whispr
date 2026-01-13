@@ -1,4 +1,4 @@
-import { getModelProvider } from "../models/ModelRegistry";
+import { getModelProvider, getCloudModel } from "../models/ModelRegistry";
 import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
@@ -234,6 +234,13 @@ class ReasoningService extends BaseReasoningService {
           )
         ),
     };
+
+    // Check model registry for provider-specific options
+    const modelDef = getCloudModel(model);
+    if (modelDef?.disableThinking) {
+      requestBody.chat_template_kwargs = { enable_thinking: false };
+      logger.logReasoning("THINKING_DISABLED", { model, provider: providerName });
+    }
 
     logger.logReasoning(`${providerName.toUpperCase()}_REQUEST`, {
       endpoint,
