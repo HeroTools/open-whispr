@@ -97,10 +97,10 @@
   },
   "deb": {
     "afterRemove": "resources/linux/after-remove.sh",
-    "recommends": ["xdotool", "wtype", "python3"]
+    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype", "--deb-recommends", "python3"]
   },
   "rpm": {
-    "recommends": ["xdotool", "wtype", "python3"]
+    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype", "--rpm-tag", "Recommends: python3"]
   },
   "nsis": {
     "oneClick": false,
