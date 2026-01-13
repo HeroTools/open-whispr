@@ -125,7 +125,11 @@ class ClipboardManager {
     return new Promise((resolve, reject) => {
       let hasTimedOut = false;
 
+      // -NoProfile: Skip loading user profile scripts (significant startup time savings)
+      // -NonInteractive: Prevent prompts that could hang execution
       const pasteProcess = spawn("powershell", [
+        "-NoProfile",
+        "-NonInteractive",
         "-Command",
         'Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait("^v")',
       ]);
@@ -138,7 +142,7 @@ class ClipboardManager {
           // Text pasted successfully
           setTimeout(() => {
             clipboard.writeText(originalClipboard);
-          }, 100);
+          }, PASTE_DELAY_MS);
           resolve();
         } else {
           reject(

@@ -9,6 +9,7 @@ import { ProviderTabs } from "./ui/ProviderTabs";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import { modelRegistry } from "../models/ModelRegistry";
+import { getProviderIcon } from "../utils/providerIcons";
 
 type CloudModelOption = {
   value: string;
@@ -18,41 +19,23 @@ type CloudModelOption = {
   ownedBy?: string;
 };
 
-const ICON_BASE_PATH = "/assets/icons/providers";
-
-const PROVIDER_ICON_MAP: Record<string, string> = {
-  openai: "openai",
-  anthropic: "anthropic",
-  gemini: "gemini",
-  groq: "groq",
-  llama: "llama",
-  mistral: "mistral",
-  qwen: "qwen",
-  "openai-oss": "openai-oss",
-};
-
-const OWNED_BY_ICON_RULES: Array<{ match: RegExp; icon: string }> = [
-  { match: /(openai|system|default|gpt|davinci)/, icon: "openai" },
-  { match: /(azure)/, icon: "openai" },
-  { match: /(anthropic|claude)/, icon: "anthropic" },
-  { match: /(google|gemini)/, icon: "gemini" },
-  { match: /(meta|llama)/, icon: "llama" },
-  { match: /(mistral)/, icon: "mistral" },
-  { match: /(qwen|ali|tongyi)/, icon: "qwen" },
-  { match: /(openrouter|oss)/, icon: "openai-oss" },
+const OWNED_BY_ICON_RULES: Array<{ match: RegExp; provider: string }> = [
+  { match: /(openai|system|default|gpt|davinci)/, provider: "openai" },
+  { match: /(azure)/, provider: "openai" },
+  { match: /(anthropic|claude)/, provider: "anthropic" },
+  { match: /(google|gemini)/, provider: "gemini" },
+  { match: /(meta|llama)/, provider: "llama" },
+  { match: /(mistral)/, provider: "mistral" },
+  { match: /(qwen|ali|tongyi)/, provider: "qwen" },
+  { match: /(openrouter|oss)/, provider: "openai-oss" },
 ];
-
-const getProviderIconPath = (providerId: string): string => {
-  const iconId = PROVIDER_ICON_MAP[providerId] || "openai";
-  return `${ICON_BASE_PATH}/${iconId}.svg`;
-};
 
 const resolveOwnedByIcon = (ownedBy?: string): string | undefined => {
   if (!ownedBy) return undefined;
   const normalized = ownedBy.toLowerCase();
   const rule = OWNED_BY_ICON_RULES.find(({ match }) => match.test(normalized));
   if (rule) {
-    return `${ICON_BASE_PATH}/${rule.icon}.svg`;
+    return getProviderIcon(rule.provider);
   }
   return undefined;
 };
@@ -301,10 +284,10 @@ export default function ReasoningModelSelector({
   }, []);
 
   const openaiModelOptions = useMemo<CloudModelOption[]>(() => {
-    const iconPath = getProviderIconPath("openai");
+    const iconUrl = getProviderIcon("openai");
     return REASONING_PROVIDERS.openai.models.map((model) => ({
       ...model,
-      icon: iconPath,
+      icon: iconUrl,
     }));
   }, []);
 
@@ -315,10 +298,10 @@ export default function ReasoningModelSelector({
     const provider = REASONING_PROVIDERS[selectedCloudProvider as keyof typeof REASONING_PROVIDERS];
     if (!provider?.models) return [];
 
-    const iconPath = getProviderIconPath(selectedCloudProvider);
+    const iconUrl = getProviderIcon(selectedCloudProvider);
     return provider.models.map((model) => ({
       ...model,
-      icon: iconPath,
+      icon: iconUrl,
     }));
   }, [selectedCloudProvider, openaiModelOptions, displayedCustomModels]);
 

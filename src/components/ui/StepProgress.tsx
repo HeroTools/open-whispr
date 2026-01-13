@@ -26,7 +26,6 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
               className={`flex items-center gap-2 ${
                 isActive ? "text-blue-600" : isCompleted ? "text-green-600" : "text-stone-400"
               }`}
-              style={{ fontFamily: "Noto Sans, sans-serif" }}
             >
               <div
                 className={`w-6 h-6 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-200 ${

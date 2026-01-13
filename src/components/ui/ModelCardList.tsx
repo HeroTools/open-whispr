@@ -1,4 +1,5 @@
 import { Globe } from "lucide-react";
+import type { ColorScheme } from "../../utils/modelPickerStyles";
 
 export interface ModelCardOption {
   value: string;
@@ -6,8 +7,6 @@ export interface ModelCardOption {
   description?: string;
   icon?: string;
 }
-
-type ColorScheme = "indigo" | "purple";
 
 interface ModelCardListProps {
   models: ModelCardOption[];
@@ -34,6 +33,11 @@ const COLOR_CONFIG: Record<
     selected: "border-purple-500 bg-purple-50",
     default: "border-gray-200 bg-white hover:border-gray-300",
     badge: "text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full font-medium",
+  },
+  blue: {
+    selected: "border-blue-500 bg-blue-50",
+    default: "border-gray-200 bg-white hover:border-gray-300",
+    badge: "text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full font-medium",
   },
 };
 
