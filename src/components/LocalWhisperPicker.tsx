@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
-import { RefreshCw, Download, Trash2, Check, X } from "lucide-react";
+import { Download, Trash2, Check, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import { ConfirmDialog } from "./ui/dialog";
@@ -31,7 +31,6 @@ export default function LocalWhisperPicker({
   variant = "settings",
 }: LocalWhisperPickerProps) {
   const [models, setModels] = useState<WhisperModel[]>([]);
-  const [loadingModels, setLoadingModels] = useState(false);
   const hasLoadedRef = useRef(false);
   const downloadingModelRef = useRef<string | null>(null);
 
@@ -41,7 +40,6 @@ export default function LocalWhisperPicker({
 
   const loadModels = useCallback(async () => {
     try {
-      setLoadingModels(true);
       const result = await window.electronAPI?.listWhisperModels();
       if (result?.success) {
         setModels(result.models);
@@ -49,8 +47,6 @@ export default function LocalWhisperPicker({
     } catch (error) {
       console.error("[LocalWhisperPicker] Failed to load models:", error);
       setModels([]);
-    } finally {
-      setLoadingModels(false);
     }
   }, []);
 
@@ -116,19 +112,7 @@ export default function LocalWhisperPicker({
       {progressDisplay}
 
       <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h5 className={styles.header}>Whisper Models</h5>
-          <Button
-            onClick={loadModels}
-            variant="outline"
-            size="sm"
-            disabled={loadingModels}
-            className={`${styles.buttons.refresh} min-w-[105px] justify-center transition-colors`}
-          >
-            <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
-            <span>{loadingModels ? "Checking..." : "Refresh"}</span>
-          </Button>
-        </div>
+        <h5 className={`${styles.header} mb-3`}>Whisper Models</h5>
 
         <div className="space-y-2">
           {models.map((model) => {

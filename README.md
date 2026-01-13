@@ -298,7 +298,6 @@ open-whispr/
 │   │   │   ├── card.tsx
 │   │   │   ├── input.tsx
 │   │   │   ├── LoadingDots.tsx
-│   │   │   ├── DotFlashing.tsx
 │   │   │   ├── Toast.tsx
 │   │   │   ├── toggle.tsx
 │   │   │   └── tooltip.tsx

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
-import { RefreshCw, Download, Trash2, Check, Cloud, Lock } from "lucide-react";
+import { Download, Trash2, Check, Cloud, Lock } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import ModelCardList from "./ui/ModelCardList";
@@ -73,7 +73,6 @@ export default function TranscriptionModelPicker({
   variant = "settings",
 }: TranscriptionModelPickerProps) {
   const [localModels, setLocalModels] = useState<WhisperModel[]>([]);
-  const [loadingModels, setLoadingModels] = useState(false);
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
   const hasLoadedRef = useRef(false);
   const isLoadingRef = useRef(false);
@@ -92,7 +91,6 @@ export default function TranscriptionModelPicker({
     isLoadingRef.current = true;
 
     try {
-      setLoadingModels(true);
       const result = await window.electronAPI?.listWhisperModels();
       if (result?.success) {
         setLocalModels(result.models);
@@ -101,7 +99,6 @@ export default function TranscriptionModelPicker({
       console.error("[TranscriptionModelPicker] Failed to load models:", error);
       setLocalModels([]);
     } finally {
-      setLoadingModels(false);
       isLoadingRef.current = false;
     }
   }, []);
@@ -487,19 +484,7 @@ export default function TranscriptionModelPicker({
           {progressDisplay}
 
           <div className="p-4">
-            <div className="flex items-center justify-between mb-3">
-              <h5 className={styles.header}>Available Models</h5>
-              <Button
-                onClick={loadLocalModels}
-                variant="outline"
-                size="sm"
-                disabled={loadingModels}
-                className={`${styles.buttons.refresh} min-w-[105px] justify-center transition-colors`}
-              >
-                <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
-                <span>{loadingModels ? "Checking..." : "Refresh"}</span>
-              </Button>
-            </div>
+            <h5 className={`${styles.header} mb-3`}>Available Models</h5>
 
             {internalLocalProvider === "whisper" && renderLocalModels()}
             {internalLocalProvider === "nvidia" && (

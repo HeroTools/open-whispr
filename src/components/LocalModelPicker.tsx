@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "./ui/button";
-import { RefreshCw, Download, Trash2, Check, X } from "lucide-react";
+import { Download, Trash2, Check, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
@@ -50,13 +50,11 @@ export default function LocalModelPicker({
   onDownloadComplete,
 }: LocalModelPickerProps) {
   const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
-  const [loadingModels, setLoadingModels] = useState(false);
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
 
   const loadDownloadedModels = useCallback(async () => {
-    setLoadingModels(true);
     try {
       let downloaded = new Set<string>();
       if (modelType === "whisper") {
@@ -83,8 +81,6 @@ export default function LocalModelPicker({
     } catch (error) {
       console.error("Failed to load downloaded models:", error);
       return new Set<string>();
-    } finally {
-      setLoadingModels(false);
     }
   }, [modelType]);
 
@@ -163,19 +159,7 @@ export default function LocalModelPicker({
       {progressDisplay}
 
       <div className="p-4">
-        <div className="flex items-center justify-between mb-3">
-          <h5 className={styles.header}>Available Models</h5>
-          <Button
-            onClick={loadDownloadedModels}
-            variant="outline"
-            size="sm"
-            disabled={loadingModels}
-            className={`${styles.buttons.refresh} min-w-[105px] transition-colors`}
-          >
-            <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
-            <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
-          </Button>
-        </div>
+        <h5 className={`${styles.header} mb-3`}>Available Models</h5>
 
         <div className="space-y-2">
           {models.length === 0 ? (
