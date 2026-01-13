@@ -37,6 +37,9 @@ jobs:
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js
 
+    - name: Download nircmd.exe (Windows only)
+      run: node scripts/download-nircmd.js
+
     # Cache Electron downloads
     - name: Cache Electron
       uses: actions/cache@v4

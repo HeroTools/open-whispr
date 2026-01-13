@@ -65,7 +65,13 @@
       "nsis",
       "portable"
     ],
-    "icon": "src/assets/icon.ico"
+    "icon": "src/assets/icon.ico",
+    "extraResources": [
+      {
+        "from": "resources/bin/nircmd.exe",
+        "to": "bin/nircmd.exe"
+      }
+    ]
   },
   "linux": {
     "target": [
