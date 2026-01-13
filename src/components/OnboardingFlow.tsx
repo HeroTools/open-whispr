@@ -798,12 +798,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               {platform === "linux" &&
                 permissionsHook.pasteToolsInfo &&
                 !permissionsHook.pasteToolsInfo.available && (
-                <PasteToolsInfo
-                  pasteToolsInfo={permissionsHook.pasteToolsInfo}
-                  isChecking={permissionsHook.isCheckingPasteTools}
-                  onCheck={permissionsHook.checkPasteToolsAvailability}
-                />
-              )}
+                  <PasteToolsInfo
+                    pasteToolsInfo={permissionsHook.pasteToolsInfo}
+                    isChecking={permissionsHook.isCheckingPasteTools}
+                    onCheck={permissionsHook.checkPasteToolsAvailability}
+                  />
+                )}
             </div>
 
             <div className="bg-amber-50 p-4 rounded-lg">

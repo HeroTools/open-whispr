@@ -68,7 +68,9 @@ class HotkeyManager {
    */
   getSuggestions(failedHotkey) {
     const isCompound = failedHotkey.includes("+");
-    const suggestions = isCompound ? [...SUGGESTED_HOTKEYS.compound] : [...SUGGESTED_HOTKEYS.single];
+    const suggestions = isCompound
+      ? [...SUGGESTED_HOTKEYS.compound]
+      : [...SUGGESTED_HOTKEYS.single];
 
     // Filter out the failed hotkey if it's in the suggestions
     return suggestions.filter((s) => s !== failedHotkey).slice(0, 3);

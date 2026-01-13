@@ -91,7 +91,13 @@ class WhisperManager {
 
       // ASAR unpacked paths (for when binary is in asarUnpack)
       candidates.push(
-        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "bin", platformBinaryName),
+        path.join(
+          process.resourcesPath,
+          "app.asar.unpacked",
+          "resources",
+          "bin",
+          platformBinaryName
+        ),
         path.join(process.resourcesPath, "app.asar.unpacked", "resources", "bin", genericBinaryName)
       );
     }
