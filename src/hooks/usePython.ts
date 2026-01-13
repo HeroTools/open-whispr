@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import logger from "../utils/logger";
 
 interface PythonInstallation {
   installed: boolean;
@@ -43,12 +44,21 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
   const [isChecking, setIsChecking] = useState<boolean>(false);
   const [hasChecked, setHasChecked] = useState<boolean>(false);
 
+  const isCheckingRef = useRef(false);
+  const hasInitialCheckRef = useRef(false);
+  const pythonInfoRef = useRef<PythonInstallation | null>(null);
+
+  // Keep ref in sync with state for use in callbacks without re-creating them
+  pythonInfoRef.current = pythonInfo;
+
   const checkPythonInstallation = useCallback(async () => {
-    if (isChecking) {
-      return pythonInfo || { installed: false };
+    // Prevent concurrent checks
+    if (isCheckingRef.current) {
+      return pythonInfoRef.current;
     }
 
     try {
+      isCheckingRef.current = true;
       setIsChecking(true);
 
       if (!window.electronAPI) {
@@ -64,13 +74,15 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       }
       return { installed: false };
     } catch (error) {
+      logger.error("Python installation check failed", error, "usePython");
       setPythonInstalled(false);
       return { installed: false };
     } finally {
+      isCheckingRef.current = false;
       setIsChecking(false);
       setHasChecked(true);
     }
-  }, [isChecking, pythonInfo]);
+  }, []); // No dependencies - uses refs to avoid re-creating callback
 
   const installPython = useCallback(async () => {
     if (!window.electronAPI) {
@@ -132,7 +144,13 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
   }, [showAlertDialog, checkPythonInstallation]);
 
   // Check Python installation on mount with a small delay to ensure preload is ready
+  // Only runs once - uses ref to prevent re-triggering
   useEffect(() => {
+    if (hasInitialCheckRef.current) {
+      return;
+    }
+    hasInitialCheckRef.current = true;
+
     // In development, there might be a race condition where React loads before preload
     const timer = setTimeout(() => {
       checkPythonInstallation();
