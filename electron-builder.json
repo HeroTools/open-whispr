@@ -24,14 +24,17 @@
   ],
   "asarUnpack": [
     "**/node_modules/ffmpeg-static/**/*",
-    "**/node_modules/better-sqlite3/**/*",
-    "resources/bin/whisper-cpp-*"
+    "**/node_modules/better-sqlite3/**/*"
   ],
   "extraResources": [
     "src/assets/**/*",
     "resources/macos-globe-listener.swift",
     "resources/bin/macos-globe-listener",
-    "resources/bin/whisper-cpp-*"
+    {
+      "from": "resources/bin/",
+      "to": "bin/",
+      "filter": ["whisper-cpp-*"]
+    }
   ],
   "mac": {
     "category": "public.app-category.productivity",

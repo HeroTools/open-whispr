@@ -80,25 +80,12 @@ class WhisperManager {
 
     const candidates = [];
 
-    // Production: check resources path (extraResources destination)
+    // Production: extraResources copies to {resourcesPath}/bin/ via from/to mapping
     if (process.resourcesPath) {
+      // Primary location: extraResources with "to": "bin/"
       candidates.push(
         path.join(process.resourcesPath, "bin", platformBinaryName),
-        path.join(process.resourcesPath, "bin", genericBinaryName),
-        path.join(process.resourcesPath, "resources", "bin", platformBinaryName),
-        path.join(process.resourcesPath, "resources", "bin", genericBinaryName)
-      );
-
-      // ASAR unpacked paths (for when binary is in asarUnpack)
-      candidates.push(
-        path.join(
-          process.resourcesPath,
-          "app.asar.unpacked",
-          "resources",
-          "bin",
-          platformBinaryName
-        ),
-        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "bin", genericBinaryName)
+        path.join(process.resourcesPath, "bin", genericBinaryName)
       );
     }
 
