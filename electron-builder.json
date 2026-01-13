@@ -24,7 +24,8 @@
   ],
   "asarUnpack": [
     "**/node_modules/ffmpeg-static/**/*",
-    "**/node_modules/better-sqlite3/**/*"
+    "**/node_modules/better-sqlite3/**/*",
+    "resources/bin/whisper-cpp-*"
   ],
   "extraResources": [
     "src/assets/**/*",

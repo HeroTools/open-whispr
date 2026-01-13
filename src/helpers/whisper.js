@@ -80,11 +80,19 @@ class WhisperManager {
 
     const candidates = [];
 
-    // Production: check resources path
+    // Production: check resources path (extraResources destination)
     if (process.resourcesPath) {
       candidates.push(
         path.join(process.resourcesPath, "bin", platformBinaryName),
-        path.join(process.resourcesPath, "bin", genericBinaryName)
+        path.join(process.resourcesPath, "bin", genericBinaryName),
+        path.join(process.resourcesPath, "resources", "bin", platformBinaryName),
+        path.join(process.resourcesPath, "resources", "bin", genericBinaryName)
+      );
+
+      // ASAR unpacked paths (for when binary is in asarUnpack)
+      candidates.push(
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "bin", platformBinaryName),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "bin", genericBinaryName)
       );
     }
 
@@ -94,12 +102,16 @@ class WhisperManager {
       path.join(__dirname, "..", "..", "resources", "bin", genericBinaryName)
     );
 
+    debugLogger.log("Checking whisper.cpp binary candidates:", candidates);
+
     for (const candidate of candidates) {
       if (fs.existsSync(candidate)) {
+        debugLogger.log("Found whisper.cpp binary at:", candidate);
         return candidate;
       }
     }
 
+    debugLogger.log("No whisper.cpp binary found in any candidate path");
     return null;
   }
 
