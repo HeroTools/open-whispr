@@ -58,9 +58,7 @@ class WhisperManager {
     // Only allow known model names to prevent path traversal attacks
     const validModels = Object.keys(WHISPER_MODELS);
     if (!validModels.includes(modelName)) {
-      throw new Error(
-        `Invalid model name: ${modelName}. Valid models: ${validModels.join(", ")}`
-      );
+      throw new Error(`Invalid model name: ${modelName}. Valid models: ${validModels.join(", ")}`);
     }
     return true;
   }
@@ -219,8 +217,7 @@ class WhisperManager {
 
   async createTempAudioFile(audioBlob) {
     const tempDir = os.tmpdir();
-    const filename = `whisper_audio_${crypto.randomUUID()}.wav`;
-    const tempAudioPath = path.join(tempDir, filename);
+    const uniqueId = crypto.randomUUID();
 
     debugLogger.logAudioData("createTempAudioFile", audioBlob);
 
@@ -241,84 +238,215 @@ class WhisperManager {
       throw new Error("Audio buffer is empty - no audio data received");
     }
 
-    // WAV header is 44 bytes minimum (RIFF + fmt + data chunk headers)
     const MIN_AUDIO_SIZE = 44;
     if (buffer.length < MIN_AUDIO_SIZE) {
       throw new Error(`Audio data too small (${buffer.length} bytes) - recording may have failed`);
     }
 
-    await fsPromises.writeFile(tempAudioPath, buffer);
+    // Check if the audio is already in WAV format (starts with "RIFF" header)
+    const isWav =
+      buffer.length >= 4 &&
+      buffer[0] === 0x52 &&
+      buffer[1] === 0x49 &&
+      buffer[2] === 0x46 &&
+      buffer[3] === 0x46;
 
-    const stats = await fsPromises.stat(tempAudioPath);
-    debugLogger.logWhisperPipeline("Temp audio file created", {
-      path: tempAudioPath,
-      size: stats.size,
+    if (isWav) {
+      // Already WAV format - write directly
+      const tempAudioPath = path.join(tempDir, `whisper_audio_${uniqueId}.wav`);
+      await fsPromises.writeFile(tempAudioPath, buffer);
+      const stats = await fsPromises.stat(tempAudioPath);
+      debugLogger.logWhisperPipeline("Temp audio file created (WAV passthrough)", {
+        path: tempAudioPath,
+        size: stats.size,
+      });
+      return tempAudioPath;
+    }
+
+    // Audio is in WebM/Opus or other format - convert to WAV using FFmpeg
+    const inputPath = path.join(tempDir, `whisper_input_${uniqueId}.webm`);
+    const outputPath = path.join(tempDir, `whisper_audio_${uniqueId}.wav`);
+
+    await fsPromises.writeFile(inputPath, buffer);
+
+    const ffmpegPath = await this.getFFmpegPath();
+    if (!ffmpegPath) {
+      // Clean up input file
+      await fsPromises.unlink(inputPath).catch(() => {});
+      throw new Error("FFmpeg not found - required for audio format conversion");
+    }
+
+    debugLogger.logWhisperPipeline("Converting audio to WAV format", {
+      inputPath,
+      outputPath,
+      ffmpegPath,
+      inputSize: buffer.length,
     });
 
-    return tempAudioPath;
+    try {
+      // Convert to 16kHz mono WAV (optimal for Whisper)
+      await new Promise((resolve, reject) => {
+        const ffmpegProcess = spawn(
+          ffmpegPath,
+          [
+            "-i",
+            inputPath,
+            "-ar",
+            "16000", // 16kHz sample rate
+            "-ac",
+            "1", // Mono
+            "-c:a",
+            "pcm_s16le", // 16-bit PCM
+            "-y", // Overwrite output
+            outputPath,
+          ],
+          {
+            stdio: ["ignore", "pipe", "pipe"],
+            windowsHide: true,
+          }
+        );
+
+        let stderrData = "";
+        let settled = false;
+
+        const settle = (resolver, value) => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          resolver(value);
+        };
+
+        // Timeout after 30 seconds
+        const timeout = setTimeout(() => {
+          ffmpegProcess.kill("SIGTERM");
+          settle(reject, new Error("FFmpeg conversion timed out"));
+        }, 30000);
+
+        ffmpegProcess.stderr.on("data", (data) => {
+          stderrData += data.toString();
+        });
+
+        ffmpegProcess.on("close", (code) => {
+          if (code === 0) {
+            settle(resolve, undefined);
+          } else {
+            settle(reject, new Error(`FFmpeg conversion failed (code ${code}): ${stderrData}`));
+          }
+        });
+
+        ffmpegProcess.on("error", (err) => {
+          settle(reject, new Error(`FFmpeg process error: ${err.message}`));
+        });
+      });
+
+      // Clean up input file
+      await fsPromises.unlink(inputPath).catch(() => {});
+
+      const stats = await fsPromises.stat(outputPath);
+      debugLogger.logWhisperPipeline("Audio converted to WAV", {
+        path: outputPath,
+        size: stats.size,
+      });
+
+      return outputPath;
+    } catch (error) {
+      // Clean up both files on error
+      await fsPromises.unlink(inputPath).catch(() => {});
+      await fsPromises.unlink(outputPath).catch(() => {});
+      throw error;
+    }
   }
 
   async runWhisperProcess(binaryPath, audioPath, modelPath, language) {
-    const args = ["-m", modelPath, "-f", audioPath, "--output-json", "--no-prints"];
+    // whisper.cpp --output-json writes to a file, not stdout
+    const outputBasePath = audioPath.replace(/\.[^.]+$/, "");
+    const jsonOutputPath = `${outputBasePath}.json`;
 
+    const args = [
+      "-m",
+      modelPath,
+      "-f",
+      audioPath,
+      "--output-json",
+      "-of",
+      outputBasePath,
+      "--no-prints",
+    ];
     if (language && language !== "auto") {
       args.push("-l", language);
     }
 
     debugLogger.logProcessStart(binaryPath, args, {});
 
-    return new Promise((resolve, reject) => {
+    const cleanupJsonFile = () => fsPromises.unlink(jsonOutputPath).catch(() => {});
+
+    const { code, stderr } = await new Promise((resolve, reject) => {
       const whisperProcess = spawn(binaryPath, args, {
         stdio: ["ignore", "pipe", "pipe"],
         windowsHide: true,
       });
 
-      let stdout = "";
-      let stderr = "";
-      let isResolved = false;
+      let stderrData = "";
+      let settled = false;
+
+      const settle = (resolver, value) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        resolver(value);
+      };
 
       const timeout = setTimeout(() => {
-        if (!isResolved) {
-          killProcess(whisperProcess, "SIGTERM");
-          reject(new Error("Whisper transcription timed out"));
-        }
+        killProcess(whisperProcess, "SIGTERM");
+        settle(reject, new Error("Whisper transcription timed out"));
       }, TIMEOUTS.TRANSCRIPTION);
 
-      whisperProcess.stdout.on("data", (data) => {
-        stdout += data.toString();
-        debugLogger.logProcessOutput("Whisper", "stdout", data);
-      });
-
+      whisperProcess.stdout.on("data", (data) =>
+        debugLogger.logProcessOutput("Whisper", "stdout", data)
+      );
       whisperProcess.stderr.on("data", (data) => {
-        stderr += data.toString();
+        stderrData += data.toString();
         debugLogger.logProcessOutput("Whisper", "stderr", data);
       });
 
-      whisperProcess.on("close", (code) => {
-        if (isResolved) return;
-        isResolved = true;
-        clearTimeout(timeout);
-
-        debugLogger.logWhisperPipeline("Process closed", {
-          code,
-          stdoutLength: stdout.length,
-          stderrLength: stderr.length,
-        });
-
-        if (code === 0) {
-          resolve(stdout);
-        } else {
-          reject(new Error(`Whisper transcription failed (code ${code}): ${stderr}`));
-        }
-      });
-
-      whisperProcess.on("error", (error) => {
-        if (isResolved) return;
-        isResolved = true;
-        clearTimeout(timeout);
-        reject(new Error(`Whisper process error: ${error.message}`));
-      });
+      whisperProcess.on("close", (exitCode) =>
+        settle(resolve, { code: exitCode, stderr: stderrData })
+      );
+      whisperProcess.on("error", (err) =>
+        settle(reject, new Error(`Whisper process error: ${err.message}`))
+      );
     });
+
+    debugLogger.logWhisperPipeline("Process closed", {
+      code,
+      stderrLength: stderr.length,
+      jsonOutputPath,
+    });
+
+    if (code !== 0) {
+      await cleanupJsonFile();
+      throw new Error(`Whisper transcription failed (code ${code}): ${stderr}`);
+    }
+
+    // Check stderr for errors - whisper.cpp may exit 0 even on failure
+    if (stderr.includes("error:")) {
+      await cleanupJsonFile();
+      throw new Error(`Whisper processing error: ${stderr}`);
+    }
+
+    // Verify JSON file was created
+    if (!fs.existsSync(jsonOutputPath)) {
+      throw new Error(`Whisper did not produce output. stderr: ${stderr || "(empty)"}`);
+    }
+
+    try {
+      const jsonContent = await fsPromises.readFile(jsonOutputPath, "utf-8");
+      await cleanupJsonFile();
+      return jsonContent;
+    } catch (readError) {
+      await cleanupJsonFile();
+      throw new Error(`Failed to read Whisper output: ${readError.message}`);
+    }
   }
 
   parseWhisperResult(stdout) {

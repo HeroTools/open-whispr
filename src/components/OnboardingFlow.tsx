@@ -12,7 +12,6 @@ import {
   Key,
   Shield,
   Command,
-  TestTube,
   Sparkles,
   Lock,
   User,
@@ -88,6 +87,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [transcriptionBaseUrl, setTranscriptionBaseUrl] = useState(cloudTranscriptionBaseUrl);
   const [reasoningBaseUrl, setReasoningBaseUrl] = useState(cloudReasoningBaseUrl);
   const [agentName, setAgentName] = useState("Agent");
+  const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
   const {
     alertDialog,
@@ -318,18 +318,36 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Privacy", icon: Lock },
     { title: "Setup", icon: Settings },
     { title: "Permissions", icon: Shield },
-    { title: "Hotkey", icon: Command },
-    { title: "Test", icon: TestTube },
+    { title: "Hotkey & Test", icon: Command },
     { title: "Agent Name", icon: User },
-    { title: "Finish", icon: Check },
   ];
 
   const updateProcessingMode = (useLocal: boolean) => {
     updateTranscriptionSettings({ useLocalWhisper: useLocal });
   };
 
+  // Check if selected whisper model is downloaded
   useEffect(() => {
-    if (currentStep === 5) {
+    if (!useLocalWhisper || !whisperModel) {
+      setIsModelDownloaded(false);
+      return;
+    }
+
+    const checkModelStatus = async () => {
+      try {
+        const result = await window.electronAPI?.checkModelStatus(whisperModel);
+        setIsModelDownloaded(result?.downloaded ?? false);
+      } catch (error) {
+        console.error("Failed to check model status:", error);
+        setIsModelDownloaded(false);
+      }
+    };
+
+    checkModelStatus();
+  }, [useLocalWhisper, whisperModel]);
+
+  useEffect(() => {
+    if (currentStep === 4) {
       if (practiceTextareaRef.current) {
         practiceTextareaRef.current.focus();
       }
@@ -466,36 +484,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
     const newStep = currentStep + 1;
 
-    if (currentStep === 4) {
-      const registered = await ensureHotkeyRegistered();
-      if (!registered) {
-        return;
-      }
-      setDictationKey(hotkey);
-    }
     if (currentStep === 2 && !useLocalWhisper) {
       await persistOpenAIKey(apiKey);
     }
 
     setCurrentStep(newStep);
 
-    // Show dictation panel when moving from permissions step (3) to hotkey step (4)
+    // Show dictation panel when moving from permissions step (3) to hotkey & test step (4)
     if (currentStep === 3 && newStep === 4) {
       if (window.electronAPI?.showDictationPanel) {
         window.electronAPI.showDictationPanel();
       }
     }
-  }, [
-    currentStep,
-    ensureHotkeyRegistered,
-    hotkey,
-    setCurrentStep,
-    setDictationKey,
-    steps.length,
-    useLocalWhisper,
-    persistOpenAIKey,
-    apiKey,
-  ]);
+  }, [currentStep, setCurrentStep, steps.length, useLocalWhisper, persistOpenAIKey, apiKey]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -595,6 +596,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <LocalWhisperPicker
                   selectedModel={whisperModel}
                   onModelSelect={setWhisperModel}
+                  onModelDownloaded={(modelId) => {
+                    setIsModelDownloaded(true);
+                    setWhisperModel(modelId);
+                  }}
                   variant="onboarding"
                 />
               </div>
@@ -800,14 +805,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 4: // Choose Hotkey
+      case 4: // Hotkey & Test (combined)
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Hotkey</h2>
-              <p className="text-gray-600">
-                Set the key combination you'll use to start and stop dictation
-              </p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Set Your Hotkey & Test</h2>
+              <p className="text-gray-600">Choose your hotkey and try it out</p>
             </div>
 
             <HotkeyInput
@@ -820,89 +823,43 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               }}
               disabled={isHotkeyRegistering}
             />
-          </div>
-        );
 
-      case 5: // Test & Practice
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">Test & Practice</h2>
-              <p className="text-stone-600">Let's test your setup and practice using OpenWhispr</p>
+            <div className="bg-blue-50/50 p-5 rounded-lg border border-blue-200/60">
+              <h3 className="font-semibold text-blue-900 mb-3">Try It Now</h3>
+              <p className="text-sm text-blue-800 mb-3">
+                Click in the text area, press{" "}
+                <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                  {readableHotkey}
+                </kbd>{" "}
+                to start recording, speak, then press it again to stop.
+              </p>
+
+              <div>
+                <label className="block text-sm font-medium text-stone-700 mb-2">
+                  Test your dictation:
+                </label>
+                <Textarea rows={3} placeholder="Click here, then use your hotkey to dictate..." />
+              </div>
             </div>
 
-            <div className="space-y-6">
-              <div className="bg-blue-50/50 p-6 rounded-lg border border-blue-200/60">
-                <h3 className="font-semibold text-blue-900 mb-3">Practice with Your Hotkey</h3>
-                <p className="text-sm text-blue-800 mb-4">
-                  <strong>Step 1:</strong> Click in the text area below to place your cursor there.
-                  <br />
-                  <strong>Step 2:</strong> Press{" "}
-                  <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+            <div className="bg-green-50/50 p-4 rounded-lg border border-green-200/60">
+              <h4 className="font-medium text-green-900 mb-2">How it works:</h4>
+              <ol className="text-sm text-green-800 space-y-1">
+                <li>1. Click in any text field</li>
+                <li>
+                  2. Press{" "}
+                  <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border border-green-200">
                     {readableHotkey}
                   </kbd>{" "}
-                  to start recording, then speak something.
-                  <br />
-                  <strong>Step 3:</strong> Press{" "}
-                  <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
-                    {readableHotkey}
-                  </kbd>{" "}
-                  again to stop and see your transcribed text appear where your cursor is!
-                </p>
-
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 text-stone-600">
-                      <Mic className="w-4 h-4" />
-                      <span>
-                        Click in the text area below, then press{" "}
-                        <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border">
-                          {readableHotkey}
-                        </kbd>{" "}
-                        to start dictation
-                      </span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-stone-700 mb-2">
-                      Transcribed Text:
-                    </label>
-                    <Textarea
-                      rows={4}
-                      placeholder="Click here to place your cursor, then use your hotkey to start dictation..."
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-green-50/50 p-4 rounded-lg border border-green-200/60">
-                <h4 className="font-medium text-green-900 mb-2">💡 How to use OpenWhispr:</h4>
-                <ol className="text-sm text-green-800 space-y-1">
-                  <li>1. Click in any text field (email, document, etc.)</li>
-                  <li>
-                    2. Press{" "}
-                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-green-200">
-                      {readableHotkey}
-                    </kbd>{" "}
-                    to start recording
-                  </li>
-                  <li>3. Speak your text clearly</li>
-                  <li>
-                    4. Press{" "}
-                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-green-200">
-                      {readableHotkey}
-                    </kbd>{" "}
-                    again to stop
-                  </li>
-                  <li>5. Your text will automatically appear where you were typing!</li>
-                </ol>
-              </div>
+                  to start, speak, press again to stop
+                </li>
+                <li>3. Your text appears automatically!</li>
+              </ol>
             </div>
           </div>
         );
 
-      case 6: // Agent Name
+      case 5: // Agent Name (final step)
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -913,7 +870,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </div>
 
             <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">💡 How this helps:</h4>
+              <h4 className="font-medium text-purple-900 mb-3">How this helps:</h4>
               <ul className="text-sm text-purple-800 space-y-1">
                 <li>
                   • Say "Hey {agentName || "Agent"}, write a formal email" for specific instructions
@@ -936,73 +893,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 7: // Complete
-        return (
-          <div className="text-center space-y-6">
-            <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center">
-              <Check className="w-8 h-8 text-green-600" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">You're All Set!</h2>
-              <p className="text-gray-600">OpenWhispr is now configured and ready to use.</p>
-            </div>
-
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg">
-              <h3 className="font-semibold text-gray-900 mb-3">Your Setup Summary:</h3>
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>Processing:</span>
-                  <span className="font-medium">
-                    {useLocalWhisper ? `Local (${whisperModel})` : "OpenAI Cloud"}
-                  </span>
-                </div>
-                {!useLocalWhisper && (
-                  <div className="flex justify-between">
-                    <span>Reasoning Model:</span>
-                    <span className="font-medium">{activeReasoningModelLabel}</span>
-                  </div>
-                )}
-                {!useLocalWhisper && hasEnteredReasoningBase && (
-                  <div className="flex justify-between">
-                    <span>Custom Endpoint:</span>
-                    <span className="font-medium break-all">
-                      {normalizedReasoningBaseUrl || trimmedReasoningBase}
-                    </span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span>Hotkey:</span>
-                  <kbd className="bg-white px-2 py-1 rounded text-xs font-mono">{hotkey}</kbd>
-                </div>
-                <div className="flex justify-between">
-                  <span>Language:</span>
-                  <span className="font-medium">{getLanguageLabel(preferredLanguage)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Agent Name:</span>
-                  <span className="font-medium">{agentName}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Permissions:</span>
-                  <span className="font-medium text-green-600">
-                    {permissionsHook.micPermissionGranted &&
-                    permissionsHook.accessibilityPermissionGranted
-                      ? "✓ Granted"
-                      : "⚠ Review needed"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="text-sm text-blue-800">
-                <strong>Pro tip:</strong> You can always change these settings later in the Control
-                Panel.
-              </p>
-            </div>
-          </div>
-        );
-
       default:
         return null;
     }
@@ -1016,7 +906,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return true; // Mode selection
       case 2:
         if (useLocalWhisper) {
-          return whisperModel !== ""; // Just need a model selected
+          return whisperModel !== "" && isModelDownloaded;
         } else {
           const trimmedKey = apiKey.trim();
           if (!trimmedKey) {
@@ -1041,13 +931,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return true;
       }
       case 4:
-        return hotkey.trim() !== "";
+        return hotkey.trim() !== ""; // Hotkey & Test step
       case 5:
-        return true; // Practice step is always ready to proceed
-      case 6:
-        return agentName.trim() !== ""; // Agent name step
-      case 7:
-        return true;
+        return agentName.trim() !== ""; // Agent name step (final)
       default:
         return false;
     }
@@ -1141,10 +1027,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {currentStep === steps.length - 1 ? (
               <Button
                 onClick={finishOnboarding}
+                disabled={!canProceed()}
                 className="bg-green-600 hover:bg-green-700 px-8 py-3 h-12 text-sm font-medium"
               >
                 <Check className="w-4 h-4 mr-2" />
-                Finish Setup
+                Complete Setup
               </Button>
             ) : (
               <Button

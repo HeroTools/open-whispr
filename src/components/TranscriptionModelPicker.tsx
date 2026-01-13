@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
 import { RefreshCw, Download, Trash2, Check, Cloud, Lock } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
@@ -74,6 +74,8 @@ export default function TranscriptionModelPicker({
   const [localModels, setLocalModels] = useState<WhisperModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
+  const hasLoadedRef = useRef(false);
+  const isLoadingRef = useRef(false);
 
   const { showConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
@@ -82,6 +84,10 @@ export default function TranscriptionModelPicker({
   const cloudProviders = useMemo(() => getTranscriptionProviders(), []);
 
   const loadLocalModels = useCallback(async () => {
+    // Prevent concurrent loading
+    if (isLoadingRef.current) return;
+    isLoadingRef.current = true;
+
     try {
       setLoadingModels(true);
       const result = await window.electronAPI?.listWhisperModels();
@@ -93,6 +99,7 @@ export default function TranscriptionModelPicker({
       setLocalModels([]);
     } finally {
       setLoadingModels(false);
+      isLoadingRef.current = false;
     }
   }, []);
 
@@ -121,13 +128,19 @@ export default function TranscriptionModelPicker({
     onCloudModelSelect,
   ]);
 
+  // Only load models once on mount when in local mode, or when switching to local mode
   useEffect(() => {
     if (useLocalWhisper) {
-      loadLocalModels();
+      if (!hasLoadedRef.current) {
+        hasLoadedRef.current = true;
+        loadLocalModels();
+      }
     } else {
+      hasLoadedRef.current = false; // Reset when switching to cloud
       ensureValidCloudSelection();
     }
-  }, [useLocalWhisper, loadLocalModels, ensureValidCloudSelection]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useLocalWhisper]); // Intentionally exclude callbacks to prevent re-render loops
 
   useEffect(() => {
     const handleModelsCleared = () => loadLocalModels();
@@ -470,10 +483,10 @@ export default function TranscriptionModelPicker({
                 variant="outline"
                 size="sm"
                 disabled={loadingModels}
-                className={styles.buttons.refresh}
+                className={`${styles.buttons.refresh} min-w-[105px] justify-center transition-colors`}
               >
                 <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
-                <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
+                <span>{loadingModels ? "Checking..." : "Refresh"}</span>
               </Button>
             </div>
 

@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
-import { RefreshCw, Download, Trash2, Check } from "lucide-react";
+import { RefreshCw, Download, Trash2, Check, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
+import { ConfirmDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload } from "../hooks/useModelDownload";
 import { WHISPER_MODEL_INFO } from "../models/ModelRegistry";
@@ -17,6 +18,7 @@ interface WhisperModel {
 interface LocalWhisperPickerProps {
   selectedModel: string;
   onModelSelect: (modelId: string) => void;
+  onModelDownloaded?: (modelId: string) => void;
   className?: string;
   variant?: "onboarding" | "settings";
 }
@@ -24,13 +26,16 @@ interface LocalWhisperPickerProps {
 export default function LocalWhisperPicker({
   selectedModel,
   onModelSelect,
+  onModelDownloaded,
   className = "",
   variant = "settings",
 }: LocalWhisperPickerProps) {
   const [models, setModels] = useState<WhisperModel[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const hasLoadedRef = useRef(false);
+  const downloadingModelRef = useRef<string | null>(null);
 
-  const { showConfirmDialog } = useDialogs();
+  const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
 
@@ -49,16 +54,38 @@ export default function LocalWhisperPicker({
     }
   }, []);
 
+  // Only load models once on mount to prevent re-renders
   useEffect(() => {
-    loadModels();
+    if (!hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadModels();
+    }
   }, [loadModels]);
 
-  const { downloadingModel, downloadProgress, downloadModel, deleteModel, isDownloadingModel } =
-    useModelDownload({
-      modelType: "whisper",
-      onDownloadComplete: loadModels,
-      onModelsCleared: loadModels,
-    });
+  const {
+    downloadingModel,
+    downloadProgress,
+    downloadModel,
+    deleteModel,
+    isDownloadingModel,
+    cancelDownload,
+    isCancelling,
+  } = useModelDownload({
+    modelType: "whisper",
+    onDownloadComplete: () => {
+      loadModels();
+      // Notify parent when a model is downloaded (use ref to avoid stale closure)
+      if (downloadingModelRef.current && onModelDownloaded) {
+        onModelDownloaded(downloadingModelRef.current);
+      }
+    },
+    onModelsCleared: loadModels,
+  });
+
+  // Keep ref in sync with downloadingModel to avoid stale closure in onDownloadComplete
+  useEffect(() => {
+    downloadingModelRef.current = downloadingModel;
+  }, [downloadingModel]);
 
   const handleDelete = useCallback(
     (modelId: string) => {
@@ -96,10 +123,10 @@ export default function LocalWhisperPicker({
             variant="outline"
             size="sm"
             disabled={loadingModels}
-            className={styles.buttons.refresh}
+            className={`${styles.buttons.refresh} min-w-[105px] justify-center transition-colors`}
           >
             <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
-            <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
+            <span>{loadingModels ? "Checking..." : "Refresh"}</span>
           </Button>
         </div>
 
@@ -169,21 +196,25 @@ export default function LocalWhisperPicker({
                           <span className="ml-1">Delete</span>
                         </Button>
                       </>
+                    ) : isDownloading ? (
+                      <Button
+                        onClick={cancelDownload}
+                        disabled={isCancelling}
+                        size="sm"
+                        variant="outline"
+                        className="text-red-600 border-red-300 hover:bg-red-50"
+                      >
+                        <X size={14} />
+                        <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
+                      </Button>
                     ) : (
                       <Button
                         onClick={() => downloadModel(modelId, onModelSelect)}
                         size="sm"
-                        disabled={isDownloading}
                         className={styles.buttons.download}
                       >
-                        {isDownloading ? (
-                          `${Math.round(downloadProgress.percentage)}%`
-                        ) : (
-                          <>
-                            <Download size={14} />
-                            <span className="ml-1">Download</span>
-                          </>
-                        )}
+                        <Download size={14} />
+                        <span className="ml-1">Download</span>
                       </Button>
                     )}
                   </div>
@@ -193,6 +224,17 @@ export default function LocalWhisperPicker({
           })}
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmDialog.open}
+        onOpenChange={(open) => !open && hideConfirmDialog()}
+        title={confirmDialog.title}
+        description={confirmDialog.description}
+        confirmText={confirmDialog.confirmText}
+        cancelText={confirmDialog.cancelText}
+        onConfirm={confirmDialog.onConfirm}
+        variant={confirmDialog.variant}
+      />
     </div>
   );
 }

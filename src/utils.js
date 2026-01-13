@@ -35,7 +35,7 @@ class AppUtils {
 
     // Local Whisper model deletion
     try {
-      const modelCacheDir = path.join(os.homedir(), ".cache", "whisper");
+      const modelCacheDir = path.join(os.homedir(), ".cache", "openwhispr", "whisper-models");
       if (fs.existsSync(modelCacheDir)) {
         fs.rmSync(modelCacheDir, { recursive: true, force: true });
         console.log("✅ Local Whisper models deleted:", modelCacheDir);

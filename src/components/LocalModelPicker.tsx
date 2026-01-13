@@ -162,7 +162,7 @@ export default function LocalModelPicker({
             variant="outline"
             size="sm"
             disabled={loadingModels}
-            className={styles.buttons.refresh}
+            className={`${styles.buttons.refresh} min-w-[105px] transition-colors`}
           >
             <RefreshCw size={14} className={loadingModels ? "animate-spin" : ""} />
             <span className="ml-1">{loadingModels ? "Checking..." : "Refresh"}</span>
