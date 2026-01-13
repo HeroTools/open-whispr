@@ -319,7 +319,7 @@ open-whispr/
 - **Desktop**: Electron 36 with context isolation
 - **UI Components**: shadcn/ui with Radix primitives
 - **Database**: better-sqlite3 for local transcription storage
-- **Speech-to-Text**: whisper.cpp (local) + OpenAI Whisper API (cloud)
+- **Speech-to-Text**: OpenAI Whisper (powered by whisper.cpp for local, OpenAI API for cloud)
 - **Icons**: Lucide React for consistent iconography
 
 ## Development
@@ -407,7 +407,7 @@ DEBUG=false
 
 ### Local Whisper Setup
 
-For local processing, OpenWhispr uses whisper.cpp - a high-performance C++ implementation:
+For local processing, OpenWhispr uses OpenAI's Whisper model via whisper.cpp - a high-performance C++ implementation:
 
 1. **Bundled Binary**: whisper.cpp is bundled with the app for all platforms
 2. **GGML Models**: Downloads optimized GGML models on first use to `~/.cache/openwhispr/whisper-models/`
@@ -419,6 +419,8 @@ For local processing, OpenWhispr uses whisper.cpp - a high-performance C++ imple
 
 **Requirements**:
 - Sufficient disk space for models (75MB - 3GB depending on model)
+
+**Upgrading from Python-based version**: If you previously used the Python-based Whisper, you'll need to re-download models in GGML format. You can safely delete the old Python environment (`~/.openwhispr/python/`) and PyTorch models (`~/.cache/whisper/`) to reclaim disk space.
 
 ### Customization
 
@@ -520,3 +522,12 @@ OpenWhispr is actively maintained and ready for production use. Current version:
 - ✅ Local and cloud processing
 - ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Local)
 - ✅ Compound hotkey support
+
+## Acknowledgments
+
+- **[OpenAI Whisper](https://github.com/openai/whisper)** - The speech recognition model that powers both local and cloud transcription
+- **[whisper.cpp](https://github.com/ggerganov/whisper.cpp)** - High-performance C++ implementation of Whisper for local processing
+- **[Electron](https://www.electronjs.org/)** - Cross-platform desktop application framework
+- **[React](https://react.dev/)** - UI component library
+- **[shadcn/ui](https://ui.shadcn.com/)** - Beautiful UI components built on Radix primitives
+- **[llama.cpp](https://github.com/ggerganov/llama.cpp)** - Local LLM inference for AI-powered text processing
