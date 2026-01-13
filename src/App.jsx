@@ -129,9 +129,10 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, audioLevel, toggleListening, cancelRecording } = useAudioRecording(toast, {
-    onToggle: handleDictationToggle,
-  });
+  const { isRecording, isProcessing, audioLevel, toggleListening, cancelRecording } =
+    useAudioRecording(toast, {
+      onToggle: handleDictationToggle,
+    });
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
