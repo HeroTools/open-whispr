@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "./ui/button";
 import { RefreshCw, Download, Trash2, Check } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
-import DownloadProgressBar from "./ui/DownloadProgressBar";
+import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload } from "../hooks/useModelDownload";
 import { WHISPER_MODEL_INFO } from "../models/ModelRegistry";

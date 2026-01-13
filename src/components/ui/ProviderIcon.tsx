@@ -21,13 +21,5 @@ export function ProviderIcon({ provider, className = "w-5 h-5" }: ProviderIconPr
     return <Brain className={className} />;
   }
 
-  return (
-    <img
-      src={iconUrl}
-      alt={`${provider} icon`}
-      className={className}
-    />
-  );
+  return <img src={iconUrl} alt={`${provider} icon`} className={className} />;
 }
-
-export default ProviderIcon;
