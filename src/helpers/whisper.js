@@ -741,6 +741,42 @@ class WhisperManager {
     return { model: modelName, deleted: false, error: "Model not found", success: false };
   }
 
+  async deleteAllWhisperModels() {
+    const modelsDir = this.getModelsDir();
+    let totalFreed = 0;
+    let deletedCount = 0;
+
+    try {
+      if (!fs.existsSync(modelsDir)) {
+        return { success: true, deleted_count: 0, freed_bytes: 0, freed_mb: 0 };
+      }
+
+      const files = await fsPromises.readdir(modelsDir);
+      for (const file of files) {
+        if (file.endsWith(".bin")) {
+          const filePath = path.join(modelsDir, file);
+          try {
+            const stats = await fsPromises.stat(filePath);
+            await fsPromises.unlink(filePath);
+            totalFreed += stats.size;
+            deletedCount++;
+          } catch {
+            // Continue with other files if one fails
+          }
+        }
+      }
+
+      return {
+        success: true,
+        deleted_count: deletedCount,
+        freed_bytes: totalFreed,
+        freed_mb: Math.round(totalFreed / (1024 * 1024)),
+      };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }
+
   // FFmpeg methods (still needed for audio format conversion)
   async getFFmpegPath() {
     if (this.cachedFFmpegPath) {

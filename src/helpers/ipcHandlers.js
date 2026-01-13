@@ -219,6 +219,10 @@ class IPCHandlers {
       return this.whisperManager.deleteWhisperModel(modelName);
     });
 
+    ipcMain.handle("delete-all-whisper-models", async () => {
+      return this.whisperManager.deleteAllWhisperModels();
+    });
+
     ipcMain.handle("cancel-whisper-download", async (event) => {
       return this.whisperManager.cancelDownload();
     });

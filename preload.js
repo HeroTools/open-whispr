@@ -83,6 +83,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   listWhisperModels: () => ipcRenderer.invoke("list-whisper-models"),
   deleteWhisperModel: (modelName) =>
     ipcRenderer.invoke("delete-whisper-model", modelName),
+  deleteAllWhisperModels: () => ipcRenderer.invoke("delete-all-whisper-models"),
   cancelWhisperDownload: () => ipcRenderer.invoke("cancel-whisper-download"),
   checkFFmpegAvailability: () =>
     ipcRenderer.invoke("check-ffmpeg-availability"),
