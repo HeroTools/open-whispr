@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.3] - 2026-01-13
+
+### Added
+- **Extended Hotkey Support**: Added numpad keys, media keys, and additional special keys (Pause, ScrollLock, PrintScreen, NumLock) for hotkey selection
+- **Improved Hotkey Error Messages**: Registration failures now include helpful suggestions for alternative hotkeys
+
+### Changed
+- **Linux Paste Tools**: Only show paste tools installation prompt on Linux when tools are not available
+
+### Fixed
+- **Hotkey Debugging**: Added comprehensive debug logging to hotkey manager for troubleshooting registration issues
+
 ## [1.2.2] - 2026-01-13
 
 ### Fixed
