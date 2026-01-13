@@ -1,5 +1,5 @@
-import { useState } from "react";
 import { Brain, Wrench, HardDrive } from "lucide-react";
+import { getProviderIcon } from "@/utils/providerIcons";
 
 interface ProviderIconProps {
   provider: string;
@@ -7,8 +7,6 @@ interface ProviderIconProps {
 }
 
 export function ProviderIcon({ provider, className = "w-5 h-5" }: ProviderIconProps) {
-  const [svgError, setSvgError] = useState(false);
-
   if (provider === "custom") {
     return <Wrench className={className} />;
   }
@@ -17,23 +15,11 @@ export function ProviderIcon({ provider, className = "w-5 h-5" }: ProviderIconPr
     return <HardDrive className={className} />;
   }
 
-  const iconPath =
-    provider === "whisper"
-      ? "/assets/icons/providers/openai.svg"
-      : `/assets/icons/providers/${provider}.svg`;
+  const iconUrl = getProviderIcon(provider);
 
-  if (svgError) {
+  if (!iconUrl) {
     return <Brain className={className} />;
   }
 
-  return (
-    <img
-      src={iconPath}
-      alt={`${provider} icon`}
-      className={className}
-      onError={() => setSvgError(true)}
-    />
-  );
+  return <img src={iconUrl} alt={`${provider} icon`} className={className} />;
 }
-
-export default ProviderIcon;

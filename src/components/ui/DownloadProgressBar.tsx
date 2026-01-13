@@ -34,5 +34,3 @@ export function DownloadProgressBar({ modelName, progress, styles }: DownloadPro
     </div>
   );
 }
-
-export default DownloadProgressBar;

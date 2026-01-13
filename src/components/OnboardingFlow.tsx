@@ -16,7 +16,6 @@ import {
   TestTube,
   Sparkles,
   Lock,
-  X,
   User,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
@@ -532,23 +531,18 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     switch (currentStep) {
       case 0: // Welcome
         return (
-          <div className="text-center space-y-6" style={{ fontFamily: "Noto Sans, sans-serif" }}>
+          <div className="text-center space-y-6">
             <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
               <Sparkles className="w-8 h-8 text-blue-600" />
             </div>
             <div>
-              <h2
-                className="text-2xl font-bold text-stone-900 mb-2"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
-              >
-                Welcome to OpenWhispr
-              </h2>
-              <p className="text-stone-600" style={{ fontFamily: "Noto Sans, sans-serif" }}>
+              <h2 className="text-2xl font-bold text-stone-900 mb-2">Welcome to OpenWhispr</h2>
+              <p className="text-stone-600">
                 Let's set up your voice dictation in just a few simple steps.
               </p>
             </div>
             <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200/60">
-              <p className="text-sm text-blue-800" style={{ fontFamily: "Noto Sans, sans-serif" }}>
+              <p className="text-sm text-blue-800">
                 🎤 Turn your voice into text instantly
                 <br />
                 ⚡ Works anywhere on your computer
@@ -561,17 +555,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       case 1: // Choose Mode
         return (
-          <div className="space-y-6" style={{ fontFamily: "Noto Sans, sans-serif" }}>
+          <div className="space-y-6">
             <div className="text-center">
-              <h2
-                className="text-2xl font-bold text-stone-900 mb-2"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
-              >
+              <h2 className="text-2xl font-bold text-stone-900 mb-2">
                 Choose Your Processing Mode
               </h2>
-              <p className="text-stone-600" style={{ fontFamily: "Noto Sans, sans-serif" }}>
-                How would you like to convert your speech to text?
-              </p>
+              <p className="text-stone-600">How would you like to convert your speech to text?</p>
             </div>
 
             <ProcessingModeSelector
@@ -959,31 +948,16 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       case 5: // Test & Practice
         return (
-          <div className="space-y-6" style={{ fontFamily: "Noto Sans, sans-serif" }}>
+          <div className="space-y-6">
             <div className="text-center">
-              <h2
-                className="text-2xl font-bold text-stone-900 mb-2"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
-              >
-                Test & Practice
-              </h2>
-              <p className="text-stone-600" style={{ fontFamily: "Noto Sans, sans-serif" }}>
-                Let's test your setup and practice using OpenWhispr
-              </p>
+              <h2 className="text-2xl font-bold text-stone-900 mb-2">Test & Practice</h2>
+              <p className="text-stone-600">Let's test your setup and practice using OpenWhispr</p>
             </div>
 
             <div className="space-y-6">
               <div className="bg-blue-50/50 p-6 rounded-lg border border-blue-200/60">
-                <h3
-                  className="font-semibold text-blue-900 mb-3"
-                  style={{ fontFamily: "Noto Sans, sans-serif" }}
-                >
-                  Practice with Your Hotkey
-                </h3>
-                <p
-                  className="text-sm text-blue-800 mb-4"
-                  style={{ fontFamily: "Noto Sans, sans-serif" }}
-                >
+                <h3 className="font-semibold text-blue-900 mb-3">Practice with Your Hotkey</h3>
+                <p className="text-sm text-blue-800 mb-4">
                   <strong>Step 1:</strong> Click in the text area below to place your cursor there.
                   <br />
                   <strong>Step 2:</strong> Press{" "}
@@ -1003,7 +977,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <div className="text-center">
                     <div className="flex items-center justify-center gap-2 text-stone-600">
                       <Mic className="w-4 h-4" />
-                      <span style={{ fontFamily: "Noto Sans, sans-serif" }}>
+                      <span>
                         Click in the text area below, then press{" "}
                         <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border">
                           {readableHotkey}
@@ -1014,14 +988,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </div>
 
                   <div>
-                    <label
-                      className="block text-sm font-medium text-stone-700 mb-2"
-                      style={{ fontFamily: "Noto Sans, sans-serif" }}
-                    >
+                    <label className="block text-sm font-medium text-stone-700 mb-2">
                       Transcribed Text:
                     </label>
                     <Textarea
-                      // ref={practiceTextareaRef}
                       rows={4}
                       placeholder="Click here to place your cursor, then use your hotkey to start dictation..."
                     />
@@ -1030,16 +1000,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </div>
 
               <div className="bg-green-50/50 p-4 rounded-lg border border-green-200/60">
-                <h4
-                  className="font-medium text-green-900 mb-2"
-                  style={{ fontFamily: "Noto Sans, sans-serif" }}
-                >
-                  💡 How to use OpenWhispr:
-                </h4>
-                <ol
-                  className="text-sm text-green-800 space-y-1"
-                  style={{ fontFamily: "Noto Sans, sans-serif" }}
-                >
+                <h4 className="font-medium text-green-900 mb-2">💡 How to use OpenWhispr:</h4>
+                <ol className="text-sm text-green-800 space-y-1">
                   <li>1. Click in any text field (email, document, etc.)</li>
                   <li>
                     2. Press{" "}
@@ -1236,7 +1198,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           #e7e5e4 24px,
           #e7e5e4 25px
         )`,
-        fontFamily: "Noto Sans, sans-serif",
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
@@ -1279,7 +1240,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex-1 px-6 md:pl-16 md:pr-6 py-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
           <Card className="bg-white/95 backdrop-blur-xl border border-stone-200/60 shadow-lg rounded-2xl overflow-hidden">
-            <CardContent className="p-12 md:p-16" style={{ fontFamily: "Noto Sans, sans-serif" }}>
+            <CardContent className="p-12 md:p-16">
               <div className="space-y-8">{renderStep()}</div>
             </CardContent>
           </Card>
@@ -1294,7 +1255,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             variant="outline"
             disabled={currentStep === 0}
             className="px-8 py-3 h-12 text-sm font-medium"
-            style={{ fontFamily: "Noto Sans, sans-serif" }}
           >
             <ChevronLeft className="w-4 h-4 mr-2" />
             Previous
@@ -1305,7 +1265,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Button
                 onClick={finishOnboarding}
                 className="bg-green-600 hover:bg-green-700 px-8 py-3 h-12 text-sm font-medium"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
               >
                 <Check className="w-4 h-4 mr-2" />
                 Finish Setup
@@ -1315,7 +1274,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 onClick={nextStep}
                 disabled={!canProceed()}
                 className="px-8 py-3 h-12 text-sm font-medium"
-                style={{ fontFamily: "Noto Sans, sans-serif" }}
               >
                 Next
                 <ChevronRight className="w-4 h-4 ml-2" />
