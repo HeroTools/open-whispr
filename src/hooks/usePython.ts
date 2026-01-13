@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import logger from "../utils/logger";
 
 interface PythonInstallation {
   installed: boolean;
@@ -43,12 +44,15 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
   const [isChecking, setIsChecking] = useState<boolean>(false);
   const [hasChecked, setHasChecked] = useState<boolean>(false);
 
+  const isCheckingRef = useRef(false);
+
   const checkPythonInstallation = useCallback(async () => {
-    if (isChecking) {
-      return pythonInfo || { installed: false };
+    if (isCheckingRef.current) {
+      return pythonInfo;
     }
 
     try {
+      isCheckingRef.current = true;
       setIsChecking(true);
 
       if (!window.electronAPI) {
@@ -64,13 +68,15 @@ export function usePython(showAlertDialog: ShowAlertDialog) {
       }
       return { installed: false };
     } catch (error) {
+      logger.error("Python installation check failed", error, "usePython");
       setPythonInstalled(false);
       return { installed: false };
     } finally {
+      isCheckingRef.current = false;
       setIsChecking(false);
       setHasChecked(true);
     }
-  }, [isChecking, pythonInfo]);
+  }, [pythonInfo]);
 
   const installPython = useCallback(async () => {
     if (!window.electronAPI) {
