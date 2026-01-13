@@ -95,16 +95,29 @@ class WhisperManager {
       path.join(__dirname, "..", "..", "resources", "bin", genericBinaryName)
     );
 
-    debugLogger.log("Checking whisper.cpp binary candidates:", candidates);
-
     for (const candidate of candidates) {
       if (fs.existsSync(candidate)) {
-        debugLogger.log("Found whisper.cpp binary at:", candidate);
-        return candidate;
+        try {
+          const stats = fs.statSync(candidate);
+          debugLogger.debug("Found whisper.cpp binary", {
+            path: candidate,
+            size: stats.size,
+          });
+          return candidate;
+        } catch (statError) {
+          debugLogger.warn("Binary exists but cannot be accessed", {
+            path: candidate,
+            error: statError.message,
+          });
+        }
       }
     }
 
-    debugLogger.log("No whisper.cpp binary found in any candidate path");
+    debugLogger.warn("whisper.cpp binary not found", {
+      platform,
+      arch,
+      searchedPaths: candidates,
+    });
     return null;
   }
 
@@ -417,9 +430,14 @@ class WhisperManager {
       whisperProcess.on("close", (exitCode) =>
         settle(resolve, { code: exitCode, stderr: stderrData })
       );
-      whisperProcess.on("error", (err) =>
-        settle(reject, new Error(`Whisper process error: ${err.message}`))
-      );
+      whisperProcess.on("error", (err) => {
+        debugLogger.error("Whisper process spawn failed", {
+          error: err.code || err.message,
+          binaryPath,
+          binaryExists: fs.existsSync(binaryPath),
+        });
+        settle(reject, new Error(`Failed to start whisper.cpp: ${err.message}`));
+      });
     });
 
     debugLogger.logWhisperPipeline("Process closed", {
@@ -798,21 +816,22 @@ class WhisperManager {
         ffmpegPath += ".exe";
       }
 
+      // Try unpacked ASAR path first (production builds unpack ffmpeg-static)
+      const unpackedPath = ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1");
+      if (fs.existsSync(unpackedPath)) {
+        debugLogger.debug("Found FFmpeg in unpacked ASAR", { path: unpackedPath });
+        this.cachedFFmpegPath = unpackedPath;
+        return unpackedPath;
+      }
+
+      // Try original path (development or if not in ASAR)
       if (fs.existsSync(ffmpegPath)) {
         if (process.platform !== "win32") {
           fs.accessSync(ffmpegPath, fs.constants.X_OK);
         }
+        debugLogger.debug("Found FFmpeg at bundled path", { path: ffmpegPath });
         this.cachedFFmpegPath = ffmpegPath;
         return ffmpegPath;
-      }
-
-      // Try unpacked ASAR path
-      if (process.env.NODE_ENV !== "development") {
-        const unpackedPath = ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1");
-        if (fs.existsSync(unpackedPath)) {
-          this.cachedFFmpegPath = unpackedPath;
-          return unpackedPath;
-        }
       }
     } catch {
       // Bundled FFmpeg not available

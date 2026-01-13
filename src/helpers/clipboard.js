@@ -123,56 +123,89 @@ class ClipboardManager {
 
   async pasteWindows(originalClipboard) {
     return new Promise((resolve, reject) => {
-      let hasTimedOut = false;
+      // Reduce delay - clipboard.writeText is synchronous so no need to wait
+      setTimeout(() => {
+        let hasTimedOut = false;
+        const startTime = Date.now();
 
-      // -NoProfile: Skip loading user profile scripts (significant startup time savings)
-      // -NonInteractive: Prevent prompts that could hang execution
-      const pasteProcess = spawn("powershell", [
-        "-NoProfile",
-        "-NonInteractive",
-        "-Command",
-        'Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait("^v")',
-      ]);
+        this.safeLog("🪟 Starting Windows paste operation...");
 
-      pasteProcess.on("close", (code) => {
-        if (hasTimedOut) return;
-        clearTimeout(timeoutId);
+        // Optimized PowerShell command:
+        // - Uses [void] to suppress output (faster)
+        // - WindowStyle Hidden to prevent window flash
+        // - ExecutionPolicy Bypass to skip policy checks
+        // - Shorter variable names and compact syntax
+        const pasteProcess = spawn("powershell.exe", [
+          "-NoProfile",
+          "-NonInteractive",
+          "-WindowStyle",
+          "Hidden",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          // Optimized: Load assembly and send keys in one line, suppress output
+          "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');[System.Windows.Forms.SendKeys]::SendWait('^v')",
+        ]);
 
-        if (code === 0) {
-          // Text pasted successfully
-          setTimeout(() => {
-            clipboard.writeText(originalClipboard);
-          }, PASTE_DELAY_MS);
-          resolve();
-        } else {
+        let errorOutput = "";
+
+        pasteProcess.stderr.on("data", (data) => {
+          errorOutput += data.toString();
+        });
+
+        pasteProcess.on("close", (code) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+
+          const elapsed = Date.now() - startTime;
+
+          if (code === 0) {
+            this.safeLog(`✅ Windows paste completed successfully in ${elapsed}ms`);
+            // Text pasted successfully - restore original clipboard
+            // Use shorter delay since paste is already complete
+            setTimeout(() => {
+              clipboard.writeText(originalClipboard);
+              this.safeLog("🔄 Original clipboard content restored");
+            }, 50);
+            resolve();
+          } else {
+            this.safeLog(
+              `❌ Windows paste failed with code ${code} after ${elapsed}ms`,
+              errorOutput
+            );
+            reject(
+              new Error(
+                `Windows paste failed with code ${code}. Text is copied to clipboard - please paste manually with Ctrl+V.`
+              )
+            );
+          }
+        });
+
+        pasteProcess.on("error", (error) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+          const elapsed = Date.now() - startTime;
+          this.safeLog(`❌ Windows paste error after ${elapsed}ms:`, error.message);
           reject(
             new Error(
-              `Windows paste failed with code ${code}. Text is copied to clipboard - please paste manually with Ctrl+V.`
+              `Windows paste failed: ${error.message}. Text is copied to clipboard - please paste manually with Ctrl+V.`
             )
           );
-        }
-      });
+        });
 
-      pasteProcess.on("error", (error) => {
-        if (hasTimedOut) return;
-        clearTimeout(timeoutId);
-        reject(
-          new Error(
-            `Windows paste failed: ${error.message}. Text is copied to clipboard - please paste manually with Ctrl+V.`
-          )
-        );
-      });
-
-      const timeoutId = setTimeout(() => {
-        hasTimedOut = true;
-        killProcess(pasteProcess, "SIGKILL");
-        pasteProcess.removeAllListeners();
-        reject(
-          new Error(
-            "Paste operation timed out. Text is copied to clipboard - please paste manually with Ctrl+V."
-          )
-        );
-      }, 3000);
+        const timeoutId = setTimeout(() => {
+          hasTimedOut = true;
+          const elapsed = Date.now() - startTime;
+          this.safeLog(`⏱️ Windows paste operation timed out after ${elapsed}ms`);
+          killProcess(pasteProcess, "SIGKILL");
+          pasteProcess.removeAllListeners();
+          reject(
+            new Error(
+              "Paste operation timed out. Text is copied to clipboard - please paste manually with Ctrl+V."
+            )
+          );
+        }, 5000);
+      }, 10); // Reduced from PASTE_DELAY_MS (50ms) to 10ms - clipboard write is synchronous
     });
   }
 
