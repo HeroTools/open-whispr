@@ -5,6 +5,31 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-01-13
+
+### Added
+- **Delete All Whisper Models**: New option to delete all downloaded Whisper models at once
+- **Model Deletion Confirmation**: Added confirmation dialog when deleting models in settings
+
+### Changed
+- **Migrated to whisper.cpp**: Replaced Python-based Whisper with native whisper.cpp for faster, more reliable transcription
+  - No longer requires Python installation
+  - WebM-to-WAV audio conversion built-in
+  - Significantly improved startup and transcription speed
+- **Streamlined Onboarding**: Simplified setup flow with fewer steps now that Python is not required
+- **Download Cancellation**: Added ability to cancel in-progress model downloads
+- **CI/CD Updates**: Updated build and release workflows
+
+### Fixed
+- **IPC Handler**: Fixed broken IPC handler for model operations
+- **Logging**: Standardized logging across the application
+- **React Hook Dependencies**: Improved React hook dependency arrays for better performance
+- **Button Styling**: Fixed button styling consistency across the application
+
+### Removed
+- **Python Dependency**: Removed Python requirement and all related installation code
+- **whisper_bridge.py**: Removed Python-based Whisper bridge in favor of native whisper.cpp
+
 ## [1.1.2] - 2026-01-12
 
 ### Added
