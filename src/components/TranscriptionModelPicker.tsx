@@ -4,7 +4,7 @@ import { RefreshCw, Download, Trash2, Check, Cloud, Lock } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import ModelCardList from "./ui/ModelCardList";
-import DownloadProgressBar from "./ui/DownloadProgressBar";
+import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload } from "../hooks/useModelDownload";
@@ -14,6 +14,7 @@ import {
   WHISPER_MODEL_INFO,
 } from "../models/ModelRegistry";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
+import { getProviderIcon } from "../utils/providerIcons";
 
 interface WhisperModel {
   model: string;
@@ -195,7 +196,7 @@ export default function TranscriptionModelPicker({
       value: m.id,
       label: m.name,
       description: m.description,
-      icon: `/assets/icons/providers/${selectedCloudProvider}.svg`,
+      icon: getProviderIcon(selectedCloudProvider),
     }));
   }, [currentCloudProvider, selectedCloudProvider]);
 

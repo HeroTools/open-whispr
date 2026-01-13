@@ -3,12 +3,10 @@ import { Button } from "./ui/button";
 import { RefreshCw, Download, Trash2, Check } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
-import DownloadProgressBar from "./ui/DownloadProgressBar";
+import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload, type ModelType } from "../hooks/useModelDownload";
-import { MODEL_PICKER_COLORS } from "../utils/modelPickerStyles";
-
-type PickerColorScheme = "purple" | "indigo";
+import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
 
 export interface LocalModel {
   id: string;
@@ -34,7 +32,7 @@ interface LocalModelPickerProps {
   onModelSelect: (modelId: string) => void;
   onProviderSelect: (providerId: string) => void;
   modelType: ModelType;
-  colorScheme?: PickerColorScheme;
+  colorScheme?: Exclude<ColorScheme, "blue">;
   className?: string;
   onDownloadComplete?: () => void;
 }

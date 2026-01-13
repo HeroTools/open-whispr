@@ -1,12 +1,13 @@
-import React, { ReactNode } from "react";
+import { ReactNode } from "react";
 import { ProviderIcon } from "./ProviderIcon";
+import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyles";
 
 export interface ProviderTabItem {
   id: string;
   name: string;
 }
 
-type ColorScheme = "indigo" | "purple" | "dynamic";
+type ColorScheme = Exclude<BaseColorScheme, "blue"> | "dynamic";
 
 interface ProviderTabsProps {
   providers: ProviderTabItem[];
@@ -75,5 +76,3 @@ export function ProviderTabs({
     </div>
   );
 }
-
-export default ProviderTabs;
