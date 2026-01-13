@@ -5,8 +5,9 @@ const { promises: fsPromises } = require("fs");
 const https = require("https");
 const { app } = require("electron");
 
-// Import the model registry data directly
 const modelRegistryData = require("../models/modelRegistryData.json");
+
+const MIN_FILE_SIZE = 1_000_000; // 1MB minimum for valid model files
 
 function getLocalProviders() {
   return modelRegistryData.localProviders || [];
@@ -53,11 +54,10 @@ class ModelManager {
     try {
       const models = [];
 
-      // Get all models from registry
       for (const provider of getLocalProviders()) {
         for (const model of provider.models) {
           const modelPath = path.join(this.modelsDir, model.fileName);
-          const isDownloaded = await this.checkFileExists(modelPath);
+          const isDownloaded = await this.checkModelValid(modelPath);
 
           models.push({
             ...model,
@@ -85,13 +85,22 @@ class ModelManager {
     if (!modelInfo) return false;
 
     const modelPath = path.join(this.modelsDir, modelInfo.model.fileName);
-    return this.checkFileExists(modelPath);
+    return this.checkModelValid(modelPath);
   }
 
   async checkFileExists(filePath) {
     try {
       await fsPromises.access(filePath, fs.constants.F_OK);
       return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async checkModelValid(filePath) {
+    try {
+      const stats = await fsPromises.stat(filePath);
+      return stats.size > MIN_FILE_SIZE;
     } catch {
       return false;
     }
@@ -115,13 +124,12 @@ class ModelManager {
 
     const { model, provider } = modelInfo;
     const modelPath = path.join(this.modelsDir, model.fileName);
+    const tempPath = `${modelPath}.tmp`;
 
-    // Check if already downloaded
-    if (await this.checkFileExists(modelPath)) {
+    if (await this.checkModelValid(modelPath)) {
       return modelPath;
     }
 
-    // Check if already downloading
     if (this.activeDownloads.get(modelId)) {
       throw new ModelError("Model is already being downloaded", "DOWNLOAD_IN_PROGRESS", {
         modelId,
@@ -131,10 +139,10 @@ class ModelManager {
     this.activeDownloads.set(modelId, true);
 
     try {
-      // Construct download URL based on provider
+      await this.ensureModelsDirExists();
       const downloadUrl = this.getDownloadUrl(provider, model);
 
-      await this.downloadFile(downloadUrl, modelPath, (progress, downloadedSize, totalSize) => {
+      await this.downloadFile(downloadUrl, tempPath, (progress, downloadedSize, totalSize) => {
         this.downloadProgress.set(modelId, {
           modelId,
           progress,
@@ -146,7 +154,31 @@ class ModelManager {
         }
       });
 
+      const stats = await fsPromises.stat(tempPath);
+      if (stats.size < MIN_FILE_SIZE) {
+        throw new ModelError(
+          "Downloaded file appears to be corrupted or incomplete",
+          "DOWNLOAD_CORRUPTED",
+          { size: stats.size, minSize: MIN_FILE_SIZE }
+        );
+      }
+
+      // Rename to final path (copy + delete on Windows if cross-device)
+      try {
+        await fsPromises.rename(tempPath, modelPath);
+      } catch (renameError) {
+        if (renameError.code === "EXDEV") {
+          await fsPromises.copyFile(tempPath, modelPath);
+          await fsPromises.unlink(tempPath);
+        } else {
+          throw renameError;
+        }
+      }
+
       return modelPath;
+    } catch (error) {
+      await fsPromises.unlink(tempPath).catch(() => {});
+      throw error;
     } finally {
       this.activeDownloads.delete(modelId);
       this.downloadProgress.delete(modelId);
@@ -164,6 +196,12 @@ class ModelManager {
       let downloadedSize = 0;
       let totalSize = 0;
 
+      const cleanupAndReject = (error) => {
+        file.close(() => {
+          fs.unlink(destPath, () => reject(error));
+        });
+      };
+
       https
         .get(
           url,
@@ -173,18 +211,19 @@ class ModelManager {
           },
           (response) => {
             if (response.statusCode === 302 || response.statusCode === 301) {
-              // Handle redirect
-              file.close();
-              fs.unlinkSync(destPath);
-              return this.downloadFile(response.headers.location, destPath, onProgress)
-                .then(resolve)
-                .catch(reject);
+              // Handle redirect - close file and clean up before following
+              file.close(() => {
+                fs.unlink(destPath, () => {
+                  this.downloadFile(response.headers.location, destPath, onProgress)
+                    .then(resolve)
+                    .catch(reject);
+                });
+              });
+              return;
             }
 
             if (response.statusCode !== 200) {
-              file.close();
-              fs.unlinkSync(destPath);
-              reject(
+              cleanupAndReject(
                 new ModelError(
                   `Download failed with status ${response.statusCode}`,
                   "DOWNLOAD_FAILED",
@@ -207,14 +246,11 @@ class ModelManager {
             });
 
             response.on("end", () => {
-              file.close();
-              resolve(destPath);
+              file.end(() => resolve(destPath));
             });
 
             response.on("error", (error) => {
-              file.close();
-              fs.unlinkSync(destPath);
-              reject(
+              cleanupAndReject(
                 new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
                   error: error.message,
                 })
@@ -223,11 +259,7 @@ class ModelManager {
           }
         )
         .on("error", (error) => {
-          file.close();
-          if (fs.existsSync(destPath)) {
-            fs.unlinkSync(destPath);
-          }
-          reject(
+          cleanupAndReject(
             new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
               error: error.message,
             })
@@ -278,7 +310,6 @@ class ModelManager {
   }
 
   async ensureLlamaCpp() {
-    // Simplify - isInstalled already checks system installation
     const llamaCppInstaller = require("./llamaCppInstaller").default;
 
     if (!(await llamaCppInstaller.isInstalled())) {
@@ -298,20 +329,22 @@ class ModelManager {
     }
 
     const modelPath = path.join(this.modelsDir, modelInfo.model.fileName);
-    if (!(await this.checkFileExists(modelPath))) {
-      throw new ModelError(`Model ${modelId} is not downloaded`, "MODEL_NOT_DOWNLOADED", {
-        modelId,
-      });
+    if (!(await this.checkModelValid(modelPath))) {
+      throw new ModelError(
+        `Model ${modelId} is not downloaded or is corrupted`,
+        "MODEL_NOT_DOWNLOADED",
+        {
+          modelId,
+        }
+      );
     }
 
-    // Format the prompt based on the provider
     const formattedPrompt = this.formatPrompt(
       modelInfo.provider,
       prompt,
       options.systemPrompt || ""
     );
 
-    // Run inference with llama.cpp
     return new Promise((resolve, reject) => {
       const args = [
         "-m",
@@ -374,7 +407,6 @@ class ModelManager {
     if (provider.promptTemplate) {
       return provider.promptTemplate.replace("{system}", systemPrompt).replace("{user}", text);
     }
-    // Fallback for providers without template
     return `${systemPrompt}\n\n${text}`;
   }
 }
