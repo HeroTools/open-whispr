@@ -42,17 +42,11 @@ const CONTROL_PANEL_CONFIG = {
   title: "Control Panel",
   resizable: true,
   show: false,
-  // macOS-specific options
-  ...(process.platform === "darwin"
-    ? {
-        titleBarStyle: "hiddenInset",
-        trafficLightPosition: { x: 20, y: 20 },
-        frame: false,
-      }
-    : {
-        // Windows/Linux: use standard frame for reliability
-        frame: true,
-      }),
+  frame: false,
+  ...(process.platform === "darwin" && {
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 20, y: 20 },
+  }),
   transparent: false,
   backgroundColor: "#ffffff",
   minimizable: true,
