@@ -9,7 +9,6 @@
   "files": [
     "main.js",
     "preload.js",
-    "whisper_bridge.py",
     "package.json",
     "node_modules/**/*",
     "src/dist/**/*",
@@ -24,7 +23,6 @@
     "!src/node_modules/**/*"
   ],
   "asarUnpack": [
-    "whisper_bridge.py",
     "**/node_modules/ffmpeg-static/**/*",
     "**/node_modules/better-sqlite3/**/*"
   ],
@@ -32,7 +30,7 @@
     "src/assets/**/*",
     "resources/macos-globe-listener.swift",
     "resources/bin/macos-globe-listener",
-    "resources/python/**/*"
+    "resources/bin/whisper-cpp-*"
   ],
   "mac": {
     "category": "public.app-category.productivity",
@@ -97,10 +95,10 @@
   },
   "deb": {
     "afterRemove": "resources/linux/after-remove.sh",
-    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype", "--deb-recommends", "python3"]
+    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype"]
   },
   "rpm": {
-    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype", "--rpm-tag", "Recommends: python3"]
+    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype"]
   },
   "nsis": {
     "oneClick": false,

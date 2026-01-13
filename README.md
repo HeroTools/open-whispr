@@ -36,7 +36,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Node.js 18+** and npm (Download from [nodejs.org](https://nodejs.org/))
 - **macOS 10.15+**, **Windows 10+**, or **Linux**
 - On macOS, Globe key support requires the Xcode Command Line Tools (`xcode-select --install`) so the bundled Swift helper can run
-- **Python 3.7+** (Optional - the app can install it automatically for local Whisper processing)
 
 ## Quick Start
 
@@ -280,7 +279,6 @@ The AI automatically detects when you're giving it commands versus dictating reg
 open-whispr/
 ├── main.js              # Electron main process & IPC handlers
 ├── preload.js           # Electron preload script & API bridge
-├── whisper_bridge.py    # Python script for local Whisper processing
 ├── setup.js             # First-time setup script
 ├── package.json         # Dependencies and scripts
 ├── env.example          # Environment variables template
@@ -321,8 +319,7 @@ open-whispr/
 - **Desktop**: Electron 36 with context isolation
 - **UI Components**: shadcn/ui with Radix primitives
 - **Database**: better-sqlite3 for local transcription storage
-- **Speech-to-Text**: OpenAI Whisper (local models + API)
-- **Local Processing**: Python with OpenAI Whisper package
+- **Speech-to-Text**: whisper.cpp (local) + OpenAI Whisper API (cloud)
 - **Icons**: Lucide React for consistent iconography
 
 ## Development
@@ -356,7 +353,7 @@ Both use the same React codebase but render different components based on URL pa
 - **preload.js**: Secure bridge between main and renderer processes
 - **App.jsx**: Main dictation interface with recording controls
 - **ControlPanel.tsx**: Settings, history, and model management
-- **whisper_bridge.py**: Python bridge for local Whisper processing
+- **src/helpers/whisper.js**: whisper.cpp integration for local processing
 - **better-sqlite3**: Local database for transcription history
 
 ### Tailwind CSS v4 Setup
@@ -410,25 +407,18 @@ DEBUG=false
 
 ### Local Whisper Setup
 
-For local processing, OpenWhispr offers automated setup:
+For local processing, OpenWhispr uses whisper.cpp - a high-performance C++ implementation:
 
-1. **Isolated Python Environment** (default):
-   - The app creates a per-user virtual environment under your app data folder
-   - Uses a bundled Python runtime if present; otherwise uses system Python only to create the venv
-   - No system-wide `pip install` is performed
+1. **Bundled Binary**: whisper.cpp is bundled with the app for all platforms
+2. **GGML Models**: Downloads optimized GGML models on first use to `~/.cache/openwhispr/whisper-models/`
+3. **No Dependencies**: No Python or other runtime required
 
-2. **Automatic Whisper Setup**:
-   - Installs OpenAI Whisper inside the isolated environment
-   - Downloads your chosen model on first use
-   - Handles all transcription locally
-
-Optional override: set `OPENWHISPR_PYTHON` to force a specific Python interpreter (advanced use).
-
-Release packaging note: place a per-platform Python runtime under `resources/python` to bundle it with the app.
+**System Fallback**: If the bundled binary fails, install via package manager:
+- macOS: `brew install whisper-cpp`
+- Linux: Build from source at https://github.com/ggml-org/whisper.cpp
 
 **Requirements**:
-- Sufficient disk space for models (39MB - 1.5GB depending on model)
-- Admin/sudo access may be required only if you choose to install system Python
+- Sufficient disk space for models (75MB - 3GB depending on model)
 
 ### Customization
 
@@ -478,9 +468,9 @@ OpenWhispr is designed with privacy and security in mind:
 3. **API key errors** (cloud processing only): Ensure your OpenAI API key is valid and has credits
    - Set key through Control Panel or .env file
    - Check logs for "OpenAI API Key present: Yes/No"
-4. **Local Whisper installation**: 
-   - OpenWhispr creates an isolated Python environment automatically
-   - Use Control Panel to install Whisper into that environment
+4. **Local Whisper issues**:
+   - whisper.cpp is bundled with the app
+   - If bundled binary fails, install via `brew install whisper-cpp` (macOS)
    - Check available disk space for models
 5. **Global hotkey conflicts**: Change the hotkey in the Control Panel - any key can be used
 6. **Text not pasting**: Check accessibility permissions and try manual paste with Cmd+V
@@ -490,7 +480,7 @@ OpenWhispr is designed with privacy and security in mind:
 
 - Check the [Issues](https://github.com/your-repo/open-whispr/issues) page
 - Review the console logs for debugging information
-- For local processing: Ensure the managed Python environment initializes successfully
+- For local processing: Ensure whisper.cpp is accessible and models are downloaded
 - For cloud processing: Verify your OpenAI API key and billing status
 - Check the Control Panel for system status and diagnostics
 

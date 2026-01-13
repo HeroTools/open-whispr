@@ -6,7 +6,7 @@
 |-------|---------|
 | Host architecture | `uname -m` |
 | Node architecture | `node -p "process.arch"` |
-| Python install | `python3 --version && which python3` |
+| whisper.cpp install | `which whisper` or `which whisper-cpp` |
 | FFmpeg availability | `ffmpeg -version` |
 
 ## Common Issues
@@ -45,21 +45,22 @@
 2. Run `npm run setup` to verify FFmpeg
 3. If using packaged app, try reinstalling
 
-### Python/Whisper Issues
+### whisper.cpp Issues
 
-**Symptoms:** Local transcription fails, "spawn python ENOENT"
+**Symptoms:** Local transcription fails, "whisper.cpp not found"
 
 **Fix:**
-1. OpenWhispr creates an isolated venv automatically
-2. If failing, delete the venv folder and retry (see [LOCAL_WHISPER_SETUP.md](LOCAL_WHISPER_SETUP.md))
-3. Check if `python3 --version` works in terminal
+1. The whisper.cpp binary is bundled with the app
+2. If bundled binary fails, install via package manager:
+   - macOS: `brew install whisper-cpp`
+   - Linux: Build from source at https://github.com/ggml-org/whisper.cpp
+3. Clear model cache: `rm -rf ~/.cache/openwhispr/whisper-models`
 4. Try cloud transcription as fallback
 
 ### Windows-Specific Issues
 
 See [WINDOWS_TROUBLESHOOTING.md](WINDOWS_TROUBLESHOOTING.md) for:
 - Window visibility issues
-- Python path detection
 - FFmpeg permission problems
 
 ## Enable Debug Mode

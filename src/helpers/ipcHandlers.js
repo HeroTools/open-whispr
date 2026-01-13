@@ -180,55 +180,6 @@ class IPCHandlers {
       return this.whisperManager.checkWhisperInstallation();
     });
 
-    ipcMain.handle("check-python-installation", async (event) => {
-      return this.whisperManager.checkPythonInstallation();
-    });
-
-    ipcMain.handle("install-python", async (event) => {
-      try {
-        const result = await this.whisperManager.installPython((progress) => {
-          event.sender.send("python-install-progress", {
-            type: "progress",
-            stage: progress.stage,
-            percentage: progress.percentage,
-          });
-        });
-        return result;
-      } catch (error) {
-        throw error;
-      }
-    });
-
-    ipcMain.handle("install-whisper", async (event) => {
-      try {
-        // Set up progress forwarding for installation
-        const originalConsoleLog = console.log;
-        console.log = (...args) => {
-          const message = args.join(" ");
-          if (
-            message.includes("Installing") ||
-            message.includes("Downloading") ||
-            message.includes("Collecting")
-          ) {
-            event.sender.send("whisper-install-progress", {
-              type: "progress",
-              message: message,
-            });
-          }
-          originalConsoleLog(...args);
-        };
-
-        const result = await this.whisperManager.installWhisper();
-
-        // Restore original console.log
-        console.log = originalConsoleLog;
-
-        return result;
-      } catch (error) {
-        throw error;
-      }
-    });
-
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
       try {
         const result = await this.whisperManager.downloadWhisperModel(modelName, (progressData) => {

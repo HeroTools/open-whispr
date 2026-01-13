@@ -32,7 +32,7 @@ const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 
-// Set up PATH for production builds to find system Python
+// Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
 function setupProductionPath() {
   if (process.platform === 'darwin' && process.env.NODE_ENV !== 'development') {
     const commonPaths = [
@@ -41,15 +41,12 @@ function setupProductionPath() {
       '/usr/bin',
       '/bin',
       '/usr/sbin',
-      '/sbin',
-      '/Library/Frameworks/Python.framework/Versions/3.11/bin',
-      '/Library/Frameworks/Python.framework/Versions/3.10/bin',
-      '/Library/Frameworks/Python.framework/Versions/3.9/bin'
+      '/sbin'
     ];
-    
+
     const currentPath = process.env.PATH || '';
     const pathsToAdd = commonPaths.filter(p => !currentPath.includes(p));
-    
+
     if (pathsToAdd.length > 0) {
       process.env.PATH = `${currentPath}:${pathsToAdd.join(':')}`;
     }

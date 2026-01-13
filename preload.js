@@ -70,19 +70,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
   checkPasteTools: () => ipcRenderer.invoke("check-paste-tools"),
 
-  // Python installation functions
-  checkPythonInstallation: () =>
-    ipcRenderer.invoke("check-python-installation"),
-  installPython: () => ipcRenderer.invoke("install-python"),
-  onPythonInstallProgress: registerListener("python-install-progress"),
-
-  // Local Whisper functions
+  // Local Whisper functions (whisper.cpp)
   transcribeLocalWhisper: (audioBlob, options) =>
     ipcRenderer.invoke("transcribe-local-whisper", audioBlob, options),
   checkWhisperInstallation: () =>
     ipcRenderer.invoke("check-whisper-installation"),
-  installWhisper: () => ipcRenderer.invoke("install-whisper"),
-  onWhisperInstallProgress: registerListener("whisper-install-progress"),
   downloadWhisperModel: (modelName) =>
     ipcRenderer.invoke("download-whisper-model", modelName),
   onWhisperDownloadProgress: registerListener("whisper-download-progress"),

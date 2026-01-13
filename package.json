@@ -1,7 +1,7 @@
 {
   "name": "open-whispr",
   "version": "1.1.2",
-  "description": "A desktop dictation application using OpenAI Whisper for speech-to-text transcription",
+  "description": "A desktop dictation application using whisper.cpp for speech-to-text transcription",
   "main": "main.js",
   "private": true,
   "scripts": {
@@ -28,10 +28,10 @@
     "pack": "npm run build:renderer && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
     "predist": "npm run compile:globe",
     "dist": "npm run build:renderer && electron-builder",
+    "download:whisper-cpp": "node scripts/download-whisper-cpp.js",
     "format:js": "eslint . --fix && cd src && eslint . --fix && prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "format:py": "python3 -m ruff check --fix *.py && python3 -m ruff format *.py",
-    "format": "npm run format:js && npm run format:py",
-    "format:check": "eslint . && cd src && eslint . && prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\" && python3 -m ruff check *.py",
+    "format": "npm run format:js",
+    "format:check": "eslint . && cd src && eslint . && prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "preview": "cd src && vite preview",
     "clean": "node cleanup.js"
   },
@@ -39,7 +39,7 @@
     "dictation",
     "speech-to-text",
     "whisper",
-    "openai",
+    "whisper.cpp",
     "electron",
     "desktop-app"
   ],

@@ -9,7 +9,6 @@ import {
   Check,
   Settings,
   Mic,
-  Download,
   Key,
   Shield,
   Command,
@@ -29,8 +28,6 @@ import StepProgress from "./ui/StepProgress";
 import { AlertDialog, ConfirmDialog } from "./ui/dialog";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useDialogs } from "../hooks/useDialogs";
-import { useWhisper } from "../hooks/useWhisper";
-import { usePython } from "../hooks/usePython";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
@@ -313,9 +310,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     return match?.label || reasoningModel;
   }, [displayedReasoningModels, reasoningModel]);
 
-  const whisperHook = useWhisper(showAlertDialog);
-  const { setupProgressListener } = whisperHook;
-  const pythonHook = usePython(showAlertDialog);
   const permissionsHook = usePermissions(showAlertDialog);
   const { pasteFromClipboard } = useClipboard(showAlertDialog);
 
@@ -329,13 +323,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Agent Name", icon: User },
     { title: "Finish", icon: Check },
   ];
-
-  useEffect(() => {
-    const dispose = setupProgressListener();
-    return () => {
-      dispose?.();
-    };
-  }, [setupProgressListener]);
 
   const updateProcessingMode = (useLocal: boolean) => {
     updateTranscriptionSettings({ useLocalWhisper: useLocal });
@@ -586,140 +573,30 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             {useLocalWhisper ? (
               <div className="space-y-4">
-                {/* Python Installation Section */}
-                {!pythonHook.hasChecked ? (
-                  <div className="text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-blue-50 rounded-full flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                    </div>
-                    <h3 className="font-semibold text-gray-900">Looking for Python...</h3>
-                    <p className="text-sm text-gray-600 max-w-md mx-auto">
-                      OpenWhispr is scanning for your existing Python install (including{" "}
-                      <code>py.exe</code> and any paths supplied via <code>OPENWHISPR_PYTHON</code>
-                      ). Sit tight—if we find one, we’ll skip this step automatically.
-                    </p>
+                <div className="text-center">
+                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                    <Mic className="w-8 h-8 text-blue-600" />
                   </div>
-                ) : !pythonHook.pythonInstalled ? (
-                  <div className="text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-                      <Download className="w-8 h-8 text-blue-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Install Python</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Python is required for local processing. We'll install it automatically for
-                        you.
-                      </p>
-                    </div>
+                  <h3 className="font-semibold text-gray-900 mb-2">Choose Your Model</h3>
+                  <p className="text-sm text-gray-600">
+                    Select a transcription model based on your needs.
+                  </p>
+                </div>
 
-                    {pythonHook.installingPython ? (
-                      <div className="bg-blue-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-center gap-3 mb-3">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
-                          <span className="font-medium text-blue-900">Installing Python...</span>
-                        </div>
-                        {pythonHook.installProgress && (
-                          <div className="text-xs text-blue-600 bg-white p-2 rounded font-mono">
-                            {pythonHook.installProgress}
-                          </div>
-                        )}
-                        <p className="text-xs text-blue-600 mt-2">
-                          This may take a few minutes. Please keep the app open.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-3">
-                        <Button
-                          onClick={() => {
-                            pythonHook.installPython();
-                          }}
-                          className="w-full bg-blue-600 hover:bg-blue-700"
-                          disabled={pythonHook.isChecking}
-                        >
-                          {pythonHook.isChecking ? "Please Wait..." : "Install Python"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="w-full justify-center text-indigo-600"
-                          disabled={pythonHook.isChecking}
-                          onClick={() =>
-                            showConfirmDialog({
-                              title: "Use existing Python?",
-                              description:
-                                "We’ll skip the installer and search for the interpreter already on your system (including OPENWHISPR_PYTHON and the Windows py launcher). Continue?",
-                              confirmText: "Use Existing Python",
-                              cancelText: "Keep Installing",
-                              onConfirm: () => {
-                                pythonHook.checkPythonInstallation();
-                              },
-                            })
-                          }
-                        >
-                          Use Existing Python Instead
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ) : !whisperHook.whisperInstalled ? (
-                  <div className="text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto bg-purple-100 rounded-full flex items-center justify-center">
-                      <Download className="w-8 h-8 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 mb-2">Install Whisper</h3>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Python is ready! Now we'll install Whisper for speech recognition.
-                      </p>
-                    </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Model quality
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    Larger models are more accurate but slower. Base is recommended for most users.
+                  </p>
+                </div>
 
-                    {whisperHook.installingWhisper ? (
-                      <div className="bg-purple-50 p-4 rounded-lg">
-                        <div className="flex items-center justify-center gap-3 mb-3">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-purple-600"></div>
-                          <span className="font-medium text-purple-900">Installing...</span>
-                        </div>
-                        {whisperHook.installProgress && (
-                          <div className="text-xs text-purple-600 bg-white p-2 rounded font-mono">
-                            {whisperHook.installProgress}
-                          </div>
-                        )}
-                        <p className="text-xs text-purple-600 mt-2">
-                          This may take a few minutes. Please keep the app open.
-                        </p>
-                      </div>
-                    ) : (
-                      <Button onClick={whisperHook.installWhisper} className="w-full">
-                        Install Whisper
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="text-center">
-                      <div className="w-16 h-16 mx-auto bg-green-100 rounded-full flex items-center justify-center mb-4">
-                        <Check className="w-8 h-8 text-green-600" />
-                      </div>
-                      <h3 className="font-semibold text-green-900 mb-2">Whisper Installed!</h3>
-                      <p className="text-sm text-gray-600">Now choose your model quality:</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Choose your model quality below
-                      </label>
-                      <p className="text-xs text-gray-500">
-                        Download and select the model that best fits your needs.
-                      </p>
-                    </div>
-
-                    <LocalWhisperPicker
-                      selectedModel={whisperModel}
-                      onModelSelect={setWhisperModel}
-                      variant="onboarding"
-                    />
-                  </div>
-                )}
+                <LocalWhisperPicker
+                  selectedModel={whisperModel}
+                  onModelSelect={setWhisperModel}
+                  variant="onboarding"
+                />
               </div>
             ) : (
               <div className="space-y-4">
@@ -1139,7 +1016,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return true; // Mode selection
       case 2:
         if (useLocalWhisper) {
-          return pythonHook.pythonInstalled && whisperHook.whisperInstalled;
+          return whisperModel !== ""; // Just need a model selected
         } else {
           const trimmedKey = apiKey.trim();
           if (!trimmedKey) {
