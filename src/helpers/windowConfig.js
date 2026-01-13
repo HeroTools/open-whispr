@@ -50,8 +50,7 @@ const CONTROL_PANEL_CONFIG = {
         frame: false,
       }
     : {
-        // Windows/Linux: use standard frame for reliability
-        frame: true,
+        frame: false,
       }),
   transparent: false,
   backgroundColor: "#ffffff",
