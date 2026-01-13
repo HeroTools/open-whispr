@@ -129,12 +129,12 @@ class ModelManager {
     }
 
     this.activeDownloads.set(modelId, true);
+    const tempPath = `${modelPath}.tmp`;
 
     try {
-      // Construct download URL based on provider
       const downloadUrl = this.getDownloadUrl(provider, model);
 
-      await this.downloadFile(downloadUrl, modelPath, (progress, downloadedSize, totalSize) => {
+      await this.downloadFile(downloadUrl, tempPath, (progress, downloadedSize, totalSize) => {
         this.downloadProgress.set(modelId, {
           modelId,
           progress,
@@ -146,7 +146,23 @@ class ModelManager {
         }
       });
 
+      // Atomic rename to final path (handles cross-device moves on Windows)
+      try {
+        await fsPromises.rename(tempPath, modelPath);
+      } catch (renameError) {
+        if (renameError.code === "EXDEV") {
+          await fsPromises.copyFile(tempPath, modelPath);
+          await fsPromises.unlink(tempPath).catch(() => {});
+        } else {
+          throw renameError;
+        }
+      }
+
       return modelPath;
+    } catch (error) {
+      // Clean up partial download on failure
+      await fsPromises.unlink(tempPath).catch(() => {});
+      throw error;
     } finally {
       this.activeDownloads.delete(modelId);
       this.downloadProgress.delete(modelId);
@@ -164,6 +180,15 @@ class ModelManager {
       let downloadedSize = 0;
       let totalSize = 0;
 
+      const cleanup = (callback) => {
+        file.close(() => {
+          fsPromises
+            .unlink(destPath)
+            .catch(() => {})
+            .finally(callback);
+        });
+      };
+
       https
         .get(
           url,
@@ -173,24 +198,24 @@ class ModelManager {
           },
           (response) => {
             if (response.statusCode === 302 || response.statusCode === 301) {
-              // Handle redirect
-              file.close();
-              fs.unlinkSync(destPath);
-              return this.downloadFile(response.headers.location, destPath, onProgress)
-                .then(resolve)
-                .catch(reject);
+              cleanup(() => {
+                this.downloadFile(response.headers.location, destPath, onProgress)
+                  .then(resolve)
+                  .catch(reject);
+              });
+              return;
             }
 
             if (response.statusCode !== 200) {
-              file.close();
-              fs.unlinkSync(destPath);
-              reject(
-                new ModelError(
-                  `Download failed with status ${response.statusCode}`,
-                  "DOWNLOAD_FAILED",
-                  { statusCode: response.statusCode }
-                )
-              );
+              cleanup(() => {
+                reject(
+                  new ModelError(
+                    `Download failed with status ${response.statusCode}`,
+                    "DOWNLOAD_FAILED",
+                    { statusCode: response.statusCode }
+                  )
+                );
+              });
               return;
             }
 
@@ -207,31 +232,28 @@ class ModelManager {
             });
 
             response.on("end", () => {
-              file.close();
-              resolve(destPath);
+              file.close(() => resolve(destPath));
             });
 
             response.on("error", (error) => {
-              file.close();
-              fs.unlinkSync(destPath);
-              reject(
-                new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
-                  error: error.message,
-                })
-              );
+              cleanup(() => {
+                reject(
+                  new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
+                    error: error.message,
+                  })
+                );
+              });
             });
           }
         )
         .on("error", (error) => {
-          file.close();
-          if (fs.existsSync(destPath)) {
-            fs.unlinkSync(destPath);
-          }
-          reject(
-            new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
-              error: error.message,
-            })
-          );
+          cleanup(() => {
+            reject(
+              new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
+                error: error.message,
+              })
+            );
+          });
         });
     });
   }
