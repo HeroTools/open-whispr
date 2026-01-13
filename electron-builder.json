@@ -96,7 +96,11 @@
     ]
   },
   "deb": {
-    "afterRemove": "resources/linux/after-remove.sh"
+    "afterRemove": "resources/linux/after-remove.sh",
+    "recommends": ["xdotool", "wtype", "python3"]
+  },
+  "rpm": {
+    "recommends": ["xdotool", "wtype", "python3"]
   },
   "nsis": {
     "oneClick": false,
