@@ -794,7 +794,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 />
               )}
 
-              {!isMacOS && (
+              {/* Only show PasteToolsInfo on Linux when tools are NOT available (to show install instructions) */}
+              {platform === "linux" &&
+                permissionsHook.pasteToolsInfo &&
+                !permissionsHook.pasteToolsInfo.available && (
                 <PasteToolsInfo
                   pasteToolsInfo={permissionsHook.pasteToolsInfo}
                   isChecking={permissionsHook.isCheckingPasteTools}

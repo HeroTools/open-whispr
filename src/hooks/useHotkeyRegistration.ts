@@ -114,6 +114,7 @@ export function useHotkeyRegistration(
         const result = await window.electronAPI.updateHotkey(hotkey);
 
         if (!result?.success) {
+          // Use the detailed error message from the manager, which includes suggestions
           const errorMsg =
             result?.message || "This key could not be registered. Please choose a different key.";
           setLastError(errorMsg);

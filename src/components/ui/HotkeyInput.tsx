@@ -83,6 +83,33 @@ const CODE_TO_KEY: Record<string, string> = {
   End: "End",
   PageUp: "PageUp",
   PageDown: "PageDown",
+  // Additional keys (useful on Windows/Linux)
+  Pause: "Pause",
+  ScrollLock: "Scrolllock",
+  PrintScreen: "PrintScreen",
+  NumLock: "Numlock",
+  // Numpad keys
+  Numpad0: "num0",
+  Numpad1: "num1",
+  Numpad2: "num2",
+  Numpad3: "num3",
+  Numpad4: "num4",
+  Numpad5: "num5",
+  Numpad6: "num6",
+  Numpad7: "num7",
+  Numpad8: "num8",
+  Numpad9: "num9",
+  NumpadAdd: "numadd",
+  NumpadSubtract: "numsub",
+  NumpadMultiply: "nummult",
+  NumpadDivide: "numdiv",
+  NumpadDecimal: "numdec",
+  NumpadEnter: "Enter",
+  // Media keys (may work on some systems)
+  MediaPlayPause: "MediaPlayPause",
+  MediaStop: "MediaStop",
+  MediaTrackNext: "MediaNextTrack",
+  MediaTrackPrevious: "MediaPreviousTrack",
 };
 
 const MODIFIER_CODES = new Set([
