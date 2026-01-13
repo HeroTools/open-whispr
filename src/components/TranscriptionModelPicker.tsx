@@ -77,6 +77,8 @@ export default function TranscriptionModelPicker({
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
   const hasLoadedRef = useRef(false);
   const isLoadingRef = useRef(false);
+  const loadLocalModelsRef = useRef<(() => Promise<void>) | null>(null);
+  const ensureValidCloudSelectionRef = useRef<(() => void) | null>(null);
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
@@ -129,19 +131,27 @@ export default function TranscriptionModelPicker({
     onCloudModelSelect,
   ]);
 
+  // Keep refs in sync to avoid stale closures in the mode-switching effect
+  useEffect(() => {
+    loadLocalModelsRef.current = loadLocalModels;
+  }, [loadLocalModels]);
+
+  useEffect(() => {
+    ensureValidCloudSelectionRef.current = ensureValidCloudSelection;
+  }, [ensureValidCloudSelection]);
+
   // Only load models once on mount when in local mode, or when switching to local mode
   useEffect(() => {
     if (useLocalWhisper) {
       if (!hasLoadedRef.current) {
         hasLoadedRef.current = true;
-        loadLocalModels();
+        loadLocalModelsRef.current?.();
       }
     } else {
       hasLoadedRef.current = false; // Reset when switching to cloud
-      ensureValidCloudSelection();
+      ensureValidCloudSelectionRef.current?.();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [useLocalWhisper]); // Intentionally exclude callbacks to prevent re-render loops
+  }, [useLocalWhisper]);
 
   useEffect(() => {
     const handleModelsCleared = () => loadLocalModels();

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "./ui/button";
-import { RefreshCw, Download, Trash2, Check } from "lucide-react";
+import { RefreshCw, Download, Trash2, Check, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
@@ -103,12 +103,19 @@ export default function LocalModelPicker({
     onDownloadComplete?.();
   }, [loadDownloadedModels, onDownloadComplete]);
 
-  const { downloadingModel, downloadProgress, downloadModel, deleteModel, isDownloadingModel } =
-    useModelDownload({
-      modelType,
-      onDownloadComplete: handleDownloadComplete,
-      onModelsCleared: loadDownloadedModels,
-    });
+  const {
+    downloadingModel,
+    downloadProgress,
+    downloadModel,
+    deleteModel,
+    isDownloadingModel,
+    cancelDownload,
+    isCancelling,
+  } = useModelDownload({
+    modelType,
+    onDownloadComplete: handleDownloadComplete,
+    onModelsCleared: loadDownloadedModels,
+  });
 
   const handleDownload = useCallback(
     (modelId: string) => {
@@ -232,21 +239,25 @@ export default function LocalModelPicker({
                             <span className="ml-1">Delete</span>
                           </Button>
                         </>
+                      ) : isDownloading ? (
+                        <Button
+                          onClick={cancelDownload}
+                          disabled={isCancelling}
+                          size="sm"
+                          variant="outline"
+                          className="text-red-600 border-red-300 hover:bg-red-50"
+                        >
+                          <X size={14} />
+                          <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
+                        </Button>
                       ) : (
                         <Button
                           onClick={() => handleDownload(model.id)}
                           size="sm"
-                          disabled={isDownloading}
                           className={styles.buttons.download}
                         >
-                          {isDownloading ? (
-                            `${Math.round(downloadProgress.percentage)}%`
-                          ) : (
-                            <>
-                              <Download size={14} />
-                              <span className="ml-1">Download</span>
-                            </>
-                          )}
+                          <Download size={14} />
+                          <span className="ml-1">Download</span>
                         </Button>
                       )}
                     </div>

@@ -87,7 +87,7 @@ class IPCHandlers {
         }
         return { success: true };
       } catch (error) {
-        console.error("Failed to save settings:", error);
+        debugLogger.error("Failed to save settings:", error);
         return { success: false, error: error.message };
       }
     });
@@ -266,13 +266,13 @@ class IPCHandlers {
     // Model management handlers
     ipcMain.handle("model-get-all", async () => {
       try {
-        console.log("[IPC] model-get-all called");
+        debugLogger.debug("model-get-all called", undefined, "ipc");
         const modelManager = require("./modelManagerBridge").default;
         const models = await modelManager.getModelsWithStatus();
-        console.log("[IPC] Returning models:", models.length);
+        debugLogger.debug("Returning models", { count: models.length }, "ipc");
         return models;
       } catch (error) {
-        console.error("[IPC] Error in model-get-all:", error);
+        debugLogger.error("Error in model-get-all:", error);
         throw error;
       }
     });
@@ -485,6 +485,7 @@ class IPCHandlers {
 
     ipcMain.handle("llama-cpp-uninstall", async () => {
       try {
+        const llamaCppInstaller = require("./llamaCppInstaller").default;
         const result = await llamaCppInstaller.uninstall();
         return result;
       } catch (error) {
