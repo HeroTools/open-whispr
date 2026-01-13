@@ -160,7 +160,7 @@
         {
           "id": "qwen/qwen3-32b",
           "name": "Qwen3 32B",
-          "description": "Powerful reasoning with thinking mode, 131K context"
+          "description": "Powerful reasoning model, 131K context"
         },
         {
           "id": "openai/gpt-oss-120b",

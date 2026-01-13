@@ -235,6 +235,13 @@ class ReasoningService extends BaseReasoningService {
         ),
     };
 
+    // Disable thinking mode for Qwen models on Groq
+    // Thinking mode outputs internal reasoning which we don't want in dictation output
+    if (providerName === "Groq" && model.toLowerCase().includes("qwen")) {
+      requestBody.chat_template_kwargs = { enable_thinking: false };
+      logger.logReasoning("GROQ_QWEN_THINKING_DISABLED", { model });
+    }
+
     logger.logReasoning(`${providerName.toUpperCase()}_REQUEST`, {
       endpoint,
       model,
