@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 import { useToast } from "./components/ui/Toast";
-import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
@@ -39,6 +38,38 @@ const VoiceWaveIndicator = ({ isListening }) => {
           }}
         />
       ))}
+    </div>
+  );
+};
+
+// Audio Level Indicator Component (for recording state)
+const AudioLevelIndicator = ({ level }) => {
+  // Create bars that respond to audio level
+  const barCount = 5;
+  const minHeight = 4;
+  const maxHeight = 16;
+
+  return (
+    <div className="flex items-center justify-center gap-0.5">
+      {[...Array(barCount)].map((_, i) => {
+        // Each bar has a threshold - it lights up when level exceeds it
+        const threshold = (i + 1) / barCount;
+        const isActive = level > (i * 0.15);
+        // Height varies based on level and position
+        const heightFactor = isActive ? Math.min(1, (level - i * 0.15) * 3 + 0.3) : 0.3;
+        const height = minHeight + (maxHeight - minHeight) * heightFactor;
+
+        return (
+          <div
+            key={i}
+            className="w-1 bg-white rounded-full transition-all duration-75"
+            style={{
+              height: `${height}px`,
+              opacity: isActive ? 1 : 0.4,
+            }}
+          />
+        );
+      })}
     </div>
   );
 };
@@ -99,7 +130,7 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, toggleListening } = useAudioRecording(toast, {
+  const { isRecording, isProcessing, audioLevel, toggleListening } = useAudioRecording(toast, {
     onToggle: handleDictationToggle,
   });
 
@@ -275,7 +306,7 @@ export default function App() {
               {micState === "idle" || micState === "hover" ? (
                 <SoundWaveIcon size={micState === "idle" ? 12 : 14} />
               ) : micState === "recording" ? (
-                <LoadingDots />
+                <AudioLevelIndicator level={audioLevel} />
               ) : micState === "processing" ? (
                 <VoiceWaveIndicator isListening={true} />
               ) : null}

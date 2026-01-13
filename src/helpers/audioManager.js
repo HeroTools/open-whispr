@@ -1,4 +1,5 @@
 import ReasoningService from "../services/ReasoningService";
+import TranslationService from "../services/TranslationService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
 
@@ -25,6 +26,7 @@ class AudioManager {
     this.onStateChange = null;
     this.onError = null;
     this.onTranscriptionComplete = null;
+    this.onAudioLevel = null;
     this.cachedApiKey = null;
     this.cachedApiKeyProvider = null;
     this.cachedTranscriptionEndpoint = null;
@@ -33,12 +35,17 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
+    // Audio analysis
+    this.audioContext = null;
+    this.analyser = null;
+    this.audioLevelInterval = null;
   }
 
-  setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
+  setCallbacks({ onStateChange, onError, onTranscriptionComplete, onAudioLevel }) {
     this.onStateChange = onStateChange;
     this.onError = onError;
     this.onTranscriptionComplete = onTranscriptionComplete;
+    this.onAudioLevel = onAudioLevel;
   }
 
   async startRecording() {
@@ -48,6 +55,9 @@ class AudioManager {
       }
 
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Set up audio level monitoring
+      this.setupAudioAnalysis(stream);
 
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
@@ -61,6 +71,7 @@ class AudioManager {
       this.mediaRecorder.onstop = async () => {
         this.isRecording = false;
         this.isProcessing = true;
+        this.cleanupAudioAnalysis();
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
@@ -116,6 +127,56 @@ class AudioManager {
       return true;
     }
     return false;
+  }
+
+  setupAudioAnalysis(stream) {
+    try {
+      this.audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      this.analyser = this.audioContext.createAnalyser();
+      this.analyser.fftSize = 256;
+      this.analyser.smoothingTimeConstant = 0.8;
+
+      const source = this.audioContext.createMediaStreamSource(stream);
+      source.connect(this.analyser);
+
+      const dataArray = new Uint8Array(this.analyser.frequencyBinCount);
+
+      // Update audio level at 60fps for smooth visualization
+      this.audioLevelInterval = setInterval(() => {
+        if (!this.analyser || !this.isRecording) return;
+
+        this.analyser.getByteFrequencyData(dataArray);
+
+        // Calculate RMS (root mean square) for more accurate level
+        let sum = 0;
+        for (let i = 0; i < dataArray.length; i++) {
+          sum += dataArray[i] * dataArray[i];
+        }
+        const rms = Math.sqrt(sum / dataArray.length);
+
+        // Normalize to 0-1 range (max possible RMS is ~180 for Uint8 data)
+        const normalizedLevel = Math.min(1, rms / 128);
+
+        this.onAudioLevel?.(normalizedLevel);
+      }, 1000 / 60);
+    } catch (error) {
+      console.warn("Audio analysis setup failed:", error);
+    }
+  }
+
+  cleanupAudioAnalysis() {
+    if (this.audioLevelInterval) {
+      clearInterval(this.audioLevelInterval);
+      this.audioLevelInterval = null;
+    }
+
+    if (this.audioContext) {
+      this.audioContext.close().catch(() => {});
+      this.audioContext = null;
+    }
+
+    this.analyser = null;
+    this.onAudioLevel?.(0);
   }
 
   async processAudio(audioBlob, metadata = {}) {
@@ -428,6 +489,57 @@ class AudioManager {
       textPreview: normalizedText.substring(0, 100) + (normalizedText.length > 100 ? "..." : ""),
       timestamp: new Date().toISOString(),
     });
+
+    // Check if translation is enabled
+    const enableTranslation =
+      typeof window !== "undefined" && window.localStorage
+        ? localStorage.getItem("enableTranslation") === "true"
+        : false;
+    const translationModel =
+      typeof window !== "undefined" && window.localStorage
+        ? localStorage.getItem("translationModel") || ""
+        : "";
+    const translateToLanguage =
+      typeof window !== "undefined" && window.localStorage
+        ? localStorage.getItem("translateToLanguage") || ""
+        : "";
+
+    // If translation is enabled and configured, skip reasoning and translate directly
+    // This is a key optimization: translation already processes/cleans the text
+    if (enableTranslation && translationModel && translateToLanguage) {
+      logger.logReasoning("TRANSLATION_ENABLED", {
+        translationModel,
+        translateToLanguage,
+        textLength: normalizedText.length,
+      });
+
+      try {
+        const translatedText = await TranslationService.translate(
+          normalizedText,
+          translationModel,
+          {
+            targetLanguage: translateToLanguage,
+            sourceLanguage: localStorage.getItem("preferredLanguage") || "auto",
+          }
+        );
+
+        logger.logReasoning("TRANSLATION_SUCCESS", {
+          originalLength: normalizedText.length,
+          translatedLength: translatedText.length,
+          targetLanguage: translateToLanguage,
+        });
+
+        return translatedText;
+      } catch (error) {
+        logger.logReasoning("TRANSLATION_FAILED", {
+          error: error.message,
+          stack: error.stack,
+          fallbackToOriginal: true,
+        });
+        console.error(`Translation failed (${source}):`, error.message);
+        // Fall through to reasoning or return original text
+      }
+    }
 
     const reasoningModel =
       typeof window !== "undefined" && window.localStorage
@@ -1051,9 +1163,11 @@ class AudioManager {
     if (this.mediaRecorder && this.isRecording) {
       this.stopRecording();
     }
+    this.cleanupAudioAnalysis();
     this.onStateChange = null;
     this.onError = null;
     this.onTranscriptionComplete = null;
+    this.onAudioLevel = null;
   }
 }
 

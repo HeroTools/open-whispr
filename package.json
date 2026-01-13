@@ -47,6 +47,12 @@
     "name": "OpenWhispr Team",
     "email": "support@openwhispr.com"
   },
+  "contributors": [
+    {
+      "name": "pixelhunter1",
+      "url": "https://github.com/pixelhunter1"
+    }
+  ],
   "license": "MIT",
   "devDependencies": {
     "@electron/notarize": "^3.0.1",

@@ -22,6 +22,12 @@ export interface ReasoningSettings {
   cloudReasoningBaseUrl?: string;
 }
 
+export interface TranslationSettings {
+  enableTranslation: boolean;
+  translationModel: string;
+  translateToLanguage: string;
+}
+
 export interface HotkeySettings {
   dictationKey: string;
 }
@@ -119,6 +125,22 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Translation settings
+  const [enableTranslation, setEnableTranslation] = useLocalStorage("enableTranslation", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
+
+  const [translationModel, setTranslationModel] = useLocalStorage("translationModel", "", {
+    serialize: String,
+    deserialize: String,
+  });
+
+  const [translateToLanguage, setTranslateToLanguage] = useLocalStorage("translateToLanguage", "", {
+    serialize: String,
+    deserialize: String,
+  });
+
   // API keys
   const [openaiApiKey, setOpenaiApiKey] = useLocalStorage("openaiApiKey", "", {
     serialize: String,
@@ -194,6 +216,17 @@ export function useSettings() {
     [setUseReasoningModel, setReasoningModel, setCloudReasoningBaseUrl]
   );
 
+  const updateTranslationSettings = useCallback(
+    (settings: Partial<TranslationSettings>) => {
+      if (settings.enableTranslation !== undefined)
+        setEnableTranslation(settings.enableTranslation);
+      if (settings.translationModel !== undefined) setTranslationModel(settings.translationModel);
+      if (settings.translateToLanguage !== undefined)
+        setTranslateToLanguage(settings.translateToLanguage);
+    },
+    [setEnableTranslation, setTranslationModel, setTranslateToLanguage]
+  );
+
   const updateApiKeys = useCallback(
     (keys: Partial<ApiKeySettings>) => {
       if (keys.openaiApiKey !== undefined) setOpenaiApiKey(keys.openaiApiKey);
@@ -218,6 +251,9 @@ export function useSettings() {
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
+    enableTranslation,
+    translationModel,
+    translateToLanguage,
     openaiApiKey,
     anthropicApiKey,
     geminiApiKey,
@@ -240,6 +276,9 @@ export function useSettings() {
         setReasoningModel("");
       }
     },
+    setEnableTranslation,
+    setTranslationModel,
+    setTranslateToLanguage,
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,
@@ -247,6 +286,7 @@ export function useSettings() {
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
+    updateTranslationSettings,
     updateApiKeys,
   };
 }

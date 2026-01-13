@@ -5,6 +5,7 @@ export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [audioLevel, setAudioLevel] = useState(0);
   const audioManagerRef = useRef(null);
   const { onToggle } = options;
 
@@ -22,6 +23,9 @@ export const useAudioRecording = (toast, options = {}) => {
           description: error.description,
           variant: "destructive",
         });
+      },
+      onAudioLevel: (level) => {
+        setAudioLevel(level);
       },
       onTranscriptionComplete: async (result) => {
         if (result.success) {
@@ -111,6 +115,7 @@ export const useAudioRecording = (toast, options = {}) => {
     isRecording,
     isProcessing,
     transcript,
+    audioLevel,
     startRecording,
     stopRecording,
     cancelRecording,
