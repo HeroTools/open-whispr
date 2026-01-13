@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.1] - 2026-01-12
+
+### Added
+- **Cross-Platform Paste Tools Detection**: Onboarding now detects and guides users through installing paste tools on Linux and Windows with auto-grant accessibility
+
+### Changed
+- **Qwen Model Compatibility**: Disabled thinking mode for Qwen models on Groq to prevent compatibility issues
+- **Model Registry Refactor**: disableThinking flag now uses the centralized model registry
+- **Consolidated ColorScheme Types**: Removed redundant default exports and cleaned up inline font styles
+- **Provider Icons**: Use static imports for provider icons to fix Vite bundling issues
+
+### Fixed
+- **Recording Cancellation**: Restored cancel recording functionality that was accidentally removed
+- **Model Downloads**: Implemented atomic downloads with temp file pattern and robust cleanup handling for cross-platform reliability
+- **Incomplete Download Prevention**: Model file size validation now prevents incomplete downloads from showing as complete
+- **Windows PowerShell Performance**: Optimized paste startup time on Windows
+
 ## [1.1.0] - 2026-01-10
 
 ### Added
