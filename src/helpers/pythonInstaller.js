@@ -159,6 +159,11 @@ class PythonInstaller {
         progressCallback({ stage: "Installing Python...", percentage: 60 });
       }
 
+      // Determine install target directory for later verification
+      // Version without dots for folder name (e.g., "311" from "3.11.9")
+      const versionShort = this.pythonVersion.split(".").slice(0, 2).join("");
+      let expectedPythonPath;
+
       // Install Python with appropriate options based on admin rights
       const installArgs = isAdmin
         ? [
@@ -182,19 +187,72 @@ class PythonInstaller {
             "Include_debug=0",
             "Include_launcher=1",
             "InstallLauncherAllUsers=0",
-            "DefaultJustForMeTargetDir=%LOCALAPPDATA%\\Programs\\Python\\Python311",
+            `DefaultJustForMeTargetDir=${process.env.LOCALAPPDATA}\\Programs\\Python\\Python${versionShort}`,
           ];
+
+      // Determine expected install path based on admin rights
+      if (isAdmin) {
+        // System-wide install goes to Program Files
+        expectedPythonPath = path.join(
+          process.env.ProgramFiles || "C:\\Program Files",
+          `Python${versionShort}`,
+          "python.exe"
+        );
+      } else {
+        // User install goes to LOCALAPPDATA
+        expectedPythonPath = path.join(
+          process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local"),
+          "Programs",
+          "Python",
+          `Python${versionShort}`,
+          "python.exe"
+        );
+      }
 
       await runCommand(installerPath, installArgs, { timeout: TIMEOUTS.INSTALL });
 
-      // Clean up
+      // Clean up installer
       fs.unlink(installerPath, () => {});
+
+      if (progressCallback) {
+        progressCallback({ stage: "Verifying installation...", percentage: 90 });
+      }
+
+      // Verify the installation by checking if python.exe exists at expected location
+      // Give Windows a moment to finalize the installation
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
+      let installedPythonPath = null;
+
+      // Check expected path first
+      if (fs.existsSync(expectedPythonPath)) {
+        installedPythonPath = expectedPythonPath;
+      } else {
+        // Fallback: scan common Windows Python install locations
+        const possiblePaths = [
+          path.join(process.env.LOCALAPPDATA || "", "Programs", "Python", `Python${versionShort}`, "python.exe"),
+          path.join(process.env.ProgramFiles || "", `Python${versionShort}`, "python.exe"),
+          path.join(process.env["ProgramFiles(x86)"] || "", `Python${versionShort}`, "python.exe"),
+          path.join("C:", `Python${versionShort}`, "python.exe"),
+        ];
+
+        for (const p of possiblePaths) {
+          if (p && fs.existsSync(p)) {
+            installedPythonPath = p;
+            break;
+          }
+        }
+      }
 
       if (progressCallback) {
         progressCallback({ stage: "Python installation complete!", percentage: 100 });
       }
 
-      return { success: true, method: "official_installer" };
+      return {
+        success: true,
+        method: "official_installer",
+        pythonPath: installedPythonPath, // Return the actual path for immediate use
+      };
     } catch (error) {
       // Clean up on error
       if (fs.existsSync(installerPath)) {

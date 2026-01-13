@@ -1047,6 +1047,13 @@ class WhisperManager {
 
       const result = await this.pythonInstaller.installPython(progressCallback);
 
+      // On Windows, the installer returns the exact path to python.exe
+      // Use it directly since PATH environment won't be updated in running process
+      if (process.platform === "win32" && result.pythonPath) {
+        debugLogger.log(`Using freshly installed Python at: ${result.pythonPath}`);
+        this.pythonCmd = result.pythonPath;
+      }
+
       // After installation, prepare isolated environment
       await this.ensureManagedVenv();
 
