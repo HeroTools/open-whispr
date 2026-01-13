@@ -163,13 +163,13 @@ class ModelManager {
         );
       }
 
-      // Rename to final path (copy + delete on Windows if cross-device)
+      // Atomic rename to final path (handles cross-device moves on Windows)
       try {
         await fsPromises.rename(tempPath, modelPath);
       } catch (renameError) {
         if (renameError.code === "EXDEV") {
           await fsPromises.copyFile(tempPath, modelPath);
-          await fsPromises.unlink(tempPath);
+          await fsPromises.unlink(tempPath).catch(() => {});
         } else {
           throw renameError;
         }
@@ -177,6 +177,7 @@ class ModelManager {
 
       return modelPath;
     } catch (error) {
+      // Clean up partial download on failure
       await fsPromises.unlink(tempPath).catch(() => {});
       throw error;
     } finally {
@@ -196,9 +197,12 @@ class ModelManager {
       let downloadedSize = 0;
       let totalSize = 0;
 
-      const cleanupAndReject = (error) => {
+      const cleanup = (callback) => {
         file.close(() => {
-          fs.unlink(destPath, () => reject(error));
+          fsPromises
+            .unlink(destPath)
+            .catch(() => {})
+            .finally(callback);
         });
       };
 
@@ -211,25 +215,24 @@ class ModelManager {
           },
           (response) => {
             if (response.statusCode === 302 || response.statusCode === 301) {
-              // Handle redirect - close file and clean up before following
-              file.close(() => {
-                fs.unlink(destPath, () => {
-                  this.downloadFile(response.headers.location, destPath, onProgress)
-                    .then(resolve)
-                    .catch(reject);
-                });
+              cleanup(() => {
+                this.downloadFile(response.headers.location, destPath, onProgress)
+                  .then(resolve)
+                  .catch(reject);
               });
               return;
             }
 
             if (response.statusCode !== 200) {
-              cleanupAndReject(
-                new ModelError(
-                  `Download failed with status ${response.statusCode}`,
-                  "DOWNLOAD_FAILED",
-                  { statusCode: response.statusCode }
-                )
-              );
+              cleanup(() => {
+                reject(
+                  new ModelError(
+                    `Download failed with status ${response.statusCode}`,
+                    "DOWNLOAD_FAILED",
+                    { statusCode: response.statusCode }
+                  )
+                );
+              });
               return;
             }
 
@@ -250,20 +253,24 @@ class ModelManager {
             });
 
             response.on("error", (error) => {
-              cleanupAndReject(
-                new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
-                  error: error.message,
-                })
-              );
+              cleanup(() => {
+                reject(
+                  new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
+                    error: error.message,
+                  })
+                );
+              });
             });
           }
         )
         .on("error", (error) => {
-          cleanupAndReject(
-            new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
-              error: error.message,
-            })
-          );
+          cleanup(() => {
+            reject(
+              new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
+                error: error.message,
+              })
+            );
+          });
         });
     });
   }
