@@ -1088,13 +1088,40 @@ class WhisperManager {
       // Use shell: false on Windows to ensure exact path is used
       const spawnOptions = process.platform === "win32" ? { windowsHide: true, shell: false } : {};
 
-      const testProcess = spawn(pythonPath, ["--version"], spawnOptions);
+      let testProcess;
+      let resolved = false;
+
+      // Timeout to prevent hanging on slow/stuck Python executables (common on Windows)
+      const timeout = setTimeout(() => {
+        if (!resolved) {
+          resolved = true;
+          debugLogger.log(`Python version check timed out for ${pythonPath}`);
+          if (testProcess && !testProcess.killed) {
+            killProcess(testProcess, "SIGTERM");
+          }
+          resolve(null);
+        }
+      }, TIMEOUTS.QUICK_CHECK);
+
+      try {
+        testProcess = spawn(pythonPath, ["--version"], spawnOptions);
+      } catch (error) {
+        clearTimeout(timeout);
+        debugLogger.log(`Failed to spawn Python process for ${pythonPath}: ${error.message}`);
+        resolve(null);
+        return;
+      }
+
       let output = "";
 
       testProcess.stdout.on("data", (data) => (output += data));
       testProcess.stderr.on("data", (data) => (output += data));
 
       testProcess.on("close", (code) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timeout);
+
         if (code === 0) {
           const match = output.match(/Python (\d+)\.(\d+)/i);
           resolve(match ? { major: +match[1], minor: +match[2] } : null);
@@ -1104,6 +1131,9 @@ class WhisperManager {
       });
 
       testProcess.on("error", (error) => {
+        if (resolved) return;
+        resolved = true;
+        clearTimeout(timeout);
         debugLogger.log(`Python version check error for ${pythonPath}: ${error.message}`);
         resolve(null);
       });
