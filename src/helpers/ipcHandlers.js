@@ -227,6 +227,19 @@ class IPCHandlers {
       return this.whisperManager.cancelDownload();
     });
 
+    // Whisper server handlers (for faster repeated transcriptions)
+    ipcMain.handle("whisper-server-start", async (event, modelName) => {
+      return this.whisperManager.startServer(modelName);
+    });
+
+    ipcMain.handle("whisper-server-stop", async () => {
+      return this.whisperManager.stopServer();
+    });
+
+    ipcMain.handle("whisper-server-status", async () => {
+      return this.whisperManager.getServerStatus();
+    });
+
     ipcMain.handle("check-ffmpeg-availability", async (event) => {
       return this.whisperManager.checkFFmpegAvailability();
     });

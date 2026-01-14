@@ -137,6 +137,8 @@ class AudioManager {
   }
 
   async processAudio(audioBlob, metadata = {}) {
+    const pipelineStart = performance.now();
+
     try {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
@@ -147,8 +149,37 @@ class AudioManager {
       } else {
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
+
       this.onTranscriptionComplete?.(result);
+
+      const roundTripDurationMs = Math.round(performance.now() - pipelineStart);
+
+      const timingData = {
+        mode: useLocalWhisper ? "local" : "cloud",
+        model: useLocalWhisper ? whisperModel : this.getTranscriptionModel(),
+        audioDurationMs: metadata.durationSeconds ? Math.round(metadata.durationSeconds * 1000) : null,
+        reasoningProcessingDurationMs: result?.timings?.reasoningProcessingDurationMs ?? null,
+        roundTripDurationMs,
+        audioSizeBytes: audioBlob.size,
+        audioFormat: audioBlob.type,
+        outputTextLength: result?.text?.length,
+      };
+
+      if (useLocalWhisper) {
+        timingData.audioConversionDurationMs = result?.timings?.audioConversionDurationMs ?? null;
+      }
+      timingData.transcriptionProcessingDurationMs = result?.timings?.transcriptionProcessingDurationMs ?? null;
+
+      logger.info("Pipeline timing", timingData, "performance");
+
     } catch (error) {
+      const errorAtMs = Math.round(performance.now() - pipelineStart);
+
+      logger.error("Pipeline failed", {
+        errorAtMs,
+        error: error.message,
+      }, "performance");
+
       if (error.message !== "No audio detected") {
         this.onError?.({
           title: "Transcription Error",
@@ -162,20 +193,43 @@ class AudioManager {
   }
 
   async processWithLocalWhisper(audioBlob, model = "base", metadata = {}) {
+    const timings = {};
+
     try {
-      const arrayBuffer = await audioBlob.arrayBuffer();
+      const conversionStart = performance.now();
+      const wavBlob = await this.optimizeAudio(audioBlob);
+      timings.audioConversionDurationMs = Math.round(performance.now() - conversionStart);
+
+      const arrayBuffer = await wavBlob.arrayBuffer();
       const language = localStorage.getItem("preferredLanguage");
       const options = { model };
       if (language && language !== "auto") {
         options.language = language;
       }
 
+      logger.debug("Local transcription starting", {
+        originalFormat: audioBlob.type,
+        originalSizeBytes: audioBlob.size,
+        wavSizeBytes: wavBlob.size,
+        audioConversionDurationMs: timings.audioConversionDurationMs,
+      }, "performance");
+
+      const transcriptionStart = performance.now();
       const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
+      timings.transcriptionProcessingDurationMs = Math.round(performance.now() - transcriptionStart);
+
+      logger.debug("Local transcription complete", {
+        transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
+        success: result.success,
+      }, "performance");
 
       if (result.success && result.text) {
+        const reasoningStart = performance.now();
         const text = await this.processTranscription(result.text, "local");
+        timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
         if (text !== null && text !== undefined) {
-          return { success: true, text: text || result.text, source: "local" };
+          return { success: true, text: text || result.text, source: "local", timings };
         } else {
           throw new Error("No text transcribed");
         }
@@ -671,6 +725,7 @@ class AudioManager {
   }
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
+    const timings = {};
     const language = localStorage.getItem("preferredLanguage");
     const allowLocalFallback = localStorage.getItem("allowLocalFallback") === "true";
     const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
@@ -775,6 +830,7 @@ class AudioManager {
         headers.Authorization = `Bearer ${apiKey}`;
       }
 
+      const apiCallStart = performance.now();
       const response = await fetch(endpoint, {
         method: "POST",
         headers,
@@ -861,7 +917,12 @@ class AudioManager {
 
       // Check for text - handle both empty string and missing field
       if (result.text && result.text.trim().length > 0) {
+        timings.transcriptionProcessingDurationMs = Math.round(performance.now() - apiCallStart);
+
+        const reasoningStart = performance.now();
         const text = await this.processTranscription(result.text, "openai");
+        timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
         const source = (await this.isReasoningAvailable()) ? "openai-reasoned" : "openai";
         logger.debug(
           "Transcription successful",
@@ -869,10 +930,12 @@ class AudioManager {
             originalLength: result.text.length,
             processedLength: text.length,
             source,
+            transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
+            reasoningProcessingDurationMs: timings.reasoningProcessingDurationMs,
           },
           "transcription"
         );
-        return { success: true, text, source };
+        return { success: true, text, source, timings };
       } else {
         // Log at info level so it shows without debug mode
         logger.info(

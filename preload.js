@@ -88,6 +88,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   checkFFmpegAvailability: () =>
     ipcRenderer.invoke("check-ffmpeg-availability"),
 
+  // Whisper server functions (faster repeated transcriptions)
+  whisperServerStart: (modelName) =>
+    ipcRenderer.invoke("whisper-server-start", modelName),
+  whisperServerStop: () => ipcRenderer.invoke("whisper-server-stop"),
+  whisperServerStatus: () => ipcRenderer.invoke("whisper-server-status"),
+
   // Window control functions
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),
   windowMaximize: () => ipcRenderer.invoke("window-maximize"),
