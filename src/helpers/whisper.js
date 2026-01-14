@@ -122,17 +122,24 @@ class WhisperManager {
   }
 
   async getSystemBinaryPath() {
+    // On Linux, avoid "whisper" as it conflicts with Python's openai-whisper package
     const binaryNames =
       process.platform === "win32"
-        ? ["whisper.exe", "whisper-cpp.exe"]
-        : ["whisper", "whisper-cpp", "main"];
+        ? ["whisper-cpp.exe", "whisper.exe"]
+        : process.platform === "linux"
+          ? ["whisper-cpp", "main"]
+          : ["whisper-cpp", "whisper", "main"];
 
     for (const name of binaryNames) {
       try {
         const checkCmd = process.platform === "win32" ? "where" : "which";
         const { output } = await runCommand(checkCmd, [name], { timeout: TIMEOUTS.QUICK_CHECK });
         const binaryPath = output.trim().split("\n")[0];
-        if (binaryPath && fs.existsSync(binaryPath)) {
+        if (
+          binaryPath &&
+          fs.existsSync(binaryPath) &&
+          (await this.isWhisperCppBinary(binaryPath))
+        ) {
           return binaryPath;
         }
       } catch {
@@ -140,25 +147,46 @@ class WhisperManager {
       }
     }
 
-    // Check common installation paths
-    const commonPaths =
-      process.platform === "darwin"
-        ? ["/opt/homebrew/bin/whisper", "/usr/local/bin/whisper"]
-        : ["/usr/bin/whisper", "/usr/local/bin/whisper"];
-
-    for (const p of commonPaths) {
-      if (fs.existsSync(p)) {
-        return p;
+    // Check common Homebrew paths on macOS
+    if (process.platform === "darwin") {
+      const commonPaths = [
+        "/opt/homebrew/bin/whisper-cpp",
+        "/opt/homebrew/bin/whisper",
+        "/usr/local/bin/whisper-cpp",
+        "/usr/local/bin/whisper",
+      ];
+      for (const p of commonPaths) {
+        if (fs.existsSync(p) && (await this.isWhisperCppBinary(p))) {
+          return p;
+        }
       }
     }
 
     return null;
   }
 
+  async isWhisperCppBinary(binaryPath) {
+    try {
+      // whisper.cpp uses "-m FNAME" and "-f FNAME" flags; Python whisper uses different args
+      const { output } = await runCommand(binaryPath, ["--help"], {
+        timeout: TIMEOUTS.QUICK_CHECK,
+      });
+      return (
+        output.includes("-m FNAME") ||
+        output.includes("-f FNAME") ||
+        output.includes("--model FNAME")
+      );
+    } catch {
+      return false;
+    }
+  }
+
   async getWhisperBinaryPath() {
+    // Use cached path if file still exists (binary type already validated during discovery)
     if (this.cachedBinaryPath && fs.existsSync(this.cachedBinaryPath)) {
       return this.cachedBinaryPath;
     }
+    this.cachedBinaryPath = null;
 
     // Priority: bundled > system
     let binaryPath = this.getBundledBinaryPath();
@@ -173,6 +201,10 @@ class WhisperManager {
     }
 
     return binaryPath;
+  }
+
+  clearBinaryCache() {
+    this.cachedBinaryPath = null;
   }
 
   async initializeAtStartup() {
@@ -228,6 +260,26 @@ class WhisperManager {
     try {
       const result = await this.runWhisperProcess(binaryPath, tempAudioPath, modelPath, language);
       return this.parseWhisperResult(result);
+    } catch (error) {
+      // Exit code 2 typically means argument error - possibly wrong binary (Python whisper vs whisper.cpp)
+      if (error.message?.includes("code 2") && this.cachedBinaryPath) {
+        debugLogger.debug("Transcription failed with code 2, clearing cache and retrying", {
+          binaryPath,
+        });
+        this.clearBinaryCache();
+        const retryBinaryPath = await this.getWhisperBinaryPath();
+        if (retryBinaryPath && retryBinaryPath !== binaryPath) {
+          debugLogger.log("Retrying with different binary:", retryBinaryPath);
+          const result = await this.runWhisperProcess(
+            retryBinaryPath,
+            tempAudioPath,
+            modelPath,
+            language
+          );
+          return this.parseWhisperResult(result);
+        }
+      }
+      throw error;
     } finally {
       await this.cleanupTempFile(tempAudioPath);
     }
