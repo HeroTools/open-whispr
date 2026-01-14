@@ -12,6 +12,7 @@ import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
+import { useUpdater } from "../hooks/useUpdater";
 import { REASONING_PROVIDERS, getTranscriptionProviders } from "../models/ModelRegistry";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import LanguageSelector from "./ui/LanguageSelector";
@@ -86,25 +87,26 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   } = useSettings();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
-  const [updateStatus, setUpdateStatus] = useState<{
-    updateAvailable: boolean;
-    updateDownloaded: boolean;
-    isDevelopment: boolean;
-  }>({ updateAvailable: false, updateDownloaded: false, isDevelopment: false });
-  const [checkingForUpdates, setCheckingForUpdates] = useState(false);
-  const [downloadingUpdate, setDownloadingUpdate] = useState(false);
-  const [installInitiated, setInstallInitiated] = useState(false);
-  const [updateDownloadProgress, setUpdateDownloadProgress] = useState(0);
-  const [updateInfo, setUpdateInfo] = useState<{
-    version?: string;
-    releaseDate?: string;
-    releaseNotes?: string;
-  }>({});
   const [isRemovingModels, setIsRemovingModels] = useState(false);
   const cachePathHint =
     typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)
       ? "%USERPROFILE%\\.cache\\openwhispr\\models"
       : "~/.cache/openwhispr/models";
+
+  // Use centralized updater hook to prevent EventEmitter memory leaks
+  const {
+    status: updateStatus,
+    info: updateInfo,
+    downloadProgress: updateDownloadProgress,
+    isChecking: checkingForUpdates,
+    isDownloading: downloadingUpdate,
+    isInstalling: installInitiated,
+    checkForUpdates,
+    downloadUpdate,
+    installUpdate: installUpdateAction,
+    getAppVersion,
+    error: updateError,
+  } = useUpdater();
 
   const isUpdateAvailable =
     !updateStatus.isDevelopment && (updateStatus.updateAvailable || updateStatus.updateDownloaded);
@@ -125,93 +127,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showAlert: showAlertDialog,
   });
 
-  const subscribeToUpdates = useCallback(() => {
-    if (!window.electronAPI) return () => {};
-
-    const disposers: Array<(() => void) | void> = [];
-
-    if (window.electronAPI.onUpdateAvailable) {
-      disposers.push(
-        window.electronAPI.onUpdateAvailable((_event, info) => {
-          setUpdateStatus((prev) => ({
-            ...prev,
-            updateAvailable: true,
-            updateDownloaded: false,
-          }));
-          if (info) {
-            setUpdateInfo({
-              version: info.version || "unknown",
-              releaseDate: info.releaseDate,
-              releaseNotes: info.releaseNotes ?? undefined,
-            });
-          }
-        })
-      );
-    }
-
-    if (window.electronAPI.onUpdateNotAvailable) {
-      disposers.push(
-        window.electronAPI.onUpdateNotAvailable(() => {
-          setUpdateStatus((prev) => ({
-            ...prev,
-            updateAvailable: false,
-            updateDownloaded: false,
-          }));
-          setUpdateInfo({});
-          setDownloadingUpdate(false);
-          setInstallInitiated(false);
-          setUpdateDownloadProgress(0);
-        })
-      );
-    }
-
-    if (window.electronAPI.onUpdateDownloaded) {
-      disposers.push(
-        window.electronAPI.onUpdateDownloaded((_event, info) => {
-          setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
-          setDownloadingUpdate(false);
-          setInstallInitiated(false);
-          if (info) {
-            setUpdateInfo({
-              version: info.version || "unknown",
-              releaseDate: info.releaseDate,
-              releaseNotes: info.releaseNotes ?? undefined,
-            });
-          }
-        })
-      );
-    }
-
-    if (window.electronAPI.onUpdateDownloadProgress) {
-      disposers.push(
-        window.electronAPI.onUpdateDownloadProgress((_event, progressObj) => {
-          setUpdateDownloadProgress(progressObj.percent || 0);
-        })
-      );
-    }
-
-    if (window.electronAPI.onUpdateError) {
-      disposers.push(
-        window.electronAPI.onUpdateError((_event, error) => {
-          setCheckingForUpdates(false);
-          setDownloadingUpdate(false);
-          setInstallInitiated(false);
-          console.error("Update error:", error);
-          showAlertDialog({
-            title: "Update Error",
-            description:
-              typeof error?.message === "string"
-                ? error.message
-                : "The updater encountered a problem. Please try again or download the latest release manually.",
-          });
-        })
-      );
-    }
-
-    return () => {
-      disposers.forEach((dispose) => dispose?.());
-    };
-  }, [showAlertDialog]);
 
   const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
@@ -219,38 +134,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   useEffect(() => {
     let mounted = true;
-    let unsubscribeUpdates;
 
     const timer = setTimeout(async () => {
       if (!mounted) return;
 
-      const versionResult = await window.electronAPI?.getAppVersion();
-      if (versionResult && mounted) setCurrentVersion(versionResult.version);
-
-      const statusResult = await window.electronAPI?.getUpdateStatus();
-      if (statusResult && mounted) {
-        setUpdateStatus((prev) => ({
-          ...prev,
-          ...statusResult,
-          updateAvailable: prev.updateAvailable || statusResult.updateAvailable,
-          updateDownloaded: prev.updateDownloaded || statusResult.updateDownloaded,
-        }));
-        if (
-          (statusResult.updateAvailable || statusResult.updateDownloaded) &&
-          window.electronAPI?.getUpdateInfo
-        ) {
-          const info = await window.electronAPI.getUpdateInfo();
-          if (info) {
-            setUpdateInfo({
-              version: info.version || "unknown",
-              releaseDate: info.releaseDate,
-              releaseNotes: info.releaseNotes ?? undefined,
-            });
-          }
-        }
-      }
-
-      unsubscribeUpdates = subscribeToUpdates();
+      const version = await getAppVersion();
+      if (version && mounted) setCurrentVersion(version);
 
       if (mounted) {
         whisperHook.checkWhisperInstallation();
@@ -260,9 +149,20 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     return () => {
       mounted = false;
       clearTimeout(timer);
-      unsubscribeUpdates?.();
     };
-  }, [whisperHook, subscribeToUpdates]);
+  }, [whisperHook, getAppVersion]);
+
+  // Show alert dialog on update errors
+  useEffect(() => {
+    if (updateError) {
+      showAlertDialog({
+        title: "Update Error",
+        description:
+          updateError.message ||
+          "The updater encountered a problem. Please try again or download the latest release manually.",
+      });
+    }
+  }, [updateError, showAlertDialog]);
 
   useEffect(() => {
     if (installInitiated) {
@@ -270,7 +170,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         clearTimeout(installTimeoutRef.current);
       }
       installTimeoutRef.current = setTimeout(() => {
-        setInstallInitiated(false);
         showAlertDialog({
           title: "Still Running",
           description:
@@ -527,20 +426,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               <div className="space-y-3">
                 <Button
                   onClick={async () => {
-                    setCheckingForUpdates(true);
                     try {
-                      const result = await window.electronAPI?.checkForUpdates();
+                      const result = await checkForUpdates();
                       if (result?.updateAvailable) {
-                        setUpdateInfo({
-                          version: result.version || "unknown",
-                          releaseDate: result.releaseDate,
-                          releaseNotes: result.releaseNotes,
-                        });
-                        setUpdateStatus((prev) => ({
-                          ...prev,
-                          updateAvailable: true,
-                          updateDownloaded: false,
-                        }));
                         showAlertDialog({
                           title: "Update Available",
                           description: `Update available: v${result.version || "new version"}`,
@@ -556,8 +444,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         title: "Update Check Failed",
                         description: `Error checking for updates: ${error.message}`,
                       });
-                    } finally {
-                      setCheckingForUpdates(false);
                     }
                   }}
                   disabled={checkingForUpdates || updateStatus.isDevelopment}
@@ -580,12 +466,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   <div className="space-y-2">
                     <Button
                       onClick={async () => {
-                        setDownloadingUpdate(true);
-                        setUpdateDownloadProgress(0);
                         try {
-                          await window.electronAPI?.downloadUpdate();
+                          await downloadUpdate();
                         } catch (error: any) {
-                          setDownloadingUpdate(false);
                           showAlertDialog({
                             title: "Download Failed",
                             description: `Failed to download update: ${error.message}`,
@@ -603,7 +486,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       ) : (
                         <>
                           <Download size={16} className="mr-2" />
-                          Download Update{updateInfo.version ? ` v${updateInfo.version}` : ""}
+                          Download Update{updateInfo?.version ? ` v${updateInfo.version}` : ""}
                         </>
                       )}
                     </Button>
@@ -631,30 +514,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     onClick={() => {
                       showConfirmDialog({
                         title: "Install Update",
-                        description: `Ready to install update${updateInfo.version ? ` v${updateInfo.version}` : ""}. The app will restart to complete installation.`,
+                        description: `Ready to install update${updateInfo?.version ? ` v${updateInfo.version}` : ""}. The app will restart to complete installation.`,
                         confirmText: "Install & Restart",
                         onConfirm: async () => {
                           try {
-                            setInstallInitiated(true);
-                            const result = await window.electronAPI?.installUpdate?.();
-                            if (!result?.success) {
-                              setInstallInitiated(false);
-                              showAlertDialog({
-                                title: "Install Failed",
-                                description:
-                                  result?.message ||
-                                  "Failed to start the installer. Please try again.",
-                              });
-                              return;
-                            }
-
+                            await installUpdateAction();
                             showAlertDialog({
                               title: "Installing Update",
                               description:
                                 "OpenWhispr will restart automatically to finish installing the newest version.",
                             });
                           } catch (error: any) {
-                            setInstallInitiated(false);
                             showAlertDialog({
                               title: "Install Failed",
                               description: `Failed to install update: ${error.message}`,

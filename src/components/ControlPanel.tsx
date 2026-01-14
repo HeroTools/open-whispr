@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Trash2, Settings, FileText, Mic, Download, RefreshCw, Loader2 } from "lucide-react";
@@ -10,6 +10,7 @@ import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useHotkey } from "../hooks/useHotkey";
 import { useToast } from "./ui/Toast";
+import { useUpdater } from "../hooks/useUpdater";
 import {
   useTranscriptions,
   initializeTranscriptions,
@@ -23,15 +24,17 @@ export default function ControlPanel() {
   const [showSettings, setShowSettings] = useState(false);
   const { hotkey } = useHotkey();
   const { toast } = useToast();
-  const [updateStatus, setUpdateStatus] = useState({
-    updateAvailable: false,
-    updateDownloaded: false,
-    isDevelopment: false,
-  });
-  const [isDownloading, setIsDownloading] = useState(false);
-  const [isInstalling, setIsInstalling] = useState(false);
-  const [downloadProgress, setDownloadProgress] = useState(0);
-  const isInstallingRef = useRef(false);
+
+  // Use centralized updater hook to prevent EventEmitter memory leaks
+  const {
+    status: updateStatus,
+    downloadProgress,
+    isDownloading,
+    isInstalling,
+    downloadUpdate,
+    installUpdate,
+    error: updateError,
+  } = useUpdater();
 
   const {
     confirmDialog,
@@ -44,65 +47,29 @@ export default function ControlPanel() {
 
   useEffect(() => {
     loadTranscriptions();
+  }, []);
 
-    // Initialize update status
-    const initializeUpdateStatus = async () => {
-      try {
-        const status = await window.electronAPI.getUpdateStatus();
-        setUpdateStatus(status);
-      } catch (error) {
-        // Update status not critical for app function
-      }
-    };
-
-    initializeUpdateStatus();
-
-    // Set up update event listeners
-    const handleUpdateAvailable = (_event: any, _info: any) => {
-      setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
-    };
-
-    const handleUpdateDownloaded = (_event: any, _info: any) => {
-      setIsDownloading(false);
-      setDownloadProgress(100);
-      setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
+  // Show toast when update is ready
+  useEffect(() => {
+    if (updateStatus.updateDownloaded && !isDownloading) {
       toast({
         title: "Update Ready",
         description: "Click 'Install Update' to restart and apply the update.",
         variant: "success",
       });
-    };
+    }
+  }, [updateStatus.updateDownloaded, isDownloading, toast]);
 
-    const handleUpdateError = (_event: any, _error: any) => {
-      setIsDownloading(false);
-      setIsInstalling(false);
+  // Show toast on update error
+  useEffect(() => {
+    if (updateError) {
       toast({
         title: "Update Error",
         description: "Failed to update. Please try again later.",
         variant: "destructive",
       });
-    };
-
-    const handleDownloadProgress = (_event: any, progressObj: any) => {
-      if (progressObj?.percent != null) {
-        const newProgress = Math.round(progressObj.percent);
-        setDownloadProgress((prev) => (newProgress > prev ? newProgress : prev));
-        setIsDownloading(true);
-      }
-    };
-
-    const disposers = [
-      window.electronAPI.onUpdateAvailable(handleUpdateAvailable),
-      window.electronAPI.onUpdateDownloaded(handleUpdateDownloaded),
-      window.electronAPI.onUpdateError(handleUpdateError),
-      window.electronAPI.onUpdateDownloadProgress(handleDownloadProgress),
-    ];
-
-    // Cleanup listeners on unmount
-    return () => {
-      disposers.forEach((dispose) => dispose?.());
-    };
-  }, []);
+    }
+  }, [updateError, toast]);
 
   const loadTranscriptions = async () => {
     try {
@@ -194,25 +161,9 @@ export default function ControlPanel() {
         description:
           "The update will be installed and the app will restart. Make sure you've saved any work.",
         onConfirm: async () => {
-          setIsInstalling(true);
-          isInstallingRef.current = true;
           try {
-            await window.electronAPI.installUpdate();
-            // Set a timeout to show an alert if the app doesn't restart
-            setTimeout(() => {
-              if (isInstallingRef.current) {
-                isInstallingRef.current = false;
-                setIsInstalling(false);
-                showAlertDialog({
-                  title: "Update Installation",
-                  description:
-                    "The app may not have restarted automatically. Please quit and reopen the app to complete the update.",
-                });
-              }
-            }, 10000);
+            await installUpdate();
           } catch (error) {
-            isInstallingRef.current = false;
-            setIsInstalling(false);
             toast({
               title: "Install Failed",
               description: "Failed to install update. Please try again.",
@@ -223,12 +174,9 @@ export default function ControlPanel() {
       });
     } else if (updateStatus.updateAvailable && !isDownloading) {
       // Start download
-      setIsDownloading(true);
-      setDownloadProgress(0);
       try {
-        await window.electronAPI.downloadUpdate();
+        await downloadUpdate();
       } catch (error) {
-        setIsDownloading(false);
         toast({
           title: "Download Failed",
           description: "Failed to download update. Please try again.",
