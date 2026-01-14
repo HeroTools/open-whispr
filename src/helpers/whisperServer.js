@@ -225,6 +225,11 @@ class WhisperServerManager {
 
   async waitForReady(getProcessInfo) {
     const startTime = Date.now();
+    let pollCount = 0;
+
+    // Poll every 100ms during startup (faster than ongoing health checks at 5000ms)
+    // This saves 0-400ms average vs 500ms polling
+    const STARTUP_POLL_INTERVAL_MS = 100;
 
     while (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
       if (!this.process || this.process.killed) {
@@ -236,12 +241,17 @@ class WhisperServerManager {
         );
       }
 
+      pollCount++;
       if (await this.checkHealth()) {
         this.ready = true;
+        debugLogger.debug("whisper-server ready", {
+          startupTimeMs: Date.now() - startTime,
+          pollCount,
+        });
         return;
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, STARTUP_POLL_INTERVAL_MS));
     }
 
     throw new Error(`whisper-server failed to start within ${STARTUP_TIMEOUT_MS}ms`);

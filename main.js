@@ -120,8 +120,16 @@ async function startApp() {
   }
 
   // Initialize Whisper manager at startup (don't await to avoid blocking)
-  whisperManager.initializeAtStartup().catch((err) => {
+  // Settings can be provided via environment variables for server pre-warming:
+  // - USE_LOCAL_WHISPER=true to enable local whisper mode
+  // - LOCAL_WHISPER_MODEL=base (or tiny, small, medium, large, turbo)
+  const whisperSettings = {
+    useLocalWhisper: process.env.USE_LOCAL_WHISPER === "true",
+    whisperModel: process.env.LOCAL_WHISPER_MODEL || "base",
+  };
+  whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
     // Whisper not being available at startup is not critical
+    debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
   });
 
   // Log nircmd status on Windows (for debugging bundled dependencies)

@@ -212,14 +212,68 @@ class WhisperManager {
     this.cachedBinaryPath = null;
   }
 
-  async initializeAtStartup() {
+  async initializeAtStartup(settings = {}) {
+    const startTime = Date.now();
+
     try {
       await this.getWhisperBinaryPath();
       this.isInitialized = true;
+
+      // Pre-warm whisper-server if local mode enabled (eliminates 2-5s cold-start delay)
+      const { useLocalWhisper, whisperModel } = settings;
+
+      if (useLocalWhisper && whisperModel && this.serverManager.isAvailable()) {
+        const modelPath = this.getModelPath(whisperModel);
+
+        if (fs.existsSync(modelPath)) {
+          debugLogger.info("Pre-warming whisper-server", {
+            model: whisperModel,
+            modelPath,
+          });
+
+          try {
+            const serverStartTime = Date.now();
+            await this.serverManager.start(modelPath);
+            this.currentServerModel = whisperModel;
+
+            debugLogger.info("whisper-server pre-warmed successfully", {
+              model: whisperModel,
+              startupTimeMs: Date.now() - serverStartTime,
+              port: this.serverManager.port,
+            });
+          } catch (err) {
+            debugLogger.warn("Server pre-warm failed (will start on first use)", {
+              error: err.message,
+              model: whisperModel,
+            });
+            // Non-fatal: server will start on first transcription
+          }
+        } else {
+          debugLogger.debug("Skipping server pre-warm: model not downloaded", {
+            model: whisperModel,
+            modelPath,
+          });
+        }
+      } else {
+        debugLogger.debug("Skipping server pre-warm", {
+          reason: !useLocalWhisper
+            ? "local mode disabled"
+            : !whisperModel
+              ? "no model selected"
+              : "server binary not available",
+        });
+      }
     } catch (error) {
-      debugLogger.log("whisper.cpp not available at startup:", error.message);
-      this.isInitialized = true;
+      debugLogger.warn("Whisper initialization error", {
+        error: error.message,
+      });
+      this.isInitialized = true; // Mark initialized even on error
     }
+
+    debugLogger.info("Whisper initialization complete", {
+      totalTimeMs: Date.now() - startTime,
+      serverRunning: this.serverManager.ready,
+    });
 
     // Log dependency status for debugging
     await this.logDependencyStatus();
