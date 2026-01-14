@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.7] - 2026-01-13
+
+### Added
+- **Whisper Server HTTP Mode**: Added persistent whisper-server for faster repeated transcriptions with automatic CLI fallback
+- **Pipeline Timing Instrumentation**: Added detailed timing logs for each stage of the transcription pipeline
+- **Whisper Server Pre-warming**: Server pre-warms on startup for faster first transcription
+
+### Changed
+- **Windows Clipboard**: Reduced clipboard delays for faster text pasting on Windows
+
+### Fixed
+- **Windows Update Install**: Simplified Windows update installation by using silent mode and removing redundant before-quit handling
+- **Mac Build Workflows**: Fixed CI/CD to run separate workflows for Mac builds
+- **Mac DMG Build Race Condition**: Fixed release workflow DMG build failure caused by concurrent arm64/x64 builds mounting same volume
+- **Windows Download Script**: Fixed PowerShell Expand-Archive failure with bracket characters in directory names
+
 ## [1.2.6] - 2026-01-13
 
 ### Changed
