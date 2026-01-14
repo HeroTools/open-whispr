@@ -2,6 +2,10 @@
 
 An open source desktop dictation application that converts speech to text using OpenAI Whisper. Features both local and cloud processing options for maximum flexibility and privacy.
 
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=HeroTools/open-whispr&type=date&legend=top-left)](https://www.star-history.com/#HeroTools/open-whispr&type=date&legend=top-left)
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details. This means you can freely use, modify, and distribute this software for personal or commercial purposes.
