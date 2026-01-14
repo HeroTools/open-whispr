@@ -33,7 +33,7 @@
     {
       "from": "resources/bin/",
       "to": "bin/",
-      "filter": ["whisper-cpp-*"]
+      "filter": ["whisper-cpp-*", "whisper-server-*"]
     }
   ],
   "mac": {

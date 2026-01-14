@@ -1,0 +1,436 @@
+const { spawn } = require("child_process");
+const fs = require("fs");
+const net = require("net");
+const path = require("path");
+const http = require("http");
+const debugLogger = require("./debugLogger");
+const { killProcess } = require("../utils/process");
+
+const PORT_RANGE_START = 8178;
+const PORT_RANGE_END = 8199;
+const STARTUP_TIMEOUT_MS = 30000;
+const HEALTH_CHECK_INTERVAL_MS = 5000;
+const HEALTH_CHECK_TIMEOUT_MS = 2000;
+
+class WhisperServerManager {
+  constructor() {
+    this.process = null;
+    this.port = null;
+    this.ready = false;
+    this.modelPath = null;
+    this.startupPromise = null;
+    this.healthCheckInterval = null;
+    this.cachedServerBinaryPath = null;
+    this.cachedFFmpegPath = null;
+  }
+
+  getFFmpegPath() {
+    if (this.cachedFFmpegPath) return this.cachedFFmpegPath;
+
+    try {
+      let ffmpegPath = require("ffmpeg-static");
+      ffmpegPath = path.normalize(ffmpegPath);
+
+      if (process.platform === "win32" && !ffmpegPath.endsWith(".exe")) {
+        ffmpegPath += ".exe";
+      }
+
+      // Try unpacked ASAR path first (production builds)
+      const unpackedPath = ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1");
+      if (fs.existsSync(unpackedPath)) {
+        this.cachedFFmpegPath = unpackedPath;
+        return unpackedPath;
+      }
+
+      if (fs.existsSync(ffmpegPath)) {
+        this.cachedFFmpegPath = ffmpegPath;
+        return ffmpegPath;
+      }
+    } catch {
+      // Bundled FFmpeg not available
+    }
+
+    // Try system FFmpeg locations
+    const systemCandidates =
+      process.platform === "darwin"
+        ? ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
+        : process.platform === "win32"
+          ? ["C:\\ffmpeg\\bin\\ffmpeg.exe"]
+          : ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+
+    for (const candidate of systemCandidates) {
+      if (fs.existsSync(candidate)) {
+        this.cachedFFmpegPath = candidate;
+        return candidate;
+      }
+    }
+
+    return null;
+  }
+
+  getServerBinaryPath() {
+    if (this.cachedServerBinaryPath) return this.cachedServerBinaryPath;
+
+    const platform = process.platform;
+    const arch = process.arch;
+    const platformArch = `${platform}-${arch}`;
+    const binaryName =
+      platform === "win32"
+        ? `whisper-server-${platformArch}.exe`
+        : `whisper-server-${platformArch}`;
+    const genericName = platform === "win32" ? "whisper-server.exe" : "whisper-server";
+
+    const candidates = [];
+
+    if (process.resourcesPath) {
+      candidates.push(
+        path.join(process.resourcesPath, "bin", binaryName),
+        path.join(process.resourcesPath, "bin", genericName)
+      );
+    }
+
+    candidates.push(
+      path.join(__dirname, "..", "..", "resources", "bin", binaryName),
+      path.join(__dirname, "..", "..", "resources", "bin", genericName)
+    );
+
+    for (const candidate of candidates) {
+      if (fs.existsSync(candidate)) {
+        try {
+          fs.statSync(candidate);
+          this.cachedServerBinaryPath = candidate;
+          return candidate;
+        } catch {
+          // Can't access binary
+        }
+      }
+    }
+
+    return null;
+  }
+
+  isAvailable() {
+    return this.getServerBinaryPath() !== null;
+  }
+
+  async findAvailablePort() {
+    for (let port = PORT_RANGE_START; port <= PORT_RANGE_END; port++) {
+      if (await this.isPortAvailable(port)) return port;
+    }
+    throw new Error(`No available ports in range ${PORT_RANGE_START}-${PORT_RANGE_END}`);
+  }
+
+  isPortAvailable(port) {
+    return new Promise((resolve) => {
+      const server = net.createServer();
+      server.once("error", () => resolve(false));
+      server.once("listening", () => {
+        server.close();
+        resolve(true);
+      });
+      server.listen(port, "127.0.0.1");
+    });
+  }
+
+  async start(modelPath, options = {}) {
+    if (this.startupPromise) return this.startupPromise;
+
+    if (this.ready && this.modelPath === modelPath) return;
+
+    if (this.process) {
+      await this.stop();
+    }
+
+    this.startupPromise = this._doStart(modelPath, options);
+    try {
+      await this.startupPromise;
+    } finally {
+      this.startupPromise = null;
+    }
+  }
+
+  async _doStart(modelPath, options = {}) {
+    const serverBinary = this.getServerBinaryPath();
+    if (!serverBinary) throw new Error("whisper-server binary not found");
+    if (!fs.existsSync(modelPath)) throw new Error(`Model file not found: ${modelPath}`);
+
+    this.port = await this.findAvailablePort();
+    this.modelPath = modelPath;
+
+    const args = [
+      "--model",
+      modelPath,
+      "--host",
+      "127.0.0.1",
+      "--port",
+      String(this.port),
+      "--convert",
+    ];
+
+    if (options.threads) args.push("--threads", String(options.threads));
+    if (options.language && options.language !== "auto") {
+      args.push("--language", options.language);
+    }
+
+    // Add FFmpeg to PATH for --convert flag
+    const ffmpegPath = this.getFFmpegPath();
+    const spawnEnv = { ...process.env };
+    if (ffmpegPath) {
+      const ffmpegDir = path.dirname(ffmpegPath);
+      const pathSep = process.platform === "win32" ? ";" : ":";
+      spawnEnv.PATH = ffmpegDir + pathSep + (process.env.PATH || "");
+    }
+
+    debugLogger.debug("Starting whisper-server", { port: this.port, modelPath });
+
+    this.process = spawn(serverBinary, args, {
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+      env: spawnEnv,
+    });
+
+    let stderrBuffer = "";
+    let exitCode = null;
+
+    this.process.stdout.on("data", (data) => {
+      debugLogger.debug("whisper-server stdout", { data: data.toString().trim() });
+    });
+
+    this.process.stderr.on("data", (data) => {
+      stderrBuffer += data.toString();
+      debugLogger.debug("whisper-server stderr", { data: data.toString().trim() });
+    });
+
+    this.process.on("error", (error) => {
+      debugLogger.error("whisper-server process error", { error: error.message });
+      this.ready = false;
+    });
+
+    this.process.on("close", (code) => {
+      exitCode = code;
+      debugLogger.debug("whisper-server process exited", { code });
+      this.ready = false;
+      this.process = null;
+      this.stopHealthCheck();
+    });
+
+    await this.waitForReady(() => ({ stderr: stderrBuffer, exitCode }));
+    this.startHealthCheck();
+
+    debugLogger.info("whisper-server started successfully", {
+      port: this.port,
+      model: path.basename(modelPath),
+    });
+  }
+
+  async waitForReady(getProcessInfo) {
+    const startTime = Date.now();
+
+    while (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
+      if (!this.process || this.process.killed) {
+        const info = getProcessInfo ? getProcessInfo() : {};
+        const stderr = info.stderr ? info.stderr.trim().slice(0, 200) : "";
+        const details = stderr || (info.exitCode !== null ? `exit code: ${info.exitCode}` : "");
+        throw new Error(
+          `whisper-server process died during startup${details ? `: ${details}` : ""}`
+        );
+      }
+
+      if (await this.checkHealth()) {
+        this.ready = true;
+        return;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+
+    throw new Error(`whisper-server failed to start within ${STARTUP_TIMEOUT_MS}ms`);
+  }
+
+  checkHealth() {
+    return new Promise((resolve) => {
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port: this.port,
+          path: "/",
+          method: "GET",
+          timeout: HEALTH_CHECK_TIMEOUT_MS,
+        },
+        (res) => {
+          resolve(true);
+          res.resume();
+        }
+      );
+
+      req.on("error", () => resolve(false));
+      req.on("timeout", () => {
+        req.destroy();
+        resolve(false);
+      });
+      req.end();
+    });
+  }
+
+  startHealthCheck() {
+    this.stopHealthCheck();
+    this.healthCheckInterval = setInterval(async () => {
+      if (!this.process) {
+        this.stopHealthCheck();
+        return;
+      }
+      if (!(await this.checkHealth())) {
+        debugLogger.warn("whisper-server health check failed");
+        this.ready = false;
+      }
+    }, HEALTH_CHECK_INTERVAL_MS);
+  }
+
+  stopHealthCheck() {
+    if (this.healthCheckInterval) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
+  }
+
+  async transcribe(audioBuffer, options = {}) {
+    if (!this.ready || !this.process) {
+      throw new Error("whisper-server is not running");
+    }
+
+    const { language } = options;
+    const boundary = `----WhisperBoundary${Date.now()}`;
+    const parts = [];
+
+    parts.push(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n` +
+        `Content-Type: audio/webm\r\n\r\n`
+    );
+    parts.push(audioBuffer);
+    parts.push("\r\n");
+
+    if (language && language !== "auto") {
+      parts.push(
+        `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="language"\r\n\r\n` +
+          `${language}\r\n`
+      );
+    }
+
+    parts.push(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="response_format"\r\n\r\n` +
+        `json\r\n`
+    );
+    parts.push(`--${boundary}--\r\n`);
+
+    const bodyParts = parts.map((part) => (typeof part === "string" ? Buffer.from(part) : part));
+    const body = Buffer.concat(bodyParts);
+
+    return new Promise((resolve, reject) => {
+      const startTime = Date.now();
+
+      const req = http.request(
+        {
+          hostname: "127.0.0.1",
+          port: this.port,
+          path: "/inference",
+          method: "POST",
+          headers: {
+            "Content-Type": `multipart/form-data; boundary=${boundary}`,
+            "Content-Length": body.length,
+          },
+          timeout: 300000,
+        },
+        (res) => {
+          let data = "";
+          res.on("data", (chunk) => {
+            data += chunk;
+          });
+          res.on("end", () => {
+            debugLogger.debug("whisper-server transcription completed", {
+              statusCode: res.statusCode,
+              elapsed: Date.now() - startTime,
+            });
+
+            if (res.statusCode !== 200) {
+              reject(new Error(`whisper-server returned status ${res.statusCode}: ${data}`));
+              return;
+            }
+
+            try {
+              resolve(JSON.parse(data));
+            } catch (e) {
+              reject(new Error(`Failed to parse whisper-server response: ${e.message}`));
+            }
+          });
+        }
+      );
+
+      req.on("error", (error) => {
+        reject(new Error(`whisper-server request failed: ${error.message}`));
+      });
+      req.on("timeout", () => {
+        req.destroy();
+        reject(new Error("whisper-server request timed out"));
+      });
+
+      req.write(body);
+      req.end();
+    });
+  }
+
+  async stop() {
+    this.stopHealthCheck();
+
+    if (!this.process) {
+      this.ready = false;
+      return;
+    }
+
+    debugLogger.debug("Stopping whisper-server");
+
+    try {
+      killProcess(this.process, "SIGTERM");
+
+      await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          if (this.process) {
+            killProcess(this.process, "SIGKILL");
+          }
+          resolve();
+        }, 5000);
+
+        if (this.process) {
+          this.process.once("close", () => {
+            clearTimeout(timeout);
+            resolve();
+          });
+        } else {
+          clearTimeout(timeout);
+          resolve();
+        }
+      });
+    } catch (error) {
+      debugLogger.error("Error stopping whisper-server", { error: error.message });
+    }
+
+    this.process = null;
+    this.ready = false;
+    this.port = null;
+    this.modelPath = null;
+  }
+
+  getStatus() {
+    return {
+      available: this.isAvailable(),
+      running: this.ready && this.process !== null,
+      port: this.port,
+      modelPath: this.modelPath,
+      modelName: this.modelPath ? path.basename(this.modelPath, ".bin").replace("ggml-", "") : null,
+    };
+  }
+}
+
+module.exports = WhisperServerManager;

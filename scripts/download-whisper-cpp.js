@@ -4,6 +4,8 @@
  *
  * Binaries are built via GitHub Actions and published to:
  * https://github.com/gabrielste1n/whisper.cpp/releases
+ *
+ * Downloads both whisper-cli (transcription tool) and whisper-server (HTTP API server).
  */
 
 const https = require("https");
@@ -13,10 +15,10 @@ const { execSync } = require("child_process");
 
 // Configuration - Update WHISPER_CPP_VERSION when releasing new builds
 const WHISPER_CPP_REPO = "gabrielste1n/whisper.cpp";
-const WHISPER_CPP_VERSION = "0.0.3";
+const WHISPER_CPP_VERSION = "0.0.4"; // Bump version for server binaries
 
-// Platform-specific binary info
-const BINARIES = {
+// Platform-specific binary info for whisper-cli
+const CLI_BINARIES = {
   "darwin-arm64": {
     zipName: "whisper-cpp-darwin-arm64.zip",
     binaryName: "whisper-cpp-darwin-arm64",
@@ -36,6 +38,30 @@ const BINARIES = {
     zipName: "whisper-cpp-linux-x64.zip",
     binaryName: "whisper-cpp-linux-x64",
     outputName: "whisper-cpp-linux-x64",
+  },
+};
+
+// Platform-specific binary info for whisper-server (HTTP API)
+const SERVER_BINARIES = {
+  "darwin-arm64": {
+    zipName: "whisper-server-darwin-arm64.zip",
+    binaryName: "whisper-server-darwin-arm64",
+    outputName: "whisper-server-darwin-arm64",
+  },
+  "darwin-x64": {
+    zipName: "whisper-server-darwin-x64.zip",
+    binaryName: "whisper-server-darwin-x64",
+    outputName: "whisper-server-darwin-x64",
+  },
+  "win32-x64": {
+    zipName: "whisper-server-win32-x64.zip",
+    binaryName: "whisper-server-win32-x64.exe",
+    outputName: "whisper-server-win32-x64.exe",
+  },
+  "linux-x64": {
+    zipName: "whisper-server-linux-x64.zip",
+    binaryName: "whisper-server-linux-x64",
+    outputName: "whisper-server-linux-x64",
   },
 };
 
@@ -155,29 +181,28 @@ function extractZip(zipPath, destDir) {
   }
 }
 
-async function downloadBinary(platformArch) {
-  const config = BINARIES[platformArch];
+async function downloadBinary(platformArch, config, label) {
   if (!config) {
-    console.log(`  ${platformArch}: Not supported`);
+    console.log(`  ${label} ${platformArch}: Not supported`);
     return false;
   }
 
   const outputPath = path.join(BIN_DIR, config.outputName);
 
   if (fs.existsSync(outputPath)) {
-    console.log(`  ${platformArch}: Already exists, skipping`);
+    console.log(`  ${label} ${platformArch}: Already exists, skipping`);
     return true;
   }
 
   const url = getDownloadUrl(config.zipName);
-  console.log(`  ${platformArch}: Downloading from ${url}`);
+  console.log(`  ${label} ${platformArch}: Downloading from ${url}`);
 
   const zipPath = path.join(BIN_DIR, config.zipName);
 
   try {
     await downloadFile(url, zipPath);
 
-    const extractDir = path.join(BIN_DIR, `temp-${platformArch}`);
+    const extractDir = path.join(BIN_DIR, `temp-${label}-${platformArch}`);
     fs.mkdirSync(extractDir, { recursive: true });
     extractZip(zipPath, extractDir);
 
@@ -188,9 +213,9 @@ async function downloadBinary(platformArch) {
       if (process.platform !== "win32") {
         fs.chmodSync(outputPath, 0o755);
       }
-      console.log(`  ${platformArch}: Extracted to ${config.outputName}`);
+      console.log(`  ${label} ${platformArch}: Extracted to ${config.outputName}`);
     } else {
-      console.error(`  ${platformArch}: Binary not found in archive`);
+      console.error(`  ${label} ${platformArch}: Binary not found in archive`);
       return false;
     }
 
@@ -200,10 +225,16 @@ async function downloadBinary(platformArch) {
     return true;
 
   } catch (error) {
-    console.error(`  ${platformArch}: Failed - ${error.message}`);
+    console.error(`  ${label} ${platformArch}: Failed - ${error.message}`);
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
     return false;
   }
+}
+
+async function downloadForPlatform(platformArch) {
+  // Download both CLI and server binaries for the platform
+  await downloadBinary(platformArch, CLI_BINARIES[platformArch], "[cli]");
+  await downloadBinary(platformArch, SERVER_BINARIES[platformArch], "[server]");
 }
 
 async function main() {
@@ -219,31 +250,53 @@ async function main() {
   if (process.argv.includes("--current")) {
     // Only download for current platform
     console.log(`Downloading for current platform (${currentPlatformArch}):`);
-    await downloadBinary(currentPlatformArch);
+    await downloadForPlatform(currentPlatformArch);
+  } else if (process.argv.includes("--cli-only")) {
+    // Only download CLI binaries (no server)
+    console.log("Downloading CLI binaries only:");
+    for (const platformArch of Object.keys(CLI_BINARIES)) {
+      await downloadBinary(platformArch, CLI_BINARIES[platformArch], "[cli]");
+    }
   } else if (process.argv.includes("--all")) {
     // Download all platforms
-    console.log("Downloading all platform binaries:");
-    for (const platformArch of Object.keys(BINARIES)) {
-      await downloadBinary(platformArch);
+    console.log("Downloading all platform binaries (CLI + server):");
+    for (const platformArch of Object.keys(CLI_BINARIES)) {
+      await downloadForPlatform(platformArch);
     }
   } else {
     // Default: download for build targets (all platforms)
-    console.log("Downloading binaries for all platforms:");
-    for (const platformArch of Object.keys(BINARIES)) {
-      await downloadBinary(platformArch);
+    console.log("Downloading binaries for all platforms (CLI + server):");
+    for (const platformArch of Object.keys(CLI_BINARIES)) {
+      await downloadForPlatform(platformArch);
     }
   }
 
   console.log("\n---");
 
   // List what we have
-  const files = fs.readdirSync(BIN_DIR).filter(f => f.startsWith("whisper-cpp"));
+  const files = fs.readdirSync(BIN_DIR).filter(f => f.startsWith("whisper-"));
   if (files.length > 0) {
     console.log("Available binaries:");
-    files.forEach(f => {
-      const stats = fs.statSync(path.join(BIN_DIR, f));
-      console.log(`  - ${f} (${Math.round(stats.size / 1024 / 1024)}MB)`);
-    });
+
+    // Group by type
+    const cliFiles = files.filter(f => f.startsWith("whisper-cpp"));
+    const serverFiles = files.filter(f => f.startsWith("whisper-server"));
+
+    if (cliFiles.length > 0) {
+      console.log("\n  CLI (whisper-cli):");
+      cliFiles.forEach(f => {
+        const stats = fs.statSync(path.join(BIN_DIR, f));
+        console.log(`    - ${f} (${Math.round(stats.size / 1024 / 1024)}MB)`);
+      });
+    }
+
+    if (serverFiles.length > 0) {
+      console.log("\n  Server (whisper-server):");
+      serverFiles.forEach(f => {
+        const stats = fs.statSync(path.join(BIN_DIR, f));
+        console.log(`    - ${f} (${Math.round(stats.size / 1024 / 1024)}MB)`);
+      });
+    }
   } else {
     console.log("No binaries downloaded yet.");
     console.log("\nMake sure you've created a release in your whisper.cpp fork:");

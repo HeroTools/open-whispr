@@ -54,6 +54,17 @@ class ClipboardManager {
     return null;
   }
 
+  getNircmdStatus() {
+    if (process.platform !== "win32") {
+      return { available: false, reason: "Not Windows" };
+    }
+    const nircmdPath = this.getNircmdPath();
+    return {
+      available: !!nircmdPath,
+      path: nircmdPath,
+    };
+  }
+
   // Safe logging method - only log in development
   safeLog(...args) {
     if (process.env.NODE_ENV === "development") {
@@ -199,11 +210,10 @@ class ClipboardManager {
 
           if (code === 0) {
             this.safeLog(`✅ nircmd paste completed successfully in ${elapsed}ms`);
-            // Restore original clipboard quickly
             setTimeout(() => {
               clipboard.writeText(originalClipboard);
               this.safeLog("🔄 Original clipboard content restored");
-            }, 50);
+            }, 10);
             resolve();
           } else {
             this.safeLog(
@@ -280,12 +290,10 @@ class ClipboardManager {
 
           if (code === 0) {
             this.safeLog(`✅ PowerShell paste completed successfully in ${elapsed}ms`);
-            // Text pasted successfully - restore original clipboard
-            // Use shorter delay since paste is already complete
             setTimeout(() => {
               clipboard.writeText(originalClipboard);
               this.safeLog("🔄 Original clipboard content restored");
-            }, 50);
+            }, 10);
             resolve();
           } else {
             this.safeLog(

@@ -124,6 +124,12 @@ async function startApp() {
     // Whisper not being available at startup is not critical
   });
 
+  // Log nircmd status on Windows (for debugging bundled dependencies)
+  if (process.platform === "win32") {
+    const nircmdStatus = clipboardManager.getNircmdStatus();
+    debugLogger.debug("Windows paste tool status", nircmdStatus);
+  }
+
   // Create main window
   try {
     await windowManager.createMainWindow();
@@ -244,4 +250,6 @@ app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   globeKeyManager.stop();
   updateManager.cleanup();
+  // Stop whisper server if running
+  whisperManager.stopServer().catch(() => {});
 });
