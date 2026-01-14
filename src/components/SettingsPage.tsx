@@ -127,7 +127,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showAlert: showAlertDialog,
   });
 
-
   const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
