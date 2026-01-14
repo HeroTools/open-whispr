@@ -11,9 +11,7 @@ class AppUtils {
     try {
       const dbPath = path.join(
         app.getPath("userData"),
-        process.env.NODE_ENV === "development"
-          ? "transcriptions-dev.db"
-          : "transcriptions.db"
+        process.env.NODE_ENV === "development" ? "transcriptions-dev.db" : "transcriptions.db"
       );
       if (fs.existsSync(dbPath)) {
         fs.unlinkSync(dbPath);
@@ -37,7 +35,7 @@ class AppUtils {
 
     // Local Whisper model deletion
     try {
-      const modelCacheDir = path.join(os.homedir(), ".cache", "whisper");
+      const modelCacheDir = path.join(os.homedir(), ".cache", "openwhispr", "whisper-models");
       if (fs.existsSync(modelCacheDir)) {
         fs.rmSync(modelCacheDir, { recursive: true, force: true });
         console.log("✅ Local Whisper models deleted:", modelCacheDir);

@@ -1,16 +1,44 @@
 const { spawn } = require("child_process");
 
+/**
+ * Cross-platform process termination
+ * Windows doesn't support SIGTERM/SIGKILL signals the same way Unix does
+ * @param {ChildProcess} proc - The process to kill
+ * @param {string} signal - Signal name ('SIGTERM' or 'SIGKILL')
+ */
+function killProcess(proc, signal = "SIGTERM") {
+  if (!proc || proc.exitCode !== null) return;
+
+  try {
+    if (process.platform === "win32") {
+      // On Windows, just call kill() without a signal - it terminates the process
+      // For SIGKILL equivalent, we use taskkill /F for forceful termination
+      if (signal === "SIGKILL") {
+        spawn("taskkill", ["/pid", proc.pid.toString(), "/f", "/t"], { detached: true });
+      } else {
+        proc.kill();
+      }
+    } else {
+      // On Unix-like systems, use the signal as intended
+      proc.kill(signal);
+    }
+  } catch (e) {
+    // Process may already be dead
+  }
+}
+
 // Timeout constants
 const TIMEOUTS = {
-  QUICK_CHECK: 5000,      // 5 seconds for quick checks
-  COMMAND: 30000,         // 30 seconds for general commands
-  INSTALL: 300000,        // 5 minutes for installations
-  DOWNLOAD: 600000,       // 10 minutes for downloads
-  PIP_UPGRADE: 60000,     // 1 minute for pip upgrade
+  QUICK_CHECK: 5000, // 5 seconds for quick checks
+  COMMAND: 30000, // 30 seconds for general commands
+  INSTALL: 300000, // 5 minutes for installations
+  DOWNLOAD: 600000, // 10 minutes for downloads
+  PIP_UPGRADE: 60000, // 1 minute for pip upgrade
+  TRANSCRIPTION: 1200000, // 20 minutes for whisper transcription (long audio files)
 };
 
 // Command whitelist for shell operations
-const SAFE_SHELL_COMMANDS = new Set(['brew', 'apt', 'yum', 'pacman']);
+const SAFE_SHELL_COMMANDS = new Set(["brew", "apt", "yum", "pacman"]);
 
 /**
  * Validate command arguments for safety
@@ -24,11 +52,11 @@ function validateCommand(cmd, args, shell) {
   if (shell && !SAFE_SHELL_COMMANDS.has(cmd)) {
     throw new Error(`Shell execution not allowed for command: ${cmd}`);
   }
-  
+
   // Check for dangerous characters in arguments
   const dangerousChars = /[;&|`$<>]/;
-  if (args.some(arg => dangerousChars.test(arg))) {
-    throw new Error('Command arguments contain potentially dangerous characters');
+  if (args.some((arg) => dangerousChars.test(arg))) {
+    throw new Error("Command arguments contain potentially dangerous characters");
   }
 }
 
@@ -43,19 +71,19 @@ function validateCommand(cmd, args, shell) {
  */
 async function runCommand(cmd, args = [], options = {}) {
   const { timeout = TIMEOUTS.COMMAND, shell = false } = options;
-  
+
   // Validate command for security
   validateCommand(cmd, args, shell);
-  
+
   return new Promise((resolve, reject) => {
-    let process;
+    let childProc;
     let stdout = "";
     let stderr = "";
     let completed = false;
     let timer;
 
     try {
-      process = spawn(cmd, args, { shell });
+      childProc = spawn(cmd, args, { shell });
     } catch (error) {
       reject(error);
       return;
@@ -66,19 +94,13 @@ async function runCommand(cmd, args = [], options = {}) {
         clearTimeout(timer);
         timer = null;
       }
-      if (process && !completed) {
+      if (childProc && !completed) {
         completed = true;
-        try {
-          process.kill("SIGTERM");
-          // Force kill after 5 seconds if still running
-          setTimeout(() => {
-            if (process.exitCode === null) {
-              process.kill("SIGKILL");
-            }
-          }, 5000);
-        } catch (e) {
-          // Process already dead
-        }
+        killProcess(childProc, "SIGTERM");
+        // Force kill after 5 seconds if still running
+        setTimeout(() => {
+          killProcess(childProc, "SIGKILL");
+        }, 5000);
       }
     };
 
@@ -87,19 +109,19 @@ async function runCommand(cmd, args = [], options = {}) {
       reject(new Error(`Command timed out after ${timeout}ms`));
     }, timeout);
 
-    process.stdout.on("data", (data) => {
+    childProc.stdout.on("data", (data) => {
       stdout += data.toString();
     });
 
-    process.stderr.on("data", (data) => {
+    childProc.stderr.on("data", (data) => {
       stderr += data.toString();
     });
 
-    process.on("close", (code) => {
+    childProc.on("close", (code) => {
       if (completed) return; // Already handled
       completed = true;
       clearTimeout(timer);
-      
+
       if (code === 0) {
         resolve({ success: true, output: stdout });
       } else {
@@ -107,7 +129,7 @@ async function runCommand(cmd, args = [], options = {}) {
       }
     });
 
-    process.on("error", (error) => {
+    childProc.on("error", (error) => {
       if (completed) return; // Already handled
       completed = true;
       cleanup();
@@ -118,5 +140,6 @@ async function runCommand(cmd, args = [], options = {}) {
 
 module.exports = {
   runCommand,
+  killProcess,
   TIMEOUTS,
 };

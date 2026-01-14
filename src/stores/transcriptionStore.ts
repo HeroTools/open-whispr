@@ -74,9 +74,7 @@ export async function initializeTranscriptions(limit = DEFAULT_LIMIT) {
 
 export function addTranscription(item: TranscriptionItem) {
   if (!item) return;
-  const withoutDuplicate = transcriptions.filter(
-    (existing) => existing.id !== item.id
-  );
+  const withoutDuplicate = transcriptions.filter((existing) => existing.id !== item.id);
   transcriptions = [item, ...withoutDuplicate].slice(0, currentLimit);
   emit();
 }

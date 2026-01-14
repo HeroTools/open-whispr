@@ -5,11 +5,10 @@
     "output": "dist"
   },
   "npmRebuild": true,
-  "buildDependenciesFromSource": true,
+  "buildDependenciesFromSource": false,
   "files": [
     "main.js",
     "preload.js",
-    "whisper_bridge.py",
     "package.json",
     "node_modules/**/*",
     "src/dist/**/*",
@@ -24,14 +23,18 @@
     "!src/node_modules/**/*"
   ],
   "asarUnpack": [
-    "whisper_bridge.py",
     "**/node_modules/ffmpeg-static/**/*",
     "**/node_modules/better-sqlite3/**/*"
   ],
   "extraResources": [
     "src/assets/**/*",
     "resources/macos-globe-listener.swift",
-    "resources/bin/macos-globe-listener"
+    "resources/bin/macos-globe-listener",
+    {
+      "from": "resources/bin/",
+      "to": "bin/",
+      "filter": ["whisper-cpp-*"]
+    }
   ],
   "mac": {
     "category": "public.app-category.productivity",
@@ -62,7 +65,13 @@
       "nsis",
       "portable"
     ],
-    "icon": "src/assets/icon.ico"
+    "icon": "src/assets/icon.ico",
+    "extraResources": [
+      {
+        "from": "resources/bin/nircmd.exe",
+        "to": "bin/nircmd.exe"
+      }
+    ]
   },
   "linux": {
     "target": [
@@ -95,7 +104,11 @@
     ]
   },
   "deb": {
-    "afterRemove": "resources/linux/after-remove.sh"
+    "afterRemove": "resources/linux/after-remove.sh",
+    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype"]
+  },
+  "rpm": {
+    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype"]
   },
   "nsis": {
     "oneClick": false,
@@ -107,7 +120,6 @@
   "dmg": {
     "title": "OpenWhispr",
     "icon": "src/assets/icon.icns",
-    "background": "src/assets/dmg-background.png",
     "window": {
       "width": 540,
       "height": 380

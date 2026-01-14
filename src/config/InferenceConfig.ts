@@ -1,4 +1,4 @@
-import { cpus } from 'os';
+import { cpus } from "os";
 
 export interface InferenceConfig {
   temperature: number;
@@ -33,7 +33,7 @@ export class InferenceConfigManager {
   updateConfig(updates: Partial<InferenceConfig>) {
     this.config = {
       ...this.config,
-      ...updates
+      ...updates,
     };
   }
 
@@ -52,33 +52,33 @@ export class InferenceConfigManager {
       repeatPenalty: 1.1,
       threads: this.getOptimalThreadCount(),
       contextSize: 2048,
-      timeout: 30000
+      timeout: 30000,
     };
   }
 
   // Get config optimized for specific use cases
-  getConfigForUseCase(useCase: 'reasoning' | 'creative' | 'factual'): Partial<InferenceConfig> {
+  getConfigForUseCase(useCase: "reasoning" | "creative" | "factual"): Partial<InferenceConfig> {
     switch (useCase) {
-      case 'reasoning':
+      case "reasoning":
         return {
           temperature: 0.3,
           topK: 40,
           topP: 0.9,
-          repeatPenalty: 1.1
+          repeatPenalty: 1.1,
         };
-      case 'creative':
+      case "creative":
         return {
           temperature: 0.8,
           topK: 100,
           topP: 0.95,
-          repeatPenalty: 1.0
+          repeatPenalty: 1.0,
         };
-      case 'factual':
+      case "factual":
         return {
           temperature: 0.1,
           topK: 20,
           topP: 0.85,
-          repeatPenalty: 1.2
+          repeatPenalty: 1.2,
         };
     }
   }

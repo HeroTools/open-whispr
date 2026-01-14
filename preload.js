@@ -68,20 +68,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Clipboard functions
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
+  checkPasteTools: () => ipcRenderer.invoke("check-paste-tools"),
 
-  // Python installation functions
-  checkPythonInstallation: () =>
-    ipcRenderer.invoke("check-python-installation"),
-  installPython: () => ipcRenderer.invoke("install-python"),
-  onPythonInstallProgress: registerListener("python-install-progress"),
-
-  // Local Whisper functions
+  // Local Whisper functions (whisper.cpp)
   transcribeLocalWhisper: (audioBlob, options) =>
     ipcRenderer.invoke("transcribe-local-whisper", audioBlob, options),
   checkWhisperInstallation: () =>
     ipcRenderer.invoke("check-whisper-installation"),
-  installWhisper: () => ipcRenderer.invoke("install-whisper"),
-  onWhisperInstallProgress: registerListener("whisper-install-progress"),
   downloadWhisperModel: (modelName) =>
     ipcRenderer.invoke("download-whisper-model", modelName),
   onWhisperDownloadProgress: registerListener("whisper-download-progress"),
@@ -90,6 +83,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   listWhisperModels: () => ipcRenderer.invoke("list-whisper-models"),
   deleteWhisperModel: (modelName) =>
     ipcRenderer.invoke("delete-whisper-model", modelName),
+  deleteAllWhisperModels: () => ipcRenderer.invoke("delete-all-whisper-models"),
   cancelWhisperDownload: () => ipcRenderer.invoke("cancel-whisper-download"),
   checkFFmpegAvailability: () =>
     ipcRenderer.invoke("check-ffmpeg-availability"),
@@ -172,12 +166,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
-  
-  // System settings helpers
-  openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
-  openSoundInputSettings: () =>
-    ipcRenderer.invoke("open-sound-input-settings"),
-  
+
+  // Globe key listener for hotkey capture (macOS only)
+  onGlobeKeyPressed: (callback) => {
+    const listener = () => callback?.();
+    ipcRenderer.on("globe-key-pressed", listener);
+    return () => ipcRenderer.removeListener("globe-key-pressed", listener);
+  },
+
   // Remove all listeners for a channel
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);

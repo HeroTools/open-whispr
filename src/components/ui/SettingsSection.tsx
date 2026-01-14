@@ -17,9 +17,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
     <div className={`space-y-4 ${className}`}>
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-        {description && (
-          <p className="text-sm text-gray-600 mb-4">{description}</p>
-        )}
+        {description && <p className="text-sm text-gray-600 mb-4">{description}</p>}
       </div>
       {children}
     </div>

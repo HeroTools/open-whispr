@@ -40,7 +40,13 @@ jobs:
         
     - name: Install dependencies
       run: npm ci
-      
+
+    - name: Download whisper.cpp binaries
+      run: node scripts/download-whisper-cpp.js
+
+    - name: Download nircmd.exe (Windows only)
+      run: node scripts/download-nircmd.js
+
     # macOS code signing setup (same as build workflow)
     - name: Setup macOS Code Signing
       if: matrix.os == 'macos-latest'

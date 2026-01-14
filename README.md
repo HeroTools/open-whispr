@@ -11,10 +11,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
 - 🤖 **Multi-Provider AI Processing**: Choose between OpenAI, Anthropic Claude, Google Gemini, or local models
 - 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
-- 🧠 **Latest AI Models** (September 2025):
-  - **OpenAI**: GPT-5 Series, GPT-4.1 Series, o-series reasoning models (o3/o4-mini)
-  - **Anthropic**: Claude Opus 4.1, Claude Sonnet 4, Claude 3.5 Sonnet/Haiku
-  - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite with thinking capability, Gemini 2.0 Flash
+- 🧠 **Multi-Provider AI**:
+  - **OpenAI**: GPT-5, GPT-4.1, o-series reasoning models
+  - **Anthropic**: Claude Opus 4.5, Claude Sonnet 4.5
+  - **Google**: Gemini 2.5 Pro/Flash/Flash-Lite
+  - **Groq**: Ultra-fast inference with Llama and Mixtral models
   - **Local**: Qwen, LLaMA, Mistral models via llama.cpp
 - 🔒 **Privacy-First**: Local processing keeps your voice data completely private
 - 🎨 **Modern UI**: Built with React 19, TypeScript, and Tailwind CSS v4
@@ -28,13 +29,13 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🖱️ **Draggable Interface**: Move the dictation panel anywhere on your screen
 - 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
 - 🌐 **Globe Key Toggle (macOS)**: Optional Fn/Globe key listener for a hardware-level dictation trigger
+- ⌨️ **Compound Hotkeys**: Support for multi-key combinations like `Cmd+Shift+K`
 
 ## Prerequisites
 
 - **Node.js 18+** and npm (Download from [nodejs.org](https://nodejs.org/))
 - **macOS 10.15+**, **Windows 10+**, or **Linux**
 - On macOS, Globe key support requires the Xcode Command Line Tools (`xcode-select --install`) so the bundled Swift helper can run
-- **Python 3.7+** (Optional - the app can install it automatically for local Whisper processing)
 
 ## Quick Start
 
@@ -249,13 +250,11 @@ Once you've named your agent during setup, you can interact with it using multip
 - "Hey [AgentName], convert this to bullet points"
 
 **🤖 AI Provider Options**:
-- **OpenAI**: 
-  - GPT-5 Series (Nano/Mini/Full) - Latest generation with deep reasoning
-  - GPT-4.1 Series - Enhanced coding with 1M token context
-  - o3/o4 Series - Advanced reasoning models with longer thinking
-- **Anthropic**: Claude Opus 4.1, Sonnet 4 - Frontier intelligence models
-- **Google**: Gemini 2.5 Pro/Flash - Advanced multi-modal capabilities
-- **Local**: Community models for complete privacy
+- **OpenAI**: GPT-5, GPT-4.1, o-series reasoning models
+- **Anthropic**: Claude Opus 4.5, Sonnet 4.5, Haiku 4.5
+- **Google**: Gemini 2.5 Pro/Flash/Flash-Lite
+- **Groq**: Ultra-fast Llama and Mixtral inference
+- **Local**: Qwen, LLaMA, Mistral via llama.cpp
 
 **📝 Regular Dictation** (for normal text):
 - "This is just normal text I want transcribed"
@@ -280,7 +279,6 @@ The AI automatically detects when you're giving it commands versus dictating reg
 open-whispr/
 ├── main.js              # Electron main process & IPC handlers
 ├── preload.js           # Electron preload script & API bridge
-├── whisper_bridge.py    # Python script for local Whisper processing
 ├── setup.js             # First-time setup script
 ├── package.json         # Dependencies and scripts
 ├── env.example          # Environment variables template
@@ -300,7 +298,6 @@ open-whispr/
 │   │   │   ├── card.tsx
 │   │   │   ├── input.tsx
 │   │   │   ├── LoadingDots.tsx
-│   │   │   ├── DotFlashing.tsx
 │   │   │   ├── Toast.tsx
 │   │   │   ├── toggle.tsx
 │   │   │   └── tooltip.tsx
@@ -321,8 +318,7 @@ open-whispr/
 - **Desktop**: Electron 36 with context isolation
 - **UI Components**: shadcn/ui with Radix primitives
 - **Database**: better-sqlite3 for local transcription storage
-- **Speech-to-Text**: OpenAI Whisper (local models + API)
-- **Local Processing**: Python with OpenAI Whisper package
+- **Speech-to-Text**: OpenAI Whisper (powered by whisper.cpp for local, OpenAI API for cloud)
 - **Icons**: Lucide React for consistent iconography
 
 ## Development
@@ -356,7 +352,7 @@ Both use the same React codebase but render different components based on URL pa
 - **preload.js**: Secure bridge between main and renderer processes
 - **App.jsx**: Main dictation interface with recording controls
 - **ControlPanel.tsx**: Settings, history, and model management
-- **whisper_bridge.py**: Python bridge for local Whisper processing
+- **src/helpers/whisper.js**: whisper.cpp integration for local processing
 - **better-sqlite3**: Local database for transcription history
 
 ### Tailwind CSS v4 Setup
@@ -410,23 +406,20 @@ DEBUG=false
 
 ### Local Whisper Setup
 
-For local processing, OpenWhispr offers automated setup:
+For local processing, OpenWhispr uses OpenAI's Whisper model via whisper.cpp - a high-performance C++ implementation:
 
-1. **Automatic Python Installation** (if needed):
-   - The app will detect if Python is missing
-   - Offers to install Python 3.11 automatically
-   - macOS: Uses Homebrew if available, otherwise official installer
-   - Windows: Downloads and installs official Python
-   - Linux: Uses system package manager (apt, yum, or pacman)
+1. **Bundled Binary**: whisper.cpp is bundled with the app for all platforms
+2. **GGML Models**: Downloads optimized GGML models on first use to `~/.cache/openwhispr/whisper-models/`
+3. **No Dependencies**: No Python or other runtime required
 
-2. **Automatic Whisper Setup**:
-   - Installs OpenAI Whisper package via pip
-   - Downloads your chosen model on first use
-   - Handles all transcription locally
+**System Fallback**: If the bundled binary fails, install via package manager:
+- macOS: `brew install whisper-cpp`
+- Linux: Build from source at https://github.com/ggml-org/whisper.cpp
 
 **Requirements**:
-- Sufficient disk space for models (39MB - 1.5GB depending on model)
-- Admin/sudo access may be required for Python installation
+- Sufficient disk space for models (75MB - 3GB depending on model)
+
+**Upgrading from Python-based version**: If you previously used the Python-based Whisper, you'll need to re-download models in GGML format. You can safely delete the old Python environment (`~/.openwhispr/python/`) and PyTorch models (`~/.cache/whisper/`) to reclaim disk space.
 
 ### Customization
 
@@ -476,9 +469,9 @@ OpenWhispr is designed with privacy and security in mind:
 3. **API key errors** (cloud processing only): Ensure your OpenAI API key is valid and has credits
    - Set key through Control Panel or .env file
    - Check logs for "OpenAI API Key present: Yes/No"
-4. **Local Whisper installation**: 
-   - Ensure Python 3.7+ is installed
-   - Use Control Panel to install Whisper automatically
+4. **Local Whisper issues**:
+   - whisper.cpp is bundled with the app
+   - If bundled binary fails, install via `brew install whisper-cpp` (macOS)
    - Check available disk space for models
 5. **Global hotkey conflicts**: Change the hotkey in the Control Panel - any key can be used
 6. **Text not pasting**: Check accessibility permissions and try manual paste with Cmd+V
@@ -488,7 +481,7 @@ OpenWhispr is designed with privacy and security in mind:
 
 - Check the [Issues](https://github.com/your-repo/open-whispr/issues) page
 - Review the console logs for debugging information
-- For local processing: Ensure Python and pip are working
+- For local processing: Ensure whisper.cpp is accessible and models are downloaded
 - For cloud processing: Verify your OpenAI API key and billing status
 - Check the Control Panel for system status and diagnostics
 
@@ -521,12 +514,19 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.0.4
+OpenWhispr is actively maintained and ready for production use. Current version: 1.2.6
 
 - ✅ Core functionality complete
-- ✅ Cross-platform support
+- ✅ Cross-platform support (macOS, Windows, Linux)
 - ✅ Local and cloud processing
-- ✅ Automatic Python/Whisper installation
-- ✅ Agent naming system
-- ✅ Draggable interface
-- 🚧 Continuous improvements and bug fixes
+- ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Local)
+- ✅ Compound hotkey support
+
+## Acknowledgments
+
+- **[OpenAI Whisper](https://github.com/openai/whisper)** - The speech recognition model that powers both local and cloud transcription
+- **[whisper.cpp](https://github.com/ggerganov/whisper.cpp)** - High-performance C++ implementation of Whisper for local processing
+- **[Electron](https://www.electronjs.org/)** - Cross-platform desktop application framework
+- **[React](https://react.dev/)** - UI component library
+- **[shadcn/ui](https://ui.shadcn.com/)** - Beautiful UI components built on Radix primitives
+- **[llama.cpp](https://github.com/ggerganov/llama.cpp)** - Local LLM inference for AI-powered text processing

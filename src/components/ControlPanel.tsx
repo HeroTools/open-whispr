@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Trash2, Settings, FileText, Mic } from "lucide-react";
+import { Trash2, Settings, FileText, Mic, Download, RefreshCw, Loader2 } from "lucide-react";
 import SettingsModal from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
@@ -10,6 +10,7 @@ import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useHotkey } from "../hooks/useHotkey";
 import { useToast } from "./ui/Toast";
+import { useUpdater } from "../hooks/useUpdater";
 import {
   useTranscriptions,
   initializeTranscriptions,
@@ -23,11 +24,17 @@ export default function ControlPanel() {
   const [showSettings, setShowSettings] = useState(false);
   const { hotkey } = useHotkey();
   const { toast } = useToast();
-  const [updateStatus, setUpdateStatus] = useState({
-    updateAvailable: false,
-    updateDownloaded: false,
-    isDevelopment: false,
-  });
+
+  // Use centralized updater hook to prevent EventEmitter memory leaks
+  const {
+    status: updateStatus,
+    downloadProgress,
+    isDownloading,
+    isInstalling,
+    downloadUpdate,
+    installUpdate,
+    error: updateError,
+  } = useUpdater();
 
   const {
     confirmDialog,
@@ -40,43 +47,29 @@ export default function ControlPanel() {
 
   useEffect(() => {
     loadTranscriptions();
-
-    // Initialize update status
-    const initializeUpdateStatus = async () => {
-      try {
-        const status = await window.electronAPI.getUpdateStatus();
-        setUpdateStatus(status);
-      } catch (error) {
-        // Update status not critical for app function
-      }
-    };
-
-    initializeUpdateStatus();
-
-    // Set up update event listeners
-    const handleUpdateAvailable = (_event: any, _info: any) => {
-      setUpdateStatus((prev) => ({ ...prev, updateAvailable: true }));
-    };
-
-    const handleUpdateDownloaded = (_event: any, _info: any) => {
-      setUpdateStatus((prev) => ({ ...prev, updateDownloaded: true }));
-    };
-
-    const handleUpdateError = (_event: any, _error: any) => {
-      // Update errors are handled by the update service
-    };
-
-    const disposers = [
-      window.electronAPI.onUpdateAvailable(handleUpdateAvailable),
-      window.electronAPI.onUpdateDownloaded(handleUpdateDownloaded),
-      window.electronAPI.onUpdateError(handleUpdateError),
-    ];
-
-    // Cleanup listeners on unmount
-    return () => {
-      disposers.forEach((dispose) => dispose?.());
-    };
   }, []);
+
+  // Show toast when update is ready
+  useEffect(() => {
+    if (updateStatus.updateDownloaded && !isDownloading) {
+      toast({
+        title: "Update Ready",
+        description: "Click 'Install Update' to restart and apply the update.",
+        variant: "success",
+      });
+    }
+  }, [updateStatus.updateDownloaded, isDownloading, toast]);
+
+  // Show toast on update error
+  useEffect(() => {
+    if (updateError) {
+      toast({
+        title: "Update Error",
+        description: "Failed to update. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  }, [updateError, toast]);
 
   const loadTranscriptions = async () => {
     try {
@@ -137,8 +130,7 @@ export default function ControlPanel() {
   const deleteTranscription = async (id: number) => {
     showConfirmDialog({
       title: "Delete Transcription",
-      description:
-        "Are you certain you wish to remove this inscription from your records?",
+      description: "Are you certain you wish to remove this inscription from your records?",
       onConfirm: async () => {
         try {
           const result = await window.electronAPI.deleteTranscription(id);
@@ -147,8 +139,7 @@ export default function ControlPanel() {
           } else {
             showAlertDialog({
               title: "Delete Failed",
-              description:
-                "Failed to delete transcription. It may have already been removed.",
+              description: "Failed to delete transcription. It may have already been removed.",
             });
           }
         } catch (error) {
@@ -160,6 +151,75 @@ export default function ControlPanel() {
       },
       variant: "destructive",
     });
+  };
+
+  const handleUpdateClick = async () => {
+    if (updateStatus.updateDownloaded) {
+      // Show confirmation dialog before installing
+      showConfirmDialog({
+        title: "Install Update",
+        description:
+          "The update will be installed and the app will restart. Make sure you've saved any work.",
+        onConfirm: async () => {
+          try {
+            await installUpdate();
+          } catch (error) {
+            toast({
+              title: "Install Failed",
+              description: "Failed to install update. Please try again.",
+              variant: "destructive",
+            });
+          }
+        },
+      });
+    } else if (updateStatus.updateAvailable && !isDownloading) {
+      // Start download
+      try {
+        await downloadUpdate();
+      } catch (error) {
+        toast({
+          title: "Download Failed",
+          description: "Failed to download update. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const getUpdateButtonContent = () => {
+    if (isInstalling) {
+      return (
+        <>
+          <Loader2 size={14} className="animate-spin" />
+          <span>Installing...</span>
+        </>
+      );
+    }
+    if (isDownloading) {
+      return (
+        <>
+          <Loader2 size={14} className="animate-spin" />
+          <span>{downloadProgress}%</span>
+        </>
+      );
+    }
+    if (updateStatus.updateDownloaded) {
+      return (
+        <>
+          <RefreshCw size={14} />
+          <span>Install Update</span>
+        </>
+      );
+    }
+    if (updateStatus.updateAvailable) {
+      return (
+        <>
+          <Download size={14} />
+          <span>Update Available</span>
+        </>
+      );
+    }
+    return null;
   };
 
   return (
@@ -184,20 +244,28 @@ export default function ControlPanel() {
       <TitleBar
         actions={
           <>
-            {/* Update notification badge */}
+            {/* Update button */}
             {!updateStatus.isDevelopment &&
               (updateStatus.updateAvailable ||
-                updateStatus.updateDownloaded) && (
-                <div className="relative">
-                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-blue-500 rounded-full"></div>
-                </div>
+                updateStatus.updateDownloaded ||
+                isDownloading ||
+                isInstalling) && (
+                <Button
+                  variant={updateStatus.updateDownloaded ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleUpdateClick}
+                  disabled={isInstalling || isDownloading}
+                  className={`gap-1.5 text-xs ${
+                    updateStatus.updateDownloaded
+                      ? "bg-blue-600 hover:bg-blue-700 text-white"
+                      : "border-blue-300 text-blue-600 hover:bg-blue-50"
+                  }`}
+                >
+                  {getUpdateButtonContent()}
+                </Button>
               )}
             <SupportDropdown />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setShowSettings(!showSettings)}
-            >
+            <Button variant="ghost" size="icon" onClick={() => setShowSettings(!showSettings)}>
               <Settings size={16} />
             </Button>
           </>
@@ -247,13 +315,10 @@ export default function ControlPanel() {
                     No transcriptions yet
                   </h3>
                   <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
-                    Press your hotkey to start recording and create your first
-                    transcription.
+                    Press your hotkey to start recording and create your first transcription.
                   </p>
                   <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
-                    <h4 className="font-medium text-neutral-800 mb-2">
-                      Quick Start:
-                    </h4>
+                    <h4 className="font-medium text-neutral-800 mb-2">Quick Start:</h4>
                     <ol className="text-sm text-neutral-600 text-left space-y-1">
                       <li>1. Click in any text field</li>
                       <li>

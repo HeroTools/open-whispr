@@ -18,9 +18,7 @@ export default function TranscriptionItem({
   onCopy,
   onDelete,
 }: TranscriptionItemProps) {
-  const timestampSource = item.timestamp.endsWith("Z")
-    ? item.timestamp
-    : `${item.timestamp}Z`;
+  const timestampSource = item.timestamp.endsWith("Z") ? item.timestamp : `${item.timestamp}Z`;
   const timestampDate = new Date(timestampSource);
   const formattedTimestamp = Number.isNaN(timestampDate.getTime())
     ? item.timestamp
@@ -40,13 +38,9 @@ export default function TranscriptionItem({
               className="flex items-center gap-2 mb-1"
               style={{ marginTop: "2px", lineHeight: "24px" }}
             >
-              <span className="text-indigo-600 text-xs font-medium">
-                #{total - index}
-              </span>
+              <span className="text-indigo-600 text-xs font-medium">#{total - index}</span>
               <div className="w-px h-3 bg-neutral-300" />
-              <span className="text-xs text-neutral-500">
-                {formattedTimestamp}
-              </span>
+              <span className="text-xs text-neutral-500">{formattedTimestamp}</span>
             </div>
             <p
               className="text-neutral-800 text-sm"
@@ -62,10 +56,7 @@ export default function TranscriptionItem({
               {item.text}
             </p>
           </div>
-          <div
-            className="flex gap-1 flex-shrink-0"
-            style={{ marginTop: "2px" }}
-          >
+          <div className="flex gap-1 flex-shrink-0" style={{ marginTop: "2px" }}>
             <Button
               size="icon"
               variant="ghost"

@@ -82,9 +82,7 @@ class DebugLogger {
       return argLevel;
     }
 
-    const envLevel = normalizeLevel(
-      process.env.OPENWHISPR_LOG_LEVEL || process.env.LOG_LEVEL
-    );
+    const envLevel = normalizeLevel(process.env.OPENWHISPR_LOG_LEVEL || process.env.LOG_LEVEL);
     if (envLevel) {
       return envLevel;
     }
@@ -261,8 +259,14 @@ class DebugLogger {
     if (process.platform === "win32") {
       possiblePaths = [
         ffmpegPath,
-        ffmpegPath?.replace(/app\.asar([/\\])/, 'app.asar.unpacked$1'),
-        path.join(process.resourcesPath || "", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg.exe"),
+        ffmpegPath?.replace(/app\.asar([/\\])/, "app.asar.unpacked$1"),
+        path.join(
+          process.resourcesPath || "",
+          "app.asar.unpacked",
+          "node_modules",
+          "ffmpeg-static",
+          "ffmpeg.exe"
+        ),
         path.join(process.env.ProgramFiles || "C:\\Program Files", "ffmpeg", "bin", "ffmpeg.exe"),
         "C:\\ffmpeg\\bin\\ffmpeg.exe",
       ].filter(Boolean);
@@ -270,7 +274,13 @@ class DebugLogger {
       possiblePaths = [
         ffmpegPath,
         ffmpegPath?.replace("app.asar", "app.asar.unpacked"),
-        path.join(process.resourcesPath || "", "app.asar.unpacked", "node_modules", "ffmpeg-static", "ffmpeg"),
+        path.join(
+          process.resourcesPath || "",
+          "app.asar.unpacked",
+          "node_modules",
+          "ffmpeg-static",
+          "ffmpeg"
+        ),
         "/usr/local/bin/ffmpeg",
         "/opt/homebrew/bin/ffmpeg",
         "/usr/bin/ffmpeg",
@@ -286,18 +296,6 @@ class DebugLogger {
     this.debug(`FFmpeg Debug - ${context}`, debugInfo, "ffmpeg");
   }
 
-  logWindowsPythonSearch(context, details) {
-    if (!this.isDebugEnabled() || process.platform !== "win32") return;
-
-    this.debug(`Windows Python Search - ${context}`, {
-      ...details,
-      platform: process.platform,
-      PATH: process.env.PATH?.substring(0, 300) + "...",
-      LOCALAPPDATA: process.env.LOCALAPPDATA,
-      ProgramFiles: process.env.ProgramFiles,
-    }, "python");
-  }
-
   logAudioData(context, audioBlob) {
     if (!this.isDebugEnabled()) return;
 
@@ -311,11 +309,7 @@ class DebugLogger {
     if (audioBlob instanceof ArrayBuffer) {
       audioInfo.byteLength = audioBlob.byteLength;
       // Check first few bytes
-      const view = new Uint8Array(
-        audioBlob,
-        0,
-        Math.min(16, audioBlob.byteLength)
-      );
+      const view = new Uint8Array(audioBlob, 0, Math.min(16, audioBlob.byteLength));
       audioInfo.firstBytes = Array.from(view)
         .map((b) => b.toString(16).padStart(2, "0"))
         .join(" ");
@@ -333,17 +327,21 @@ class DebugLogger {
   logProcessStart(command, args, options = {}) {
     if (!this.isDebugEnabled()) return;
 
-    this.debug("Starting process", {
-      command,
-      args,
-      cwd: options.cwd || process.cwd(),
-      env: {
-        FFMPEG_PATH: options.env?.FFMPEG_PATH,
-        FFMPEG_EXECUTABLE: options.env?.FFMPEG_EXECUTABLE,
-        FFMPEG_BINARY: options.env?.FFMPEG_BINARY,
-        PATH_preview: options.env?.PATH?.substring(0, 200) + "...",
+    this.debug(
+      "Starting process",
+      {
+        command,
+        args,
+        cwd: options.cwd || process.cwd(),
+        env: {
+          FFMPEG_PATH: options.env?.FFMPEG_PATH,
+          FFMPEG_EXECUTABLE: options.env?.FFMPEG_EXECUTABLE,
+          FFMPEG_BINARY: options.env?.FFMPEG_BINARY,
+          PATH_preview: options.env?.PATH?.substring(0, 200) + "...",
+        },
       },
-    }, "process");
+      "process"
+    );
   }
 
   logProcessOutput(processName, type, data) {
@@ -375,7 +373,6 @@ class DebugLogger {
       this.logStream = null;
     }
   }
-
 }
 
 // Singleton instance

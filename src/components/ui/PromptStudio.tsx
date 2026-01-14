@@ -2,17 +2,17 @@ import React, { useState, useEffect } from "react";
 import { Button } from "./button";
 import { Textarea } from "./textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "./card";
-import { 
-  Eye, 
-  Edit3, 
-  Play, 
-  Save, 
-  RotateCcw, 
-  Copy, 
-  Sparkles, 
+import {
+  Eye,
+  Edit3,
+  Play,
+  Save,
+  RotateCcw,
+  Copy,
+  Sparkles,
   Zap,
   TestTube,
-  AlertTriangle
+  AlertTriangle,
 } from "lucide-react";
 import { AlertDialog } from "./dialog";
 import { useDialogs } from "../../hooks/useDialogs";
@@ -22,7 +22,6 @@ import ReasoningService, { DEFAULT_PROMPTS } from "../../services/ReasoningServi
 interface PromptStudioProps {
   className?: string;
 }
-
 
 type ProviderConfig = {
   label: string;
@@ -46,10 +45,12 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const [activeTab, setActiveTab] = useState<"current" | "edit" | "test">("current");
   const [editedAgentPrompt, setEditedAgentPrompt] = useState(DEFAULT_PROMPTS.agent);
   const [editedRegularPrompt, setEditedRegularPrompt] = useState(DEFAULT_PROMPTS.regular);
-  const [testText, setTestText] = useState("Hey Assistant, make this more professional: This is a test message that needs some work.");
+  const [testText, setTestText] = useState(
+    "Hey Assistant, make this more professional: This is a test message that needs some work."
+  );
   const [testResult, setTestResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const { agentName } = useAgentName();
 
@@ -70,13 +71,14 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const savePrompts = () => {
     const customPrompts = {
       agent: editedAgentPrompt,
-      regular: editedRegularPrompt
+      regular: editedRegularPrompt,
     };
-    
+
     localStorage.setItem("customPrompts", JSON.stringify(customPrompts));
     showAlertDialog({
       title: "Prompts Saved!",
-      description: "Your custom prompts have been saved and will be used for all future AI processing."
+      description:
+        "Your custom prompts have been saved and will be used for all future AI processing.",
     });
   };
 
@@ -86,28 +88,34 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     localStorage.removeItem("customPrompts");
     showAlertDialog({
       title: "Reset Complete",
-      description: "Prompts have been reset to default values."
+      description: "Prompts have been reset to default values.",
     });
   };
 
-
   const testPrompt = async () => {
     if (!testText.trim()) return;
-    
+
     setIsLoading(true);
     setTestResult("");
-    
+
     try {
       // Check if reasoning model is enabled and if we have the necessary settings
       const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-      const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
+      const reasoningModel = localStorage.getItem("reasoningModel") || "";
       const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
-      
+
       if (!useReasoningModel) {
-        setTestResult("⚠️ AI text enhancement is disabled. Enable it in AI Models settings to test prompts.");
+        setTestResult(
+          "⚠️ AI text enhancement is disabled. Enable it in AI Models settings to test prompts."
+        );
         return;
       }
-      
+
+      if (!reasoningModel) {
+        setTestResult("⚠️ No reasoning model selected. Choose one in AI Models settings.");
+        return;
+      }
+
       const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
         label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
       };
@@ -131,22 +139,30 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
       // Save current prompts temporarily so the test uses them
       const currentCustomPrompts = localStorage.getItem("customPrompts");
-      localStorage.setItem("customPrompts", JSON.stringify({
-        agent: editedAgentPrompt,
-        regular: editedRegularPrompt
-      }));
-      
+      localStorage.setItem(
+        "customPrompts",
+        JSON.stringify({
+          agent: editedAgentPrompt,
+          regular: editedRegularPrompt,
+        })
+      );
+
       try {
         // For local models, use a different approach
         if (reasoningProvider === "local") {
           // Call local reasoning directly
-          const result = await window.electronAPI.processLocalReasoning(testText, reasoningModel, agentName, {
-            customPrompts: {
-              agent: editedAgentPrompt,
-              regular: editedRegularPrompt
+          const result = await window.electronAPI.processLocalReasoning(
+            testText,
+            reasoningModel,
+            agentName,
+            {
+              customPrompts: {
+                agent: editedAgentPrompt,
+                regular: editedRegularPrompt,
+              },
             }
-          });
-          
+          );
+
           if (result.success) {
             setTestResult(result.text);
           } else {
@@ -157,8 +173,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           const result = await ReasoningService.processText(testText, reasoningModel, agentName, {
             customPrompts: {
               agent: editedAgentPrompt,
-              regular: editedRegularPrompt
-            }
+              regular: editedRegularPrompt,
+            },
           });
           setTestResult(result);
         }
@@ -170,7 +186,6 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           localStorage.removeItem("customPrompts");
         }
       }
-      
     } catch (error) {
       console.error("Test failed:", error);
       setTestResult(`❌ Test failed: ${error.message}`);
@@ -183,7 +198,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     navigator.clipboard.writeText(prompt);
     showAlertDialog({
       title: "Copied!",
-      description: "Prompt copied to clipboard."
+      description: "Prompt copied to clipboard.",
     });
   };
 
@@ -195,7 +210,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           Current AI Prompts
         </h3>
         <p className="text-sm text-gray-600 mb-6">
-          These are the exact prompts currently being sent to your AI models. Understanding these helps you see how OpenWhispr thinks!
+          These are the exact prompts currently being sent to your AI models. Understanding these
+          helps you see how OpenWhispr thinks!
         </p>
       </div>
 
@@ -208,12 +224,14 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         </CardHeader>
         <CardContent>
           <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm">
-            <pre className="whitespace-pre-wrap">{editedAgentPrompt.replace(/\{\{agentName\}\}/g, agentName)}</pre>
+            <pre className="whitespace-pre-wrap">
+              {editedAgentPrompt.replace(/\{\{agentName\}\}/g, agentName)}
+            </pre>
           </div>
-          <Button 
-            onClick={() => copyPrompt(editedAgentPrompt)} 
-            variant="outline" 
-            size="sm" 
+          <Button
+            onClick={() => copyPrompt(editedAgentPrompt)}
+            variant="outline"
+            size="sm"
             className="mt-3"
           >
             <Copy className="w-4 h-4 mr-2" />
@@ -233,10 +251,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm">
             <pre className="whitespace-pre-wrap">{editedRegularPrompt}</pre>
           </div>
-          <Button 
-            onClick={() => copyPrompt(editedRegularPrompt)} 
-            variant="outline" 
-            size="sm" 
+          <Button
+            onClick={() => copyPrompt(editedRegularPrompt)}
+            variant="outline"
+            size="sm"
             className="mt-3"
           >
             <Copy className="w-4 h-4 mr-2" />
@@ -255,7 +273,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           Customize Your AI Prompts
         </h3>
         <p className="text-sm text-gray-600 mb-6">
-          Edit these prompts to change how your AI behaves. Use <code>{"{{agentName}}"}</code> and <code>{"{{text}}"}</code> as placeholders.
+          Edit these prompts to change how your AI behaves. Use <code>{"{{agentName}}"}</code> and{" "}
+          <code>{"{{text}}"}</code> as placeholders.
         </p>
       </div>
 
@@ -302,10 +321,9 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     </div>
   );
 
-
   const renderTestPlayground = () => {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-    const reasoningModel = localStorage.getItem("reasoningModel") || "gpt-4o-mini";
+    const reasoningModel = localStorage.getItem("reasoningModel") || "";
     const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
     const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
       label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
@@ -314,7 +332,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     const providerEndpoint = providerConfig.baseStorageKey
       ? (localStorage.getItem(providerConfig.baseStorageKey) || "").trim()
       : "";
-    
+
     return (
       <div className="space-y-6">
         <div>
@@ -358,7 +376,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                 )}
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium mb-2">Test Input</label>
               <Textarea
@@ -372,11 +390,13 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                   Try including "{agentName}" in your text to test agent mode prompts
                 </p>
                 {testText && (
-                  <span className={`text-xs px-2 py-1 rounded-full ${
-                    testText.toLowerCase().includes(agentName.toLowerCase())
-                      ? "bg-purple-100 text-purple-700"
-                      : "bg-green-100 text-green-700"
-                  }`}>
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      testText.toLowerCase().includes(agentName.toLowerCase())
+                        ? "bg-purple-100 text-purple-700"
+                        : "bg-green-100 text-green-700"
+                    }`}
+                  >
                     {testText.toLowerCase().includes(agentName.toLowerCase())
                       ? "🤖 Agent Mode"
                       : "✨ Regular Mode"}
@@ -385,8 +405,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               </div>
             </div>
 
-            <Button 
-              onClick={testPrompt} 
+            <Button
+              onClick={testPrompt}
               disabled={!testText.trim() || isLoading || !useReasoningModel}
               className="w-full"
             >
@@ -398,19 +418,17 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-sm font-medium">AI Response</label>
-                  <Button
-                    onClick={() => copyPrompt(testResult)}
-                    variant="ghost"
-                    size="sm"
-                  >
+                  <Button onClick={() => copyPrompt(testResult)} variant="ghost" size="sm">
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
-                <div className={`border rounded-lg p-4 text-sm max-h-60 overflow-y-auto ${
-                  testResult.startsWith("⚠️") || testResult.startsWith("❌")
-                    ? "bg-amber-50 border-amber-200 text-amber-800"
-                    : "bg-gray-50 border-gray-200"
-                }`}>
+                <div
+                  className={`border rounded-lg p-4 text-sm max-h-60 overflow-y-auto ${
+                    testResult.startsWith("⚠️") || testResult.startsWith("❌")
+                      ? "bg-amber-50 border-amber-200 text-amber-800"
+                      : "bg-gray-50 border-gray-200"
+                  }`}
+                >
                   <pre className="whitespace-pre-wrap">{testResult}</pre>
                 </div>
               </div>
@@ -436,7 +454,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         {[
           { id: "current", label: "Current Prompts", icon: Eye },
           { id: "edit", label: "Customize", icon: Edit3 },
-          { id: "test", label: "Test", icon: TestTube }
+          { id: "test", label: "Test", icon: TestTube },
         ].map((tab) => {
           const Icon = tab.icon;
           return (

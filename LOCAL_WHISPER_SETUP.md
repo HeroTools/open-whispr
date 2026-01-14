@@ -1,196 +1,69 @@
-# Local Whisper Integration Guide
+# Local Whisper Setup
 
-## ✅ What We've Accomplished
+OpenWhispr supports local speech-to-text processing using whisper.cpp. This keeps your audio completely private—nothing leaves your device.
 
-Your OpenWhispr app has been successfully refactored to support **local Whisper models** in addition to the OpenAI API. Here's what's been implemented:
+## Quick Start
 
-### 🔧 Technical Implementation
+1. Open the **Control Panel** (right-click tray icon or click the overlay)
+2. Go to **Settings** → **Speech to Text Processing**
+3. Enable **Use Local Whisper**
+4. Select a model (recommended: `base`)
+5. Click **Save**
 
-1. **Python Bridge Script** (`whisper_bridge.py`)
-   - Handles local audio transcription using OpenAI's Whisper models
-   - Supports all Whisper models: tiny, base, small, medium, large, turbo
-   - JSON output for integration with Electron app
-   - Proper error handling and cleanup
+The first transcription will download the model automatically.
 
-2. **Enhanced Main Process** (`main.js`)
-   - New IPC handlers for local Whisper transcription
-   - Python executable detection across different systems
-   - Whisper installation checking
-   - Temporary file management with cleanup
-   - 30-second timeout protection
+## Model Selection
 
-3. **Updated Preload Script** (`preload.js`)
-   - New IPC methods exposed to renderer
-   - Type-safe interfaces for TypeScript
+| Model  | Size   | Speed    | Quality | RAM    | Best For              |
+|--------|--------|----------|---------|--------|-----------------------|
+| tiny   | 75MB   | Fastest  | Basic   | ~1GB   | Quick notes           |
+| base   | 142MB  | Fast     | Good    | ~1GB   | **Recommended**       |
+| small  | 466MB  | Medium   | Better  | ~2GB   | Professional use      |
+| medium | 1.5GB  | Slow     | High    | ~5GB   | High accuracy         |
+| large  | 3GB    | Slowest  | Best    | ~10GB  | Maximum quality       |
 
-4. **Enhanced React App** (`src/App.jsx`)
-   - Automatic fallback from local to OpenAI API
-   - User preference storage in localStorage
-   - Model selection support
-   - Smart error handling
+## How It Works
 
-5. **Advanced Control Panel** (`src/components/ControlPanel.tsx`)
-   - Complete UI for Whisper engine selection
-   - Model selection dropdown with descriptions
-   - Installation status checking
-   - Privacy information display
-   - Settings persistence
+OpenWhispr uses whisper.cpp, a high-performance C++ implementation of OpenAI's Whisper model:
 
-## 🚀 How to Use Local Whisper
+1. whisper.cpp binary is bundled with the app (or uses system installation as fallback)
+2. GGML models are downloaded on first use to `~/.cache/openwhispr/whisper-models/`
+3. Audio is processed locally using FFmpeg (bundled with the app)
 
-### Step 1: Open the Control Panel
-- Right-click the app tray icon (macOS) or use the overlay
-- Navigate to "Whisper Engine Settings"
+## Requirements
 
-### Step 2: Enable Local Whisper
-- Check the "Use Local Whisper (Privacy Mode)" checkbox
-- Select your desired model:
-  - **Tiny**: Fastest, lowest quality (39M params)
-  - **Base**: Balanced speed/quality (74M params) - Recommended
-  - **Small**: Better quality, slower (244M params)
-  - **Medium**: High quality, much slower (769M params)
-  - **Large**: Best quality, very slow (1550M params)
-  - **Turbo**: Fast with good quality (809M params)
+- **Disk Space**: 75MB–3GB depending on model
+- **RAM**: 1GB–10GB depending on model
+- **No additional dependencies required** - whisper.cpp is bundled
 
-### Step 3: Save Settings
-- Click "Save Whisper Settings"
-- The app will now use local processing for all new transcriptions
+## File Locations
 
-## 🔒 Privacy Benefits
+| Data              | macOS                                        | Windows                              | Linux                           |
+|-------------------|----------------------------------------------|--------------------------------------|---------------------------------|
+| Models            | `~/.cache/openwhispr/whisper-models/`        | `%USERPROFILE%\.cache\openwhispr\whisper-models\` | `~/.cache/openwhispr/whisper-models/` |
 
-### Local Whisper Mode
-- ✅ **Complete Privacy**: Audio never leaves your device
-- ✅ **No Internet Required**: Works offline (after model download)
-- ✅ **No API Costs**: Free to use after initial setup
-- ✅ **Faster Response**: No network latency
-- ⚠️ **Higher Resource Usage**: Uses CPU/memory for processing
+## Troubleshooting
 
-### OpenAI API Mode  
-- ⚠️ **Audio Sent to OpenAI**: Audio data transmitted to servers
-- ⚠️ **Internet Required**: Needs active connection
-- ⚠️ **API Costs**: Charges per minute of audio
-- ✅ **Fast & Efficient**: Minimal local resource usage
-- ✅ **Always Latest Model**: OpenAI's most advanced model
-
-## 📦 Requirements
-
-### ✅ Bundled Dependencies (No Installation Required)
-
-The following are now **bundled with the app** and require no user installation:
-
-- ✅ **FFmpeg**: Bundled with the app (no system installation needed)
-- ✅ **Python Bridge Script**: Included in the app bundle
-- ✅ **App Integration**: Fully implemented
-
-### 🔧 Optional Dependencies (For Local Whisper)
-
-For **local Whisper processing**, users still need:
-
-- ✅ **Python 3**: Installed via Homebrew or system package manager
-- ✅ **OpenAI Whisper**: Installed via `pip3 install openai-whisper`
-
-**Note**: FFmpeg is now bundled, so users no longer need to install it separately!
-
-## 🧪 Testing Your Setup
-
-### Test 1: Check Installation Status
-1. Open the Control Panel
-2. Look at the "Whisper Engine Settings" card
-3. You should see "✅ Installed" next to the Local Whisper checkbox
-
-### Test 2: Test Local Transcription
-1. Enable "Use Local Whisper" in Control Panel
-2. Select "base" model (recommended for testing)
-3. Save settings
-4. Press your hotkey (default: backtick `) to start dictation
-5. Speak clearly for 2-3 seconds
-6. Press your hotkey again to stop
-7. The transcription should appear and paste automatically
-
-### Test 3: Model Download (First Time)
-- The first time you use a model, Whisper will download it automatically
-- This may take a few minutes depending on your internet speed
-- Subsequent uses will be much faster
-
-## 🔄 Fallback Behavior
-
-The app is configured with intelligent fallback:
-
-1. **Primary**: Use local Whisper if enabled and working
-2. **Fallback**: Automatically switch to OpenAI API if local fails
-3. **Error Handling**: Clear messages about what's happening
-4. **Hotkey Control**: All recording is controlled via customizable hotkey (no clicking required)
-
-## 📊 Model Performance Guide
-
-| Model  | Size  | Speed    | Quality | Memory | Best For |
-|--------|-------|----------|---------|--------|----------|
-| Tiny   | 39M   | Fastest  | Basic   | ~1GB   | Quick notes |
-| Base   | 74M   | Fast     | Good    | ~1GB   | **Recommended** |
-| Small  | 244M  | Medium   | Better  | ~2GB   | Professional use |
-| Medium | 769M  | Slow     | High    | ~5GB   | High accuracy needed |
-| Large  | 1550M | Slowest  | Best    | ~10GB  | Maximum quality |
-| Turbo  | 809M  | Fast     | High    | ~6GB   | Best balance |
-
-## 🛠 Troubleshooting
-
-### "❌ Not Found" Status
-If you see this status:
-1. Click "Recheck Installation" button
-2. Restart the app completely
-3. Check Console logs for Python/Whisper errors
+### "Not Found" Status
+1. Click **Recheck Installation** in Control Panel
+2. Restart the app
+3. If bundled binary fails, install via package manager:
+   - macOS: `brew install whisper-cpp`
+   - Linux: Build from source at https://github.com/ggml-org/whisper.cpp
 
 ### Transcription Fails
-1. Check your microphone permissions
-2. Verify the model downloaded successfully
-3. Try switching to a smaller model (tiny/base)
-4. Check Console logs for detailed error messages
+1. Verify microphone permissions
+2. Try a smaller model (tiny/base)
+3. Check disk space for model downloads
 
 ### Slow Performance
-1. Use smaller models (tiny, base)
-2. Close other resource-intensive apps
-3. Check your system's available memory
+1. Use smaller models (tiny or base)
+2. Close resource-intensive apps
+3. Consider using cloud mode for large files
 
-### Model Download Issues
-1. Ensure stable internet connection
-2. Check available disk space (~2-15GB depending on model)
-3. Try smaller model first
+## Privacy Comparison
 
-## 🔧 Advanced Configuration
-
-### Custom Python Path
-If you need to force a specific interpreter, set the `OPENWHISPR_PYTHON` environment variable before launching the app (e.g. `setx OPENWHISPR_PYTHON "C:\\Python312\\python.exe"` on Windows or `export OPENWHISPR_PYTHON=/opt/homebrew/bin/python3.12` on macOS).
-The new detector also scans the Windows `py` launcher plus the usual install folders, so manual code edits are no longer required.
-
-### Model Storage Location
-Models are downloaded to `~/.cache/whisper/` by default.
-You can change this by modifying the bridge script.
-
-### Timeout Settings
-Current timeout is 30 seconds. To change:
-1. Edit `main.js`
-2. Find the `setTimeout` in the `transcribe-local-whisper` handler
-3. Adjust the value (in milliseconds)
-
-## 🎯 Next Steps
-
-Your app now supports both local and cloud transcription! You can:
-
-1. **Switch modes anytime** via Control Panel
-2. **Test different models** to find your preference  
-3. **Enjoy complete privacy** with local processing
-4. **Keep API access** as a backup option
-5. **Customize your hotkey** to any key you prefer
-6. **Drag the panel** to position it anywhere on your screen
-
-The integration is complete and ready for production use. All files have been modified and the Python bridge is fully functional.
-
-## 📝 Files Modified
-
-- ✅ `whisper_bridge.py` - New Python bridge script
-- ✅ `main.js` - Added local Whisper IPC handlers
-- ✅ `preload.js` - Added new IPC method exports
-- ✅ `src/App.jsx` - Enhanced with local/API switching
-- ✅ `src/components/ControlPanel.tsx` - New Whisper settings UI
-
-Everything is ready to use! 🎉 
+| Mode  | Audio Leaves Device | Internet Required | Cost      |
+|-------|---------------------|-------------------|-----------|
+| Local | No                  | Only for model download | Free |
+| Cloud | Yes (to OpenAI)     | Yes               | API usage |

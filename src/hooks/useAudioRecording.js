@@ -9,10 +9,8 @@ export const useAudioRecording = (toast, options = {}) => {
   const { onToggle } = options;
 
   useEffect(() => {
-    // Initialize AudioManager
     audioManagerRef.current = new AudioManager();
 
-    // Set up callbacks
     audioManagerRef.current.setCallbacks({
       onStateChange: ({ isRecording, isProcessing }) => {
         setIsRecording(isRecording);
@@ -29,17 +27,11 @@ export const useAudioRecording = (toast, options = {}) => {
         if (result.success) {
           setTranscript(result.text);
 
-          // Paste immediately
           await audioManagerRef.current.safePaste(result.text);
 
-          // Save to database in parallel
           audioManagerRef.current.saveTranscription(result.text);
 
-          // Show success notification if local fallback was used
-          if (
-            result.source === "openai" &&
-            localStorage.getItem("useLocalWhisper") === "true"
-          ) {
+          if (result.source === "openai" && localStorage.getItem("useLocalWhisper") === "true") {
             toast({
               title: "Fallback Mode",
               description: "Local Whisper failed. Used OpenAI API instead.",
@@ -51,20 +43,13 @@ export const useAudioRecording = (toast, options = {}) => {
     });
 
     // Set up hotkey listener
-    let recording = false;
     const handleToggle = () => {
       const currentState = audioManagerRef.current.getState();
 
-      if (
-        !recording &&
-        !currentState.isRecording &&
-        !currentState.isProcessing
-      ) {
+      if (!currentState.isRecording && !currentState.isProcessing) {
         audioManagerRef.current.startRecording();
-        recording = true;
       } else if (currentState.isRecording) {
         audioManagerRef.current.stopRecording();
-        recording = false;
       }
     };
 
@@ -73,19 +58,15 @@ export const useAudioRecording = (toast, options = {}) => {
       onToggle?.();
     });
 
-    // Set up no-audio-detected listener
     const handleNoAudioDetected = () => {
       toast({
         title: "No Audio Detected",
-        description:
-          "The recording contained no detectable audio. Please try again.",
+        description: "The recording contained no detectable audio. Please try again.",
         variant: "default",
       });
     };
 
-    const disposeNoAudio = window.electronAPI.onNoAudioDetected?.(
-      handleNoAudioDetected
-    );
+    const disposeNoAudio = window.electronAPI.onNoAudioDetected?.(handleNoAudioDetected);
 
     // Cleanup
     return () => {
@@ -111,6 +92,13 @@ export const useAudioRecording = (toast, options = {}) => {
     return false;
   };
 
+  const cancelRecording = () => {
+    if (audioManagerRef.current) {
+      return audioManagerRef.current.cancelRecording();
+    }
+    return false;
+  };
+
   const toggleListening = () => {
     if (!isRecording && !isProcessing) {
       startRecording();
@@ -125,6 +113,7 @@ export const useAudioRecording = (toast, options = {}) => {
     transcript,
     startRecording,
     stopRecording,
+    cancelRecording,
     toggleListening,
   };
 };

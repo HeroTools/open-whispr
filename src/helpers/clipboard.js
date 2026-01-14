@@ -1,9 +1,57 @@
-const { clipboard } = require("electron");
+const { clipboard, app } = require("electron");
 const { spawn, spawnSync } = require("child_process");
+const { killProcess } = require("../utils/process");
+const path = require("path");
+const fs = require("fs");
+
+// Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
+const CACHE_TTL_MS = 30000;
+// Paste delay before simulating keystroke - mirrors CACHE_CONFIG.PASTE_DELAY_MS
+const PASTE_DELAY_MS = 50;
 
 class ClipboardManager {
   constructor() {
-    // Initialize clipboard manager
+    this.accessibilityCache = { value: null, expiresAt: 0 };
+    this.commandAvailabilityCache = new Map();
+    this.nircmdPath = null;
+    this.nircmdChecked = false;
+  }
+
+  // Get path to nircmd.exe (Windows only)
+  getNircmdPath() {
+    if (this.nircmdChecked) {
+      return this.nircmdPath;
+    }
+
+    this.nircmdChecked = true;
+
+    if (process.platform !== "win32") {
+      return null;
+    }
+
+    // Try multiple paths for nircmd.exe
+    const possiblePaths = [
+      // Production: extraResources
+      path.join(process.resourcesPath, "bin", "nircmd.exe"),
+      // Development: resources/bin
+      path.join(__dirname, "..", "..", "resources", "bin", "nircmd.exe"),
+      path.join(process.cwd(), "resources", "bin", "nircmd.exe"),
+    ];
+
+    for (const nircmdPath of possiblePaths) {
+      try {
+        if (fs.existsSync(nircmdPath)) {
+          this.safeLog(`✅ Found nircmd.exe at: ${nircmdPath}`);
+          this.nircmdPath = nircmdPath;
+          return nircmdPath;
+        }
+      } catch (error) {
+        // Continue checking other paths
+      }
+    }
+
+    this.safeLog("⚠️ nircmd.exe not found, will use PowerShell fallback");
+    return null;
   }
 
   // Safe logging method - only log in development
@@ -31,22 +79,15 @@ class ClipboardManager {
 
       // Copy text to clipboard first - this always works
       clipboard.writeText(text);
-      this.safeLog(
-        "📋 Text copied to clipboard:",
-        text.substring(0, 50) + "..."
-      );
+      this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
 
       if (process.platform === "darwin") {
         // Check accessibility permissions first
-        this.safeLog(
-          "🔍 Checking accessibility permissions for paste operation..."
-        );
+        this.safeLog("🔍 Checking accessibility permissions for paste operation...");
         const hasPermissions = await this.checkAccessibilityPermissions();
 
         if (!hasPermissions) {
-          this.safeLog(
-            "⚠️ No accessibility permissions - text copied to clipboard only"
-          );
+          this.safeLog("⚠️ No accessibility permissions - text copied to clipboard only");
           const errorMsg =
             "Accessibility permissions required for automatic pasting. Text has been copied to clipboard - please paste manually with Cmd+V.";
           throw new Error(errorMsg);
@@ -111,58 +152,205 @@ class ClipboardManager {
 
         const timeoutId = setTimeout(() => {
           hasTimedOut = true;
-          pasteProcess.kill("SIGKILL");
+          killProcess(pasteProcess, "SIGKILL");
           pasteProcess.removeAllListeners();
           const errorMsg =
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
           reject(new Error(errorMsg));
         }, 3000);
-      }, 100);
+      }, PASTE_DELAY_MS);
     });
   }
 
   async pasteWindows(originalClipboard) {
-    return new Promise((resolve, reject) => {
-      const pasteProcess = spawn("powershell", [
-        "-Command",
-        'Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait("^v")',
-      ]);
+    // Try nircmd first if available, fallback to PowerShell
+    const nircmdPath = this.getNircmdPath();
 
-      pasteProcess.on("close", (code) => {
-        if (code === 0) {
-          // Text pasted successfully
-          setTimeout(() => {
-            clipboard.writeText(originalClipboard);
-          }, 100);
-          resolve();
-        } else {
+    if (nircmdPath) {
+      return this.pasteWithNircmd(nircmdPath, originalClipboard);
+    } else {
+      return this.pasteWithPowerShell(originalClipboard);
+    }
+  }
+
+  async pasteWithNircmd(nircmdPath, originalClipboard) {
+    return new Promise((resolve, reject) => {
+      // Minimal delay for nircmd - it's very fast
+      setTimeout(() => {
+        let hasTimedOut = false;
+        const startTime = Date.now();
+
+        this.safeLog("⚡ Starting nircmd paste operation...");
+
+        // nircmd sendkey ctrl+v
+        const pasteProcess = spawn(nircmdPath, ["sendkeypress", "ctrl+v"]);
+
+        let errorOutput = "";
+
+        pasteProcess.stderr.on("data", (data) => {
+          errorOutput += data.toString();
+        });
+
+        pasteProcess.on("close", (code) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+
+          const elapsed = Date.now() - startTime;
+
+          if (code === 0) {
+            this.safeLog(`✅ nircmd paste completed successfully in ${elapsed}ms`);
+            // Restore original clipboard quickly
+            setTimeout(() => {
+              clipboard.writeText(originalClipboard);
+              this.safeLog("🔄 Original clipboard content restored");
+            }, 50);
+            resolve();
+          } else {
+            this.safeLog(
+              `❌ nircmd paste failed with code ${code} after ${elapsed}ms`,
+              errorOutput
+            );
+            // Fallback to PowerShell
+            this.safeLog("🔄 Falling back to PowerShell...");
+            this.pasteWithPowerShell(originalClipboard).then(resolve).catch(reject);
+          }
+        });
+
+        pasteProcess.on("error", (error) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+          const elapsed = Date.now() - startTime;
+          this.safeLog(`❌ nircmd error after ${elapsed}ms:`, error.message);
+          // Fallback to PowerShell
+          this.safeLog("🔄 Falling back to PowerShell...");
+          this.pasteWithPowerShell(originalClipboard).then(resolve).catch(reject);
+        });
+
+        const timeoutId = setTimeout(() => {
+          hasTimedOut = true;
+          const elapsed = Date.now() - startTime;
+          this.safeLog(`⏱️ nircmd paste timed out after ${elapsed}ms`);
+          killProcess(pasteProcess, "SIGKILL");
+          pasteProcess.removeAllListeners();
+          // Fallback to PowerShell
+          this.safeLog("🔄 Falling back to PowerShell...");
+          this.pasteWithPowerShell(originalClipboard).then(resolve).catch(reject);
+        }, 2000); // Shorter timeout for fast nircmd
+      }, 5); // Very short delay for nircmd
+    });
+  }
+
+  async pasteWithPowerShell(originalClipboard) {
+    return new Promise((resolve, reject) => {
+      // Reduce delay - clipboard.writeText is synchronous so no need to wait
+      setTimeout(() => {
+        let hasTimedOut = false;
+        const startTime = Date.now();
+
+        this.safeLog("🪟 Starting PowerShell paste operation...");
+
+        // Optimized PowerShell command:
+        // - Uses [void] to suppress output (faster)
+        // - WindowStyle Hidden to prevent window flash
+        // - ExecutionPolicy Bypass to skip policy checks
+        // - Shorter variable names and compact syntax
+        const pasteProcess = spawn("powershell.exe", [
+          "-NoProfile",
+          "-NonInteractive",
+          "-WindowStyle",
+          "Hidden",
+          "-ExecutionPolicy",
+          "Bypass",
+          "-Command",
+          // Optimized: Load assembly and send keys in one line, suppress output
+          "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');[System.Windows.Forms.SendKeys]::SendWait('^v')",
+        ]);
+
+        let errorOutput = "";
+
+        pasteProcess.stderr.on("data", (data) => {
+          errorOutput += data.toString();
+        });
+
+        pasteProcess.on("close", (code) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+
+          const elapsed = Date.now() - startTime;
+
+          if (code === 0) {
+            this.safeLog(`✅ PowerShell paste completed successfully in ${elapsed}ms`);
+            // Text pasted successfully - restore original clipboard
+            // Use shorter delay since paste is already complete
+            setTimeout(() => {
+              clipboard.writeText(originalClipboard);
+              this.safeLog("🔄 Original clipboard content restored");
+            }, 50);
+            resolve();
+          } else {
+            this.safeLog(
+              `❌ PowerShell paste failed with code ${code} after ${elapsed}ms`,
+              errorOutput
+            );
+            reject(
+              new Error(
+                `Windows paste failed with code ${code}. Text is copied to clipboard - please paste manually with Ctrl+V.`
+              )
+            );
+          }
+        });
+
+        pasteProcess.on("error", (error) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+          const elapsed = Date.now() - startTime;
+          this.safeLog(`❌ PowerShell paste error after ${elapsed}ms:`, error.message);
           reject(
             new Error(
-              `Windows paste failed with code ${code}. Text is copied to clipboard.`
+              `Windows paste failed: ${error.message}. Text is copied to clipboard - please paste manually with Ctrl+V.`
             )
           );
-        }
-      });
+        });
 
-      pasteProcess.on("error", (error) => {
-        reject(
-          new Error(
-            `Windows paste failed: ${error.message}. Text is copied to clipboard.`
-          )
-        );
-      });
+        const timeoutId = setTimeout(() => {
+          hasTimedOut = true;
+          const elapsed = Date.now() - startTime;
+          this.safeLog(`⏱️ PowerShell paste operation timed out after ${elapsed}ms`);
+          killProcess(pasteProcess, "SIGKILL");
+          pasteProcess.removeAllListeners();
+          reject(
+            new Error(
+              "Paste operation timed out. Text is copied to clipboard - please paste manually with Ctrl+V."
+            )
+          );
+        }, 5000);
+      }, 10); // Reduced from PASTE_DELAY_MS (50ms) to 10ms - clipboard write is synchronous
     });
   }
 
   async pasteLinux(originalClipboard) {
     // Helper to check if a command exists
     const commandExists = (cmd) => {
+      const now = Date.now();
+      const cached = this.commandAvailabilityCache.get(cmd);
+      if (cached && now < cached.expiresAt) {
+        return cached.exists;
+      }
       try {
         const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
           stdio: "ignore",
         });
-        return res.status === 0;
+        const exists = res.status === 0;
+        this.commandAvailabilityCache.set(cmd, {
+          exists,
+          expiresAt: now + CACHE_TTL_MS,
+        });
+        return exists;
       } catch {
+        this.commandAvailabilityCache.set(cmd, {
+          exists: false,
+          expiresAt: now + CACHE_TTL_MS,
+        });
         return false;
       }
     };
@@ -192,15 +380,10 @@ class ClipboardManager {
       try {
         // Try xdotool (works on X11 and XWayland)
         if (commandExists("xdotool")) {
-          const result = spawnSync("xdotool", [
-            "getactivewindow",
-            "getwindowclassname",
-          ]);
+          const result = spawnSync("xdotool", ["getactivewindow", "getwindowclassname"]);
           if (result.status === 0) {
             const className = result.stdout.toString().toLowerCase().trim();
-            const isTerminalWindow = terminalClasses.some((term) =>
-              className.includes(term)
-            );
+            const isTerminalWindow = terminalClasses.some((term) => className.includes(term));
             if (isTerminalWindow) {
               this.safeLog(`🖥️ Terminal detected via xdotool: ${className}`);
             }
@@ -218,9 +401,7 @@ class ClipboardManager {
             const classResult = spawnSync("kdotool", ["getwindowclassname", windowId]);
             if (classResult.status === 0) {
               const className = classResult.stdout.toString().toLowerCase().trim();
-              const isTerminalWindow = terminalClasses.some((term) =>
-                className.includes(term)
-              );
+              const isTerminalWindow = terminalClasses.some((term) => className.includes(term));
               if (isTerminalWindow) {
                 this.safeLog(`🖥️ Terminal detected via kdotool: ${className}`);
               }
@@ -264,7 +445,7 @@ class ClipboardManager {
           { cmd: "xdotool", args: ["key", pasteKeys] },
         ];
 
-    // Filter to only available tools
+    // Filter to only available tools (commandExists is already cached)
     const available = candidates.filter((c) => commandExists(c.cmd));
 
     // Attempt paste with a specific tool
@@ -275,18 +456,11 @@ class ClipboardManager {
         let timedOut = false;
         const timeoutId = setTimeout(() => {
           timedOut = true;
-          try {
-            proc.kill("SIGKILL");
-          } catch {
-            // Ignore kill errors
-          }
+          killProcess(proc, "SIGKILL");
         }, 1000);
 
         proc.on("close", (code) => {
-          if (timedOut)
-            return reject(
-              new Error(`Paste with ${tool.cmd} timed out after 1 second`)
-            );
+          if (timedOut) return reject(new Error(`Paste with ${tool.cmd} timed out after 1 second`));
           clearTimeout(timeoutId);
 
           if (code === 0) {
@@ -313,10 +487,7 @@ class ClipboardManager {
         this.safeLog(`✅ Paste successful using ${tool.cmd}`);
         return; // Success!
       } catch (error) {
-        this.safeLog(
-          `⚠️ Paste with ${tool.cmd} failed:`,
-          error?.message || error
-        );
+        this.safeLog(`⚠️ Paste with ${tool.cmd} failed:`, error?.message || error);
         // Continue to next tool
       }
     }
@@ -331,6 +502,11 @@ class ClipboardManager {
 
   async checkAccessibilityPermissions() {
     if (process.platform !== "darwin") return true;
+
+    const now = Date.now();
+    if (now < this.accessibilityCache.expiresAt && this.accessibilityCache.value !== null) {
+      return this.accessibilityCache.value;
+    }
 
     return new Promise((resolve) => {
       // Check accessibility permissions
@@ -352,15 +528,22 @@ class ClipboardManager {
       });
 
       testProcess.on("close", (code) => {
-        if (code === 0) {
-          resolve(true);
-        } else {
+        const allowed = code === 0;
+        this.accessibilityCache = {
+          value: allowed,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        };
+        if (!allowed) {
           this.showAccessibilityDialog(testError);
-          resolve(false);
         }
+        resolve(allowed);
       });
 
       testProcess.on("error", (error) => {
+        this.accessibilityCache = {
+          value: false,
+          expiresAt: Date.now() + CACHE_TTL_MS,
+        };
         resolve(false);
       });
     });
@@ -428,12 +611,7 @@ Would you like to open System Settings now?`;
 
   openSystemSettings() {
     const settingsCommands = [
-      [
-        "open",
-        [
-          "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-        ],
-      ],
+      ["open", ["x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"]],
       ["open", ["-b", "com.apple.systempreferences"]],
       ["open", ["/System/Library/PreferencePanes/Security.prefPane"]],
     ];
@@ -484,6 +662,74 @@ Would you like to open System Settings now?`;
     } catch (error) {
       throw error;
     }
+  }
+
+  /**
+   * Check availability of paste tools on the current platform.
+   * Returns platform-specific information about paste capability.
+   */
+  checkPasteTools() {
+    const platform = process.platform;
+
+    // macOS uses AppleScript - always available, but needs accessibility permission
+    if (platform === "darwin") {
+      return {
+        platform: "darwin",
+        available: true,
+        method: "applescript",
+        requiresPermission: true,
+        tools: [],
+      };
+    }
+
+    // Windows uses PowerShell SendKeys - always available
+    if (platform === "win32") {
+      return {
+        platform: "win32",
+        available: true,
+        method: "powershell",
+        requiresPermission: false,
+        tools: [],
+      };
+    }
+
+    // Linux - check for available paste tools
+    const isWayland =
+      (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
+      !!process.env.WAYLAND_DISPLAY;
+
+    const commandExists = (cmd) => {
+      try {
+        const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
+          stdio: "ignore",
+        });
+        return res.status === 0;
+      } catch {
+        return false;
+      }
+    };
+
+    // Check which tools are available
+    const tools = [];
+    const toolsToCheck = isWayland
+      ? ["wtype", "ydotool", "xdotool"] // xdotool as fallback for XWayland
+      : ["xdotool"];
+
+    for (const tool of toolsToCheck) {
+      if (commandExists(tool)) {
+        tools.push(tool);
+      }
+    }
+
+    return {
+      platform: "linux",
+      available: tools.length > 0,
+      method: tools.length > 0 ? tools[0] : null,
+      requiresPermission: false,
+      isWayland,
+      tools,
+      recommendedInstall: isWayland ? "wtype" : "xdotool",
+    };
   }
 }
 

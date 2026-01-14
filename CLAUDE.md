@@ -4,7 +4,7 @@ This document provides comprehensive technical details about the OpenWhispr proj
 
 ## Project Overview
 
-OpenWhispr is an Electron-based desktop dictation application that uses OpenAI Whisper for speech-to-text transcription. It supports both local (privacy-focused) and cloud (OpenAI API) processing modes.
+OpenWhispr is an Electron-based desktop dictation application that uses whisper.cpp for speech-to-text transcription. It supports both local (privacy-focused) and cloud (OpenAI API) processing modes.
 
 ## Architecture Overview
 
@@ -13,7 +13,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses OpenAI W
 - **Desktop Framework**: Electron 36 with context isolation
 - **Database**: better-sqlite3 for local transcription history
 - **UI Components**: shadcn/ui with Radix primitives
-- **Speech Processing**: OpenAI Whisper (local Python bridge + API)
+- **Speech Processing**: whisper.cpp (bundled native binary) + OpenAI API
 - **Audio Processing**: FFmpeg (bundled via ffmpeg-static)
 
 ### Key Architectural Decisions
@@ -29,7 +29,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses OpenAI W
    - Preload Script: Secure bridge between processes
 
 3. **Audio Pipeline**:
-   - MediaRecorder API → Blob → ArrayBuffer → Base64 → IPC → File → FFmpeg → Whisper
+   - MediaRecorder API → Blob → ArrayBuffer → IPC → File → whisper.cpp
    - Automatic cleanup of temporary files after processing
 
 ## File Structure and Responsibilities
@@ -51,9 +51,8 @@ OpenWhispr is an Electron-based desktop dictation application that uses OpenAI W
 - **hotkeyManager.js**: Global hotkey registration and management
 - **ipcHandlers.js**: Centralized IPC handler registration
 - **menuManager.js**: Application menu management
-- **pythonInstaller.js**: Automatic Python installation for all platforms
 - **tray.js**: System tray icon and menu
-- **whisper.js**: Local Whisper integration and Python bridge
+- **whisper.js**: Local whisper.cpp integration and model management
 - **windowConfig.js**: Centralized window configuration
 - **windowManager.js**: Window creation and lifecycle management
 
@@ -74,9 +73,8 @@ OpenWhispr is an Electron-based desktop dictation application that uses OpenAI W
 - **useHotkey.js**: Hotkey state management
 - **useLocalStorage.ts**: Type-safe localStorage wrapper
 - **usePermissions.ts**: System permission checks
-- **usePython.ts**: Python installation state
 - **useSettings.ts**: Application settings management
-- **useWhisper.ts**: Whisper model management
+- **useWhisper.ts**: Whisper binary availability check
 
 ### Services
 
@@ -86,13 +84,13 @@ OpenWhispr is an Electron-based desktop dictation application that uses OpenAI W
   - Removes agent name from final output
   - Supports GPT-5, Claude Opus 4.1, and Gemini 2.5 models
 
-### Python Bridge
+### whisper.cpp Integration
 
-- **whisper_bridge.py**: Standalone Python script for local Whisper
-  - Accepts audio file path and model selection
-  - Returns JSON with transcription result
-  - Handles FFmpeg path resolution for bundled executable
-  - 30-second timeout protection
+- **whisper.js**: Native binary wrapper for local transcription
+  - Bundled binaries in `resources/bin/whisper-cpp-{platform}-{arch}`
+  - Falls back to system installation (`brew install whisper-cpp`)
+  - GGML model downloads from HuggingFace
+  - Models stored in `~/.cache/openwhispr/whisper-models/`
 
 ## Key Implementation Details
 
@@ -101,8 +99,6 @@ OpenWhispr is an Electron-based desktop dictation application that uses OpenAI W
 FFmpeg is bundled with the app and doesn't require system installation:
 ```javascript
 // FFmpeg is unpacked from ASAR to app.asar.unpacked/node_modules/ffmpeg-static/
-// Python bridge receives FFmpeg path via environment variables:
-// FFMPEG_PATH, FFMPEG_EXECUTABLE, FFMPEG_BINARY
 ```
 
 ### 2. Audio Recording Flow
@@ -111,20 +107,20 @@ FFmpeg is bundled with the app and doesn't require system installation:
 2. Audio chunks collected in array
 3. User presses hotkey again → Recording stops
 4. Blob created from chunks → Converted to ArrayBuffer
-5. Sent via IPC as Base64 string (size limits)
+5. Sent via IPC
 6. Main process writes to temporary file
-7. Whisper processes file → Result sent back
+7. whisper.cpp processes file → Result sent back
 8. Temporary file deleted
 
-### 3. Local Whisper Models
+### 3. Local Whisper Models (GGML format)
 
-Models stored in `~/.cache/whisper/`:
-- tiny: 39MB (fastest, lowest quality)
-- base: 74MB (recommended balance)
-- small: 244MB (better quality)
-- medium: 769MB (high quality)
-- large: 1.5GB (best quality)
-- turbo: 809MB (fast with good quality)
+Models stored in `~/.cache/openwhispr/whisper-models/`:
+- tiny: ~75MB (fastest, lowest quality)
+- base: ~142MB (recommended balance)
+- small: ~466MB (better quality)
+- medium: ~1.5GB (high quality)
+- large: ~3GB (best quality)
+- turbo: ~1.6GB (fast with good quality)
 
 ### 4. Database Schema
 
@@ -151,7 +147,7 @@ Settings stored in localStorage with these keys:
 - `geminiApiKey`: Encrypted API key
 - `language`: Selected language code
 - `agentName`: User's custom agent name
-- `reasoningModel`: Selected AI model for processing (defaults to gpt-4o-mini)
+- `reasoningModel`: Selected AI model for processing
 - `reasoningProvider`: AI provider (openai/anthropic/gemini/local)
 - `hotkey`: Custom hotkey configuration
 - `hasCompletedOnboarding`: Onboarding completion flag
@@ -161,7 +157,7 @@ Settings stored in localStorage with these keys:
 58 languages supported (see src/utils/languages.ts):
 - Each language has a two-letter code and label
 - "auto" for automatic detection
-- Passed to Whisper via --language parameter
+- Passed to whisper.cpp via -l parameter
 
 ### 7. Agent Naming System
 
@@ -169,26 +165,47 @@ Settings stored in localStorage with these keys:
 - Name stored in localStorage and database
 - ReasoningService detects "Hey [AgentName]" patterns
 - AI processes command and removes agent reference from output
-- Supports multiple AI providers:
-  - **OpenAI** (Now using Responses API as of September 2025):
-    - GPT-5 Series (Nano/Mini/Full) - Latest models with fastest performance
-    - GPT-4.1 Series (Nano/Mini/Full) with 1M context window
-    - o-series reasoning models (o3/o3-pro/o4-mini) for deep reasoning tasks
-    - GPT-4o multimodal series (4o/4o-mini) - default model
-    - Legacy support for GPT-4 Turbo, GPT-4 classic, GPT-3.5 Turbo
-  - **Anthropic** (Via IPC bridge to avoid CORS): 
-    - Claude Opus 4.1 (claude-opus-4-1-20250805) - Frontier intelligence
-    - Claude Sonnet 4 (claude-sonnet-4-20250514) - Latest balanced model
-    - Claude 3.5 Sonnet (claude-3-5-sonnet-20241022) - Balanced performance
-    - Claude 3.5 Haiku (claude-3-5-haiku-20241022) - Fast and efficient
+- Supports multiple AI providers (all models defined in `src/models/modelRegistryData.json`):
+  - **OpenAI** (Responses API):
+    - GPT-5.2 (`gpt-5.2`) - Latest flagship reasoning model
+    - GPT-5 Mini (`gpt-5-mini`) - Fast and cost-efficient
+    - GPT-5 Nano (`gpt-5-nano`) - Ultra-fast, low latency
+    - GPT-4.1 Series (`gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`) - Strong baseline with 1M context
+  - **Anthropic** (Via IPC bridge to avoid CORS):
+    - Claude Sonnet 4.5 (`claude-sonnet-4-5`) - Balanced performance
+    - Claude Haiku 4.5 (`claude-haiku-4-5`) - Fast with near-frontier intelligence
+    - Claude Opus 4.5 (`claude-opus-4-5`) - Most capable Claude model
   - **Google Gemini** (Direct API integration):
-    - Gemini 2.5 Pro (gemini-2.5-pro) - Most intelligent with thinking capability
-    - Gemini 2.5 Flash (gemini-2.5-flash) - High-performance with thinking
-    - Gemini 2.5 Flash Lite (gemini-2.5-flash-lite) - Fast and low-cost
-    - Gemini 2.0 Flash (gemini-2.0-flash) - 1M token context
-  - **Local**: Community models via LocalReasoningService (Qwen, LLaMA, Mistral)
+    - Gemini 2.5 Pro (`gemini-2.5-pro`) - Most capable Gemini model
+    - Gemini 2.5 Flash (`gemini-2.5-flash`) - High-performance with thinking
+    - Gemini 2.5 Flash Lite (`gemini-2.5-flash-lite`) - Lowest latency and cost
+    - Gemini 2.0 Flash (`gemini-2.0-flash`) - Fast, long-context option
+  - **Local**: GGUF models via llama.cpp (Qwen, Llama, Mistral, GPT-OSS)
 
-### 8. API Integrations and Updates
+### 8. Model Registry Architecture
+
+All AI model definitions are centralized in `src/models/modelRegistryData.json` as the single source of truth:
+
+```json
+{
+  "cloudProviders": [...],   // OpenAI, Anthropic, Gemini API models
+  "localProviders": [...]    // GGUF models with download URLs
+}
+```
+
+**Key files:**
+- `src/models/modelRegistryData.json` - Single source of truth for all models
+- `src/models/ModelRegistry.ts` - TypeScript wrapper with helper methods
+- `src/config/aiProvidersConfig.ts` - Derives AI_MODES from registry
+- `src/utils/languages.ts` - Derives REASONING_PROVIDERS from registry
+- `src/helpers/modelManagerBridge.js` - Handles local model downloads
+
+**Local model features:**
+- Each model has `hfRepo` for direct HuggingFace download URLs
+- `promptTemplate` defines the chat format (ChatML, Llama, Mistral)
+- Download URLs constructed as: `{baseUrl}/{hfRepo}/resolve/main/{fileName}`
+
+### 9. API Integrations and Updates
 
 **OpenAI Responses API (September 2025)**:
 - Migrated from Chat Completions to new Responses API
@@ -201,7 +218,7 @@ Settings stored in localStorage with these keys:
 **Anthropic Integration**:
 - Routes through IPC handler to avoid CORS issues in renderer process
 - Uses main process for API calls with proper error handling
-- Model names use hyphens (e.g., `claude-3-5-sonnet` not `claude-3.5-sonnet`)
+- Model IDs use alias format (e.g., `claude-sonnet-4-5` not date-suffixed versions)
 
 **Gemini Integration**:
 - Direct API calls from renderer process
@@ -214,7 +231,7 @@ Settings stored in localStorage with these keys:
 - Keys stored in environment variables and reloaded on app start
 - Centralized `saveAllKeysToEnvFile()` method ensures consistency
 
-### 9. Debug Mode
+### 10. Debug Mode
 
 Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `.env`):
 - Logs saved to platform-specific app data directory
@@ -238,7 +255,7 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - [ ] Verify hotkey works globally
 - [ ] Check clipboard pasting on all platforms
 - [ ] Test with different audio input devices
-- [ ] Verify Python auto-installation
+- [ ] Verify whisper.cpp binary detection
 - [ ] Test all Whisper models
 - [ ] Check agent naming functionality
 
@@ -250,7 +267,8 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
    - Check audio levels in debug logs
 
 2. **Transcription Fails**:
-   - Ensure Python/Whisper installed
+   - Ensure whisper.cpp binary is available
+   - Check model is downloaded
    - Check temporary file creation
    - Verify FFmpeg is executable
 
@@ -261,7 +279,8 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 4. **Build Issues**:
    - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
    - Signing requires Apple Developer account
-   - ASAR unpacking needed for FFmpeg/Python bridge
+   - ASAR unpacking needed for FFmpeg
+   - Run `npm run download:whisper-cpp` before packaging
    - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
 
 ### Platform-Specific Notes
@@ -271,16 +290,18 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - Uses AppleScript for reliable pasting
 - Notarization needed for distribution
 - Shows in dock with indicator dot when running (LSUIElement: false)
+- whisper.cpp bundled for both arm64 and x64
 
 **Windows**:
-- Python installer handles PATH automatically
 - No special permissions needed
 - NSIS installer for distribution
+- whisper.cpp bundled for x64
 
 **Linux**:
 - Multiple package manager support
 - Standard XDG directories
 - AppImage for distribution
+- whisper.cpp bundled for x64
 
 ## Code Style and Conventions
 
@@ -297,7 +318,7 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - Audio blob size limits for IPC (10MB)
 - Temporary file cleanup
 - Memory usage with large models
-- Process timeout protection (30s)
+- Process timeout protection (5 minutes)
 
 ## Security Considerations
 
