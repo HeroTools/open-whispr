@@ -549,7 +549,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </Button>
                 )}
 
-                {updateInfo.version && (
+                {updateInfo?.version && (
                   <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                     <h4 className="font-medium text-blue-900 mb-2">Update v{updateInfo.version}</h4>
                     {updateInfo.releaseDate && (
