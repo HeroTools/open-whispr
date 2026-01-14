@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.6] - 2026-01-13
+
+### Changed
+- **Settings Layout**: Moved settings navigation to left side on Windows and Linux for improved consistency
+
+### Fixed
+- **Linux Whisper Detection**: Fixed issue where Python-based Whisper could be used instead of whisper.cpp on Linux systems
+
 ## [1.2.5] - 2026-01-13
 
 ### Added
