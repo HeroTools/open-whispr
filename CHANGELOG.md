@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.5] - 2026-01-13
+
+### Added
+- **Model Validation**: Added validation when deleting or loading Whisper models to ensure model integrity
+- **Download Cancellation**: Added ability to cancel in-progress model downloads in whisper pickers
+- **Windows Paste Performance**: Added nircmd for faster text pasting on Windows
+
+### Fixed
+- **EventEmitter Memory Leak**: Fixed memory leak caused by duplicate listener registration in useUpdater hook across ControlPanel and SettingsPage components
+- **FFmpeg Path Resolution**: Fixed FFmpeg path resolution in unpacked ASAR for local whisper.cpp transcription
+
+### Changed
+- **UI Cleanup**: Removed redundant UI elements for a cleaner interface
+
 ## [1.2.4] - 2026-01-13
 
 ### Changed
