@@ -1,6 +1,7 @@
 import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
+import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -41,13 +42,52 @@ class AudioManager {
     this.onTranscriptionComplete = onTranscriptionComplete;
   }
 
+  async getAudioConstraints() {
+    const preferBuiltIn = localStorage.getItem("preferBuiltInMic") !== "false";
+    const selectedDeviceId = localStorage.getItem("selectedMicDeviceId") || "";
+
+    if (preferBuiltIn) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter((d) => d.kind === "audioinput");
+        const builtInMic = audioInputs.find((d) => isBuiltInMicrophone(d.label));
+
+        if (builtInMic) {
+          logger.debug(
+            "Using built-in microphone",
+            { deviceId: builtInMic.deviceId, label: builtInMic.label },
+            "audio"
+          );
+          return { audio: { deviceId: { exact: builtInMic.deviceId } } };
+        }
+      } catch (error) {
+        logger.debug(
+          "Failed to enumerate devices for built-in mic detection",
+          { error: error.message },
+          "audio"
+        );
+      }
+    }
+
+    // Use selected device if specified and not preferring built-in
+    if (!preferBuiltIn && selectedDeviceId) {
+      logger.debug("Using selected microphone", { deviceId: selectedDeviceId }, "audio");
+      return { audio: { deviceId: { exact: selectedDeviceId } } };
+    }
+
+    // Fall back to default device
+    logger.debug("Using default microphone", {}, "audio");
+    return { audio: true };
+  }
+
   async startRecording() {
     try {
       if (this.isRecording || this.isProcessing || this.mediaRecorder?.state === "recording") {
         return false;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const constraints = await this.getAudioConstraints();
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];

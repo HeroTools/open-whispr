@@ -4,6 +4,7 @@ import { Input } from "./ui/input";
 import { RefreshCw, Download, Command, Mic, Shield } from "lucide-react";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
+import MicrophoneSettings from "./ui/MicrophoneSettings";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
@@ -63,6 +64,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    preferBuiltInMic,
+    selectedMicDeviceId,
+    setPreferBuiltInMic,
+    setSelectedMicDeviceId,
     setUseLocalWhisper,
     setWhisperModel,
     setAllowOpenAIFallback,
@@ -624,6 +629,22 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   />
                 )}
               </div>
+            </div>
+
+            <div className="border-t pt-8">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Microphone Input</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Choose which microphone to use for dictation. Enable "Prefer Built-in" to prevent
+                  audio interruptions when using Bluetooth headphones.
+                </p>
+              </div>
+              <MicrophoneSettings
+                preferBuiltInMic={preferBuiltInMic}
+                selectedMicDeviceId={selectedMicDeviceId}
+                onPreferBuiltInChange={setPreferBuiltInMic}
+                onDeviceSelect={setSelectedMicDeviceId}
+              />
             </div>
 
             <div className="border-t pt-8">
