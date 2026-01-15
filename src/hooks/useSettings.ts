@@ -146,6 +146,11 @@ export function useSettings() {
     deserialize: String,
   });
 
+  const [selectedMicrophone, setSelectedMicrophone] = useLocalStorage("selectedMicrophone", "", {
+    serialize: String,
+    deserialize: String,
+  });
+
   // Computed values
   const reasoningProvider = getModelProvider(reasoningModel);
 
@@ -223,6 +228,7 @@ export function useSettings() {
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    selectedMicrophone,
     setUseLocalWhisper,
     setWhisperModel,
     setAllowOpenAIFallback,
@@ -245,6 +251,7 @@ export function useSettings() {
     setGeminiApiKey,
     setGroqApiKey,
     setDictationKey,
+    setSelectedMicrophone,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,
