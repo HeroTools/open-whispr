@@ -49,6 +49,9 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **dragManager.js**: Window dragging functionality
 - **environment.js**: Environment variable and OpenAI API management
 - **hotkeyManager.js**: Global hotkey registration and management
+  - Handles platform-specific defaults (GLOBE on macOS, backtick on Windows/Linux)
+  - Auto-fallback to F8/F9 if default hotkey is unavailable
+  - Notifies renderer via IPC when hotkey registration fails
 - **ipcHandlers.js**: Centralized IPC handler registration
 - **menuManager.js**: Application menu management
 - **tray.js**: System tray icon and menu
@@ -75,6 +78,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **usePermissions.ts**: System permission checks and settings access
   - `openMicPrivacySettings()`: Opens OS microphone privacy settings
   - `openSoundInputSettings()`: Opens OS sound input device settings
+  - `openAccessibilitySettings()`: Opens OS accessibility settings (macOS only)
 - **useSettings.ts**: Application settings management
 - **useWhisper.ts**: Whisper binary availability check
 
@@ -235,18 +239,19 @@ All AI model definitions are centralized in `src/models/modelRegistryData.json` 
 
 ### 10. System Settings Integration
 
-The app can open OS-level settings for microphone permissions and sound input selection:
+The app can open OS-level settings for microphone permissions, sound input selection, and accessibility:
 
 **IPC Handlers** (in `ipcHandlers.js`):
 - `open-microphone-settings`: Opens microphone privacy settings
 - `open-sound-input-settings`: Opens sound/audio input device settings
+- `open-accessibility-settings`: Opens accessibility privacy settings (macOS only)
 
 **Platform-specific URLs**:
-| Platform | Microphone Privacy | Sound Input |
-|----------|-------------------|-------------|
-| macOS | `x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone` | `x-apple.systempreferences:com.apple.preference.sound?input` |
-| Windows | `ms-settings:privacy-microphone` | `ms-settings:sound` |
-| Linux | Manual (no URL scheme) | Manual (e.g., pavucontrol) |
+| Platform | Microphone Privacy | Sound Input | Accessibility |
+|----------|-------------------|-------------|---------------|
+| macOS | `x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone` | `x-apple.systempreferences:com.apple.preference.sound?input` | `x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility` |
+| Windows | `ms-settings:privacy-microphone` | `ms-settings:sound` | N/A |
+| Linux | Manual (no URL scheme) | Manual (e.g., pavucontrol) | N/A |
 
 **UI Component** (`MicPermissionWarning.tsx`):
 - Shows platform-appropriate buttons and messages

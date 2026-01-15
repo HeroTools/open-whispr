@@ -109,6 +109,10 @@ class WindowManager {
     const DEBOUNCE_MS = 150;
 
     return () => {
+      if (this.hotkeyManager.isInListeningMode()) {
+        return;
+      }
+
       const now = Date.now();
       if (now - lastToggleTime < DEBOUNCE_MS) {
         return;
@@ -120,6 +124,10 @@ class WindowManager {
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
+  }
+
+  setHotkeyListeningMode(enabled) {
+    this.hotkeyManager.setListeningMode(enabled);
   }
 
   async initializeHotkey() {

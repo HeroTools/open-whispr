@@ -105,6 +105,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Cleanup function
   cleanupApp: () => ipcRenderer.invoke("cleanup-app"),
   updateHotkey: (hotkey) => ipcRenderer.invoke("update-hotkey", hotkey),
+  setHotkeyListeningMode: (enabled) => ipcRenderer.invoke("set-hotkey-listening-mode", enabled),
   startWindowDrag: () => ipcRenderer.invoke("start-window-drag"),
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
@@ -173,12 +174,25 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // System settings helpers for microphone/audio permissions
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
+  openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
 
   // Globe key listener for hotkey capture (macOS only)
   onGlobeKeyPressed: (callback) => {
     const listener = () => callback?.();
     ipcRenderer.on("globe-key-pressed", listener);
     return () => ipcRenderer.removeListener("globe-key-pressed", listener);
+  },
+
+  // Hotkey registration events (for notifying user when hotkey fails)
+  onHotkeyFallbackUsed: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("hotkey-fallback-used", listener);
+    return () => ipcRenderer.removeListener("hotkey-fallback-used", listener);
+  },
+  onHotkeyRegistrationFailed: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("hotkey-registration-failed", listener);
+    return () => ipcRenderer.removeListener("hotkey-registration-failed", listener);
   },
 
   // Remove all listeners for a channel

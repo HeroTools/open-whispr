@@ -14,6 +14,7 @@ export interface UsePermissionsReturn {
   checkPasteToolsAvailability: () => Promise<PasteToolsResult | null>;
   openMicPrivacySettings: () => Promise<void>;
   openSoundInputSettings: () => Promise<void>;
+  openAccessibilitySettings: () => Promise<void>;
   setMicPermissionGranted: (granted: boolean) => void;
   setAccessibilityPermissionGranted: (granted: boolean) => void;
 }
@@ -106,12 +107,13 @@ export const usePermissions = (
 
   const openSystemSettings = useCallback(
     async (
-      settingType: "microphone" | "sound",
+      settingType: "microphone" | "sound" | "accessibility",
       apiMethod: () => Promise<{ success: boolean; error?: string } | undefined> | undefined
     ) => {
       const titles = {
         microphone: "Microphone Settings",
         sound: "Sound Settings",
+        accessibility: "Accessibility Settings",
       };
       try {
         const result = await apiMethod?.();
@@ -136,6 +138,11 @@ export const usePermissions = (
 
   const openSoundInputSettings = useCallback(
     () => openSystemSettings("sound", window.electronAPI?.openSoundInputSettings),
+    [openSystemSettings]
+  );
+
+  const openAccessibilitySettings = useCallback(
+    () => openSystemSettings("accessibility", window.electronAPI?.openAccessibilitySettings),
     [openSystemSettings]
   );
 
@@ -296,6 +303,7 @@ export const usePermissions = (
     checkPasteToolsAvailability,
     openMicPrivacySettings,
     openSoundInputSettings,
+    openAccessibilitySettings,
     setMicPermissionGranted,
     setAccessibilityPermissionGranted,
   };

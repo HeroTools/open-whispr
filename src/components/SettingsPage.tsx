@@ -343,10 +343,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             "Opening System Settings... Look for the Accessibility section under Privacy & Security.",
         });
 
-        window.open(
-          "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-          "_blank"
-        );
+        permissionsHook.openAccessibilitySettings();
       },
     });
   };

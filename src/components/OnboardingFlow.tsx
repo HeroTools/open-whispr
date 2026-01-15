@@ -791,6 +791,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   granted={permissionsHook.accessibilityPermissionGranted}
                   onRequest={permissionsHook.testAccessibilityPermission}
                   buttonText="Test & Grant"
+                  onOpenSettings={permissionsHook.openAccessibilitySettings}
                 />
               )}
 

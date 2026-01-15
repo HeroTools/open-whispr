@@ -237,9 +237,18 @@ declare global {
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
+      setHotkeyListeningMode?: (enabled: boolean) => Promise<{ success: boolean }>;
 
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
+
+      // Hotkey registration events
+      onHotkeyFallbackUsed?: (
+        callback: (data: { original: string; fallback: string; message: string }) => void
+      ) => () => void;
+      onHotkeyRegistrationFailed?: (
+        callback: (data: { hotkey: string; error: string; suggestions: string[] }) => void
+      ) => () => void;
 
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;
@@ -265,6 +274,7 @@ declare global {
       // System settings helpers
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
+      openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
     };
 
     api?: {
