@@ -170,6 +170,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
 
+  // System settings helpers for microphone/audio permissions
+  openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
+  openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
+
   // Globe key listener for hotkey capture (macOS only)
   onGlobeKeyPressed: (callback) => {
     const listener = () => callback?.();

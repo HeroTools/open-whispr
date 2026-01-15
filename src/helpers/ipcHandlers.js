@@ -514,6 +514,44 @@ class IPCHandlers {
       debugLogger.logEntry(entry);
       return { success: true };
     });
+
+    const SYSTEM_SETTINGS_URLS = {
+      darwin: {
+        microphone: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+        sound: "x-apple.systempreferences:com.apple.preference.sound?input",
+      },
+      win32: {
+        microphone: "ms-settings:privacy-microphone",
+        sound: "ms-settings:sound",
+      },
+    };
+
+    const openSystemSettings = async (settingType) => {
+      const platform = process.platform;
+      const urls = SYSTEM_SETTINGS_URLS[platform];
+
+      if (!urls) {
+        // Linux doesn't have standardized URL schemes for system settings
+        return {
+          success: false,
+          error:
+            settingType === "microphone"
+              ? "Please open your system settings to configure microphone permissions."
+              : "Please open your system sound settings (e.g., pavucontrol).",
+        };
+      }
+
+      try {
+        await shell.openExternal(urls[settingType]);
+        return { success: true };
+      } catch (error) {
+        debugLogger.error(`Failed to open ${settingType} settings:`, error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    ipcMain.handle("open-microphone-settings", () => openSystemSettings("microphone"));
+    ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
   }
 
   broadcastToWindows(channel, payload) {

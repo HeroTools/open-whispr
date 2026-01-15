@@ -104,21 +104,40 @@ export const usePermissions = (
   const [pasteToolsInfo, setPasteToolsInfo] = useState<PasteToolsResult | null>(null);
   const [isCheckingPasteTools, setIsCheckingPasteTools] = useState(false);
 
-  const openMicPrivacySettings = useCallback(async () => {
-    try {
-      await window.electronAPI?.openMicrophoneSettings?.();
-    } catch (error) {
-      console.error("Failed to open microphone privacy settings:", error);
-    }
-  }, []);
+  const openSystemSettings = useCallback(
+    async (
+      settingType: "microphone" | "sound",
+      apiMethod: () => Promise<{ success: boolean; error?: string } | undefined> | undefined
+    ) => {
+      const titles = {
+        microphone: "Microphone Settings",
+        sound: "Sound Settings",
+      };
+      try {
+        const result = await apiMethod?.();
+        if (result && !result.success && result.error) {
+          showAlertDialog?.({ title: titles[settingType], description: result.error });
+        }
+      } catch (error) {
+        console.error(`Failed to open ${settingType} settings:`, error);
+        showAlertDialog?.({
+          title: titles[settingType],
+          description: `Unable to open ${settingType} settings. Please open your system settings manually.`,
+        });
+      }
+    },
+    [showAlertDialog]
+  );
 
-  const openSoundInputSettings = useCallback(async () => {
-    try {
-      await window.electronAPI?.openSoundInputSettings?.();
-    } catch (error) {
-      console.error("Failed to open sound input settings:", error);
-    }
-  }, []);
+  const openMicPrivacySettings = useCallback(
+    () => openSystemSettings("microphone", window.electronAPI?.openMicrophoneSettings),
+    [openSystemSettings]
+  );
+
+  const openSoundInputSettings = useCallback(
+    () => openSystemSettings("sound", window.electronAPI?.openSoundInputSettings),
+    [openSystemSettings]
+  );
 
   const requestMicPermission = useCallback(async () => {
     if (!navigator?.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {

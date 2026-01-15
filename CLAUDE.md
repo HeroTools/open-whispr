@@ -72,7 +72,9 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **useDialogs.ts**: Electron dialog integration
 - **useHotkey.js**: Hotkey state management
 - **useLocalStorage.ts**: Type-safe localStorage wrapper
-- **usePermissions.ts**: System permission checks
+- **usePermissions.ts**: System permission checks and settings access
+  - `openMicPrivacySettings()`: Opens OS microphone privacy settings
+  - `openSoundInputSettings()`: Opens OS sound input device settings
 - **useSettings.ts**: Application settings management
 - **useWhisper.ts**: Whisper binary availability check
 
@@ -231,7 +233,27 @@ All AI model definitions are centralized in `src/models/modelRegistryData.json` 
 - Keys stored in environment variables and reloaded on app start
 - Centralized `saveAllKeysToEnvFile()` method ensures consistency
 
-### 10. Debug Mode
+### 10. System Settings Integration
+
+The app can open OS-level settings for microphone permissions and sound input selection:
+
+**IPC Handlers** (in `ipcHandlers.js`):
+- `open-microphone-settings`: Opens microphone privacy settings
+- `open-sound-input-settings`: Opens sound/audio input device settings
+
+**Platform-specific URLs**:
+| Platform | Microphone Privacy | Sound Input |
+|----------|-------------------|-------------|
+| macOS | `x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone` | `x-apple.systempreferences:com.apple.preference.sound?input` |
+| Windows | `ms-settings:privacy-microphone` | `ms-settings:sound` |
+| Linux | Manual (no URL scheme) | Manual (e.g., pavucontrol) |
+
+**UI Component** (`MicPermissionWarning.tsx`):
+- Shows platform-appropriate buttons and messages
+- Linux only shows "Open Sound Settings" (no separate privacy settings)
+- macOS/Windows show both sound and privacy buttons
+
+### 11. Debug Mode
 
 Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `.env`):
 - Logs saved to platform-specific app data directory
@@ -286,14 +308,18 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 ### Platform-Specific Notes
 
 **macOS**:
-- Requires accessibility permissions for clipboard
+- Requires accessibility permissions for clipboard (auto-paste)
+- Requires microphone permission (prompted by system)
 - Uses AppleScript for reliable pasting
 - Notarization needed for distribution
 - Shows in dock with indicator dot when running (LSUIElement: false)
 - whisper.cpp bundled for both arm64 and x64
+- System settings accessible via `x-apple.systempreferences:` URL scheme
 
 **Windows**:
-- No special permissions needed
+- No special accessibility permissions needed
+- Microphone privacy settings at `ms-settings:privacy-microphone`
+- Sound settings at `ms-settings:sound`
 - NSIS installer for distribution
 - whisper.cpp bundled for x64
 
@@ -302,6 +328,9 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - Standard XDG directories
 - AppImage for distribution
 - whisper.cpp bundled for x64
+- No standardized URL scheme for system settings (user must open manually)
+- Privacy settings button hidden in UI (not applicable on Linux)
+- Recommend `pavucontrol` for audio device management
 
 ## Code Style and Conventions
 
