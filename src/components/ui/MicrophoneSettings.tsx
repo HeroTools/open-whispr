@@ -91,8 +91,7 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
         <div className="flex-1">
           <p className="text-sm font-medium text-neutral-800">Prefer Built-in Microphone</p>
           <p className="text-xs text-neutral-600 mt-1">
-            Always use your device's built-in mic to prevent audio interruptions when using
-            Bluetooth headphones
+            External microphones may cause latency or reduced transcription quality
           </p>
         </div>
         <Toggle checked={preferBuiltInMic} onChange={onPreferBuiltInChange} />
