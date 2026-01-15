@@ -128,6 +128,86 @@ class IPCHandlers {
       return result;
     });
 
+    // ============= Notes IPC Handlers =============
+
+    ipcMain.handle("db-create-note", async (event, title, content) => {
+      const result = this.databaseManager.createNote(title, content);
+      if (result?.success && result?.note) {
+        setImmediate(() => {
+          this.broadcastToWindows("note-added", result.note);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-update-note", async (event, id, title, content) => {
+      const result = this.databaseManager.updateNote(id, title, content);
+      if (result?.success && result?.note) {
+        setImmediate(() => {
+          this.broadcastToWindows("note-updated", result.note);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-get-notes", async (event, limit = 100) => {
+      return this.databaseManager.getNotes(limit);
+    });
+
+    ipcMain.handle("db-get-note", async (event, id) => {
+      return this.databaseManager.getNote(id);
+    });
+
+    ipcMain.handle("db-delete-note", async (event, id) => {
+      const result = this.databaseManager.deleteNote(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("note-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-toggle-note-pin", async (event, id) => {
+      const result = this.databaseManager.toggleNotePin(id);
+      if (result?.success && result?.note) {
+        setImmediate(() => {
+          this.broadcastToWindows("note-updated", result.note);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-search-notes", async (event, query, limit = 50) => {
+      return this.databaseManager.searchNotes(query, limit);
+    });
+
+    // ============= Tags IPC Handlers =============
+
+    ipcMain.handle("db-create-tag", async (event, name, color) => {
+      return this.databaseManager.createTag(name, color);
+    });
+
+    ipcMain.handle("db-get-tags", async (event) => {
+      return this.databaseManager.getTags();
+    });
+
+    ipcMain.handle("db-add-tag-to-note", async (event, noteId, tagId) => {
+      return this.databaseManager.addTagToNote(noteId, tagId);
+    });
+
+    ipcMain.handle("db-remove-tag-from-note", async (event, noteId, tagId) => {
+      return this.databaseManager.removeTagFromNote(noteId, tagId);
+    });
+
+    ipcMain.handle("db-get-note-tags", async (event, noteId) => {
+      return this.databaseManager.getNoteTags(noteId);
+    });
+
+    ipcMain.handle("db-get-notes-by-tag", async (event, tagId, limit = 100) => {
+      return this.databaseManager.getNotesByTag(tagId, limit);
+    });
+
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text) => {
       return this.clipboardManager.pasteText(text);

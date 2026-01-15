@@ -1,11 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
-import { Trash2, Settings, FileText, Mic, Download, RefreshCw, Loader2 } from "lucide-react";
+import {
+  Trash2,
+  Settings,
+  FileText,
+  Mic,
+  Download,
+  RefreshCw,
+  Loader2,
+  LayoutDashboard,
+  StickyNote,
+} from "lucide-react";
 import SettingsModal from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
 import TranscriptionItem from "./ui/TranscriptionItem";
+import NotesPage from "./NotesPage";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useHotkey } from "../hooks/useHotkey";
@@ -17,13 +28,25 @@ import {
   removeTranscription as removeFromStore,
   clearTranscriptions as clearStoreTranscriptions,
 } from "../stores/transcriptionStore";
+import { useNotes } from "../stores/notesStore";
+import AudioManager from "../helpers/audioManager";
+
+type NavigationSection = "dashboard" | "notes";
 
 export default function ControlPanel() {
   const history = useTranscriptions();
+  const allNotes = useNotes();
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [activeSection, setActiveSection] = useState<NavigationSection>("dashboard");
   const { hotkey } = useHotkey();
   const { toast } = useToast();
+
+  // Voice recording state for notes
+  const [isRecordingNote, setIsRecordingNote] = useState(false);
+  const [isProcessingNote, setIsProcessingNote] = useState(false);
+  const audioManagerRef = useRef<AudioManager | null>(null);
+  const selectedNoteIdRef = useRef<number | null>(null);
 
   // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
@@ -222,8 +245,89 @@ export default function ControlPanel() {
     return null;
   };
 
+  // Initialize audio manager for notes
+  useEffect(() => {
+    if (activeSection !== "notes") return;
+
+    const manager = new AudioManager();
+    manager.setCallbacks({
+      onStateChange: ({ isRecording, isProcessing }: { isRecording: boolean; isProcessing: boolean }) => {
+        setIsRecordingNote(isRecording);
+        setIsProcessingNote(isProcessing);
+      },
+      onError: (error: { title?: string; description?: string }) => {
+        toast({
+          title: error.title || "Recording Error",
+          description: error.description || "Failed to record audio.",
+          variant: "destructive",
+        });
+      },
+      onTranscriptionComplete: async (result: { success: boolean; text?: string }) => {
+        if (result.success && result.text) {
+          const selectedId = selectedNoteIdRef.current;
+          if (selectedId) {
+            const currentNote = allNotes.find((n) => n.id === selectedId);
+            if (currentNote) {
+              const newContent = currentNote.content
+                ? `${currentNote.content}\n\n${result.text}`
+                : result.text;
+              await window.electronAPI.updateNote(
+                selectedId,
+                currentNote.title,
+                newContent
+              );
+              toast({
+                title: "Voice note added",
+                description: "Your voice recording has been transcribed and added to the note.",
+                variant: "success",
+              });
+            }
+          }
+        }
+      },
+    });
+
+    audioManagerRef.current = manager;
+
+    return () => {
+      manager.cleanup();
+      audioManagerRef.current = null;
+    };
+  }, [activeSection, allNotes, toast]);
+
+  // Voice recording for notes
+  const handleVoiceRecordForNote = useCallback(async () => {
+    if (isProcessingNote || !audioManagerRef.current) return;
+
+    if (isRecordingNote) {
+      // Stop recording
+      audioManagerRef.current.stopRecording();
+    } else {
+      // Start recording
+      const started = await audioManagerRef.current.startRecording();
+      if (!started) {
+        toast({
+          title: "Recording Failed",
+          description: "Could not start recording. Please check microphone permissions.",
+          variant: "destructive",
+        });
+      }
+    }
+  }, [isRecordingNote, isProcessingNote, toast]);
+
+  // Track selected note ID for voice recording
+  const handleNoteSelect = useCallback((noteId: number | null) => {
+    selectedNoteIdRef.current = noteId;
+  }, []);
+
+  // Navigation items
+  const navItems = [
+    { id: "dashboard" as const, label: "Dashboard", icon: LayoutDashboard },
+    { id: "notes" as const, label: "Notes", icon: StickyNote },
+  ];
+
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col">
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={hideConfirmDialog}
@@ -274,88 +378,130 @@ export default function ControlPanel() {
 
       <SettingsModal open={showSettings} onOpenChange={setShowSettings} />
 
-      {/* Main content */}
-      <div className="p-6">
-        <div className="space-y-6 max-w-4xl mx-auto">
-          <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="flex items-center gap-2">
-                  <FileText size={18} className="text-indigo-600" />
-                  Recent Transcriptions
-                </CardTitle>
-                <div className="flex gap-2">
-                  {history.length > 0 && (
-                    <Button
-                      onClick={clearHistory}
-                      variant="ghost"
-                      size="icon"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
-                  )}
-                </div>
+      {/* Main layout with sidebar */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Sidebar Navigation */}
+        <div className="w-16 bg-neutral-50 border-r border-neutral-200 flex flex-col items-center py-4">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeSection === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveSection(item.id)}
+                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all mb-2 group relative ${
+                  isActive
+                    ? "bg-indigo-100 text-indigo-600"
+                    : "text-neutral-500 hover:bg-neutral-100 hover:text-neutral-700"
+                }`}
+                title={item.label}
+              >
+                <Icon size={22} />
+                {/* Tooltip */}
+                <span className="absolute left-14 bg-neutral-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  {item.label}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-hidden">
+          {activeSection === "dashboard" ? (
+            /* Dashboard Content */
+            <div className="p-6 h-full overflow-y-auto">
+              <div className="space-y-6 max-w-4xl mx-auto">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="flex items-center gap-2">
+                        <FileText size={18} className="text-indigo-600" />
+                        Recent Transcriptions
+                      </CardTitle>
+                      <div className="flex gap-2">
+                        {history.length > 0 && (
+                          <Button
+                            onClick={clearHistory}
+                            variant="ghost"
+                            size="icon"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 size={16} />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    {isLoading ? (
+                      <div className="text-center py-8">
+                        <div className="w-8 h-8 mx-auto mb-3 bg-indigo-600 rounded-lg flex items-center justify-center">
+                          <span className="text-white text-sm">📝</span>
+                        </div>
+                        <p className="text-neutral-600">Loading transcriptions...</p>
+                      </div>
+                    ) : history.length === 0 ? (
+                      <div className="text-center py-12">
+                        <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
+                          <Mic className="w-8 h-8 text-neutral-400" />
+                        </div>
+                        <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                          No transcriptions yet
+                        </h3>
+                        <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
+                          Press your hotkey to start recording and create your first transcription.
+                        </p>
+                        <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
+                          <h4 className="font-medium text-neutral-800 mb-2">Quick Start:</h4>
+                          <ol className="text-sm text-neutral-600 text-left space-y-1">
+                            <li>1. Click in any text field</li>
+                            <li>
+                              2. Press{" "}
+                              <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
+                                {hotkey}
+                              </kbd>{" "}
+                              to start recording
+                            </li>
+                            <li>3. Speak your text</li>
+                            <li>
+                              4. Press{" "}
+                              <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
+                                {hotkey}
+                              </kbd>{" "}
+                              again to stop
+                            </li>
+                            <li>5. Your text will appear automatically!</li>
+                          </ol>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[calc(100vh-280px)] overflow-y-auto">
+                        {history.map((item, index) => (
+                          <TranscriptionItem
+                            key={item.id}
+                            item={item}
+                            index={index}
+                            total={history.length}
+                            onCopy={copyToClipboard}
+                            onDelete={deleteTranscription}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 mx-auto mb-3 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">📝</span>
-                  </div>
-                  <p className="text-neutral-600">Loading transcriptions...</p>
-                </div>
-              ) : history.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <Mic className="w-8 h-8 text-neutral-400" />
-                  </div>
-                  <h3 className="text-lg font-medium text-neutral-900 mb-2">
-                    No transcriptions yet
-                  </h3>
-                  <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
-                    Press your hotkey to start recording and create your first transcription.
-                  </p>
-                  <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
-                    <h4 className="font-medium text-neutral-800 mb-2">Quick Start:</h4>
-                    <ol className="text-sm text-neutral-600 text-left space-y-1">
-                      <li>1. Click in any text field</li>
-                      <li>
-                        2. Press{" "}
-                        <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
-                          {hotkey}
-                        </kbd>{" "}
-                        to start recording
-                      </li>
-                      <li>3. Speak your text</li>
-                      <li>
-                        4. Press{" "}
-                        <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
-                          {hotkey}
-                        </kbd>{" "}
-                        again to stop
-                      </li>
-                      <li>5. Your text will appear automatically!</li>
-                    </ol>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-3 max-h-80 overflow-y-auto">
-                  {history.map((item, index) => (
-                    <TranscriptionItem
-                      key={item.id}
-                      item={item}
-                      index={index}
-                      total={history.length}
-                      onCopy={copyToClipboard}
-                      onDelete={deleteTranscription}
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+          ) : (
+            /* Notes Content */
+            <NotesPage
+              onVoiceRecord={handleVoiceRecordForNote}
+              isRecording={isRecordingNote}
+              isProcessing={isProcessingNote}
+              onNoteSelect={handleNoteSelect}
+            />
+          )}
         </div>
       </div>
     </div>

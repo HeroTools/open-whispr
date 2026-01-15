@@ -5,6 +5,22 @@ export interface TranscriptionItem {
   created_at: string;
 }
 
+export interface NoteItem {
+  id: number;
+  title: string | null;
+  content: string;
+  is_pinned: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TagItem {
+  id: number;
+  name: string;
+  color: string;
+  created_at: string;
+}
+
 export interface WhisperCheckResult {
   installed: boolean;
   working: boolean;
@@ -111,6 +127,26 @@ declare global {
       onTranscriptionsCleared?: (
         callback: (payload: { cleared: number }) => void
       ) => (() => void) | void;
+
+      // Notes operations
+      createNote: (title: string | null, content: string) => Promise<{ id: number; success: boolean; note: NoteItem }>;
+      updateNote: (id: number, title: string | null, content: string) => Promise<{ success: boolean; note?: NoteItem; error?: string }>;
+      getNotes: (limit?: number) => Promise<NoteItem[]>;
+      getNote: (id: number) => Promise<NoteItem | null>;
+      deleteNote: (id: number) => Promise<{ success: boolean; id: number }>;
+      toggleNotePin: (id: number) => Promise<{ success: boolean; note?: NoteItem; error?: string }>;
+      searchNotes: (query: string, limit?: number) => Promise<NoteItem[]>;
+      onNoteAdded?: (callback: (note: NoteItem) => void) => (() => void) | void;
+      onNoteUpdated?: (callback: (note: NoteItem) => void) => (() => void) | void;
+      onNoteDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
+
+      // Tags operations
+      createTag: (name: string, color?: string) => Promise<{ id: number; success: boolean; tag?: TagItem; error?: string }>;
+      getTags: () => Promise<TagItem[]>;
+      addTagToNote: (noteId: number, tagId: number) => Promise<{ success: boolean }>;
+      removeTagFromNote: (noteId: number, tagId: number) => Promise<{ success: boolean }>;
+      getNoteTags: (noteId: number) => Promise<TagItem[]>;
+      getNotesByTag: (tagId: number, limit?: number) => Promise<NoteItem[]>;
 
       // API key management
       getOpenAIKey: () => Promise<string>;

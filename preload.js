@@ -56,6 +56,44 @@ contextBridge.exposeInMainWorld("electronAPI", {
       ipcRenderer.removeListener("transcriptions-cleared", listener);
   },
 
+  // Notes functions
+  createNote: (title, content) =>
+    ipcRenderer.invoke("db-create-note", title, content),
+  updateNote: (id, title, content) =>
+    ipcRenderer.invoke("db-update-note", id, title, content),
+  getNotes: (limit) => ipcRenderer.invoke("db-get-notes", limit),
+  getNote: (id) => ipcRenderer.invoke("db-get-note", id),
+  deleteNote: (id) => ipcRenderer.invoke("db-delete-note", id),
+  toggleNotePin: (id) => ipcRenderer.invoke("db-toggle-note-pin", id),
+  searchNotes: (query, limit) =>
+    ipcRenderer.invoke("db-search-notes", query, limit),
+  onNoteAdded: (callback) => {
+    const listener = (_event, note) => callback?.(note);
+    ipcRenderer.on("note-added", listener);
+    return () => ipcRenderer.removeListener("note-added", listener);
+  },
+  onNoteUpdated: (callback) => {
+    const listener = (_event, note) => callback?.(note);
+    ipcRenderer.on("note-updated", listener);
+    return () => ipcRenderer.removeListener("note-updated", listener);
+  },
+  onNoteDeleted: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("note-deleted", listener);
+    return () => ipcRenderer.removeListener("note-deleted", listener);
+  },
+
+  // Tags functions
+  createTag: (name, color) => ipcRenderer.invoke("db-create-tag", name, color),
+  getTags: () => ipcRenderer.invoke("db-get-tags"),
+  addTagToNote: (noteId, tagId) =>
+    ipcRenderer.invoke("db-add-tag-to-note", noteId, tagId),
+  removeTagFromNote: (noteId, tagId) =>
+    ipcRenderer.invoke("db-remove-tag-from-note", noteId, tagId),
+  getNoteTags: (noteId) => ipcRenderer.invoke("db-get-note-tags", noteId),
+  getNotesByTag: (tagId, limit) =>
+    ipcRenderer.invoke("db-get-notes-by-tag", tagId, limit),
+
   // Environment variables
   getOpenAIKey: () => ipcRenderer.invoke("get-openai-key"),
   saveOpenAIKey: (key) => ipcRenderer.invoke("save-openai-key", key),
