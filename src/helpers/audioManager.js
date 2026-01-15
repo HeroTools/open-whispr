@@ -197,7 +197,9 @@ class AudioManager {
       const timingData = {
         mode: useLocalWhisper ? "local" : "cloud",
         model: useLocalWhisper ? whisperModel : this.getTranscriptionModel(),
-        audioDurationMs: metadata.durationSeconds ? Math.round(metadata.durationSeconds * 1000) : null,
+        audioDurationMs: metadata.durationSeconds
+          ? Math.round(metadata.durationSeconds * 1000)
+          : null,
         reasoningProcessingDurationMs: result?.timings?.reasoningProcessingDurationMs ?? null,
         roundTripDurationMs,
         audioSizeBytes: audioBlob.size,
@@ -208,17 +210,21 @@ class AudioManager {
       if (useLocalWhisper) {
         timingData.audioConversionDurationMs = result?.timings?.audioConversionDurationMs ?? null;
       }
-      timingData.transcriptionProcessingDurationMs = result?.timings?.transcriptionProcessingDurationMs ?? null;
+      timingData.transcriptionProcessingDurationMs =
+        result?.timings?.transcriptionProcessingDurationMs ?? null;
 
       logger.info("Pipeline timing", timingData, "performance");
-
     } catch (error) {
       const errorAtMs = Math.round(performance.now() - pipelineStart);
 
-      logger.error("Pipeline failed", {
-        errorAtMs,
-        error: error.message,
-      }, "performance");
+      logger.error(
+        "Pipeline failed",
+        {
+          errorAtMs,
+          error: error.message,
+        },
+        "performance"
+      );
 
       if (error.message !== "No audio detected") {
         this.onError?.({
@@ -247,21 +253,31 @@ class AudioManager {
         options.language = language;
       }
 
-      logger.debug("Local transcription starting", {
-        originalFormat: audioBlob.type,
-        originalSizeBytes: audioBlob.size,
-        wavSizeBytes: wavBlob.size,
-        audioConversionDurationMs: timings.audioConversionDurationMs,
-      }, "performance");
+      logger.debug(
+        "Local transcription starting",
+        {
+          originalFormat: audioBlob.type,
+          originalSizeBytes: audioBlob.size,
+          wavSizeBytes: wavBlob.size,
+          audioConversionDurationMs: timings.audioConversionDurationMs,
+        },
+        "performance"
+      );
 
       const transcriptionStart = performance.now();
       const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
-      timings.transcriptionProcessingDurationMs = Math.round(performance.now() - transcriptionStart);
+      timings.transcriptionProcessingDurationMs = Math.round(
+        performance.now() - transcriptionStart
+      );
 
-      logger.debug("Local transcription complete", {
-        transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
-        success: result.success,
-      }, "performance");
+      logger.debug(
+        "Local transcription complete",
+        {
+          transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
+          success: result.success,
+        },
+        "performance"
+      );
 
       if (result.success && result.text) {
         const reasoningStart = performance.now();

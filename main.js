@@ -97,7 +97,7 @@ if (process.platform === "darwin") {
 }
 
 // Initialize IPC handlers with all managers
-const ipcHandlers = new IPCHandlers({
+const _ipcHandlers = new IPCHandlers({
   environmentManager,
   databaseManager,
   clipboardManager,

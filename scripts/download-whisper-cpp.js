@@ -203,7 +203,7 @@ async function downloadBinary(platformArch, config, label) {
     await downloadFile(url, zipPath);
 
     // Remove brackets from label for safe directory names on Windows
-    const safeLabel = label.replace(/[\[\]]/g, "");
+    const safeLabel = label.replace(/[[\]]/g, "");
     const extractDir = path.join(BIN_DIR, `temp-${safeLabel}-${platformArch}`);
     fs.mkdirSync(extractDir, { recursive: true });
     extractZip(zipPath, extractDir);
