@@ -20,6 +20,16 @@ const subscribe = (listener: Listener) => {
 
 const getSnapshot = () => notes;
 
+// Shared sorting function - pinned first, then by updated_at descending
+const sortNotes = (notesArray: NoteItem[]): NoteItem[] => {
+  return [...notesArray].sort((a, b) => {
+    if (a.is_pinned !== b.is_pinned) {
+      return b.is_pinned - a.is_pinned;
+    }
+    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+  });
+};
+
 function ensureIpcListeners() {
   if (hasBoundIpcListeners || typeof window === "undefined") {
     return;
@@ -78,14 +88,7 @@ export function addNote(note: NoteItem) {
   if (!note) return;
   // Remove duplicate if exists, then add to top
   const withoutDuplicate = notes.filter((existing) => existing.id !== note.id);
-  notes = [note, ...withoutDuplicate].slice(0, currentLimit);
-  // Sort by pinned first, then by updated_at
-  notes.sort((a, b) => {
-    if (a.is_pinned !== b.is_pinned) {
-      return b.is_pinned - a.is_pinned;
-    }
-    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  });
+  notes = sortNotes([note, ...withoutDuplicate]).slice(0, currentLimit);
   emit();
 }
 
@@ -97,14 +100,8 @@ export function updateNoteInStore(note: NoteItem) {
     addNote(note);
     return;
   }
-  notes = notes.map((n) => (n.id === note.id ? note : n));
-  // Re-sort after update
-  notes.sort((a, b) => {
-    if (a.is_pinned !== b.is_pinned) {
-      return b.is_pinned - a.is_pinned;
-    }
-    return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-  });
+  const updated = notes.map((n) => (n.id === note.id ? note : n));
+  notes = sortNotes(updated);
   emit();
 }
 

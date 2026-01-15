@@ -47,6 +47,12 @@ export default function ControlPanel() {
   const [isProcessingNote, setIsProcessingNote] = useState(false);
   const audioManagerRef = useRef<AudioManager | null>(null);
   const selectedNoteIdRef = useRef<number | null>(null);
+  const allNotesRef = useRef(allNotes);
+
+  // Keep ref in sync with latest notes to avoid re-initializing AudioManager
+  useEffect(() => {
+    allNotesRef.current = allNotes;
+  }, [allNotes]);
 
   // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
@@ -245,7 +251,7 @@ export default function ControlPanel() {
     return null;
   };
 
-  // Initialize audio manager for notes
+  // Initialize audio manager for notes - only recreate when activeSection changes
   useEffect(() => {
     if (activeSection !== "notes") return;
 
@@ -266,7 +272,8 @@ export default function ControlPanel() {
         if (result.success && result.text) {
           const selectedId = selectedNoteIdRef.current;
           if (selectedId) {
-            const currentNote = allNotes.find((n) => n.id === selectedId);
+            // Use ref to get latest notes without causing re-initialization
+            const currentNote = allNotesRef.current.find((n) => n.id === selectedId);
             if (currentNote) {
               const newContent = currentNote.content
                 ? `${currentNote.content}\n\n${result.text}`
@@ -293,7 +300,7 @@ export default function ControlPanel() {
       manager.cleanup();
       audioManagerRef.current = null;
     };
-  }, [activeSection, allNotes, toast]);
+  }, [activeSection, toast]);
 
   // Voice recording for notes
   const handleVoiceRecordForNote = useCallback(async () => {

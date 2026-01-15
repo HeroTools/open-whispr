@@ -10,7 +10,6 @@ import {
   MicOff,
   Loader2,
   FileText,
-  Keyboard,
 } from "lucide-react";
 import { useNotes, initializeNotes, removeNote } from "../stores/notesStore";
 import { useToast } from "./ui/Toast";
@@ -45,9 +44,15 @@ export default function NotesPage({
   const contentRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load notes on mount
+  // Load notes on mount and cleanup on unmount
   useEffect(() => {
     loadNotes();
+    return () => {
+      // Clear any pending save timeout on unmount
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Notify parent when selected note changes
