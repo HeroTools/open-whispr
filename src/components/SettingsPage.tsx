@@ -22,6 +22,7 @@ import ReasoningModelSelector from "./ReasoningModelSelector";
 import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { useAudioDevices } from "../hooks/useAudioDevices";
 
 export type SettingsSectionType =
   | "general"
@@ -63,6 +64,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    selectedMicrophone,
     setUseLocalWhisper,
     setWhisperModel,
     setAllowOpenAIFallback,
@@ -81,6 +83,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setGeminiApiKey,
     setGroqApiKey,
     setDictationKey,
+    setSelectedMicrophone,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,
@@ -111,7 +114,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const isUpdateAvailable =
     !updateStatus.isDevelopment && (updateStatus.updateAvailable || updateStatus.updateDownloaded);
 
-  const whisperHook = useWhisper(showAlertDialog);
+  !updateStatus.isDevelopment && (updateStatus.updateAvailable || updateStatus.updateDownloaded);
+
+  const { devices, refreshDevices } = useAudioDevices();
+
+  const whisperHook = useWhisper();
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
@@ -243,13 +250,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       localReasoningProvider === "custom"
         ? "Custom"
         : REASONING_PROVIDERS[localReasoningProvider as keyof typeof REASONING_PROVIDERS]?.name ||
-          localReasoningProvider;
+        localReasoningProvider;
 
     showAlertDialog({
       title: "Reasoning Settings Saved",
-      description: `AI text enhancement ${useReasoningModel ? "enabled" : "disabled"} with ${
-        providerLabel
-      } ${reasoningModel}`,
+      description: `AI text enhancement ${useReasoningModel ? "enabled" : "disabled"} with ${providerLabel
+        } ${reasoningModel}`,
     });
   }, [
     useReasoningModel,
@@ -293,16 +299,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
         showAlertDialog({
           title: "API Keys Saved",
-          description: `${savedKeys.join(", ")} API key${savedKeys.length > 1 ? "s" : ""} saved successfully! Your credentials have been securely recorded.${
-            allowLocalFallback ? " Local Whisper fallback is enabled." : ""
-          }`,
+          description: `${savedKeys.join(", ")} API key${savedKeys.length > 1 ? "s" : ""} saved successfully! Your credentials have been securely recorded.${allowLocalFallback ? " Local Whisper fallback is enabled." : ""
+            }`,
         });
       } catch (envError) {
         showAlertDialog({
           title: "API Key Saved",
-          description: `OpenAI API key saved successfully and will be available for transcription${
-            allowLocalFallback ? " with Local Whisper fallback enabled" : ""
-          }`,
+          description: `OpenAI API key saved successfully and will be available for transcription${allowLocalFallback ? " with Local Whisper fallback enabled" : ""
+            }`,
         });
       }
     } catch (error) {
@@ -960,7 +964,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         onOpenChange={(open) => !open && hideAlertDialog()}
         title={alertDialog.title}
         description={alertDialog.description}
-        onOk={() => {}}
+        onOk={() => { }}
       />
 
       {renderSectionContent()}

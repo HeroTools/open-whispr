@@ -66,7 +66,10 @@ const getPlatform = (): "darwin" | "win32" | "linux" => {
 };
 
 const describeMicError = (error: unknown): string => {
+  console.log("[usePermissions] Describing microphone error:", error);
+
   if (!error || typeof error !== "object") {
+    console.warn("[usePermissions] Invalid error object:", typeof error);
     return "Microphone access failed. Please try again.";
   }
 
@@ -75,6 +78,13 @@ const describeMicError = (error: unknown): string => {
   const message = (err.message || "").toLowerCase();
   const settingsPath = getPlatformSettingsPath();
   const privacyPath = getPlatformPrivacyPath();
+
+  console.log("[usePermissions] Error details:", {
+    name,
+    message,
+    settingsPath,
+    privacyPath,
+  });
 
   if (name === "NotFoundError") {
     return `No microphones were detected. Connect or select a microphone in ${settingsPath}.`;
@@ -121,9 +131,12 @@ export const usePermissions = (
   }, []);
 
   const requestMicPermission = useCallback(async () => {
+    console.log("[usePermissions] Requesting microphone permission...");
+
     if (!navigator?.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
       const message =
         "Microphone APIs are unavailable in this environment. Please restart the app.";
+      console.error("[usePermissions] MediaDevices API not available");
       setMicPermissionError(message);
       if (showAlertDialog) {
         showAlertDialog({
@@ -139,14 +152,35 @@ export const usePermissions = (
     setMicPermissionError(null);
 
     try {
+      console.log("[usePermissions] Calling getUserMedia({ audio: true })...");
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      console.log("[usePermissions] getUserMedia succeeded:", {
+        streamId: stream.id,
+        audioTracks: stream.getAudioTracks().length,
+        tracks: stream.getAudioTracks().map(track => ({
+          id: track.id,
+          label: track.label,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+        })),
+      });
+
       stopTracks(stream);
       setMicPermissionGranted(true);
       setMicPermissionError(null);
+      console.log("[usePermissions] Microphone permission granted successfully");
     } catch (err) {
-      console.error("Microphone permission denied:", err);
+      console.error("[usePermissions] Microphone permission denied:", {
+        error: err,
+        errorName: (err as Error)?.name,
+        errorMessage: (err as Error)?.message,
+      });
+
       const message = describeMicError(err);
       setMicPermissionError(message);
+      console.warn("[usePermissions] Error description:", message);
+
       if (showAlertDialog) {
         showAlertDialog({
           title: "Microphone Permission Required",

@@ -42,17 +42,71 @@ class AudioManager {
   }
 
   async startRecording() {
+    console.log("[AudioManager] startRecording() called");
+
     try {
       if (this.isRecording || this.isProcessing || this.mediaRecorder?.state === "recording") {
+        console.warn("[AudioManager] Cannot start recording - already in progress:", {
+          isRecording: this.isRecording,
+          isProcessing: this.isProcessing,
+          mediaRecorderState: this.mediaRecorder?.state,
+        });
         return false;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Check for user-selected microphone
+      const selectedMicrophoneId = localStorage.getItem("selectedMicrophone");
+      console.log("[AudioManager] Microphone selection:", {
+        selectedMicrophoneId: selectedMicrophoneId || "default",
+      });
+
+      const constraints = {
+        audio: selectedMicrophoneId
+          ? { deviceId: { exact: selectedMicrophoneId } }
+          : true,
+      };
+
+      console.log("[AudioManager] Requesting microphone access with constraints:", constraints);
+
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log("[AudioManager] Microphone access granted:", {
+          streamId: stream.id,
+          audioTracks: stream.getAudioTracks().length,
+          tracks: stream.getAudioTracks().map(track => ({
+            id: track.id,
+            label: track.label,
+            enabled: track.enabled,
+            muted: track.muted,
+            readyState: track.readyState,
+            settings: track.getSettings ? track.getSettings() : null,
+          })),
+        });
+      } catch (err) {
+        // If specific device fails (e.g. disconnected), fall back to default
+        if (selectedMicrophoneId) {
+          console.warn("[AudioManager] Selected microphone failed, falling back to default:", {
+            selectedMicrophoneId,
+            error: err.message,
+            errorName: err.name,
+          });
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          console.log("[AudioManager] Fallback to default microphone succeeded");
+        } else {
+          throw err;
+        }
+      }
 
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
       this.recordingMimeType = this.mediaRecorder.mimeType || "audio/webm";
+
+      console.log("[AudioManager] MediaRecorder created:", {
+        mimeType: this.recordingMimeType,
+        state: this.mediaRecorder.state,
+      });
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
@@ -79,8 +133,15 @@ class AudioManager {
       this.isRecording = true;
       this.onStateChange?.({ isRecording: true, isProcessing: false });
 
+      console.log("[AudioManager] Recording started successfully");
       return true;
     } catch (error) {
+      console.error("[AudioManager] Failed to start recording:", {
+        error,
+        errorName: error.name,
+        errorMessage: error.message,
+      });
+
       // Provide more specific error messages
       let errorTitle = "Recording Error";
       let errorDescription = `Failed to access microphone: ${error.message}`;
@@ -89,13 +150,16 @@ class AudioManager {
         errorTitle = "Microphone Access Denied";
         errorDescription =
           "Please grant microphone permission in your system settings and try again.";
+        console.error("[AudioManager] Permission denied - user needs to grant access in system settings");
       } else if (error.name === "NotFoundError" || error.name === "DevicesNotFoundError") {
         errorTitle = "No Microphone Found";
         errorDescription = "No microphone was detected. Please connect a microphone and try again.";
+        console.error("[AudioManager] No microphone device found");
       } else if (error.name === "NotReadableError" || error.name === "TrackStartError") {
         errorTitle = "Microphone In Use";
         errorDescription =
           "The microphone is being used by another application. Please close other apps and try again.";
+        console.error("[AudioManager] Microphone is in use by another application");
       }
 
       this.onError?.({

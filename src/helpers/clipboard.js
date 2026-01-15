@@ -189,8 +189,19 @@ class ClipboardManager {
             }, 100);
             resolve();
           } else {
-            const errorMsg = `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`;
-            reject(new Error(errorMsg));
+            console.error("[ClipboardManager] Paste failed with code", code);
+            console.error("[ClipboardManager] stderr output:", errorOutput);
+
+            // Check if it's an accessibility permission issue
+            if (errorOutput.includes("not allowed assistive access") ||
+                errorOutput.includes("System Events got an error") ||
+                code === 1) {
+              const errorMsg = `Accessibility permission required. Please enable OpenWhispr in System Settings → Privacy & Security → Accessibility. Text is copied to clipboard - paste manually with Cmd+V.`;
+              reject(new Error(errorMsg));
+            } else {
+              const errorMsg = `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`;
+              reject(new Error(errorMsg));
+            }
           }
         });
 
