@@ -5,6 +5,7 @@ export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [partialTranscript, setPartialTranscript] = useState("");
   const audioManagerRef = useRef(null);
   const { onToggle } = options;
 
@@ -15,15 +16,23 @@ export const useAudioRecording = (toast, options = {}) => {
       onStateChange: ({ isRecording, isProcessing }) => {
         setIsRecording(isRecording);
         setIsProcessing(isProcessing);
+        if (isRecording) {
+          setPartialTranscript("");
+        }
       },
       onError: (error) => {
+        setPartialTranscript("");
         toast({
           title: error.title,
           description: error.description,
           variant: "destructive",
         });
       },
+      onPartialTranscript: (text) => {
+        setPartialTranscript(text);
+      },
       onTranscriptionComplete: async (result) => {
+        setPartialTranscript("");
         if (result.success) {
           setTranscript(result.text);
 
@@ -111,6 +120,7 @@ export const useAudioRecording = (toast, options = {}) => {
     isRecording,
     isProcessing,
     transcript,
+    partialTranscript,
     startRecording,
     stopRecording,
     cancelRecording,
