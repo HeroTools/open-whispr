@@ -39,6 +39,13 @@ export interface ApiKeySettings {
   groqApiKey: string;
 }
 
+export interface TodoSettings {
+  enableTodoFeature: boolean;
+  todoOverlayHotkey: string;
+  showCompletedTodos: boolean;
+  defaultTodoGroupBy: "none" | "project" | "priority" | "due_date";
+}
+
 export function useSettings() {
   const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
     serialize: String,
@@ -172,6 +179,38 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Todo settings
+  const [enableTodoFeature, setEnableTodoFeature] = useLocalStorage("enableTodoFeature", true, {
+    serialize: String,
+    deserialize: (value) => value !== "false",
+  });
+
+  const [todoOverlayHotkey, setTodoOverlayHotkey] = useLocalStorage(
+    "todoOverlayHotkey",
+    "CommandOrControl+Shift+T",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [showCompletedTodos, setShowCompletedTodos] = useLocalStorage("showCompletedTodos", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
+
+  const [defaultTodoGroupBy, setDefaultTodoGroupBy] = useLocalStorage<
+    "none" | "project" | "priority" | "due_date"
+  >("defaultTodoGroupBy", "project", {
+    serialize: String,
+    deserialize: (value) => {
+      if (["none", "project", "priority", "due_date"].includes(value)) {
+        return value as "none" | "project" | "priority" | "due_date";
+      }
+      return "project";
+    },
+  });
+
   // Computed values
   const reasoningProvider = getModelProvider(reasoningModel);
 
@@ -230,6 +269,16 @@ export function useSettings() {
     [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey, setGroqApiKey]
   );
 
+  const updateTodoSettings = useCallback(
+    (settings: Partial<TodoSettings>) => {
+      if (settings.enableTodoFeature !== undefined) setEnableTodoFeature(settings.enableTodoFeature);
+      if (settings.todoOverlayHotkey !== undefined) setTodoOverlayHotkey(settings.todoOverlayHotkey);
+      if (settings.showCompletedTodos !== undefined) setShowCompletedTodos(settings.showCompletedTodos);
+      if (settings.defaultTodoGroupBy !== undefined) setDefaultTodoGroupBy(settings.defaultTodoGroupBy);
+    },
+    [setEnableTodoFeature, setTodoOverlayHotkey, setShowCompletedTodos, setDefaultTodoGroupBy]
+  );
+
   return {
     useLocalWhisper,
     whisperModel,
@@ -280,5 +329,15 @@ export function useSettings() {
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,
+    // Todo settings
+    enableTodoFeature,
+    todoOverlayHotkey,
+    showCompletedTodos,
+    defaultTodoGroupBy,
+    setEnableTodoFeature,
+    setTodoOverlayHotkey,
+    setShowCompletedTodos,
+    setDefaultTodoGroupBy,
+    updateTodoSettings,
   };
 }

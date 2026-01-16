@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
-import { X } from "lucide-react";
+import { X, ListTodo } from "lucide-react";
 import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
+import TodoOverlay from "./components/TodoOverlay";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -70,6 +71,7 @@ const Tooltip = ({ children, content, emoji }) => {
 export default function App() {
   const [isHovered, setIsHovered] = useState(false);
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
+  const [showTodoOverlay, setShowTodoOverlay] = useState(false);
   const commandMenuRef = useRef(null);
   const buttonRef = useRef(null);
   const { toast } = useToast();
@@ -109,6 +111,17 @@ export default function App() {
       unsubscribeFailed?.();
     };
   }, [toast]);
+
+  // Listen for todo overlay toggle event from main process
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onToggleTodoOverlay?.(() => {
+      setShowTodoOverlay((prev) => !prev);
+    });
+
+    return () => {
+      unsubscribe?.();
+    };
+  }, []);
 
   useEffect(() => {
     if (isCommandMenuOpen) {
@@ -212,8 +225,23 @@ export default function App() {
 
   const micProps = getMicButtonProps();
 
+  const handleToggleTodoOverlay = () => {
+    setShowTodoOverlay((prev) => !prev);
+    setIsCommandMenuOpen(false);
+  };
+
   return (
     <>
+      {/* Todo Overlay */}
+      <TodoOverlay
+        isVisible={showTodoOverlay}
+        onClose={() => setShowTodoOverlay(false)}
+        onStartRecording={() => {
+          setShowTodoOverlay(false);
+          // Could add voice task creation here in the future
+        }}
+      />
+
       {/* Fixed bottom-right voice button */}
       <div className="fixed bottom-6 right-6 z-50">
         <div
@@ -349,6 +377,14 @@ export default function App() {
                 }}
               >
                 {isRecording ? "Stop listening" : "Start listening"}
+              </button>
+              <div className="h-px bg-white/10" />
+              <button
+                className="w-full px-3 py-2 text-left text-sm hover:bg-white/10 focus:bg-white/10 focus:outline-none flex items-center gap-2"
+                onClick={handleToggleTodoOverlay}
+              >
+                <ListTodo size={14} />
+                View Tasks
               </button>
               <div className="h-px bg-white/10" />
               <button

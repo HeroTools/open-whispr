@@ -627,6 +627,141 @@ class IPCHandlers {
         return { success: false, error: error.message };
       }
     });
+
+    // ==================== PROJECT HANDLERS ====================
+    ipcMain.handle("db-create-project", async (event, data) => {
+      const result = this.databaseManager.createProject(data.name, data.color, data.icon);
+      if (result?.success && result?.project) {
+        setImmediate(() => {
+          this.broadcastToWindows("project-added", result.project);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-get-projects", async () => {
+      return this.databaseManager.getProjects();
+    });
+
+    ipcMain.handle("db-update-project", async (event, id, data) => {
+      const result = this.databaseManager.updateProject(id, data);
+      if (result?.success && result?.project) {
+        setImmediate(() => {
+          this.broadcastToWindows("project-updated", result.project);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-project", async (event, id) => {
+      const result = this.databaseManager.deleteProject(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("project-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    // ==================== TAG HANDLERS ====================
+    ipcMain.handle("db-create-tag", async (event, data) => {
+      const result = this.databaseManager.createTag(data.name, data.color);
+      if (result?.success && result?.tag) {
+        setImmediate(() => {
+          this.broadcastToWindows("tag-added", result.tag);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-get-tags", async () => {
+      return this.databaseManager.getTags();
+    });
+
+    ipcMain.handle("db-update-tag", async (event, id, data) => {
+      const result = this.databaseManager.updateTag(id, data);
+      if (result?.success && result?.tag) {
+        setImmediate(() => {
+          this.broadcastToWindows("tag-updated", result.tag);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-tag", async (event, id) => {
+      const result = this.databaseManager.deleteTag(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("tag-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    // ==================== TODO HANDLERS ====================
+    ipcMain.handle("db-create-todo", async (event, data) => {
+      const result = this.databaseManager.createTodo(data);
+      if (result?.success && result?.todo) {
+        setImmediate(() => {
+          this.broadcastToWindows("todo-added", result.todo);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-get-todos", async (event, filters = {}) => {
+      return this.databaseManager.getTodos(filters);
+    });
+
+    ipcMain.handle("db-update-todo", async (event, id, data) => {
+      const result = this.databaseManager.updateTodo(id, data);
+      if (result?.success && result?.todo) {
+        setImmediate(() => {
+          this.broadcastToWindows("todo-updated", result.todo);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-todo", async (event, id) => {
+      const result = this.databaseManager.deleteTodo(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("todo-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-toggle-todo-complete", async (event, id) => {
+      const result = this.databaseManager.toggleTodoComplete(id);
+      if (result?.success && result?.todo) {
+        setImmediate(() => {
+          this.broadcastToWindows("todo-updated", result.todo);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-get-todo-stats", async () => {
+      return this.databaseManager.getTodoStats();
+    });
+
+    // ==================== TODO HOTKEY HANDLERS ====================
+    ipcMain.handle("update-todo-overlay-hotkey", async (event, hotkey) => {
+      // The hotkeyManager is passed through windowManager
+      if (this.windowManager?.hotkeyManager) {
+        return await this.windowManager.updateTodoOverlayHotkey(hotkey);
+      }
+      return { success: false, message: "Hotkey manager not available" };
+    });
+
+    ipcMain.handle("get-todo-overlay-hotkey", async () => {
+      if (this.windowManager?.hotkeyManager) {
+        return this.windowManager.hotkeyManager.getTodoOverlayHotkey();
+      }
+      return "CommandOrControl+Shift+T";
+    });
   }
 
   broadcastToWindows(channel, payload) {

@@ -15,8 +15,10 @@ const SUGGESTED_HOTKEYS = {
 class HotkeyManager {
   constructor() {
     this.currentHotkey = "`";
+    this.todoOverlayHotkey = "CommandOrControl+Shift+T";
     this.isInitialized = false;
     this.isListeningMode = false;
+    this.todoOverlayCallback = null;
   }
 
   setListeningMode(enabled) {
@@ -292,6 +294,55 @@ class HotkeyManager {
 
   isHotkeyRegistered(hotkey) {
     return globalShortcut.isRegistered(hotkey);
+  }
+
+  setupTodoOverlayHotkey(hotkey = "CommandOrControl+Shift+T", callback) {
+    if (!callback) {
+      throw new Error("Callback function is required for todo overlay hotkey setup");
+    }
+
+    debugLogger.log(`[HotkeyManager] Setting up todo overlay hotkey: "${hotkey}"`);
+
+    // Unregister previous todo hotkey if different
+    if (this.todoOverlayHotkey && this.todoOverlayHotkey !== hotkey) {
+      globalShortcut.unregister(this.todoOverlayHotkey);
+    }
+
+    try {
+      const success = globalShortcut.register(hotkey, callback);
+      if (success) {
+        this.todoOverlayHotkey = hotkey;
+        this.todoOverlayCallback = callback;
+        debugLogger.log(`[HotkeyManager] Todo overlay hotkey "${hotkey}" registered successfully`);
+        return { success: true, hotkey };
+      } else {
+        debugLogger.log(`[HotkeyManager] Failed to register todo overlay hotkey: ${hotkey}`);
+        return { success: false, error: `Failed to register "${hotkey}"` };
+      }
+    } catch (error) {
+      debugLogger.error("[HotkeyManager] Error setting up todo overlay hotkey:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updateTodoOverlayHotkey(hotkey, callback) {
+    if (!callback) {
+      callback = this.todoOverlayCallback;
+    }
+    if (!callback) {
+      return { success: false, message: "No callback registered for todo overlay" };
+    }
+
+    const result = this.setupTodoOverlayHotkey(hotkey, callback);
+    if (result.success) {
+      return { success: true, message: `Todo overlay hotkey updated to: ${hotkey}` };
+    } else {
+      return { success: false, message: result.error };
+    }
+  }
+
+  getTodoOverlayHotkey() {
+    return this.todoOverlayHotkey;
   }
 }
 

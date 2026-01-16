@@ -209,4 +209,89 @@ contextBridge.exposeInMainWorld("electronAPI", {
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
   },
+
+  // ==================== PROJECT API ====================
+  createProject: (data) => ipcRenderer.invoke("db-create-project", data),
+  getProjects: () => ipcRenderer.invoke("db-get-projects"),
+  updateProject: (id, data) => ipcRenderer.invoke("db-update-project", id, data),
+  deleteProject: (id) => ipcRenderer.invoke("db-delete-project", id),
+
+  // Project event listeners
+  onProjectAdded: (callback) => {
+    const listener = (_event, project) => callback?.(project);
+    ipcRenderer.on("project-added", listener);
+    return () => ipcRenderer.removeListener("project-added", listener);
+  },
+  onProjectUpdated: (callback) => {
+    const listener = (_event, project) => callback?.(project);
+    ipcRenderer.on("project-updated", listener);
+    return () => ipcRenderer.removeListener("project-updated", listener);
+  },
+  onProjectDeleted: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("project-deleted", listener);
+    return () => ipcRenderer.removeListener("project-deleted", listener);
+  },
+
+  // ==================== TAG API ====================
+  createTag: (data) => ipcRenderer.invoke("db-create-tag", data),
+  getTags: () => ipcRenderer.invoke("db-get-tags"),
+  updateTag: (id, data) => ipcRenderer.invoke("db-update-tag", id, data),
+  deleteTag: (id) => ipcRenderer.invoke("db-delete-tag", id),
+
+  // Tag event listeners
+  onTagAdded: (callback) => {
+    const listener = (_event, tag) => callback?.(tag);
+    ipcRenderer.on("tag-added", listener);
+    return () => ipcRenderer.removeListener("tag-added", listener);
+  },
+  onTagUpdated: (callback) => {
+    const listener = (_event, tag) => callback?.(tag);
+    ipcRenderer.on("tag-updated", listener);
+    return () => ipcRenderer.removeListener("tag-updated", listener);
+  },
+  onTagDeleted: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("tag-deleted", listener);
+    return () => ipcRenderer.removeListener("tag-deleted", listener);
+  },
+
+  // ==================== TODO API ====================
+  createTodo: (data) => ipcRenderer.invoke("db-create-todo", data),
+  getTodos: (filters) => ipcRenderer.invoke("db-get-todos", filters),
+  updateTodo: (id, data) => ipcRenderer.invoke("db-update-todo", id, data),
+  deleteTodo: (id) => ipcRenderer.invoke("db-delete-todo", id),
+  toggleTodoComplete: (id) => ipcRenderer.invoke("db-toggle-todo-complete", id),
+  getTodoStats: () => ipcRenderer.invoke("db-get-todo-stats"),
+
+  // Todo event listeners
+  onTodoAdded: (callback) => {
+    const listener = (_event, todo) => callback?.(todo);
+    ipcRenderer.on("todo-added", listener);
+    return () => ipcRenderer.removeListener("todo-added", listener);
+  },
+  onTodoUpdated: (callback) => {
+    const listener = (_event, todo) => callback?.(todo);
+    ipcRenderer.on("todo-updated", listener);
+    return () => ipcRenderer.removeListener("todo-updated", listener);
+  },
+  onTodoDeleted: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("todo-deleted", listener);
+    return () => ipcRenderer.removeListener("todo-deleted", listener);
+  },
+
+  // Todo overlay/recording events
+  onToggleTodoOverlay: registerListener(
+    "toggle-todo-overlay",
+    (callback) => () => callback()
+  ),
+  onStartTodoRecording: registerListener(
+    "start-todo-recording",
+    (callback) => () => callback()
+  ),
+
+  // Todo hotkey management
+  updateTodoOverlayHotkey: (hotkey) => ipcRenderer.invoke("update-todo-overlay-hotkey", hotkey),
+  getTodoOverlayHotkey: () => ipcRenderer.invoke("get-todo-overlay-hotkey"),
 });

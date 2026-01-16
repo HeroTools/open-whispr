@@ -1,3 +1,33 @@
+import type {
+  TodoItem,
+  Project,
+  Tag,
+  CreateTodoData,
+  UpdateTodoData,
+  TodoFilters,
+  TodoStats,
+  CreateProjectData,
+  UpdateProjectData,
+  CreateTagData,
+  UpdateTagData,
+  TodoApiResponse,
+} from './todo';
+
+export type {
+  TodoItem,
+  Project,
+  Tag,
+  CreateTodoData,
+  UpdateTodoData,
+  TodoFilters,
+  TodoStats,
+  CreateProjectData,
+  UpdateProjectData,
+  CreateTagData,
+  UpdateTagData,
+  TodoApiResponse,
+};
+
 export interface TranscriptionItem {
   id: number;
   text: string;
@@ -297,6 +327,46 @@ declare global {
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
       openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
+
+      // ==================== TODO API ====================
+      // Project operations
+      createProject: (data: CreateProjectData) => Promise<TodoApiResponse<Project>>;
+      getProjects: () => Promise<TodoApiResponse<Project>>;
+      updateProject: (id: number, data: UpdateProjectData) => Promise<TodoApiResponse<Project>>;
+      deleteProject: (id: number) => Promise<TodoApiResponse<Project>>;
+
+      // Tag operations
+      createTag: (data: CreateTagData) => Promise<TodoApiResponse<Tag>>;
+      getTags: () => Promise<TodoApiResponse<Tag>>;
+      updateTag: (id: number, data: UpdateTagData) => Promise<TodoApiResponse<Tag>>;
+      deleteTag: (id: number) => Promise<TodoApiResponse<Tag>>;
+
+      // Todo operations
+      createTodo: (data: CreateTodoData) => Promise<TodoApiResponse<TodoItem>>;
+      getTodos: (filters?: TodoFilters) => Promise<TodoApiResponse<TodoItem>>;
+      updateTodo: (id: number, data: UpdateTodoData) => Promise<TodoApiResponse<TodoItem>>;
+      deleteTodo: (id: number) => Promise<TodoApiResponse<TodoItem>>;
+      toggleTodoComplete: (id: number) => Promise<TodoApiResponse<TodoItem>>;
+      getTodoStats: () => Promise<TodoApiResponse<TodoStats>>;
+
+      // Todo event listeners
+      onTodoAdded?: (callback: (todo: TodoItem) => void) => (() => void) | void;
+      onTodoUpdated?: (callback: (todo: TodoItem) => void) => (() => void) | void;
+      onTodoDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
+      onProjectAdded?: (callback: (project: Project) => void) => (() => void) | void;
+      onProjectUpdated?: (callback: (project: Project) => void) => (() => void) | void;
+      onProjectDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
+      onTagAdded?: (callback: (tag: Tag) => void) => (() => void) | void;
+      onTagUpdated?: (callback: (tag: Tag) => void) => (() => void) | void;
+      onTagDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
+
+      // Todo overlay/recording
+      onToggleTodoOverlay?: (callback: () => void) => (() => void) | void;
+      onStartTodoRecording?: (callback: () => void) => (() => void) | void;
+
+      // Todo hotkey management
+      updateTodoOverlayHotkey: (hotkey: string) => Promise<{ success: boolean; message: string }>;
+      getTodoOverlayHotkey: () => Promise<string>;
     };
 
     api?: {
