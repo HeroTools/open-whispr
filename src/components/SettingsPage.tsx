@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Command, Mic, Shield } from "lucide-react";
+import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-react";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -95,8 +95,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [isRemovingModels, setIsRemovingModels] = useState(false);
   const cachePathHint =
     typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)
-      ? "%USERPROFILE%\\.cache\\openwhispr\\models"
-      : "~/.cache/openwhispr/models";
+      ? "%USERPROFILE%\\.cache\\openwhispr\\whisper-models"
+      : "~/.cache/openwhispr/whisper-models";
 
   // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
@@ -740,14 +740,24 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   Remove all downloaded Whisper models from your cache directory to reclaim disk
                   space. You can re-download any model later.
                 </p>
-                <Button
-                  variant="destructive"
-                  onClick={handleRemoveModels}
-                  disabled={isRemovingModels}
-                  className="w-full"
-                >
-                  {isRemovingModels ? "Removing models..." : "Remove Downloaded Models"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.electronAPI?.openWhisperModelsFolder?.()}
+                    className="flex-1"
+                  >
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Open Models Folder
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleRemoveModels}
+                    disabled={isRemovingModels}
+                    className="flex-1"
+                  >
+                    {isRemovingModels ? "Removing..." : "Remove All"}
+                  </Button>
+                </div>
                 <p className="text-xs text-rose-700">
                   Current cache location: <code>{cachePathHint}</code>
                 </p>

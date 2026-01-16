@@ -564,6 +564,17 @@ class IPCHandlers {
     ipcMain.handle("open-microphone-settings", () => openSystemSettings("microphone"));
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
+
+    ipcMain.handle("open-whisper-models-folder", async () => {
+      try {
+        const modelsDir = this.whisperManager.getModelsDir();
+        await shell.openPath(modelsDir);
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to open whisper models folder:", error);
+        return { success: false, error: error.message };
+      }
+    });
   }
 
   broadcastToWindows(channel, payload) {

@@ -235,10 +235,10 @@ npm run build:linux  # Linux
 - **Settings**: Configure API keys, customize hotkeys, and manage permissions
 
 ### Uninstall & Cache Cleanup
-- **In-App**: Use *Settings → Speech to Text Processing → Local Model Storage → Remove Downloaded Models* to clear `~/.cache/openwhispr/models` (or `%USERPROFILE%\.cache\openwhispr\models` on Windows).
+- **In-App**: Use *Settings → General → Local Model Storage → Remove Downloaded Models* to clear `~/.cache/openwhispr/whisper-models` (or `%USERPROFILE%\.cache\openwhispr\whisper-models` on Windows).
 - **Windows Uninstall**: The NSIS uninstaller automatically deletes the same cache directory.
 - **Linux Packages**: `deb`/`rpm` post-uninstall scripts also remove cached models.
-- **macOS**: If you uninstall manually, remove `~/Library/Caches` or `~/.cache/openwhispr/models` if desired.
+- **macOS**: If you uninstall manually, remove `~/Library/Caches` or `~/.cache/openwhispr/whisper-models` if desired.
 
 ### Agent Naming & AI Processing
 Once you've named your agent during setup, you can interact with it using multiple AI providers:

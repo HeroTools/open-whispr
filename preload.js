@@ -175,6 +175,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
+  openWhisperModelsFolder: () => ipcRenderer.invoke("open-whisper-models-folder"),
 
   // Globe key listener for hotkey capture (macOS only)
   onGlobeKeyPressed: (callback) => {

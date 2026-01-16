@@ -275,6 +275,7 @@ declare global {
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
+      openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
     };
 
     api?: {
