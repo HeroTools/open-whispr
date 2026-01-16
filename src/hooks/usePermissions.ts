@@ -221,17 +221,6 @@ export const usePermissions = (
       try {
         await window.electronAPI.pasteText("OpenWhispr accessibility test");
         setAccessibilityPermissionGranted(true);
-        if (showAlertDialog) {
-          showAlertDialog({
-            title: "Accessibility Test Successful",
-            description:
-              "Accessibility permissions working! Check if the test text appeared in another app.",
-          });
-        } else {
-          alert(
-            "Accessibility permissions working! Check if the test text appeared in another app."
-          );
-        }
       } catch (err) {
         console.error("Accessibility permission test failed:", err);
         if (showAlertDialog) {
