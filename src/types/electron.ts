@@ -33,6 +33,24 @@ export interface WhisperModelsListResult {
   cache_dir: string;
 }
 
+export interface FFmpegAvailabilityResult {
+  available: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface AudioDiagnosticsResult {
+  platform: string;
+  arch: string;
+  resourcesPath: string | null;
+  isPackaged: boolean;
+  ffmpeg: { available: boolean; path: string | null; error: string | null };
+  whisperBinary: { available: boolean; path: string | null; error: string | null };
+  whisperServer: { available: boolean; path: string | null };
+  modelsDir: string;
+  models: string[];
+}
+
 export interface UpdateCheckResult {
   updateAvailable: boolean;
   version?: string;
@@ -271,7 +289,8 @@ declare global {
       }) => Promise<void>;
 
       // FFmpeg availability
-      checkFFmpegAvailability: () => Promise<boolean>;
+      checkFFmpegAvailability: () => Promise<FFmpegAvailabilityResult>;
+      getAudioDiagnostics: () => Promise<AudioDiagnosticsResult>;
 
       // System settings helpers
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;

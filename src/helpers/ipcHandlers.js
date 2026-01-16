@@ -209,7 +209,7 @@ class IPCHandlers {
           return {
             success: false,
             error: "no_audio_data",
-            message: "No audio was recorded. Check your microphone settings.",
+            message: "No audio detected",
           };
         }
         if (errorMessage.includes("model") && errorMessage.includes("not downloaded")) {
