@@ -855,21 +855,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <Textarea rows={3} placeholder="Click here, then use your hotkey to dictate..." />
               </div>
             </div>
-
-            <div className="bg-green-50/50 p-4 rounded-lg border border-green-200/60">
-              <h4 className="font-medium text-green-900 mb-2">How it works:</h4>
-              <ol className="text-sm text-green-800 space-y-1">
-                <li>1. Click in any text field</li>
-                <li>
-                  2. Press{" "}
-                  <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border border-green-200">
-                    {readableHotkey}
-                  </kbd>{" "}
-                  to start, speak, press again to stop
-                </li>
-                <li>3. Your text appears automatically!</li>
-              </ol>
-            </div>
           </div>
         );
 
