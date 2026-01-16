@@ -76,11 +76,12 @@
 
 **Fix:**
 1. The whisper.cpp binary is bundled with the app
-2. If bundled binary fails, install via package manager:
+2. If running from source, download the current-platform binary: `npm run download:whisper-cpp`
+3. If bundled binary fails, install via package manager:
    - macOS: `brew install whisper-cpp`
    - Linux: Build from source at https://github.com/ggml-org/whisper.cpp
-3. Clear model cache: `rm -rf ~/.cache/openwhispr/whisper-models`
-4. Try cloud transcription as fallback
+4. Clear model cache: `rm -rf ~/.cache/openwhispr/whisper-models`
+5. Try cloud transcription as fallback
 
 ### Windows-Specific Issues
 

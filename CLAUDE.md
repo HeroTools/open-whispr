@@ -307,7 +307,8 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
    - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
    - Signing requires Apple Developer account
    - ASAR unpacking needed for FFmpeg
-   - Run `npm run download:whisper-cpp` before packaging
+  - Run `npm run download:whisper-cpp` before packaging (current platform)
+  - Use `npm run download:whisper-cpp:all` for multi-platform packaging
    - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
 
 ### Platform-Specific Notes
