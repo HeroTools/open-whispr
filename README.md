@@ -78,6 +78,12 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    npm start    # Production mode
    ```
 
+5. **Optional: Local Whisper from source** (only needed if you want local processing):
+   ```bash
+   npm run download:whisper-cpp
+   ```
+   This downloads the whisper.cpp binary for your current platform into `resources/bin/`.
+
 ### Building for Personal Use (Optional)
 
 If you want to build a standalone app for personal use:
@@ -239,10 +245,10 @@ npm run build:linux  # Linux
 - **Settings**: Configure API keys, customize hotkeys, and manage permissions
 
 ### Uninstall & Cache Cleanup
-- **In-App**: Use *Settings → Speech to Text Processing → Local Model Storage → Remove Downloaded Models* to clear `~/.cache/openwhispr/models` (or `%USERPROFILE%\.cache\openwhispr\models` on Windows).
+- **In-App**: Use *Settings → General → Local Model Storage → Remove Downloaded Models* to clear `~/.cache/openwhispr/whisper-models` (or `%USERPROFILE%\.cache\openwhispr\whisper-models` on Windows).
 - **Windows Uninstall**: The NSIS uninstaller automatically deletes the same cache directory.
 - **Linux Packages**: `deb`/`rpm` post-uninstall scripts also remove cached models.
-- **macOS**: If you uninstall manually, remove `~/Library/Caches` or `~/.cache/openwhispr/models` if desired.
+- **macOS**: If you uninstall manually, remove `~/Library/Caches` or `~/.cache/openwhispr/whisper-models` if desired.
 
 ### Agent Naming & AI Processing
 Once you've named your agent during setup, you can interact with it using multiple AI providers:
@@ -333,6 +339,8 @@ open-whispr/
 - `npm run start` - Start production build
 - `npm run setup` - First-time setup (creates .env file)
 - `npm run build:renderer` - Build the React app only
+- `npm run download:whisper-cpp` - Download whisper.cpp for the current platform
+- `npm run download:whisper-cpp:all` - Download whisper.cpp for all platforms
 - `npm run build` - Full build with signing (requires certificates)
 - `npm run build:mac` - macOS build with signing
 - `npm run build:win` - Windows build with signing
@@ -382,6 +390,8 @@ npm run build:win      # Windows NSIS + Portable
 npm run build:linux    # AppImage + DEB
 ```
 
+Note: build/pack/dist scripts download whisper.cpp for the current platform automatically. For multi-platform packaging from one host, run `npm run download:whisper-cpp:all` first.
+
 ## Configuration
 
 ### Environment Variables
@@ -419,6 +429,8 @@ For local processing, OpenWhispr uses OpenAI's Whisper model via whisper.cpp - a
 **System Fallback**: If the bundled binary fails, install via package manager:
 - macOS: `brew install whisper-cpp`
 - Linux: Build from source at https://github.com/ggml-org/whisper.cpp
+
+**From Source**: When running locally (not a packaged build), download the binary with `npm run download:whisper-cpp` so `resources/bin/` has your platform executable.
 
 **Requirements**:
 - Sufficient disk space for models (75MB - 3GB depending on model)

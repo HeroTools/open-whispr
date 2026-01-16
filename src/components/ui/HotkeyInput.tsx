@@ -199,12 +199,14 @@ export function HotkeyInput({
   const handleFocus = useCallback(() => {
     if (!disabled) {
       setIsCapturing(true);
+      window.electronAPI?.setHotkeyListeningMode?.(true);
     }
   }, [disabled]);
 
   const handleBlur = useCallback(() => {
     setIsCapturing(false);
     setActiveModifiers(new Set());
+    window.electronAPI?.setHotkeyListeningMode?.(false);
     onBlur?.();
   }, [onBlur]);
 
@@ -213,6 +215,12 @@ export function HotkeyInput({
       containerRef.current.focus();
     }
   }, [autoFocus]);
+
+  useEffect(() => {
+    return () => {
+      window.electronAPI?.setHotkeyListeningMode?.(false);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isCapturing || !isMac) return;

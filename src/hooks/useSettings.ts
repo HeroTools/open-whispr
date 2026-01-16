@@ -24,6 +24,12 @@ export interface ReasoningSettings {
 
 export interface HotkeySettings {
   dictationKey: string;
+  activationMode: "tap" | "push";
+}
+
+export interface MicrophoneSettings {
+  preferBuiltInMic: boolean;
+  selectedMicDeviceId: string;
 }
 
 export interface ApiKeySettings {
@@ -146,6 +152,26 @@ export function useSettings() {
     deserialize: String,
   });
 
+  const [activationMode, setActivationMode] = useLocalStorage<"tap" | "push">(
+    "activationMode",
+    "tap",
+    {
+      serialize: String,
+      deserialize: (value) => (value === "push" ? "push" : "tap"),
+    }
+  );
+
+  // Microphone settings
+  const [preferBuiltInMic, setPreferBuiltInMic] = useLocalStorage("preferBuiltInMic", true, {
+    serialize: String,
+    deserialize: (value) => value !== "false",
+  });
+
+  const [selectedMicDeviceId, setSelectedMicDeviceId] = useLocalStorage("selectedMicDeviceId", "", {
+    serialize: String,
+    deserialize: String,
+  });
+
   // Computed values
   const reasoningProvider = getModelProvider(reasoningModel);
 
@@ -245,6 +271,12 @@ export function useSettings() {
     setGeminiApiKey,
     setGroqApiKey,
     setDictationKey,
+    activationMode,
+    setActivationMode,
+    preferBuiltInMic,
+    selectedMicDeviceId,
+    setPreferBuiltInMic,
+    setSelectedMicDeviceId,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,

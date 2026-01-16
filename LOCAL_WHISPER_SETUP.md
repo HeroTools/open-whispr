@@ -34,7 +34,21 @@ OpenWhispr uses whisper.cpp, a high-performance C++ implementation of OpenAI's W
 
 - **Disk Space**: 75MB–3GB depending on model
 - **RAM**: 1GB–10GB depending on model
-- **No additional dependencies required** - whisper.cpp is bundled
+- **No additional dependencies required** - whisper.cpp is bundled in packaged builds
+
+## Running From Source
+
+If you're running OpenWhispr locally from a git checkout (not a packaged app), download the whisper.cpp binary for your current platform:
+
+```bash
+npm run download:whisper-cpp
+```
+
+This puts the binary in `resources/bin/`. For multi-platform packaging from a single machine, use:
+
+```bash
+npm run download:whisper-cpp:all
+```
 
 ## File Locations
 

@@ -33,6 +33,24 @@ export interface WhisperModelsListResult {
   cache_dir: string;
 }
 
+export interface FFmpegAvailabilityResult {
+  available: boolean;
+  path?: string;
+  error?: string;
+}
+
+export interface AudioDiagnosticsResult {
+  platform: string;
+  arch: string;
+  resourcesPath: string | null;
+  isPackaged: boolean;
+  ffmpeg: { available: boolean; path: string | null; error: string | null };
+  whisperBinary: { available: boolean; path: string | null; error: string | null };
+  whisperServer: { available: boolean; path: string | null };
+  modelsDir: string;
+  models: string[];
+}
+
 export interface UpdateCheckResult {
   updateAvailable: boolean;
   version?: string;
@@ -100,6 +118,8 @@ declare global {
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
       onToggleDictation: (callback: () => void) => (() => void) | void;
+      onStartDictation?: (callback: () => void) => (() => void) | void;
+      onStopDictation?: (callback: () => void) => (() => void) | void;
 
       // Database operations
       saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
@@ -237,9 +257,18 @@ declare global {
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
+      setHotkeyListeningMode?: (enabled: boolean) => Promise<{ success: boolean }>;
 
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
+
+      // Hotkey registration events
+      onHotkeyFallbackUsed?: (
+        callback: (data: { original: string; fallback: string; message: string }) => void
+      ) => () => void;
+      onHotkeyRegistrationFailed?: (
+        callback: (data: { hotkey: string; error: string; suggestions: string[] }) => void
+      ) => () => void;
 
       // Gemini API key management
       getGeminiKey: () => Promise<string | null>;
@@ -260,11 +289,14 @@ declare global {
       }) => Promise<void>;
 
       // FFmpeg availability
-      checkFFmpegAvailability: () => Promise<boolean>;
+      checkFFmpegAvailability: () => Promise<FFmpegAvailabilityResult>;
+      getAudioDiagnostics: () => Promise<AudioDiagnosticsResult>;
 
       // System settings helpers
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
+      openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
+      openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
     };
 
     api?: {

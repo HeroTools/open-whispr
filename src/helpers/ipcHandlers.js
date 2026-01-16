@@ -172,12 +172,64 @@ class IPCHandlers {
         return result;
       } catch (error) {
         debugLogger.error("Local Whisper transcription error", error);
+        const errorMessage = error.message || "Unknown error";
+
+        // Return specific error types for better user feedback
+        if (errorMessage.includes("FFmpeg not found")) {
+          return {
+            success: false,
+            error: "ffmpeg_not_found",
+            message: "FFmpeg is missing. Please reinstall the app or install FFmpeg manually.",
+          };
+        }
+        if (
+          errorMessage.includes("FFmpeg conversion failed") ||
+          errorMessage.includes("FFmpeg process error")
+        ) {
+          return {
+            success: false,
+            error: "ffmpeg_error",
+            message: "Audio conversion failed. The recording may be corrupted.",
+          };
+        }
+        if (
+          errorMessage.includes("whisper.cpp not found") ||
+          errorMessage.includes("whisper-cpp")
+        ) {
+          return {
+            success: false,
+            error: "whisper_not_found",
+            message: "Whisper binary is missing. Please reinstall the app.",
+          };
+        }
+        if (
+          errorMessage.includes("Audio buffer is empty") ||
+          errorMessage.includes("Audio data too small")
+        ) {
+          return {
+            success: false,
+            error: "no_audio_data",
+            message: "No audio detected",
+          };
+        }
+        if (errorMessage.includes("model") && errorMessage.includes("not downloaded")) {
+          return {
+            success: false,
+            error: "model_not_found",
+            message: errorMessage,
+          };
+        }
+
         throw error;
       }
     });
 
     ipcMain.handle("check-whisper-installation", async (event) => {
       return this.whisperManager.checkWhisperInstallation();
+    });
+
+    ipcMain.handle("get-audio-diagnostics", async () => {
+      return this.whisperManager.getDiagnostics();
     });
 
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
@@ -256,6 +308,11 @@ class IPCHandlers {
 
     ipcMain.handle("update-hotkey", async (event, hotkey) => {
       return await this.windowManager.updateHotkey(hotkey);
+    });
+
+    ipcMain.handle("set-hotkey-listening-mode", async (event, enabled) => {
+      this.windowManager.setHotkeyListeningMode(enabled);
+      return { success: true };
     });
 
     ipcMain.handle("start-window-drag", async (event) => {
@@ -513,6 +570,62 @@ class IPCHandlers {
     ipcMain.handle("app-log", async (event, entry) => {
       debugLogger.logEntry(entry);
       return { success: true };
+    });
+
+    const SYSTEM_SETTINGS_URLS = {
+      darwin: {
+        microphone: "x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone",
+        sound: "x-apple.systempreferences:com.apple.preference.sound?input",
+        accessibility:
+          "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+      },
+      win32: {
+        microphone: "ms-settings:privacy-microphone",
+        sound: "ms-settings:sound",
+      },
+    };
+
+    const openSystemSettings = async (settingType) => {
+      const platform = process.platform;
+      const urls = SYSTEM_SETTINGS_URLS[platform];
+      const url = urls?.[settingType];
+
+      if (!url) {
+        // Platform doesn't support this settings URL
+        const messages = {
+          microphone: "Please open your system settings to configure microphone permissions.",
+          sound: "Please open your system sound settings (e.g., pavucontrol).",
+          accessibility: "Accessibility settings are not applicable on this platform.",
+        };
+        return {
+          success: false,
+          error:
+            messages[settingType] || `${settingType} settings are not available on this platform.`,
+        };
+      }
+
+      try {
+        await shell.openExternal(url);
+        return { success: true };
+      } catch (error) {
+        debugLogger.error(`Failed to open ${settingType} settings:`, error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    ipcMain.handle("open-microphone-settings", () => openSystemSettings("microphone"));
+    ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
+    ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
+
+    ipcMain.handle("open-whisper-models-folder", async () => {
+      try {
+        const modelsDir = this.whisperManager.getModelsDir();
+        await shell.openPath(modelsDir);
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to open whisper models folder:", error);
+        return { success: false, error: error.message };
+      }
     });
   }
 

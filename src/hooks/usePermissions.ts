@@ -14,6 +14,7 @@ export interface UsePermissionsReturn {
   checkPasteToolsAvailability: () => Promise<PasteToolsResult | null>;
   openMicPrivacySettings: () => Promise<void>;
   openSoundInputSettings: () => Promise<void>;
+  openAccessibilitySettings: () => Promise<void>;
   setMicPermissionGranted: (granted: boolean) => void;
   setAccessibilityPermissionGranted: (granted: boolean) => void;
 }
@@ -104,21 +105,46 @@ export const usePermissions = (
   const [pasteToolsInfo, setPasteToolsInfo] = useState<PasteToolsResult | null>(null);
   const [isCheckingPasteTools, setIsCheckingPasteTools] = useState(false);
 
-  const openMicPrivacySettings = useCallback(async () => {
-    try {
-      await window.electronAPI?.openMicrophoneSettings?.();
-    } catch (error) {
-      console.error("Failed to open microphone privacy settings:", error);
-    }
-  }, []);
+  const openSystemSettings = useCallback(
+    async (
+      settingType: "microphone" | "sound" | "accessibility",
+      apiMethod: () => Promise<{ success: boolean; error?: string } | undefined> | undefined
+    ) => {
+      const titles = {
+        microphone: "Microphone Settings",
+        sound: "Sound Settings",
+        accessibility: "Accessibility Settings",
+      };
+      try {
+        const result = await apiMethod?.();
+        if (result && !result.success && result.error) {
+          showAlertDialog?.({ title: titles[settingType], description: result.error });
+        }
+      } catch (error) {
+        console.error(`Failed to open ${settingType} settings:`, error);
+        showAlertDialog?.({
+          title: titles[settingType],
+          description: `Unable to open ${settingType} settings. Please open your system settings manually.`,
+        });
+      }
+    },
+    [showAlertDialog]
+  );
 
-  const openSoundInputSettings = useCallback(async () => {
-    try {
-      await window.electronAPI?.openSoundInputSettings?.();
-    } catch (error) {
-      console.error("Failed to open sound input settings:", error);
-    }
-  }, []);
+  const openMicPrivacySettings = useCallback(
+    () => openSystemSettings("microphone", window.electronAPI?.openMicrophoneSettings),
+    [openSystemSettings]
+  );
+
+  const openSoundInputSettings = useCallback(
+    () => openSystemSettings("sound", window.electronAPI?.openSoundInputSettings),
+    [openSystemSettings]
+  );
+
+  const openAccessibilitySettings = useCallback(
+    () => openSystemSettings("accessibility", window.electronAPI?.openAccessibilitySettings),
+    [openSystemSettings]
+  );
 
   const requestMicPermission = useCallback(async () => {
     if (!navigator?.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
@@ -195,17 +221,6 @@ export const usePermissions = (
       try {
         await window.electronAPI.pasteText("OpenWhispr accessibility test");
         setAccessibilityPermissionGranted(true);
-        if (showAlertDialog) {
-          showAlertDialog({
-            title: "Accessibility Test Successful",
-            description:
-              "Accessibility permissions working! Check if the test text appeared in another app.",
-          });
-        } else {
-          alert(
-            "Accessibility permissions working! Check if the test text appeared in another app."
-          );
-        }
       } catch (err) {
         console.error("Accessibility permission test failed:", err);
         if (showAlertDialog) {
@@ -277,6 +292,7 @@ export const usePermissions = (
     checkPasteToolsAvailability,
     openMicPrivacySettings,
     openSoundInputSettings,
+    openAccessibilitySettings,
     setMicPermissionGranted,
     setAccessibilityPermissionGranted,
   };

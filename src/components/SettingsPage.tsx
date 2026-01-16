@@ -1,9 +1,10 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Command, Mic, Shield } from "lucide-react";
+import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-react";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
+import MicrophoneSettings from "./ui/MicrophoneSettings";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
@@ -13,15 +14,14 @@ import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useUpdater } from "../hooks/useUpdater";
-import { REASONING_PROVIDERS, getTranscriptionProviders } from "../models/ModelRegistry";
+import { getTranscriptionProviders } from "../models/ModelRegistry";
 import { formatHotkeyLabel } from "../utils/hotkeys";
-import LanguageSelector from "./ui/LanguageSelector";
 import PromptStudio from "./ui/PromptStudio";
-import { API_ENDPOINTS } from "../config/constants";
 import ReasoningModelSelector from "./ReasoningModelSelector";
 import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 
 export type SettingsSectionType =
   | "general"
@@ -48,12 +48,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     useLocalWhisper,
     whisperModel,
     allowOpenAIFallback,
-    allowLocalFallback,
-    fallbackWhisperModel,
-    preferredLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
-    cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
@@ -63,12 +59,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    activationMode,
+    setActivationMode,
+    preferBuiltInMic,
+    selectedMicDeviceId,
+    setPreferBuiltInMic,
+    setSelectedMicDeviceId,
     setUseLocalWhisper,
     setWhisperModel,
     setAllowOpenAIFallback,
-    setAllowLocalFallback,
-    setFallbackWhisperModel,
-    setPreferredLanguage,
     setCloudTranscriptionProvider,
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
@@ -83,15 +82,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
-    updateApiKeys,
   } = useSettings();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [isRemovingModels, setIsRemovingModels] = useState(false);
   const cachePathHint =
     typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)
-      ? "%USERPROFILE%\\.cache\\openwhispr\\models"
-      : "~/.cache/openwhispr/models";
+      ? "%USERPROFILE%\\.cache\\openwhispr\\whisper-models"
+      : "~/.cache/openwhispr/whisper-models";
 
   // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
@@ -188,143 +186,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     };
   }, [installInitiated, showAlertDialog]);
 
-  const saveReasoningSettings = useCallback(async () => {
-    const normalizedReasoningBase = (cloudReasoningBaseUrl || "").trim();
-    setCloudReasoningBaseUrl(normalizedReasoningBase);
-
-    updateReasoningSettings({
-      useReasoningModel,
-      reasoningModel,
-      cloudReasoningBaseUrl: normalizedReasoningBase,
-    });
-
-    if (
-      (localReasoningProvider === "openai" || localReasoningProvider === "custom") &&
-      openaiApiKey
-    ) {
-      await window.electronAPI?.saveOpenAIKey(openaiApiKey);
-    }
-    if (localReasoningProvider === "anthropic" && anthropicApiKey) {
-      await window.electronAPI?.saveAnthropicKey(anthropicApiKey);
-    }
-    if (localReasoningProvider === "gemini" && geminiApiKey) {
-      await window.electronAPI?.saveGeminiKey(geminiApiKey);
-    }
-    if (localReasoningProvider === "groq" && groqApiKey) {
-      await window.electronAPI?.saveGroqKey(groqApiKey);
-    }
-
-    const keysToSave: Partial<{
-      openaiApiKey: string;
-      anthropicApiKey: string;
-      geminiApiKey: string;
-      groqApiKey: string;
-    }> = {};
-    if (
-      (localReasoningProvider === "openai" || localReasoningProvider === "custom") &&
-      openaiApiKey.trim()
-    ) {
-      keysToSave.openaiApiKey = openaiApiKey;
-    }
-    if (localReasoningProvider === "anthropic" && anthropicApiKey.trim()) {
-      keysToSave.anthropicApiKey = anthropicApiKey;
-    }
-    if (localReasoningProvider === "gemini" && geminiApiKey.trim()) {
-      keysToSave.geminiApiKey = geminiApiKey;
-    }
-    if (localReasoningProvider === "groq" && groqApiKey.trim()) {
-      keysToSave.groqApiKey = groqApiKey;
-    }
-    updateApiKeys(keysToSave);
-
-    localStorage.setItem("reasoningProvider", localReasoningProvider);
-
-    const providerLabel =
-      localReasoningProvider === "custom"
-        ? "Custom"
-        : REASONING_PROVIDERS[localReasoningProvider as keyof typeof REASONING_PROVIDERS]?.name ||
-          localReasoningProvider;
-
-    showAlertDialog({
-      title: "Reasoning Settings Saved",
-      description: `AI text enhancement ${useReasoningModel ? "enabled" : "disabled"} with ${
-        providerLabel
-      } ${reasoningModel}`,
-    });
-  }, [
-    useReasoningModel,
-    reasoningModel,
-    localReasoningProvider,
-    cloudReasoningBaseUrl,
-    openaiApiKey,
-    anthropicApiKey,
-    geminiApiKey,
-    groqApiKey,
-    setCloudReasoningBaseUrl,
-    updateReasoningSettings,
-    updateApiKeys,
-    showAlertDialog,
-  ]);
-
-  const saveApiKey = useCallback(async () => {
-    try {
-      if (openaiApiKey) {
-        await window.electronAPI?.saveOpenAIKey(openaiApiKey);
-      }
-      if (anthropicApiKey) {
-        await window.electronAPI?.saveAnthropicKey(anthropicApiKey);
-      }
-      if (geminiApiKey) {
-        await window.electronAPI?.saveGeminiKey(geminiApiKey);
-      }
-
-      updateApiKeys({ openaiApiKey, anthropicApiKey, geminiApiKey });
-      updateTranscriptionSettings({ allowLocalFallback, fallbackWhisperModel });
-
-      try {
-        if (openaiApiKey) {
-          await window.electronAPI?.createProductionEnvFile(openaiApiKey);
-        }
-
-        const savedKeys: string[] = [];
-        if (openaiApiKey) savedKeys.push("OpenAI");
-        if (anthropicApiKey) savedKeys.push("Anthropic");
-        if (geminiApiKey) savedKeys.push("Gemini");
-
-        showAlertDialog({
-          title: "API Keys Saved",
-          description: `${savedKeys.join(", ")} API key${savedKeys.length > 1 ? "s" : ""} saved successfully! Your credentials have been securely recorded.${
-            allowLocalFallback ? " Local Whisper fallback is enabled." : ""
-          }`,
-        });
-      } catch (envError) {
-        showAlertDialog({
-          title: "API Key Saved",
-          description: `OpenAI API key saved successfully and will be available for transcription${
-            allowLocalFallback ? " with Local Whisper fallback enabled" : ""
-          }`,
-        });
-      }
-    } catch (error) {
-      console.error("Failed to save API key:", error);
-      updateApiKeys({ openaiApiKey });
-      updateTranscriptionSettings({ allowLocalFallback, fallbackWhisperModel });
-      showAlertDialog({
-        title: "API Key Saved",
-        description: "OpenAI API key saved to localStorage (fallback mode)",
-      });
-    }
-  }, [
-    openaiApiKey,
-    anthropicApiKey,
-    geminiApiKey,
-    allowLocalFallback,
-    fallbackWhisperModel,
-    updateApiKeys,
-    updateTranscriptionSettings,
-    showAlertDialog,
-  ]);
-
   const resetAccessibilityPermissions = () => {
     const message = `🔄 RESET ACCESSIBILITY PERMISSIONS\n\nIf you've rebuilt or reinstalled OpenWhispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.\n\n📋 STEP-BY-STEP RESTORATION:\n\n1️⃣ Open System Settings (or System Preferences)\n   • macOS Ventura+: Apple Menu → System Settings\n   • Older macOS: Apple Menu → System Preferences\n\n2️⃣ Navigate to Privacy & Security → Accessibility\n\n3️⃣ Look for obsolete OpenWhispr entries:\n   • Any entries named "OpenWhispr"\n   • Any entries named "Electron"\n   • Any entries with unclear or generic names\n   • Entries pointing to old application locations\n\n4️⃣ Remove ALL obsolete entries:\n   • Select each old entry\n   • Click the minus (-) button\n   • Enter your password if prompted\n\n5️⃣ Add the current OpenWhispr:\n   • Click the plus (+) button\n   • Navigate to and select the CURRENT OpenWhispr app\n   • Ensure the checkbox is ENABLED\n\n6️⃣ Restart OpenWhispr completely\n\n💡 This is very common during development when rebuilding applications!\n\nClick OK when you're ready to open System Settings.`;
 
@@ -338,10 +199,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             "Opening System Settings... Look for the Accessibility section under Privacy & Security.",
         });
 
-        window.open(
-          "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
-          "_blank"
-        );
+        permissionsHook.openAccessibilitySettings();
       },
     });
   };
@@ -582,6 +440,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 }}
                 disabled={isHotkeyRegistering}
               />
+
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Activation Mode
+                </label>
+                <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+              </div>
             </div>
 
             <div className="border-t pt-8">
@@ -628,6 +493,22 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             <div className="border-t pt-8">
               <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Microphone Input</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Choose which microphone to use for dictation. Enable "Prefer Built-in" to prevent
+                  audio interruptions when using Bluetooth headphones.
+                </p>
+              </div>
+              <MicrophoneSettings
+                preferBuiltInMic={preferBuiltInMic}
+                selectedMicDeviceId={selectedMicDeviceId}
+                onPreferBuiltInChange={setPreferBuiltInMic}
+                onDeviceSelect={setSelectedMicDeviceId}
+              />
+            </div>
+
+            <div className="border-t pt-8">
+              <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-2">About OpenWhispr</h3>
                 <p className="text-sm text-gray-600 mb-6">
                   OpenWhispr converts your speech to text using AI. Press your hotkey, speak, and
@@ -661,25 +542,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </div>
 
               <div className="space-y-3">
-                <Button
-                  onClick={() => {
-                    showConfirmDialog({
-                      title: "Reset Onboarding",
-                      description:
-                        "Are you sure you want to reset the onboarding process? This will clear your setup and show the welcome flow again.",
-                      onConfirm: () => {
-                        localStorage.removeItem("onboardingCompleted");
-                        window.location.reload();
-                      },
-                      variant: "destructive",
-                    });
-                  }}
-                  variant="outline"
-                  className="w-full text-amber-600 border-amber-300 hover:bg-amber-50 hover:border-amber-400"
-                >
-                  <span className="mr-2">🔄</span>
-                  Reset Onboarding
-                </Button>
                 <Button
                   onClick={() => {
                     showConfirmDialog({
@@ -722,14 +584,24 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   Remove all downloaded Whisper models from your cache directory to reclaim disk
                   space. You can re-download any model later.
                 </p>
-                <Button
-                  variant="destructive"
-                  onClick={handleRemoveModels}
-                  disabled={isRemovingModels}
-                  className="w-full"
-                >
-                  {isRemovingModels ? "Removing models..." : "Remove Downloaded Models"}
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.electronAPI?.openWhisperModelsFolder?.()}
+                    className="flex-1"
+                  >
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Open Models Folder
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleRemoveModels}
+                    disabled={isRemovingModels}
+                    className="flex-1"
+                  >
+                    {isRemovingModels ? "Removing..." : "Remove All"}
+                  </Button>
+                </div>
                 <p className="text-xs text-rose-700">
                   Current cache location: <code>{cachePathHint}</code>
                 </p>
@@ -775,42 +647,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setGroqApiKey={setGroqApiKey}
               variant="settings"
             />
-
-            <Button
-              onClick={() => {
-                const normalizedTranscriptionBase = (cloudTranscriptionBaseUrl || "").trim();
-                setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
-
-                updateTranscriptionSettings({
-                  useLocalWhisper,
-                  whisperModel,
-                  preferredLanguage,
-                  cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
-                });
-
-                if (!useLocalWhisper && openaiApiKey.trim()) {
-                  updateApiKeys({ openaiApiKey });
-                }
-
-                const descriptionParts = [
-                  `Transcription mode: ${useLocalWhisper ? "Local Whisper" : "Cloud"}.`,
-                  `Language: ${preferredLanguage}.`,
-                ];
-
-                if (!useLocalWhisper) {
-                  const baseLabel = normalizedTranscriptionBase || API_ENDPOINTS.TRANSCRIPTION_BASE;
-                  descriptionParts.push(`Endpoint: ${baseLabel}.`);
-                }
-
-                showAlertDialog({
-                  title: "Settings Saved",
-                  description: descriptionParts.join(" "),
-                });
-              }}
-              className="w-full"
-            >
-              Save Transcription Settings
-            </Button>
           </div>
         );
 
@@ -848,10 +684,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setGroqApiKey={setGroqApiKey}
               showAlertDialog={showAlertDialog}
             />
-
-            <Button onClick={saveReasoningSettings} className="w-full">
-              Save AI Model Settings
-            </Button>
           </div>
         );
 

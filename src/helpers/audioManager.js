@@ -1,6 +1,7 @@
 import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
+import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -41,13 +42,52 @@ class AudioManager {
     this.onTranscriptionComplete = onTranscriptionComplete;
   }
 
+  async getAudioConstraints() {
+    const preferBuiltIn = localStorage.getItem("preferBuiltInMic") !== "false";
+    const selectedDeviceId = localStorage.getItem("selectedMicDeviceId") || "";
+
+    if (preferBuiltIn) {
+      try {
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const audioInputs = devices.filter((d) => d.kind === "audioinput");
+        const builtInMic = audioInputs.find((d) => isBuiltInMicrophone(d.label));
+
+        if (builtInMic) {
+          logger.debug(
+            "Using built-in microphone",
+            { deviceId: builtInMic.deviceId, label: builtInMic.label },
+            "audio"
+          );
+          return { audio: { deviceId: { exact: builtInMic.deviceId } } };
+        }
+      } catch (error) {
+        logger.debug(
+          "Failed to enumerate devices for built-in mic detection",
+          { error: error.message },
+          "audio"
+        );
+      }
+    }
+
+    // Use selected device if specified and not preferring built-in
+    if (!preferBuiltIn && selectedDeviceId) {
+      logger.debug("Using selected microphone", { deviceId: selectedDeviceId }, "audio");
+      return { audio: { deviceId: { exact: selectedDeviceId } } };
+    }
+
+    // Fall back to default device
+    logger.debug("Using default microphone", {}, "audio");
+    return { audio: true };
+  }
+
   async startRecording() {
     try {
       if (this.isRecording || this.isProcessing || this.mediaRecorder?.state === "recording") {
         return false;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const constraints = await this.getAudioConstraints();
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
@@ -157,7 +197,9 @@ class AudioManager {
       const timingData = {
         mode: useLocalWhisper ? "local" : "cloud",
         model: useLocalWhisper ? whisperModel : this.getTranscriptionModel(),
-        audioDurationMs: metadata.durationSeconds ? Math.round(metadata.durationSeconds * 1000) : null,
+        audioDurationMs: metadata.durationSeconds
+          ? Math.round(metadata.durationSeconds * 1000)
+          : null,
         reasoningProcessingDurationMs: result?.timings?.reasoningProcessingDurationMs ?? null,
         roundTripDurationMs,
         audioSizeBytes: audioBlob.size,
@@ -168,17 +210,21 @@ class AudioManager {
       if (useLocalWhisper) {
         timingData.audioConversionDurationMs = result?.timings?.audioConversionDurationMs ?? null;
       }
-      timingData.transcriptionProcessingDurationMs = result?.timings?.transcriptionProcessingDurationMs ?? null;
+      timingData.transcriptionProcessingDurationMs =
+        result?.timings?.transcriptionProcessingDurationMs ?? null;
 
       logger.info("Pipeline timing", timingData, "performance");
-
     } catch (error) {
       const errorAtMs = Math.round(performance.now() - pipelineStart);
 
-      logger.error("Pipeline failed", {
-        errorAtMs,
-        error: error.message,
-      }, "performance");
+      logger.error(
+        "Pipeline failed",
+        {
+          errorAtMs,
+          error: error.message,
+        },
+        "performance"
+      );
 
       if (error.message !== "No audio detected") {
         this.onError?.({
@@ -207,21 +253,31 @@ class AudioManager {
         options.language = language;
       }
 
-      logger.debug("Local transcription starting", {
-        originalFormat: audioBlob.type,
-        originalSizeBytes: audioBlob.size,
-        wavSizeBytes: wavBlob.size,
-        audioConversionDurationMs: timings.audioConversionDurationMs,
-      }, "performance");
+      logger.debug(
+        "Local transcription starting",
+        {
+          originalFormat: audioBlob.type,
+          originalSizeBytes: audioBlob.size,
+          wavSizeBytes: wavBlob.size,
+          audioConversionDurationMs: timings.audioConversionDurationMs,
+        },
+        "performance"
+      );
 
       const transcriptionStart = performance.now();
       const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
-      timings.transcriptionProcessingDurationMs = Math.round(performance.now() - transcriptionStart);
+      timings.transcriptionProcessingDurationMs = Math.round(
+        performance.now() - transcriptionStart
+      );
 
-      logger.debug("Local transcription complete", {
-        transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
-        success: result.success,
-      }, "performance");
+      logger.debug(
+        "Local transcription complete",
+        {
+          transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
+          success: result.success,
+        },
+        "performance"
+      );
 
       if (result.success && result.text) {
         const reasoningStart = performance.now();
@@ -241,7 +297,7 @@ class AudioManager {
         });
         throw new Error("No audio detected");
       } else {
-        throw new Error(result.error || "Local Whisper transcription failed");
+        throw new Error(result.message || result.error || "Local Whisper transcription failed");
       }
     } catch (error) {
       if (error.message === "No audio detected") {

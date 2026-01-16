@@ -1109,12 +1109,35 @@ class WhisperManager {
         ffmpegPath += ".exe";
       }
 
+      debugLogger.debug("FFmpeg static path from module", { ffmpegPath });
+
       // Try unpacked ASAR path first (production builds unpack ffmpeg-static)
-      const unpackedPath = ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1");
-      if (fs.existsSync(unpackedPath)) {
-        debugLogger.debug("Found FFmpeg in unpacked ASAR", { path: unpackedPath });
-        this.cachedFFmpegPath = unpackedPath;
-        return unpackedPath;
+      // Handle both forward slashes and backslashes for cross-platform compatibility
+      const unpackedPath = ffmpegPath.includes("app.asar")
+        ? ffmpegPath.replace(/app\.asar(?=[/\\])/, "app.asar.unpacked")
+        : null;
+
+      if (unpackedPath) {
+        debugLogger.debug("Checking unpacked ASAR path", { unpackedPath });
+        if (fs.existsSync(unpackedPath)) {
+          if (process.platform !== "win32") {
+            try {
+              fs.accessSync(unpackedPath, fs.constants.X_OK);
+            } catch {
+              debugLogger.debug("FFmpeg not executable, attempting chmod", { unpackedPath });
+              try {
+                fs.chmodSync(unpackedPath, 0o755);
+              } catch (chmodErr) {
+                debugLogger.warn("Failed to chmod FFmpeg", { error: chmodErr.message });
+              }
+            }
+          }
+          debugLogger.debug("Found FFmpeg in unpacked ASAR", { path: unpackedPath });
+          this.cachedFFmpegPath = unpackedPath;
+          return unpackedPath;
+        } else {
+          debugLogger.warn("Unpacked ASAR path does not exist", { unpackedPath });
+        }
       }
 
       // Try original path (development or if not in ASAR)
@@ -1125,20 +1148,27 @@ class WhisperManager {
         debugLogger.debug("Found FFmpeg at bundled path", { path: ffmpegPath });
         this.cachedFFmpegPath = ffmpegPath;
         return ffmpegPath;
+      } else {
+        debugLogger.warn("Bundled FFmpeg path does not exist", { ffmpegPath });
       }
-    } catch {
-      // Bundled FFmpeg not available
+    } catch (err) {
+      debugLogger.warn("Bundled FFmpeg not available", { error: err.message });
     }
 
     // Try system FFmpeg
     const systemCandidates =
       process.platform === "darwin"
         ? ["ffmpeg", "/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
-        : ["ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+        : process.platform === "win32"
+          ? ["ffmpeg", "C:\\ffmpeg\\bin\\ffmpeg.exe"]
+          : ["ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+
+    debugLogger.debug("Trying system FFmpeg candidates", { candidates: systemCandidates });
 
     for (const candidate of systemCandidates) {
       try {
         await runCommand(candidate, ["-version"], { timeout: TIMEOUTS.QUICK_CHECK });
+        debugLogger.debug("Found system FFmpeg", { path: candidate });
         this.cachedFFmpegPath = candidate;
         return candidate;
       } catch {
@@ -1146,6 +1176,7 @@ class WhisperManager {
       }
     }
 
+    debugLogger.error("FFmpeg not found anywhere");
     return null;
   }
 
@@ -1165,6 +1196,70 @@ class WhisperManager {
 
     this.ffmpegAvailabilityCache = { result, expiresAt: now + CACHE_TTL_MS };
     return result;
+  }
+
+  async getDiagnostics() {
+    const diagnostics = {
+      platform: process.platform,
+      arch: process.arch,
+      resourcesPath: process.resourcesPath || null,
+      isPackaged: !!process.resourcesPath && !process.resourcesPath.includes("node_modules"),
+      ffmpeg: { available: false, path: null, error: null },
+      whisperBinary: { available: false, path: null, error: null },
+      whisperServer: { available: false, path: null },
+      modelsDir: this.getModelsDir(),
+      models: [],
+    };
+
+    // Check FFmpeg
+    try {
+      this.cachedFFmpegPath = null; // Clear cache for fresh check
+      const ffmpegPath = await this.getFFmpegPath();
+      if (ffmpegPath) {
+        diagnostics.ffmpeg = { available: true, path: ffmpegPath, error: null };
+      } else {
+        diagnostics.ffmpeg = { available: false, path: null, error: "Not found" };
+      }
+    } catch (err) {
+      diagnostics.ffmpeg = { available: false, path: null, error: err.message };
+    }
+
+    // Check whisper binary
+    try {
+      this.cachedBinaryPath = null; // Clear cache for fresh check
+      const whisperPath = await this.getWhisperBinaryPath();
+      if (whisperPath) {
+        diagnostics.whisperBinary = { available: true, path: whisperPath, error: null };
+      } else {
+        diagnostics.whisperBinary = { available: false, path: null, error: "Not found" };
+      }
+    } catch (err) {
+      diagnostics.whisperBinary = { available: false, path: null, error: err.message };
+    }
+
+    // Check whisper server
+    if (this.serverManager) {
+      const serverPath = this.serverManager.getBinaryPath?.();
+      diagnostics.whisperServer = {
+        available: !!serverPath && fs.existsSync(serverPath),
+        path: serverPath || null,
+      };
+    }
+
+    // Check downloaded models
+    try {
+      const modelsDir = this.getModelsDir();
+      if (fs.existsSync(modelsDir)) {
+        const files = fs.readdirSync(modelsDir);
+        diagnostics.models = files
+          .filter((f) => f.startsWith("ggml-") && f.endsWith(".bin"))
+          .map((f) => f.replace("ggml-", "").replace(".bin", ""));
+      }
+    } catch {
+      // Ignore errors reading models dir
+    }
+
+    return diagnostics;
   }
 }
 
