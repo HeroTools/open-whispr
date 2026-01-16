@@ -171,7 +171,11 @@ trayManager.setWindowManager(windowManager);
   updateManager.checkForUpdatesOnStartup();
 
   if (process.platform === "darwin") {
-    globeKeyManager.on("globe-down", () => {
+    let globeKeyDownTime = 0;
+    let globeKeyIsRecording = false;
+    const MIN_HOLD_DURATION_MS = 150; // Minimum hold time to trigger push-to-talk
+
+    globeKeyManager.on("globe-down", async () => {
       // Forward to control panel for hotkey capture
       if (
         windowManager.controlPanelWindow &&
@@ -180,14 +184,45 @@ trayManager.setWindowManager(windowManager);
         windowManager.controlPanelWindow.webContents.send("globe-key-pressed");
       }
 
-      // Handle dictation toggle if Globe is the current hotkey
+      // Handle dictation if Globe is the current hotkey
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (
           windowManager.mainWindow &&
           !windowManager.mainWindow.isDestroyed()
         ) {
+          const activationMode = await windowManager.getActivationMode();
           windowManager.showDictationPanel();
-          windowManager.mainWindow.webContents.send("toggle-dictation");
+          if (activationMode === "push") {
+            // Track when key was pressed for push-to-talk
+            globeKeyDownTime = Date.now();
+            globeKeyIsRecording = false;
+            // Start recording after a brief delay to distinguish tap from hold
+            setTimeout(async () => {
+              // Only start if key is still being held
+              if (globeKeyDownTime > 0 && !globeKeyIsRecording) {
+                globeKeyIsRecording = true;
+                windowManager.sendStartDictation();
+              }
+            }, MIN_HOLD_DURATION_MS);
+          } else {
+            windowManager.mainWindow.webContents.send("toggle-dictation");
+          }
+        }
+      }
+    });
+
+    globeKeyManager.on("globe-up", async () => {
+      // Handle push-to-talk release if Globe is the current hotkey
+      if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
+        const activationMode = await windowManager.getActivationMode();
+        if (activationMode === "push") {
+          globeKeyDownTime = 0;
+          // Only stop if we actually started recording
+          if (globeKeyIsRecording) {
+            globeKeyIsRecording = false;
+            windowManager.sendStopDictation();
+          }
+          // If released too quickly, don't do anything (tap is ignored in push mode)
         }
       }
     });

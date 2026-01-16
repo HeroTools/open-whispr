@@ -39,6 +39,7 @@ import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -81,6 +82,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     reasoningModel,
     openaiApiKey,
     dictationKey,
+    activationMode,
+    setActivationMode,
     setUseLocalWhisper,
     setWhisperModel,
     setPreferredLanguage,
@@ -824,7 +827,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Set Your Hotkey & Test</h2>
-              <p className="text-gray-600">Choose your hotkey and try it out</p>
+              <p className="text-gray-600">Choose your hotkey and activation style</p>
             </div>
 
             <HotkeyInput
@@ -838,14 +841,33 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               disabled={isHotkeyRegistering}
             />
 
+            <div className="pt-2">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Activation Mode
+              </label>
+              <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+            </div>
+
             <div className="bg-blue-50/50 p-5 rounded-lg border border-blue-200/60">
               <h3 className="font-semibold text-blue-900 mb-3">Try It Now</h3>
               <p className="text-sm text-blue-800 mb-3">
-                Click in the text area, press{" "}
-                <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
-                  {readableHotkey}
-                </kbd>{" "}
-                to start recording, speak, then press it again to stop.
+                {activationMode === "tap" ? (
+                  <>
+                    Click in the text area, press{" "}
+                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                      {readableHotkey}
+                    </kbd>{" "}
+                    to start recording, speak, then press it again to stop.
+                  </>
+                ) : (
+                  <>
+                    Click in the text area, hold{" "}
+                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                      {readableHotkey}
+                    </kbd>{" "}
+                    while speaking, then release to process.
+                  </>
+                )}
               </p>
 
               <div>

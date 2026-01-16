@@ -21,6 +21,7 @@ import ReasoningModelSelector from "./ReasoningModelSelector";
 import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 
 export type SettingsSectionType =
   | "general"
@@ -58,6 +59,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    activationMode,
+    setActivationMode,
     preferBuiltInMic,
     selectedMicDeviceId,
     setPreferBuiltInMic,
@@ -437,6 +440,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 }}
                 disabled={isHotkeyRegistering}
               />
+
+              <div className="mt-6">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Activation Mode
+                </label>
+                <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+              </div>
             </div>
 
             <div className="border-t pt-8">

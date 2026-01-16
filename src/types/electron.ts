@@ -100,6 +100,8 @@ declare global {
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
       onToggleDictation: (callback: () => void) => (() => void) | void;
+      onStartDictation?: (callback: () => void) => (() => void) | void;
+      onStopDictation?: (callback: () => void) => (() => void) | void;
 
       // Database operations
       saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
