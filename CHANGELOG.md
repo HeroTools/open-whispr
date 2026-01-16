@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.8] - 2026-01-16
+
+### Added
+- **Microphone Input Selection**: Choose your preferred microphone input device in settings, with built-in mic preference to prevent Bluetooth audio interruptions
+- **Push to Talk Mode**: New recording mode option alongside the existing toggle mode
+- **Hotkey Listening Mode**: Prevents conflicts when capturing new hotkeys by temporarily disabling the global hotkey
+- **Hotkey Fallback System**: Automatic fallback with user notifications when preferred hotkey is unavailable
+- **Cross-Platform Accessibility Settings**: Quick access to system accessibility settings on macOS
+
+### Changed
+- **Streamlined Onboarding**: Removed redundant "How it Works" section, success dialogs, and manual save buttons for a smoother setup experience
+- **Improved Select Styling**: Enhanced dropdown select component appearance
+
+### Fixed
+- **FFmpeg Availability Types**: Corrected type definitions and optimized whisper-cpp download process
+- **Whisper Models Path**: Fixed model storage path resolution
+- **Better Path Resolution**: Improved error handling for file paths
+- **Open Mic Settings**: Fixed system settings link for microphone configuration
+
 ## [1.2.7] - 2026-01-13
 
 ### Added
