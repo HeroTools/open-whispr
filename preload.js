@@ -87,6 +87,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cancelWhisperDownload: () => ipcRenderer.invoke("cancel-whisper-download"),
   checkFFmpegAvailability: () =>
     ipcRenderer.invoke("check-ffmpeg-availability"),
+  getAudioDiagnostics: () => ipcRenderer.invoke("get-audio-diagnostics"),
 
   // Whisper server functions (faster repeated transcriptions)
   whisperServerStart: (modelName) =>

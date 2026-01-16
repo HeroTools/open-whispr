@@ -297,7 +297,7 @@ class AudioManager {
         });
         throw new Error("No audio detected");
       } else {
-        throw new Error(result.error || "Local Whisper transcription failed");
+        throw new Error(result.message || result.error || "Local Whisper transcription failed");
       }
     } catch (error) {
       if (error.message === "No audio detected") {
