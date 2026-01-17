@@ -32,6 +32,13 @@ jobs:
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js
 
+    - name: Cache Electron
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/electron
+        key: linux-electron-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: linux-electron-
+
     - name: Install Linux packaging dependencies
       run: |
         sudo apt-get update
@@ -62,6 +69,13 @@ jobs:
     - name: Download nircmd.exe
       run: node scripts/download-nircmd.js
 
+    - name: Cache Electron
+      uses: actions/cache@v4
+      with:
+        path: ~/AppData/Local/electron/Cache
+        key: windows-electron-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: windows-electron-
+
     - name: Build Application
       run: npm run build:win -- --publish always
       env:
@@ -87,6 +101,13 @@ jobs:
 
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js
+
+    - name: Cache Electron
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/electron
+        key: macos-electron-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: macos-electron-
 
     - name: Setup macOS Code Signing
       env:

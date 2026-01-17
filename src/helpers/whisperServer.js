@@ -22,6 +22,7 @@ class WhisperServerManager {
     this.healthCheckInterval = null;
     this.cachedServerBinaryPath = null;
     this.cachedFFmpegPath = null;
+    this.canConvert = false;
   }
 
   getFFmpegPath() {
@@ -35,19 +36,44 @@ class WhisperServerManager {
         ffmpegPath += ".exe";
       }
 
-      // Try unpacked ASAR path first (production builds)
-      const unpackedPath = ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1");
-      if (fs.existsSync(unpackedPath)) {
+      // Try unpacked ASAR path first (production builds unpack ffmpeg-static)
+      const unpackedPath = ffmpegPath.includes("app.asar")
+        ? ffmpegPath.replace(/app\.asar(?=[/\\])/, "app.asar.unpacked")
+        : null;
+
+      if (unpackedPath && fs.existsSync(unpackedPath)) {
+        // Ensure executable permissions on non-Windows
+        if (process.platform !== "win32") {
+          try {
+            fs.accessSync(unpackedPath, fs.constants.X_OK);
+          } catch {
+            try {
+              fs.chmodSync(unpackedPath, 0o755);
+            } catch (chmodErr) {
+              debugLogger.warn("Failed to chmod FFmpeg", { error: chmodErr.message });
+            }
+          }
+        }
         this.cachedFFmpegPath = unpackedPath;
         return unpackedPath;
       }
 
+      // Try original path (development or if not in ASAR)
       if (fs.existsSync(ffmpegPath)) {
+        if (process.platform !== "win32") {
+          try {
+            fs.accessSync(ffmpegPath, fs.constants.X_OK);
+          } catch {
+            // Not executable, fall through to system candidates
+            debugLogger.debug("FFmpeg exists but not executable", { ffmpegPath });
+            throw new Error("Not executable");
+          }
+        }
         this.cachedFFmpegPath = ffmpegPath;
         return ffmpegPath;
       }
-    } catch {
-      // Bundled FFmpeg not available
+    } catch (err) {
+      debugLogger.debug("Bundled FFmpeg not available", { error: err.message });
     }
 
     // Try system FFmpeg locations
@@ -65,6 +91,27 @@ class WhisperServerManager {
       }
     }
 
+    const pathEnv = process.env.PATH || "";
+    const pathSep = process.platform === "win32" ? ";" : ":";
+    const pathDirs = pathEnv.split(pathSep).map((entry) => entry.replace(/^"|"$/g, ""));
+    const pathBinary = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+
+    for (const dir of pathDirs) {
+      if (!dir) continue;
+      const candidate = path.join(dir, pathBinary);
+      if (!fs.existsSync(candidate)) continue;
+      if (process.platform !== "win32") {
+        try {
+          fs.accessSync(candidate, fs.constants.X_OK);
+        } catch {
+          continue;
+        }
+      }
+      this.cachedFFmpegPath = candidate;
+      return candidate;
+    }
+
+    debugLogger.debug("FFmpeg not found");
     return null;
   }
 
@@ -157,6 +204,10 @@ class WhisperServerManager {
     this.port = await this.findAvailablePort();
     this.modelPath = modelPath;
 
+    // Check for FFmpeg first - only use --convert flag if FFmpeg is available
+    const ffmpegPath = this.getFFmpegPath();
+    const spawnEnv = { ...process.env };
+
     const args = [
       "--model",
       modelPath,
@@ -164,24 +215,25 @@ class WhisperServerManager {
       "127.0.0.1",
       "--port",
       String(this.port),
-      "--convert",
     ];
+
+    // Only add --convert flag if FFmpeg is available
+    this.canConvert = !!ffmpegPath;
+    if (ffmpegPath) {
+      args.push("--convert");
+      const ffmpegDir = path.dirname(ffmpegPath);
+      const pathSep = process.platform === "win32" ? ";" : ":";
+      spawnEnv.PATH = ffmpegDir + pathSep + (process.env.PATH || "");
+    } else {
+      debugLogger.warn("FFmpeg not found - whisper-server will only accept WAV format");
+    }
 
     if (options.threads) args.push("--threads", String(options.threads));
     if (options.language && options.language !== "auto") {
       args.push("--language", options.language);
     }
 
-    // Add FFmpeg to PATH for --convert flag
-    const ffmpegPath = this.getFFmpegPath();
-    const spawnEnv = { ...process.env };
-    if (ffmpegPath) {
-      const ffmpegDir = path.dirname(ffmpegPath);
-      const pathSep = process.platform === "win32" ? ";" : ":";
-      spawnEnv.PATH = ffmpegDir + pathSep + (process.env.PATH || "");
-    }
-
-    debugLogger.debug("Starting whisper-server", { port: this.port, modelPath });
+    debugLogger.debug("Starting whisper-server", { port: this.port, modelPath, args });
 
     this.process = spawn(serverBinary, args, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -312,10 +364,27 @@ class WhisperServerManager {
     const boundary = `----WhisperBoundary${Date.now()}`;
     const parts = [];
 
+    const isWav =
+      audioBuffer &&
+      audioBuffer.length >= 12 &&
+      audioBuffer[0] === 0x52 &&
+      audioBuffer[1] === 0x49 &&
+      audioBuffer[2] === 0x46 &&
+      audioBuffer[3] === 0x46 &&
+      audioBuffer[8] === 0x57 &&
+      audioBuffer[9] === 0x41 &&
+      audioBuffer[10] === 0x56 &&
+      audioBuffer[11] === 0x45;
+    if (!isWav && !this.canConvert) {
+      throw new Error("FFmpeg not found - whisper-server requires WAV input");
+    }
+    const fileName = isWav ? "audio.wav" : "audio.webm";
+    const contentType = isWav ? "audio/wav" : "audio/webm";
+
     parts.push(
       `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n` +
-        `Content-Type: audio/webm\r\n\r\n`
+        `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+        `Content-Type: ${contentType}\r\n\r\n`
     );
     parts.push(audioBuffer);
     parts.push("\r\n");
