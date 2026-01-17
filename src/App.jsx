@@ -191,7 +191,6 @@ export default function App() {
 
   return (
     <>
-      {/* Streaming transcript bubble */}
       {isProcessing && partialTranscript && (
         <div className="fixed bottom-20 right-6 z-40 max-w-xs">
           <div className="bg-neutral-900/95 backdrop-blur-sm rounded-lg border border-white/10 px-3 py-2 shadow-lg">

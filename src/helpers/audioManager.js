@@ -1138,6 +1138,7 @@ class AudioManager {
     this.onStateChange = null;
     this.onError = null;
     this.onTranscriptionComplete = null;
+    this.onPartialTranscript = null;
   }
 }
 
