@@ -139,7 +139,7 @@ class UpdateManager {
             console.log("🔍 Checking for updates...");
             const result = await autoUpdater.checkForUpdates();
 
-            if (result && result.updateInfo) {
+            if (result?.isUpdateAvailable && result?.updateInfo) {
               console.log("📋 Update available:", result.updateInfo.version);
               console.log(
                 "📦 Download size:",
