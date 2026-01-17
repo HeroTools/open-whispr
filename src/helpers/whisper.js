@@ -768,7 +768,7 @@ class WhisperManager {
       } catch (parseError) {
         // Try parsing as plain text (non-JSON output)
         const text = output.trim();
-        if (text) {
+        if (text && !this.isBlankAudioMarker(text)) {
           return { success: true, text };
         }
         throw new Error(`Failed to parse Whisper output: ${parseError.message}`);
@@ -786,7 +786,7 @@ class WhisperManager {
         .map((seg) => seg.text)
         .join("")
         .trim();
-      if (!text) {
+      if (!text || this.isBlankAudioMarker(text)) {
         return { success: false, message: "No audio detected" };
       }
       return { success: true, text };
@@ -795,13 +795,20 @@ class WhisperManager {
     // Handle whisper-server format (has "text" field directly)
     if (result.text !== undefined) {
       const text = typeof result.text === "string" ? result.text.trim() : "";
-      if (!text) {
+      if (!text || this.isBlankAudioMarker(text)) {
         return { success: false, message: "No audio detected" };
       }
       return { success: true, text };
     }
 
     return { success: false, message: "No audio detected" };
+  }
+
+  // Check if text is a whisper.cpp blank audio marker
+  isBlankAudioMarker(text) {
+    // whisper.cpp outputs "[BLANK_AUDIO]" when there's silence or insufficient audio
+    const normalized = text.trim().toLowerCase();
+    return normalized === "[blank_audio]" || normalized === "[ blank_audio ]";
   }
 
   async cleanupTempFile(tempAudioPath) {
