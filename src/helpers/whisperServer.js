@@ -239,6 +239,7 @@ class WhisperServerManager {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
       env: spawnEnv,
+      cwd: require("os").tmpdir(),
     });
 
     let stderrBuffer = "";
