@@ -233,10 +233,13 @@ class UpdateManager {
             this.isInstalling = true;
             console.log("🔄 Installing update and restarting...");
 
-            // quitAndInstall handles everything: closes windows, emits before-quit, then installs
-            // isSilent=true on Windows for cleaner UX, isForceRunAfter=true to restart app
-            const isSilent = process.platform === "win32";
-            autoUpdater.quitAndInstall(isSilent, true);
+            const { app } = require("electron");
+            app.emit("before-quit");
+
+            setTimeout(() => {
+              const isSilent = process.platform === "win32";
+              autoUpdater.quitAndInstall(isSilent, true);
+            }, 100);
 
             return { success: true, message: "Update installation started" };
           } catch (error) {
