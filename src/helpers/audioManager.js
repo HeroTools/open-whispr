@@ -290,11 +290,6 @@ class AudioManager {
           throw new Error("No text transcribed");
         }
       } else if (result.success === false && result.message === "No audio detected") {
-        this.onError?.({
-          title: "No Audio Detected",
-          description:
-            "The recording contained no detectable audio. Please check your microphone settings.",
-        });
         throw new Error("No audio detected");
       } else {
         throw new Error(result.message || result.error || "Local Whisper transcription failed");
