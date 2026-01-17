@@ -38,7 +38,7 @@ class WhisperServerManager {
 
       // Try unpacked ASAR path first (production builds unpack ffmpeg-static)
       const unpackedPath = ffmpegPath.includes("app.asar")
-        ? ffmpegPath.replace(/app\.asar(?=[/\\])/, "app.asar.unpacked")
+        ? ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1")
         : null;
 
       if (unpackedPath && fs.existsSync(unpackedPath)) {

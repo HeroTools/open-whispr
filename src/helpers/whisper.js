@@ -1114,7 +1114,7 @@ class WhisperManager {
       // Try unpacked ASAR path first (production builds unpack ffmpeg-static)
       // Handle both forward slashes and backslashes for cross-platform compatibility
       const unpackedPath = ffmpegPath.includes("app.asar")
-        ? ffmpegPath.replace(/app\.asar(?=[/\\])/, "app.asar.unpacked")
+        ? ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1")
         : null;
 
       if (unpackedPath) {

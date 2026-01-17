@@ -242,11 +242,9 @@ class AudioManager {
     const timings = {};
 
     try {
-      const conversionStart = performance.now();
-      const wavBlob = await this.optimizeAudio(audioBlob);
-      timings.audioConversionDurationMs = Math.round(performance.now() - conversionStart);
-
-      const arrayBuffer = await wavBlob.arrayBuffer();
+      // Send original audio to main process - FFmpeg in main process handles conversion
+      // (renderer-side AudioContext conversion was unreliable with WebM/Opus format)
+      const arrayBuffer = await audioBlob.arrayBuffer();
       const language = localStorage.getItem("preferredLanguage");
       const options = { model };
       if (language && language !== "auto") {
@@ -256,10 +254,8 @@ class AudioManager {
       logger.debug(
         "Local transcription starting",
         {
-          originalFormat: audioBlob.type,
-          originalSizeBytes: audioBlob.size,
-          wavSizeBytes: wavBlob.size,
-          audioConversionDurationMs: timings.audioConversionDurationMs,
+          audioFormat: audioBlob.type,
+          audioSizeBytes: audioBlob.size,
         },
         "performance"
       );
