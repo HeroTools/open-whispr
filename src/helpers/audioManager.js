@@ -578,16 +578,14 @@ class AudioManager {
 
     if (useReasoning) {
       try {
-        const preparedText = normalizedText;
-
         logger.logReasoning("SENDING_TO_REASONING", {
-          preparedTextLength: preparedText.length,
+          preparedTextLength: normalizedText.length,
           model: reasoningModel,
           provider: reasoningProvider,
         });
 
         const result = await this.processWithReasoningModel(
-          preparedText,
+          normalizedText,
           reasoningModel,
           agentName
         );

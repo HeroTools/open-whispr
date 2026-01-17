@@ -67,9 +67,6 @@ class HotkeyManager {
     };
   }
 
-  /**
-   * Get alternative hotkey suggestions based on what the user tried
-   */
   getSuggestions(failedHotkey) {
     const isCompound = failedHotkey.includes("+");
     const suggestions = isCompound

@@ -1,6 +1,7 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
 const net = require("net");
+const os = require("os");
 const path = require("path");
 const http = require("http");
 const debugLogger = require("./debugLogger");
@@ -239,7 +240,7 @@ class WhisperServerManager {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
       env: spawnEnv,
-      cwd: require("os").tmpdir(),
+      cwd: os.tmpdir(),
     });
 
     let stderrBuffer = "";
