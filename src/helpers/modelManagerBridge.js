@@ -3,6 +3,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const { promises: fsPromises } = require("fs");
 const https = require("https");
+const { pipeline } = require("stream");
 const { app } = require("electron");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
@@ -214,16 +215,31 @@ class ModelManager {
             timeout: 30000,
           },
           (response) => {
-            if (response.statusCode === 302 || response.statusCode === 301) {
+            if (
+              response.statusCode === 301 ||
+              response.statusCode === 302 ||
+              response.statusCode === 303 ||
+              response.statusCode === 307 ||
+              response.statusCode === 308
+            ) {
+              const redirectUrl = response.headers.location;
+              if (!redirectUrl) {
+                cleanup(() => {
+                  reject(
+                    new ModelError("Redirect without location header", "DOWNLOAD_REDIRECT_ERROR")
+                  );
+                });
+                return;
+              }
               cleanup(() => {
-                this.downloadFile(response.headers.location, destPath, onProgress)
+                this.downloadFile(redirectUrl, destPath, onProgress)
                   .then(resolve)
                   .catch(reject);
               });
               return;
             }
 
-            if (response.statusCode !== 200) {
+            if (response.statusCode !== 200 && response.statusCode !== 206) {
               cleanup(() => {
                 reject(
                   new ModelError(
@@ -240,7 +256,6 @@ class ModelManager {
 
             response.on("data", (chunk) => {
               downloadedSize += chunk.length;
-              file.write(chunk);
 
               if (onProgress && totalSize > 0) {
                 const progress = (downloadedSize / totalSize) * 100;
@@ -248,18 +263,18 @@ class ModelManager {
               }
             });
 
-            response.on("end", () => {
-              file.end(() => resolve(destPath));
-            });
-
-            response.on("error", (error) => {
-              cleanup(() => {
-                reject(
-                  new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
-                    error: error.message,
-                  })
-                );
-              });
+            pipeline(response, file, (error) => {
+              if (error) {
+                cleanup(() => {
+                  reject(
+                    new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
+                      error: error.message,
+                    })
+                  );
+                });
+                return;
+              }
+              resolve(destPath);
             });
           }
         )
