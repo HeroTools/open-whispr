@@ -1,5 +1,6 @@
 import * as React from "react";
 import { X } from "lucide-react";
+import { cn } from "../lib/utils";
 
 export interface ToastProps {
   id?: string;
@@ -26,8 +27,12 @@ export const useToast = () => {
   return context;
 };
 
-export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>([]);
+export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => {
+  const [toasts, setToasts] = React.useState<(ToastProps & { id: string })[]>(
+    []
+  );
 
   const toast = React.useCallback((props: Omit<ToastProps, "id">) => {
     const id = Math.random().toString(36).substr(2, 9);
@@ -85,23 +90,28 @@ const Toast: React.FC<ToastProps & { onClose?: () => void }> = ({
   variant = "default",
   onClose,
 }) => {
-  const baseClasses =
-    "relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-lg border p-4 pr-8 shadow-lg transition-all duration-300 ease-in-out";
-
   const variantClasses = {
-    default: "bg-white border-gray-200 text-gray-900",
-    destructive: "bg-red-50 border-red-200 text-red-900",
-    success: "bg-green-50 border-green-200 text-green-900",
+    default: "bg-card text-card-foreground border-border",
+    destructive:
+      "bg-destructive/10 dark:bg-destructive/20 border-destructive/50 dark:border-destructive text-destructive",
+    success:
+      "bg-green-50 dark:bg-green-950/50 border-green-200 dark:border-green-800 text-green-900 dark:text-green-100",
   };
 
-  const iconClasses = {
-    default: "text-gray-400",
-    destructive: "text-red-400",
-    success: "text-green-400",
+  const closeButtonClasses = {
+    default: "text-muted-foreground hover:text-foreground",
+    destructive: "text-destructive/70 hover:text-destructive",
+    success:
+      "text-green-600/70 dark:text-green-400/70 hover:text-green-600 dark:hover:text-green-400",
   };
 
   return (
-    <div className={`${baseClasses} ${variantClasses[variant]}`}>
+    <div
+      className={cn(
+        "relative flex w-full items-center justify-between space-x-4 overflow-hidden rounded-lg border p-4 pr-8 shadow-lg transition-all duration-300 ease-in-out",
+        variantClasses[variant]
+      )}
+    >
       <div className="flex-1 space-y-1">
         {title && <div className="text-sm font-medium">{title}</div>}
         {description && <div className="text-sm opacity-90">{description}</div>}
@@ -110,9 +120,12 @@ const Toast: React.FC<ToastProps & { onClose?: () => void }> = ({
       {onClose && (
         <button
           onClick={onClose}
-          className={`absolute right-2 top-2 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 ${iconClasses[variant]}`}
+          className={cn(
+            "absolute right-2 top-2 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+            closeButtonClasses[variant]
+          )}
         >
-          <X className="h-4 w-4" />
+          <X className="size-4" />
           <span className="sr-only">Close</span>
         </button>
       )}

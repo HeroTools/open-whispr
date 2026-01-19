@@ -17,6 +17,7 @@ import {
   removeTranscription as removeFromStore,
   clearTranscriptions as clearStoreTranscriptions,
 } from "../stores/transcriptionStore";
+import { useTheme } from "../hooks/useTheme";
 
 export default function ControlPanel() {
   const history = useTranscriptions();
@@ -24,6 +25,9 @@ export default function ControlPanel() {
   const [showSettings, setShowSettings] = useState(false);
   const { hotkey } = useHotkey();
   const { toast } = useToast();
+
+  // Initialize theme on mount
+  useTheme();
 
   // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
@@ -223,7 +227,7 @@ export default function ControlPanel() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={hideConfirmDialog}
@@ -258,7 +262,7 @@ export default function ControlPanel() {
                   className={`gap-1.5 text-xs ${
                     updateStatus.updateDownloaded
                       ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "border-blue-300 text-blue-600 hover:bg-blue-50"
+                      : "border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950"
                   }`}
                 >
                   {getUpdateButtonContent()}
@@ -282,7 +286,7 @@ export default function ControlPanel() {
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <FileText size={18} className="text-indigo-600" />
-                  Recent Transcriptions
+                  Latest Transcriptions
                 </CardTitle>
                 <div className="flex gap-2">
                   {history.length > 0 && (
@@ -290,7 +294,7 @@ export default function ControlPanel() {
                       onClick={clearHistory}
                       variant="ghost"
                       size="icon"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-950"
                     >
                       <Trash2 size={16} />
                     </Button>
@@ -304,26 +308,26 @@ export default function ControlPanel() {
                   <div className="w-8 h-8 mx-auto mb-3 bg-indigo-600 rounded-lg flex items-center justify-center">
                     <span className="text-white text-sm">📝</span>
                   </div>
-                  <p className="text-neutral-600">Loading transcriptions...</p>
+                  <p className="text-neutral-600 dark:text-neutral-400">Loading transcriptions...</p>
                 </div>
               ) : history.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <Mic className="w-8 h-8 text-neutral-400" />
+                  <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 dark:bg-neutral-800 rounded-full flex items-center justify-center">
+                    <Mic className="w-8 h-8 text-neutral-400 dark:text-neutral-500" />
                   </div>
-                  <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                  <h3 className="text-lg font-medium text-neutral-900 dark:text-neutral-100 mb-2">
                     No transcriptions yet
                   </h3>
-                  <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
+                  <p className="text-neutral-600 dark:text-neutral-400 mb-4 max-w-sm mx-auto">
                     Press your hotkey to start recording and create your first transcription.
                   </p>
-                  <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
-                    <h4 className="font-medium text-neutral-800 mb-2">Quick Start:</h4>
-                    <ol className="text-sm text-neutral-600 text-left space-y-1">
+                  <div className="bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-lg p-4 max-w-md mx-auto">
+                    <h4 className="font-medium text-neutral-800 dark:text-neutral-200 mb-2">Quick Start:</h4>
+                    <ol className="text-sm text-neutral-600 dark:text-neutral-400 text-left space-y-1">
                       <li>1. Click in any text field</li>
                       <li>
                         2. Press{" "}
-                        <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
+                        <kbd className="bg-white dark:bg-neutral-700 px-2 py-1 rounded text-xs font-mono border border-neutral-300 dark:border-neutral-600 dark:text-neutral-200">
                           {hotkey}
                         </kbd>{" "}
                         to start recording
@@ -331,7 +335,7 @@ export default function ControlPanel() {
                       <li>3. Speak your text</li>
                       <li>
                         4. Press{" "}
-                        <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
+                        <kbd className="bg-white dark:bg-neutral-700 px-2 py-1 rounded text-xs font-mono border border-neutral-300 dark:border-neutral-600 dark:text-neutral-200">
                           {hotkey}
                         </kbd>{" "}
                         again to stop

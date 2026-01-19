@@ -15,17 +15,17 @@ export default function PasteToolsInfo({
 }: PasteToolsInfoProps) {
   if (!pasteToolsInfo) {
     return (
-      <div className="border rounded-lg p-4">
+      <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-white dark:bg-gray-800">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-indigo-600" />
+            <Terminal className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
             <div>
-              <h3 className="font-semibold text-gray-900">Automatic Pasting</h3>
-              <p className="text-sm text-gray-600">Checking system capabilities...</p>
+              <h3 className="font-semibold text-gray-900 dark:text-gray-100">Automatic Pasting</h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">Checking system capabilities...</p>
             </div>
           </div>
           {isChecking && (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600 dark:border-indigo-400"></div>
           )}
         </div>
       </div>
@@ -35,18 +35,18 @@ export default function PasteToolsInfo({
   // Windows - always ready
   if (pasteToolsInfo.platform === "win32") {
     return (
-      <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+      <div className="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-green-600" />
+            <Terminal className="w-6 h-6 text-green-600 dark:text-green-400" />
             <div>
-              <h3 className="font-semibold text-green-900">Automatic Pasting Ready</h3>
-              <p className="text-sm text-green-700">
+              <h3 className="font-semibold text-green-900 dark:text-green-100">Automatic Pasting Ready</h3>
+              <p className="text-sm text-green-700 dark:text-green-300">
                 Windows supports automatic pasting out of the box. No setup required!
               </p>
             </div>
           </div>
-          <div className="text-green-600">
+          <div className="text-green-600 dark:text-green-400">
             <Check className="w-5 h-5" />
           </div>
         </div>
@@ -57,19 +57,19 @@ export default function PasteToolsInfo({
   // Linux with tools available
   if (pasteToolsInfo.platform === "linux" && pasteToolsInfo.available) {
     return (
-      <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+      <div className="border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/50 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-green-600" />
+            <Terminal className="w-6 h-6 text-green-600 dark:text-green-400" />
             <div>
-              <h3 className="font-semibold text-green-900">Automatic Pasting Ready</h3>
-              <p className="text-sm text-green-700">
-                Using <code className="bg-green-100 px-1 rounded">{pasteToolsInfo.method}</code> for
+              <h3 className="font-semibold text-green-900 dark:text-green-100">Automatic Pasting Ready</h3>
+              <p className="text-sm text-green-700 dark:text-green-300">
+                Using <code className="bg-green-100 dark:bg-green-900/50 px-1 rounded">{pasteToolsInfo.method}</code> for
                 automatic text pasting.
               </p>
             </div>
           </div>
-          <div className="text-green-600">
+          <div className="text-green-600 dark:text-green-400">
             <Check className="w-5 h-5" />
           </div>
         </div>
@@ -83,17 +83,17 @@ export default function PasteToolsInfo({
     const recommendedTool = pasteToolsInfo.recommendedInstall || (isWayland ? "wtype" : "xdotool");
 
     return (
-      <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
+      <div className="border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 rounded-lg p-4 space-y-3">
         <div className="flex items-start gap-3">
-          <Info className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+          <Info className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-amber-900">Optional: Enable Automatic Pasting</h3>
-            <p className="text-sm text-amber-800 mt-1">
+            <h3 className="font-semibold text-amber-900 dark:text-amber-100">Optional: Enable Automatic Pasting</h3>
+            <p className="text-sm text-amber-800 dark:text-amber-200 mt-1">
               For automatic text pasting, install{" "}
-              <code className="bg-amber-100 px-1 rounded font-mono">{recommendedTool}</code>:
+              <code className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded font-mono">{recommendedTool}</code>:
             </p>
 
-            <div className="mt-3 bg-gray-900 text-gray-100 p-3 rounded-md font-mono text-xs overflow-x-auto">
+            <div className="mt-3 bg-gray-900 dark:bg-gray-950 text-gray-100 p-3 rounded-md font-mono text-xs overflow-x-auto">
               {isWayland ? (
                 <>
                   <div className="text-gray-400"># Fedora / RHEL</div>
@@ -115,9 +115,9 @@ export default function PasteToolsInfo({
               )}
             </div>
 
-            <p className="text-sm text-amber-700 mt-3">
+            <p className="text-sm text-amber-700 dark:text-amber-300 mt-3">
               Without this tool, OpenWhispr will copy text to your clipboard. You can then paste
-              manually with <kbd className="bg-amber-100 px-1 rounded text-xs">Ctrl+V</kbd>.
+              manually with <kbd className="bg-amber-100 dark:bg-amber-900/50 px-1 rounded text-xs">Ctrl+V</kbd>.
             </p>
           </div>
         </div>

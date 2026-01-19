@@ -87,10 +87,10 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+      <div className="flex items-center justify-between p-4 bg-muted rounded-lg">
         <div className="flex-1">
-          <p className="text-sm font-medium text-neutral-800">Prefer Built-in Microphone</p>
-          <p className="text-xs text-neutral-600 mt-1">
+          <p className="text-sm font-medium text-foreground">Prefer Built-in Microphone</p>
+          <p className="text-xs text-muted-foreground mt-1">
             External microphones may cause latency or reduced transcription quality
           </p>
         </div>
@@ -98,10 +98,10 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
       </div>
 
       {preferBuiltInMic && builtInDevice && (
-        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+        <div className="p-3 bg-green-50 dark:bg-green-950/50 border border-green-200 dark:border-green-800 rounded-lg">
           <div className="flex items-center gap-2">
-            <Mic className="w-4 h-4 text-green-600" />
-            <span className="text-sm text-green-800">
+            <Mic className="w-4 h-4 text-green-600 dark:text-green-400" />
+            <span className="text-sm text-green-800 dark:text-green-200">
               Using: <span className="font-medium">{builtInDevice.label}</span>
             </span>
           </div>
@@ -109,8 +109,8 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
       )}
 
       {preferBuiltInMic && !builtInDevice && devices.length > 0 && (
-        <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-          <p className="text-sm text-amber-800">
+        <div className="p-3 bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
             No built-in microphone detected. Using system default.
           </p>
         </div>
@@ -119,7 +119,7 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
       {!preferBuiltInMic && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <label className="text-sm font-medium text-neutral-700">Input Device</label>
+            <label className="text-sm font-medium text-foreground">Input Device</label>
             <Button
               variant="ghost"
               size="sm"
@@ -132,7 +132,7 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
           </div>
 
           {error ? (
-            <p className="text-sm text-red-600">{error}</p>
+            <p className="text-sm text-destructive">{error}</p>
           ) : (
             <Select
               value={selectedMicDeviceId || "default"}
@@ -151,7 +151,7 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
                   <SelectItem key={device.deviceId} value={device.deviceId}>
                     {device.label}
                     {device.isBuiltIn && (
-                      <span className="ml-2 text-xs text-neutral-500">(Built-in)</span>
+                      <span className="ml-2 text-xs text-muted-foreground">(Built-in)</span>
                     )}
                   </SelectItem>
                 ))}
@@ -159,7 +159,7 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
             </Select>
           )}
 
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs text-muted-foreground">
             Select a specific microphone or use the system default setting.
           </p>
         </div>

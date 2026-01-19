@@ -82,8 +82,10 @@ export default function TranscriptionModelPicker({
   const onLocalModelSelectRef = useRef(onLocalModelSelect);
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
-  const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
-  const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
+  // Cloud mode uses blue/indigo theme, Local mode uses purple theme
+  const cloudColorScheme: ColorScheme = "indigo";
+  const localColorScheme: ColorScheme = "purple";
+  const styles = useMemo(() => MODEL_PICKER_COLORS[useLocalWhisper ? localColorScheme : cloudColorScheme], [useLocalWhisper]);
   const cloudProviders = useMemo(() => getTranscriptionProviders(), []);
 
   useEffect(() => {
@@ -250,6 +252,7 @@ export default function TranscriptionModelPicker({
       label: m.name,
       description: m.description,
       icon: getProviderIcon(selectedCloudProvider),
+      provider: selectedCloudProvider,
     }));
   }, [currentCloudProvider, selectedCloudProvider]);
 
@@ -289,15 +292,15 @@ export default function TranscriptionModelPicker({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <ProviderIcon provider="whisper" className="w-4 h-4" />
-                  <span className="font-medium text-gray-900">{info.name}</span>
+                  <span className="font-medium text-foreground">{info.name}</span>
                   {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
                   {info.recommended && (
                     <span className={styles.badges.recommended}>Recommended</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-600">{info.description}</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">{info.description}</span>
+                  <span className="text-xs text-muted-foreground">
                     • {model.size_mb ? `${model.size_mb}MB` : info.size}
                   </span>
                   {isDownloaded && (
@@ -338,7 +341,7 @@ export default function TranscriptionModelPicker({
                     disabled={isCancelling}
                     size="sm"
                     variant="outline"
-                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    className="text-red-600 dark:text-red-400 border-red-300 dark:border-red-700 hover:bg-red-50 dark:hover:bg-red-950/50"
                   >
                     <X size={14} />
                     <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
@@ -366,12 +369,25 @@ export default function TranscriptionModelPicker({
     isSelected: boolean
   ) => {
     const isDisabled = provider.disabled;
-    const tabColorScheme = colorScheme === "purple" ? "purple" : "indigo";
+    const tabColorScheme = "purple"; // Local mode always uses purple
     const colors = {
-      purple: { text: "text-purple-700", border: "rgb(147 51 234)", bg: "rgb(250 245 255)" },
-      indigo: { text: "text-indigo-700", border: "rgb(99 102 241)", bg: "rgb(238 242 255)" },
+      purple: {
+        text: "text-purple-600 dark:text-purple-400",
+        border: "rgb(168 85 247)",
+        darkBorder: "rgb(168 85 247)",
+        bg: "rgba(147, 51, 234, 0.08)",
+        darkBg: "rgba(147, 51, 234, 0.15)"
+      },
+      indigo: {
+        text: "text-indigo-600 dark:text-indigo-400",
+        border: "rgb(99 102 241)",
+        darkBorder: "rgb(99 102 241)",
+        bg: "rgba(99, 102, 241, 0.08)",
+        darkBg: "rgba(99, 102, 241, 0.15)"
+      },
     };
     const tabColors = colors[tabColorScheme];
+    const isDark = document.documentElement.classList.contains("dark");
 
     return (
       <button
@@ -379,21 +395,24 @@ export default function TranscriptionModelPicker({
         onClick={() => !isDisabled && handleLocalProviderChange(provider.id)}
         className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${
           isDisabled
-            ? "text-gray-600 cursor-default"
+            ? "text-muted-foreground cursor-default"
             : isSelected
               ? `${tabColors.text} border-b-2`
-              : "text-gray-600 hover:bg-gray-100"
+              : "text-muted-foreground hover:bg-muted"
         }`}
         style={
           isSelected && !isDisabled
-            ? { borderBottomColor: tabColors.border, backgroundColor: tabColors.bg }
+            ? {
+                borderBottomColor: isDark ? tabColors.darkBorder : tabColors.border,
+                backgroundColor: isDark ? tabColors.darkBg : tabColors.bg
+              }
             : undefined
         }
       >
         <ProviderIcon provider={provider.id} className="w-5 h-5" />
         <span>{provider.name}</span>
         {provider.badge && (
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {provider.badge}
           </span>
         )}
@@ -408,18 +427,18 @@ export default function TranscriptionModelPicker({
           onClick={() => handleModeChange(false)}
           className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
             !useLocalWhisper
-              ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
+              ? "border-blue-500 bg-blue-50 dark:bg-blue-950/50 dark:border-blue-500/50"
+              : "border-border bg-card hover:border-muted-foreground/50"
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <Cloud className="w-6 h-6 text-blue-600" />
-              <h4 className="font-medium text-neutral-900">Cloud</h4>
+              <Cloud className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <h4 className="font-medium text-foreground">Cloud</h4>
             </div>
-            <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Fast</span>
+            <span className="text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 px-2 py-1 rounded-full">Fast</span>
           </div>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             Transcription via API. Fast and accurate, requires internet.
           </p>
         </button>
@@ -428,20 +447,20 @@ export default function TranscriptionModelPicker({
           onClick={() => handleModeChange(true)}
           className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
             useLocalWhisper
-              ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
+              ? "border-purple-500 bg-purple-50 dark:bg-purple-950/50 dark:border-purple-500/50"
+              : "border-border bg-card hover:border-muted-foreground/50"
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <Lock className="w-6 h-6 text-purple-600" />
-              <h4 className="font-medium text-neutral-900">Local</h4>
+              <Lock className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+              <h4 className="font-medium text-foreground">Local</h4>
             </div>
-            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+            <span className="text-xs text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/50 px-2 py-1 rounded-full">
               Private
             </span>
           </div>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             Runs on your device. Complete privacy, works offline.
           </p>
         </button>
@@ -454,24 +473,24 @@ export default function TranscriptionModelPicker({
               providers={CLOUD_PROVIDER_TABS}
               selectedId={selectedCloudProvider}
               onSelect={handleCloudProviderChange}
-              colorScheme={colorScheme === "purple" ? "purple" : "indigo"}
+              colorScheme="indigo"
               scrollable
             />
 
             <div className="p-4">
               <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
+                <h4 className="text-sm font-medium text-foreground">Select Model</h4>
                 <ModelCardList
                   models={cloudModelOptions}
                   selectedModel={selectedCloudModel}
                   onModelSelect={onCloudModelSelect}
-                  colorScheme={colorScheme === "purple" ? "purple" : "indigo"}
+                  colorScheme="indigo"
                 />
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-200">
+              <div className="mt-4 pt-4 border-t border-border">
                 <div className="space-y-3">
-                  <h4 className="font-medium text-gray-900">API Configuration</h4>
+                  <h4 className="font-medium text-foreground">API Configuration</h4>
                   <ApiKeyInput
                     apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
                     setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
@@ -510,7 +529,7 @@ export default function TranscriptionModelPicker({
         </div>
       ) : (
         <div className={styles.container}>
-          <div className="flex bg-gray-50 border-b border-gray-200">
+          <div className="flex bg-muted border-b border-border">
             {LOCAL_PROVIDER_TABS.map((provider) =>
               renderLocalProviderTab(provider, internalLocalProvider === provider.id)
             )}
@@ -523,7 +542,7 @@ export default function TranscriptionModelPicker({
 
             {internalLocalProvider === "whisper" && renderLocalModels()}
             {internalLocalProvider === "nvidia" && (
-              <p className="text-sm text-gray-500">Nvidia GPU acceleration coming soon.</p>
+              <p className="text-sm text-muted-foreground">Nvidia GPU acceleration coming soon.</p>
             )}
           </div>
         </div>

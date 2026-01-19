@@ -1,5 +1,6 @@
 import React from "react";
 import { Check, LucideIcon } from "lucide-react";
+import { cn } from "../lib/utils";
 
 interface Step {
   title: string;
@@ -12,9 +13,13 @@ interface StepProgressProps {
   className?: string;
 }
 
-export default function StepProgress({ steps, currentStep, className = "" }: StepProgressProps) {
+export default function StepProgress({
+  steps,
+  currentStep,
+  className,
+}: StepProgressProps) {
   return (
-    <div className={`flex items-center justify-between ${className}`}>
+    <div className={cn("flex items-center justify-between", className)}>
       {steps.map((step, index) => {
         const Icon = step.icon;
         const isActive = index === currentStep;
@@ -23,28 +28,43 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
         return (
           <div key={index} className="flex">
             <div
-              className={`flex items-center gap-2 ${
-                isActive ? "text-blue-600" : isCompleted ? "text-green-600" : "text-stone-400"
-              }`}
+              className={cn(
+                "flex items-center gap-2",
+                isActive
+                  ? "text-primary"
+                  : isCompleted
+                    ? "text-green-600 dark:text-green-400"
+                    : "text-muted-foreground"
+              )}
             >
               <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-200 ${
+                className={cn(
+                  "size-6 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-200",
                   isActive
-                    ? "border-blue-600 bg-blue-50 shadow-sm"
+                    ? "border-primary bg-primary/10 shadow-sm"
                     : isCompleted
-                      ? "border-green-600 bg-green-50 shadow-sm"
-                      : "border-stone-300 bg-white"
-                }`}
+                      ? "border-green-600 dark:border-green-400 bg-green-50 dark:bg-green-950/50 shadow-sm"
+                      : "border-muted bg-card"
+                )}
               >
-                {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                {isCompleted ? (
+                  <Check className="size-4" />
+                ) : (
+                  <Icon className="size-4" />
+                )}
               </div>
-              <span className="text-xs font-medium hidden md:block truncate">{step.title}</span>
+              <span className="text-xs font-medium hidden md:block truncate">
+                {step.title}
+              </span>
             </div>
             {index < steps.length - 1 && (
               <div
-                className={`flex-1 h-0.5 mx-3 rounded-full transition-colors duration-200 ${
-                  isCompleted ? "bg-green-600" : "bg-stone-300"
-                }`}
+                className={cn(
+                  "flex-1 h-0.5 mx-3 rounded-full transition-colors duration-200",
+                  isCompleted
+                    ? "bg-green-600 dark:bg-green-400"
+                    : "bg-muted"
+                )}
               />
             )}
           </div>

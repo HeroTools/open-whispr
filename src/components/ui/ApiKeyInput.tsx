@@ -2,6 +2,7 @@ import React from "react";
 import { Button } from "./button";
 import { Input } from "./input";
 import { useClipboard } from "../../hooks/useClipboard";
+import { cn } from "../lib/utils";
 
 interface ApiKeyInputProps {
   apiKey: string;
@@ -16,7 +17,7 @@ interface ApiKeyInputProps {
 export default function ApiKeyInput({
   apiKey,
   setApiKey,
-  className = "",
+  className,
   placeholder = "sk-...",
   label = "API Key",
   helpText = "Get your API key from platform.openai.com",
@@ -24,31 +25,37 @@ export default function ApiKeyInput({
 }: ApiKeyInputProps) {
   const { pasteFromClipboardWithFallback } = useClipboard();
 
-  const variantClasses = variant === "purple" ? "border-purple-300 focus:border-purple-500" : "";
-
-  const buttonVariantClasses =
-    variant === "purple" ? "border-purple-300 text-purple-700 hover:bg-purple-50" : "";
-
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-neutral-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-foreground mb-2">
+        {label}
+      </label>
       <div className="flex gap-3">
         <Input
           type="password"
           placeholder={placeholder}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          className={`flex-1 ${variantClasses}`}
+          className={cn(
+            "flex-1",
+            variant === "purple" &&
+              "border-chart-3/50 focus-visible:border-chart-3 dark:border-chart-3/50 dark:focus-visible:border-chart-3"
+          )}
         />
         <Button
           variant="outline"
           onClick={() => pasteFromClipboardWithFallback(setApiKey)}
-          className={buttonVariantClasses}
+          className={cn(
+            variant === "purple" &&
+              "border-chart-3/50 text-chart-3 hover:bg-chart-3/10 dark:border-chart-3/50 dark:text-chart-3 dark:hover:bg-chart-3/20"
+          )}
         >
           Paste
         </Button>
       </div>
-      {helpText && <p className="text-xs text-neutral-600 mt-2">{helpText}</p>}
+      {helpText && (
+        <p className="text-xs text-muted-foreground mt-2">{helpText}</p>
+      )}
     </div>
   );
 }

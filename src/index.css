@@ -1,280 +1,201 @@
 @import "tailwindcss";
 
+/* Enable class-based dark mode */
+@custom-variant dark (&:is(.dark *));
+
 :root {
-  /* OpenWhispr Modern Theme - Clean & Professional */
-  --color-primary: #4f46e5;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #171717;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #737373;
-  --color-accent: #f5f5f5;
-  --color-accent-foreground: #171717;
-  --color-destructive: #dc2626;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #e5e5e5;
-  --color-input: #ffffff;
-  --color-ring: #4f46e5;
-  --color-background: #ffffff;
-  --color-foreground: #171717;
-  --color-card: #ffffff;
-  --color-card-foreground: #171717;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #171717;
-  --color-link: #4f46e5;
+  /* OpenWhispr Modern Theme - Blue/Purple Accent */
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0.005 265);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0.005 265);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0.005 265);
+  --primary: oklch(0.55 0.22 265);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.965 0.002 265);
+  --secondary-foreground: oklch(0.215 0.006 265);
+  --muted: oklch(0.965 0.002 265);
+  --muted-foreground: oklch(0.55 0.015 265);
+  --accent: oklch(0.965 0.002 265);
+  --accent-foreground: oklch(0.215 0.006 265);
+  --destructive: oklch(0.577 0.245 27);
+  --border: oklch(0.915 0.004 265);
+  --input: oklch(0.915 0.004 265);
+  --ring: oklch(0.55 0.22 265);
+  --chart-1: oklch(0.65 0.20 265);
+  --chart-2: oklch(0.55 0.22 265);
+  --chart-3: oklch(0.50 0.20 285);
+  --chart-4: oklch(0.45 0.18 280);
+  --chart-5: oklch(0.40 0.15 275);
   --radius: 0.5rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0.005 265);
+  --sidebar-primary: oklch(0.55 0.22 265);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.965 0.002 265);
+  --sidebar-accent-foreground: oklch(0.215 0.006 265);
+  --sidebar-border: oklch(0.915 0.004 265);
+  --sidebar-ring: oklch(0.55 0.22 265);
 }
 
 .dark {
-  /* Dark mode - sophisticated and rich */
-  --color-background: oklch(0.08 0 0);
-  --color-foreground: oklch(0.95 0 0);
-  --color-card: oklch(0.12 0 0);
-  --color-card-foreground: oklch(0.95 0 0);
-  --color-popover: oklch(0.12 0 0);
-  --color-popover-foreground: oklch(0.95 0 0);
-  --color-primary: oklch(0.6 0.22 245);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.18 0 0);
-  --color-secondary-foreground: oklch(0.9 0 0);
-  --color-muted: oklch(0.15 0 0);
-  --color-muted-foreground: oklch(0.6 0 0);
-  --color-accent: oklch(0.6 0.22 245);
-  --color-accent-foreground: oklch(0.985 0 0);
-  --color-destructive: oklch(0.7 0.22 25);
-  --color-border: oklch(0.22 0 0);
-  --color-input: oklch(0.18 0 0);
-  --color-ring: oklch(0.6 0.22 245);
+  /* Dark mode - rich and sophisticated */
+  --background: oklch(0.12 0.008 265);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.17 0.008 265);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.17 0.008 265);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.65 0.20 265);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.25 0.008 265);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.25 0.008 265);
+  --muted-foreground: oklch(0.65 0.015 265);
+  --accent: oklch(0.25 0.008 265);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.70 0.20 25);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.65 0.20 265);
+  --chart-1: oklch(0.70 0.18 265);
+  --chart-2: oklch(0.65 0.20 265);
+  --chart-3: oklch(0.60 0.18 285);
+  --chart-4: oklch(0.55 0.16 280);
+  --chart-5: oklch(0.50 0.14 275);
+  --sidebar: oklch(0.17 0.008 265);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.65 0.20 265);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.25 0.008 265);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: oklch(0.65 0.20 265);
+}
+
+@theme inline {
+  --font-sans: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
 }
 
 @layer base {
   * {
-    @apply border-gray-200 outline-indigo-500/50;
+    @apply border-border outline-ring/50;
   }
 
   body {
-    @apply bg-white text-gray-900;
+    @apply font-sans bg-background text-foreground;
     margin: 0;
     padding: 0;
-    font-family:
-      "Noto Sans",
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      Roboto,
-      "Helvetica Neue",
-      Arial,
-      sans-serif;
-    font-feature-settings:
-      "liga" 1,
-      "kern" 1;
+    font-feature-settings: "liga" 1, "kern" 1;
     text-rendering: optimizeLegibility;
   }
 
-  /* Electron specific styles */
+  /* Electron specific - keep transparent for overlay windows */
   html,
   body,
   #root {
     background: transparent;
   }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-sans font-semibold tracking-tight;
+    line-height: 1.2;
+  }
+
+  h1 {
+    @apply text-2xl font-bold;
+  }
+
+  button {
+    @apply font-sans cursor-pointer;
+  }
+
+  input, textarea {
+    @apply rounded-md transition-all font-sans;
+  }
+
+  a {
+    @apply text-primary transition-colors cursor-pointer;
+  }
+
+  a:hover {
+    @apply text-primary/80 underline;
+  }
 }
 
-/* OpenWhispr Brand Typography */
-.brand-heading {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.02em;
+/* Custom Scrollbar Styles */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
 }
 
-.brand-body {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  line-height: 1.6;
+::-webkit-scrollbar-track {
+  background: oklch(0 0 0 / 5%);
+  border-radius: 4px;
 }
 
-.brand-script {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  font-style: italic;
+::-webkit-scrollbar-thumb {
+  background: oklch(0 0 0 / 20%);
+  border-radius: 4px;
+  transition: background 0.2s ease;
 }
 
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+::-webkit-scrollbar-thumb:hover {
+  background: oklch(0 0 0 / 35%);
 }
 
-h1 {
-  font-size: 2.5rem;
-  font-weight: 700;
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
-/* Modern Button Styling - handled by button component */
-button {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  cursor: pointer;
+/* Dark mode scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: oklch(1 0 0 / 5%);
 }
 
-/* Ensure all interactive elements have pointer cursor */
-button:hover,
-[role="button"]:hover,
-.cursor-pointer:hover,
-svg:hover,
-[data-icon]:hover,
-.icon:hover {
-  cursor: pointer;
+.dark ::-webkit-scrollbar-thumb {
+  background: oklch(1 0 0 / 20%);
 }
 
-/* Embossed paper-like input styling */
-input,
-textarea {
-  border-radius: 8px;
-  transition: all 0.2s ease;
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  box-shadow: inset 0 1px 3px rgba(43, 31, 20, 0.1);
-}
-
-/* Light mode inputs - embossed parchment */
-:root input,
-:root textarea {
-  background-color: #f9f6f1;
-  border: 1px solid #ddd4c7;
-  color: #2b1f14;
-}
-
-:root input:focus,
-:root textarea:focus {
-  border-color: #c0a77d;
-  box-shadow:
-    0 0 0 2px rgba(192, 167, 125, 0.2),
-    inset 0 1px 3px rgba(43, 31, 20, 0.1);
-  background-color: #ffffff;
-}
-
-/* Dark mode inputs */
-.dark input,
-.dark textarea {
-  background-color: oklch(0.15 0 0);
-  border: 1px solid oklch(0.25 0 0);
-  color: oklch(0.9 0 0);
-}
-
-.dark input:focus,
-.dark textarea:focus {
-  border-color: oklch(0.55 0.25 250);
-  box-shadow: 0 0 0 2px oklch(0.55 0.25 250 / 0.2);
-}
-
-/* Card styling - elevated parchment */
-.card {
-  background-color: #ffffff;
-  border: 1px solid #ddd4c7;
-  border-radius: 12px;
-  box-shadow:
-    0 4px 8px rgba(43, 31, 20, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
-  transition: all 0.2s ease;
-}
-
-.card:hover {
-  box-shadow:
-    0 8px 16px rgba(43, 31, 20, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
-  transform: translateY(-1px);
-}
-
-/* Link styling */
-a {
-  color: #2e3659;
-  text-decoration: none;
-  transition: color 0.2s ease;
-  cursor: pointer;
-}
-
-a:hover {
-  color: #4b2e2b;
-  text-decoration: underline;
-  cursor: pointer;
-}
-
-/* Status indicators */
-.status-active {
-  color: #4b2e2b;
-  font-weight: 600;
-}
-
-.text-brand-primary {
-  color: #2b1f14;
-}
-
-.text-brand-accent {
-  color: #4b2e2b;
-}
-
-.text-brand-highlight {
-  color: #c0a77d;
-}
-
-.text-brand-link {
-  color: #2e3659;
-}
-
-/* Additional CSS variables for theme support */
-:root {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: oklch(1 0 0 / 35%);
 }

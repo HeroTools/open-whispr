@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { Button } from "./button";
+import { cn } from "../lib/utils";
 
 interface MicPermissionWarningProps {
   error: string | null;
@@ -25,7 +26,12 @@ const getPlatform = (): Platform => {
 
 const PLATFORM_CONFIG: Record<
   Platform,
-  { message: string; soundLabel: string; privacyLabel: string; showPrivacyButton: boolean }
+  {
+    message: string;
+    soundLabel: string;
+    privacyLabel: string;
+    showPrivacyButton: boolean;
+  }
 > = {
   darwin: {
     message:
@@ -58,8 +64,10 @@ export default function MicPermissionWarning({
   const config = useMemo(() => PLATFORM_CONFIG[getPlatform()], []);
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-      <p className="text-sm text-amber-900">{error || config.message}</p>
+    <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/30 p-4 space-y-3">
+      <p className="text-sm text-amber-900 dark:text-amber-100">
+        {error || config.message}
+      </p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={onOpenSoundSettings}>
           {config.soundLabel}

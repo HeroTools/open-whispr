@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { ProviderIcon } from "./ProviderIcon";
+import { cn } from "../lib/utils";
 import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyles";
 
 export interface ProviderTabItem {
@@ -19,19 +20,15 @@ interface ProviderTabsProps {
   scrollable?: boolean;
 }
 
-const COLOR_CONFIG: Record<
-  Exclude<ColorScheme, "dynamic">,
-  { text: string; border: string; bg: string }
-> = {
+const colorSchemeStyles = {
   indigo: {
-    text: "text-indigo-700",
-    border: "rgb(99 102 241)",
-    bg: "rgb(238 242 255)",
+    selected: "text-primary border-b-2 border-primary bg-primary/10",
   },
   purple: {
-    text: "text-purple-700",
-    border: "rgb(147 51 234)",
-    bg: "rgb(250 245 255)",
+    selected: "text-purple-600 dark:text-purple-400 border-b-2 border-purple-500 bg-purple-50 dark:bg-purple-950/50",
+  },
+  dynamic: {
+    selected: "text-primary border-b-2 border-primary bg-primary/10",
   },
 };
 
@@ -41,34 +38,37 @@ export function ProviderTabs({
   onSelect,
   renderIcon,
   colorScheme = "indigo",
-  scrollable = false,
+  scrollable = true,
 }: ProviderTabsProps) {
-  const colors = colorScheme !== "dynamic" ? COLOR_CONFIG[colorScheme] : null;
+  const selectedStyles = colorSchemeStyles[colorScheme]?.selected ?? colorSchemeStyles.indigo.selected;
 
   return (
     <div
-      className={`flex bg-gray-50 border-b border-gray-200 ${scrollable ? "overflow-x-auto" : ""}`}
+      className={cn(
+        "flex bg-muted/50 border-b border-border",
+        scrollable && "overflow-x-auto"
+      )}
     >
       {providers.map((provider) => {
         const isSelected = selectedId === provider.id;
-
-        // Get styles based on color scheme
-        const selectedStyles = colors
-          ? { borderBottomColor: colors.border, backgroundColor: colors.bg }
-          : { borderBottomColor: "rgb(99 102 241)", backgroundColor: "rgb(238 242 255)" };
-
-        const textClass = isSelected ? colors?.text || "text-indigo-700" : "text-gray-600";
 
         return (
           <button
             key={provider.id}
             onClick={() => onSelect(provider.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all ${
-              scrollable ? "whitespace-nowrap" : ""
-            } ${textClass} ${isSelected ? "border-b-2" : "hover:bg-gray-100"}`}
-            style={isSelected ? selectedStyles : undefined}
+            className={cn(
+              "flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all",
+              scrollable && "whitespace-nowrap",
+              isSelected
+                ? selectedStyles
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
           >
-            {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
+            {renderIcon ? (
+              renderIcon(provider.id)
+            ) : (
+              <ProviderIcon provider={provider.id} />
+            )}
             <span>{provider.name}</span>
           </button>
         );

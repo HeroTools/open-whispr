@@ -24,18 +24,18 @@ export default function PermissionCard({
   openSettingsText = "Open Settings",
 }: PermissionCardProps) {
   return (
-    <div className="border rounded-lg p-4">
+    <div className="border border-border rounded-lg p-4 bg-card">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <Icon className="w-6 h-6 text-indigo-600" />
+          <Icon className="size-6 text-primary" />
           <div>
-            <h3 className="font-semibold text-gray-900">{title}</h3>
-            <p className="text-sm text-gray-600">{description}</p>
+            <h3 className="font-semibold text-foreground">{title}</h3>
+            <p className="text-sm text-muted-foreground">{description}</p>
           </div>
         </div>
         {granted ? (
-          <div className="text-green-600">
-            <Check className="w-5 h-5" />
+          <div className="text-green-600 dark:text-green-400">
+            <Check className="size-5" />
           </div>
         ) : (
           <div className="flex items-center gap-2">
@@ -44,7 +44,7 @@ export default function PermissionCard({
             </Button>
             {onOpenSettings && (
               <Button onClick={onOpenSettings} size="sm" variant="outline">
-                <Settings className="w-4 h-4 mr-1" />
+                <Settings className="size-4 mr-1" />
                 {openSettingsText}
               </Button>
             )}

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Search, X, Check } from "lucide-react";
 import { LANGUAGE_OPTIONS, getLanguageLabel } from "../../utils/languages";
+import { cn } from "../lib/utils";
 
 interface LanguageSelectorProps {
   value: string;
@@ -11,7 +12,7 @@ interface LanguageSelectorProps {
 export default function LanguageSelector({
   value,
   onChange,
-  className = "",
+  className,
 }: LanguageSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -34,9 +35,13 @@ export default function LanguageSelector({
       searchInputRef.current.focus();
     }
   }, [isOpen]);
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
         setIsOpen(false);
         setSearchQuery("");
       }
@@ -45,6 +50,7 @@ export default function LanguageSelector({
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (!isOpen) {
       if (e.key === "Enter" || e.key === " " || e.key === "ArrowDown") {
@@ -57,11 +63,15 @@ export default function LanguageSelector({
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev < filteredLanguages.length - 1 ? prev + 1 : 0));
+        setHighlightedIndex((prev) =>
+          prev < filteredLanguages.length - 1 ? prev + 1 : 0
+        );
         break;
       case "ArrowUp":
         e.preventDefault();
-        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : filteredLanguages.length - 1));
+        setHighlightedIndex((prev) =>
+          prev > 0 ? prev - 1 : filteredLanguages.length - 1
+        );
         break;
       case "Enter":
         e.preventDefault();
@@ -91,30 +101,32 @@ export default function LanguageSelector({
   };
 
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
+    <div className={cn("relative", className)} ref={dropdownRef}>
       <button
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md bg-white text-left hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-colors ${
-          isOpen ? "border-blue-500 ring-1 ring-blue-500" : ""
-        }`}
+        className={cn(
+          "w-full flex items-center justify-between px-3 py-2 border border-input rounded-md bg-input/20 dark:bg-input/30 text-foreground text-left hover:border-muted-foreground/50 focus:border-ring focus:ring-1 focus:ring-ring/30 focus:outline-none transition-colors",
+          isOpen && "border-ring ring-1 ring-ring/30"
+        )}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
         <span className="truncate">{getLanguageLabel(value)}</span>
         <ChevronDown
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={cn(
+            "size-4 text-muted-foreground transition-transform duration-200",
+            isOpen && "rotate-180"
+          )}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
-          <div className="p-2 border-b border-gray-200">
+        <div className="absolute z-50 w-full mt-1 bg-popover text-popover-foreground border border-border rounded-md shadow-lg max-h-60 overflow-hidden ring-1 ring-border">
+          <div className="p-2 border-b border-border">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 size-4 text-muted-foreground" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -122,21 +134,23 @@ export default function LanguageSelector({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search languages..."
-                className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                className="w-full pl-9 pr-8 py-2 text-sm border border-input rounded-md bg-input/20 dark:bg-input/30 text-foreground placeholder-muted-foreground focus:border-ring focus:ring-1 focus:ring-ring/30 focus:outline-none"
               />
               {searchQuery && (
                 <button
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="size-4" />
                 </button>
               )}
             </div>
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filteredLanguages.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500">No languages found</div>
+              <div className="px-3 py-2 text-sm text-muted-foreground">
+                No languages found
+              </div>
             ) : (
               <div role="listbox">
                 {filteredLanguages.map((language, index) => (
@@ -144,14 +158,18 @@ export default function LanguageSelector({
                     key={language.value}
                     type="button"
                     onClick={() => handleSelect(language.value)}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ${
-                      language.value === value ? "bg-blue-50 text-blue-700" : ""
-                    } ${index === highlightedIndex ? "bg-gray-100" : ""}`}
+                    className={cn(
+                      "w-full px-3 py-2 text-left text-sm text-foreground hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none flex items-center justify-between",
+                      language.value === value && "bg-primary/10 text-primary",
+                      index === highlightedIndex && "bg-accent text-accent-foreground"
+                    )}
                     role="option"
                     aria-selected={language.value === value}
                   >
                     {language.label}
-                    {language.value === value && <span className="ml-2 text-blue-500">✓</span>}
+                    {language.value === value && (
+                      <Check className="size-4 text-primary" />
+                    )}
                   </button>
                 ))}
               </div>

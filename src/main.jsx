@@ -4,6 +4,7 @@ import App from "./App.jsx";
 import ControlPanel from "./components/ControlPanel.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
+import { ThemeProvider } from "./hooks/useTheme.tsx";
 import "./index.css";
 
 function AppRouter() {
@@ -44,10 +45,10 @@ function AppRouter() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading OpenWhispr...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 dark:border-indigo-400 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading OpenWhispr...</p>
         </div>
       </div>
     );
@@ -62,8 +63,10 @@ function AppRouter() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <ToastProvider>
-      <AppRouter />
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AppRouter />
+      </ToastProvider>
+    </ThemeProvider>
   </React.StrictMode>
 );
