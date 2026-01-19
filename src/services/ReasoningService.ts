@@ -4,6 +4,8 @@ import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
+import { getLanguageName } from "../utils/languages";
+import type { LanguageContext } from "../types/language";
 
 export const DEFAULT_PROMPTS = {
   agent: `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`,
@@ -20,6 +22,54 @@ class ReasoningService extends BaseReasoningService {
     super();
     this.apiKeyCache = new SecureCache();
     this.cacheCleanupStop = this.apiKeyCache.startAutoCleanup();
+  }
+
+  /**
+   * Build a language-aware system prompt for the reasoning service.
+   * When multiple languages are configured, includes context about all candidates
+   * so the LLM can fix acoustic misidentification (e.g., Russian vs Ukrainian).
+   */
+  private buildSystemPrompt(languageContext: LanguageContext | null): string {
+    // No context or auto mode - generic prompt
+    if (
+      !languageContext ||
+      languageContext.reason === "auto" ||
+      !languageContext.candidates?.length
+    ) {
+      return "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Preserve the original language. Output ONLY the cleaned text without any explanations, options, or commentary.";
+    }
+
+    // Single language - simple and specific
+    if (languageContext.candidates.length === 1) {
+      const langName = getLanguageName(languageContext.candidates[0]);
+      return `You are a dictation assistant. The text is in ${langName}. Clean up grammar and punctuation while keeping it in ${langName}. Output ONLY the cleaned text without any explanations, options, or commentary.`;
+    }
+
+    // Multiple languages - include ALL candidates for semantic correction
+    const allLangNames = languageContext.candidates.map((code) => getLanguageName(code)).join(", ");
+
+    const detectedName = languageContext.detected
+      ? getLanguageName(languageContext.detected)
+      : "unknown";
+
+    const confidenceNote = languageContext.confidence
+      ? ` (${Math.round(languageContext.confidence * 100)}% confidence)`
+      : "";
+
+    // This prompt enables semantic correction for similar languages
+    return `You are a multilingual dictation assistant.
+
+CONTEXT:
+- Whisper detected language: ${detectedName}${confidenceNote}
+- User's known languages: ${allLangNames}
+
+INSTRUCTIONS:
+1. Whisper uses acoustic detection which can confuse similar languages (e.g., Russian/Ukrainian, Dutch/German).
+2. Analyze the text semantically. If it looks like a DIFFERENT language from the user's list (not ${detectedName}), correct it to that language.
+3. For example: If detected as "Russian" but contains Ukrainian words/grammar, format it as Ukrainian.
+4. Clean up grammar and punctuation in the correct language.
+5. NEVER translate to a different language - only identify and correct within the user's known languages.
+6. Output ONLY the cleaned text, no explanations.`;
   }
 
   private getConfiguredOpenAIBase(): string {
@@ -207,10 +257,10 @@ class ReasoningService extends BaseReasoningService {
     text: string,
     agentName: string | null,
     config: ReasoningConfig,
-    providerName: string
+    providerName: string,
+    languageContext: LanguageContext | null = null
   ): Promise<string> {
-    const systemPrompt =
-      "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
+    const systemPrompt = this.buildSystemPrompt(languageContext);
     const userPrompt = this.getReasoningPrompt(text, agentName, config);
 
     const messages = [
@@ -336,7 +386,8 @@ class ReasoningService extends BaseReasoningService {
     text: string,
     model: string = "",
     agentName: string | null = null,
-    config: ReasoningConfig = {}
+    config: ReasoningConfig = {},
+    languageContext: LanguageContext | null = null
   ): Promise<string> {
     const trimmedModel = model?.trim?.() || "";
     if (!trimmedModel) {
@@ -350,6 +401,8 @@ class ReasoningService extends BaseReasoningService {
       agentName,
       hasConfig: Object.keys(config).length > 0,
       textLength: text.length,
+      hasLanguageContext: !!languageContext,
+      languageCandidates: languageContext?.candidates,
       timestamp: new Date().toISOString(),
     });
 
@@ -364,19 +417,43 @@ class ReasoningService extends BaseReasoningService {
 
       switch (provider) {
         case "openai":
-          result = await this.processWithOpenAI(text, trimmedModel, agentName, config);
+          result = await this.processWithOpenAI(
+            text,
+            trimmedModel,
+            agentName,
+            config,
+            languageContext
+          );
           break;
         case "anthropic":
-          result = await this.processWithAnthropic(text, trimmedModel, agentName, config);
+          result = await this.processWithAnthropic(
+            text,
+            trimmedModel,
+            agentName,
+            config,
+            languageContext
+          );
           break;
         case "local":
-          result = await this.processWithLocal(text, trimmedModel, agentName, config);
+          result = await this.processWithLocal(
+            text,
+            trimmedModel,
+            agentName,
+            config,
+            languageContext
+          );
           break;
         case "gemini":
-          result = await this.processWithGemini(text, trimmedModel, agentName, config);
+          result = await this.processWithGemini(
+            text,
+            trimmedModel,
+            agentName,
+            config,
+            languageContext
+          );
           break;
         case "groq":
-          result = await this.processWithGroq(text, model, agentName, config);
+          result = await this.processWithGroq(text, model, agentName, config, languageContext);
           break;
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
@@ -409,12 +486,14 @@ class ReasoningService extends BaseReasoningService {
     text: string,
     model: string,
     agentName: string | null = null,
-    config: ReasoningConfig = {}
+    config: ReasoningConfig = {},
+    languageContext: LanguageContext | null = null
   ): Promise<string> {
     logger.logReasoning("OPENAI_START", {
       model,
       agentName,
       hasApiKey: false, // Will update after fetching
+      hasLanguageContext: !!languageContext,
     });
 
     if (this.isProcessing) {
@@ -431,8 +510,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt =
-        "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
+      const systemPrompt = this.buildSystemPrompt(languageContext);
       const userPrompt = this.getReasoningPrompt(text, agentName, config);
 
       // Build messages array (used by both APIs)
@@ -621,28 +699,34 @@ class ReasoningService extends BaseReasoningService {
     text: string,
     model: string,
     agentName: string | null = null,
-    config: ReasoningConfig = {}
+    config: ReasoningConfig = {},
+    languageContext: LanguageContext | null = null
   ): Promise<string> {
     logger.logReasoning("ANTHROPIC_START", {
       model,
       agentName,
       environment: typeof window !== "undefined" ? "browser" : "node",
+      hasLanguageContext: !!languageContext,
     });
 
     // Use IPC to communicate with main process for Anthropic API
     if (typeof window !== "undefined" && window.electronAPI) {
       const startTime = Date.now();
 
+      // Build language-aware system prompt
+      const systemPrompt = this.buildSystemPrompt(languageContext);
+
       logger.logReasoning("ANTHROPIC_IPC_CALL", {
         model,
         textLength: text.length,
+        hasLanguageContext: !!languageContext,
       });
 
       const result = await window.electronAPI.processAnthropicReasoning(
         text,
         model,
         agentName,
-        config
+        { ...config, systemPrompt }
       );
 
       const processingTime = Date.now() - startTime;
@@ -674,12 +758,14 @@ class ReasoningService extends BaseReasoningService {
     text: string,
     model: string,
     agentName: string | null = null,
-    config: ReasoningConfig = {}
+    config: ReasoningConfig = {},
+    languageContext: LanguageContext | null = null
   ): Promise<string> {
     logger.logReasoning("LOCAL_START", {
       model,
       agentName,
       environment: typeof window !== "undefined" ? "browser" : "node",
+      hasLanguageContext: !!languageContext,
     });
 
     // Instead of importing directly, we'll use IPC to communicate with main process
@@ -687,12 +773,19 @@ class ReasoningService extends BaseReasoningService {
     if (typeof window !== "undefined" && window.electronAPI) {
       const startTime = Date.now();
 
+      // Build language-aware system prompt
+      const systemPrompt = this.buildSystemPrompt(languageContext);
+
       logger.logReasoning("LOCAL_IPC_CALL", {
         model,
         textLength: text.length,
+        hasLanguageContext: !!languageContext,
       });
 
-      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, config);
+      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
+        ...config,
+        systemPrompt,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -723,12 +816,14 @@ class ReasoningService extends BaseReasoningService {
     text: string,
     model: string,
     agentName: string | null = null,
-    config: ReasoningConfig = {}
+    config: ReasoningConfig = {},
+    languageContext: LanguageContext | null = null
   ): Promise<string> {
     logger.logReasoning("GEMINI_START", {
       model,
       agentName,
       hasApiKey: false,
+      hasLanguageContext: !!languageContext,
     });
 
     if (this.isProcessing) {
@@ -745,8 +840,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt =
-        "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
+      const systemPrompt = this.buildSystemPrompt(languageContext);
       const userPrompt = this.getReasoningPrompt(text, agentName, config);
 
       const requestBody = {
@@ -897,9 +991,10 @@ class ReasoningService extends BaseReasoningService {
     text: string,
     model: string,
     agentName: string | null = null,
-    config: ReasoningConfig = {}
+    config: ReasoningConfig = {},
+    languageContext: LanguageContext | null = null
   ): Promise<string> {
-    logger.logReasoning("GROQ_START", { model, agentName });
+    logger.logReasoning("GROQ_START", { model, agentName, hasLanguageContext: !!languageContext });
 
     if (this.isProcessing) {
       throw new Error("Already processing a request");
@@ -917,7 +1012,8 @@ class ReasoningService extends BaseReasoningService {
         text,
         agentName,
         config,
-        "Groq"
+        "Groq",
+        languageContext
       );
     } catch (error) {
       logger.logReasoning("GROQ_ERROR", {
