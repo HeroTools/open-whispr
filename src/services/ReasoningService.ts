@@ -731,13 +731,15 @@ INSTRUCTIONS:
 
       const processingTime = Date.now() - startTime;
 
-      if (result.success) {
+      if (result.success && result.text) {
         logger.logReasoning("ANTHROPIC_SUCCESS", {
           model,
           processingTimeMs: processingTime,
           resultLength: result.text.length,
         });
         return result.text;
+      } else if (result.success && !result.text) {
+        throw new Error("Anthropic returned success but no text");
       } else {
         logger.logReasoning("ANTHROPIC_ERROR", {
           model,
@@ -789,13 +791,15 @@ INSTRUCTIONS:
 
       const processingTime = Date.now() - startTime;
 
-      if (result.success) {
+      if (result.success && result.text) {
         logger.logReasoning("LOCAL_SUCCESS", {
           model,
           processingTimeMs: processingTime,
           resultLength: result.text.length,
         });
         return result.text;
+      } else if (result.success && !result.text) {
+        throw new Error("Local model returned success but no text");
       } else {
         logger.logReasoning("LOCAL_ERROR", {
           model,

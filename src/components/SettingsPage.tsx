@@ -6,6 +6,7 @@ import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
+import MultiLanguageSelector from "./ui/MultiLanguageSelector";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
 import { useDialogs } from "../hooks/useDialogs";
@@ -80,6 +81,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setGeminiApiKey,
     setGroqApiKey,
     setDictationKey,
+    selectedLanguages,
+    defaultLanguage,
+    setSelectedLanguages,
+    setDefaultLanguage,
     updateTranscriptionSettings,
     updateReasoningSettings,
   } = useSettings();
@@ -647,6 +652,26 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setGroqApiKey={setGroqApiKey}
               variant="settings"
             />
+
+            <div className="border-t pt-6 mt-6">
+              <h4 className="text-md font-medium text-gray-900 mb-2">Transcription Languages</h4>
+              <p className="text-sm text-gray-600 mb-4">
+                Select the languages you speak. If you use multiple languages, Whisper will
+                auto-detect and fall back to your default when needed.
+              </p>
+              <MultiLanguageSelector
+                selectedLanguages={selectedLanguages}
+                defaultLanguage={defaultLanguage}
+                onSelectedLanguagesChange={(languages) => {
+                  setSelectedLanguages(languages);
+                  updateTranscriptionSettings({ selectedLanguages: languages });
+                }}
+                onDefaultLanguageChange={(language) => {
+                  setDefaultLanguage(language);
+                  updateTranscriptionSettings({ defaultLanguage: language });
+                }}
+              />
+            </div>
           </div>
         );
 
