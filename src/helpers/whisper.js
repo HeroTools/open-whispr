@@ -788,9 +788,7 @@ class WhisperManager {
 
     // Handle whisper.cpp JSON format (CLI mode)
     if (result.transcription && Array.isArray(result.transcription)) {
-      const text = this.normalizeWhitespace(
-        result.transcription.map((seg) => seg.text).join("")
-      );
+      const text = this.normalizeWhitespace(result.transcription.map((seg) => seg.text).join(""));
       if (!text || this.isBlankAudioMarker(text)) {
         return { success: false, message: "No audio detected" };
       }
@@ -799,8 +797,7 @@ class WhisperManager {
 
     // Handle whisper-server format (has "text" field directly)
     if (result.text !== undefined) {
-      const text =
-        typeof result.text === "string" ? this.normalizeWhitespace(result.text) : "";
+      const text = typeof result.text === "string" ? this.normalizeWhitespace(result.text) : "";
       if (!text || this.isBlankAudioMarker(text)) {
         return { success: false, message: "No audio detected" };
       }

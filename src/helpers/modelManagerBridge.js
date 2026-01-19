@@ -144,17 +144,22 @@ class ModelManager {
       await this.ensureModelsDirExists();
       const downloadUrl = this.getDownloadUrl(provider, model);
 
-      await this.downloadFile(downloadUrl, tempPath, (progress, downloadedSize, totalSize) => {
-        this.downloadProgress.set(modelId, {
-          modelId,
-          progress,
-          downloadedSize,
-          totalSize,
-        });
-        if (onProgress) {
-          onProgress(progress, downloadedSize, totalSize);
-        }
-      }, modelId);
+      await this.downloadFile(
+        downloadUrl,
+        tempPath,
+        (progress, downloadedSize, totalSize) => {
+          this.downloadProgress.set(modelId, {
+            modelId,
+            progress,
+            downloadedSize,
+            totalSize,
+          });
+          if (onProgress) {
+            onProgress(progress, downloadedSize, totalSize);
+          }
+        },
+        modelId
+      );
 
       const stats = await fsPromises.stat(tempPath);
       if (stats.size < MIN_FILE_SIZE) {
@@ -262,7 +267,11 @@ class ModelManager {
 
               // Throttle progress updates to prevent UI flashing
               const now = Date.now();
-              if (onProgress && totalSize > 0 && (now - lastProgressUpdate >= PROGRESS_THROTTLE_MS || downloadedSize >= totalSize)) {
+              if (
+                onProgress &&
+                totalSize > 0 &&
+                (now - lastProgressUpdate >= PROGRESS_THROTTLE_MS || downloadedSize >= totalSize)
+              ) {
                 lastProgressUpdate = now;
                 const progress = (downloadedSize / totalSize) * 100;
                 onProgress(progress, downloadedSize, totalSize);
@@ -277,7 +286,11 @@ class ModelManager {
 
               if (error) {
                 // Check if this was a cancellation
-                if (error.code === "ERR_STREAM_PREMATURE_CLOSE" && modelId && !this.activeDownloads.has(modelId)) {
+                if (
+                  error.code === "ERR_STREAM_PREMATURE_CLOSE" &&
+                  modelId &&
+                  !this.activeDownloads.has(modelId)
+                ) {
                   cleanup(() => {
                     reject(
                       new ModelError("Download cancelled by user", "DOWNLOAD_CANCELLED", {
