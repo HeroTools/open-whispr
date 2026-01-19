@@ -189,6 +189,7 @@ declare global {
       modelDelete: (modelId: string) => Promise<void>;
       modelDeleteAll: () => Promise<{ success: boolean; error?: string; code?: string }>;
       modelCheckRuntime: () => Promise<boolean>;
+      modelCancelDownload: (modelId: string) => Promise<{ success: boolean; error?: string }>;
       onModelDownloadProgress: (callback: (event: any, data: any) => void) => (() => void) | void;
 
       // Local reasoning

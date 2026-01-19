@@ -407,6 +407,19 @@ class IPCHandlers {
       }
     });
 
+    ipcMain.handle("model-cancel-download", async (event, modelId) => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        const cancelled = modelManager.cancelDownload(modelId);
+        return { success: cancelled };
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message,
+        };
+      }
+    });
+
     ipcMain.handle("model-check-runtime", async (event) => {
       try {
         const modelManager = require("./modelManagerBridge").default;
