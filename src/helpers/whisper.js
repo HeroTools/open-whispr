@@ -758,6 +758,12 @@ class WhisperManager {
     }
   }
 
+  // Normalize whitespace: replace newlines with spaces and collapse multiple spaces
+  // whisper.cpp returns text with \n between audio segments which causes formatting issues
+  normalizeWhitespace(text) {
+    return text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+  }
+
   parseWhisperResult(output) {
     // Handle both string (from CLI) and object (from server) inputs
     let result;
@@ -767,7 +773,7 @@ class WhisperManager {
         result = JSON.parse(output);
       } catch (parseError) {
         // Try parsing as plain text (non-JSON output)
-        const text = output.trim();
+        const text = this.normalizeWhitespace(output);
         if (text && !this.isBlankAudioMarker(text)) {
           return { success: true, text };
         }
@@ -782,10 +788,9 @@ class WhisperManager {
 
     // Handle whisper.cpp JSON format (CLI mode)
     if (result.transcription && Array.isArray(result.transcription)) {
-      const text = result.transcription
-        .map((seg) => seg.text)
-        .join("")
-        .trim();
+      const text = this.normalizeWhitespace(
+        result.transcription.map((seg) => seg.text).join("")
+      );
       if (!text || this.isBlankAudioMarker(text)) {
         return { success: false, message: "No audio detected" };
       }
@@ -794,7 +799,8 @@ class WhisperManager {
 
     // Handle whisper-server format (has "text" field directly)
     if (result.text !== undefined) {
-      const text = typeof result.text === "string" ? result.text.trim() : "";
+      const text =
+        typeof result.text === "string" ? this.normalizeWhitespace(result.text) : "";
       if (!text || this.isBlankAudioMarker(text)) {
         return { success: false, message: "No audio detected" };
       }
