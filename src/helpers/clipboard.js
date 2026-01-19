@@ -11,8 +11,8 @@ const CACHE_TTL_MS = 30000;
 // Each platform has different timing requirements based on their paste mechanism
 const PASTE_DELAYS = {
   darwin: 50, // macOS: AppleScript keystroke is async, needs time for clipboard to settle
-  win32_nircmd: 2, // Windows nircmd: lightweight binary, near-instant (was 5ms)
-  win32_pwsh: 10, // Windows PowerShell: startup time dominates, delay doesn't help much
+  win32_nircmd: 30, // Windows nircmd: give clipboard time to sync 
+  win32_pwsh: 40, // Windows PowerShell: give clipboard time to sync 
   linux: 0, // Linux: xdotool sends X11 events directly, no delay needed
 };
 
@@ -20,8 +20,8 @@ const PASTE_DELAYS = {
 // Ensures paste is fully processed before restoring original clipboard content
 const RESTORE_DELAYS = {
   darwin: 100, // macOS: AppleScript needs time to complete keystroke
-  win32_nircmd: 5, // Windows nircmd: fast, minimal delay needed (was 10ms)
-  win32_pwsh: 10, // Windows PowerShell: keep as-is
+  win32_nircmd: 80, // Windows nircmd: allow time for paste processing 
+  win32_pwsh: 80, // Windows PowerShell: allow time for paste processing 
   linux: 200, // Linux: X11 event queue processing takes longer
 };
 
