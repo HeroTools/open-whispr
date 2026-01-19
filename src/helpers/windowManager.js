@@ -15,6 +15,8 @@ class WindowManager {
     this.isQuitting = false;
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
+    this.skipDictationPanelTaskbar = false; // Track minimize-to-tray setting
+    this.isDictationPanelHiddenByUser = false; // Track if user explicitly hid panel via tray menu
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -93,6 +95,34 @@ class WindowManager {
     this.isMainWindowInteractive = shouldCapture;
   }
 
+  setDictationPanelSkipTaskbar(skip) {
+    this.skipDictationPanelTaskbar = Boolean(skip);
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return;
+    }
+    // Only apply on Windows - this setting controls whether dictation panel
+    // shows in taskbar (false) or only in system tray (true)
+    if (process.platform === "win32") {
+      this.mainWindow.setSkipTaskbar(this.skipDictationPanelTaskbar);
+    }
+  }
+
+  // Helper to show mainWindow while preserving taskbar visibility setting
+  showMainWindowPreservingTaskbar(useShowInactive = true) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return;
+    }
+    if (useShowInactive && typeof this.mainWindow.showInactive === "function") {
+      this.mainWindow.showInactive();
+    } else {
+      this.mainWindow.show();
+    }
+    // Re-apply skipTaskbar setting on Windows to prevent flash in taskbar
+    if (process.platform === "win32" && this.skipDictationPanelTaskbar) {
+      this.mainWindow.setSkipTaskbar(true);
+    }
+  }
+
   async loadMainWindow() {
     const appUrl = DevServerManager.getAppUrl(false);
     if (process.env.NODE_ENV === "development") {
@@ -119,8 +149,8 @@ class WindowManager {
       }
       lastToggleTime = now;
 
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
+      if (!this.mainWindow.isVisible() && !this.isDictationPanelHiddenByUser) {
+        this.showMainWindowPreservingTaskbar(false);
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
@@ -131,8 +161,8 @@ class WindowManager {
       return;
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
+      if (!this.mainWindow.isVisible() && !this.isDictationPanelHiddenByUser) {
+        this.showMainWindowPreservingTaskbar(false);
       }
       this.mainWindow.webContents.send("start-dictation");
     }
@@ -284,13 +314,11 @@ class WindowManager {
 
   showDictationPanel(options = {}) {
     const { focus = false } = options;
+    // Clear the hidden-by-user flag since user is explicitly showing
+    this.isDictationPanelHiddenByUser = false;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (!this.mainWindow.isVisible()) {
-        if (typeof this.mainWindow.showInactive === "function") {
-          this.mainWindow.showInactive();
-        } else {
-          this.mainWindow.show();
-        }
+        this.showMainWindowPreservingTaskbar(true);
       }
       if (focus) {
         this.mainWindow.focus();
@@ -311,6 +339,8 @@ class WindowManager {
   }
 
   hideDictationPanel() {
+    // Set flag so dictation doesn't auto-show the panel again
+    this.isDictationPanelHiddenByUser = true;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (process.platform === "darwin") {
         this.mainWindow.hide();
@@ -340,11 +370,7 @@ class WindowManager {
     this.mainWindow.once("ready-to-show", () => {
       this.enforceMainWindowOnTop();
       if (!this.mainWindow.isVisible()) {
-        if (typeof this.mainWindow.showInactive === "function") {
-          this.mainWindow.showInactive();
-        } else {
-          this.mainWindow.show();
-        }
+        this.showMainWindowPreservingTaskbar(true);
       }
     });
 

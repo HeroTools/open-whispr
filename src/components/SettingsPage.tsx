@@ -5,6 +5,7 @@ import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-re
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
+import { Toggle } from "./ui/toggle";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
@@ -65,6 +66,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     selectedMicDeviceId,
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
+    minimizeToTray,
+    setMinimizeToTray,
     setUseLocalWhisper,
     setWhisperModel,
     setAllowOpenAIFallback,
@@ -148,6 +151,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       clearTimeout(timer);
     };
   }, [whisperHook, getAppVersion]);
+
+  // Sync minimizeToTray setting to main process on mount (Windows only)
+  useEffect(() => {
+    if (typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)) {
+      window.electronAPI?.setMinimizeToTray?.(minimizeToTray);
+    }
+  }, []); // Only run on mount
 
   // Show alert dialog on update errors
   useEffect(() => {
@@ -506,6 +516,35 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 onDeviceSelect={setSelectedMicDeviceId}
               />
             </div>
+
+            {/* Windows-only: Dictation Panel Behavior */}
+            {typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent) && (
+              <div className="border-t pt-8">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Dictation Panel Behavior
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Control how the dictation panel appears in your taskbar.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-neutral-800">Hide from Taskbar</p>
+                    <p className="text-xs text-neutral-600 mt-1">
+                      Only show dictation panel in system tray
+                    </p>
+                  </div>
+                  <Toggle
+                    checked={minimizeToTray}
+                    onChange={(enabled) => {
+                      setMinimizeToTray(enabled);
+                      window.electronAPI?.setMinimizeToTray?.(enabled);
+                    }}
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="border-t pt-8">
               <div>
