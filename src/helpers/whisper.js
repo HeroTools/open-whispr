@@ -769,7 +769,12 @@ class WhisperManager {
         // Try parsing as plain text (non-JSON output)
         const text = output.trim();
         if (text) {
-          return { success: true, text };
+          return {
+            success: true,
+            text,
+            detectedLanguage: null,
+            detectedConfidence: null,
+          };
         }
         throw new Error(`Failed to parse Whisper output: ${parseError.message}`);
       }
@@ -780,6 +785,28 @@ class WhisperManager {
       throw new Error(`Unexpected Whisper output type: ${typeof output}`);
     }
 
+    // Extract detected language from multiple possible locations
+    // Different whisper.cpp versions have different JSON structures
+    const detectedLanguage =
+      result.language ||                          // Standard location
+      result.result?.language ||                  // Some versions wrap in result
+      result.segments?.[0]?.language ||           // Segment-level detection
+      null;
+
+    // Extract confidence from language_probs if available
+    let detectedConfidence = null;
+    if (result.language_probs && detectedLanguage) {
+      detectedConfidence = result.language_probs[detectedLanguage] || null;
+    } else if (result.result?.language_probs && detectedLanguage) {
+      detectedConfidence = result.result.language_probs[detectedLanguage] || null;
+    }
+
+    debugLogger.logWhisperPipeline("Language detection", {
+      detectedLanguage,
+      detectedConfidence,
+      hasLanguageProbs: !!(result.language_probs || result.result?.language_probs),
+    });
+
     // Handle whisper.cpp JSON format (CLI mode)
     if (result.transcription && Array.isArray(result.transcription)) {
       const text = result.transcription
@@ -787,21 +814,46 @@ class WhisperManager {
         .join("")
         .trim();
       if (!text) {
-        return { success: false, message: "No audio detected" };
+        return {
+          success: false,
+          message: "No audio detected",
+          detectedLanguage,
+          detectedConfidence,
+        };
       }
-      return { success: true, text };
+      return {
+        success: true,
+        text,
+        detectedLanguage,
+        detectedConfidence,
+      };
     }
 
     // Handle whisper-server format (has "text" field directly)
     if (result.text !== undefined) {
       const text = typeof result.text === "string" ? result.text.trim() : "";
       if (!text) {
-        return { success: false, message: "No audio detected" };
+        return {
+          success: false,
+          message: "No audio detected",
+          detectedLanguage,
+          detectedConfidence,
+        };
       }
-      return { success: true, text };
+      return {
+        success: true,
+        text,
+        detectedLanguage,
+        detectedConfidence,
+      };
     }
 
-    return { success: false, message: "No audio detected" };
+    return {
+      success: false,
+      message: "No audio detected",
+      detectedLanguage: null,
+      detectedConfidence: null,
+    };
   }
 
   async cleanupTempFile(tempAudioPath) {
