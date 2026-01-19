@@ -1,0 +1,57 @@
+task_id: OWS-01
+title: "Multi-Language Support"
+branch: feature/ows-01-multi-language-support
+created: 2026-01-19T00:00:00Z
+task_type: development
+
+workflow:
+  current_phase: implement
+  status: in_progress
+
+phases:
+  design:
+    status: complete
+    design_doc: docs/design-docs/ows-01-multi-language-support.md
+    draft_ready: true
+    finalized: true
+    review_file: null
+    review_verdict: approved
+    review_completed: true
+
+  plan:
+    status: complete
+    plan_file: docs/plans/ows-01-multi-language-support-implementation.md
+    approved: true
+
+  implement:
+    status: pending
+    current_step: 0
+    total_steps: 6
+    commits: []
+    last_phase_completed: null
+
+  pr:
+    status: pending
+    pr_url: null
+    pr_number: null
+    reviews_addressed: 0
+    approved: false
+
+  complete:
+    status: pending
+    aggregation_files_updated: false
+    merged_at: null
+
+history:
+  - timestamp: 2026-01-19T00:00:00Z
+    action: workflow_started
+    phase: design
+    details: "Workflow initialized with existing design doc and plan"
+  - timestamp: 2026-01-19T00:00:00Z
+    action: design_finalized
+    phase: design
+    details: "Design doc already exists: ows-01-multi-language-support.md (v4)"
+  - timestamp: 2026-01-19T00:00:00Z
+    action: plan_approved
+    phase: plan
+    details: "Implementation plan already exists: ows-01-multi-language-support-implementation.md"
