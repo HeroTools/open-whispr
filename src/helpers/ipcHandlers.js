@@ -90,6 +90,11 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("set-minimize-to-tray", (event, enabled) => {
+      this.windowManager.setDictationPanelSkipTaskbar(Boolean(enabled));
+      return { success: true };
+    });
+
     // Environment handlers
     ipcMain.handle("get-openai-key", async (event) => {
       return this.environmentManager.getOpenAIKey();

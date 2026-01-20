@@ -5,6 +5,7 @@ import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-re
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
+import { Toggle } from "./ui/toggle";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings, type PanelVisibilityMode } from "../hooks/useSettings";
@@ -84,6 +85,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     updateReasoningSettings,
     panelVisibilityMode,
     setPanelVisibilityMode,
+    minimizeToTray,
+    setMinimizeToTray,
   } = useSettings();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -543,6 +546,25 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       "Panel is never shown. Use the hotkey to record in the background."}
                   </p>
                 </div>
+
+                {/* Windows-only: Hide from Taskbar option */}
+                {typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent) && (
+                  <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-neutral-800">Hide from Taskbar</p>
+                      <p className="text-xs text-neutral-600 mt-1">
+                        Only show dictation panel in system tray
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={minimizeToTray}
+                      onChange={(enabled) => {
+                        setMinimizeToTray(enabled);
+                        window.electronAPI?.setMinimizeToTray?.(enabled);
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
 
