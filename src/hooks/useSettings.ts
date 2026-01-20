@@ -125,59 +125,26 @@ export function useSettings() {
     deserialize: String,
   });
 
-  // API keys - localStorage for UI reactivity
-  const [openaiApiKey, setOpenaiApiKeyLocal] = useLocalStorage("openaiApiKey", "", {
+  // API keys
+  const [openaiApiKey, setOpenaiApiKey] = useLocalStorage("openaiApiKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [anthropicApiKey, setAnthropicApiKeyLocal] = useLocalStorage("anthropicApiKey", "", {
+  const [anthropicApiKey, setAnthropicApiKey] = useLocalStorage("anthropicApiKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [geminiApiKey, setGeminiApiKeyLocal] = useLocalStorage("geminiApiKey", "", {
+  const [geminiApiKey, setGeminiApiKey] = useLocalStorage("geminiApiKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [groqApiKey, setGroqApiKeyLocal] = useLocalStorage("groqApiKey", "", {
+  const [groqApiKey, setGroqApiKey] = useLocalStorage("groqApiKey", "", {
     serialize: String,
     deserialize: String,
   });
-
-  // API key setters that sync to Electron IPC for persistence to .env file
-  const setOpenaiApiKey = useCallback(
-    (key: string) => {
-      setOpenaiApiKeyLocal(key);
-      window.electronAPI?.saveOpenAIKey?.(key);
-    },
-    [setOpenaiApiKeyLocal]
-  );
-
-  const setAnthropicApiKey = useCallback(
-    (key: string) => {
-      setAnthropicApiKeyLocal(key);
-      window.electronAPI?.saveAnthropicKey?.(key);
-    },
-    [setAnthropicApiKeyLocal]
-  );
-
-  const setGeminiApiKey = useCallback(
-    (key: string) => {
-      setGeminiApiKeyLocal(key);
-      window.electronAPI?.saveGeminiKey?.(key);
-    },
-    [setGeminiApiKeyLocal]
-  );
-
-  const setGroqApiKey = useCallback(
-    (key: string) => {
-      setGroqApiKeyLocal(key);
-      window.electronAPI?.saveGroqKey?.(key);
-    },
-    [setGroqApiKeyLocal]
-  );
 
   // Hotkey
   const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {
