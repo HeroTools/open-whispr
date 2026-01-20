@@ -18,6 +18,7 @@ import { AlertDialog } from "./dialog";
 import { useDialogs } from "../../hooks/useDialogs";
 import { useAgentName } from "../../utils/agentName";
 import ReasoningService, { DEFAULT_PROMPTS } from "../../services/ReasoningService";
+import { getModelProvider } from "../../models/ModelRegistry";
 
 interface PromptStudioProps {
   className?: string;
@@ -33,6 +34,7 @@ const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
   openai: { label: "OpenAI", apiKeyStorageKey: "openaiApiKey" },
   anthropic: { label: "Anthropic", apiKeyStorageKey: "anthropicApiKey" },
   gemini: { label: "Gemini", apiKeyStorageKey: "geminiApiKey" },
+  groq: { label: "Groq", apiKeyStorageKey: "groqApiKey" },
   custom: {
     label: "Custom endpoint",
     apiKeyStorageKey: "openaiApiKey",
@@ -102,7 +104,9 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       // Check if reasoning model is enabled and if we have the necessary settings
       const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
       const reasoningModel = localStorage.getItem("reasoningModel") || "";
-      const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
+
+      // Dynamically determine provider from the model instead of relying on stored provider
+      const reasoningProvider = getModelProvider(reasoningModel);
 
       if (!useReasoningModel) {
         setTestResult(
@@ -324,7 +328,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const renderTestPlayground = () => {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
     const reasoningModel = localStorage.getItem("reasoningModel") || "";
-    const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
+
+    // Use the helper to get the correct provider
+    const reasoningProvider = getModelProvider(reasoningModel);
+
     const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
       label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
     };
@@ -391,11 +398,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                 </p>
                 {testText && (
                   <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      testText.toLowerCase().includes(agentName.toLowerCase())
+                    className={`text-xs px-2 py-1 rounded-full ${testText.toLowerCase().includes(agentName.toLowerCase())
                         ? "bg-purple-100 text-purple-700"
                         : "bg-green-100 text-green-700"
-                    }`}
+                      }`}
                   >
                     {testText.toLowerCase().includes(agentName.toLowerCase())
                       ? "🤖 Agent Mode"
@@ -423,11 +429,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                   </Button>
                 </div>
                 <div
-                  className={`border rounded-lg p-4 text-sm max-h-60 overflow-y-auto ${
-                    testResult.startsWith("⚠️") || testResult.startsWith("❌")
+                  className={`border rounded-lg p-4 text-sm max-h-60 overflow-y-auto ${testResult.startsWith("⚠️") || testResult.startsWith("❌")
                       ? "bg-amber-50 border-amber-200 text-amber-800"
                       : "bg-gray-50 border-gray-200"
-                  }`}
+                    }`}
                 >
                   <pre className="whitespace-pre-wrap">{testResult}</pre>
                 </div>
@@ -446,7 +451,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         onOpenChange={(open) => !open && hideAlertDialog()}
         title={alertDialog.title}
         description={alertDialog.description}
-        onOk={() => {}}
+        onOk={() => { }}
       />
 
       {/* Tab Navigation */}
@@ -461,11 +466,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
-                activeTab === tab.id
+              className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${activeTab === tab.id
                   ? "border-indigo-600 text-indigo-600"
                   : "border-transparent text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
             >
               <Icon className="w-4 h-4" />
               {tab.label}

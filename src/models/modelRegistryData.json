@@ -19,7 +19,12 @@
       "size": "244MB",
       "sizeMb": 244
     },
-    "medium": { "name": "Medium", "description": "High quality", "size": "769MB", "sizeMb": 769 },
+    "medium": {
+      "name": "Medium",
+      "description": "High quality",
+      "size": "769MB",
+      "sizeMb": 769
+    },
     "large": {
       "name": "Large",
       "description": "Best quality, slowest",
@@ -65,6 +70,18 @@
           "id": "whisper-large-v3-turbo",
           "name": "Whisper Large v3 Turbo",
           "description": "216x real-time speed"
+        }
+      ]
+    },
+    {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta",
+      "models": [
+        {
+          "id": "gemini-3-flash-preview",
+          "name": "Gemini 3 Flash Preview",
+          "description": "Native audio processing"
         }
       ]
     }
