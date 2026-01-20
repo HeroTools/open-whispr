@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.12] - 2026-01-20
+
+### Added
+- **LLM Download Cancellation**: Added ability to cancel in-progress local LLM model downloads with throttled progress updates to prevent UI flashing
+
+### Changed
+- **Gemini Model Updates**: Updated Gemini models to latest versions
+- **Linux Wayland Improvements**: Improved Wayland paste detection with GNOME-specific handling and XWayland fallback support
+- **whisper.cpp CUDA Support**: Updated whisper.cpp download script to include CUDA-enabled binaries
+
+### Fixed
+- **Windows Paste Delay**: Adjusted paste delay timing on Windows for more reliable text insertion
+- **Blank Audio Prevention**: Fixed issue where blank/silent audio recordings would paste empty text
+- **Newline Handling**: Fixed newline formatting issues in transcribed text
+
+## [1.2.11] - 2026-01-18
+
+### Fixed
+- **ASAR Path Resolution**: Fixed path resolution issues for bundled resources in packaged builds
+- **Update Checker**: Fixed auto-update checker initialization
+- **Build Includes**: Ensured services and models are properly included in production builds
+- **OS Module Import**: Fixed OS module import ordering
+
+## [1.2.10] - 2026-01-17
+
+### Fixed
+- **Streaming Backpressure**: Fixed proper streaming backpressure handling in audio processing
+- **Quit and Install**: Fixed update installation on app quit
+
+## [1.2.9] - 2026-01-17
+
+### Fixed
+- **Path Resolution**: Improved path resolution for better cross-platform compatibility
+
 ## [1.2.8] - 2026-01-16
 
 ### Added
