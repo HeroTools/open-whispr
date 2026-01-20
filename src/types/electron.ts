@@ -98,6 +98,7 @@ export interface PasteToolsResult {
   method: string | null;
   requiresPermission: boolean;
   isWayland?: boolean;
+  xwaylandAvailable?: boolean;
   tools?: string[];
   recommendedInstall?: string;
 }

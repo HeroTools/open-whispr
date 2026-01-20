@@ -256,24 +256,42 @@ export const usePermissions = (
       if (result?.available) {
         setAccessibilityPermissionGranted(true);
         if (showAlertDialog) {
+          const method = result.method || "xdotool";
+          const methodLabel =
+            result.isWayland && method === "xdotool" ? `${method} (XWayland apps)` : method;
           showAlertDialog({
             title: "Ready to Go!",
-            description: `Automatic pasting is available using ${result.method}. You're all set!`,
+            description: `Automatic pasting is available using ${methodLabel}. You're all set!`,
           });
         }
       } else {
         // Don't block, but inform the user
         const isWayland = result?.isWayland;
-        const recommendedTool = isWayland ? "wtype" : "xdotool";
-        const installCmd = isWayland
-          ? "sudo dnf install wtype  # Fedora\nsudo apt install wtype  # Debian/Ubuntu"
-          : "sudo apt install xdotool  # Debian/Ubuntu/Mint\nsudo dnf install xdotool  # Fedora";
+        const xwaylandAvailable = result?.xwaylandAvailable;
+        const recommendedTool = result?.recommendedInstall;
+        const installCmd =
+          recommendedTool === "wtype"
+            ? "sudo dnf install wtype  # Fedora\nsudo apt install wtype  # Debian/Ubuntu"
+            : "sudo apt install xdotool  # Debian/Ubuntu/Mint\nsudo dnf install xdotool  # Fedora";
 
         if (showAlertDialog) {
-          showAlertDialog({
-            title: "Optional: Install Paste Tool",
-            description: `For automatic pasting, install ${recommendedTool}:\n\n${installCmd}\n\nWithout this, you can still use OpenWhispr - text will be copied to your clipboard and you can paste with Ctrl+V.`,
-          });
+          if (isWayland && !xwaylandAvailable && !recommendedTool) {
+            showAlertDialog({
+              title: "Clipboard Mode on Wayland",
+              description:
+                "Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text to your clipboard and you can paste with Ctrl+V.",
+            });
+          } else {
+            const waylandNote = isWayland
+              ? recommendedTool === "wtype"
+                ? "\n\nNote: For XWayland apps, xdotool also works."
+                : "\n\nNote: Automatic pasting works for XWayland apps only."
+              : "";
+            showAlertDialog({
+              title: "Optional: Install Paste Tool",
+              description: `For automatic pasting, install ${recommendedTool || "xdotool"}:\n\n${installCmd}${waylandNote}\n\nWithout this, you can still use OpenWhispr - text will be copied to your clipboard and you can paste with Ctrl+V.`,
+            });
+          }
         }
         // Still allow proceeding - this is optional
         setAccessibilityPermissionGranted(true);
