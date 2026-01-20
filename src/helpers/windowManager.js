@@ -15,6 +15,7 @@ class WindowManager {
     this.isQuitting = false;
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
+    this.isDictationPanelHiddenByUser = false; // Track if user explicitly hid panel via tray menu
 
     // Cached visibility mode for fast hotkey checks (updated via IPC)
     this._cachedVisibilityMode = null;
@@ -96,6 +97,17 @@ class WindowManager {
     this.isMainWindowInteractive = shouldCapture;
   }
 
+  setDictationPanelSkipTaskbar(skip) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return;
+    }
+    // Only apply on Windows - this setting controls whether dictation panel
+    // shows in taskbar (false) or only in system tray (true)
+    if (process.platform === "win32") {
+      this.mainWindow.setSkipTaskbar(Boolean(skip));
+    }
+  }
+
   async loadMainWindow() {
     const appUrl = DevServerManager.getAppUrl(false);
     if (process.env.NODE_ENV === "development") {
@@ -122,9 +134,9 @@ class WindowManager {
       }
       lastToggleTime = now;
 
-      // Check visibility mode before showing
+      // Check visibility mode before showing, and respect user-hidden flag
       const mode = await this.getPanelVisibilityMode();
-      if (mode !== "hidden" && !this.mainWindow.isVisible()) {
+      if (mode !== "hidden" && !this.mainWindow.isVisible() && !this.isDictationPanelHiddenByUser) {
         this.mainWindow.show();
       }
       this.mainWindow.webContents.send("toggle-dictation");
@@ -136,9 +148,9 @@ class WindowManager {
       return;
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      // Check visibility mode before showing
+      // Check visibility mode before showing, and respect user-hidden flag
       const mode = await this.getPanelVisibilityMode();
-      if (mode !== "hidden" && !this.mainWindow.isVisible()) {
+      if (mode !== "hidden" && !this.mainWindow.isVisible() && !this.isDictationPanelHiddenByUser) {
         this.mainWindow.show();
       }
       this.mainWindow.webContents.send("start-dictation");
@@ -323,6 +335,9 @@ class WindowManager {
   async showDictationPanel(options = {}) {
     const { focus = false, force = false } = options;
 
+    // Clear the hidden-by-user flag since user is explicitly showing
+    this.isDictationPanelHiddenByUser = false;
+
     // Don't show if mode is "hidden" (unless forced)
     if (!force) {
       try {
@@ -362,6 +377,8 @@ class WindowManager {
   }
 
   hideDictationPanel() {
+    // Set flag so dictation doesn't auto-show the panel again
+    this.isDictationPanelHiddenByUser = true;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (process.platform === "darwin") {
         this.mainWindow.hide();

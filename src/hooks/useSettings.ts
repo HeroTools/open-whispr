@@ -191,6 +191,12 @@ export function useSettings() {
     }
   );
 
+  // Window behavior settings (Windows only)
+  const [minimizeToTray, setMinimizeToTray] = useLocalStorage("minimizeToTray", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
+
   // Computed values
   const reasoningProvider = getModelProvider(reasoningModel);
 
@@ -298,6 +304,8 @@ export function useSettings() {
     setSelectedMicDeviceId,
     panelVisibilityMode,
     setPanelVisibilityMode,
+    minimizeToTray,
+    setMinimizeToTray,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,

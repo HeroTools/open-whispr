@@ -105,6 +105,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
     ipcRenderer.invoke("set-main-window-interactivity", interactive),
+  setMinimizeToTray: (enabled) => ipcRenderer.invoke("set-minimize-to-tray", enabled),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),

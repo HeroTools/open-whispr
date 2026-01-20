@@ -223,6 +223,7 @@ declare global {
       startWindowDrag: () => Promise<void>;
       stopWindowDrag: () => Promise<void>;
       setMainWindowInteractivity: (interactive: boolean) => Promise<void>;
+      setMinimizeToTray?: (enabled: boolean) => Promise<{ success: boolean }>;
 
       // App management
       appQuit: () => Promise<void>;
