@@ -959,6 +959,20 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
+  /**
+   * Clear cached API key for a specific provider or all providers.
+   * Call this when API keys change to ensure fresh keys are used.
+   */
+  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq"): void {
+    if (provider) {
+      this.apiKeyCache.delete(provider);
+      logger.logReasoning("API_KEY_CACHE_CLEARED", { provider });
+    } else {
+      this.apiKeyCache.clear();
+      logger.logReasoning("API_KEY_CACHE_CLEARED", { provider: "all" });
+    }
+  }
+
   destroy(): void {
     if (this.cacheCleanupStop) {
       this.cacheCleanupStop();
