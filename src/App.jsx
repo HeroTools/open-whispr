@@ -77,6 +77,9 @@ export default function App() {
   const { isDragging, handleMouseDown, handleMouseUp } = useWindowDrag();
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
+  
+  // Track previous recording/processing state for auto-hide logic
+  const wasActiveRef = useRef(false);
 
   const setWindowInteractivity = React.useCallback((shouldCapture) => {
     window.electronAPI?.setMainWindowInteractivity?.(shouldCapture);
@@ -126,6 +129,69 @@ export default function App() {
   const { isRecording, isProcessing, toggleListening, cancelRecording } = useAudioRecording(toast, {
     onToggle: handleDictationToggle,
   });
+
+  // Track panel visibility mode as state (synced via IPC)
+  const [panelVisibilityMode, setPanelVisibilityMode] = useState(() => {
+    return localStorage.getItem("panelVisibilityMode") || "always";
+  });
+
+  // Listen for visibility mode changes from other windows via IPC
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onPanelVisibilityModeChanged?.((mode) => {
+      // Update both React state AND localStorage
+      localStorage.setItem("panelVisibilityMode", mode);
+      setPanelVisibilityMode(mode);
+    });
+
+    // Also listen for storage events as backup for Control Panel changes
+    const handleStorageChange = (e) => {
+      if (e.key === "panelVisibilityMode") {
+        setPanelVisibilityMode(e.newValue || "always");
+      }
+    };
+    window.addEventListener("storage", handleStorageChange);
+
+    return () => {
+      unsubscribe?.();
+      window.removeEventListener("storage", handleStorageChange);
+    };
+  }, []);
+
+  // Single consolidated effect for all visibility logic
+  useEffect(() => {
+    const isActive = isRecording || isProcessing;
+
+    // ALWAYS HIDDEN: Never show the panel, always hide
+    if (panelVisibilityMode === "hidden") {
+      window.electronAPI?.hideWindow?.();
+      wasActiveRef.current = false;
+      return;
+    }
+
+    // ALWAYS VISIBLE: Always show the panel
+    if (panelVisibilityMode === "always") {
+      window.electronAPI?.showDictationPanel?.();
+      wasActiveRef.current = false;
+      return;
+    }
+
+    // TRANSCRIBING MODE: Show only when recording/processing
+    if (panelVisibilityMode === "transcribing") {
+      if (isActive && !wasActiveRef.current) {
+        // Activity started - show panel
+        window.electronAPI?.showDictationPanel?.();
+        wasActiveRef.current = true;
+      } else if (!isActive && wasActiveRef.current) {
+        // Activity ended - hide panel with small delay
+        const hideTimeout = setTimeout(() => {
+          window.electronAPI?.hideWindow?.();
+          wasActiveRef.current = false;
+        }, 300);
+        return () => clearTimeout(hideTimeout);
+      }
+      // Note: If not active and wasActiveRef is false, do nothing - panel is already hidden
+    }
+  }, [panelVisibilityMode, isRecording, isProcessing]);
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
@@ -351,15 +417,44 @@ export default function App() {
                 {isRecording ? "Stop listening" : "Start listening"}
               </button>
               <div className="h-px bg-white/10" />
+              <div className="px-3 py-1.5 text-xs text-gray-500 uppercase tracking-wide">
+                Panel Visibility
+              </div>
               <button
-                className="w-full px-3 py-2 text-left text-sm hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+                className={`w-full px-3 py-1.5 text-left text-sm hover:bg-white/10 focus:bg-white/10 focus:outline-none flex items-center justify-between ${panelVisibilityMode === "always" ? "text-indigo-400" : ""}`}
                 onClick={() => {
+                  window.electronAPI?.syncPanelVisibilityMode?.("always");
+                  setPanelVisibilityMode("always");
                   setIsCommandMenuOpen(false);
                   setWindowInteractivity(false);
-                  handleClose();
                 }}
               >
-                Hide this for now
+                Always Visible
+                {panelVisibilityMode === "always" && <span className="text-indigo-400">✓</span>}
+              </button>
+              <button
+                className={`w-full px-3 py-1.5 text-left text-sm hover:bg-white/10 focus:bg-white/10 focus:outline-none flex items-center justify-between ${panelVisibilityMode === "transcribing" ? "text-indigo-400" : ""}`}
+                onClick={() => {
+                  window.electronAPI?.syncPanelVisibilityMode?.("transcribing");
+                  setPanelVisibilityMode("transcribing");
+                  setIsCommandMenuOpen(false);
+                  setWindowInteractivity(false);
+                }}
+              >
+                When Transcribing
+                {panelVisibilityMode === "transcribing" && <span className="text-indigo-400">✓</span>}
+              </button>
+              <button
+                className={`w-full px-3 py-1.5 text-left text-sm hover:bg-white/10 focus:bg-white/10 focus:outline-none flex items-center justify-between ${panelVisibilityMode === "hidden" ? "text-indigo-400" : ""}`}
+                onClick={() => {
+                  window.electronAPI?.syncPanelVisibilityMode?.("hidden");
+                  setPanelVisibilityMode("hidden");
+                  setIsCommandMenuOpen(false);
+                  setWindowInteractivity(false);
+                }}
+              >
+                Always Hidden
+                {panelVisibilityMode === "hidden" && <span className="text-indigo-400">✓</span>}
               </button>
             </div>
           )}

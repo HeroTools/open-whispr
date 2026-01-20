@@ -5,9 +5,10 @@ import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-re
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
+import { Toggle } from "./ui/toggle";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
-import { useSettings } from "../hooks/useSettings";
+import { useSettings, type PanelVisibilityMode } from "../hooks/useSettings";
 import { useDialogs } from "../hooks/useDialogs";
 import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
@@ -82,6 +83,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
+    panelVisibilityMode,
+    setPanelVisibilityMode,
+    minimizeToTray,
+    setMinimizeToTray,
   } = useSettings();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -505,6 +510,62 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 onPreferBuiltInChange={setPreferBuiltInMic}
                 onDeviceSelect={setSelectedMicDeviceId}
               />
+            </div>
+
+            <div className="border-t pt-8">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Dictation Panel</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Control when the dictation panel is visible on your screen.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Panel Visibility
+                  </label>
+                  <select
+                    value={panelVisibilityMode}
+                    onChange={(e) => {
+                      const mode = e.target.value as PanelVisibilityMode;
+                      setPanelVisibilityMode(mode);
+                      window.electronAPI?.syncPanelVisibilityMode?.(mode);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="always">Always Visible</option>
+                    <option value="transcribing">Show Only When Transcribing</option>
+                    <option value="hidden">Always Hidden</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {panelVisibilityMode === "always" &&
+                      "The dictation panel is always shown on your screen."}
+                    {panelVisibilityMode === "transcribing" &&
+                      "Panel appears when recording starts and hides when transcription completes."}
+                    {panelVisibilityMode === "hidden" &&
+                      "Panel is never shown. Use the hotkey to record in the background."}
+                  </p>
+                </div>
+
+                {/* Windows-only: Hide from Taskbar option */}
+                {typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent) && (
+                  <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-neutral-800">Hide from Taskbar</p>
+                      <p className="text-xs text-neutral-600 mt-1">
+                        Only show dictation panel in system tray
+                      </p>
+                    </div>
+                    <Toggle
+                      checked={minimizeToTray}
+                      onChange={(enabled) => {
+                        setMinimizeToTray(enabled);
+                        window.electronAPI?.setMinimizeToTray?.(enabled);
+                      }}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="border-t pt-8">

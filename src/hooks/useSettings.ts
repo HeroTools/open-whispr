@@ -32,6 +32,12 @@ export interface MicrophoneSettings {
   selectedMicDeviceId: string;
 }
 
+export type PanelVisibilityMode = "always" | "hidden" | "transcribing";
+
+export interface PanelSettings {
+  panelVisibilityMode: PanelVisibilityMode;
+}
+
 export interface ApiKeySettings {
   openaiApiKey: string;
   anthropicApiKey: string;
@@ -172,6 +178,25 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Panel visibility settings
+  const [panelVisibilityMode, setPanelVisibilityMode] = useLocalStorage<PanelVisibilityMode>(
+    "panelVisibilityMode",
+    "always",
+    {
+      serialize: String,
+      deserialize: (value) => {
+        if (value === "hidden" || value === "transcribing") return value;
+        return "always";
+      },
+    }
+  );
+
+  // Window behavior settings (Windows only)
+  const [minimizeToTray, setMinimizeToTray] = useLocalStorage("minimizeToTray", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
+
   // Computed values
   const reasoningProvider = getModelProvider(reasoningModel);
 
@@ -277,6 +302,10 @@ export function useSettings() {
     selectedMicDeviceId,
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
+    panelVisibilityMode,
+    setPanelVisibilityMode,
+    minimizeToTray,
+    setMinimizeToTray,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,
