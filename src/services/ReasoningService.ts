@@ -764,7 +764,7 @@ class ReasoningService extends BaseReasoningService {
           maxOutputTokens:
             config.maxTokens ||
             Math.max(
-              2000, // Gemini 2.5 Pro needs more tokens for its thinking process
+              2000, // Gemini 3 Pro need more tokens for thinking processes
               this.calculateMaxTokens(
                 text.length,
                 TOKEN_LIMITS.MIN_TOKENS_GEMINI,
