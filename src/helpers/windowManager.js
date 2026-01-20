@@ -199,6 +199,21 @@ class WindowManager {
     }
   }
 
+  /**
+   * Sets whether the dictation panel should be hidden from the Windows taskbar.
+   * When enabled, the panel only appears in the system tray instead of the taskbar.
+   * @param {boolean} skipTaskbar - If true, hide from taskbar; if false, show in taskbar
+   */
+  setDictationPanelSkipTaskbar(skipTaskbar) {
+    if (process.platform !== "win32") {
+      // This feature is Windows-only
+      return;
+    }
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.setSkipTaskbar(Boolean(skipTaskbar));
+    }
+  }
+
   setHotkeyListeningMode(enabled) {
     this.hotkeyManager.setListeningMode(enabled);
   }
