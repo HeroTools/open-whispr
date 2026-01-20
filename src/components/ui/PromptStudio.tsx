@@ -131,13 +131,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         }
       }
 
-      if (providerConfig.apiKeyStorageKey) {
-        const apiKey = localStorage.getItem(providerConfig.apiKeyStorageKey);
-        if (!apiKey || apiKey.trim() === "") {
-          setTestResult(`⚠️ No ${providerLabel} API key found. Add it in AI Models settings.`);
-          return;
-        }
-      }
+      // Note: API key validation is handled by ReasoningService which uses Electron IPC
+      // to fetch keys from the environment. We skip localStorage validation here.
 
       // Save current prompts temporarily so the test uses them
       const currentCustomPrompts = localStorage.getItem("customPrompts");
