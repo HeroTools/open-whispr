@@ -57,8 +57,32 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("show-dictation-panel", () => {
-      this.windowManager.showDictationPanel();
+    ipcMain.handle("show-dictation-panel", async () => {
+      await this.windowManager.showDictationPanel();
+    });
+
+    // Sync panel visibility mode across all windows
+    ipcMain.handle("sync-panel-visibility-mode", (event, mode) => {
+      // Update the cached value in WindowManager for fast hotkey checks
+      this.windowManager?.setCachedVisibilityMode?.(mode);
+
+      // Broadcast to all windows
+      this.broadcastToWindows("panel-visibility-mode-changed", mode);
+      // Also update localStorage in main window if it exists
+      const mainWindow = this.windowManager?.mainWindow;
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.executeJavaScript(
+          `localStorage.setItem("panelVisibilityMode", "${mode}")`
+        );
+      }
+      // Update control panel if it exists
+      const controlPanel = this.windowManager?.controlPanelWindow;
+      if (controlPanel && !controlPanel.isDestroyed()) {
+        controlPanel.webContents.executeJavaScript(
+          `localStorage.setItem("panelVisibilityMode", "${mode}")`
+        );
+      }
+      return { success: true };
     });
 
     ipcMain.handle("set-main-window-interactivity", (event, shouldCapture) => {

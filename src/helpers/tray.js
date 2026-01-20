@@ -222,21 +222,70 @@ class TrayManager {
     }
   }
 
-  buildContextMenuTemplate() {
-    const dictationVisible = this.windowManager?.isDictationPanelVisible?.() ?? false;
+  async buildContextMenuTemplate() {
+    // Get current visibility mode from renderer
+    let panelVisibilityMode = "always";
+    try {
+      panelVisibilityMode = (await this.windowManager?.getPanelVisibilityMode?.()) || "always";
+    } catch (e) {
+      // Ignore - default to "always"
+    }
+
+    const setVisibilityMode = async (mode) => {
+      try {
+        // Update the cached value in WindowManager for fast hotkey checks
+        this.windowManager?.setCachedVisibilityMode?.(mode);
+
+        // Set localStorage in both windows
+        const mainWindow = this.windowManager?.mainWindow;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          await mainWindow.webContents.executeJavaScript(
+            `localStorage.setItem("panelVisibilityMode", "${mode}")`
+          );
+        }
+        const controlPanel = this.windowManager?.controlPanelWindow;
+        if (controlPanel && !controlPanel.isDestroyed()) {
+          await controlPanel.webContents.executeJavaScript(
+            `localStorage.setItem("panelVisibilityMode", "${mode}")`
+          );
+        }
+
+        // Broadcast to all windows via IPC
+        const { BrowserWindow } = require("electron");
+        BrowserWindow.getAllWindows().forEach((win) => {
+          if (!win.isDestroyed()) {
+            win.webContents.send("panel-visibility-mode-changed", mode);
+          }
+        });
+      } catch (e) {
+        console.error("Failed to set visibility mode:", e);
+      }
+      this.updateTrayMenu();
+    };
 
     return [
       {
-        label: dictationVisible ? "Hide Dictation Panel" : "Show Dictation Panel",
-        click: () => {
-          if (!this.windowManager) return;
-          if (this.windowManager.isDictationPanelVisible()) {
-            this.windowManager.hideDictationPanel();
-          } else {
-            this.windowManager.showDictationPanel({ focus: true });
-          }
-          this.updateTrayMenu();
-        },
+        label: "Panel Visibility",
+        submenu: [
+          {
+            label: "Always Visible",
+            type: "radio",
+            checked: panelVisibilityMode === "always",
+            click: () => setVisibilityMode("always"),
+          },
+          {
+            label: "When Transcribing",
+            type: "radio",
+            checked: panelVisibilityMode === "transcribing",
+            click: () => setVisibilityMode("transcribing"),
+          },
+          {
+            label: "Always Hidden",
+            type: "radio",
+            checked: panelVisibilityMode === "hidden",
+            click: () => setVisibilityMode("hidden"),
+          },
+        ],
       },
       {
         label: "Open Control Panel",
@@ -255,10 +304,11 @@ class TrayManager {
     ];
   }
 
-  updateTrayMenu() {
+  async updateTrayMenu() {
     if (!this.tray) return;
 
-    const contextMenu = Menu.buildFromTemplate(this.buildContextMenuTemplate());
+    const template = await this.buildContextMenuTemplate();
+    const contextMenu = Menu.buildFromTemplate(template);
     this.tray.setToolTip("OpenWhispr - Voice Dictation");
     this.tray.setContextMenu(contextMenu);
   }
