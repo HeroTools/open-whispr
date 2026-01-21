@@ -8,110 +8,156 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        include:
-          - os: ubuntu-latest
-            build_cmd: npm run build:linux
-          - os: windows-latest
-            build_cmd: npm run build:win
-          - os: macos-latest
-            build_cmd: npm run build:mac
-            
-    runs-on: ${{ matrix.os }}
-    
+  build-linux:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-      
+
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
         cache: 'npm'
-        
+
     - name: Install dependencies
       run: npm ci
 
     - name: Download whisper.cpp binaries
-      run: node scripts/download-whisper-cpp.js
+      run: node scripts/download-whisper-cpp.js --current
 
-    - name: Download nircmd.exe (Windows only)
-      run: node scripts/download-nircmd.js
-
-    # Cache Electron downloads
     - name: Cache Electron
       uses: actions/cache@v4
       with:
-        path: |
-          ${{ runner.os == 'Windows' && '~\AppData\Local\electron\Cache' || '~/.cache/electron' }}
-          ${{ runner.os == 'Windows' && '~\AppData\Local\electron-builder\Cache' || '~/.cache/electron-builder' }}
-        key: ${{ runner.os }}-electron-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-electron-
+        path: ~/.cache/electron
+        key: linux-electron-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: linux-electron-
 
-    # Linux packaging dependencies (rpm for Fedora/RHEL packages)
     - name: Install Linux packaging dependencies
-      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y rpm
 
-    # macOS code signing setup
+    - name: Build Application
+      run: npm run build:linux -- --publish never
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-build
+        path: dist/
+        retention-days: 7
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Download whisper.cpp binaries
+      run: node scripts/download-whisper-cpp.js --current
+
+    - name: Download nircmd.exe
+      run: node scripts/download-nircmd.js
+
+    - name: Cache Electron
+      uses: actions/cache@v4
+      with:
+        path: ~/AppData/Local/electron/Cache
+        key: windows-electron-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: windows-electron-
+
+    - name: Build Application
+      run: npm run build:win -- --publish never
+      env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Upload Artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-build
+        path: dist/
+        retention-days: 7
+
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: [x64, arm64]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Download whisper.cpp binaries
+      run: node scripts/download-whisper-cpp.js --current --platform darwin --arch ${{ matrix.arch }}
+
+    - name: Cache Electron
+      uses: actions/cache@v4
+      with:
+        path: ~/.cache/electron
+        key: macos-electron-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: macos-electron-
+
     - name: Setup macOS Code Signing
-      if: matrix.os == 'macos-latest' && github.event_name != 'pull_request'
+      if: github.event_name != 'pull_request'
       env:
         APPLE_CERTIFICATE_BASE64: ${{ secrets.APPLE_CERTIFICATE_BASE64 }}
         APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
       run: |
-        # Create temp directory for certificates
         CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
         API_KEY_PATH=$RUNNER_TEMP/api_key.p8
         KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-        
-        # Decode certificates from secrets
+
         echo "$APPLE_CERTIFICATE_BASE64" | base64 --decode > $CERTIFICATE_PATH
         echo "$APPLE_API_KEY_BASE64" | base64 --decode > $API_KEY_PATH
-        
-        # Create temporary keychain
+
         security create-keychain -p "runner" $KEYCHAIN_PATH
         security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
         security unlock-keychain -p "runner" $KEYCHAIN_PATH
-        
-        # Import certificate to keychain
+
         security import $CERTIFICATE_PATH -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
         security list-keychain -d user -s $KEYCHAIN_PATH
-        
-        # Allow codesign to use the certificate
+
         security set-key-partition-list -S apple-tool:,apple: -s -k "runner" $KEYCHAIN_PATH
-        
-        # Export API key path for electron-builder (uses APPLE_API_KEY)
+
         echo "APPLE_API_KEY=$API_KEY_PATH" >> $GITHUB_ENV
-        
-    - name: Build Application
-      run: ${{ matrix.build_cmd }} -- --publish never
+
+    - name: Build Application (${{ matrix.arch }})
+      run: npm run build:mac -- --${{ matrix.arch }} --publish never
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
-        # Enable signing only for macOS non-PR builds
-        CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.os == 'macos-latest' && github.event_name != 'pull_request' && 'true' || 'false' }}
-        # Notarization credentials (electron-builder standard)
-        # APPLE_API_KEY is set from the file path in setup step
+        CSC_IDENTITY_AUTO_DISCOVERY: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
+        CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
         APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        
+
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ matrix.os }}-build
+        name: macos-${{ matrix.arch }}-build
         path: dist/
         retention-days: 7
-        
-    # Security cleanup - always run
+
     - name: Cleanup Certificates
-      if: always() && matrix.os == 'macos-latest' && github.event_name != 'pull_request'
+      if: always() && github.event_name != 'pull_request'
       run: |
         security delete-keychain $RUNNER_TEMP/app-signing.keychain-db || true
         rm -f $RUNNER_TEMP/build_certificate.p12

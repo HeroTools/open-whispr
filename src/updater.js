@@ -10,7 +10,6 @@ class UpdateManager {
     this.lastUpdateInfo = null;
     this.isInstalling = false;
     this.isDownloading = false;
-    this.installTimeout = null;
     this.ipcHandlers = [];
     this.eventListeners = [];
 
@@ -140,7 +139,7 @@ class UpdateManager {
             console.log("🔍 Checking for updates...");
             const result = await autoUpdater.checkForUpdates();
 
-            if (result && result.updateInfo) {
+            if (result?.isUpdateAvailable && result?.updateInfo) {
               console.log("📋 Update available:", result.updateInfo.version);
               console.log(
                 "📦 Download size:",
@@ -234,33 +233,17 @@ class UpdateManager {
             this.isInstalling = true;
             console.log("🔄 Installing update and restarting...");
 
-            this.installTimeout = setTimeout(() => {
-              console.log("🔄 Calling quitAndInstall(false, true)...");
-              console.log("📊 Platform:", process.platform);
-              console.log("📊 Update downloaded:", this.updateDownloaded);
+            const { app } = require("electron");
+            app.emit("before-quit");
 
-              // CRITICAL: Emit before-quit BEFORE quitAndInstall closes windows
-              // This sets isQuitting=true in windowManager, allowing windows to close
-              const { app } = require("electron");
-              app.emit("before-quit");
-
-              // Now quitAndInstall will:
-              // 1. Close all windows (now allowed because isQuitting = true)
-              // 2. Emit 'before-quit' event again (harmless)
-              // 3. Call app.quit()
-              // 4. Install update and restart (if isForceRunAfter = true)
-              autoUpdater.quitAndInstall(false, true);
-
-              console.log("✅ quitAndInstall() called - app should be quitting...");
+            setTimeout(() => {
+              const isSilent = process.platform === "win32";
+              autoUpdater.quitAndInstall(isSilent, true);
             }, 100);
 
             return { success: true, message: "Update installation started" };
           } catch (error) {
             this.isInstalling = false;
-            if (this.installTimeout) {
-              clearTimeout(this.installTimeout);
-              this.installTimeout = null;
-            }
             console.error("❌ Update installation error:", error);
             throw error;
           }
@@ -328,12 +311,6 @@ class UpdateManager {
 
   // Cleanup method to be called on app quit
   cleanup() {
-    // Clear timeout
-    if (this.installTimeout) {
-      clearTimeout(this.installTimeout);
-      this.installTimeout = null;
-    }
-
     // Remove event listeners
     this.eventListeners.forEach(({ event, handler }) => {
       autoUpdater.removeListener(event, handler);

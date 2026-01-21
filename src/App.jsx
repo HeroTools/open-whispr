@@ -88,6 +88,29 @@ export default function App() {
   }, [setWindowInteractivity]);
 
   useEffect(() => {
+    const unsubscribeFallback = window.electronAPI?.onHotkeyFallbackUsed?.((data) => {
+      toast({
+        title: "Hotkey Changed",
+        description: data.message,
+        duration: 8000,
+      });
+    });
+
+    const unsubscribeFailed = window.electronAPI?.onHotkeyRegistrationFailed?.((data) => {
+      toast({
+        title: "Hotkey Unavailable",
+        description: `Could not register hotkey. Please set a different hotkey in Settings.`,
+        duration: 10000,
+      });
+    });
+
+    return () => {
+      unsubscribeFallback?.();
+      unsubscribeFailed?.();
+    };
+  }, [toast]);
+
+  useEffect(() => {
     if (isCommandMenuOpen) {
       setWindowInteractivity(true);
     } else if (!isHovered) {

@@ -1,6 +1,6 @@
 import React from "react";
 import { Button } from "./button";
-import { Check, LucideIcon } from "lucide-react";
+import { Check, LucideIcon, Settings } from "lucide-react";
 
 interface PermissionCardProps {
   icon: LucideIcon;
@@ -9,6 +9,8 @@ interface PermissionCardProps {
   granted: boolean;
   onRequest: () => void;
   buttonText?: string;
+  onOpenSettings?: () => void;
+  openSettingsText?: string;
 }
 
 export default function PermissionCard({
@@ -18,6 +20,8 @@ export default function PermissionCard({
   granted,
   onRequest,
   buttonText = "Grant Access",
+  onOpenSettings,
+  openSettingsText = "Open Settings",
 }: PermissionCardProps) {
   return (
     <div className="border rounded-lg p-4">
@@ -34,9 +38,17 @@ export default function PermissionCard({
             <Check className="w-5 h-5" />
           </div>
         ) : (
-          <Button onClick={onRequest} size="sm">
-            {buttonText}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button onClick={onRequest} size="sm">
+              {buttonText}
+            </Button>
+            {onOpenSettings && (
+              <Button onClick={onOpenSettings} size="sm" variant="outline">
+                <Settings className="w-4 h-4 mr-1" />
+                {openSettingsText}
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </div>

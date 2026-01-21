@@ -5,6 +5,75 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.12] - 2026-01-20
+
+### Added
+- **LLM Download Cancellation**: Added ability to cancel in-progress local LLM model downloads with throttled progress updates to prevent UI flashing
+
+### Changed
+- **Gemini Model Updates**: Updated Gemini models to latest versions
+- **Linux Wayland Improvements**: Improved Wayland paste detection with GNOME-specific handling and XWayland fallback support
+- **whisper.cpp CUDA Support**: Updated whisper.cpp download script to include CUDA-enabled binaries
+
+### Fixed
+- **Windows Paste Delay**: Adjusted paste delay timing on Windows for more reliable text insertion
+- **Blank Audio Prevention**: Fixed issue where blank/silent audio recordings would paste empty text
+- **Newline Handling**: Fixed newline formatting issues in transcribed text
+
+## [1.2.11] - 2026-01-18
+
+### Fixed
+- **ASAR Path Resolution**: Fixed path resolution issues for bundled resources in packaged builds
+- **Update Checker**: Fixed auto-update checker initialization
+- **Build Includes**: Ensured services and models are properly included in production builds
+- **OS Module Import**: Fixed OS module import ordering
+
+## [1.2.10] - 2026-01-17
+
+### Fixed
+- **Streaming Backpressure**: Fixed proper streaming backpressure handling in audio processing
+- **Quit and Install**: Fixed update installation on app quit
+
+## [1.2.9] - 2026-01-17
+
+### Fixed
+- **Path Resolution**: Improved path resolution for better cross-platform compatibility
+
+## [1.2.8] - 2026-01-16
+
+### Added
+- **Microphone Input Selection**: Choose your preferred microphone input device in settings, with built-in mic preference to prevent Bluetooth audio interruptions
+- **Push to Talk Mode**: New recording mode option alongside the existing toggle mode
+- **Hotkey Listening Mode**: Prevents conflicts when capturing new hotkeys by temporarily disabling the global hotkey
+- **Hotkey Fallback System**: Automatic fallback with user notifications when preferred hotkey is unavailable
+- **Cross-Platform Accessibility Settings**: Quick access to system accessibility settings on macOS
+
+### Changed
+- **Streamlined Onboarding**: Removed redundant "How it Works" section, success dialogs, and manual save buttons for a smoother setup experience
+- **Improved Select Styling**: Enhanced dropdown select component appearance
+
+### Fixed
+- **FFmpeg Availability Types**: Corrected type definitions and optimized whisper-cpp download process
+- **Whisper Models Path**: Fixed model storage path resolution
+- **Better Path Resolution**: Improved error handling for file paths
+- **Open Mic Settings**: Fixed system settings link for microphone configuration
+
+## [1.2.7] - 2026-01-13
+
+### Added
+- **Whisper Server HTTP Mode**: Added persistent whisper-server for faster repeated transcriptions with automatic CLI fallback
+- **Pipeline Timing Instrumentation**: Added detailed timing logs for each stage of the transcription pipeline
+- **Whisper Server Pre-warming**: Server pre-warms on startup for faster first transcription
+
+### Changed
+- **Windows Clipboard**: Reduced clipboard delays for faster text pasting on Windows
+
+### Fixed
+- **Windows Update Install**: Simplified Windows update installation by using silent mode and removing redundant before-quit handling
+- **Mac Build Workflows**: Fixed CI/CD to run separate workflows for Mac builds
+- **Mac DMG Build Race Condition**: Fixed release workflow DMG build failure caused by concurrent arm64/x64 builds mounting same volume
+- **Windows Download Script**: Fixed PowerShell Expand-Archive failure with bracket characters in directory names
+
 ## [1.2.6] - 2026-01-13
 
 ### Changed

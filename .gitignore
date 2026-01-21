@@ -265,6 +265,9 @@ $RECYCLE.BIN/
 *.swo
 *~
 
+# Claude Code
+.claude/settings.local.json
+
 # OS generated files
 .DS_Store
 .DS_Store?

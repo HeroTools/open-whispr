@@ -3,6 +3,7 @@ const { spawn } = require("child_process");
 const fs = require("fs");
 const { promises: fsPromises } = require("fs");
 const https = require("https");
+const { pipeline } = require("stream");
 const { app } = require("electron");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
@@ -33,6 +34,7 @@ class ModelManager {
     this.modelsDir = this.getModelsDir();
     this.downloadProgress = new Map();
     this.activeDownloads = new Map();
+    this.activeRequests = new Map(); // Track HTTP requests for cancellation
     this.llamaCppPath = null;
     this.ensureModelsDirExists();
   }
@@ -142,17 +144,22 @@ class ModelManager {
       await this.ensureModelsDirExists();
       const downloadUrl = this.getDownloadUrl(provider, model);
 
-      await this.downloadFile(downloadUrl, tempPath, (progress, downloadedSize, totalSize) => {
-        this.downloadProgress.set(modelId, {
-          modelId,
-          progress,
-          downloadedSize,
-          totalSize,
-        });
-        if (onProgress) {
-          onProgress(progress, downloadedSize, totalSize);
-        }
-      });
+      await this.downloadFile(
+        downloadUrl,
+        tempPath,
+        (progress, downloadedSize, totalSize) => {
+          this.downloadProgress.set(modelId, {
+            modelId,
+            progress,
+            downloadedSize,
+            totalSize,
+          });
+          if (onProgress) {
+            onProgress(progress, downloadedSize, totalSize);
+          }
+        },
+        modelId
+      );
 
       const stats = await fsPromises.stat(tempPath);
       if (stats.size < MIN_FILE_SIZE) {
@@ -191,11 +198,13 @@ class ModelManager {
     return `${baseUrl}/${model.hfRepo}/resolve/main/${model.fileName}`;
   }
 
-  async downloadFile(url, destPath, onProgress) {
+  async downloadFile(url, destPath, onProgress, modelId) {
     return new Promise((resolve, reject) => {
       const file = fs.createWriteStream(destPath);
       let downloadedSize = 0;
       let totalSize = 0;
+      let lastProgressUpdate = 0;
+      const PROGRESS_THROTTLE_MS = 100; // Throttle progress updates to prevent UI flashing
 
       const cleanup = (callback) => {
         file.close(() => {
@@ -206,7 +215,7 @@ class ModelManager {
         });
       };
 
-      https
+      const request = https
         .get(
           url,
           {
@@ -214,16 +223,31 @@ class ModelManager {
             timeout: 30000,
           },
           (response) => {
-            if (response.statusCode === 302 || response.statusCode === 301) {
+            if (
+              response.statusCode === 301 ||
+              response.statusCode === 302 ||
+              response.statusCode === 303 ||
+              response.statusCode === 307 ||
+              response.statusCode === 308
+            ) {
+              const redirectUrl = response.headers.location;
+              if (!redirectUrl) {
+                cleanup(() => {
+                  reject(
+                    new ModelError("Redirect without location header", "DOWNLOAD_REDIRECT_ERROR")
+                  );
+                });
+                return;
+              }
               cleanup(() => {
-                this.downloadFile(response.headers.location, destPath, onProgress)
+                this.downloadFile(redirectUrl, destPath, onProgress, modelId)
                   .then(resolve)
                   .catch(reject);
               });
               return;
             }
 
-            if (response.statusCode !== 200) {
+            if (response.statusCode !== 200 && response.statusCode !== 206) {
               cleanup(() => {
                 reject(
                   new ModelError(
@@ -240,31 +264,71 @@ class ModelManager {
 
             response.on("data", (chunk) => {
               downloadedSize += chunk.length;
-              file.write(chunk);
 
-              if (onProgress && totalSize > 0) {
+              // Throttle progress updates to prevent UI flashing
+              const now = Date.now();
+              if (
+                onProgress &&
+                totalSize > 0 &&
+                (now - lastProgressUpdate >= PROGRESS_THROTTLE_MS || downloadedSize >= totalSize)
+              ) {
+                lastProgressUpdate = now;
                 const progress = (downloadedSize / totalSize) * 100;
                 onProgress(progress, downloadedSize, totalSize);
               }
             });
 
-            response.on("end", () => {
-              file.end(() => resolve(destPath));
-            });
+            pipeline(response, file, (error) => {
+              // Clean up request tracking
+              if (modelId) {
+                this.activeRequests.delete(modelId);
+              }
 
-            response.on("error", (error) => {
-              cleanup(() => {
-                reject(
-                  new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
-                    error: error.message,
-                  })
-                );
-              });
+              if (error) {
+                // Check if this was a cancellation
+                if (
+                  error.code === "ERR_STREAM_PREMATURE_CLOSE" &&
+                  modelId &&
+                  !this.activeDownloads.has(modelId)
+                ) {
+                  cleanup(() => {
+                    reject(
+                      new ModelError("Download cancelled by user", "DOWNLOAD_CANCELLED", {
+                        modelId,
+                      })
+                    );
+                  });
+                  return;
+                }
+                cleanup(() => {
+                  reject(
+                    new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
+                      error: error.message,
+                    })
+                  );
+                });
+                return;
+              }
+              resolve(destPath);
             });
           }
         )
         .on("error", (error) => {
+          // Clean up request tracking
+          if (modelId) {
+            this.activeRequests.delete(modelId);
+          }
+
           cleanup(() => {
+            // Check if this was a cancellation
+            if (error.code === "ECONNRESET" && modelId && !this.activeDownloads.has(modelId)) {
+              reject(
+                new ModelError("Download cancelled by user", "DOWNLOAD_CANCELLED", {
+                  modelId,
+                })
+              );
+              return;
+            }
             reject(
               new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
                 error: error.message,
@@ -272,7 +336,33 @@ class ModelManager {
             );
           });
         });
+
+      // Store the request for potential cancellation
+      if (modelId) {
+        this.activeRequests.set(modelId, { request, file, destPath });
+      }
     });
+  }
+
+  cancelDownload(modelId) {
+    const activeRequest = this.activeRequests.get(modelId);
+    if (activeRequest) {
+      const { request, file, destPath } = activeRequest;
+
+      // Mark as no longer active before destroying
+      this.activeDownloads.delete(modelId);
+      this.activeRequests.delete(modelId);
+      this.downloadProgress.delete(modelId);
+
+      // Destroy the request and close the file
+      request.destroy();
+      file.close(() => {
+        fsPromises.unlink(destPath).catch(() => {});
+      });
+
+      return true;
+    }
+    return false;
   }
 
   async deleteModel(modelId) {

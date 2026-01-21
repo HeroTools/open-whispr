@@ -109,6 +109,10 @@ class WindowManager {
     const DEBOUNCE_MS = 150;
 
     return () => {
+      if (this.hotkeyManager.isInListeningMode()) {
+        return;
+      }
+
       const now = Date.now();
       if (now - lastToggleTime < DEBOUNCE_MS) {
         return;
@@ -120,6 +124,45 @@ class WindowManager {
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
+  }
+
+  sendStartDictation() {
+    if (this.hotkeyManager.isInListeningMode()) {
+      return;
+    }
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      if (!this.mainWindow.isVisible()) {
+        this.mainWindow.show();
+      }
+      this.mainWindow.webContents.send("start-dictation");
+    }
+  }
+
+  sendStopDictation() {
+    if (this.hotkeyManager.isInListeningMode()) {
+      return;
+    }
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send("stop-dictation");
+    }
+  }
+
+  async getActivationMode() {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return "tap";
+    }
+    try {
+      const mode = await this.mainWindow.webContents.executeJavaScript(
+        `localStorage.getItem("activationMode") || "tap"`
+      );
+      return mode === "push" ? "push" : "tap";
+    } catch {
+      return "tap";
+    }
+  }
+
+  setHotkeyListeningMode(enabled) {
+    this.hotkeyManager.setListeningMode(enabled);
   }
 
   async initializeHotkey() {

@@ -97,7 +97,7 @@ if (process.platform === "darwin") {
 }
 
 // Initialize IPC handlers with all managers
-const ipcHandlers = new IPCHandlers({
+const _ipcHandlers = new IPCHandlers({
   environmentManager,
   databaseManager,
   clipboardManager,
@@ -176,9 +176,23 @@ async function startApp() {
   }
 
   // Initialize Whisper manager at startup (don't await to avoid blocking)
-  whisperManager.initializeAtStartup().catch((err) => {
+  // Settings can be provided via environment variables for server pre-warming:
+  // - USE_LOCAL_WHISPER=true to enable local whisper mode
+  // - LOCAL_WHISPER_MODEL=base (or tiny, small, medium, large, turbo)
+  const whisperSettings = {
+    useLocalWhisper: process.env.USE_LOCAL_WHISPER === "true",
+    whisperModel: process.env.LOCAL_WHISPER_MODEL || "base",
+  };
+  whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
     // Whisper not being available at startup is not critical
+    debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
   });
+
+  // Log nircmd status on Windows (for debugging bundled dependencies)
+  if (process.platform === "win32") {
+    const nircmdStatus = clipboardManager.getNircmdStatus();
+    debugLogger.debug("Windows paste tool status", nircmdStatus);
+  }
 
   // Create main window
   try {
@@ -213,7 +227,11 @@ trayManager.setWindowManager(windowManager);
   updateManager.checkForUpdatesOnStartup();
 
   if (process.platform === "darwin") {
-    globeKeyManager.on("globe-down", () => {
+    let globeKeyDownTime = 0;
+    let globeKeyIsRecording = false;
+    const MIN_HOLD_DURATION_MS = 150; // Minimum hold time to trigger push-to-talk
+
+    globeKeyManager.on("globe-down", async () => {
       // Forward to control panel for hotkey capture
       if (
         windowManager.controlPanelWindow &&
@@ -222,14 +240,45 @@ trayManager.setWindowManager(windowManager);
         windowManager.controlPanelWindow.webContents.send("globe-key-pressed");
       }
 
-      // Handle dictation toggle if Globe is the current hotkey
+      // Handle dictation if Globe is the current hotkey
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (
           windowManager.mainWindow &&
           !windowManager.mainWindow.isDestroyed()
         ) {
+          const activationMode = await windowManager.getActivationMode();
           windowManager.showDictationPanel();
-          windowManager.mainWindow.webContents.send("toggle-dictation");
+          if (activationMode === "push") {
+            // Track when key was pressed for push-to-talk
+            globeKeyDownTime = Date.now();
+            globeKeyIsRecording = false;
+            // Start recording after a brief delay to distinguish tap from hold
+            setTimeout(async () => {
+              // Only start if key is still being held
+              if (globeKeyDownTime > 0 && !globeKeyIsRecording) {
+                globeKeyIsRecording = true;
+                windowManager.sendStartDictation();
+              }
+            }, MIN_HOLD_DURATION_MS);
+          } else {
+            windowManager.mainWindow.webContents.send("toggle-dictation");
+          }
+        }
+      }
+    });
+
+    globeKeyManager.on("globe-up", async () => {
+      // Handle push-to-talk release if Globe is the current hotkey
+      if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
+        const activationMode = await windowManager.getActivationMode();
+        if (activationMode === "push") {
+          globeKeyDownTime = 0;
+          // Only stop if we actually started recording
+          if (globeKeyIsRecording) {
+            globeKeyIsRecording = false;
+            windowManager.sendStopDictation();
+          }
+          // If released too quickly, don't do anything (tap is ignored in push mode)
         }
       }
     });
@@ -300,4 +349,6 @@ app.on("will-quit", () => {
   globalShortcut.unregisterAll();
   globeKeyManager.stop();
   updateManager.cleanup();
+  // Stop whisper server if running
+  whisperManager.stopServer().catch(() => {});
 });

@@ -42,6 +42,7 @@ import { useAuth } from "../hooks/useAuth";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -84,6 +85,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     reasoningModel,
     openaiApiKey,
     dictationKey,
+    activationMode,
+    setActivationMode,
     setUseLocalWhisper,
     setWhisperModel,
     setPreferredLanguage,
@@ -796,6 +799,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   granted={permissionsHook.accessibilityPermissionGranted}
                   onRequest={permissionsHook.testAccessibilityPermission}
                   buttonText="Test & Grant"
+                  onOpenSettings={permissionsHook.openAccessibilitySettings}
                 />
               )}
 
@@ -828,7 +832,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <div className="space-y-6">
             <div className="text-center">
               <h2 className="text-2xl font-bold text-gray-900 mb-2">Set Your Hotkey & Test</h2>
-              <p className="text-gray-600">Choose your hotkey and try it out</p>
+              <p className="text-gray-600">Choose your hotkey and activation style</p>
             </div>
 
             <HotkeyInput
@@ -842,14 +846,33 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               disabled={isHotkeyRegistering}
             />
 
+            <div className="pt-2">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Activation Mode
+              </label>
+              <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+            </div>
+
             <div className="bg-blue-50/50 p-5 rounded-lg border border-blue-200/60">
               <h3 className="font-semibold text-blue-900 mb-3">Try It Now</h3>
               <p className="text-sm text-blue-800 mb-3">
-                Click in the text area, press{" "}
-                <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
-                  {readableHotkey}
-                </kbd>{" "}
-                to start recording, speak, then press it again to stop.
+                {activationMode === "tap" ? (
+                  <>
+                    Click in the text area, press{" "}
+                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                      {readableHotkey}
+                    </kbd>{" "}
+                    to start recording, speak, then press it again to stop.
+                  </>
+                ) : (
+                  <>
+                    Click in the text area, hold{" "}
+                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                      {readableHotkey}
+                    </kbd>{" "}
+                    while speaking, then release to process.
+                  </>
+                )}
               </p>
 
               <div>
@@ -858,21 +881,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </label>
                 <Textarea rows={3} placeholder="Click here, then use your hotkey to dictate..." />
               </div>
-            </div>
-
-            <div className="bg-green-50/50 p-4 rounded-lg border border-green-200/60">
-              <h4 className="font-medium text-green-900 mb-2">How it works:</h4>
-              <ol className="text-sm text-green-800 space-y-1">
-                <li>1. Click in any text field</li>
-                <li>
-                  2. Press{" "}
-                  <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border border-green-200">
-                    {readableHotkey}
-                  </kbd>{" "}
-                  to start, speak, press again to stop
-                </li>
-                <li>3. Your text appears automatically!</li>
-              </ol>
             </div>
           </div>
         );

@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const https = require("https");
 const { runCommand, killProcess, TIMEOUTS } = require("../utils/process");
 const debugLogger = require("./debugLogger");
+const WhisperServerManager = require("./whisperServer");
 
 // Cache TTL for availability checks
 const CACHE_TTL_MS = 30000;
@@ -47,6 +48,10 @@ class WhisperManager {
     this.currentDownloadProcess = null;
     this.ffmpegAvailabilityCache = { result: null, expiresAt: 0 };
     this.isInitialized = false;
+    // Server manager for HTTP-based transcription (faster for repeated use)
+    this.serverManager = new WhisperServerManager();
+    this.useServerMode = true; // Prefer server mode when available
+    this.currentServerModel = null;
   }
 
   getModelsDir() {
@@ -207,14 +212,166 @@ class WhisperManager {
     this.cachedBinaryPath = null;
   }
 
-  async initializeAtStartup() {
+  async initializeAtStartup(settings = {}) {
+    const startTime = Date.now();
+
     try {
       await this.getWhisperBinaryPath();
       this.isInitialized = true;
+
+      // Pre-warm whisper-server if local mode enabled (eliminates 2-5s cold-start delay)
+      const { useLocalWhisper, whisperModel } = settings;
+
+      if (useLocalWhisper && whisperModel && this.serverManager.isAvailable()) {
+        const modelPath = this.getModelPath(whisperModel);
+
+        if (fs.existsSync(modelPath)) {
+          debugLogger.info("Pre-warming whisper-server", {
+            model: whisperModel,
+            modelPath,
+          });
+
+          try {
+            const serverStartTime = Date.now();
+            await this.serverManager.start(modelPath);
+            this.currentServerModel = whisperModel;
+
+            debugLogger.info("whisper-server pre-warmed successfully", {
+              model: whisperModel,
+              startupTimeMs: Date.now() - serverStartTime,
+              port: this.serverManager.port,
+            });
+          } catch (err) {
+            debugLogger.warn("Server pre-warm failed (will start on first use)", {
+              error: err.message,
+              model: whisperModel,
+            });
+            // Non-fatal: server will start on first transcription
+          }
+        } else {
+          debugLogger.debug("Skipping server pre-warm: model not downloaded", {
+            model: whisperModel,
+            modelPath,
+          });
+        }
+      } else {
+        debugLogger.debug("Skipping server pre-warm", {
+          reason: !useLocalWhisper
+            ? "local mode disabled"
+            : !whisperModel
+              ? "no model selected"
+              : "server binary not available",
+        });
+      }
     } catch (error) {
-      debugLogger.log("whisper.cpp not available at startup:", error.message);
-      this.isInitialized = true;
+      debugLogger.warn("Whisper initialization error", {
+        error: error.message,
+      });
+      this.isInitialized = true; // Mark initialized even on error
     }
+
+    debugLogger.info("Whisper initialization complete", {
+      totalTimeMs: Date.now() - startTime,
+      serverRunning: this.serverManager.ready,
+    });
+
+    // Log dependency status for debugging
+    await this.logDependencyStatus();
+  }
+
+  async logDependencyStatus() {
+    const status = {
+      whisperServer: {
+        available: this.serverManager.isAvailable(),
+        path: this.serverManager.getServerBinaryPath(),
+      },
+      whisperCli: {
+        available: this.cachedBinaryPath !== null,
+        path: this.cachedBinaryPath,
+      },
+      ffmpeg: {
+        available: false,
+        path: null,
+      },
+      models: [],
+    };
+
+    // Check FFmpeg
+    try {
+      const ffmpegPath = await this.getFFmpegPath();
+      status.ffmpeg.available = !!ffmpegPath;
+      status.ffmpeg.path = ffmpegPath;
+    } catch {
+      // FFmpeg not available
+    }
+
+    // Check downloaded models
+    for (const modelName of Object.keys(WHISPER_MODELS)) {
+      const modelPath = this.getModelPath(modelName);
+      if (fs.existsSync(modelPath)) {
+        try {
+          const stats = fs.statSync(modelPath);
+          status.models.push({
+            name: modelName,
+            size: `${Math.round(stats.size / (1024 * 1024))}MB`,
+          });
+        } catch {
+          // Skip if can't stat
+        }
+      }
+    }
+
+    debugLogger.info("OpenWhispr dependency check", status);
+
+    // Log a summary for easy scanning
+    const serverStatus = status.whisperServer.available
+      ? `✓ ${status.whisperServer.path}`
+      : "✗ Not found";
+    const cliStatus = status.whisperCli.available ? `✓ ${status.whisperCli.path}` : "✗ Not found";
+    const ffmpegStatus = status.ffmpeg.available ? `✓ ${status.ffmpeg.path}` : "✗ Not found";
+    const modelsStatus =
+      status.models.length > 0
+        ? status.models.map((m) => `${m.name} (${m.size})`).join(", ")
+        : "None downloaded";
+
+    debugLogger.info(`[Dependencies] whisper-server: ${serverStatus}`);
+    debugLogger.info(`[Dependencies] whisper-cli: ${cliStatus}`);
+    debugLogger.info(`[Dependencies] FFmpeg: ${ffmpegStatus}`);
+    debugLogger.info(`[Dependencies] Models: ${modelsStatus}`);
+  }
+
+  async startServer(modelName) {
+    if (!this.serverManager.isAvailable()) {
+      debugLogger.debug("whisper-server not available, will use CLI fallback");
+      return { success: false, reason: "whisper-server binary not found" };
+    }
+
+    const modelPath = this.getModelPath(modelName);
+    if (!fs.existsSync(modelPath)) {
+      return { success: false, reason: `Model "${modelName}" not downloaded` };
+    }
+
+    try {
+      await this.serverManager.start(modelPath);
+      this.currentServerModel = modelName;
+      debugLogger.info("whisper-server started", {
+        model: modelName,
+        port: this.serverManager.port,
+      });
+      return { success: true, port: this.serverManager.port };
+    } catch (error) {
+      debugLogger.error("Failed to start whisper-server", { error: error.message });
+      return { success: false, reason: error.message };
+    }
+  }
+
+  async stopServer() {
+    await this.serverManager.stop();
+    this.currentServerModel = null;
+  }
+
+  getServerStatus() {
+    return this.serverManager.getStatus();
   }
 
   async checkWhisperInstallation() {
@@ -237,8 +394,94 @@ class WhisperManager {
       options,
       audioBlobType: audioBlob?.constructor?.name,
       audioBlobSize: audioBlob?.byteLength || audioBlob?.size || 0,
+      serverMode: this.useServerMode,
+      serverAvailable: this.serverManager.isAvailable(),
+      serverReady: this.serverManager.ready,
     });
 
+    const model = options.model || "base";
+    const language = options.language || null;
+    const modelPath = this.getModelPath(model);
+
+    // Check if model exists
+    if (!fs.existsSync(modelPath)) {
+      throw new Error(`Whisper model "${model}" not downloaded. Please download it from Settings.`);
+    }
+
+    // Try server mode first (faster for repeated transcriptions)
+    if (this.useServerMode && this.serverManager.isAvailable()) {
+      try {
+        return await this.transcribeViaServer(audioBlob, model, language);
+      } catch (serverError) {
+        debugLogger.warn("Server transcription failed, falling back to CLI", {
+          error: serverError.message,
+        });
+        // Fall through to CLI mode
+      }
+    }
+
+    // Fallback to CLI mode (spawns process per transcription)
+    return this.transcribeViaCLI(audioBlob, model, language, modelPath);
+  }
+
+  async transcribeViaServer(audioBlob, model, language) {
+    debugLogger.info("Transcription mode: SERVER", { model, language: language || "auto" });
+    const modelPath = this.getModelPath(model);
+
+    // Start server if not running or if model changed
+    if (!this.serverManager.ready || this.currentServerModel !== model) {
+      debugLogger.debug("Starting/restarting whisper-server for model", { model });
+      await this.serverManager.start(modelPath);
+      this.currentServerModel = model;
+    }
+
+    // Convert audioBlob to Buffer if needed
+    let audioBuffer;
+    if (audioBlob instanceof ArrayBuffer) {
+      audioBuffer = Buffer.from(audioBlob);
+    } else if (audioBlob instanceof Uint8Array) {
+      audioBuffer = Buffer.from(audioBlob);
+    } else if (typeof audioBlob === "string") {
+      audioBuffer = Buffer.from(audioBlob, "base64");
+    } else if (audioBlob && audioBlob.buffer) {
+      audioBuffer = Buffer.from(audioBlob.buffer);
+    } else {
+      throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
+    }
+
+    if (!audioBuffer || audioBuffer.length === 0) {
+      throw new Error("Audio buffer is empty - no audio data received");
+    }
+
+    debugLogger.logWhisperPipeline("transcribeViaServer - sending to server", {
+      bufferSize: audioBuffer.length,
+      model,
+      language,
+      port: this.serverManager.port,
+    });
+
+    const startTime = Date.now();
+    const result = await this.serverManager.transcribe(audioBuffer, { language });
+    const elapsed = Date.now() - startTime;
+
+    debugLogger.logWhisperPipeline("transcribeViaServer - completed", {
+      elapsed,
+      resultKeys: Object.keys(result),
+    });
+
+    return this.parseWhisperResult(result);
+  }
+
+  async transcribeViaCLI(audioBlob, _model, language, modelPath) {
+    debugLogger.info("Transcription mode: CLI (fallback)", {
+      model: path.basename(modelPath, ".bin").replace("ggml-", ""),
+      language: language || "auto",
+      reason: !this.useServerMode
+        ? "server mode disabled"
+        : !this.serverManager.isAvailable()
+          ? "server binary not found"
+          : "server failed",
+    });
     const binaryPath = await this.getWhisperBinaryPath();
     if (!binaryPath) {
       throw new Error(
@@ -247,15 +490,6 @@ class WhisperManager {
     }
 
     const tempAudioPath = await this.createTempAudioFile(audioBlob);
-    const model = options.model || "base";
-    const language = options.language || null;
-    const modelPath = this.getModelPath(model);
-
-    // Check if model exists
-    if (!fs.existsSync(modelPath)) {
-      await this.cleanupTempFile(tempAudioPath);
-      throw new Error(`Whisper model "${model}" not downloaded. Please download it from Settings.`);
-    }
 
     try {
       const result = await this.runWhisperProcess(binaryPath, tempAudioPath, modelPath, language);
@@ -524,43 +758,60 @@ class WhisperManager {
     }
   }
 
-  parseWhisperResult(stdout) {
-    debugLogger.logWhisperPipeline("Parsing result", { stdoutLength: stdout.length });
+  // Normalize whitespace: replace newlines with spaces and collapse multiple spaces
+  // whisper.cpp returns text with \n between audio segments which causes formatting issues
+  normalizeWhitespace(text) {
+    return text.replace(/\n/g, " ").replace(/\s+/g, " ").trim();
+  }
 
-    try {
-      // whisper.cpp outputs JSON with transcription array
-      const result = JSON.parse(stdout);
-
-      // Handle whisper.cpp JSON format
-      if (result.transcription && Array.isArray(result.transcription)) {
-        const text = result.transcription
-          .map((seg) => seg.text)
-          .join("")
-          .trim();
-        if (!text) {
-          return { success: false, message: "No audio detected" };
+  parseWhisperResult(output) {
+    // Handle both string (from CLI) and object (from server) inputs
+    let result;
+    if (typeof output === "string") {
+      debugLogger.logWhisperPipeline("Parsing result (string)", { length: output.length });
+      try {
+        result = JSON.parse(output);
+      } catch (parseError) {
+        // Try parsing as plain text (non-JSON output)
+        const text = this.normalizeWhitespace(output);
+        if (text && !this.isBlankAudioMarker(text)) {
+          return { success: true, text };
         }
-        return { success: true, text };
+        throw new Error(`Failed to parse Whisper output: ${parseError.message}`);
       }
-
-      // Fallback for simple text output
-      if (result.text) {
-        const text = result.text.trim();
-        if (!text) {
-          return { success: false, message: "No audio detected" };
-        }
-        return { success: true, text };
-      }
-
-      return { success: false, message: "No audio detected" };
-    } catch (parseError) {
-      // Try parsing as plain text (non-JSON output)
-      const text = stdout.trim();
-      if (text) {
-        return { success: true, text };
-      }
-      throw new Error(`Failed to parse Whisper output: ${parseError.message}`);
+    } else if (typeof output === "object" && output !== null) {
+      debugLogger.logWhisperPipeline("Parsing result (object)", { keys: Object.keys(output) });
+      result = output;
+    } else {
+      throw new Error(`Unexpected Whisper output type: ${typeof output}`);
     }
+
+    // Handle whisper.cpp JSON format (CLI mode)
+    if (result.transcription && Array.isArray(result.transcription)) {
+      const text = this.normalizeWhitespace(result.transcription.map((seg) => seg.text).join(""));
+      if (!text || this.isBlankAudioMarker(text)) {
+        return { success: false, message: "No audio detected" };
+      }
+      return { success: true, text };
+    }
+
+    // Handle whisper-server format (has "text" field directly)
+    if (result.text !== undefined) {
+      const text = typeof result.text === "string" ? this.normalizeWhitespace(result.text) : "";
+      if (!text || this.isBlankAudioMarker(text)) {
+        return { success: false, message: "No audio detected" };
+      }
+      return { success: true, text };
+    }
+
+    return { success: false, message: "No audio detected" };
+  }
+
+  // Check if text is a whisper.cpp blank audio marker
+  isBlankAudioMarker(text) {
+    // whisper.cpp outputs "[BLANK_AUDIO]" when there's silence or insufficient audio
+    const normalized = text.trim().toLowerCase();
+    return normalized === "[blank_audio]" || normalized === "[ blank_audio ]";
   }
 
   async cleanupTempFile(tempAudioPath) {
@@ -868,12 +1119,35 @@ class WhisperManager {
         ffmpegPath += ".exe";
       }
 
+      debugLogger.debug("FFmpeg static path from module", { ffmpegPath });
+
       // Try unpacked ASAR path first (production builds unpack ffmpeg-static)
-      const unpackedPath = ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1");
-      if (fs.existsSync(unpackedPath)) {
-        debugLogger.debug("Found FFmpeg in unpacked ASAR", { path: unpackedPath });
-        this.cachedFFmpegPath = unpackedPath;
-        return unpackedPath;
+      // Handle both forward slashes and backslashes for cross-platform compatibility
+      const unpackedPath = ffmpegPath.includes("app.asar")
+        ? ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1")
+        : null;
+
+      if (unpackedPath) {
+        debugLogger.debug("Checking unpacked ASAR path", { unpackedPath });
+        if (fs.existsSync(unpackedPath)) {
+          if (process.platform !== "win32") {
+            try {
+              fs.accessSync(unpackedPath, fs.constants.X_OK);
+            } catch {
+              debugLogger.debug("FFmpeg not executable, attempting chmod", { unpackedPath });
+              try {
+                fs.chmodSync(unpackedPath, 0o755);
+              } catch (chmodErr) {
+                debugLogger.warn("Failed to chmod FFmpeg", { error: chmodErr.message });
+              }
+            }
+          }
+          debugLogger.debug("Found FFmpeg in unpacked ASAR", { path: unpackedPath });
+          this.cachedFFmpegPath = unpackedPath;
+          return unpackedPath;
+        } else {
+          debugLogger.warn("Unpacked ASAR path does not exist", { unpackedPath });
+        }
       }
 
       // Try original path (development or if not in ASAR)
@@ -884,20 +1158,27 @@ class WhisperManager {
         debugLogger.debug("Found FFmpeg at bundled path", { path: ffmpegPath });
         this.cachedFFmpegPath = ffmpegPath;
         return ffmpegPath;
+      } else {
+        debugLogger.warn("Bundled FFmpeg path does not exist", { ffmpegPath });
       }
-    } catch {
-      // Bundled FFmpeg not available
+    } catch (err) {
+      debugLogger.warn("Bundled FFmpeg not available", { error: err.message });
     }
 
     // Try system FFmpeg
     const systemCandidates =
       process.platform === "darwin"
         ? ["ffmpeg", "/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
-        : ["ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+        : process.platform === "win32"
+          ? ["ffmpeg", "C:\\ffmpeg\\bin\\ffmpeg.exe"]
+          : ["ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+
+    debugLogger.debug("Trying system FFmpeg candidates", { candidates: systemCandidates });
 
     for (const candidate of systemCandidates) {
       try {
         await runCommand(candidate, ["-version"], { timeout: TIMEOUTS.QUICK_CHECK });
+        debugLogger.debug("Found system FFmpeg", { path: candidate });
         this.cachedFFmpegPath = candidate;
         return candidate;
       } catch {
@@ -905,6 +1186,7 @@ class WhisperManager {
       }
     }
 
+    debugLogger.error("FFmpeg not found anywhere");
     return null;
   }
 
@@ -924,6 +1206,70 @@ class WhisperManager {
 
     this.ffmpegAvailabilityCache = { result, expiresAt: now + CACHE_TTL_MS };
     return result;
+  }
+
+  async getDiagnostics() {
+    const diagnostics = {
+      platform: process.platform,
+      arch: process.arch,
+      resourcesPath: process.resourcesPath || null,
+      isPackaged: !!process.resourcesPath && !process.resourcesPath.includes("node_modules"),
+      ffmpeg: { available: false, path: null, error: null },
+      whisperBinary: { available: false, path: null, error: null },
+      whisperServer: { available: false, path: null },
+      modelsDir: this.getModelsDir(),
+      models: [],
+    };
+
+    // Check FFmpeg
+    try {
+      this.cachedFFmpegPath = null; // Clear cache for fresh check
+      const ffmpegPath = await this.getFFmpegPath();
+      if (ffmpegPath) {
+        diagnostics.ffmpeg = { available: true, path: ffmpegPath, error: null };
+      } else {
+        diagnostics.ffmpeg = { available: false, path: null, error: "Not found" };
+      }
+    } catch (err) {
+      diagnostics.ffmpeg = { available: false, path: null, error: err.message };
+    }
+
+    // Check whisper binary
+    try {
+      this.cachedBinaryPath = null; // Clear cache for fresh check
+      const whisperPath = await this.getWhisperBinaryPath();
+      if (whisperPath) {
+        diagnostics.whisperBinary = { available: true, path: whisperPath, error: null };
+      } else {
+        diagnostics.whisperBinary = { available: false, path: null, error: "Not found" };
+      }
+    } catch (err) {
+      diagnostics.whisperBinary = { available: false, path: null, error: err.message };
+    }
+
+    // Check whisper server
+    if (this.serverManager) {
+      const serverPath = this.serverManager.getBinaryPath?.();
+      diagnostics.whisperServer = {
+        available: !!serverPath && fs.existsSync(serverPath),
+        path: serverPath || null,
+      };
+    }
+
+    // Check downloaded models
+    try {
+      const modelsDir = this.getModelsDir();
+      if (fs.existsSync(modelsDir)) {
+        const files = fs.readdirSync(modelsDir);
+        diagnostics.models = files
+          .filter((f) => f.startsWith("ggml-") && f.endsWith(".bin"))
+          .map((f) => f.replace("ggml-", "").replace(".bin", ""));
+      }
+    } catch {
+      // Ignore errors reading models dir
+    }
+
+    return diagnostics;
   }
 }
 

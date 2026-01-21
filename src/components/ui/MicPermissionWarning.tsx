@@ -7,16 +7,47 @@ interface MicPermissionWarningProps {
   onOpenPrivacySettings: () => void;
 }
 
-const getPlatformInfo = () => {
-  if (typeof navigator === "undefined") {
-    return { isMac: true, isWindows: false, isLinux: false };
+type Platform = "darwin" | "win32" | "linux";
+
+const getPlatform = (): Platform => {
+  if (typeof window !== "undefined" && window.electronAPI?.getPlatform) {
+    const p = window.electronAPI.getPlatform();
+    if (p === "darwin" || p === "win32" || p === "linux") return p;
   }
-  const ua = navigator.userAgent.toLowerCase();
-  return {
-    isMac: ua.includes("mac"),
-    isWindows: ua.includes("win"),
-    isLinux: ua.includes("linux"),
-  };
+  // Fallback to user agent
+  if (typeof navigator !== "undefined") {
+    const ua = navigator.userAgent.toLowerCase();
+    if (ua.includes("mac")) return "darwin";
+    if (ua.includes("linux")) return "linux";
+  }
+  return "win32";
+};
+
+const PLATFORM_CONFIG: Record<
+  Platform,
+  { message: string; soundLabel: string; privacyLabel: string; showPrivacyButton: boolean }
+> = {
+  darwin: {
+    message:
+      "If the microphone prompt doesn't appear, open Sound settings to select your input device, then try again.",
+    soundLabel: "Open Sound Input",
+    privacyLabel: "Open Microphone Privacy",
+    showPrivacyButton: true, // macOS has separate privacy settings
+  },
+  win32: {
+    message:
+      "If the microphone prompt doesn't appear, open Windows Settings to select your input device, then try again.",
+    soundLabel: "Open Sound Settings",
+    privacyLabel: "Open Privacy Settings",
+    showPrivacyButton: true, // Windows has privacy settings for microphone
+  },
+  linux: {
+    message:
+      "If the microphone prompt doesn't appear, open your system sound settings to select your input device, then try again.",
+    soundLabel: "Open Sound Settings",
+    privacyLabel: "",
+    showPrivacyButton: false, // Linux typically doesn't have app-level mic privacy settings
+  },
 };
 
 export default function MicPermissionWarning({
@@ -24,36 +55,20 @@ export default function MicPermissionWarning({
   onOpenSoundSettings,
   onOpenPrivacySettings,
 }: MicPermissionWarningProps) {
-  const { isMac, isWindows, isLinux } = useMemo(() => getPlatformInfo(), []);
-
-  const defaultMessage = isWindows
-    ? "If the microphone prompt doesn't appear, open Windows Settings to select your input device, then try again."
-    : isLinux
-      ? "If the microphone prompt doesn't appear, open your system sound settings to select your input device, then try again."
-      : "If the microphone prompt doesn't appear, open Sound settings to select your input device, then try again.";
-
-  const soundButtonLabel = isWindows
-    ? "Open Sound Settings"
-    : isLinux
-      ? "Open Sound Settings"
-      : "Open Sound Input Settings";
-
-  const privacyButtonLabel = isWindows
-    ? "Open Privacy Settings"
-    : isLinux
-      ? "Open Privacy Settings"
-      : "Open Microphone Privacy";
+  const config = useMemo(() => PLATFORM_CONFIG[getPlatform()], []);
 
   return (
     <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-      <p className="text-sm text-amber-900">{error || defaultMessage}</p>
+      <p className="text-sm text-amber-900">{error || config.message}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={onOpenSoundSettings}>
-          {soundButtonLabel}
+          {config.soundLabel}
         </Button>
-        <Button variant="outline" size="sm" onClick={onOpenPrivacySettings}>
-          {privacyButtonLabel}
-        </Button>
+        {config.showPrivacyButton && (
+          <Button variant="outline" size="sm" onClick={onOpenPrivacySettings}>
+            {config.privacyLabel}
+          </Button>
+        )}
       </div>
     </div>
   );

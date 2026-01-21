@@ -764,7 +764,7 @@ class ReasoningService extends BaseReasoningService {
           maxOutputTokens:
             config.maxTokens ||
             Math.max(
-              2000, // Gemini 2.5 Pro needs more tokens for its thinking process
+              2000, // Gemini 3 Pro need more tokens for thinking processes
               this.calculateMaxTokens(
                 text.length,
                 TOKEN_LIMITS.MIN_TOKENS_GEMINI,
@@ -956,6 +956,20 @@ class ReasoningService extends BaseReasoningService {
         name: (error as Error).name,
       });
       return false;
+    }
+  }
+
+  /**
+   * Clear cached API key for a specific provider or all providers.
+   * Call this when API keys change to ensure fresh keys are used.
+   */
+  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq"): void {
+    if (provider) {
+      this.apiKeyCache.delete(provider);
+      logger.logReasoning("API_KEY_CACHE_CLEARED", { provider });
+    } else {
+      this.apiKeyCache.clear();
+      logger.logReasoning("API_KEY_CACHE_CLEARED", { provider: "all" });
     }
   }
 
