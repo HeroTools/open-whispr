@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
+import ReasoningService from "../services/ReasoningService";
 
 export interface TranscriptionSettings {
   useLocalWhisper: boolean;
@@ -125,26 +126,63 @@ export function useSettings() {
     deserialize: String,
   });
 
-  // API keys
-  const [openaiApiKey, setOpenaiApiKey] = useLocalStorage("openaiApiKey", "", {
+  // API keys - localStorage for UI, synced to Electron IPC for persistence
+  const [openaiApiKey, setOpenaiApiKeyLocal] = useLocalStorage("openaiApiKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [anthropicApiKey, setAnthropicApiKey] = useLocalStorage("anthropicApiKey", "", {
+  const [anthropicApiKey, setAnthropicApiKeyLocal] = useLocalStorage("anthropicApiKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [geminiApiKey, setGeminiApiKey] = useLocalStorage("geminiApiKey", "", {
+  const [geminiApiKey, setGeminiApiKeyLocal] = useLocalStorage("geminiApiKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [groqApiKey, setGroqApiKey] = useLocalStorage("groqApiKey", "", {
+  const [groqApiKey, setGroqApiKeyLocal] = useLocalStorage("groqApiKey", "", {
     serialize: String,
     deserialize: String,
   });
+
+  // Wrapped setters that sync to Electron IPC and invalidate cache
+  const setOpenaiApiKey = useCallback(
+    (key: string) => {
+      setOpenaiApiKeyLocal(key);
+      window.electronAPI?.saveOpenAIKey?.(key);
+      ReasoningService.clearApiKeyCache("openai");
+    },
+    [setOpenaiApiKeyLocal]
+  );
+
+  const setAnthropicApiKey = useCallback(
+    (key: string) => {
+      setAnthropicApiKeyLocal(key);
+      window.electronAPI?.saveAnthropicKey?.(key);
+      ReasoningService.clearApiKeyCache("anthropic");
+    },
+    [setAnthropicApiKeyLocal]
+  );
+
+  const setGeminiApiKey = useCallback(
+    (key: string) => {
+      setGeminiApiKeyLocal(key);
+      window.electronAPI?.saveGeminiKey?.(key);
+      ReasoningService.clearApiKeyCache("gemini");
+    },
+    [setGeminiApiKeyLocal]
+  );
+
+  const setGroqApiKey = useCallback(
+    (key: string) => {
+      setGroqApiKeyLocal(key);
+      window.electronAPI?.saveGroqKey?.(key);
+      ReasoningService.clearApiKeyCache("groq");
+    },
+    [setGroqApiKeyLocal]
+  );
 
   // Hotkey
   const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {

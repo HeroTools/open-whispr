@@ -18,6 +18,7 @@ import { AlertDialog } from "./dialog";
 import { useDialogs } from "../../hooks/useDialogs";
 import { useAgentName } from "../../utils/agentName";
 import ReasoningService, { DEFAULT_PROMPTS } from "../../services/ReasoningService";
+import { getModelProvider } from "../../models/ModelRegistry";
 
 interface PromptStudioProps {
   className?: string;
@@ -102,7 +103,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       // Check if reasoning model is enabled and if we have the necessary settings
       const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
       const reasoningModel = localStorage.getItem("reasoningModel") || "";
-      const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
+      // Determine provider from the model name, falling back to openai if needed
+      const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
 
       if (!useReasoningModel) {
         setTestResult(
@@ -129,13 +131,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         }
       }
 
-      if (providerConfig.apiKeyStorageKey) {
-        const apiKey = localStorage.getItem(providerConfig.apiKeyStorageKey);
-        if (!apiKey || apiKey.trim() === "") {
-          setTestResult(`⚠️ No ${providerLabel} API key found. Add it in AI Models settings.`);
-          return;
-        }
-      }
+      // Note: API key validation is handled by ReasoningService which uses Electron IPC
+      // to fetch keys from the environment. We skip localStorage validation here.
 
       // Save current prompts temporarily so the test uses them
       const currentCustomPrompts = localStorage.getItem("customPrompts");
@@ -324,7 +321,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const renderTestPlayground = () => {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
     const reasoningModel = localStorage.getItem("reasoningModel") || "";
-    const reasoningProvider = localStorage.getItem("reasoningProvider") || "openai";
+    const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
     const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
       label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
     };
