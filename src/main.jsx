@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
-import { ClerkProvider } from "@clerk/clerk-react";
 import App from "./App.jsx";
 import ControlPanel from "./components/ControlPanel.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
-import { CLERK_PUBLISHABLE_KEY, clerkConfig } from "./lib/clerk.ts";
+import "@neondatabase/neon-js/ui/css";
 import "./index.css";
 
 function AppRouter() {
@@ -62,23 +61,8 @@ function AppRouter() {
   return isControlPanel ? <ControlPanel /> : <App />;
 }
 
-// Wrap the app conditionally with ClerkProvider only if key is available
+// Wrap the app with shared providers
 const AppWithProviders = () => {
-  // Only wrap with ClerkProvider if we have a key
-  if (CLERK_PUBLISHABLE_KEY) {
-    return (
-      <ClerkProvider
-        publishableKey={CLERK_PUBLISHABLE_KEY}
-        appearance={clerkConfig.appearance}
-      >
-        <ToastProvider>
-          <AppRouter />
-        </ToastProvider>
-      </ClerkProvider>
-    );
-  }
-
-  // Without Clerk key, just use ToastProvider
   return (
     <ToastProvider>
       <AppRouter />

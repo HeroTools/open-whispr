@@ -38,7 +38,7 @@ import ModelCardList from "./ui/ModelCardList";
 import AuthenticationStep from "./AuthenticationStep";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
-import { useAuth } from "../hooks/useClerkAuth";
+import { useAuth } from "../hooks/useAuth";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
