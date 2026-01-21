@@ -1,5 +1,5 @@
 import React from "react";
-import { Settings, Mic, Brain, User, Sparkles } from "lucide-react";
+import { Settings, Mic, Brain, User, Sparkles, UserCircle } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
 
@@ -10,6 +10,7 @@ interface SettingsModalProps {
 
 export default function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   const sidebarItems: SidebarItem<SettingsSectionType>[] = [
+    { id: "account", label: "Account", icon: UserCircle },
     { id: "general", label: "General", icon: Settings },
     { id: "transcription", label: "Transcription Mode", icon: Mic },
     { id: "aiModels", label: "AI Models", icon: Brain },
@@ -17,7 +18,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
     { id: "prompts", label: "AI Prompts", icon: Sparkles },
   ];
 
-  const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("general");
+  const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("account");
 
   return (
     <SidebarModal<SettingsSectionType>

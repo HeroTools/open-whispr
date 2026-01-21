@@ -4,7 +4,6 @@ import App from "./App.jsx";
 import ControlPanel from "./components/ControlPanel.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
-import "@neondatabase/neon-js/ui/css";
 import "./index.css";
 
 function AppRouter() {

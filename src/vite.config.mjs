@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename)
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './', // Use relative paths for file:// protocol in Electron
+  envDir: path.resolve(__dirname, '..'), // Load .env from project root
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),

@@ -1,7 +1,9 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-react";
+import { RefreshCw, Download, Command, Mic, Shield, FolderOpen, LogOut, UserCircle } from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { authClient, NEON_AUTH_URL } from "../lib/neonAuth";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -24,6 +26,7 @@ import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 
 export type SettingsSectionType =
+  | "account"
   | "general"
   | "transcription"
   | "aiModels"
@@ -247,8 +250,151 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     });
   }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog]);
 
+  const { isSignedIn, isLoaded, user } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = useCallback(async () => {
+    if (!authClient) return;
+
+    setIsSigningOut(true);
+    try {
+      await authClient.signOut();
+      // Clear onboarding to show auth screen again
+      localStorage.removeItem("onboardingCompleted");
+      localStorage.removeItem("onboardingCurrentStep");
+      // Reload the app to show onboarding/auth
+      window.location.reload();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      showAlertDialog({
+        title: "Sign Out Failed",
+        description: "Unable to sign out. Please try again.",
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [showAlertDialog]);
+
   const renderSectionContent = () => {
     switch (activeSection) {
+      case "account":
+        return (
+          <div className="space-y-8">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Account</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Manage your account settings and sign-in status.
+              </p>
+            </div>
+
+            {!NEON_AUTH_URL ? (
+              <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl">
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <UserCircle className="w-5 h-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-amber-900 mb-1">Account Features Disabled</h4>
+                    <p className="text-sm text-amber-800">
+                      Authentication is not configured for this installation. Set{" "}
+                      <code className="bg-amber-100 px-1 rounded">VITE_NEON_AUTH_URL</code> in your
+                      .env file to enable account features.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ) : isLoaded && isSignedIn && user ? (
+              <div className="space-y-6">
+                <div className="p-6 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                      {user.image ? (
+                        <img
+                          src={user.image}
+                          alt={user.name || "User"}
+                          className="w-16 h-16 rounded-full object-cover"
+                        />
+                      ) : (
+                        <UserCircle className="w-8 h-8 text-blue-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-gray-900 text-lg truncate">
+                        {user.name || "User"}
+                      </h4>
+                      <p className="text-sm text-gray-600 truncate">{user.email}</p>
+                      <span className="inline-flex items-center mt-2 text-xs text-green-700 bg-green-100 px-2 py-0.5 rounded-full">
+                        Signed in
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-gray-50 border border-gray-200 rounded-xl">
+                  <h4 className="font-medium text-gray-900 mb-3">Account Benefits</h4>
+                  <ul className="text-sm text-gray-700 space-y-2">
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span>
+                      Sync settings across all your devices
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span>
+                      Access your transcription history anywhere
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-green-500">✓</span>
+                      Priority support and updates
+                    </li>
+                  </ul>
+                </div>
+
+                <Button
+                  onClick={handleSignOut}
+                  variant="outline"
+                  disabled={isSigningOut}
+                  className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  {isSigningOut ? "Signing out..." : "Sign Out"}
+                </Button>
+              </div>
+            ) : isLoaded ? (
+              <div className="space-y-6">
+                <div className="p-6 bg-gray-50 border border-gray-200 rounded-xl">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                      <UserCircle className="w-5 h-5 text-gray-500" />
+                    </div>
+                    <div>
+                      <h4 className="font-medium text-gray-900 mb-1">Not Signed In</h4>
+                      <p className="text-sm text-gray-600">
+                        Sign in to sync your settings across devices and access premium features.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={() => {
+                    // Reset onboarding to go back to auth screen
+                    localStorage.removeItem("onboardingCompleted");
+                    localStorage.setItem("onboardingCurrentStep", "0");
+                    window.location.reload();
+                  }}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                >
+                  <UserCircle className="mr-2 h-4 w-4" />
+                  Sign In or Create Account
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+              </div>
+            )}
+          </div>
+        );
+
       case "general":
         return (
           <div className="space-y-8">
