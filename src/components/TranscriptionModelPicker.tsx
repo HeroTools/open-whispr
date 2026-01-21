@@ -38,13 +38,17 @@ interface TranscriptionModelPickerProps {
   setOpenaiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
+  geminiApiKey: string;
+  setGeminiApiKey: (key: string) => void;
   className?: string;
   variant?: "onboarding" | "settings";
+  hideModeSelector?: boolean;
 }
 
 const CLOUD_PROVIDER_TABS = [
   { id: "openai", name: "OpenAI" },
   { id: "groq", name: "Groq" },
+  { id: "gemini", name: "Google Gemini" },
 ];
 
 const VALID_CLOUD_PROVIDER_IDS = CLOUD_PROVIDER_TABS.map((p) => p.id);
@@ -69,8 +73,11 @@ export default function TranscriptionModelPicker({
   setOpenaiApiKey,
   groqApiKey,
   setGroqApiKey,
+  geminiApiKey,
+  setGeminiApiKey,
   className = "",
   variant = "settings",
+  hideModeSelector = false,
 }: TranscriptionModelPickerProps) {
   const [localModels, setLocalModels] = useState<WhisperModel[]>([]);
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
@@ -199,12 +206,15 @@ export default function TranscriptionModelPicker({
   const handleCloudProviderChange = useCallback(
     (providerId: string) => {
       onCloudProviderSelect(providerId);
+      // Removed auto-selection of first model to prevent overwriting user choice/default
+      /*
       const provider = cloudProviders.find((p) => p.id === providerId);
       if (provider?.models?.length) {
         onCloudModelSelect(provider.models[0].id);
       }
+      */
     },
-    [cloudProviders, onCloudProviderSelect, onCloudModelSelect]
+    [cloudProviders, onCloudProviderSelect]
   );
 
   const handleLocalProviderChange = useCallback(
@@ -281,9 +291,8 @@ export default function TranscriptionModelPicker({
         return (
           <div
             key={modelId}
-            className={`p-3 rounded-lg border-2 transition-all ${
-              isSelected ? styles.modelCard.selected : styles.modelCard.default
-            }`}
+            className={`p-3 rounded-lg border-2 transition-all ${isSelected ? styles.modelCard.selected : styles.modelCard.default
+              }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex-1">
@@ -377,13 +386,12 @@ export default function TranscriptionModelPicker({
       <button
         key={provider.id}
         onClick={() => !isDisabled && handleLocalProviderChange(provider.id)}
-        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${
-          isDisabled
-            ? "text-gray-600 cursor-default"
-            : isSelected
-              ? `${tabColors.text} border-b-2`
-              : "text-gray-600 hover:bg-gray-100"
-        }`}
+        className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${isDisabled
+          ? "text-gray-600 cursor-default"
+          : isSelected
+            ? `${tabColors.text} border-b-2`
+            : "text-gray-600 hover:bg-gray-100"
+          }`}
         style={
           isSelected && !isDisabled
             ? { borderBottomColor: tabColors.border, backgroundColor: tabColors.bg }
@@ -403,49 +411,49 @@ export default function TranscriptionModelPicker({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <button
-          onClick={() => handleModeChange(false)}
-          className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-            !useLocalWhisper
+      {!hideModeSelector && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <button
+            onClick={() => handleModeChange(false)}
+            className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${!useLocalWhisper
               ? "border-purple-500 bg-purple-50"
               : "border-neutral-200 bg-white hover:border-neutral-300"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <Cloud className="w-6 h-6 text-blue-600" />
-              <h4 className="font-medium text-neutral-900">Cloud</h4>
+              }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <Cloud className="w-6 h-6 text-blue-600" />
+                <h4 className="font-medium text-neutral-900">Cloud</h4>
+              </div>
+              <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Fast</span>
             </div>
-            <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Fast</span>
-          </div>
-          <p className="text-sm text-neutral-600">
-            Transcription via API. Fast and accurate, requires internet.
-          </p>
-        </button>
+            <p className="text-sm text-neutral-600">
+              Transcription via API. Fast and accurate, requires internet.
+            </p>
+          </button>
 
-        <button
-          onClick={() => handleModeChange(true)}
-          className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-            useLocalWhisper
+          <button
+            onClick={() => handleModeChange(true)}
+            className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${useLocalWhisper
               ? "border-purple-500 bg-purple-50"
               : "border-neutral-200 bg-white hover:border-neutral-300"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <Lock className="w-6 h-6 text-purple-600" />
-              <h4 className="font-medium text-neutral-900">Local</h4>
+              }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <Lock className="w-6 h-6 text-purple-600" />
+                <h4 className="font-medium text-neutral-900">Local</h4>
+              </div>
+              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                Private
+              </span>
             </div>
-            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-              Private
-            </span>
-          </div>
-          <p className="text-sm text-neutral-600">
-            Runs on your device. Complete privacy, works offline.
-          </p>
-        </button>
-      </div>
+            <p className="text-sm text-neutral-600">
+              Runs on your device. Complete privacy, works offline.
+            </p>
+          </button>
+        </div>
+      )}
 
       {!useLocalWhisper ? (
         <div className="space-y-4">
@@ -473,8 +481,20 @@ export default function TranscriptionModelPicker({
                 <div className="space-y-3">
                   <h4 className="font-medium text-gray-900">API Configuration</h4>
                   <ApiKeyInput
-                    apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
-                    setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
+                    apiKey={
+                      selectedCloudProvider === "groq"
+                        ? groqApiKey
+                        : selectedCloudProvider === "gemini"
+                          ? geminiApiKey
+                          : openaiApiKey
+                    }
+                    setApiKey={
+                      selectedCloudProvider === "groq"
+                        ? setGroqApiKey
+                        : selectedCloudProvider === "gemini"
+                          ? setGeminiApiKey
+                          : setOpenaiApiKey
+                    }
                     helpText={
                       selectedCloudProvider === "groq" ? (
                         <>
@@ -486,6 +506,18 @@ export default function TranscriptionModelPicker({
                             className="text-blue-600 underline"
                           >
                             console.groq.com
+                          </a>
+                        </>
+                      ) : selectedCloudProvider === "gemini" ? (
+                        <>
+                          Need an API key?{" "}
+                          <a
+                            href="https://aistudio.google.com/app/apikey"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 underline"
+                          >
+                            aistudio.google.com
                           </a>
                         </>
                       ) : (

@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import TitleBar from "./TitleBar";
 import LocalWhisperPicker from "./LocalWhisperPicker";
+import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
@@ -93,9 +94,18 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,
+    cloudTranscriptionProvider,
+    setCloudTranscriptionProvider,
+    cloudTranscriptionModel,
+    setCloudTranscriptionModel,
+    setOpenaiApiKey,
+    setGroqApiKey,
+    setGeminiApiKey,
+    groqApiKey,
+    geminiApiKey,
   } = useSettings();
 
-  const [apiKey, setApiKey] = useState(openaiApiKey);
+
   const [hotkey, setHotkey] = useState(dictationKey || "`");
   const [transcriptionBaseUrl, setTranscriptionBaseUrl] = useState(cloudTranscriptionBaseUrl);
   const [reasoningBaseUrl, setReasoningBaseUrl] = useState(cloudReasoningBaseUrl);
@@ -164,29 +174,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     return buildApiUrl(base, "/models");
   }, [usingCustomReasoningBase, normalizedReasoningBaseUrl]);
 
-  const persistOpenAIKey = useCallback(
-    async (nextKey: string) => {
-      const trimmedKey = nextKey.trim();
-      if (useLocalWhisper || !trimmedKey) {
-        return false;
-      }
-      if (trimmedKey === openaiApiKey.trim()) {
-        return true;
-      }
 
-      try {
-        if (window.electronAPI?.saveOpenAIKey) {
-          await window.electronAPI.saveOpenAIKey(trimmedKey);
-        }
-        updateApiKeys({ openaiApiKey: trimmedKey });
-        return true;
-      } catch (error) {
-        console.error("Failed to save OpenAI key", error);
-        return false;
-      }
-    },
-    [useLocalWhisper, updateApiKeys, openaiApiKey]
-  );
 
   const reasoningModelRef = useRef(reasoningModel);
   useEffect(() => {
@@ -221,7 +209,16 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         }
 
         const headers: Record<string, string> = {};
-        const trimmedKey = apiKey.trim();
+        const trimmedKey = openaiApiKey.trim();
+
+        // If no API key is provided, we can't fetch models from OpenAI-compatible endpoints
+        // unless it's a completely open endpoint (unlikely for strict OpenAI compat)
+        if (!trimmedKey) {
+          setCustomModelsLoading(false);
+          setCustomReasoningModels([]);
+          return;
+        }
+
         if (trimmedKey) {
           headers.Authorization = `Bearer ${trimmedKey}`;
         }
@@ -305,7 +302,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       isCancelled = true;
       controller.abort();
     };
-  }, [usingCustomReasoningBase, normalizedReasoningBaseUrl, apiKey, updateReasoningSettings]);
+  }, [usingCustomReasoningBase, normalizedReasoningBaseUrl, openaiApiKey, updateReasoningSettings]);
 
   useEffect(() => {
     if (!usingCustomReasoningBase && defaultReasoningModels.length > 0) {
@@ -462,12 +459,33 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       permissionsHook.accessibilityPermissionGranted.toString()
     );
     localStorage.setItem("onboardingCompleted", "true");
-    const trimmedApiKey = apiKey.trim();
-    const skipAuth = trimmedApiKey.length === 0;
+    localStorage.setItem("onboardingCompleted", "true");
+
+    let hasCloudKey = false;
+    if (!useLocalWhisper) {
+      if (cloudTranscriptionProvider === "openai") hasCloudKey = !!openaiApiKey?.trim();
+      else if (cloudTranscriptionProvider === "gemini") hasCloudKey = !!geminiApiKey?.trim();
+      else if (cloudTranscriptionProvider === "groq") hasCloudKey = !!groqApiKey?.trim();
+    }
+
+    // skipAuth is true if we are using local whisper (no auth needed) or if we somehow have no cloud key (shouldn't happen if validated)
+    const skipAuth = useLocalWhisper || !hasCloudKey;
     localStorage.setItem("skipAuth", skipAuth.toString());
 
-    if (!useLocalWhisper && trimmedApiKey) {
-      await persistOpenAIKey(trimmedApiKey);
+    if (!useLocalWhisper) {
+      try {
+        if (cloudTranscriptionProvider === "openai" && openaiApiKey) {
+          if (window.electronAPI?.saveOpenAIKey) {
+            await window.electronAPI.saveOpenAIKey(openaiApiKey);
+          }
+        } else if (cloudTranscriptionProvider === "gemini" && geminiApiKey) {
+          if (window.electronAPI?.saveGeminiKey) {
+            await window.electronAPI.saveGeminiKey(geminiApiKey);
+          }
+        }
+      } catch (error) {
+        console.error("Failed to save cloud key on finish", error);
+      }
     }
     return true;
   }, [
@@ -478,16 +496,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     permissionsHook.micPermissionGranted,
     permissionsHook.accessibilityPermissionGranted,
     useLocalWhisper,
-    apiKey,
     transcriptionBaseUrl,
     reasoningBaseUrl,
     updateTranscriptionSettings,
     updateReasoningSettings,
-    persistOpenAIKey,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setDictationKey,
     ensureHotkeyRegistered,
+    cloudTranscriptionProvider,
+    openaiApiKey,
+    geminiApiKey
   ]);
 
   const nextStep = useCallback(async () => {
@@ -498,7 +517,22 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const newStep = currentStep + 1;
 
     if (currentStep === 2 && !useLocalWhisper) {
-      await persistOpenAIKey(apiKey);
+      // Persist the key for the selected provider
+      try {
+        if (cloudTranscriptionProvider === "openai" && openaiApiKey) {
+          if (window.electronAPI?.saveOpenAIKey) {
+            await window.electronAPI.saveOpenAIKey(openaiApiKey);
+          }
+        } else if (cloudTranscriptionProvider === "gemini" && geminiApiKey) {
+          if (window.electronAPI?.saveGeminiKey) {
+            await window.electronAPI.saveGeminiKey(geminiApiKey);
+          }
+        }
+        // Groq/others primarily use localStorage or don't have specific IPC yet, 
+        // but updateApiKeys (called via inputs) handles the React state / localStorage.
+      } catch (error) {
+        console.error("Failed to save cloud provider key to secure storage", error);
+      }
     }
 
     setCurrentStep(newStep);
@@ -509,7 +543,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         window.electronAPI.showDictationPanel();
       }
     }
-  }, [currentStep, setCurrentStep, steps.length, useLocalWhisper, persistOpenAIKey, apiKey]);
+  }, [currentStep, setCurrentStep, steps.length, useLocalWhisper, cloudTranscriptionProvider, openaiApiKey, geminiApiKey]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -618,115 +652,173 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Key className="w-8 h-8 text-blue-600" />
-                  </div>
-                </div>
-
-                <ApiKeyInput
-                  apiKey={apiKey}
-                  setApiKey={setApiKey}
-                  label="OpenAI API Key"
-                  helpText={
-                    <>
-                      Need an API key?{" "}
-                      <a
-                        href="https://platform.openai.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        platform.openai.com
-                      </a>
-                    </>
-                  }
+                <TranscriptionModelPicker
+                  selectedCloudProvider={cloudTranscriptionProvider}
+                  onCloudProviderSelect={(providerId) => {
+                    setCloudTranscriptionProvider(providerId);
+                    updateTranscriptionSettings({ cloudTranscriptionProvider: providerId });
+                  }}
+                  selectedCloudModel={cloudTranscriptionModel}
+                  onCloudModelSelect={(modelId) => {
+                    setCloudTranscriptionModel(modelId);
+                    updateTranscriptionSettings({ cloudTranscriptionModel: modelId });
+                  }}
+                  selectedLocalModel={whisperModel}
+                  onLocalModelSelect={setWhisperModel}
+                  useLocalWhisper={useLocalWhisper}
+                  onModeChange={(isLocal) => {
+                    setUseLocalWhisper(isLocal);
+                    updateTranscriptionSettings({ useLocalWhisper: isLocal });
+                  }}
+                  openaiApiKey={openaiApiKey}
+                  setOpenaiApiKey={setOpenaiApiKey}
+                  groqApiKey={groqApiKey}
+                  setGroqApiKey={setGroqApiKey}
+                  geminiApiKey={geminiApiKey}
+                  setGeminiApiKey={setGeminiApiKey}
+                  variant="onboarding"
+                  hideModeSelector={true}
                 />
 
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">
-                    Custom transcription base URL (optional)
-                  </label>
-                  <Input
-                    value={transcriptionBaseUrl}
-                    onChange={(event) => setTranscriptionBaseUrl(event.target.value)}
-                    placeholder="https://api.openai.com/v1"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-blue-800">
-                    Cloud transcription requests default to{" "}
-                    <code>{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>. Enter an OpenAI-compatible base
-                    URL to override.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">
-                    Custom reasoning base URL (optional)
-                  </label>
-                  <Input
-                    value={reasoningBaseUrl}
-                    onChange={(event) => setReasoningBaseUrl(event.target.value)}
-                    placeholder="https://api.openai.com/v1"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-blue-800">
-                    We'll load AI models from this endpoint's /v1/models route during setup. Leave
-                    empty to use the default OpenAI endpoint.
-                  </p>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t border-blue-100">
-                  <h4 className="font-medium text-blue-900">Reasoning Model</h4>
-                  {hasEnteredReasoningBase ? (
-                    <>
-                      {isValidReasoningBase ? (
-                        <p className="text-xs text-blue-800 break-all">
-                          Models load from <code>{reasoningModelsEndpoint}</code>.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-amber-600">
-                          Enter a full base URL including protocol (e.g. https://server/v1).
-                        </p>
-                      )}
-                      {isValidReasoningBase && customModelsLoading && (
-                        <p className="text-xs text-blue-600">Fetching models...</p>
-                      )}
-                      {isValidReasoningBase && customModelsError && (
-                        <p className="text-xs text-red-600">{customModelsError}</p>
-                      )}
-                      {isValidReasoningBase &&
-                        !customModelsLoading &&
-                        !customModelsError &&
-                        displayedReasoningModels.length === 0 && (
-                          <p className="text-xs text-amber-600">
-                            No models returned by this endpoint.
-                          </p>
-                        )}
-                    </>
-                  ) : (
-                    <p className="text-xs text-blue-800">
-                      Using OpenAI defaults from <code>{reasoningModelsEndpoint}</code>.
-                    </p>
-                  )}
-                  <ModelCardList
-                    models={displayedReasoningModels}
-                    selectedModel={reasoningModel}
-                    onModelSelect={(modelId) =>
-                      updateReasoningSettings({ reasoningModel: modelId })
-                    }
-                  />
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg">
+                {/* Dynamic Help Text */}
+                <div className="bg-blue-50 p-4 rounded-lg mt-4">
                   <h4 className="font-medium text-blue-900 mb-2">How to get your API key:</h4>
                   <ol className="text-sm text-blue-800 space-y-1">
-                    <li>1. Go to platform.openai.com</li>
-                    <li>2. Sign in to your account</li>
-                    <li>3. Navigate to API Keys</li>
-                    <li>4. Create a new secret key</li>
-                    <li>5. Copy and paste it here</li>
+                    {cloudTranscriptionProvider === "match" /* Fallback/Default same as OpenAI */ || cloudTranscriptionProvider === "openai" ? (
+                      <>
+                        <li>1. Go to <a href="https://platform.openai.com/api-keys" target="_blank" rel="noreferrer" className="underline">platform.openai.com</a></li>
+                        <li>2. Sign in to your account</li>
+                        <li>3. Navigate to API Keys</li>
+                        <li>4. Create a new secret key</li>
+                        <li>5. Copy and paste it here</li>
+                      </>
+                    ) : cloudTranscriptionProvider === "gemini" ? (
+                      <>
+                        <li>1. Go to <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noreferrer" className="underline">aistudio.google.com</a></li>
+                        <li>2. Sign in with your Google account</li>
+                        <li>3. Click "Create API Key"</li>
+                        <li>4. Copy and paste it here</li>
+                      </>
+                    ) : cloudTranscriptionProvider === "groq" ? (
+                      <>
+                        <li>1. Go to <a href="https://console.groq.com/keys" target="_blank" rel="noreferrer" className="underline">console.groq.com</a></li>
+                        <li>2. Sign in to your account</li>
+                        <li>3. navigate to API Keys</li>
+                        <li>4. Create and copy your key</li>
+                      </>
+                    ) : (
+                      <li>Select a provider to see instructions.</li>
+                    )}
                   </ol>
+                </div>
+
+                <div className="space-y-4 pt-4">
+                  {cloudTranscriptionProvider === "openai" && (
+                    <div className="space-y-2">
+                      <label className="block text-sm font-medium text-blue-900">
+                        Custom transcription base URL (optional)
+                      </label>
+                      <Input
+                        value={transcriptionBaseUrl}
+                        onChange={(event) => setTranscriptionBaseUrl(event.target.value)}
+                        placeholder="https://api.openai.com/v1"
+                        className="text-sm"
+                      />
+                      <p className="text-xs text-blue-800">
+                        Cloud transcription requests default to the provider's standard endpoint. Enter an OpenAI-compatible base URL to override.
+                      </p>
+                    </div>
+                  )}
+
+                  {cloudTranscriptionProvider === "openai" && (
+                    <div className="space-y-2 pt-4 border-t border-blue-100">
+                      <h4 className="font-semibold text-gray-900">Reasoning Configuration</h4>
+                      <p className="text-xs text-gray-500 mb-2">
+                        (Optional) Configure the AI model used for text enhancement and reasoning.
+                      </p>
+
+                      <div className="mb-4">
+                        <ApiKeyInput
+                          apiKey={openaiApiKey}
+                          setApiKey={setOpenaiApiKey}
+                          label="OpenAI API Key (for Reasoning)"
+                          helpText={
+                            <>
+                              Required for reasoning if not using OpenAI for transcription. Get one at{" "}
+                              <a
+                                href="https://platform.openai.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline"
+                              >
+                                platform.openai.com
+                              </a>
+                            </>
+                          }
+                        />
+                      </div>
+
+                      <>
+                        <div className="space-y-2">
+                          <label className="block text-sm font-medium text-blue-900">
+                            Custom reasoning base URL (optional)
+                          </label>
+                          <Input
+                            value={reasoningBaseUrl}
+                            onChange={(event) => setReasoningBaseUrl(event.target.value)}
+                            placeholder="https://api.openai.com/v1"
+                            className="text-sm"
+                          />
+                          <p className="text-xs text-blue-800">
+                            We'll load AI models from this endpoint's /v1/models route. Leave empty to use
+                            the default OpenAI endpoint.
+                          </p>
+                        </div>
+
+                        <div className="space-y-3 pt-2">
+                          <h4 className="font-medium text-blue-900">Reasoning Model</h4>
+                          {usingCustomReasoningBase ? (
+                            <>
+                              {isValidReasoningBase ? (
+                                <p className="text-xs text-blue-800 break-all">
+                                  Models load from <code>{reasoningModelsEndpoint}</code>.
+                                </p>
+                              ) : (
+                                <p className="text-xs text-amber-600">
+                                  Enter a full base URL including protocol (e.g. https://server/v1).
+                                </p>
+                              )}
+                              {isValidReasoningBase && customModelsLoading && (
+                                <p className="text-xs text-blue-600">Fetching models...</p>
+                              )}
+                              {isValidReasoningBase && customModelsError && (
+                                <p className="text-xs text-red-600">{customModelsError}</p>
+                              )}
+                              {isValidReasoningBase &&
+                                !customModelsLoading &&
+                                !customModelsError &&
+                                displayedReasoningModels.length === 0 && (
+                                  <p className="text-xs text-amber-600">
+                                    No models returned by this endpoint.
+                                  </p>
+                                )}
+                            </>
+                          ) : (
+                            <p className="text-xs text-blue-800">
+                              Using OpenAI defaults from <code>{reasoningModelsEndpoint}</code>.
+                            </p>
+                          )}
+                          <ModelCardList
+                            models={displayedReasoningModels}
+                            selectedModel={reasoningModel}
+                            onModelSelect={(modelId) =>
+                              updateReasoningSettings({ reasoningModel: modelId })
+                            }
+                          />
+                        </div>
+                      </>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -929,10 +1021,21 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         if (useLocalWhisper) {
           return whisperModel !== "" && isModelDownloaded;
         } else {
-          const trimmedKey = apiKey.trim();
-          if (!trimmedKey) {
+          let hasKey = false;
+          if (cloudTranscriptionProvider === "openai") hasKey = !!openaiApiKey?.trim();
+          else if (cloudTranscriptionProvider === "gemini") hasKey = !!geminiApiKey?.trim();
+          else if (cloudTranscriptionProvider === "groq") hasKey = !!groqApiKey?.trim();
+
+          if (!hasKey) {
             return false;
           }
+
+          // If using a non-OpenAI provider and no OpenAI key is provided, we skip reasoning validation
+          // This allows users to proceed without configuring reasoning if they don't want to
+          if (cloudTranscriptionProvider !== "openai" && !openaiApiKey?.trim()) {
+            return true;
+          }
+
           if (!hasEnteredReasoningBase) {
             return true;
           }
@@ -1000,7 +1103,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         onOpenChange={(open) => !open && hideAlertDialog()}
         title={alertDialog.title}
         description={alertDialog.description}
-        onOk={() => {}}
+        onOk={() => { }}
       />
       {/* Left margin line for entire page */}
       <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>

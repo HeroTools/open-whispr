@@ -187,7 +187,12 @@ class AudioManager {
       if (useLocalWhisper) {
         result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
       } else {
-        result = await this.processWithOpenAIAPI(audioBlob, metadata);
+        const provider = localStorage.getItem("cloudTranscriptionProvider") || "openai";
+        if (provider === "gemini") {
+          result = await this.processWithGeminiAPI(audioBlob, metadata);
+        } else {
+          result = await this.processWithOpenAIAPI(audioBlob, metadata);
+        }
       }
 
       this.onTranscriptionComplete?.(result);
@@ -337,6 +342,14 @@ class AudioManager {
       // For custom, we allow null/empty - the endpoint may not require auth
       if (!isValidApiKey(apiKey, "openai")) {
         apiKey = null;
+      }
+    } else if (provider === "gemini") {
+      apiKey = await window.electronAPI.getGeminiKey?.();
+      if (!isValidApiKey(apiKey, "gemini")) {
+        apiKey = localStorage.getItem("geminiApiKey");
+      }
+      if (!isValidApiKey(apiKey, "gemini")) {
+        throw new Error("Gemini API key not found. Please set your API key in the Control Panel.");
       }
     } else if (provider === "groq") {
       // Try to get Groq API key
@@ -769,6 +782,96 @@ class AudioManager {
     return result;
   }
 
+  blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (typeof reader.result === 'string') {
+          resolve(reader.result.split(',')[1]);
+        } else {
+          reject(new Error("Failed to convert blob to base64"));
+        }
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  async processWithGeminiAPI(audioBlob, metadata = {}) {
+    const timings = {};
+    const apiCallStart = performance.now();
+
+    try {
+      const apiKey = await this.getAPIKey();
+      const model = this.getTranscriptionModel() || "gemini-3-flash-preview";
+
+      // Optimize audio if needed (Gemini supports many formats but ensuring decent size is good)
+      // Check size constraints? Base64 overhead is 33%.
+      // Gemini has 20MB limit for some inputs?
+
+      const base64Audio = await this.blobToBase64(audioBlob);
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+      const payload = {
+        contents: [{
+          parts: [
+            {
+              inlineData: {
+                mimeType: audioBlob.type || "audio/wav",
+                data: base64Audio
+              }
+            },
+            {
+              text: "Generate a transcript of the audio."
+            }
+          ]
+        }]
+      };
+
+      const response = await fetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Gemini API Error: ${response.status} ${errorText}`);
+      }
+
+      const data = await response.json();
+
+      // Parse Gemini response
+      // Structure: candidates[0].content.parts[0].text
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      if (!text) {
+        throw new Error("Gemini returned no text content");
+      }
+
+      timings.transcriptionProcessingDurationMs = Math.round(performance.now() - apiCallStart);
+
+      // Optional: Reasoning step if configured
+      const reasoningStart = performance.now();
+      const processedText = await this.processTranscription(text, "gemini");
+      timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
+      return {
+        success: true,
+        text: processedText,
+        source: "gemini",
+        timings
+      };
+
+    } catch (error) {
+      logger.error("Gemini Transcription Failed", { error: error.message }, "transcription");
+      throw error;
+    }
+  }
+
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
     const timings = {};
     const language = localStorage.getItem("preferredLanguage");
@@ -1071,10 +1174,14 @@ class AudioManager {
         if (provider === "openai" && isOpenAIModel) {
           return trimmedModel;
         }
+        if (provider === "gemini" && trimmedModel.includes("gemini")) {
+          return trimmedModel;
+        }
         // Model doesn't match provider - fall through to default
       }
 
       // Return provider-appropriate default
+      if (provider === "gemini") return "gemini-3-flash-preview";
       return provider === "groq" ? "whisper-large-v3-turbo" : "gpt-4o-mini-transcribe";
     } catch (error) {
       return "gpt-4o-mini-transcribe";
