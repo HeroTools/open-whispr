@@ -235,8 +235,9 @@ async function downloadBinary(platformArch, config, label) {
 
 async function downloadForPlatform(platformArch) {
   // Download both CLI and server binaries for the platform
-  await downloadBinary(platformArch, CLI_BINARIES[platformArch], "[cli]");
-  await downloadBinary(platformArch, SERVER_BINARIES[platformArch], "[server]");
+  const cliOk = await downloadBinary(platformArch, CLI_BINARIES[platformArch], "[cli]");
+  const serverOk = await downloadBinary(platformArch, SERVER_BINARIES[platformArch], "[server]");
+  return cliOk && serverOk;
 }
 
 async function main() {
@@ -247,12 +248,55 @@ async function main() {
 
   const currentPlatform = process.platform;
   const currentArch = process.arch;
-  const currentPlatformArch = `${currentPlatform}-${currentArch}`;
+
+  // Parse command-line arguments for explicit platform/arch
+  let targetPlatform = currentPlatform;
+  let targetArch = currentArch;
+
+  const platformIndex = process.argv.indexOf('--platform');
+  if (platformIndex !== -1 && process.argv[platformIndex + 1]) {
+    targetPlatform = process.argv[platformIndex + 1];
+  }
+
+  const archIndex = process.argv.indexOf('--arch');
+  if (archIndex !== -1 && process.argv[archIndex + 1]) {
+    targetArch = process.argv[archIndex + 1];
+  }
+
+  const targetPlatformArch = `${targetPlatform}-${targetArch}`;
+  const isCI = process.env.CI === "true" || process.env.GITHUB_ACTIONS === "true";
+  const shouldCleanup = process.argv.includes("--clean") || isCI;
 
   if (process.argv.includes("--current")) {
-    // Only download for current platform
-    console.log(`Downloading for current platform (${currentPlatformArch}):`);
-    await downloadForPlatform(currentPlatformArch);
+    if (!CLI_BINARIES[targetPlatformArch] || !SERVER_BINARIES[targetPlatformArch]) {
+      console.error(`Unsupported platform/arch: ${targetPlatformArch}`);
+      process.exitCode = 1;
+      return;
+    }
+
+    // Only download for specified platform/arch
+    console.log(`Downloading for target platform (${targetPlatformArch}):`);
+    const downloadOk = await downloadForPlatform(targetPlatformArch);
+    if (!downloadOk) {
+      console.error(`Failed to download binaries for ${targetPlatformArch}`);
+      process.exitCode = 1;
+      return;
+    }
+
+    if (shouldCleanup) {
+      // Clean old binaries that don't match target platform/arch
+      const existingFiles = fs.readdirSync(BIN_DIR).filter(f => f.startsWith("whisper-"));
+      const targetPrefix = `whisper-cpp-${targetPlatformArch}`;
+      const targetServerPrefix = `whisper-server-${targetPlatformArch}`;
+
+      existingFiles.forEach(file => {
+        if (!file.startsWith(targetPrefix) && !file.startsWith(targetServerPrefix)) {
+          const filePath = path.join(BIN_DIR, file);
+          console.log(`Removing old binary: ${file}`);
+          fs.unlinkSync(filePath);
+        }
+      });
+    }
   } else if (process.argv.includes("--cli-only")) {
     // Only download CLI binaries (no server)
     console.log("Downloading CLI binaries only:");

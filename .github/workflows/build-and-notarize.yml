@@ -23,7 +23,7 @@ jobs:
       run: npm ci
 
     - name: Download whisper.cpp binaries
-      run: node scripts/download-whisper-cpp.js
+      run: node scripts/download-whisper-cpp.js --current
 
     - name: Cache Electron
       uses: actions/cache@v4
@@ -62,7 +62,7 @@ jobs:
       run: npm ci
 
     - name: Download whisper.cpp binaries
-      run: node scripts/download-whisper-cpp.js
+      run: node scripts/download-whisper-cpp.js --current
 
     - name: Download nircmd.exe
       run: node scripts/download-nircmd.js
@@ -105,7 +105,7 @@ jobs:
       run: npm ci
 
     - name: Download whisper.cpp binaries
-      run: node scripts/download-whisper-cpp.js
+      run: node scripts/download-whisper-cpp.js --current --platform darwin --arch ${{ matrix.arch }}
 
     - name: Cache Electron
       uses: actions/cache@v4
