@@ -152,12 +152,15 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Push-to-talk only works on macOS (requires key-up detection via Globe key listener)
+  const isMacOS = window.electronAPI?.getPlatform?.() === "darwin";
   const [activationMode, setActivationMode] = useLocalStorage<"tap" | "push">(
     "activationMode",
     "tap",
     {
       serialize: String,
-      deserialize: (value) => (value === "push" ? "push" : "tap"),
+      // Force tap mode on non-macOS platforms since push-to-talk isn't supported
+      deserialize: (value) => (value === "push" && isMacOS ? "push" : "tap"),
     }
   );
 
