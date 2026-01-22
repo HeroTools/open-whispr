@@ -7,6 +7,7 @@ const { pipeline } = require("stream");
 const { app } = require("electron");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
+const { parseLlamaCppOutput } = require("../utils/llamaOutputParser");
 
 const MIN_FILE_SIZE = 1_000_000; // 1MB minimum for valid model files
 
@@ -486,7 +487,7 @@ class ModelManager {
             })
           );
         } else {
-          resolve(this.parseLlamaCppOutput(output));
+          resolve(parseLlamaCppOutput(output));
         }
       });
 
@@ -505,72 +506,6 @@ class ModelManager {
       return provider.promptTemplate.replace("{system}", systemPrompt).replace("{user}", text);
     }
     return `${systemPrompt}\n\n${text}`;
-  }
-
-  /**
-   * Parse llama.cpp output to extract only the generated text.
-   * Filters out diagnostic messages, timing stats, and other noise.
-   */
-  parseLlamaCppOutput(rawOutput) {
-    if (!rawOutput) return "";
-
-    const lines = rawOutput.split("\n");
-    const filteredLines = [];
-
-    // Patterns that indicate diagnostic/system output to filter out
-    const diagnosticPatterns = [
-      /^llama_/i, // llama_model_loader, llama_print_timings, etc.
-      /^ggml_/i, // ggml backend messages
-      /^log_/i, // log_set_target_file, etc.
-      /^main:/i, // main function messages
-      /^sampling:/i, // sampling parameter info
-      /^generate:/i, // generation info
-      /^system_info:/i, // system info
-      /^\s*load time\s*=/i,
-      /^\s*sample time\s*=/i,
-      /^\s*prompt eval time\s*=/i,
-      /^\s*eval time\s*=/i,
-      /^\s*total time\s*=/i,
-      /^Log start$/i,
-      /^build: \d+/i, // build info
-      /^n_threads/i, // thread info
-      /^Using .* backend/i, // backend selection messages
-      /^\s*\d+\s+tokens?\s+/i, // token count lines
-    ];
-
-    for (const line of lines) {
-      const trimmedLine = line.trim();
-
-      // Skip empty lines at the start (but keep them in the middle of content)
-      if (filteredLines.length === 0 && !trimmedLine) {
-        continue;
-      }
-
-      // Check if line matches any diagnostic pattern
-      let isDiagnostic = false;
-      for (const pattern of diagnosticPatterns) {
-        if (pattern.test(trimmedLine)) {
-          isDiagnostic = true;
-          break;
-        }
-      }
-
-      if (!isDiagnostic) {
-        filteredLines.push(line);
-      }
-    }
-
-    // Trim trailing empty lines and return
-    let result = filteredLines.join("\n").trim();
-
-    // Handle special tokens that might appear in output
-    // Remove common end tokens if they appear at the very end
-    const endTokenPatterns = [/<\|im_end\|>$/, /<\|end\|>$/, /<\/s>$/, /\[end of text\]$/i];
-    for (const pattern of endTokenPatterns) {
-      result = result.replace(pattern, "").trim();
-    }
-
-    return result;
   }
 }
 
