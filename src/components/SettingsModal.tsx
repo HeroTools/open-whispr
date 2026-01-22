@@ -14,7 +14,7 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
     { id: "transcription", label: "Transcription Mode", icon: Mic },
     { id: "aiModels", label: "AI Models", icon: Brain },
     { id: "agentConfig", label: "Agent Configuration", icon: User },
-    { id: "prompts", label: "AI Prompts", icon: Sparkles },
+    { id: "prompts", label: "Prompt Studio", icon: Sparkles },
   ];
 
   const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("general");
