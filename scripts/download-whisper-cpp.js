@@ -353,15 +353,27 @@ async function downloadBinary(platformArch, configMap, label, variant, forceDown
       }
       console.log(`  ${label}${variantTag} ${platformArch}: Extracted to ${config.outputName}`);
 
-      // For Windows, also extract bundled CUDA DLLs if present
+      // For Windows, handle CUDA DLLs based on variant
       if (platformArch === "win32-x64") {
         const cudaDlls = ["cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll"];
-        for (const dll of cudaDlls) {
-          const dllPath = path.join(extractDir, dll);
-          if (fs.existsSync(dllPath)) {
+        if (config.variant === "cuda") {
+          // Extract bundled CUDA DLLs for CUDA variant
+          for (const dll of cudaDlls) {
+            const dllPath = path.join(extractDir, dll);
+            if (fs.existsSync(dllPath)) {
+              const destPath = path.join(BIN_DIR, dll);
+              fs.copyFileSync(dllPath, destPath);
+              console.log(`  ${label}${variantTag} ${platformArch}: Extracted ${dll}`);
+            }
+          }
+        } else if (config.variant === "cpu") {
+          // Clean up stale CUDA DLLs when switching to CPU variant
+          for (const dll of cudaDlls) {
             const destPath = path.join(BIN_DIR, dll);
-            fs.copyFileSync(dllPath, destPath);
-            console.log(`  ${label}${variantTag} ${platformArch}: Extracted ${dll}`);
+            if (fs.existsSync(destPath)) {
+              fs.unlinkSync(destPath);
+              console.log(`  ${label}${variantTag} ${platformArch}: Removed stale ${dll}`);
+            }
           }
         }
       }
@@ -397,7 +409,8 @@ async function main() {
   }
 
   const autoDetect = process.argv.includes("--auto-detect");
-  const forceDownload =
+  const implicitAutoDetect = process.argv.includes("--current") && !variant;
+  let forceDownload =
     process.argv.includes("--force") ||
     process.argv.includes("--cpu") ||
     process.argv.includes("--cuda") ||
@@ -405,9 +418,12 @@ async function main() {
     autoDetect;
 
   // Auto-detect GPU if --auto-detect flag is used or when downloading for current platform without explicit variant
-  if (autoDetect || (process.argv.includes("--current") && !variant)) {
+  if (autoDetect || implicitAutoDetect) {
     console.log("\nDetecting GPU...");
     variant = await detectGpuVariant();
+    // Force download when auto-detecting to ensure correct variant is installed
+    // even if a different variant's binary already exists
+    forceDownload = true;
   }
 
   const variantTag = variant ? ` ${variant}` : "";
