@@ -2,6 +2,7 @@ import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
+import { isLocalNetworkUrl } from "../utils/urlUtils";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -1120,9 +1121,8 @@ class AudioManager {
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
 
-      const isLocalhost =
-        normalizedBase.includes("://localhost") || normalizedBase.includes("://127.0.0.1");
-      if (!normalizedBase.startsWith("https://") && !isLocalhost) {
+      // Allow HTTP for local/private network addresses, require HTTPS otherwise
+      if (!normalizedBase.startsWith("https://") && !isLocalNetworkUrl(normalizedBase)) {
         console.warn("Non-HTTPS endpoint rejected for security. Using default.");
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
