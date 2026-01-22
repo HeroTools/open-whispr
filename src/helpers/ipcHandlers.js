@@ -580,7 +580,7 @@ class IPCHandlers {
         const modelManager = require("./modelManagerBridge").default;
         const modelInfo = modelManager.findModelById(modelId);
         if (!modelInfo) {
-          return { success: false, reason: `Model "${modelId}" not found` };
+          return { success: false, error: `Model "${modelId}" not found` };
         }
 
         const modelPath = require("path").join(
@@ -596,7 +596,7 @@ class IPCHandlers {
 
         return { success: true, port: modelManager.serverManager.port };
       } catch (error) {
-        return { success: false, reason: error.message };
+        return { success: false, error: error.message };
       }
     });
 

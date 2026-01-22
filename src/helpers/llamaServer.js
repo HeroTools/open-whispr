@@ -9,10 +9,11 @@ const { killProcess } = require("../utils/process");
 
 const PORT_RANGE_START = 8200;
 const PORT_RANGE_END = 8220;
-const STARTUP_TIMEOUT_MS = 60000; // 60s for large models
+const STARTUP_TIMEOUT_MS = 60000;
 const HEALTH_CHECK_INTERVAL_MS = 5000;
 const HEALTH_CHECK_TIMEOUT_MS = 2000;
 const STARTUP_POLL_INTERVAL_MS = 500;
+const HEALTH_CHECK_FAILURE_THRESHOLD = 3;
 
 class LlamaServerManager {
   constructor() {
@@ -22,6 +23,7 @@ class LlamaServerManager {
     this.modelPath = null;
     this.startupPromise = null;
     this.healthCheckInterval = null;
+    this.healthCheckFailures = 0;
     this.cachedServerBinaryPath = null;
   }
 
@@ -235,14 +237,26 @@ class LlamaServerManager {
 
   startHealthCheck() {
     this.stopHealthCheck();
+    this.healthCheckFailures = 0;
     this.healthCheckInterval = setInterval(async () => {
-      if (!this.process) {
-        this.stopHealthCheck();
-        return;
-      }
-      if (!(await this.checkHealth())) {
-        debugLogger.warn("llama-server health check failed");
-        this.ready = false;
+      try {
+        if (!this.process) {
+          this.stopHealthCheck();
+          return;
+        }
+        if (await this.checkHealth()) {
+          this.healthCheckFailures = 0;
+        } else {
+          this.healthCheckFailures++;
+          if (this.healthCheckFailures >= HEALTH_CHECK_FAILURE_THRESHOLD) {
+            debugLogger.warn("llama-server health check failed", {
+              consecutiveFailures: this.healthCheckFailures,
+            });
+            this.ready = false;
+          }
+        }
+      } catch (err) {
+        debugLogger.error("Health check error", { error: err.message });
       }
     }, HEALTH_CHECK_INTERVAL_MS);
   }
