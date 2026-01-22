@@ -87,9 +87,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setUseLocalWhisper,
     setWhisperModel,
     setPreferredLanguage,
-    setCloudTranscriptionBaseUrl,
-    setCloudTranscriptionProvider,
-    setCloudReasoningBaseUrl,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -437,20 +434,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const normalizedTranscriptionBase = (transcriptionBaseUrl || "").trim();
     const normalizedReasoningBaseValue = (reasoningBaseUrl || "").trim();
 
-    setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
-    setCloudReasoningBaseUrl(normalizedReasoningBaseValue);
-
-    // Set provider to "custom" if user entered a non-default custom URL
+    // Detect if user entered a non-default custom URL
     const isCustomTranscriptionUrl =
       normalizedTranscriptionBase !== "" &&
       normalizedTranscriptionBase !== API_ENDPOINTS.TRANSCRIPTION_BASE &&
       normalizedTranscriptionBase !== "https://api.openai.com/v1";
-    if (isCustomTranscriptionUrl) {
-      setCloudTranscriptionProvider("custom");
-    } else if (!useLocalWhisper) {
-      // Default to openai if no custom URL
-      setCloudTranscriptionProvider("openai");
-    }
 
     updateTranscriptionSettings({
       whisperModel,
@@ -498,9 +486,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     updateTranscriptionSettings,
     updateReasoningSettings,
     persistOpenAIKey,
-    setCloudTranscriptionBaseUrl,
-    setCloudTranscriptionProvider,
-    setCloudReasoningBaseUrl,
     setDictationKey,
     ensureHotkeyRegistered,
   ]);
