@@ -16,6 +16,9 @@ class WindowManager {
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
 
+    // Cached visibility mode for fast hotkey checks (updated via IPC)
+    this._cachedVisibilityMode = null;
+
     app.on("before-quit", () => {
       this.isQuitting = true;
     });
@@ -108,7 +111,7 @@ class WindowManager {
     let lastToggleTime = 0;
     const DEBOUNCE_MS = 150;
 
-    return () => {
+    return async () => {
       if (this.hotkeyManager.isInListeningMode()) {
         return;
       }
@@ -119,19 +122,23 @@ class WindowManager {
       }
       lastToggleTime = now;
 
-      if (!this.mainWindow.isVisible()) {
+      // Check visibility mode before showing
+      const mode = await this.getPanelVisibilityMode();
+      if (mode !== "hidden" && !this.mainWindow.isVisible()) {
         this.mainWindow.show();
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
   }
 
-  sendStartDictation() {
+  async sendStartDictation() {
     if (this.hotkeyManager.isInListeningMode()) {
       return;
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      if (!this.mainWindow.isVisible()) {
+      // Check visibility mode before showing
+      const mode = await this.getPanelVisibilityMode();
+      if (mode !== "hidden" && !this.mainWindow.isVisible()) {
         this.mainWindow.show();
       }
       this.mainWindow.webContents.send("start-dictation");
@@ -158,6 +165,37 @@ class WindowManager {
       return mode === "push" ? "push" : "tap";
     } catch {
       return "tap";
+    }
+  }
+
+  async getPanelVisibilityMode() {
+    // Use cached value if available for fast response
+    if (this._cachedVisibilityMode !== null) {
+      return this._cachedVisibilityMode;
+    }
+
+    // Fall back to querying renderer
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return "always";
+    }
+    try {
+      const mode = await this.mainWindow.webContents.executeJavaScript(
+        `localStorage.getItem("panelVisibilityMode") || "always"`
+      );
+      if (mode === "hidden" || mode === "transcribing") {
+        this._cachedVisibilityMode = mode;
+        return mode;
+      }
+      this._cachedVisibilityMode = "always";
+      return "always";
+    } catch {
+      return "always";
+    }
+  }
+
+  setCachedVisibilityMode(mode) {
+    if (mode === "hidden" || mode === "transcribing" || mode === "always") {
+      this._cachedVisibilityMode = mode;
     }
   }
 
@@ -278,8 +316,21 @@ class WindowManager {
     this.controlPanelWindow.loadURL(appUrl);
   }
 
-  showDictationPanel(options = {}) {
-    const { focus = false } = options;
+  async showDictationPanel(options = {}) {
+    const { focus = false, force = false } = options;
+
+    // Don't show if mode is "hidden" (unless forced)
+    if (!force) {
+      try {
+        const mode = await this.getPanelVisibilityMode();
+        if (mode === "hidden") {
+          return; // Respect hidden mode
+        }
+      } catch (e) {
+        // If we can't get mode, proceed with show
+      }
+    }
+
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (!this.mainWindow.isVisible()) {
         if (typeof this.mainWindow.showInactive === "function") {
@@ -333,9 +384,14 @@ class WindowManager {
       return;
     }
 
-    this.mainWindow.once("ready-to-show", () => {
+    this.mainWindow.once("ready-to-show", async () => {
       this.enforceMainWindowOnTop();
-      if (!this.mainWindow.isVisible()) {
+
+      // Check panel visibility mode before showing
+      const visibilityMode = await this.getPanelVisibilityMode();
+
+      // Only auto-show if mode is "always"
+      if (visibilityMode === "always" && !this.mainWindow.isVisible()) {
         if (typeof this.mainWindow.showInactive === "function") {
           this.mainWindow.showInactive();
         } else {

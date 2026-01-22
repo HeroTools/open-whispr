@@ -7,7 +7,7 @@ import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
-import { useSettings } from "../hooks/useSettings";
+import { useSettings, type PanelVisibilityMode } from "../hooks/useSettings";
 import { useDialogs } from "../hooks/useDialogs";
 import { useAgentName } from "../utils/agentName";
 import { useWhisper } from "../hooks/useWhisper";
@@ -82,6 +82,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
+    panelVisibilityMode,
+    setPanelVisibilityMode,
   } = useSettings();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -505,6 +507,43 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 onPreferBuiltInChange={setPreferBuiltInMic}
                 onDeviceSelect={setSelectedMicDeviceId}
               />
+            </div>
+
+            <div className="border-t pt-8">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Dictation Panel</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Control when the dictation panel is visible on your screen.
+                </p>
+              </div>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Panel Visibility
+                  </label>
+                  <select
+                    value={panelVisibilityMode}
+                    onChange={(e) => {
+                      const mode = e.target.value as PanelVisibilityMode;
+                      setPanelVisibilityMode(mode);
+                      window.electronAPI?.syncPanelVisibilityMode?.(mode);
+                    }}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option value="always">Always Visible</option>
+                    <option value="transcribing">Show Only When Transcribing</option>
+                    <option value="hidden">Always Hidden</option>
+                  </select>
+                  <p className="text-xs text-gray-500 mt-2">
+                    {panelVisibilityMode === "always" &&
+                      "The dictation panel is always shown on your screen."}
+                    {panelVisibilityMode === "transcribing" &&
+                      "Panel appears when recording starts and hides when transcription completes."}
+                    {panelVisibilityMode === "hidden" &&
+                      "Panel is never shown. Use the hotkey to record in the background."}
+                  </p>
+                </div>
+              </div>
             </div>
 
             <div className="border-t pt-8">
