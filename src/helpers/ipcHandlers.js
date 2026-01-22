@@ -1,6 +1,7 @@
 const { ipcMain, app, shell, BrowserWindow } = require("electron");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
+const { getSystemPrompt } = require("./prompts");
 
 class IPCHandlers {
   constructor(managers) {
@@ -481,12 +482,9 @@ class IPCHandlers {
             throw new Error("Anthropic API key not configured");
           }
 
-          const systemPrompt =
-            "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-          const userPrompt =
-            agentName && text.toLowerCase().includes(agentName.toLowerCase())
-              ? `You are ${agentName}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n${text}`
-              : `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n${text}`;
+          // Use the unified system prompt - LLM handles agent detection
+          const systemPrompt = getSystemPrompt(agentName);
+          const userPrompt = text;
 
           if (!modelId) {
             throw new Error("No model specified for Anthropic API call");

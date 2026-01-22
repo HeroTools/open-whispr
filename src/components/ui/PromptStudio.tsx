@@ -10,15 +10,16 @@ import {
   RotateCcw,
   Copy,
   Sparkles,
-  Zap,
   TestTube,
   AlertTriangle,
+  Info,
 } from "lucide-react";
 import { AlertDialog } from "./dialog";
 import { useDialogs } from "../../hooks/useDialogs";
 import { useAgentName } from "../../utils/agentName";
-import ReasoningService, { DEFAULT_PROMPTS } from "../../services/ReasoningService";
+import ReasoningService from "../../services/ReasoningService";
 import { getModelProvider } from "../../models/ModelRegistry";
+import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../../config/prompts";
 
 interface PromptStudioProps {
   className?: string;
@@ -42,12 +43,26 @@ const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
   local: { label: "Local" },
 };
 
+/**
+ * Get the current prompt being used - either custom or default unified prompt
+ */
+function getCurrentPrompt(): string {
+  const customPrompt = localStorage.getItem("customUnifiedPrompt");
+  if (customPrompt) {
+    try {
+      return JSON.parse(customPrompt);
+    } catch {
+      return UNIFIED_SYSTEM_PROMPT;
+    }
+  }
+  return UNIFIED_SYSTEM_PROMPT;
+}
+
 export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const [activeTab, setActiveTab] = useState<"current" | "edit" | "test">("current");
-  const [editedAgentPrompt, setEditedAgentPrompt] = useState(DEFAULT_PROMPTS.agent);
-  const [editedRegularPrompt, setEditedRegularPrompt] = useState(DEFAULT_PROMPTS.regular);
+  const [editedPrompt, setEditedPrompt] = useState(UNIFIED_SYSTEM_PROMPT);
   const [testText, setTestText] = useState(
-    "Hey Assistant, make this more professional: This is a test message that needs some work."
+    "um so like I was thinking we should probably you know schedule a meeting for next week to discuss the the project timeline"
   );
   const [testResult, setTestResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -55,41 +70,33 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const { agentName } = useAgentName();
 
-  // Load saved custom prompts from localStorage
+  // Load saved custom prompt from localStorage
   useEffect(() => {
-    const savedPrompts = localStorage.getItem("customPrompts");
-    if (savedPrompts) {
+    const customPrompt = localStorage.getItem("customUnifiedPrompt");
+    if (customPrompt) {
       try {
-        const parsed = JSON.parse(savedPrompts);
-        setEditedAgentPrompt(parsed.agent || DEFAULT_PROMPTS.agent);
-        setEditedRegularPrompt(parsed.regular || DEFAULT_PROMPTS.regular);
+        setEditedPrompt(JSON.parse(customPrompt));
       } catch (error) {
-        console.error("Failed to load custom prompts:", error);
+        console.error("Failed to load custom prompt:", error);
       }
     }
   }, []);
 
-  const savePrompts = () => {
-    const customPrompts = {
-      agent: editedAgentPrompt,
-      regular: editedRegularPrompt,
-    };
-
-    localStorage.setItem("customPrompts", JSON.stringify(customPrompts));
+  const savePrompt = () => {
+    localStorage.setItem("customUnifiedPrompt", JSON.stringify(editedPrompt));
     showAlertDialog({
-      title: "Prompts Saved!",
+      title: "Prompt Saved!",
       description:
-        "Your custom prompts have been saved and will be used for all future AI processing.",
+        "Your custom prompt has been saved and will be used for all future AI processing.",
     });
   };
 
-  const resetToDefaults = () => {
-    setEditedAgentPrompt(DEFAULT_PROMPTS.agent);
-    setEditedRegularPrompt(DEFAULT_PROMPTS.regular);
-    localStorage.removeItem("customPrompts");
+  const resetToDefault = () => {
+    setEditedPrompt(UNIFIED_SYSTEM_PROMPT);
+    localStorage.removeItem("customUnifiedPrompt");
     showAlertDialog({
       title: "Reset Complete",
-      description: "Prompts have been reset to default values.",
+      description: "Prompt has been reset to the default value.",
     });
   };
 
@@ -100,21 +107,19 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     setTestResult("");
 
     try {
-      // Check if reasoning model is enabled and if we have the necessary settings
       const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
       const reasoningModel = localStorage.getItem("reasoningModel") || "";
-      // Determine provider from the model name, falling back to openai if needed
       const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
 
       if (!useReasoningModel) {
         setTestResult(
-          "⚠️ AI text enhancement is disabled. Enable it in AI Models settings to test prompts."
+          "AI text enhancement is disabled. Enable it in AI Models settings to test prompts."
         );
         return;
       }
 
       if (!reasoningModel) {
-        setTestResult("⚠️ No reasoning model selected. Choose one in AI Models settings.");
+        setTestResult("No reasoning model selected. Choose one in AI Models settings.");
         return;
       }
 
@@ -126,66 +131,44 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       if (providerConfig.baseStorageKey) {
         const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
         if (!baseUrl) {
-          setTestResult(`⚠️ ${providerLabel} base URL missing. Add it in AI Models settings.`);
+          setTestResult(`${providerLabel} base URL missing. Add it in AI Models settings.`);
           return;
         }
       }
 
-      // Note: API key validation is handled by ReasoningService which uses Electron IPC
-      // to fetch keys from the environment. We skip localStorage validation here.
-
-      // Save current prompts temporarily so the test uses them
-      const currentCustomPrompts = localStorage.getItem("customPrompts");
-      localStorage.setItem(
-        "customPrompts",
-        JSON.stringify({
-          agent: editedAgentPrompt,
-          regular: editedRegularPrompt,
-        })
-      );
+      // Save the current edited prompt temporarily for the test
+      const currentCustomPrompt = localStorage.getItem("customUnifiedPrompt");
+      localStorage.setItem("customUnifiedPrompt", JSON.stringify(editedPrompt));
 
       try {
-        // For local models, use a different approach
         if (reasoningProvider === "local") {
-          // Call local reasoning directly
           const result = await window.electronAPI.processLocalReasoning(
             testText,
             reasoningModel,
             agentName,
-            {
-              customPrompts: {
-                agent: editedAgentPrompt,
-                regular: editedRegularPrompt,
-              },
-            }
+            {}
           );
 
           if (result.success) {
             setTestResult(result.text);
           } else {
-            setTestResult(`❌ Local model error: ${result.error}`);
+            setTestResult(`Local model error: ${result.error}`);
           }
         } else {
-          // Call the AI - ReasoningService will automatically use the custom prompts
-          const result = await ReasoningService.processText(testText, reasoningModel, agentName, {
-            customPrompts: {
-              agent: editedAgentPrompt,
-              regular: editedRegularPrompt,
-            },
-          });
+          const result = await ReasoningService.processText(testText, reasoningModel, agentName, {});
           setTestResult(result);
         }
       } finally {
-        // Restore original prompts
-        if (currentCustomPrompts) {
-          localStorage.setItem("customPrompts", currentCustomPrompts);
+        // Restore original prompt
+        if (currentCustomPrompt) {
+          localStorage.setItem("customUnifiedPrompt", currentCustomPrompt);
         } else {
-          localStorage.removeItem("customPrompts");
+          localStorage.removeItem("customUnifiedPrompt");
         }
       }
     } catch (error) {
       console.error("Test failed:", error);
-      setTestResult(`❌ Test failed: ${error.message}`);
+      setTestResult(`Test failed: ${error.message}`);
     } finally {
       setIsLoading(false);
     }
@@ -199,16 +182,19 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     });
   };
 
-  const renderCurrentPrompts = () => (
+  // Check if the test text contains the agent name
+  const isAgentAddressed = testText.toLowerCase().includes(agentName.toLowerCase());
+
+  const renderCurrentPrompt = () => (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Eye className="w-5 h-5 text-blue-600" />
-          Current AI Prompts
+          Current System Prompt
         </h3>
         <p className="text-sm text-gray-600 mb-6">
-          These are the exact prompts currently being sent to your AI models. Understanding these
-          helps you see how OpenWhispr thinks!
+          This is the exact prompt sent to your AI model. It handles both text cleanup and
+          instruction detection in a single, unified approach.
         </p>
       </div>
 
@@ -216,40 +202,39 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
             <Sparkles className="w-4 h-4 text-purple-600" />
-            Agent Mode Prompt (when you say "Hey {agentName}")
+            Unified System Prompt
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <p className="font-medium mb-1">How it works:</p>
+                <ul className="list-disc list-inside space-y-1 text-blue-700">
+                  <li>
+                    <strong>Cleanup mode (default)</strong>: Cleans transcribed speech - removes
+                    filler words, fixes grammar, punctuation
+                  </li>
+                  <li>
+                    <strong>Instruction mode</strong>: When you directly address "{agentName}" with
+                    a command, it executes the instruction AND cleans up the text
+                  </li>
+                  <li>
+                    The AI intelligently detects which mode to use based on context
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm max-h-96 overflow-y-auto">
             <pre className="whitespace-pre-wrap">
-              {editedAgentPrompt.replace(/\{\{agentName\}\}/g, agentName)}
+              {getCurrentPrompt().replace(/\{\{agentName\}\}/g, agentName)}
             </pre>
           </div>
           <Button
-            onClick={() => copyPrompt(editedAgentPrompt)}
-            variant="outline"
-            size="sm"
-            className="mt-3"
-          >
-            <Copy className="w-4 h-4 mr-2" />
-            Copy Prompt
-          </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Zap className="w-4 h-4 text-green-600" />
-            Regular Mode Prompt (for automatic cleanup)
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm">
-            <pre className="whitespace-pre-wrap">{editedRegularPrompt}</pre>
-          </div>
-          <Button
-            onClick={() => copyPrompt(editedRegularPrompt)}
+            onClick={() => copyPrompt(getCurrentPrompt())}
             variant="outline"
             size="sm"
             className="mt-3"
@@ -262,57 +247,50 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     </div>
   );
 
-  const renderEditPrompts = () => (
+  const renderEditPrompt = () => (
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <Edit3 className="w-5 h-5 text-indigo-600" />
-          Customize Your AI Prompts
+          Customize System Prompt
         </h3>
-        <p className="text-sm text-gray-600 mb-6">
-          Edit these prompts to change how your AI behaves. Use <code>{"{{agentName}}"}</code> and{" "}
-          <code>{"{{text}}"}</code> as placeholders.
+        <p className="text-sm text-gray-600 mb-2">
+          Edit the system prompt to change how your AI processes speech. Use{" "}
+          <code className="bg-gray-100 px-1 rounded">{"{{agentName}}"}</code> as a placeholder for
+          your agent's name.
+        </p>
+        <p className="text-sm text-amber-600 mb-6">
+          <strong>Caution:</strong> Modifying this prompt may affect transcription quality. The
+          default prompt has been carefully crafted for optimal results.
         </p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Agent Mode Prompt</CardTitle>
+          <CardTitle className="text-base">System Prompt</CardTitle>
         </CardHeader>
         <CardContent>
           <Textarea
-            value={editedAgentPrompt}
-            onChange={(e) => setEditedAgentPrompt(e.target.value)}
-            rows={12}
+            value={editedPrompt}
+            onChange={(e) => setEditedPrompt(e.target.value)}
+            rows={20}
             className="font-mono text-sm"
-            placeholder="Enter your custom agent prompt..."
+            placeholder="Enter your custom system prompt..."
           />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Regular Mode Prompt</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={editedRegularPrompt}
-            onChange={(e) => setEditedRegularPrompt(e.target.value)}
-            rows={12}
-            className="font-mono text-sm"
-            placeholder="Enter your custom regular prompt..."
-          />
+          <p className="text-xs text-gray-500 mt-2">
+            Your agent name is: <strong>{agentName}</strong>
+          </p>
         </CardContent>
       </Card>
 
       <div className="flex gap-3">
-        <Button onClick={savePrompts} className="flex-1">
+        <Button onClick={savePrompt} className="flex-1">
           <Save className="w-4 h-4 mr-2" />
-          Save Custom Prompts
+          Save Custom Prompt
         </Button>
-        <Button onClick={resetToDefaults} variant="outline">
+        <Button onClick={resetToDefault} variant="outline">
           <RotateCcw className="w-4 h-4 mr-2" />
-          Reset to Defaults
+          Reset to Default
         </Button>
       </div>
     </div>
@@ -335,10 +313,11 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         <div>
           <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
             <TestTube className="w-5 h-5 text-green-600" />
-            Test Your Prompts
+            Test Your Prompt
           </h3>
           <p className="text-sm text-gray-600 mb-6">
-            Test your custom prompts with the actual AI model to see real results.
+            Test how the AI processes different types of input. Try both regular dictation and
+            addressing your agent directly.
           </p>
         </div>
 
@@ -361,7 +340,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
                 <span className="text-gray-600">Current Model:</span>
-                <span className="ml-2 font-medium">{reasoningModel}</span>
+                <span className="ml-2 font-medium">{reasoningModel || "None selected"}</span>
               </div>
               <div>
                 <span className="text-gray-600">Provider:</span>
@@ -379,24 +358,28 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               <Textarea
                 value={testText}
                 onChange={(e) => setTestText(e.target.value)}
-                rows={3}
-                placeholder="Enter text to test with your custom prompts..."
+                rows={4}
+                placeholder="Enter text to test..."
               />
               <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-gray-500">
-                  Try including "{agentName}" in your text to test agent mode prompts
-                </p>
+                <div className="text-xs text-gray-500 space-y-1">
+                  <p>
+                    Try: "um so like I think we should uh schedule a meeting" (cleanup mode)
+                  </p>
+                  <p>
+                    Try: "Hey {agentName}, make this more formal: gonna send the report tomorrow"
+                    (instruction mode)
+                  </p>
+                </div>
                 {testText && (
                   <span
-                    className={`text-xs px-2 py-1 rounded-full ${
-                      testText.toLowerCase().includes(agentName.toLowerCase())
+                    className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ml-4 ${
+                      isAgentAddressed
                         ? "bg-purple-100 text-purple-700"
                         : "bg-green-100 text-green-700"
                     }`}
                   >
-                    {testText.toLowerCase().includes(agentName.toLowerCase())
-                      ? "🤖 Agent Mode"
-                      : "✨ Regular Mode"}
+                    {isAgentAddressed ? "May trigger instruction mode" : "Cleanup mode"}
                   </span>
                 )}
               </div>
@@ -408,24 +391,18 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               className="w-full"
             >
               <Play className="w-4 h-4 mr-2" />
-              {isLoading ? "Processing with AI..." : "Test Prompt with AI"}
+              {isLoading ? "Processing..." : "Test with AI"}
             </Button>
 
             {testResult && (
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium">AI Response</label>
+                  <label className="text-sm font-medium">AI Output</label>
                   <Button onClick={() => copyPrompt(testResult)} variant="ghost" size="sm">
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
-                <div
-                  className={`border rounded-lg p-4 text-sm max-h-60 overflow-y-auto ${
-                    testResult.startsWith("⚠️") || testResult.startsWith("❌")
-                      ? "bg-amber-50 border-amber-200 text-amber-800"
-                      : "bg-gray-50 border-gray-200"
-                  }`}
-                >
+                <div className="border rounded-lg p-4 text-sm max-h-60 overflow-y-auto bg-gray-50 border-gray-200">
                   <pre className="whitespace-pre-wrap">{testResult}</pre>
                 </div>
               </div>
@@ -449,7 +426,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       {/* Tab Navigation */}
       <div className="flex border-b border-gray-200 mb-6">
         {[
-          { id: "current", label: "Current Prompts", icon: Eye },
+          { id: "current", label: "Current Prompt", icon: Eye },
           { id: "edit", label: "Customize", icon: Edit3 },
           { id: "test", label: "Test", icon: TestTube },
         ].map((tab) => {
@@ -472,8 +449,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       </div>
 
       {/* Tab Content */}
-      {activeTab === "current" && renderCurrentPrompts()}
-      {activeTab === "edit" && renderEditPrompts()}
+      {activeTab === "current" && renderCurrentPrompt()}
+      {activeTab === "edit" && renderEditPrompt()}
       {activeTab === "test" && renderTestPlayground()}
     </div>
   );
