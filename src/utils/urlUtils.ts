@@ -19,12 +19,17 @@ function isPrivateHost(hostname: string): boolean {
     if (octet >= 16 && octet <= 31) return true;
   }
 
-  // Link-local (169.254.x.x IPv4, fe80:: IPv6)
+  // Link-local IPv4
   if (h.startsWith("169.254.")) return true;
-  if (h.startsWith("fe80")) return true;
+
+  // IPv6 addresses contain colons - check before matching prefixes
+  const isIPv6 = h.includes(":");
+
+  // Link-local IPv6 (fe80::/10)
+  if (isIPv6 && h.startsWith("fe80")) return true;
 
   // IPv6 unique local (fc00::/7)
-  if (h.startsWith("fc") || h.startsWith("fd")) return true;
+  if (isIPv6 && (h.startsWith("fc") || h.startsWith("fd"))) return true;
 
   // mDNS/Bonjour (.local domains)
   if (h.endsWith(".local")) return true;
