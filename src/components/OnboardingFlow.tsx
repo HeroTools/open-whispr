@@ -37,7 +37,7 @@ import ModelCardList from "./ui/ModelCardList";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
-import { isLocalNetworkUrl } from "../utils/urlUtils";
+import { isSecureEndpoint } from "../utils/urlUtils";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
@@ -213,9 +213,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setCustomModelsLoading(true);
       setCustomModelsError(null);
       try {
-        // Allow HTTP for local/private network addresses, require HTTPS otherwise
-        if (!normalizedReasoningBaseUrl.startsWith("https://") && !isLocalNetworkUrl(normalizedReasoningBaseUrl)) {
-          throw new Error("Only HTTPS endpoints are allowed (except local network addresses).");
+        if (!isSecureEndpoint(normalizedReasoningBaseUrl)) {
+          throw new Error("HTTPS required (HTTP allowed for local network only).");
         }
 
         const headers: Record<string, string> = {};
