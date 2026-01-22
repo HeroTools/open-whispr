@@ -122,6 +122,11 @@
     "icon": "src/assets/icon.ico",
     "extraResources": [
       {
+        "from": "resources/bin/",
+        "to": "bin/",
+        "filter": ["*.dll"]
+      },
+      {
         "from": "resources/bin/nircmd.exe",
         "to": "bin/nircmd.exe"
       }

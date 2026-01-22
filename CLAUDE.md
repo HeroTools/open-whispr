@@ -48,6 +48,10 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **devServerManager.js**: Vite dev server integration
 - **dragManager.js**: Window dragging functionality
 - **environment.js**: Environment variable and OpenAI API management
+- **gpuDetector.js**: NVIDIA GPU detection for whisper.cpp variant selection
+  - Detects NVIDIA GPUs via `nvidia-smi` command
+  - Caches results to avoid repeated checks
+  - Returns recommended variant (`cpu` or `cuda`) based on hardware
 - **hotkeyManager.js**: Global hotkey registration and management
   - Handles platform-specific defaults (GLOBE on macOS, backtick on Windows/Linux)
   - Auto-fallback to F8/F9 if default hotkey is unavailable
@@ -97,6 +101,10 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
   - Falls back to system installation (`brew install whisper-cpp`)
   - GGML model downloads from HuggingFace
   - Models stored in `~/.cache/openwhispr/whisper-models/`
+  - **GPU Acceleration**: Windows/Linux support CPU and CUDA variants
+    - macOS uses Metal (built into the standard binary)
+    - NVIDIA GPU detected via `nvidia-smi` command
+    - CUDA DLLs bundled with Windows CUDA builds
 
 ## Key Implementation Details
 
@@ -267,6 +275,24 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - Audio level analysis
 - Complete reasoning pipeline debugging with stage-by-stage logging
 
+### 12. GPU Detection for whisper.cpp
+
+The app detects NVIDIA GPUs to select the appropriate whisper.cpp binary variant (CPU or CUDA).
+
+**IPC Handlers** (in `ipcHandlers.js`):
+- `detect-nvidia-gpu`: Returns GPU detection result with name and count
+- `get-recommended-whisper-variant`: Returns `'cpu'` or `'cuda'` based on detection
+
+**Detection Method**:
+- Uses `nvidia-smi --query-gpu=name --format=csv,noheader`
+- Results are cached to avoid repeated checks
+- 3-second timeout for detection process
+- macOS always returns `'cpu'` (uses Metal, not CUDA)
+
+**Exposed via preload.js**:
+- `window.electronAPI.detectNvidiaGpu()`
+- `window.electronAPI.getRecommendedWhisperVariant()`
+
 ## Development Guidelines
 
 ### Adding New Features
@@ -285,6 +311,7 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - [ ] Verify whisper.cpp binary detection
 - [ ] Test all Whisper models
 - [ ] Check agent naming functionality
+- [ ] Verify GPU detection on Windows/Linux (with and without NVIDIA GPU)
 
 ### Common Issues and Solutions
 
@@ -307,9 +334,16 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
    - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
    - Signing requires Apple Developer account
    - ASAR unpacking needed for FFmpeg
-  - Run `npm run download:whisper-cpp` before packaging (current platform)
-  - Use `npm run download:whisper-cpp:all` for multi-platform packaging
+   - Run `npm run download:whisper-cpp` before packaging (current platform)
+   - Use `npm run download:whisper-cpp:all` for multi-platform packaging
    - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
+   - **whisper.cpp download flags** (for `scripts/download-whisper-cpp.js`):
+     - `--current`: Download for current platform only (default uses auto-detect)
+     - `--cpu`: Force CPU variant (Windows/Linux only)
+     - `--cuda`: Force CUDA variant (Windows/Linux only)
+     - `--auto-detect`: Auto-detect GPU and select appropriate variant
+     - `--force`: Re-download even if binaries exist
+     - `WHISPER_CPP_VARIANT=cpu|cuda`: Environment variable override
 
 ### Platform-Specific Notes
 
@@ -327,16 +361,18 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - Microphone privacy settings at `ms-settings:privacy-microphone`
 - Sound settings at `ms-settings:sound`
 - NSIS installer for distribution
-- whisper.cpp bundled for x64
+- whisper.cpp bundled for x64 (CPU and CUDA variants available)
+- CUDA support requires NVIDIA drivers; DLLs bundled with CUDA builds
 
 **Linux**:
 - Multiple package manager support
 - Standard XDG directories
 - AppImage for distribution
-- whisper.cpp bundled for x64
+- whisper.cpp bundled for x64 (CPU and CUDA variants available)
 - No standardized URL scheme for system settings (user must open manually)
 - Privacy settings button hidden in UI (not applicable on Linux)
 - Recommend `pavucontrol` for audio device management
+- CUDA support requires NVIDIA drivers and `nvidia-smi` in PATH
 
 ## Code Style and Conventions
 

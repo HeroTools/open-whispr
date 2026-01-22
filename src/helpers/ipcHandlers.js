@@ -640,6 +640,38 @@ class IPCHandlers {
         return { success: false, error: error.message };
       }
     });
+
+    // GPU detection handlers
+    ipcMain.handle("detect-nvidia-gpu", async () => {
+      try {
+        const gpuDetector = require("./gpuDetector");
+        return await gpuDetector.detectNvidiaGpu();
+      } catch (error) {
+        debugLogger.error("GPU detection error:", error);
+        return { hasNvidiaGpu: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("get-recommended-whisper-variant", async () => {
+      try {
+        const gpuDetector = require("./gpuDetector");
+        return await gpuDetector.getRecommendedVariant();
+      } catch (error) {
+        debugLogger.error("Error getting recommended variant:", error);
+        return "cpu"; // Default to CPU on error
+      }
+    });
+
+    ipcMain.handle("clear-gpu-cache", () => {
+      try {
+        const gpuDetector = require("./gpuDetector");
+        gpuDetector.clearCache();
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Error clearing GPU cache:", error);
+        return { success: false, error: error.message };
+      }
+    });
   }
 
   broadcastToWindows(channel, payload) {

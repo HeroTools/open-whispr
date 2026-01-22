@@ -187,6 +187,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
   openWhisperModelsFolder: () => ipcRenderer.invoke("open-whisper-models-folder"),
 
+  // GPU detection for whisper.cpp variant selection
+  detectNvidiaGpu: () => ipcRenderer.invoke("detect-nvidia-gpu"),
+  getRecommendedWhisperVariant: () => ipcRenderer.invoke("get-recommended-whisper-variant"),
+  clearGpuCache: () => ipcRenderer.invoke("clear-gpu-cache"),
+
   // Globe key listener for hotkey capture (macOS only)
   onGlobeKeyPressed: (callback) => {
     const listener = () => callback?.();

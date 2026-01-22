@@ -11,11 +11,73 @@
 const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const { execSync } = require("child_process");
+const { execSync, spawn } = require("child_process");
 
 // Configuration - Update WHISPER_CPP_VERSION when releasing new builds
 const WHISPER_CPP_REPO = "gabrielste1n/whisper.cpp";
 const WHISPER_CPP_VERSION = "0.0.5"; // Bump version for server binaries
+
+const DEFAULT_VARIANT = "cpu";
+
+/**
+ * Detects if an NVIDIA GPU is present using nvidia-smi command.
+ * Returns 'cuda' if GPU found, 'cpu' otherwise.
+ */
+function detectGpuVariant() {
+  return new Promise((resolve) => {
+    // Only check on Windows and Linux (macOS uses Metal, not CUDA)
+    if (process.platform !== "win32" && process.platform !== "linux") {
+      resolve("cpu");
+      return;
+    }
+
+    let settled = false;
+
+    const proc = spawn("nvidia-smi", ["--query-gpu=name", "--format=csv,noheader"], {
+      stdio: ["ignore", "pipe", "pipe"],
+      shell: process.platform === "win32",
+    });
+
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      console.log("  GPU detection timed out, defaulting to CPU");
+      // Kill the process to prevent zombie
+      if (proc.exitCode === null) {
+        proc.kill();
+      }
+      resolve("cpu");
+    }, 3000);
+
+    let stdout = "";
+
+    proc.stdout?.on("data", (data) => {
+      stdout += data.toString();
+    });
+
+    proc.on("close", (code) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      if (code === 0 && stdout.trim()) {
+        const gpuName = stdout.trim().split("\n")[0];
+        console.log(`  Detected NVIDIA GPU: ${gpuName}`);
+        resolve("cuda");
+      } else {
+        console.log("  No NVIDIA GPU detected, using CPU variant");
+        resolve("cpu");
+      }
+    });
+
+    proc.on("error", () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      console.log("  nvidia-smi not found, using CPU variant");
+      resolve("cpu");
+    });
+  });
+}
 
 // Platform-specific binary info for whisper-cli
 const CLI_BINARIES = {
@@ -30,14 +92,28 @@ const CLI_BINARIES = {
     outputName: "whisper-cpp-darwin-x64",
   },
   "win32-x64": {
-    zipName: "whisper-cpp-win32-x64.zip",
-    binaryName: "whisper-cpp-win32-x64.exe",
-    outputName: "whisper-cpp-win32-x64.exe",
+    cpu: {
+      zipName: "whisper-cpp-win32-x64-cpu.zip",
+      binaryName: "whisper-cpp-win32-x64-cpu.exe",
+      outputName: "whisper-cpp-win32-x64.exe",
+    },
+    cuda: {
+      zipName: "whisper-cpp-win32-x64-cuda.zip",
+      binaryName: "whisper-cpp-win32-x64-cuda.exe",
+      outputName: "whisper-cpp-win32-x64.exe",
+    },
   },
   "linux-x64": {
-    zipName: "whisper-cpp-linux-x64.zip",
-    binaryName: "whisper-cpp-linux-x64",
-    outputName: "whisper-cpp-linux-x64",
+    cpu: {
+      zipName: "whisper-cpp-linux-x64-cpu.zip",
+      binaryName: "whisper-cpp-linux-x64-cpu",
+      outputName: "whisper-cpp-linux-x64",
+    },
+    cuda: {
+      zipName: "whisper-cpp-linux-x64-cuda.zip",
+      binaryName: "whisper-cpp-linux-x64-cuda",
+      outputName: "whisper-cpp-linux-x64",
+    },
   },
 };
 
@@ -54,14 +130,28 @@ const SERVER_BINARIES = {
     outputName: "whisper-server-darwin-x64",
   },
   "win32-x64": {
-    zipName: "whisper-server-win32-x64.zip",
-    binaryName: "whisper-server-win32-x64.exe",
-    outputName: "whisper-server-win32-x64.exe",
+    cpu: {
+      zipName: "whisper-server-win32-x64-cpu.zip",
+      binaryName: "whisper-server-win32-x64-cpu.exe",
+      outputName: "whisper-server-win32-x64.exe",
+    },
+    cuda: {
+      zipName: "whisper-server-win32-x64-cuda.zip",
+      binaryName: "whisper-server-win32-x64-cuda.exe",
+      outputName: "whisper-server-win32-x64.exe",
+    },
   },
   "linux-x64": {
-    zipName: "whisper-server-linux-x64.zip",
-    binaryName: "whisper-server-linux-x64",
-    outputName: "whisper-server-linux-x64",
+    cpu: {
+      zipName: "whisper-server-linux-x64-cpu.zip",
+      binaryName: "whisper-server-linux-x64-cpu",
+      outputName: "whisper-server-linux-x64",
+    },
+    cuda: {
+      zipName: "whisper-server-linux-x64-cuda.zip",
+      binaryName: "whisper-server-linux-x64-cuda",
+      outputName: "whisper-server-linux-x64",
+    },
   },
 };
 
@@ -173,6 +263,49 @@ function downloadFile(url, dest, retryCount = 0) {
   });
 }
 
+function resolveVariantConfig(config, variant) {
+  if (!config) return null;
+  if (config.cpu || config.cuda) {
+    const selectedVariant = variant || DEFAULT_VARIANT;
+    if (!config[selectedVariant]) {
+      return null;
+    }
+    return { ...config[selectedVariant], variant: selectedVariant };
+  }
+  return config;
+}
+
+function parseVariant(args) {
+  const hasCpuFlag = args.includes("--cpu");
+  const hasCudaFlag = args.includes("--cuda");
+  const variantIndex = args.indexOf("--variant");
+  let variant = process.env.WHISPER_CPP_VARIANT || null;
+
+  if (hasCpuFlag && hasCudaFlag) {
+    console.error("Choose only one of --cpu or --cuda.");
+    return null;
+  }
+
+  if (variantIndex !== -1) {
+    const value = args[variantIndex + 1];
+    if (!value) {
+      console.error("Missing value for --variant (cpu or cuda).");
+      return null;
+    }
+    variant = value;
+  }
+
+  if (hasCpuFlag) variant = "cpu";
+  if (hasCudaFlag) variant = "cuda";
+
+  if (variant && variant !== "cpu" && variant !== "cuda") {
+    console.error(`Unsupported variant: ${variant}. Use cpu or cuda.`);
+    return null;
+  }
+
+  return variant;
+}
+
 function extractZip(zipPath, destDir) {
   if (process.platform === "win32") {
     execSync(`powershell -command "Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force"`, { stdio: "inherit" });
@@ -181,21 +314,24 @@ function extractZip(zipPath, destDir) {
   }
 }
 
-async function downloadBinary(platformArch, config, label) {
+async function downloadBinary(platformArch, configMap, label, variant, forceDownload) {
+  const config = resolveVariantConfig(configMap[platformArch], variant);
   if (!config) {
-    console.log(`  ${label} ${platformArch}: Not supported`);
+    const variantTag = variant ? ` (${variant})` : "";
+    console.log(`  ${label}${variantTag} ${platformArch}: Not supported`);
     return false;
   }
 
   const outputPath = path.join(BIN_DIR, config.outputName);
 
-  if (fs.existsSync(outputPath)) {
-    console.log(`  ${label} ${platformArch}: Already exists, skipping`);
+  const variantTag = config.variant ? ` (${config.variant})` : "";
+  if (!forceDownload && fs.existsSync(outputPath)) {
+    console.log(`  ${label}${variantTag} ${platformArch}: Already exists, skipping`);
     return true;
   }
 
   const url = getDownloadUrl(config.zipName);
-  console.log(`  ${label} ${platformArch}: Downloading from ${url}`);
+  console.log(`  ${label}${variantTag} ${platformArch}: Downloading from ${url}`);
 
   const zipPath = path.join(BIN_DIR, config.zipName);
 
@@ -215,9 +351,22 @@ async function downloadBinary(platformArch, config, label) {
       if (process.platform !== "win32") {
         fs.chmodSync(outputPath, 0o755);
       }
-      console.log(`  ${label} ${platformArch}: Extracted to ${config.outputName}`);
+      console.log(`  ${label}${variantTag} ${platformArch}: Extracted to ${config.outputName}`);
+
+      // For Windows, also extract bundled CUDA DLLs if present
+      if (platformArch === "win32-x64") {
+        const cudaDlls = ["cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll"];
+        for (const dll of cudaDlls) {
+          const dllPath = path.join(extractDir, dll);
+          if (fs.existsSync(dllPath)) {
+            const destPath = path.join(BIN_DIR, dll);
+            fs.copyFileSync(dllPath, destPath);
+            console.log(`  ${label}${variantTag} ${platformArch}: Extracted ${dll}`);
+          }
+        }
+      }
     } else {
-      console.error(`  ${label} ${platformArch}: Binary not found in archive`);
+      console.error(`  ${label}${variantTag} ${platformArch}: Binary not found in archive`);
       return false;
     }
 
@@ -227,21 +376,42 @@ async function downloadBinary(platformArch, config, label) {
     return true;
 
   } catch (error) {
-    console.error(`  ${label} ${platformArch}: Failed - ${error.message}`);
+    console.error(`  ${label}${variantTag} ${platformArch}: Failed - ${error.message}`);
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
     return false;
   }
 }
 
-async function downloadForPlatform(platformArch) {
+async function downloadForPlatform(platformArch, variant, forceDownload) {
   // Download both CLI and server binaries for the platform
-  const cliOk = await downloadBinary(platformArch, CLI_BINARIES[platformArch], "[cli]");
-  const serverOk = await downloadBinary(platformArch, SERVER_BINARIES[platformArch], "[server]");
+  const cliOk = await downloadBinary(platformArch, CLI_BINARIES, "[cli]", variant, forceDownload);
+  const serverOk = await downloadBinary(platformArch, SERVER_BINARIES, "[server]", variant, forceDownload);
   return cliOk && serverOk;
 }
 
 async function main() {
-  console.log(`\nDownloading whisper.cpp binaries (${WHISPER_CPP_VERSION})...\n`);
+  let variant = parseVariant(process.argv);
+  if (variant === null) {
+    process.exitCode = 1;
+    return;
+  }
+
+  const autoDetect = process.argv.includes("--auto-detect");
+  const forceDownload =
+    process.argv.includes("--force") ||
+    process.argv.includes("--cpu") ||
+    process.argv.includes("--cuda") ||
+    process.argv.includes("--variant") ||
+    autoDetect;
+
+  // Auto-detect GPU if --auto-detect flag is used or when downloading for current platform without explicit variant
+  if (autoDetect || (process.argv.includes("--current") && !variant)) {
+    console.log("\nDetecting GPU...");
+    variant = await detectGpuVariant();
+  }
+
+  const variantTag = variant ? ` ${variant}` : "";
+  console.log(`\nDownloading whisper.cpp binaries (${WHISPER_CPP_VERSION})${variantTag}...\n`);
 
   // Create bin directory
   fs.mkdirSync(BIN_DIR, { recursive: true });
@@ -276,7 +446,7 @@ async function main() {
 
     // Only download for specified platform/arch
     console.log(`Downloading for target platform (${targetPlatformArch}):`);
-    const downloadOk = await downloadForPlatform(targetPlatformArch);
+    const downloadOk = await downloadForPlatform(targetPlatformArch, variant, forceDownload);
     if (!downloadOk) {
       console.error(`Failed to download binaries for ${targetPlatformArch}`);
       process.exitCode = 1;
@@ -301,19 +471,19 @@ async function main() {
     // Only download CLI binaries (no server)
     console.log("Downloading CLI binaries only:");
     for (const platformArch of Object.keys(CLI_BINARIES)) {
-      await downloadBinary(platformArch, CLI_BINARIES[platformArch], "[cli]");
+      await downloadBinary(platformArch, CLI_BINARIES, "[cli]", variant, forceDownload);
     }
   } else if (process.argv.includes("--all")) {
     // Download all platforms
     console.log("Downloading all platform binaries (CLI + server):");
     for (const platformArch of Object.keys(CLI_BINARIES)) {
-      await downloadForPlatform(platformArch);
+      await downloadForPlatform(platformArch, variant, forceDownload);
     }
   } else {
     // Default: download for build targets (all platforms)
     console.log("Downloading binaries for all platforms (CLI + server):");
     for (const platformArch of Object.keys(CLI_BINARIES)) {
-      await downloadForPlatform(platformArch);
+      await downloadForPlatform(platformArch, variant, forceDownload);
     }
   }
 
