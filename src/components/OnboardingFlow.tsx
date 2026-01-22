@@ -979,14 +979,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   return (
     <div
-      className="h-screen flex flex-col bg-gradient-to-br from-stone-50 via-white to-blue-50/30"
+      className="h-screen flex flex-col bg-gradient-to-br from-neutral-50 via-white to-neutral-50"
       style={{
-        backgroundImage: `repeating-linear-gradient(
-          transparent,
-          transparent 24px,
-          #e7e5e4 24px,
-          #e7e5e4 25px
-        )`,
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
@@ -1007,9 +1001,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         description={alertDialog.description}
         onOk={() => {}}
       />
-      {/* Left margin line for entire page */}
-      <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>
-
       {/* Title Bar */}
       <div className="flex-shrink-0 z-10">
         <TitleBar
