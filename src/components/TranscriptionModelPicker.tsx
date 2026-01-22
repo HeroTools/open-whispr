@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
+import { Input } from "./ui/input";
 import { Download, Trash2, Check, Cloud, Lock, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
@@ -16,6 +17,7 @@ import {
 } from "../models/ModelRegistry";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
 import { getProviderIcon } from "../utils/providerIcons";
+import { API_ENDPOINTS } from "../config/constants";
 
 interface WhisperModel {
   model: string;
@@ -38,6 +40,8 @@ interface TranscriptionModelPickerProps {
   setOpenaiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
+  cloudTranscriptionBaseUrl?: string;
+  setCloudTranscriptionBaseUrl?: (url: string) => void;
   className?: string;
   variant?: "onboarding" | "settings";
 }
@@ -45,6 +49,7 @@ interface TranscriptionModelPickerProps {
 const CLOUD_PROVIDER_TABS = [
   { id: "openai", name: "OpenAI" },
   { id: "groq", name: "Groq" },
+  { id: "custom", name: "Custom" },
 ];
 
 const VALID_CLOUD_PROVIDER_IDS = CLOUD_PROVIDER_TABS.map((p) => p.id);
@@ -69,6 +74,8 @@ export default function TranscriptionModelPicker({
   setOpenaiApiKey,
   groqApiKey,
   setGroqApiKey,
+  cloudTranscriptionBaseUrl = "",
+  setCloudTranscriptionBaseUrl,
   className = "",
   variant = "settings",
 }: TranscriptionModelPickerProps) {
@@ -129,14 +136,26 @@ export default function TranscriptionModelPicker({
     const isValidProvider = VALID_CLOUD_PROVIDER_IDS.includes(selectedCloudProvider);
 
     if (!isValidProvider) {
-      const firstProvider = cloudProviders[0];
-      if (firstProvider) {
-        onCloudProviderSelect(firstProvider.id);
-        if (firstProvider.models?.length) {
-          onCloudModelSelect(firstProvider.models[0].id);
+      // Check if we have a custom URL that differs from known providers
+      const knownProviderUrls = cloudProviders.map((p) => p.baseUrl);
+      const hasCustomUrl =
+        cloudTranscriptionBaseUrl &&
+        cloudTranscriptionBaseUrl.trim() !== "" &&
+        cloudTranscriptionBaseUrl !== API_ENDPOINTS.TRANSCRIPTION_BASE &&
+        !knownProviderUrls.includes(cloudTranscriptionBaseUrl);
+
+      if (hasCustomUrl) {
+        onCloudProviderSelect("custom");
+      } else {
+        const firstProvider = cloudProviders[0];
+        if (firstProvider) {
+          onCloudProviderSelect(firstProvider.id);
+          if (firstProvider.models?.length) {
+            onCloudModelSelect(firstProvider.models[0].id);
+          }
         }
       }
-    } else if (!selectedCloudModel) {
+    } else if (selectedCloudProvider !== "custom" && !selectedCloudModel) {
       const provider = cloudProviders.find((p) => p.id === selectedCloudProvider);
       if (provider?.models?.length) {
         onCloudModelSelect(provider.models[0].id);
@@ -144,6 +163,7 @@ export default function TranscriptionModelPicker({
     }
   }, [
     cloudProviders,
+    cloudTranscriptionBaseUrl,
     selectedCloudProvider,
     selectedCloudModel,
     onCloudProviderSelect,
@@ -200,11 +220,22 @@ export default function TranscriptionModelPicker({
     (providerId: string) => {
       onCloudProviderSelect(providerId);
       const provider = cloudProviders.find((p) => p.id === providerId);
-      if (provider?.models?.length) {
-        onCloudModelSelect(provider.models[0].id);
+
+      if (providerId === "custom") {
+        // Don't change base URL or model when switching to custom
+        // The user will enter their own URL
+        return;
+      }
+
+      if (provider) {
+        // Update base URL to the selected provider's default
+        setCloudTranscriptionBaseUrl?.(provider.baseUrl);
+        if (provider.models?.length) {
+          onCloudModelSelect(provider.models[0].id);
+        }
       }
     },
-    [cloudProviders, onCloudProviderSelect, onCloudModelSelect]
+    [cloudProviders, onCloudProviderSelect, onCloudModelSelect, setCloudTranscriptionBaseUrl]
   );
 
   const handleLocalProviderChange = useCallback(
@@ -459,52 +490,107 @@ export default function TranscriptionModelPicker({
             />
 
             <div className="p-4">
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
-                <ModelCardList
-                  models={cloudModelOptions}
-                  selectedModel={selectedCloudModel}
-                  onModelSelect={onCloudModelSelect}
-                  colorScheme={colorScheme === "purple" ? "purple" : "indigo"}
-                />
-              </div>
+              {selectedCloudProvider === "custom" ? (
+                <div className="space-y-4">
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">Custom Endpoint Configuration</h4>
+                    <p className="text-xs text-gray-500">
+                      Enter an OpenAI-compatible transcription endpoint URL.
+                    </p>
+                  </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <div className="space-y-3">
-                  <h4 className="font-medium text-gray-900">API Configuration</h4>
-                  <ApiKeyInput
-                    apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
-                    setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
-                    helpText={
-                      selectedCloudProvider === "groq" ? (
-                        <>
-                          Need an API key?{" "}
-                          <a
-                            href="https://console.groq.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 underline"
-                          >
-                            console.groq.com
-                          </a>
-                        </>
-                      ) : (
-                        <>
-                          Need an API key?{" "}
-                          <a
-                            href="https://platform.openai.com"
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-600 underline"
-                          >
-                            platform.openai.com
-                          </a>
-                        </>
-                      )
-                    }
-                  />
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Transcription Base URL
+                    </label>
+                    <Input
+                      value={cloudTranscriptionBaseUrl}
+                      onChange={(e) => setCloudTranscriptionBaseUrl?.(e.target.value)}
+                      placeholder="https://your-api.example.com/v1"
+                      className="text-sm"
+                    />
+                    <p className="text-xs text-gray-500">
+                      The endpoint should be compatible with OpenAI's{" "}
+                      <code>/audio/transcriptions</code> API format.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Model Name (optional)
+                    </label>
+                    <Input
+                      value={selectedCloudModel}
+                      onChange={(e) => onCloudModelSelect(e.target.value)}
+                      placeholder="whisper-1"
+                      className="text-sm"
+                    />
+                    <p className="text-xs text-gray-500">
+                      Enter the model name supported by your custom endpoint.
+                    </p>
+                  </div>
+
+                  <div className="pt-4 border-t border-gray-200">
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-gray-900">API Key</h4>
+                      <ApiKeyInput
+                        apiKey={openaiApiKey}
+                        setApiKey={setOpenaiApiKey}
+                        helpText="Enter the API key for your custom endpoint."
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="space-y-3">
+                    <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
+                    <ModelCardList
+                      models={cloudModelOptions}
+                      selectedModel={selectedCloudModel}
+                      onModelSelect={onCloudModelSelect}
+                      colorScheme={colorScheme === "purple" ? "purple" : "indigo"}
+                    />
+                  </div>
+
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-gray-900">API Configuration</h4>
+                      <ApiKeyInput
+                        apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
+                        setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
+                        helpText={
+                          selectedCloudProvider === "groq" ? (
+                            <>
+                              Need an API key?{" "}
+                              <a
+                                href="https://console.groq.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline"
+                              >
+                                console.groq.com
+                              </a>
+                            </>
+                          ) : (
+                            <>
+                              Need an API key?{" "}
+                              <a
+                                href="https://platform.openai.com"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-600 underline"
+                              >
+                                platform.openai.com
+                              </a>
+                            </>
+                          )
+                        }
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
