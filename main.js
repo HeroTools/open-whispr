@@ -1,5 +1,10 @@
 const { app, globalShortcut, BrowserWindow, dialog } = require("electron");
 
+// Group all windows under single taskbar entry on Windows
+if (process.platform === "win32") {
+  app.setAppUserModelId("com.herotools.openwispr");
+}
+
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!gotSingleInstanceLock) {
