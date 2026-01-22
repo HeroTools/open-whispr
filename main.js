@@ -140,6 +140,17 @@ async function startApp() {
     debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
   });
 
+  // Pre-warm llama-server if local reasoning is configured
+  // Settings can be provided via environment variables:
+  // - REASONING_PROVIDER=local to enable local reasoning
+  // - LOCAL_REASONING_MODEL=qwen3-8b-q4_k_m (or another model ID)
+  if (process.env.REASONING_PROVIDER === "local" && process.env.LOCAL_REASONING_MODEL) {
+    const modelManager = require("./src/helpers/modelManagerBridge").default;
+    modelManager.prewarmServer(process.env.LOCAL_REASONING_MODEL).catch((err) => {
+      debugLogger.debug("llama-server pre-warm error (non-fatal)", { error: err.message });
+    });
+  }
+
   // Log nircmd status on Windows (for debugging bundled dependencies)
   if (process.platform === "win32") {
     const nircmdStatus = clipboardManager.getNircmdStatus();
@@ -317,5 +328,8 @@ if (gotSingleInstanceLock) {
     updateManager.cleanup();
     // Stop whisper server if running
     whisperManager.stopServer().catch(() => {});
+    // Stop llama-server if running
+    const modelManager = require("./src/helpers/modelManagerBridge").default;
+    modelManager.stopServer().catch(() => {});
   });
 }

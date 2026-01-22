@@ -574,6 +574,51 @@ class IPCHandlers {
       }
     });
 
+    // llama-server management handlers
+    ipcMain.handle("llama-server-start", async (event, modelId) => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        const modelInfo = modelManager.findModelById(modelId);
+        if (!modelInfo) {
+          return { success: false, reason: `Model "${modelId}" not found` };
+        }
+
+        const modelPath = require("path").join(
+          modelManager.modelsDir,
+          modelInfo.model.fileName
+        );
+
+        await modelManager.serverManager.start(modelPath, {
+          contextSize: modelInfo.model.contextLength || 4096,
+          threads: 4,
+        });
+        modelManager.currentServerModelId = modelId;
+
+        return { success: true, port: modelManager.serverManager.port };
+      } catch (error) {
+        return { success: false, reason: error.message };
+      }
+    });
+
+    ipcMain.handle("llama-server-stop", async () => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        await modelManager.stopServer();
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("llama-server-status", async () => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        return modelManager.getServerStatus();
+      } catch (error) {
+        return { available: false, running: false, error: error.message };
+      }
+    });
+
     ipcMain.handle("get-log-level", async () => {
       return debugLogger.getLevel();
     });
