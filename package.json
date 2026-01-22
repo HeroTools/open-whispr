@@ -25,7 +25,7 @@
     "build:linux": "npm run build:renderer && electron-builder --linux",
     "setup": "node setup.js",
     "prepack": "npm run compile:globe && npm run download:whisper-cpp",
-    "pack": "npm run build:renderer && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
+    "pack": "npm run build:renderer && cross-env CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --dir",
     "predist": "npm run compile:globe && npm run download:whisper-cpp",
     "dist": "npm run build:renderer && electron-builder",
     "download:whisper-cpp": "node scripts/download-whisper-cpp.js --current",
