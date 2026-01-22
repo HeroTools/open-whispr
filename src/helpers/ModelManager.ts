@@ -314,7 +314,7 @@ class ModelManager {
 
       llamaProcess.on("close", (code) => {
         if (code === 0) {
-          resolve(output.trim());
+          resolve(this.parseLlamaCppOutput(output));
         } else {
           reject(new ModelError(`Inference failed: ${error}`, "INFERENCE_ERROR"));
         }
@@ -338,6 +338,72 @@ class ModelManager {
         isDownloading: this.activeDownloads.has(model.id),
       }))
     );
+  }
+
+  /**
+   * Parse llama.cpp output to extract only the generated text.
+   * Filters out diagnostic messages, timing stats, and other noise.
+   */
+  private parseLlamaCppOutput(rawOutput: string): string {
+    if (!rawOutput) return "";
+
+    const lines = rawOutput.split("\n");
+    const filteredLines: string[] = [];
+
+    // Patterns that indicate diagnostic/system output to filter out
+    const diagnosticPatterns = [
+      /^llama_/i, // llama_model_loader, llama_print_timings, etc.
+      /^ggml_/i, // ggml backend messages
+      /^log_/i, // log_set_target_file, etc.
+      /^main:/i, // main function messages
+      /^sampling:/i, // sampling parameter info
+      /^generate:/i, // generation info
+      /^system_info:/i, // system info
+      /^\s*load time\s*=/i,
+      /^\s*sample time\s*=/i,
+      /^\s*prompt eval time\s*=/i,
+      /^\s*eval time\s*=/i,
+      /^\s*total time\s*=/i,
+      /^Log start$/i,
+      /^build: \d+/i, // build info
+      /^n_threads/i, // thread info
+      /^Using .* backend/i, // backend selection messages
+      /^\s*\d+\s+tokens?\s+/i, // token count lines
+    ];
+
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+
+      // Skip empty lines at the start (but keep them in the middle of content)
+      if (filteredLines.length === 0 && !trimmedLine) {
+        continue;
+      }
+
+      // Check if line matches any diagnostic pattern
+      let isDiagnostic = false;
+      for (const pattern of diagnosticPatterns) {
+        if (pattern.test(trimmedLine)) {
+          isDiagnostic = true;
+          break;
+        }
+      }
+
+      if (!isDiagnostic) {
+        filteredLines.push(line);
+      }
+    }
+
+    // Trim trailing empty lines and return
+    let result = filteredLines.join("\n").trim();
+
+    // Handle special tokens that might appear in output
+    // Remove common end tokens if they appear at the very end
+    const endTokenPatterns = [/<\|im_end\|>$/, /<\|end\|>$/, /<\/s>$/, /\[end of text\]$/i];
+    for (const pattern of endTokenPatterns) {
+      result = result.replace(pattern, "").trim();
+    }
+
+    return result;
   }
 }
 
