@@ -4,6 +4,7 @@ import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
+import { isSecureEndpoint } from "../utils/urlUtils";
 
 export const DEFAULT_PROMPTS = {
   agent: `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`,
@@ -55,12 +56,9 @@ class ReasoningService extends BaseReasoningService {
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
-      // Security: Only allow HTTPS endpoints (except localhost for development)
-      const isLocalhost =
-        normalized.includes("://localhost") || normalized.includes("://127.0.0.1");
-      if (!normalized.startsWith("https://") && !isLocalhost) {
+      if (!isSecureEndpoint(normalized)) {
         logger.logReasoning("OPENAI_BASE_REJECTED", {
-          reason: "Non-HTTPS endpoint rejected for security",
+          reason: "HTTPS required (HTTP allowed for local network only)",
           attempted: normalized,
         });
         return API_ENDPOINTS.OPENAI_BASE;

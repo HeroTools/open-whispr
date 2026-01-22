@@ -7,6 +7,8 @@ const { pipeline } = require("stream");
 const { app } = require("electron");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
+const { parseLlamaCppOutput } = require("../utils/llamaOutputParser");
+const debugLogger = require("./debugLogger");
 
 const MIN_FILE_SIZE = 1_000_000; // 1MB minimum for valid model files
 
@@ -407,26 +409,56 @@ class ModelManager {
   }
 
   async ensureLlamaCpp() {
+    debugLogger.logReasoning("ENSURE_LLAMACPP_START", {});
+
     const llamaCppInstaller = require("./llamaCppInstaller").default;
 
-    if (!(await llamaCppInstaller.isInstalled())) {
+    const isInstalled = await llamaCppInstaller.isInstalled();
+    debugLogger.logReasoning("ENSURE_LLAMACPP_CHECK", { isInstalled });
+
+    if (!isInstalled) {
+      debugLogger.logReasoning("ENSURE_LLAMACPP_NOT_INSTALLED", {});
+      console.error("[LocalAI] llama.cpp is not installed");
       throw new ModelError("llama.cpp is not installed", "LLAMACPP_NOT_INSTALLED");
     }
 
     this.llamaCppPath = await llamaCppInstaller.getBinaryPath();
+    debugLogger.logReasoning("ENSURE_LLAMACPP_SUCCESS", {
+      llamaCppPath: this.llamaCppPath,
+    });
     return true;
   }
 
   async runInference(modelId, prompt, options = {}) {
+    const startTime = Date.now();
+    debugLogger.logReasoning("INFERENCE_START", {
+      modelId,
+      promptLength: prompt.length,
+      options: { ...options, systemPrompt: options.systemPrompt ? "[set]" : "[not set]" },
+    });
+
     await this.ensureLlamaCpp();
+    debugLogger.logReasoning("INFERENCE_LLAMACPP_READY", {
+      llamaCppPath: this.llamaCppPath,
+    });
 
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) {
+      debugLogger.logReasoning("INFERENCE_MODEL_NOT_FOUND", { modelId });
+      console.error(`[LocalAI] Model not found: ${modelId}`);
       throw new ModelNotFoundError(modelId);
     }
 
     const modelPath = path.join(this.modelsDir, modelInfo.model.fileName);
+    debugLogger.logReasoning("INFERENCE_MODEL_PATH", {
+      modelPath,
+      modelName: modelInfo.model.name,
+      providerId: modelInfo.provider.id,
+    });
+
     if (!(await this.checkModelValid(modelPath))) {
+      debugLogger.logReasoning("INFERENCE_MODEL_INVALID", { modelId, modelPath });
+      console.error(`[LocalAI] Model invalid or not downloaded: ${modelPath}`);
       throw new ModelError(
         `Model ${modelId} is not downloaded or is corrupted`,
         "MODEL_NOT_DOWNLOADED",
@@ -441,6 +473,12 @@ class ModelManager {
       prompt,
       options.systemPrompt || ""
     );
+
+    debugLogger.logReasoning("INFERENCE_PROMPT_FORMATTED", {
+      formattedPromptLength: formattedPrompt.length,
+      promptPreview:
+        formattedPrompt.substring(0, 200) + (formattedPrompt.length > 200 ? "..." : ""),
+    });
 
     return new Promise((resolve, reject) => {
       const args = [
@@ -463,22 +501,58 @@ class ModelManager {
         "-t",
         String(options.threads || 4),
         "--no-display-prompt",
+        "-no-cnv", // Disable conversation mode (model waits for stdin otherwise)
       ];
 
-      const process = spawn(this.llamaCppPath, args);
+      debugLogger.logReasoning("INFERENCE_SPAWN", {
+        command: this.llamaCppPath,
+        argsCount: args.length,
+        maxTokens: options.maxTokens || 512,
+        contextSize: options.contextSize || modelInfo.model.contextLength,
+      });
+
+      const proc = spawn(this.llamaCppPath, args);
       let output = "";
       let error = "";
 
-      process.stdout.on("data", (data) => {
+      debugLogger.logReasoning("INFERENCE_PROCESS_STARTED", {
+        pid: proc.pid,
+      });
+
+      proc.stdout.on("data", (data) => {
         output += data.toString();
+        debugLogger.logReasoning("INFERENCE_STDOUT_CHUNK", {
+          chunkLength: data.length,
+          totalOutputLength: output.length,
+          elapsedMs: Date.now() - startTime,
+        });
       });
 
-      process.stderr.on("data", (data) => {
+      proc.stderr.on("data", (data) => {
         error += data.toString();
+        debugLogger.logReasoning("INFERENCE_STDERR_CHUNK", {
+          chunkLength: data.length,
+          preview: data.toString().substring(0, 200),
+          elapsedMs: Date.now() - startTime,
+        });
       });
 
-      process.on("close", (code) => {
+      proc.on("close", (code) => {
+        const totalTime = Date.now() - startTime;
+        debugLogger.logReasoning("INFERENCE_CLOSE", {
+          exitCode: code,
+          totalTimeMs: totalTime,
+          outputLength: output.length,
+          errorLength: error.length,
+        });
+
         if (code !== 0) {
+          debugLogger.logReasoning("INFERENCE_FAILED", {
+            code,
+            error: error.substring(0, 1000),
+            outputPreview: output.substring(0, 500),
+          });
+          console.error(`[LocalAI] Inference failed (${totalTime}ms): ${error.substring(0, 200)}`);
           reject(
             new ModelError(`Inference failed with code ${code}: ${error}`, "INFERENCE_FAILED", {
               code,
@@ -486,11 +560,25 @@ class ModelManager {
             })
           );
         } else {
-          resolve(output.trim());
+          const parsed = parseLlamaCppOutput(output);
+          debugLogger.logReasoning("INFERENCE_SUCCESS", {
+            totalTimeMs: totalTime,
+            rawOutputLength: output.length,
+            parsedOutputLength: parsed.length,
+            parsedPreview: parsed.substring(0, 200) + (parsed.length > 200 ? "..." : ""),
+          });
+          resolve(parsed);
         }
       });
 
-      process.on("error", (err) => {
+      proc.on("error", (err) => {
+        const totalTime = Date.now() - startTime;
+        debugLogger.logReasoning("INFERENCE_PROCESS_ERROR", {
+          error: err.message,
+          stack: err.stack,
+          totalTimeMs: totalTime,
+        });
+        console.error(`[LocalAI] Process error: ${err.message}`);
         reject(
           new ModelError(`Failed to start inference: ${err.message}`, "INFERENCE_START_FAILED", {
             error: err.message,

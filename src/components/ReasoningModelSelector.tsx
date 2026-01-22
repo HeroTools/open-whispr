@@ -10,6 +10,7 @@ import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constant
 import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import { modelRegistry } from "../models/ModelRegistry";
 import { getProviderIcon } from "../utils/providerIcons";
+import { isSecureEndpoint } from "../utils/urlUtils";
 
 type CloudModelOption = {
   value: string;
@@ -161,13 +162,9 @@ export default function ReasoningModelSelector({
           return;
         }
 
-        const isLocalhost =
-          normalizedBase.includes("://localhost") || normalizedBase.includes("://127.0.0.1");
-        if (!normalizedBase.startsWith("https://") && !isLocalhost) {
+        if (!isSecureEndpoint(normalizedBase)) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-            setCustomModelsError(
-              "Only HTTPS endpoints are allowed (except localhost for testing)."
-            );
+            setCustomModelsError("HTTPS required (HTTP allowed for local network only).");
             setCustomModelsLoading(false);
           }
           return;
