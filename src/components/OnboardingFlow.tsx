@@ -37,6 +37,7 @@ import ModelCardList from "./ui/ModelCardList";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { isSecureEndpoint } from "../utils/urlUtils";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
@@ -87,8 +88,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setUseLocalWhisper,
     setWhisperModel,
     setPreferredLanguage,
-    setCloudTranscriptionBaseUrl,
-    setCloudReasoningBaseUrl,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -212,12 +211,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setCustomModelsLoading(true);
       setCustomModelsError(null);
       try {
-        // Security: Only allow HTTPS endpoints (except localhost for development)
-        const isLocalhost =
-          normalizedReasoningBaseUrl.includes("://localhost") ||
-          normalizedReasoningBaseUrl.includes("://127.0.0.1");
-        if (!normalizedReasoningBaseUrl.startsWith("https://") && !isLocalhost) {
-          throw new Error("Only HTTPS endpoints are allowed (except localhost for testing).");
+        if (!isSecureEndpoint(normalizedReasoningBaseUrl)) {
+          throw new Error("HTTPS required (HTTP allowed for local network only).");
         }
 
         const headers: Record<string, string> = {};
@@ -436,13 +431,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const normalizedTranscriptionBase = (transcriptionBaseUrl || "").trim();
     const normalizedReasoningBaseValue = (reasoningBaseUrl || "").trim();
 
-    setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
-    setCloudReasoningBaseUrl(normalizedReasoningBaseValue);
+    // Detect if user entered a non-default custom URL
+    const isCustomTranscriptionUrl =
+      normalizedTranscriptionBase !== "" &&
+      normalizedTranscriptionBase !== API_ENDPOINTS.TRANSCRIPTION_BASE &&
+      normalizedTranscriptionBase !== "https://api.openai.com/v1";
 
     updateTranscriptionSettings({
       whisperModel,
       preferredLanguage,
       cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
+      cloudTranscriptionProvider: isCustomTranscriptionUrl ? "custom" : "openai",
     });
     updateReasoningSettings({
       useReasoningModel,
@@ -484,8 +483,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     updateTranscriptionSettings,
     updateReasoningSettings,
     persistOpenAIKey,
-    setCloudTranscriptionBaseUrl,
-    setCloudReasoningBaseUrl,
     setDictationKey,
     ensureHotkeyRegistered,
   ]);

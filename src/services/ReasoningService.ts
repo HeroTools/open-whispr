@@ -5,6 +5,7 @@ import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS, getSystemPrompt } from "../config/prompts";
 import logger from "../utils/logger";
+import { isSecureEndpoint } from "../utils/urlUtils";
 
 /**
  * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
@@ -57,12 +58,9 @@ class ReasoningService extends BaseReasoningService {
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
-      // Security: Only allow HTTPS endpoints (except localhost for development)
-      const isLocalhost =
-        normalized.includes("://localhost") || normalized.includes("://127.0.0.1");
-      if (!normalized.startsWith("https://") && !isLocalhost) {
+      if (!isSecureEndpoint(normalized)) {
         logger.logReasoning("OPENAI_BASE_REJECTED", {
-          reason: "Non-HTTPS endpoint rejected for security",
+          reason: "HTTPS required (HTTP allowed for local network only)",
           attempted: normalized,
         });
         return API_ENDPOINTS.OPENAI_BASE;

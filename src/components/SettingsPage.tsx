@@ -50,6 +50,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     allowOpenAIFallback,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
+    cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
@@ -625,13 +626,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             <TranscriptionModelPicker
               selectedCloudProvider={cloudTranscriptionProvider}
-              onCloudProviderSelect={(providerId) => {
-                setCloudTranscriptionProvider(providerId);
-                const provider = getTranscriptionProviders().find((p) => p.id === providerId);
-                if (provider) {
-                  setCloudTranscriptionBaseUrl(provider.baseUrl);
-                }
-              }}
+              onCloudProviderSelect={setCloudTranscriptionProvider}
               selectedCloudModel={cloudTranscriptionModel}
               onCloudModelSelect={setCloudTranscriptionModel}
               selectedLocalModel={whisperModel}
@@ -645,6 +640,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setOpenaiApiKey={setOpenaiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
+              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
               variant="settings"
             />
           </div>
