@@ -231,28 +231,44 @@ class WindowManager {
 
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
-    const visibilityTimer = setTimeout(() => {
-      if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) {
-        return;
-      }
-      if (!this.controlPanelWindow.isVisible()) {
-        console.warn("Control panel did not become visible in time; forcing show");
-        this.controlPanelWindow.show();
-        this.controlPanelWindow.focus();
-      }
-    }, 10000);
-
-    const clearVisibilityTimer = () => {
-      clearTimeout(visibilityTimer);
-    };
-
-    this.controlPanelWindow.once("ready-to-show", () => {
-      clearVisibilityTimer();
+    // Track whether window has been shown
+    let controlPanelShown = false;
+    const showControlPanel = (source) => {
+      if (controlPanelShown) return;
+      if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) return;
+      controlPanelShown = true;
+      console.log(`[WindowManager] Showing control panel (triggered by: ${source})`);
       if (process.platform === "win32") {
         this.controlPanelWindow.setSkipTaskbar(false);
       }
       this.controlPanelWindow.show();
       this.controlPanelWindow.focus();
+    };
+
+    // Reduced timeout from 10s to 5s for better UX
+    const visibilityTimer = setTimeout(() => {
+      if (!controlPanelShown && this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
+        console.warn("[WindowManager] Control panel timeout - forcing show");
+        showControlPanel("timeout");
+      }
+    }, 5000);
+
+    const clearVisibilityTimer = () => {
+      clearTimeout(visibilityTimer);
+    };
+
+    // Primary signal: dom-ready (more reliable in Electron 36+)
+    this.controlPanelWindow.webContents.once("dom-ready", () => {
+      clearVisibilityTimer();
+      console.log("[WindowManager] Control panel dom-ready event fired");
+      showControlPanel("dom-ready");
+    });
+
+    // Secondary signal: ready-to-show
+    this.controlPanelWindow.once("ready-to-show", () => {
+      clearVisibilityTimer();
+      console.log("[WindowManager] Control panel ready-to-show event fired");
+      showControlPanel("ready-to-show");
     });
 
     this.controlPanelWindow.on("show", () => {
@@ -403,20 +419,13 @@ class WindowManager {
       return;
     }
 
-    // Safety timeout: force show the window if ready-to-show doesn't fire within 10 seconds
-    // This helps diagnose issues where the renderer fails to load
-    const showTimeout = setTimeout(() => {
-      console.warn("[WindowManager] ready-to-show timeout - forcing window to show");
-      if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isVisible()) {
-        console.log("[WindowManager] Main window was not visible after 10s, forcing show");
-        this.mainWindow.show();
-        this.mainWindow.webContents.openDevTools();
-      }
-    }, 10000);
-
-    this.mainWindow.once("ready-to-show", () => {
-      clearTimeout(showTimeout);
-      console.log("[WindowManager] Main window ready-to-show event fired");
+    // Track whether window has been shown to avoid double-showing
+    let windowShown = false;
+    const showWindow = (source) => {
+      if (windowShown) return;
+      if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+      windowShown = true;
+      console.log(`[WindowManager] Showing main window (triggered by: ${source})`);
       this.enforceMainWindowOnTop();
       if (!this.mainWindow.isVisible()) {
         if (typeof this.mainWindow.showInactive === "function") {
@@ -425,6 +434,38 @@ class WindowManager {
           this.mainWindow.show();
         }
       }
+    };
+
+    // Safety timeout: force show the window if nothing else triggers within 5 seconds
+    // Reduced from 10s to 5s to improve user experience
+    const showTimeout = setTimeout(() => {
+      if (!windowShown && this.mainWindow && !this.mainWindow.isDestroyed()) {
+        console.warn("[WindowManager] Timeout - forcing window to show");
+        showWindow("timeout");
+        // Open DevTools in development to help debug
+        if (process.env.NODE_ENV === "development") {
+          this.mainWindow.webContents.openDevTools();
+        }
+      }
+    }, 5000);
+
+    const clearTimeoutSafely = () => {
+      clearTimeout(showTimeout);
+    };
+
+    // Primary signal: dom-ready is more reliable than ready-to-show in Electron 36+
+    // See: https://github.com/electron/electron/issues/25253
+    this.mainWindow.webContents.once("dom-ready", () => {
+      clearTimeoutSafely();
+      console.log("[WindowManager] Main window dom-ready event fired");
+      showWindow("dom-ready");
+    });
+
+    // Secondary signal: ready-to-show (may not fire in some conditions)
+    this.mainWindow.once("ready-to-show", () => {
+      clearTimeoutSafely();
+      console.log("[WindowManager] Main window ready-to-show event fired");
+      showWindow("ready-to-show");
     });
 
     this.mainWindow.on("show", () => {

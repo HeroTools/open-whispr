@@ -1,5 +1,14 @@
 const { app, globalShortcut, BrowserWindow, dialog } = require("electron");
 
+// GPU-related command line switches to prevent startup hangs
+// These help avoid GPU process crashes that can cause blank/hanging windows
+// See: https://github.com/electron/electron/issues/43955
+app.commandLine.appendSwitch("disable-gpu-sandbox");
+// Disable background throttling to prevent renderer from being suspended
+app.commandLine.appendSwitch("disable-renderer-backgrounding");
+// Reduce GPU memory usage which can cause hangs on some systems
+app.commandLine.appendSwitch("js-flags", "--max-old-space-size=512");
+
 // Group all windows under single taskbar entry on Windows
 if (process.platform === "win32") {
   app.setAppUserModelId("com.herotools.openwispr");
@@ -172,18 +181,27 @@ function initializeManagers() {
 
 // Main application startup
 async function startApp() {
+  const startTime = Date.now();
   console.log("[Main] startApp() called - app is ready");
   console.log("[Main] Platform:", process.platform, "Arch:", process.arch);
   console.log("[Main] NODE_ENV:", process.env.NODE_ENV);
   console.log("[Main] App path:", app.getAppPath());
   console.log("[Main] Resources path:", process.resourcesPath);
   console.log("[Main] User data path:", app.getPath("userData"));
+  console.log("[Main] Electron version:", process.versions.electron);
+  console.log("[Main] Chrome version:", process.versions.chrome);
+  console.log("[Main] Node version:", process.versions.node);
 
   // Initialize all managers now that app is ready
   // This must happen first as other code depends on these managers
   console.log("[Main] Initializing managers...");
-  initializeManagers();
-  console.log("[Main] Managers initialized");
+  try {
+    initializeManagers();
+    console.log("[Main] Managers initialized in", Date.now() - startTime, "ms");
+  } catch (error) {
+    console.error("[Main] CRITICAL: Failed to initialize managers:", error);
+    throw error;
+  }
 
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === "development") {
@@ -342,18 +360,59 @@ if (gotSingleInstanceLock) {
   });
 
   console.log("[Main] Waiting for app.whenReady()...");
+
+  // Global startup timeout - if app doesn't fully start within 30 seconds, show error
+  const startupTimeout = setTimeout(() => {
+    console.error("[Main] CRITICAL: App startup timed out after 30 seconds");
+    dialog.showErrorBox(
+      "OpenWhispr Startup Timeout",
+      "The application failed to start within 30 seconds.\n\n" +
+        "This may be caused by:\n" +
+        "- GPU driver issues (try running with --disable-gpu)\n" +
+        "- System resource constraints\n" +
+        "- Corrupted app data\n\n" +
+        "Try deleting the app data folder and restarting."
+    );
+    app.exit(1);
+  }, 30000);
+
+  // Track if startup has already been triggered to prevent double-start
+  let startupTriggered = false;
+
+  const doStartup = () => {
+    if (startupTriggered) return;
+    startupTriggered = true;
+
+    console.log("[Main] App ready - starting app");
+    startApp()
+      .then(() => {
+        clearTimeout(startupTimeout);
+        console.log("[Main] App startup completed successfully");
+      })
+      .catch((error) => {
+        clearTimeout(startupTimeout);
+        console.error("CRITICAL: Failed to start app:", error);
+        console.error("Stack trace:", error.stack);
+        // Show an error dialog before crashing
+        dialog.showErrorBox(
+          "OpenWhispr Startup Error",
+          `Failed to start the application:\n\n${error.message}\n\nStack: ${error.stack}\n\nPlease report this issue.`
+        );
+        app.exit(1);
+      });
+  };
+
+  // Use both ready event and whenReady() for maximum compatibility
+  // See: https://github.com/electron/electron/issues/40719
+  app.on("ready", () => {
+    console.log("[Main] app 'ready' event fired");
+    doStartup();
+  });
+
+  // Also use whenReady() as a fallback in case 'ready' event doesn't fire
   app.whenReady().then(() => {
-    console.log("[Main] app.whenReady() resolved - app is now ready");
-    startApp().catch((error) => {
-      console.error("CRITICAL: Failed to start app:", error);
-      console.error("Stack trace:", error.stack);
-      // Show an error dialog before crashing
-      dialog.showErrorBox(
-        "OpenWhispr Startup Error",
-        `Failed to start the application:\n\n${error.message}\n\nStack: ${error.stack}\n\nPlease report this issue.`
-      );
-      app.exit(1);
-    });
+    console.log("[Main] app.whenReady() resolved");
+    doStartup();
   });
 
   app.on("window-all-closed", () => {

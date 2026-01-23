@@ -7,15 +7,30 @@ const { app } = require("electron");
 class DatabaseManager {
   constructor() {
     this.db = null;
-    this.initDatabase();
+    this._initialized = false;
+    // Defer database initialization to avoid blocking app startup
+    // Database will be initialized on first access
+  }
+
+  /**
+   * Ensures database is initialized. Safe to call multiple times.
+   * Uses lazy initialization to avoid blocking during app startup.
+   */
+  ensureInitialized() {
+    if (this._initialized) return true;
+    return this.initDatabase();
   }
 
   initDatabase() {
+    if (this._initialized) return true;
+
     try {
+      console.log("[DatabaseManager] Initializing database...");
       const dbFileName =
         process.env.NODE_ENV === "development" ? "transcriptions-dev.db" : "transcriptions.db";
 
       const dbPath = path.join(app.getPath("userData"), dbFileName);
+      console.log("[DatabaseManager] Database path:", dbPath);
 
       this.db = new Database(dbPath);
 
@@ -28,18 +43,18 @@ class DatabaseManager {
         )
       `);
 
+      this._initialized = true;
+      console.log("[DatabaseManager] Database initialized successfully");
       return true;
     } catch (error) {
-      console.error("Database initialization failed:", error.message);
+      console.error("[DatabaseManager] Database initialization failed:", error.message);
       throw error;
     }
   }
 
   saveTranscription(text) {
     try {
-      if (!this.db) {
-        throw new Error("Database not initialized");
-      }
+      this.ensureInitialized();
       const stmt = this.db.prepare("INSERT INTO transcriptions (text) VALUES (?)");
       const result = stmt.run(text);
 
@@ -55,9 +70,7 @@ class DatabaseManager {
 
   getTranscriptions(limit = 50) {
     try {
-      if (!this.db) {
-        throw new Error("Database not initialized");
-      }
+      this.ensureInitialized();
       const stmt = this.db.prepare("SELECT * FROM transcriptions ORDER BY timestamp DESC LIMIT ?");
       const transcriptions = stmt.all(limit);
       return transcriptions;
@@ -69,9 +82,7 @@ class DatabaseManager {
 
   clearTranscriptions() {
     try {
-      if (!this.db) {
-        throw new Error("Database not initialized");
-      }
+      this.ensureInitialized();
       const stmt = this.db.prepare("DELETE FROM transcriptions");
       const result = stmt.run();
       return { cleared: result.changes, success: true };
@@ -83,15 +94,13 @@ class DatabaseManager {
 
   deleteTranscription(id) {
     try {
-      if (!this.db) {
-        throw new Error("Database not initialized");
-      }
+      this.ensureInitialized();
       const stmt = this.db.prepare("DELETE FROM transcriptions WHERE id = ?");
       const result = stmt.run(id);
-      console.log(`🗑️ Deleted transcription ${id}, affected rows: ${result.changes}`);
+      console.log(`[DatabaseManager] Deleted transcription ${id}, affected rows: ${result.changes}`);
       return { success: result.changes > 0, id };
     } catch (error) {
-      console.error("❌ Error deleting transcription:", error);
+      console.error("[DatabaseManager] Error deleting transcription:", error);
       throw error;
     }
   }
