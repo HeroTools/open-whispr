@@ -435,6 +435,7 @@ class ClipboardManager {
     const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
     const xdotoolExists = this.commandExists("xdotool");
     const wtypeExists = this.commandExists("wtype");
+    const ydotoolExists = this.commandExists("ydotool");
 
     debugLogger.debug(
       "Linux paste environment",
@@ -444,6 +445,7 @@ class ClipboardManager {
         isGnome,
         xdotoolExists,
         wtypeExists,
+        ydotoolExists,
         display: process.env.DISPLAY,
         waylandDisplay: process.env.WAYLAND_DISPLAY,
         xdgSessionType: process.env.XDG_SESSION_TYPE,
@@ -551,6 +553,7 @@ class ClipboardManager {
     const pasteKeys = inTerminal ? "ctrl+shift+v" : "ctrl+v";
 
     const canUseWtype = isWayland && !isGnome;
+    const canUseYdotool = isWayland;
     const canUseXdotool = isWayland ? !!xdotoolWindowClass : xdotoolExists;
 
     // Define paste tools in preference order based on display server
@@ -566,6 +569,12 @@ class ClipboardManager {
       );
     }
 
+    // ydotool uses key codes: 29=LeftCtrl, 42=LeftShift, 47=V
+    // Format: keycode:1 (press), keycode:0 (release)
+    const ydotoolArgs = inTerminal
+      ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] // Ctrl+Shift+V
+      : ["key", "29:1", "47:1", "47:0", "29:0"]; // Ctrl+V
+
     const candidates = [
       ...(canUseWtype
         ? [
@@ -577,6 +586,7 @@ class ClipboardManager {
               : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
           ]
         : []),
+      ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
       ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
     ];
 
@@ -767,16 +777,16 @@ class ClipboardManager {
           errorMsg =
             "Clipboard copied, but paste simulation failed via XWayland. Please paste manually with Ctrl+V.";
         }
-      } else if (!wtypeExists) {
+      } else if (!wtypeExists && !ydotoolExists) {
         if (!xwaylandAvailable) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires wtype. Please install wtype or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on Wayland requires wtype or ydotool. Please install one or paste manually with Ctrl+V.";
         } else if (!xdotoolExists) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires wtype (Wayland apps) or xdotool (XWayland apps). Please install one or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on Wayland requires wtype/ydotool (Wayland apps) or xdotool (XWayland apps). Please install one or paste manually with Ctrl+V.";
         } else if (!xdotoolWindowClass) {
           errorMsg =
-            "Clipboard copied, but the active app isn't running under XWayland. Please install wtype for Wayland apps or paste manually with Ctrl+V.";
+            "Clipboard copied, but the active app isn't running under XWayland. Please install wtype or ydotool for Wayland apps or paste manually with Ctrl+V.";
         } else {
           errorMsg =
             "Clipboard copied, but paste simulation failed via XWayland. Please paste manually with Ctrl+V.";
@@ -786,9 +796,15 @@ class ClipboardManager {
           xwaylandAvailable && xdotoolExists
             ? " If this is an XWayland app, xdotool can also be used."
             : "";
+        const installNote =
+          !ydotoolExists
+            ? " Consider installing ydotool as an alternative (requires ydotoold daemon)."
+            : " If using ydotool, ensure the ydotoold daemon is running.";
         errorMsg =
-          "Clipboard copied, but paste simulation failed on Wayland. Ensure your compositor supports the virtual keyboard protocol or paste manually with Ctrl+V." +
-          xwaylandNote;
+          "Clipboard copied, but paste simulation failed on Wayland. Your compositor may not support the virtual keyboard protocol." +
+          installNote +
+          xwaylandNote +
+          " Alternatively, paste manually with Ctrl+V.";
       }
     } else {
       errorMsg =
@@ -1010,10 +1026,14 @@ Would you like to open System Settings now?`;
     // Check which tools are available
     const tools = [];
     const canUseWtype = isWayland && !isGnome;
+    const canUseYdotool = isWayland;
     const canUseXdotool = !isWayland || xwaylandAvailable;
 
     if (canUseWtype && this.commandExists("wtype")) {
       tools.push("wtype");
+    }
+    if (canUseYdotool && this.commandExists("ydotool")) {
+      tools.push("ydotool");
     }
     if (canUseXdotool && this.commandExists("xdotool")) {
       tools.push("xdotool");
@@ -1027,7 +1047,7 @@ Would you like to open System Settings now?`;
       } else if (isGnome) {
         recommendedInstall = xwaylandAvailable ? "xdotool" : undefined;
       } else {
-        recommendedInstall = "wtype";
+        recommendedInstall = "wtype or ydotool";
       }
     }
 
