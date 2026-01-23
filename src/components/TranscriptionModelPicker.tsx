@@ -493,7 +493,9 @@ export default function TranscriptionModelPicker({
               {selectedCloudProvider === "custom" ? (
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Custom Endpoint Configuration</h4>
+                    <h4 className="text-sm font-medium text-gray-700">
+                      Custom Endpoint Configuration
+                    </h4>
                     <p className="text-xs text-gray-500">
                       Enter an OpenAI-compatible transcription endpoint URL.
                     </p>
@@ -558,7 +560,9 @@ export default function TranscriptionModelPicker({
                       <h4 className="font-medium text-gray-900">API Configuration</h4>
                       <ApiKeyInput
                         apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
-                        setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
+                        setApiKey={
+                          selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey
+                        }
                         helpText={
                           selectedCloudProvider === "groq" ? (
                             <>

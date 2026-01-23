@@ -103,14 +103,6 @@ export interface PasteToolsResult {
   recommendedInstall?: string;
 }
 
-// Additional interface missing from preload.js
-export interface SaveSettings {
-  useLocalWhisper: boolean;
-  apiKey: string;
-  whisperModel: string;
-  hotkey: string;
-}
-
 declare global {
   interface Window {
     electronAPI: {
@@ -247,9 +239,6 @@ declare global {
         callback: (event: any, progressObj: any) => void
       ) => (() => void) | void;
       onUpdateError: (callback: (event: any, error: any) => void) => (() => void) | void;
-
-      // Settings management (used by OnboardingFlow but not in preload.js)
-      saveSettings?: (settings: SaveSettings) => Promise<void>;
 
       // External URL operations
       openExternal: (url: string) => Promise<{ success: boolean; error?: string } | void>;

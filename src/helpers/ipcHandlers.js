@@ -79,19 +79,6 @@ class IPCHandlers {
       return this.environmentManager.createProductionEnvFile(apiKey);
     });
 
-    ipcMain.handle("save-settings", async (event, settings) => {
-      try {
-        // Save settings to environment and localStorage
-        if (settings.apiKey) {
-          await this.environmentManager.saveOpenAIKey(settings.apiKey);
-        }
-        return { success: true };
-      } catch (error) {
-        debugLogger.error("Failed to save settings:", error);
-        return { success: false, error: error.message };
-      }
-    });
-
     ipcMain.handle("db-save-transcription", async (event, text) => {
       const result = this.databaseManager.saveTranscription(text);
       if (result?.success && result?.transcription) {
