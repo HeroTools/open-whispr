@@ -80,25 +80,54 @@ function setupProductionPath() {
 
 // Initialize all managers - called after app.whenReady()
 function initializeManagers() {
+  console.log("[initializeManagers] Starting...");
+
   // Set up PATH before initializing managers
   setupProductionPath();
+  console.log("[initializeManagers] PATH setup complete");
 
   // Now it's safe to call app.getPath() and initialize managers
+  console.log("[initializeManagers] Loading debugLogger...");
   debugLogger = require("./src/helpers/debugLogger");
   // IMPORTANT: Ensure file logging is initialized now that app is ready
   // This is necessary because debugLogger may have been loaded before app.whenReady()
   // via transitive imports (e.g., windowManager -> hotkeyManager -> debugLogger)
   debugLogger.ensureFileLogging();
+  console.log("[initializeManagers] debugLogger initialized");
+
+  console.log("[initializeManagers] Creating EnvironmentManager...");
   environmentManager = new EnvironmentManager();
   debugLogger.refreshLogLevel();
+  console.log("[initializeManagers] EnvironmentManager created");
+
+  console.log("[initializeManagers] Creating WindowManager...");
   windowManager = new WindowManager();
   hotkeyManager = windowManager.hotkeyManager;
+  console.log("[initializeManagers] WindowManager created");
+
+  console.log("[initializeManagers] Creating DatabaseManager...");
   databaseManager = new DatabaseManager();
+  console.log("[initializeManagers] DatabaseManager created");
+
+  console.log("[initializeManagers] Creating ClipboardManager...");
   clipboardManager = new ClipboardManager();
+  console.log("[initializeManagers] ClipboardManager created");
+
+  console.log("[initializeManagers] Creating WhisperManager...");
   whisperManager = new WhisperManager();
+  console.log("[initializeManagers] WhisperManager created");
+
+  console.log("[initializeManagers] Creating TrayManager...");
   trayManager = new TrayManager();
+  console.log("[initializeManagers] TrayManager created");
+
+  console.log("[initializeManagers] Creating UpdateManager...");
   updateManager = new UpdateManager();
+  console.log("[initializeManagers] UpdateManager created");
+
+  console.log("[initializeManagers] Creating GlobeKeyManager...");
   globeKeyManager = new GlobeKeyManager();
+  console.log("[initializeManagers] GlobeKeyManager created");
 
   // Set up Globe key error handler on macOS
   if (process.platform === "darwin") {
@@ -143,9 +172,18 @@ function initializeManagers() {
 
 // Main application startup
 async function startApp() {
+  console.log("[Main] startApp() called - app is ready");
+  console.log("[Main] Platform:", process.platform, "Arch:", process.arch);
+  console.log("[Main] NODE_ENV:", process.env.NODE_ENV);
+  console.log("[Main] App path:", app.getAppPath());
+  console.log("[Main] Resources path:", process.resourcesPath);
+  console.log("[Main] User data path:", app.getPath("userData"));
+
   // Initialize all managers now that app is ready
   // This must happen first as other code depends on these managers
+  console.log("[Main] Initializing managers...");
   initializeManagers();
+  console.log("[Main] Managers initialized");
 
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === "development") {
@@ -190,17 +228,25 @@ async function startApp() {
   }
 
   // Create main window
+  console.log("[Main] Creating main window...");
   try {
     await windowManager.createMainWindow();
+    console.log("[Main] Main window created successfully");
   } catch (error) {
-    console.error("Error creating main window:", error);
+    console.error("[Main] Error creating main window:", error);
+    // Re-throw to trigger the error dialog in the catch handler
+    throw error;
   }
 
   // Create control panel window
+  console.log("[Main] Creating control panel window...");
   try {
     await windowManager.createControlPanelWindow();
+    console.log("[Main] Control panel window created successfully");
   } catch (error) {
-    console.error("Error creating control panel window:", error);
+    console.error("[Main] Error creating control panel window:", error);
+    // Re-throw to trigger the error dialog in the catch handler
+    throw error;
   }
 
   // Set up tray
@@ -269,6 +315,8 @@ async function startApp() {
 }
 
 // App event handlers
+console.log("[Main] Setting up app event handlers, gotSingleInstanceLock:", gotSingleInstanceLock);
+
 if (gotSingleInstanceLock) {
   app.on("second-instance", async () => {
     await app.whenReady();
@@ -293,13 +341,16 @@ if (gotSingleInstanceLock) {
     }
   });
 
+  console.log("[Main] Waiting for app.whenReady()...");
   app.whenReady().then(() => {
+    console.log("[Main] app.whenReady() resolved - app is now ready");
     startApp().catch((error) => {
       console.error("CRITICAL: Failed to start app:", error);
+      console.error("Stack trace:", error.stack);
       // Show an error dialog before crashing
       dialog.showErrorBox(
         "OpenWhispr Startup Error",
-        `Failed to start the application:\n\n${error.message}\n\nPlease report this issue.`
+        `Failed to start the application:\n\n${error.message}\n\nStack: ${error.stack}\n\nPlease report this issue.`
       );
       app.exit(1);
     });
