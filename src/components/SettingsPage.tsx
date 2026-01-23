@@ -23,6 +23,7 @@ import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import DeveloperSection from "./DeveloperSection";
+import { useTheme } from "../hooks/useTheme";
 
 export type SettingsSectionType =
   | "general"
@@ -116,6 +117,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
+  const { theme, setTheme } = useTheme();
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Shared hotkey registration hook
@@ -257,28 +259,28 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           <div className="space-y-8">
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">App Updates</h3>
-                <p className="text-sm text-gray-600 mb-4">
+                <h3 className="text-base font-semibold text-foreground mb-1.5">App Updates</h3>
+                <p className="text-xs text-muted-foreground">
                   Keep OpenWhispr up to date with the latest features and improvements.
                 </p>
               </div>
-              <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
                 <div>
-                  <p className="text-sm font-medium text-neutral-800">Current Version</p>
-                  <p className="text-xs text-neutral-600">{currentVersion || "Loading..."}</p>
+                  <p className="text-sm font-medium text-foreground">Current Version</p>
+                  <p className="text-xs text-muted-foreground">{currentVersion || "Loading..."}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   {updateStatus.isDevelopment ? (
-                    <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
-                      Development Mode
+                    <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/50">
+                      Dev
                     </span>
                   ) : updateStatus.updateAvailable ? (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                      Update Available
+                    <span className="text-xs text-green-600 dark:text-green-400 bg-green-500/10 dark:bg-green-950/50 px-2 py-0.5 rounded-md border border-green-200 dark:border-green-900/50">
+                      Update
                     </span>
                   ) : (
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded-full">
-                      Up to Date
+                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md border border-border">
+                      Latest
                     </span>
                   )}
                 </div>
@@ -353,7 +355,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
                     {downloadingUpdate && (
                       <div className="space-y-1">
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                           <div
                             className="h-full bg-green-600 transition-all duration-200"
                             style={{
@@ -361,7 +363,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             }}
                           />
                         </div>
-                        <p className="text-xs text-neutral-600 text-right">
+                        <p className="text-xs text-muted-foreground text-right">
                           {Math.round(updateDownloadProgress)}% downloaded
                         </p>
                       </div>
@@ -394,7 +396,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       });
                     }}
                     disabled={installInitiated}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    className="w-full bg-primary hover:bg-primary/90"
                   >
                     {installInitiated ? (
                       <>
@@ -411,15 +413,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 )}
 
                 {updateInfo?.version && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2">Update v{updateInfo.version}</h4>
+                  <div className="p-3 bg-muted/30 border border-border rounded-lg">
+                    <h4 className="font-medium text-foreground text-sm mb-2">Update v{updateInfo.version}</h4>
                     {updateInfo.releaseDate && (
-                      <p className="text-sm text-blue-700 mb-2">
+                      <p className="text-xs text-muted-foreground mb-2">
                         Released: {new Date(updateInfo.releaseDate).toLocaleDateString()}
                       </p>
                     )}
                     {updateInfo.releaseNotes && (
-                      <div className="text-sm text-blue-800">
+                      <div className="text-xs text-muted-foreground">
                         <p className="font-medium mb-1">What's New:</p>
                         <MarkdownRenderer content={updateInfo.releaseNotes} />
                       </div>
@@ -429,10 +431,46 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </div>
             </div>
 
-            <div className="border-t pt-8">
+            <div className="border-t border-border pt-8">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground">Appearance</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">Theme preference</p>
+                </div>
+              </div>
+
+              <div className="inline-flex items-center gap-1 p-1 bg-muted/30 rounded-lg">
+                {(
+                  [
+                    { value: "light", icon: "☀️", label: "Light" },
+                    { value: "dark", icon: "🌙", label: "Dark" },
+                    { value: "auto", icon: "💻", label: "Auto" },
+                  ] as const
+                ).map((option) => (
+                  <button
+                    key={option.value}
+                    onClick={() => setTheme(option.value)}
+                    className={`
+                      relative px-3 py-1.5 rounded-md text-xs font-medium
+                      transition-all duration-200 ease-out
+                      ${
+                        theme === option.value
+                          ? "bg-primary text-primary-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                      }
+                    `}
+                  >
+                    <span className="mr-1.5">{option.icon}</span>
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t border-border pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Dictation Hotkey</h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <h3 className="text-base font-semibold text-foreground mb-1.5">Dictation Hotkey</h3>
+                <p className="text-xs text-muted-foreground mb-6">
                   Configure the key or key combination you press to start and stop voice dictation.
                 </p>
               </div>
@@ -445,17 +483,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               />
 
               <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-foreground mb-3">
                   Activation Mode
                 </label>
                 <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
               </div>
             </div>
 
-            <div className="border-t pt-8">
+            <div className="border-t border-border pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Permissions</h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <h3 className="text-base font-semibold text-foreground mb-1.5">Permissions</h3>
+                <p className="text-xs text-muted-foreground mb-6">
                   Test and manage app permissions for microphone and accessibility.
                 </p>
               </div>
@@ -494,10 +532,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </div>
             </div>
 
-            <div className="border-t pt-8">
+            <div className="border-t border-border pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Microphone Input</h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <h3 className="text-base font-semibold text-foreground mb-1.5">Microphone Input</h3>
+                <p className="text-xs text-muted-foreground mb-6">
                   Choose which microphone to use for dictation. Enable "Prefer Built-in" to prevent
                   audio interruptions when using Bluetooth headphones.
                 </p>
@@ -510,37 +548,37 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               />
             </div>
 
-            <div className="border-t pt-8">
+            <div className="border-t border-border pt-8">
               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">About OpenWhispr</h3>
-                <p className="text-sm text-gray-600 mb-6">
+                <h3 className="text-base font-semibold text-foreground mb-1.5">About OpenWhispr</h3>
+                <p className="text-xs text-muted-foreground mb-6">
                   OpenWhispr converts your speech to text using AI. Press your hotkey, speak, and
                   we'll type what you said wherever your cursor is.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <Command className="w-4 h-4 text-white" />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm mb-6">
+                <div className="text-center p-3 border border-border rounded-lg bg-card">
+                  <div className="w-7 h-7 mx-auto mb-2 bg-primary rounded-lg flex items-center justify-center">
+                    <Command className="w-3.5 h-3.5 text-primary-foreground" />
                   </div>
-                  <p className="font-medium text-gray-800 mb-1">Default Hotkey</p>
-                  <p className="text-gray-600 font-mono text-xs">
+                  <p className="font-medium text-card-foreground mb-1 text-xs">Default Hotkey</p>
+                  <p className="text-muted-foreground font-mono text-xs">
                     {formatHotkeyLabel(dictationKey)}
                   </p>
                 </div>
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-emerald-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">🏷️</span>
+                <div className="text-center p-3 border border-border rounded-lg bg-card">
+                  <div className="w-7 h-7 mx-auto mb-2 bg-emerald-600 dark:bg-emerald-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-xs">🏷️</span>
                   </div>
-                  <p className="font-medium text-gray-800 mb-1">Version</p>
-                  <p className="text-gray-600 text-xs">{currentVersion || "0.1.0"}</p>
+                  <p className="font-medium text-card-foreground mb-1 text-xs">Version</p>
+                  <p className="text-muted-foreground text-xs">{currentVersion || "0.1.0"}</p>
                 </div>
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-green-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">✓</span>
+                <div className="text-center p-3 border border-border rounded-lg bg-card">
+                  <div className="w-7 h-7 mx-auto mb-2 bg-green-600 dark:bg-green-500 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-xs">✓</span>
                   </div>
-                  <p className="font-medium text-gray-800 mb-1">Status</p>
-                  <p className="text-green-600 text-xs font-medium">Active</p>
+                  <p className="font-medium text-card-foreground mb-1 text-xs">Status</p>
+                  <p className="text-green-600 dark:text-green-400 text-xs font-medium">Active</p>
                 </div>
               </div>
 
@@ -574,30 +612,32 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     });
                   }}
                   variant="outline"
-                  className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
+                  className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive"
                 >
                   <span className="mr-2">🗑️</span>
                   Clean Up All App Data
                 </Button>
               </div>
 
-              <div className="space-y-3 mt-6 p-4 bg-rose-50 border border-rose-200 rounded-xl">
-                <h4 className="font-medium text-rose-900">Local Model Storage</h4>
-                <p className="text-sm text-rose-800">
+              <div className="space-y-3 mt-6 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+                <h4 className="font-medium text-destructive text-sm">Local Model Storage</h4>
+                <p className="text-xs text-muted-foreground">
                   Remove all downloaded Whisper models from your cache directory to reclaim disk
                   space. You can re-download any model later.
                 </p>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"
+                    size="sm"
                     onClick={() => window.electronAPI?.openWhisperModelsFolder?.()}
                     className="flex-1"
                   >
-                    <FolderOpen className="mr-2 h-4 w-4" />
-                    Open Models Folder
+                    <FolderOpen className="mr-2 h-3.5 w-3.5" />
+                    Open Folder
                   </Button>
                   <Button
                     variant="destructive"
+                    size="sm"
                     onClick={handleRemoveModels}
                     disabled={isRemovingModels}
                     className="flex-1"
@@ -605,8 +645,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     {isRemovingModels ? "Removing..." : "Remove All"}
                   </Button>
                 </div>
-                <p className="text-xs text-rose-700">
-                  Current cache location: <code>{cachePathHint}</code>
+                <p className="text-xs text-muted-foreground">
+                  Cache: <code className="text-xs">{cachePathHint}</code>
                 </p>
               </div>
             </div>
@@ -617,10 +657,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              <h3 className="text-base font-semibold text-foreground mb-1.5">
                 Speech to Text Processing
               </h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-xs text-muted-foreground mb-4">
                 Choose a cloud provider for fast transcription or use local Whisper models for
                 complete privacy.
               </p>
@@ -653,8 +693,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Text Enhancement</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-base font-semibold text-foreground mb-1.5">AI Text Enhancement</h3>
+              <p className="text-xs text-muted-foreground mb-6">
                 Configure how AI models clean up and format your transcriptions. This handles
                 commands like "scratch that", creates proper lists, and fixes obvious errors while
                 preserving your natural tone.
@@ -690,16 +730,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Agent Configuration</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-base font-semibold text-foreground mb-1.5">Agent Configuration</h3>
+              <p className="text-xs text-muted-foreground mb-6">
                 Customize your AI assistant's name and behavior to make interactions more personal
                 and effective.
               </p>
             </div>
 
-            <div className="space-y-4 p-4 bg-linear-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">💡 How to use agent names:</h4>
-              <ul className="text-sm text-purple-800 space-y-2">
+            <div className="space-y-3 p-3 bg-muted/30 border border-border rounded-lg">
+              <h4 className="font-medium text-foreground text-sm mb-2">💡 How to use agent names:</h4>
+              <ul className="text-xs text-muted-foreground space-y-1.5">
                 <li>• Say "Hey {agentName}, write a formal email" for specific instructions</li>
                 <li>
                   • Use "Hey {agentName}, format this as a list" for text enhancement commands
@@ -715,8 +755,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </ul>
             </div>
 
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900">Current Agent Name</h4>
+            <div className="space-y-3 p-3 bg-card border border-border rounded-lg">
+              <h4 className="font-medium text-card-foreground text-sm">Current Agent Name</h4>
               <div className="flex gap-3">
                 <Input
                   placeholder="e.g., Assistant, Jarvis, Alex..."
@@ -737,14 +777,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   Save
                 </Button>
               </div>
-              <p className="text-xs text-gray-600 mt-2">
+              <p className="text-xs text-muted-foreground mt-1.5">
                 Choose a name that feels natural to say and remember
               </p>
             </div>
 
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">🎯 Example Usage:</h4>
-              <div className="text-sm text-blue-800 space-y-1">
+            <div className="bg-muted/30 border border-border p-3 rounded-lg">
+              <h4 className="font-medium text-foreground text-sm mb-2">🎯 Example Usage:</h4>
+              <div className="text-xs text-muted-foreground space-y-1">
                 <p>• "Hey {agentName}, write an email to my team about the meeting"</p>
                 <p>• "Hey {agentName}, make this more professional" (after dictating text)</p>
                 <p>• "Hey {agentName}, convert this to bullet points"</p>
@@ -758,8 +798,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Prompt Management</h3>
-              <p className="text-sm text-gray-600 mb-6">
+              <h3 className="text-base font-semibold text-foreground mb-1.5">AI Prompt Management</h3>
+              <p className="text-xs text-muted-foreground mb-6">
                 View and customize the prompts that power OpenWhispr's AI text processing. Adjust
                 these to change how your transcriptions are formatted and enhanced.
               </p>

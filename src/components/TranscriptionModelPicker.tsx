@@ -320,15 +320,15 @@ export default function TranscriptionModelPicker({
               <div className="flex-1">
                 <div className="flex items-center gap-2">
                   <ProviderIcon provider="whisper" className="w-4 h-4" />
-                  <span className="font-medium text-gray-900">{info.name}</span>
+                  <span className="font-medium text-foreground">{info.name}</span>
                   {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
                   {info.recommended && (
                     <span className={styles.badges.recommended}>Recommended</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className="text-xs text-gray-600">{info.description}</span>
-                  <span className="text-xs text-gray-500">
+                  <span className="text-xs text-muted-foreground">{info.description}</span>
+                  <span className="text-xs text-muted-foreground">
                     • {model.size_mb ? `${model.size_mb}MB` : info.size}
                   </span>
                   {isDownloaded && (
@@ -369,7 +369,7 @@ export default function TranscriptionModelPicker({
                     disabled={isCancelling}
                     size="sm"
                     variant="outline"
-                    className="text-red-600 border-red-300 hover:bg-red-50"
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
                   >
                     <X size={14} />
                     <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
@@ -397,12 +397,6 @@ export default function TranscriptionModelPicker({
     isSelected: boolean
   ) => {
     const isDisabled = provider.disabled;
-    const tabColorScheme = colorScheme === "purple" ? "purple" : "indigo";
-    const colors = {
-      purple: { text: "text-purple-700", border: "rgb(147 51 234)", bg: "rgb(250 245 255)" },
-      indigo: { text: "text-indigo-700", border: "rgb(99 102 241)", bg: "rgb(238 242 255)" },
-    };
-    const tabColors = colors[tabColorScheme];
 
     return (
       <button
@@ -410,21 +404,16 @@ export default function TranscriptionModelPicker({
         onClick={() => !isDisabled && handleLocalProviderChange(provider.id)}
         className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${
           isDisabled
-            ? "text-gray-600 cursor-default"
+            ? "text-muted-foreground cursor-default"
             : isSelected
-              ? `${tabColors.text} border-b-2`
-              : "text-gray-600 hover:bg-gray-100"
+              ? "text-primary border-b-2 border-primary bg-primary/10"
+              : "text-muted-foreground hover:bg-muted"
         }`}
-        style={
-          isSelected && !isDisabled
-            ? { borderBottomColor: tabColors.border, backgroundColor: tabColors.bg }
-            : undefined
-        }
       >
         <ProviderIcon provider={provider.id} className="w-5 h-5" />
         <span>{provider.name}</span>
         {provider.badge && (
-          <span className="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
             {provider.badge}
           </span>
         )}
@@ -439,18 +428,18 @@ export default function TranscriptionModelPicker({
           onClick={() => handleModeChange(false)}
           className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
             !useLocalWhisper
-              ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
+              ? "border-primary bg-primary/10"
+              : "border-border bg-card hover:border-border"
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <Cloud className="w-6 h-6 text-blue-600" />
-              <h4 className="font-medium text-neutral-900">Cloud</h4>
+              <Cloud className="w-6 h-6 text-primary" />
+              <h4 className="font-medium text-card-foreground">Cloud</h4>
             </div>
-            <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Fast</span>
+            <span className="text-xs text-green-700 dark:text-green-400 bg-green-500/10 dark:bg-green-500/20 px-2 py-1 rounded-full">Fast</span>
           </div>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             Transcription via API. Fast and accurate, requires internet.
           </p>
         </button>
@@ -459,20 +448,20 @@ export default function TranscriptionModelPicker({
           onClick={() => handleModeChange(true)}
           className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
             useLocalWhisper
-              ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
+              ? "border-primary bg-primary/10"
+              : "border-border bg-card hover:border-border"
           }`}
         >
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-3">
-              <Lock className="w-6 h-6 text-purple-600" />
-              <h4 className="font-medium text-neutral-900">Local</h4>
+              <Lock className="w-6 h-6 text-primary" />
+              <h4 className="font-medium text-card-foreground">Local</h4>
             </div>
-            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+            <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
               Private
             </span>
           </div>
-          <p className="text-sm text-neutral-600">
+          <p className="text-sm text-muted-foreground">
             Runs on your device. Complete privacy, works offline.
           </p>
         </button>
@@ -493,16 +482,16 @@ export default function TranscriptionModelPicker({
               {selectedCloudProvider === "custom" ? (
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">
+                    <h4 className="text-sm font-medium text-foreground">
                       Custom Endpoint Configuration
                     </h4>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Enter an OpenAI-compatible transcription endpoint URL.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-foreground">
                       Transcription Base URL
                     </label>
                     <Input
@@ -511,14 +500,14 @@ export default function TranscriptionModelPicker({
                       placeholder="https://your-api.example.com/v1"
                       className="text-sm"
                     />
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       The endpoint should be compatible with OpenAI's{" "}
                       <code>/audio/transcriptions</code> API format.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
+                    <label className="block text-sm font-medium text-foreground">
                       Model Name (optional)
                     </label>
                     <Input
@@ -527,14 +516,14 @@ export default function TranscriptionModelPicker({
                       placeholder="whisper-1"
                       className="text-sm"
                     />
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-muted-foreground">
                       Enter the model name supported by your custom endpoint.
                     </p>
                   </div>
 
-                  <div className="pt-4 border-t border-gray-200">
+                  <div className="pt-4 border-t border-border">
                     <div className="space-y-3">
-                      <h4 className="font-medium text-gray-900">API Key</h4>
+                      <h4 className="font-medium text-foreground">API Key</h4>
                       <ApiKeyInput
                         apiKey={openaiApiKey}
                         setApiKey={setOpenaiApiKey}
@@ -546,7 +535,7 @@ export default function TranscriptionModelPicker({
               ) : (
                 <>
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
+                    <h4 className="text-sm font-medium text-foreground">Select Model</h4>
                     <ModelCardList
                       models={cloudModelOptions}
                       selectedModel={selectedCloudModel}
@@ -555,9 +544,9 @@ export default function TranscriptionModelPicker({
                     />
                   </div>
 
-                  <div className="mt-4 pt-4 border-t border-gray-200">
+                  <div className="mt-4 pt-4 border-t border-border">
                     <div className="space-y-3">
-                      <h4 className="font-medium text-gray-900">API Configuration</h4>
+                      <h4 className="font-medium text-foreground">API Configuration</h4>
                       <ApiKeyInput
                         apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
                         setApiKey={
@@ -571,7 +560,7 @@ export default function TranscriptionModelPicker({
                                 href="https://console.groq.com"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 underline"
+                                className="text-primary underline"
                               >
                                 console.groq.com
                               </a>
@@ -583,7 +572,7 @@ export default function TranscriptionModelPicker({
                                 href="https://platform.openai.com"
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-blue-600 underline"
+                                className="text-primary underline"
                               >
                                 platform.openai.com
                               </a>
@@ -600,7 +589,7 @@ export default function TranscriptionModelPicker({
         </div>
       ) : (
         <div className={styles.container}>
-          <div className="flex bg-gray-50 border-b border-gray-200">
+          <div className="flex bg-muted border-b border-border">
             {LOCAL_PROVIDER_TABS.map((provider) =>
               renderLocalProviderTab(provider, internalLocalProvider === provider.id)
             )}
@@ -613,7 +602,7 @@ export default function TranscriptionModelPicker({
 
             {internalLocalProvider === "whisper" && renderLocalModels()}
             {internalLocalProvider === "nvidia" && (
-              <p className="text-sm text-gray-500">Nvidia GPU acceleration coming soon.</p>
+              <p className="text-sm text-muted-foreground">Nvidia GPU acceleration coming soon.</p>
             )}
           </div>
         </div>

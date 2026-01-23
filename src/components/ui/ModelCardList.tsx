@@ -25,19 +25,19 @@ const COLOR_CONFIG: Record<
   }
 > = {
   indigo: {
-    selected: "border-indigo-500 bg-indigo-50",
-    default: "border-gray-200 bg-white hover:border-gray-300",
-    badge: "text-xs text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full font-medium",
+    selected: "border-primary bg-primary/10 dark:bg-primary/20",
+    default: "border-border bg-card hover:border-muted-foreground/30",
+    badge: "text-xs text-primary-foreground bg-primary px-2 py-1 rounded-full font-medium",
   },
   purple: {
-    selected: "border-purple-500 bg-purple-50",
-    default: "border-gray-200 bg-white hover:border-gray-300",
-    badge: "text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full font-medium",
+    selected: "border-primary bg-primary/10 dark:bg-primary/20",
+    default: "border-border bg-card hover:border-muted-foreground/30",
+    badge: "text-xs text-primary-foreground bg-primary px-2 py-1 rounded-full font-medium",
   },
   blue: {
-    selected: "border-blue-500 bg-blue-50",
-    default: "border-gray-200 bg-white hover:border-gray-300",
-    badge: "text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full font-medium",
+    selected: "border-primary bg-primary/10 dark:bg-primary/20",
+    default: "border-border bg-card hover:border-muted-foreground/30",
+    badge: "text-xs text-primary-foreground bg-primary px-2 py-1 rounded-full font-medium",
   },
 };
 
@@ -69,12 +69,12 @@ export default function ModelCardList({
                   {model.icon ? (
                     <img src={model.icon} alt="" className="w-4 h-4" aria-hidden="true" />
                   ) : (
-                    <Globe className="w-4 h-4 text-gray-400" aria-hidden="true" />
+                    <Globe className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                   )}
-                  <span className="font-medium text-gray-900">{model.label}</span>
+                  <span className="font-medium text-foreground">{model.label}</span>
                 </div>
                 {model.description && (
-                  <div className="text-xs text-gray-600 mt-1">{model.description}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{model.description}</div>
                 )}
               </div>
               {isSelected && <span className={styles.badge}>✓ Selected</span>}

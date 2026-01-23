@@ -48,7 +48,6 @@ const CONTROL_PANEL_CONFIG = {
     trafficLightPosition: { x: 20, y: 20 },
   }),
   transparent: false,
-  backgroundColor: "#ffffff",
   minimizable: true,
   maximizable: true,
   closable: true,

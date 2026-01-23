@@ -167,15 +167,15 @@ export default function LocalWhisperPicker({
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <ProviderIcon provider="whisper" className="w-4 h-4" />
-                      <span className="font-medium text-gray-900">{info.name}</span>
+                      <span className="font-medium text-foreground">{info.name}</span>
                       {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
                       {info.recommended && (
                         <span className={styles.badges.recommended}>Recommended</span>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-gray-600">{info.description}</span>
-                      <span className="text-xs text-gray-500">
+                      <span className="text-xs text-muted-foreground">{info.description}</span>
+                      <span className="text-xs text-muted-foreground/70">
                         • {model.size_mb ? `${model.size_mb}MB` : info.size}
                       </span>
                       {isDownloaded && (
@@ -216,7 +216,7 @@ export default function LocalWhisperPicker({
                         disabled={isCancelling}
                         size="sm"
                         variant="outline"
-                        className="text-red-600 border-red-300 hover:bg-red-50"
+                        className="text-destructive border-destructive/30 hover:bg-destructive/10"
                       >
                         <X size={14} />
                         <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>

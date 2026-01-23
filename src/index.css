@@ -22,49 +22,72 @@
   --color-popover: #ffffff;
   --color-popover-foreground: #171717;
   --color-link: #4f46e5;
+
+  /* Typography */
+  --font-family-sans: "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+  /* Opacities */
+  --opacity-subtle: 0.1;
+  --opacity-medium: 0.5;
+  --opacity-high: 0.9;
+
+  /* Border Radius */
   --radius: 0.5rem;
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* Custom Light Mode Brand Colors (Parchment Theme) */
+  --color-parchment-bg: #f9f6f1;
+  --color-parchment-border: #ddd4c7;
+  --color-parchment-text: #2b1f14;
+  --color-parchment-accent: #c0a77d;
+  --color-brand-primary: #2b1f14;
+  --color-brand-accent: #4b2e2b;
+  --color-brand-highlight: #c0a77d;
+  --color-brand-link: #2e3659;
+  --color-pattern: #e7e5e4;
 }
 
 .dark {
-  /* Dark mode - sophisticated and rich */
-  --color-background: oklch(0.08 0 0);
-  --color-foreground: oklch(0.95 0 0);
-  --color-card: oklch(0.12 0 0);
-  --color-card-foreground: oklch(0.95 0 0);
-  --color-popover: oklch(0.12 0 0);
-  --color-popover-foreground: oklch(0.95 0 0);
-  --color-primary: oklch(0.6 0.22 245);
-  --color-primary-foreground: oklch(0.985 0 0);
-  --color-secondary: oklch(0.18 0 0);
-  --color-secondary-foreground: oklch(0.9 0 0);
-  --color-muted: oklch(0.15 0 0);
-  --color-muted-foreground: oklch(0.6 0 0);
-  --color-accent: oklch(0.6 0.22 245);
-  --color-accent-foreground: oklch(0.985 0 0);
-  --color-destructive: oklch(0.7 0.22 25);
-  --color-border: oklch(0.22 0 0);
-  --color-input: oklch(0.18 0 0);
-  --color-ring: oklch(0.6 0.22 245);
+  /* Dark mode - deep black with techy accents */
+  --color-background: oklch(0.05 0 0);
+  --color-foreground: oklch(0.98 0 0);
+  --color-card: oklch(0.08 0 0);
+  --color-card-foreground: oklch(0.98 0 0);
+  --color-popover: oklch(0.08 0 0);
+  --color-popover-foreground: oklch(0.98 0 0);
+  --color-primary: oklch(0.65 0.25 250);
+  --color-primary-foreground: oklch(0.99 0 0);
+  --color-secondary: oklch(0.12 0 0);
+  --color-secondary-foreground: oklch(0.95 0 0);
+  --color-muted: oklch(0.1 0 0);
+  --color-muted-foreground: oklch(0.55 0 0);
+  --color-accent: oklch(0.65 0.25 250);
+  --color-accent-foreground: oklch(0.99 0 0);
+  --color-destructive: oklch(0.65 0.25 25);
+  --color-destructive-foreground: oklch(0.99 0 0);
+  --color-border: oklch(0.18 0 0);
+  --color-input: oklch(0.1 0 0);
+  --color-ring: oklch(0.65 0.25 250);
 }
 
 @layer base {
   * {
-    @apply border-gray-200 outline-indigo-500/50;
+    border-color: var(--color-border);
+    transition:
+      background-color 200ms ease-in-out,
+      border-color 200ms ease-in-out,
+      color 200ms ease-in-out;
   }
 
   body {
-    @apply bg-white text-gray-900;
+    background-color: var(--color-background);
+    color: var(--color-foreground);
     margin: 0;
     padding: 0;
-    font-family:
-      "Noto Sans",
-      -apple-system,
-      BlinkMacSystemFont,
-      "Segoe UI",
-      Roboto,
-      "Helvetica Neue",
-      Arial,
-      sans-serif;
+    font-family: var(--font-family-sans);
     font-feature-settings:
       "liga" 1,
       "kern" 1;
@@ -73,50 +96,38 @@
 
   /* Electron specific styles */
   html,
-  body,
+  body {
+    min-height: 100vh;
+  }
+
   #root {
+    min-height: 100vh;
+  }
+
+  /* Make dictation window (App) transparent, but keep control panel solid */
+  body:has(.dictation-window) {
+    background: transparent;
+  }
+
+  body:has(.dictation-window) #root {
     background: transparent;
   }
 }
 
 /* OpenWhispr Brand Typography */
 .brand-heading {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
+  font-family: var(--font-family-sans);
   font-weight: 600;
   letter-spacing: -0.02em;
 }
 
 .brand-body {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
+  font-family: var(--font-family-sans);
   line-height: 1.6;
 }
 
 .brand-script {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
+  font-family: var(--font-family-sans);
   font-style: italic;
 }
 
@@ -126,15 +137,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
+  font-family: var(--font-family-sans);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -147,15 +150,7 @@ h1 {
 
 /* Modern Button Styling - handled by button component */
 button {
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
+  font-family: var(--font-family-sans);
   cursor: pointer;
 }
 
@@ -174,33 +169,25 @@ input,
 textarea {
   border-radius: 8px;
   transition: all 0.2s ease;
-  font-family:
-    "Noto Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    Roboto,
-    "Helvetica Neue",
-    Arial,
-    sans-serif;
-  box-shadow: inset 0 1px 3px rgba(43, 31, 20, 0.1);
+  font-family: var(--font-family-sans);
+  box-shadow: inset 0 1px 3px rgba(43, 31, 20, var(--opacity-subtle));
 }
 
 /* Light mode inputs - embossed parchment */
 :root input,
 :root textarea {
-  background-color: #f9f6f1;
-  border: 1px solid #ddd4c7;
-  color: #2b1f14;
+  background-color: var(--color-parchment-bg);
+  border: 1px solid var(--color-parchment-border);
+  color: var(--color-parchment-text);
 }
 
 :root input:focus,
 :root textarea:focus {
-  border-color: #c0a77d;
+  border-color: var(--color-parchment-accent);
   box-shadow:
-    0 0 0 2px rgba(192, 167, 125, 0.2),
-    inset 0 1px 3px rgba(43, 31, 20, 0.1);
-  background-color: #ffffff;
+    0 0 0 2px oklch(from var(--color-parchment-accent) l c h / 0.2),
+    inset 0 1px 3px oklch(from var(--color-parchment-text) l c h / var(--opacity-subtle));
+  background-color: var(--color-background);
 }
 
 /* Dark mode inputs */
@@ -219,62 +206,55 @@ textarea {
 
 /* Card styling - elevated parchment */
 .card {
-  background-color: #ffffff;
-  border: 1px solid #ddd4c7;
+  background-color: var(--color-card);
+  border: 1px solid var(--color-parchment-border);
   border-radius: 12px;
   box-shadow:
-    0 4px 8px rgba(43, 31, 20, 0.08),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+    0 4px 8px oklch(from var(--color-parchment-text) l c h / 0.08),
+    0 1px 0 oklch(from var(--color-card) l c h / var(--opacity-medium)) inset;
   transition: all 0.2s ease;
 }
 
 .card:hover {
   box-shadow:
-    0 8px 16px rgba(43, 31, 20, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.5) inset;
+    0 8px 16px oklch(from var(--color-parchment-text) l c h / var(--opacity-subtle)),
+    0 1px 0 oklch(from var(--color-card) l c h / var(--opacity-medium)) inset;
   transform: translateY(-1px);
 }
 
 /* Link styling */
 a {
-  color: #2e3659;
+  color: var(--color-brand-link);
   text-decoration: none;
   transition: color 0.2s ease;
   cursor: pointer;
 }
 
 a:hover {
-  color: #4b2e2b;
+  color: var(--color-brand-accent);
   text-decoration: underline;
   cursor: pointer;
 }
 
 /* Status indicators */
 .status-active {
-  color: #4b2e2b;
+  color: var(--color-brand-accent);
   font-weight: 600;
 }
 
 .text-brand-primary {
-  color: #2b1f14;
+  color: var(--color-brand-primary);
 }
 
 .text-brand-accent {
-  color: #4b2e2b;
+  color: var(--color-brand-accent);
 }
 
 .text-brand-highlight {
-  color: #c0a77d;
+  color: var(--color-brand-highlight);
 }
 
 .text-brand-link {
-  color: #2e3659;
+  color: var(--color-brand-link);
 }
 
-/* Additional CSS variables for theme support */
-:root {
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-}

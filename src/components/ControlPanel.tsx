@@ -223,7 +223,7 @@ export default function ControlPanel() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-background">
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={hideConfirmDialog}
@@ -255,11 +255,7 @@ export default function ControlPanel() {
                   size="sm"
                   onClick={handleUpdateClick}
                   disabled={isInstalling || isDownloading}
-                  className={`gap-1.5 text-xs ${
-                    updateStatus.updateDownloaded
-                      ? "bg-blue-600 hover:bg-blue-700 text-white"
-                      : "border-blue-300 text-blue-600 hover:bg-blue-50"
-                  }`}
+                  className="gap-1.5 text-xs"
                 >
                   {getUpdateButtonContent()}
                 </Button>
@@ -281,7 +277,7 @@ export default function ControlPanel() {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <FileText size={18} className="text-indigo-600" />
+                  <FileText size={18} className="text-primary" />
                   Recent Transcriptions
                 </CardTitle>
                 <div className="flex gap-2">
@@ -290,7 +286,7 @@ export default function ControlPanel() {
                       onClick={clearHistory}
                       variant="ghost"
                       size="icon"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-destructive hover:text-destructive/90 hover:bg-destructive/10"
                     >
                       <Trash2 size={16} />
                     </Button>
@@ -301,29 +297,29 @@ export default function ControlPanel() {
             <CardContent>
               {isLoading ? (
                 <div className="text-center py-8">
-                  <div className="w-8 h-8 mx-auto mb-3 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">📝</span>
+                  <div className="w-8 h-8 mx-auto mb-3 bg-primary rounded-lg flex items-center justify-center">
+                    <span className="text-primary-foreground text-sm">📝</span>
                   </div>
-                  <p className="text-neutral-600">Loading transcriptions...</p>
+                  <p className="text-muted-foreground">Loading transcriptions...</p>
                 </div>
               ) : history.length === 0 ? (
                 <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 bg-neutral-100 rounded-full flex items-center justify-center">
-                    <Mic className="w-8 h-8 text-neutral-400" />
+                  <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+                    <Mic className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <h3 className="text-lg font-medium text-neutral-900 mb-2">
+                  <h3 className="text-lg font-medium text-foreground mb-2">
                     No transcriptions yet
                   </h3>
-                  <p className="text-neutral-600 mb-4 max-w-sm mx-auto">
+                  <p className="text-muted-foreground mb-4 max-w-sm mx-auto">
                     Press your hotkey to start recording and create your first transcription.
                   </p>
-                  <div className="bg-neutral-50 border border-neutral-200 rounded-lg p-4 max-w-md mx-auto">
-                    <h4 className="font-medium text-neutral-800 mb-2">Quick Start:</h4>
-                    <ol className="text-sm text-neutral-600 text-left space-y-1">
+                  <div className="bg-muted/30 border border-border rounded-lg p-4 max-w-md mx-auto">
+                    <h4 className="font-medium text-foreground mb-2">Quick Start:</h4>
+                    <ol className="text-sm text-muted-foreground text-left space-y-1">
                       <li>1. Click in any text field</li>
                       <li>
                         2. Press{" "}
-                        <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
+                        <kbd className="bg-background px-2 py-1 rounded text-xs font-mono border border-border">
                           {hotkey}
                         </kbd>{" "}
                         to start recording
@@ -331,7 +327,7 @@ export default function ControlPanel() {
                       <li>3. Speak your text</li>
                       <li>
                         4. Press{" "}
-                        <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-neutral-300">
+                        <kbd className="bg-background px-2 py-1 rounded text-xs font-mono border border-border">
                           {hotkey}
                         </kbd>{" "}
                         again to stop

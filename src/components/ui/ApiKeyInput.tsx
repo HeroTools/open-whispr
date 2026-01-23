@@ -24,14 +24,13 @@ export default function ApiKeyInput({
 }: ApiKeyInputProps) {
   const { pasteFromClipboardWithFallback } = useClipboard();
 
-  const variantClasses = variant === "purple" ? "border-purple-300 focus:border-purple-500" : "";
+  const variantClasses = variant === "purple" ? "border-primary focus:border-primary" : "";
 
-  const buttonVariantClasses =
-    variant === "purple" ? "border-purple-300 text-purple-700 hover:bg-purple-50" : "";
+  const buttonVariantClasses = variant === "purple" ? "border-primary text-primary hover:bg-primary/10" : "";
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-neutral-700 mb-2">{label}</label>
+      <label className="block text-sm font-medium text-foreground mb-2">{label}</label>
       <div className="flex gap-3">
         <Input
           type="password"
@@ -48,7 +47,7 @@ export default function ApiKeyInput({
           Paste
         </Button>
       </div>
-      {helpText && <p className="text-xs text-neutral-600 mt-2">{helpText}</p>}
+      {helpText && <p className="text-xs text-muted-foreground mt-2">{helpText}</p>}
     </div>
   );
 }

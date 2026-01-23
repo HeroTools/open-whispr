@@ -55,12 +55,12 @@ const Tooltip = ({ children, content, emoji }) => {
       </div>
       {isVisible && (
         <div
-          className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-1 py-1 text-white bg-gradient-to-r from-neutral-800 to-neutral-700 rounded-md whitespace-nowrap z-10 transition-opacity duration-150"
+          className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-1 py-1 text-popover-foreground bg-popover border border-border rounded-md whitespace-nowrap z-10 transition-opacity duration-150 shadow-lg"
           style={{ fontSize: "9.7px" }}
         >
           {emoji && <span className="mr-1">{emoji}</span>}
           {content}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-neutral-800"></div>
+          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-2 border-r-2 border-t-2 border-transparent border-t-popover"></div>
         </div>
       )}
     </div>
@@ -213,7 +213,7 @@ export default function App() {
   const micProps = getMicButtonProps();
 
   return (
-    <>
+    <div className="dictation-window">
       {/* Fixed bottom-right voice button */}
       <div className="fixed bottom-6 right-6 z-50">
         <div
@@ -237,7 +237,7 @@ export default function App() {
                   e.stopPropagation();
                   cancelRecording();
                 }}
-                className="w-7 h-7 rounded-full bg-neutral-800/90 hover:bg-red-500 border border-white/20 hover:border-red-400 flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
+                className="w-7 h-7 rounded-full bg-card/90 hover:bg-destructive border border-border hover:border-destructive flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
               >
                 <X size={12} strokeWidth={2.5} color="white" />
               </button>
@@ -320,19 +320,19 @@ export default function App() {
 
               {/* State indicator ring for recording */}
               {micState === "recording" && (
-                <div className="absolute inset-0 rounded-full border-2 border-blue-300 animate-pulse"></div>
+                <div className="absolute inset-0 rounded-full border-2 border-primary/50 animate-pulse"></div>
               )}
 
               {/* State indicator ring for processing */}
               {micState === "processing" && (
-                <div className="absolute inset-0 rounded-full border-2 border-purple-300 opacity-50"></div>
+                <div className="absolute inset-0 rounded-full border-2 border-primary/30 opacity-50"></div>
               )}
             </button>
           </Tooltip>
           {isCommandMenuOpen && (
             <div
               ref={commandMenuRef}
-              className="absolute bottom-full right-0 mb-3 w-48 rounded-lg border border-white/10 bg-neutral-900/95 text-white shadow-lg backdrop-blur-sm"
+              className="absolute bottom-full right-0 mb-3 w-48 rounded-lg border border-border bg-popover text-popover-foreground shadow-lg backdrop-blur-sm"
               onMouseEnter={() => {
                 setWindowInteractivity(true);
               }}
@@ -343,16 +343,16 @@ export default function App() {
               }}
             >
               <button
-                className="w-full px-3 py-2 text-left text-sm font-medium hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+                className="w-full px-3 py-2 text-left text-sm font-medium hover:bg-muted focus:bg-muted focus:outline-none"
                 onClick={() => {
                   toggleListening();
                 }}
               >
                 {isRecording ? "Stop listening" : "Start listening"}
               </button>
-              <div className="h-px bg-white/10" />
+              <div className="h-px bg-border" />
               <button
-                className="w-full px-3 py-2 text-left text-sm hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+                className="w-full px-3 py-2 text-left text-sm hover:bg-muted focus:bg-muted focus:outline-none"
                 onClick={() => {
                   setIsCommandMenuOpen(false);
                   setWindowInteractivity(false);
@@ -365,6 +365,6 @@ export default function App() {
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

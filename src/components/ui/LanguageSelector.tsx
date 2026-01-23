@@ -96,25 +96,25 @@ export default function LanguageSelector({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md bg-white text-left hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-colors ${
-          isOpen ? "border-blue-500 ring-1 ring-blue-500" : ""
+        className={`w-full flex items-center justify-between px-3 py-2 border border-border rounded-md bg-background text-left hover:border-muted-foreground/30 focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none transition-colors ${
+          isOpen ? "border-ring ring-1 ring-ring" : ""
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className="truncate">{getLanguageLabel(value)}</span>
+        <span className="truncate text-foreground">{getLanguageLabel(value)}</span>
         <ChevronDown
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+          className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
-          <div className="p-2 border-b border-gray-200">
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-lg max-h-60 overflow-hidden">
+          <div className="p-2 border-b border-border">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -122,12 +122,12 @@ export default function LanguageSelector({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search languages..."
-                className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                className="w-full pl-9 pr-8 py-2 text-sm bg-background text-foreground border border-border rounded-md focus:border-ring focus:ring-1 focus:ring-ring focus:outline-none"
               />
               {searchQuery && (
                 <button
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -136,7 +136,7 @@ export default function LanguageSelector({
           </div>
           <div className="max-h-48 overflow-y-auto">
             {filteredLanguages.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500">No languages found</div>
+              <div className="px-3 py-2 text-sm text-muted-foreground">No languages found</div>
             ) : (
               <div role="listbox">
                 {filteredLanguages.map((language, index) => (
@@ -144,14 +144,14 @@ export default function LanguageSelector({
                     key={language.value}
                     type="button"
                     onClick={() => handleSelect(language.value)}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ${
-                      language.value === value ? "bg-blue-50 text-blue-700" : ""
-                    } ${index === highlightedIndex ? "bg-gray-100" : ""}`}
+                    className={`w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none ${
+                      language.value === value ? "bg-primary/10 dark:bg-primary/20 text-primary" : ""
+                    } ${index === highlightedIndex ? "bg-muted" : ""}`}
                     role="option"
                     aria-selected={language.value === value}
                   >
                     {language.label}
-                    {language.value === value && <span className="ml-2 text-blue-500">✓</span>}
+                    {language.value === value && <span className="ml-2 text-primary">✓</span>}
                   </button>
                 ))}
               </div>

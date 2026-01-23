@@ -40,6 +40,10 @@ export interface ApiKeySettings {
   groqApiKey: string;
 }
 
+export interface ThemeSettings {
+  theme: "light" | "dark" | "auto";
+}
+
 export function useSettings() {
   const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
     serialize: String,
@@ -145,6 +149,15 @@ export function useSettings() {
   const [groqApiKey, setGroqApiKeyLocal] = useLocalStorage("groqApiKey", "", {
     serialize: String,
     deserialize: String,
+  });
+
+  // Theme setting
+  const [theme, setTheme] = useLocalStorage<"light" | "dark" | "auto">("theme", "auto", {
+    serialize: String,
+    deserialize: (value) => {
+      if (["light", "dark", "auto"].includes(value)) return value as "light" | "dark" | "auto";
+      return "auto";
+    },
   });
 
   // Sync API keys from main process on first mount (if localStorage was cleared)
@@ -321,6 +334,7 @@ export function useSettings() {
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    theme,
     setUseLocalWhisper,
     setWhisperModel,
     setAllowOpenAIFallback,
@@ -343,6 +357,7 @@ export function useSettings() {
     setGeminiApiKey,
     setGroqApiKey,
     setDictationKey,
+    setTheme,
     activationMode,
     setActivationMode,
     preferBuiltInMic,

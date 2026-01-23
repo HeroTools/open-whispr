@@ -15,17 +15,17 @@ export default function PasteToolsInfo({
 }: PasteToolsInfoProps) {
   if (!pasteToolsInfo) {
     return (
-      <div className="border rounded-lg p-4">
+      <div className="border border-border rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-indigo-600" />
+            <Terminal className="w-6 h-6 text-primary" />
             <div>
-              <h3 className="font-semibold text-gray-900">Automatic Pasting</h3>
-              <p className="text-sm text-gray-600">Checking system capabilities...</p>
+              <h3 className="font-semibold text-foreground">Automatic Pasting</h3>
+              <p className="text-sm text-muted-foreground">Checking system capabilities...</p>
             </div>
           </div>
           {isChecking && (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-indigo-600"></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary"></div>
           )}
         </div>
       </div>
@@ -35,18 +35,18 @@ export default function PasteToolsInfo({
   // Windows - always ready
   if (pasteToolsInfo.platform === "win32") {
     return (
-      <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+      <div className="border border-green-500/30 bg-green-500/10 dark:bg-green-500/20 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-green-600" />
+            <Terminal className="w-6 h-6 text-green-600 dark:text-green-400" />
             <div>
-              <h3 className="font-semibold text-green-900">Automatic Pasting Ready</h3>
-              <p className="text-sm text-green-700">
+              <h3 className="font-semibold text-green-700 dark:text-green-300">Automatic Pasting Ready</h3>
+              <p className="text-sm text-green-700 dark:text-green-400">
                 Windows supports automatic pasting out of the box. No setup required!
               </p>
             </div>
           </div>
-          <div className="text-green-600">
+          <div className="text-green-600 dark:text-green-400">
             <Check className="w-5 h-5" />
           </div>
         </div>
@@ -61,19 +61,19 @@ export default function PasteToolsInfo({
       pasteToolsInfo.isWayland && method === "xdotool" ? " (XWayland apps only)." : ".";
 
     return (
-      <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+      <div className="border border-green-500/30 bg-green-500/10 dark:bg-green-500/20 rounded-lg p-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-green-600" />
+            <Terminal className="w-6 h-6 text-green-600 dark:text-green-400" />
             <div>
-              <h3 className="font-semibold text-green-900">Automatic Pasting Ready</h3>
-              <p className="text-sm text-green-700">
-                Using <code className="bg-green-100 px-1 rounded">{method}</code> for automatic text
+              <h3 className="font-semibold text-green-700 dark:text-green-300">Automatic Pasting Ready</h3>
+              <p className="text-sm text-green-700 dark:text-green-400">
+                Using <code className="bg-green-500/20 px-1 rounded">{method}</code> for automatic text
                 pasting{methodSuffix}
               </p>
             </div>
           </div>
-          <div className="text-green-600">
+          <div className="text-green-600 dark:text-green-400">
             <Check className="w-5 h-5" />
           </div>
         </div>
@@ -89,45 +89,45 @@ export default function PasteToolsInfo({
     const showInstall = !!recommendedTool;
 
     return (
-      <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
+      <div className="border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/20 rounded-lg p-4 space-y-3">
         <div className="flex items-start gap-3">
-          <Info className="w-6 h-6 text-amber-600 flex-shrink-0 mt-0.5" />
+          <Info className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-amber-900">
+            <h3 className="font-semibold text-amber-800 dark:text-amber-300">
               {showInstall ? "Optional: Enable Automatic Pasting" : "Clipboard Mode on Wayland"}
             </h3>
 
             {showInstall ? (
               <>
-                <p className="text-sm text-amber-800 mt-1">
+                <p className="text-sm text-amber-700 dark:text-amber-400 mt-1">
                   For automatic text pasting, install{" "}
-                  <code className="bg-amber-100 px-1 rounded font-mono">{recommendedTool}</code>:
+                  <code className="bg-amber-500/20 px-1 rounded font-mono">{recommendedTool}</code>:
                 </p>
 
-                <div className="mt-3 bg-gray-900 text-gray-100 p-3 rounded-md font-mono text-xs overflow-x-auto">
+                <div className="mt-3 bg-card border border-border p-3 rounded-md font-mono text-xs overflow-x-auto">
                   {recommendedTool === "wtype" ? (
                     <>
-                      <div className="text-gray-400"># Fedora / RHEL</div>
-                      <div>sudo dnf install wtype</div>
-                      <div className="text-gray-400 mt-2"># Debian / Ubuntu</div>
-                      <div>sudo apt install wtype</div>
-                      <div className="text-gray-400 mt-2"># Arch Linux</div>
-                      <div>sudo pacman -S wtype</div>
+                      <div className="text-muted-foreground"># Fedora / RHEL</div>
+                      <div className="text-foreground">sudo dnf install wtype</div>
+                      <div className="text-muted-foreground mt-2"># Debian / Ubuntu</div>
+                      <div className="text-foreground">sudo apt install wtype</div>
+                      <div className="text-muted-foreground mt-2"># Arch Linux</div>
+                      <div className="text-foreground">sudo pacman -S wtype</div>
                     </>
                   ) : (
                     <>
-                      <div className="text-gray-400"># Debian / Ubuntu / Mint</div>
-                      <div>sudo apt install xdotool</div>
-                      <div className="text-gray-400 mt-2"># Fedora / RHEL</div>
-                      <div>sudo dnf install xdotool</div>
-                      <div className="text-gray-400 mt-2"># Arch Linux</div>
-                      <div>sudo pacman -S xdotool</div>
+                      <div className="text-muted-foreground"># Debian / Ubuntu / Mint</div>
+                      <div className="text-foreground">sudo apt install xdotool</div>
+                      <div className="text-muted-foreground mt-2"># Fedora / RHEL</div>
+                      <div className="text-foreground">sudo dnf install xdotool</div>
+                      <div className="text-muted-foreground mt-2"># Arch Linux</div>
+                      <div className="text-foreground">sudo pacman -S xdotool</div>
                     </>
                   )}
                 </div>
 
                 {isWayland && recommendedTool === "wtype" && xwaylandAvailable && (
-                  <p className="text-sm text-amber-700 mt-3">
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-3">
                     Note: For XWayland apps, xdotool also works.
                   </p>
                 )}
