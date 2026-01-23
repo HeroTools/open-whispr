@@ -3,6 +3,7 @@ const { spawn, spawnSync } = require("child_process");
 const { killProcess } = require("../utils/process");
 const path = require("path");
 const fs = require("fs");
+const debugLogger = require("./debugLogger");
 
 // Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
 const CACHE_TTL_MS = 30000;
@@ -435,6 +436,18 @@ class ClipboardManager {
     const xdotoolExists = this.commandExists("xdotool");
     const wtypeExists = this.commandExists("wtype");
 
+    debugLogger.debug("Linux paste environment", {
+      isWayland,
+      xwaylandAvailable,
+      isGnome,
+      xdotoolExists,
+      wtypeExists,
+      display: process.env.DISPLAY,
+      waylandDisplay: process.env.WAYLAND_DISPLAY,
+      xdgSessionType: process.env.XDG_SESSION_TYPE,
+      xdgCurrentDesktop: process.env.XDG_CURRENT_DESKTOP,
+    }, "clipboard");
+
     // Get the active window ID before any focus changes
     // This is critical for X11 where our window might briefly take focus
     const getXdotoolActiveWindow = () => {
@@ -566,6 +579,15 @@ class ClipboardManager {
     // Filter to only available tools (this.commandExists is already cached)
     const available = candidates.filter((c) => this.commandExists(c.cmd));
 
+    debugLogger.debug("Available paste tools", {
+      candidateTools: candidates.map(c => c.cmd),
+      availableTools: available.map(c => c.cmd),
+      targetWindowId,
+      xdotoolWindowClass,
+      inTerminal,
+      pasteKeys,
+    }, "clipboard");
+
     // Attempt paste with a specific tool
     const pasteWith = (tool) =>
       new Promise((resolve, reject) => {
@@ -573,12 +595,33 @@ class ClipboardManager {
         const delay = isWayland ? 0 : PASTE_DELAYS.linux;
 
         setTimeout(() => {
+          debugLogger.debug("Attempting paste", {
+            cmd: tool.cmd,
+            args: tool.args,
+            delay,
+            isWayland,
+          }, "clipboard");
+
           const proc = spawn(tool.cmd, tool.args);
+          let stderr = "";
+          let stdout = "";
+
+          proc.stderr?.on("data", (data) => {
+            stderr += data.toString();
+          });
+
+          proc.stdout?.on("data", (data) => {
+            stdout += data.toString();
+          });
 
           let timedOut = false;
           const timeoutId = setTimeout(() => {
             timedOut = true;
             killProcess(proc, "SIGKILL");
+            debugLogger.warn("Paste tool timed out", {
+              cmd: tool.cmd,
+              timeoutMs: 2000,
+            }, "clipboard");
           }, 2000); // Increased timeout to 2s for windowactivate --sync
 
           proc.on("close", (code) => {
@@ -586,39 +629,67 @@ class ClipboardManager {
             clearTimeout(timeoutId);
 
             if (code === 0) {
+              debugLogger.debug("Paste successful", { cmd: tool.cmd }, "clipboard");
               // Restore original clipboard after successful paste
               // Delay allows time for X11 to process paste event before clipboard is overwritten
               setTimeout(() => clipboard.writeText(originalClipboard), RESTORE_DELAYS.linux);
               resolve();
             } else {
-              reject(new Error(`${tool.cmd} exited with code ${code}`));
+              debugLogger.error("Paste command failed", {
+                cmd: tool.cmd,
+                args: tool.args,
+                exitCode: code,
+                stderr: stderr.trim(),
+                stdout: stdout.trim(),
+              }, "clipboard");
+              reject(new Error(`${tool.cmd} exited with code ${code}${stderr ? `: ${stderr.trim()}` : ""}`));
             }
           });
 
           proc.on("error", (error) => {
             if (timedOut) return;
             clearTimeout(timeoutId);
+            debugLogger.error("Paste command spawn error", {
+              cmd: tool.cmd,
+              error: error.message,
+              code: error.code,
+            }, "clipboard");
             reject(error);
           });
         }, delay);
       });
 
     // Try each available tool in order
+    const failedAttempts = [];
     for (const tool of available) {
       try {
         await pasteWith(tool);
         this.safeLog(`✅ Paste successful using ${tool.cmd}`);
+        debugLogger.info("Paste successful", { tool: tool.cmd }, "clipboard");
         return; // Success!
       } catch (error) {
+        const failureInfo = {
+          tool: tool.cmd,
+          args: tool.args,
+          error: error?.message || String(error),
+        };
+        failedAttempts.push(failureInfo);
         this.safeLog(`⚠️ Paste with ${tool.cmd} failed:`, error?.message || error);
+        debugLogger.warn("Paste tool failed, trying next", failureInfo, "clipboard");
         // Continue to next tool
       }
     }
+
+    debugLogger.error("All paste tools failed", { failedAttempts }, "clipboard");
 
     // Fallback for terminals: use xdotool type to directly input text
     // This bypasses clipboard paste entirely and is more reliable for terminal emulators
     // that may have issues with Ctrl+Shift+V keystroke simulation
     if (inTerminal && xdotoolExists && !isWayland) {
+      debugLogger.debug("Trying xdotool type fallback for terminal", {
+        textLength: clipboard.readText().length,
+        targetWindowId,
+      }, "clipboard");
       this.safeLog("🔄 Trying xdotool type fallback for terminal...");
       const textToType = clipboard.readText(); // Read what we put in clipboard
       const typeArgs = targetWindowId
@@ -628,13 +699,25 @@ class ClipboardManager {
       try {
         await pasteWith({ cmd: "xdotool", args: typeArgs });
         this.safeLog("✅ Paste successful using xdotool type fallback");
+        debugLogger.info("Terminal paste successful via xdotool type", {}, "clipboard");
         return;
       } catch (error) {
+        const fallbackFailure = {
+          tool: "xdotool type",
+          args: typeArgs,
+          error: error?.message || String(error),
+        };
+        failedAttempts.push(fallbackFailure);
         this.safeLog(`⚠️ xdotool type fallback failed:`, error?.message || error);
+        debugLogger.warn("xdotool type fallback failed", fallbackFailure, "clipboard");
       }
     }
 
     // All tools failed - create specific error for renderer to handle
+    const failureSummary = failedAttempts.length > 0
+      ? `\n\nAttempted tools: ${failedAttempts.map(f => `${f.tool} (${f.error})`).join(", ")}`
+      : "";
+
     let errorMsg;
     if (isWayland) {
       if (isGnome) {
@@ -678,8 +761,16 @@ class ClipboardManager {
       errorMsg =
         "Clipboard copied, but paste simulation failed on X11. Please install xdotool or paste manually with Ctrl+V.";
     }
-    const err = new Error(errorMsg);
+
+    const err = new Error(errorMsg + failureSummary);
     err.code = "PASTE_SIMULATION_FAILED";
+    err.failedAttempts = failedAttempts;
+    debugLogger.error("Throwing paste simulation failed error", {
+      errorMsg,
+      failedAttempts,
+      isWayland,
+      isGnome,
+    }, "clipboard");
     throw err;
   }
 
