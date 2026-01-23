@@ -11,7 +11,7 @@ class IPCHandlers {
     this.clipboardManager = managers.clipboardManager;
     this.whisperManager = managers.whisperManager;
     this.windowManager = managers.windowManager;
-    this.modelManager = managers.modelManager;
+    this.updateManager = managers.updateManager;
     this.setupHandlers();
   }
 
@@ -753,6 +753,31 @@ class IPCHandlers {
         debugLogger.error("Failed to open logs folder:", error);
         return { success: false, error: error.message };
       }
+    });
+
+    // Update handlers
+    ipcMain.handle("check-for-updates", async () => {
+      return this.updateManager.checkForUpdates();
+    });
+
+    ipcMain.handle("download-update", async () => {
+      return this.updateManager.downloadUpdate();
+    });
+
+    ipcMain.handle("install-update", async () => {
+      return this.updateManager.installUpdate();
+    });
+
+    ipcMain.handle("get-app-version", async () => {
+      return this.updateManager.getAppVersion();
+    });
+
+    ipcMain.handle("get-update-status", async () => {
+      return this.updateManager.getUpdateStatus();
+    });
+
+    ipcMain.handle("get-update-info", async () => {
+      return this.updateManager.getUpdateInfo();
     });
   }
 

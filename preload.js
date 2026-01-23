@@ -214,9 +214,4 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("hotkey-registration-failed", listener);
     return () => ipcRenderer.removeListener("hotkey-registration-failed", listener);
   },
-
-  // Remove all listeners for a channel
-  removeAllListeners: (channel) => {
-    ipcRenderer.removeAllListeners(channel);
-  },
 });

@@ -136,21 +136,9 @@ declare global {
       // Clipboard operations
       readClipboard: () => Promise<string>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
-      pasteFromClipboard: () => Promise<{ success: boolean; error?: string }>;
-      pasteFromClipboardWithFallback: () => Promise<{ success: boolean; error?: string }>;
       checkPasteTools: () => Promise<PasteToolsResult>;
 
-      // Settings
-      getSettings: () => Promise<any>;
-      updateSettings: (settings: any) => Promise<void>;
-
       // Audio
-      getAudioDevices: () => Promise<MediaDeviceInfo[]>;
-      transcribeAudio: (audioData: ArrayBuffer) => Promise<{
-        success: boolean;
-        text?: string;
-        error?: string;
-      }>;
       onNoAudioDetected: (callback: (event: any, data?: any) => void) => (() => void) | void;
 
       // Whisper operations (whisper.cpp)
@@ -221,8 +209,6 @@ declare global {
       // App management
       appQuit: () => Promise<void>;
       cleanupApp: () => Promise<{ success: boolean; message: string }>;
-      getTranscriptionHistory: () => Promise<any[]>;
-      clearTranscriptionHistory: () => Promise<void>;
 
       // Update operations
       checkForUpdates: () => Promise<UpdateCheckResult>;
@@ -243,9 +229,6 @@ declare global {
 
       // External URL operations
       openExternal: (url: string) => Promise<{ success: boolean; error?: string } | void>;
-
-      // Event listener cleanup
-      removeAllListeners: (channel: string) => void;
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;

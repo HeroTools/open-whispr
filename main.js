@@ -116,6 +116,7 @@ const _ipcHandlers = new IPCHandlers({
   clipboardManager,
   whisperManager,
   windowManager,
+  updateManager,
 });
 
 // Main application startup
