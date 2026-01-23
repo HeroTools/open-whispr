@@ -448,6 +448,10 @@ class IPCHandlers {
       return this.environmentManager.saveAnthropicKey(key);
     });
 
+    ipcMain.handle("save-all-keys-to-env", async () => {
+      return this.environmentManager.saveAllKeysToEnvFile();
+    });
+
     // Local reasoning handler
     ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
       try {

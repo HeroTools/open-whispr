@@ -160,6 +160,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
 
+  saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
+
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),

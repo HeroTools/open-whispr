@@ -204,8 +204,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [hotkey, showAlertDialog]);
 
   const saveSettings = useCallback(async () => {
-    // Settings are already persisted via updateTranscriptionSettings and updateReasoningSettings
-    // Just need to save hotkey and agent name
     const hotkeyRegistered = await ensureHotkeyRegistered();
     if (!hotkeyRegistered) {
       return false;
@@ -219,6 +217,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       permissionsHook.accessibilityPermissionGranted.toString()
     );
     localStorage.setItem("onboardingCompleted", "true");
+
+    try {
+      await window.electronAPI?.saveAllKeysToEnv?.();
+    } catch (error) {
+      console.error("Failed to persist API keys:", error);
+    }
 
     return true;
   }, [

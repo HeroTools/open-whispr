@@ -131,6 +131,7 @@ declare global {
       createProductionEnvFile: (key: string) => Promise<void>;
       getAnthropicKey: () => Promise<string | null>;
       saveAnthropicKey: (key: string) => Promise<void>;
+      saveAllKeysToEnv: () => Promise<{ success: boolean; path: string }>;
 
       // Clipboard operations
       readClipboard: () => Promise<string>;

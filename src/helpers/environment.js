@@ -39,10 +39,7 @@ class EnvironmentManager {
   }
 
   _saveKey(envVarName, key) {
-    // Update the environment variable in memory for immediate use
     process.env[envVarName] = key;
-    // Persist all keys to file
-    this.saveAllKeysToEnvFile();
     return { success: true };
   }
 

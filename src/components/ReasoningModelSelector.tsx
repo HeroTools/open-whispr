@@ -635,7 +635,8 @@ export default function ReasoningModelSelector({
                         </p>
                         {isCustomBaseDirty && (
                           <p className="text-xs text-blue-600">
-                            Models will reload when you click away from the URL field or click "Apply & Refresh".
+                            Models will reload when you click away from the URL field or click
+                            "Apply & Refresh".
                           </p>
                         )}
                         {!hasCustomBase && (
