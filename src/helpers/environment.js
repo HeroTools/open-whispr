@@ -43,16 +43,11 @@ class EnvironmentManager {
   }
 
   saveOpenAIKey(key) {
-    try {
-      // Update the environment variable in memory for immediate use
-      process.env.OPENAI_API_KEY = key;
-      // Persist all keys to file
-      this.saveAllKeysToEnvFile();
-      return { success: true };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    // Update the environment variable in memory for immediate use
+    process.env.OPENAI_API_KEY = key;
+    // Persist all keys to file
+    this.saveAllKeysToEnvFile();
+    return { success: true };
   }
 
   getAnthropicKey() {
@@ -61,16 +56,11 @@ class EnvironmentManager {
   }
 
   saveAnthropicKey(key) {
-    try {
-      // Update the environment variable in memory for immediate use
-      process.env.ANTHROPIC_API_KEY = key;
-      // Persist all keys to file
-      this.saveAllKeysToEnvFile();
-      return { success: true };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    // Update the environment variable in memory for immediate use
+    process.env.ANTHROPIC_API_KEY = key;
+    // Persist all keys to file
+    this.saveAllKeysToEnvFile();
+    return { success: true };
   }
 
   getGeminiKey() {
@@ -79,16 +69,11 @@ class EnvironmentManager {
   }
 
   saveGeminiKey(key) {
-    try {
-      // Update the environment variable in memory for immediate use
-      process.env.GEMINI_API_KEY = key;
-      // Persist all keys to file
-      this.saveAllKeysToEnvFile();
-      return { success: true };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    // Update the environment variable in memory for immediate use
+    process.env.GEMINI_API_KEY = key;
+    // Persist all keys to file
+    this.saveAllKeysToEnvFile();
+    return { success: true };
   }
 
   getGroqKey() {
@@ -97,36 +82,26 @@ class EnvironmentManager {
   }
 
   saveGroqKey(key) {
-    try {
-      // Update the environment variable in memory for immediate use
-      process.env.GROQ_API_KEY = key;
-      // Persist all keys to file
-      this.saveAllKeysToEnvFile();
-      return { success: true };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    // Update the environment variable in memory for immediate use
+    process.env.GROQ_API_KEY = key;
+    // Persist all keys to file
+    this.saveAllKeysToEnvFile();
+    return { success: true };
   }
 
   createProductionEnvFile(apiKey) {
-    try {
-      const envPath = path.join(app.getPath("userData"), ".env");
+    const envPath = path.join(app.getPath("userData"), ".env");
 
-      const envContent = `# OpenWhispr Environment Variables
+    const envContent = `# OpenWhispr Environment Variables
 # This file was created automatically for production use
 OPENAI_API_KEY=${apiKey}
 `;
 
-      fs.writeFileSync(envPath, envContent, "utf8");
+    fs.writeFileSync(envPath, envContent, "utf8");
 
-      require("dotenv").config({ path: envPath });
+    require("dotenv").config({ path: envPath });
 
-      return { success: true, path: envPath };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    return { success: true, path: envPath };
   }
 
   saveAllKeysToEnvFile() {

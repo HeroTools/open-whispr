@@ -174,9 +174,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
 
       try {
-        if (window.electronAPI?.saveOpenAIKey) {
-          await window.electronAPI.saveOpenAIKey(trimmedKey);
-        }
+        // updateApiKeys handles both localStorage and IPC save
         updateApiKeys({ openaiApiKey: trimmedKey });
         return true;
       } catch (error) {

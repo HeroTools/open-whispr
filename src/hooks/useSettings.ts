@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
@@ -146,6 +146,40 @@ export function useSettings() {
     serialize: String,
     deserialize: String,
   });
+
+  // Sync API keys from main process on first mount (if localStorage was cleared)
+  const hasRunApiKeySync = useRef(false);
+  useEffect(() => {
+    if (hasRunApiKeySync.current) return;
+    hasRunApiKeySync.current = true;
+
+    const syncKeys = async () => {
+      if (typeof window === "undefined" || !window.electronAPI) return;
+
+      // Only sync keys that are missing from localStorage
+      if (!openaiApiKey) {
+        const envKey = await window.electronAPI.getOpenAIKey?.();
+        if (envKey) setOpenaiApiKeyLocal(envKey);
+      }
+      if (!anthropicApiKey) {
+        const envKey = await window.electronAPI.getAnthropicKey?.();
+        if (envKey) setAnthropicApiKeyLocal(envKey);
+      }
+      if (!geminiApiKey) {
+        const envKey = await window.electronAPI.getGeminiKey?.();
+        if (envKey) setGeminiApiKeyLocal(envKey);
+      }
+      if (!groqApiKey) {
+        const envKey = await window.electronAPI.getGroqKey?.();
+        if (envKey) setGroqApiKeyLocal(envKey);
+      }
+    };
+
+    syncKeys().catch(() => {
+      // Silently ignore sync errors
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Run only once on mount - ref ensures this never runs twice
 
   // Wrapped setters that sync to Electron IPC and invalidate cache
   const setOpenaiApiKey = useCallback(
