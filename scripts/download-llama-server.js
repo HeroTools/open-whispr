@@ -18,21 +18,29 @@ const BINARIES = {
     zipName: `llama-${LLAMA_CPP_VERSION}-bin-macos-arm64.zip`,
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-darwin-arm64",
+    libPattern: "*.dylib",
+    libDir: "build/bin",
   },
   "darwin-x64": {
     zipName: `llama-${LLAMA_CPP_VERSION}-bin-macos-x64.zip`,
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-darwin-x64",
+    libPattern: "*.dylib",
+    libDir: "build/bin",
   },
   "win32-x64": {
     zipName: `llama-${LLAMA_CPP_VERSION}-bin-win-avx2-x64.zip`,
     binaryPath: "build/bin/llama-server.exe",
     outputName: "llama-server-win32-x64.exe",
+    libPattern: "*.dll",
+    libDir: "build/bin",
   },
   "linux-x64": {
     zipName: `llama-${LLAMA_CPP_VERSION}-bin-ubuntu-x64.zip`,
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-linux-x64",
+    libPattern: "*.so*",
+    libDir: "build/bin",
   },
 };
 
@@ -40,6 +48,38 @@ const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
 
 function getDownloadUrl(zipName) {
   return `https://github.com/${LLAMA_CPP_REPO}/releases/download/${LLAMA_CPP_VERSION}/${zipName}`;
+}
+
+function findLibrariesInDir(dir, pattern, maxDepth = 5, currentDepth = 0) {
+  if (currentDepth >= maxDepth) return [];
+
+  const results = [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory()) {
+      results.push(...findLibrariesInDir(fullPath, pattern, maxDepth, currentDepth + 1));
+    } else if (matchesPattern(entry.name, pattern)) {
+      results.push(fullPath);
+    }
+  }
+
+  return results;
+}
+
+function matchesPattern(filename, pattern) {
+  // Handle patterns like "*.dylib", "*.dll", "*.so*"
+  if (pattern === "*.dylib") {
+    return filename.endsWith(".dylib");
+  } else if (pattern === "*.dll") {
+    return filename.endsWith(".dll");
+  } else if (pattern === "*.so*") {
+    // Match .so files with optional version suffix (e.g., libfoo.so, libfoo.so.1, libfoo.so.1.2.3)
+    return /\.so(\.\d+)*$/.test(filename) || filename.endsWith(".so");
+  }
+  return false;
 }
 
 async function downloadBinary(platformArch, config) {
@@ -78,6 +118,24 @@ async function downloadBinary(platformArch, config) {
       fs.copyFileSync(binaryPath, outputPath);
       setExecutable(outputPath);
       console.log(`  ${platformArch}: Extracted to ${config.outputName}`);
+
+      // Copy shared libraries (dylib/dll/so files)
+      if (config.libPattern) {
+        const libDir = path.join(extractDir, config.libDir);
+        const libraries = findLibrariesInDir(libDir, config.libPattern);
+
+        for (const libPath of libraries) {
+          const libName = path.basename(libPath);
+          const destPath = path.join(BIN_DIR, libName);
+
+          // Only copy if not already exists (libraries are shared across architectures on same OS)
+          if (!fs.existsSync(destPath)) {
+            fs.copyFileSync(libPath, destPath);
+            setExecutable(destPath);
+            console.log(`  ${platformArch}: Copied library ${libName}`);
+          }
+        }
+      }
     } else {
       console.error(`  ${platformArch}: Binary '${binaryName}' not found in archive`);
       return false;

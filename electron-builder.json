@@ -88,7 +88,7 @@
     {
       "from": "resources/bin/",
       "to": "bin/",
-      "filter": ["whisper-cpp-*", "whisper-server-*", "llama-server-*"]
+      "filter": ["whisper-cpp-*", "whisper-server-*", "llama-server-*", "*.dylib", "*.dll", "*.so*"]
     }
   ],
   "mac": {

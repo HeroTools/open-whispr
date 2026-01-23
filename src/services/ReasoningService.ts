@@ -36,10 +36,22 @@ class ReasoningService extends BaseReasoningService {
 
       // If no custom URL is stored, use the default
       if (!trimmed) {
+        logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+          hasCustomUrl: false,
+          usingDefault: true,
+          defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+        });
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
       const normalized = normalizeBaseUrl(trimmed) || API_ENDPOINTS.OPENAI_BASE;
+
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+        hasCustomUrl: true,
+        rawUrl: trimmed,
+        normalizedUrl: normalized,
+        defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+      });
 
       // Don't use the custom URL if it's a known non-OpenAI provider URL
       // These should be handled by their dedicated provider methods
@@ -66,8 +78,17 @@ class ReasoningService extends BaseReasoningService {
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_RESOLVED", {
+        customEndpoint: normalized,
+        isCustom: normalized !== API_ENDPOINTS.OPENAI_BASE,
+      });
+
       return normalized;
-    } catch {
+    } catch (error) {
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_ERROR", {
+        error: (error as Error).message,
+        fallbackTo: API_ENDPOINTS.OPENAI_BASE,
+      });
       return API_ENDPOINTS.OPENAI_BASE;
     }
   }
@@ -235,8 +256,9 @@ class ReasoningService extends BaseReasoningService {
     };
 
     // Check model registry for provider-specific options
+    // Note: chat_template_kwargs is not supported by Groq's API
     const modelDef = getCloudModel(model);
-    if (modelDef?.disableThinking) {
+    if (modelDef?.disableThinking && providerName.toLowerCase() !== "groq") {
       requestBody.chat_template_kwargs = { enable_thinking: false };
       logger.logReasoning("THINKING_DISABLED", { model, provider: providerName });
     }
@@ -444,12 +466,24 @@ class ReasoningService extends BaseReasoningService {
 
       const openAiBase = this.getConfiguredOpenAIBase();
       const endpointCandidates = this.getOpenAIEndpointCandidates(openAiBase);
+      const isCustomEndpoint = openAiBase !== API_ENDPOINTS.OPENAI_BASE;
 
       logger.logReasoning("OPENAI_ENDPOINTS", {
         base: openAiBase,
+        isCustomEndpoint,
         candidates: endpointCandidates.map((candidate) => candidate.url),
         preference: this.getStoredOpenAiPreference(openAiBase) || null,
       });
+
+      if (isCustomEndpoint) {
+        logger.logReasoning("CUSTOM_TEXT_CLEANUP_REQUEST", {
+          customBase: openAiBase,
+          model,
+          textLength: text.length,
+          hasApiKey: !!apiKey,
+          apiKeyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "(none)",
+        });
+      }
 
       const response = await withRetry(async () => {
         let lastError: Error | null = null;

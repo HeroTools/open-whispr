@@ -859,6 +859,9 @@ class AudioManager {
       }
 
       const endpoint = this.getTranscriptionEndpoint();
+      const isCustomEndpoint =
+        provider === "custom" ||
+        (!endpoint.includes("api.openai.com") && !endpoint.includes("api.groq.com"));
 
       logger.debug(
         "Making transcription API request",
@@ -866,6 +869,10 @@ class AudioManager {
           endpoint,
           shouldStream,
           model,
+          provider,
+          isCustomEndpoint,
+          hasApiKey: !!apiKey,
+          apiKeyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "(none)",
         },
         "transcription"
       );
@@ -875,6 +882,17 @@ class AudioManager {
       if (apiKey) {
         headers.Authorization = `Bearer ${apiKey}`;
       }
+
+      logger.debug(
+        "STT request details",
+        {
+          endpoint,
+          method: "POST",
+          hasAuthHeader: !!apiKey,
+          formDataFields: ["file", "model", language && language !== "auto" ? "language" : null, shouldStream ? "stream" : null].filter(Boolean),
+        },
+        "transcription"
+      );
 
       const apiCallStart = performance.now();
       const response = await fetch(endpoint, {
@@ -1093,12 +1111,25 @@ class AudioManager {
         ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
         : "";
 
+    const isCustomEndpoint = currentProvider === "custom" ||
+      (currentBaseUrl && currentBaseUrl !== API_ENDPOINTS.TRANSCRIPTION_BASE);
+
     // Invalidate cache if provider or base URL changed
     if (
       this.cachedTranscriptionEndpoint &&
       (this.cachedEndpointProvider !== currentProvider ||
         this.cachedEndpointBaseUrl !== currentBaseUrl)
     ) {
+      logger.debug(
+        "STT endpoint cache invalidated",
+        {
+          previousProvider: this.cachedEndpointProvider,
+          newProvider: currentProvider,
+          previousBaseUrl: this.cachedEndpointBaseUrl,
+          newBaseUrl: currentBaseUrl,
+        },
+        "transcription"
+      );
       this.cachedTranscriptionEndpoint = null;
     }
 
@@ -1110,32 +1141,79 @@ class AudioManager {
       const base = currentBaseUrl.trim() || API_ENDPOINTS.TRANSCRIPTION_BASE;
       const normalizedBase = normalizeBaseUrl(base);
 
+      logger.debug(
+        "STT endpoint resolution",
+        {
+          provider: currentProvider,
+          isCustomEndpoint,
+          rawBaseUrl: currentBaseUrl,
+          normalizedBase,
+          defaultBase: API_ENDPOINTS.TRANSCRIPTION_BASE,
+        },
+        "transcription"
+      );
+
       const cacheResult = (endpoint) => {
         this.cachedTranscriptionEndpoint = endpoint;
         this.cachedEndpointProvider = currentProvider;
         this.cachedEndpointBaseUrl = currentBaseUrl;
+
+        logger.debug(
+          "STT endpoint resolved",
+          {
+            endpoint,
+            provider: currentProvider,
+            isCustomEndpoint,
+            usingDefault: endpoint === API_ENDPOINTS.TRANSCRIPTION,
+          },
+          "transcription"
+        );
+
         return endpoint;
       };
 
       if (!normalizedBase) {
+        logger.debug(
+          "STT endpoint: using default (normalization failed)",
+          { rawBase: base },
+          "transcription"
+        );
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
 
       if (!isSecureEndpoint(normalizedBase)) {
-        console.warn("HTTPS required (HTTP allowed for local network only). Using default.");
+        logger.warn(
+          "STT endpoint: HTTPS required, falling back to default",
+          { attemptedUrl: normalizedBase },
+          "transcription"
+        );
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
 
       let endpoint;
       if (/\/audio\/(transcriptions|translations)$/i.test(normalizedBase)) {
         endpoint = normalizedBase;
+        logger.debug(
+          "STT endpoint: using full path from config",
+          { endpoint },
+          "transcription"
+        );
       } else {
         endpoint = buildApiUrl(normalizedBase, "/audio/transcriptions");
+        logger.debug(
+          "STT endpoint: appending /audio/transcriptions to base",
+          { base: normalizedBase, endpoint },
+          "transcription"
+        );
       }
 
       return cacheResult(endpoint);
     } catch (error) {
-      console.warn("Failed to resolve transcription endpoint:", error);
+      logger.error(
+        "STT endpoint resolution failed",
+        { error: error.message, stack: error.stack },
+        "transcription"
+      );
       this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
       this.cachedEndpointProvider = currentProvider;
       this.cachedEndpointBaseUrl = currentBaseUrl;
