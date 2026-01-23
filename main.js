@@ -85,6 +85,10 @@ function initializeManagers() {
 
   // Now it's safe to call app.getPath() and initialize managers
   debugLogger = require("./src/helpers/debugLogger");
+  // IMPORTANT: Ensure file logging is initialized now that app is ready
+  // This is necessary because debugLogger may have been loaded before app.whenReady()
+  // via transitive imports (e.g., windowManager -> hotkeyManager -> debugLogger)
+  debugLogger.ensureFileLogging();
   environmentManager = new EnvironmentManager();
   debugLogger.refreshLogLevel();
   windowManager = new WindowManager();
