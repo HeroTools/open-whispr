@@ -70,9 +70,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   createProductionEnvFile: (key) =>
     ipcRenderer.invoke("create-production-env-file", key),
 
-  // Settings management
-  saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
-
   // Clipboard functions
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),

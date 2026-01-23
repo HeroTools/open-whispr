@@ -535,7 +535,9 @@ export default function TranscriptionModelPicker({
               {selectedCloudProvider === "custom" ? (
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Custom Endpoint</h4>
+                    <h4 className="text-sm font-medium text-gray-700">
+                      Custom Endpoint Configuration
+                    </h4>
                     <p className="text-xs text-gray-500">
                       Connect to any OpenAI-compatible transcription API.
                     </p>
