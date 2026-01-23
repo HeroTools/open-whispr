@@ -5,6 +5,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.14] - 2026-01-22
+
+### Added
+- **Troubleshooting Mode**: New debug logging section in settings with toggle for detailed diagnostic logs, log file path display, and direct folder access for easier support
+- **Custom Transcription Endpoint**: Support for custom OpenAI-compatible transcription endpoints with configurable base URLs
+- **Enhanced Clipboard Debugging**: Detailed clipboard operation logging for diagnosing paste issues across platforms
+
+### Changed
+- **API Key Management**: Consolidated and refactored API key persistence with improved .env file handling and recovery mechanisms
+- **Local Network Detection**: Refactored URL detection into reusable utility for better code organization
+- **Electron Builder**: Updated to latest version for improved build performance
+
+### Fixed
+- **Windows/Linux Taskbar**: Prevented dual taskbar entries on Windows and Linux by properly configuring window behavior
+- **Single Instance Lock**: Enforced single instance lock with cleaner window state checks
+- **Model Provider Consistency**: Removed redundant fallbacks and ensured consistent use of getModelProvider()
+- **Cross-env Support**: Fixed Windows compatibility in pack script using cross-env
+- **Linux X11 Paste**: Improved paste reliability by capturing target window ID upfront with windowactivate --sync, added xdotool type fallback for terminals
+- **Tray Minimize**: Fixed minimize to tray functionality
+
 ## [1.2.12] - 2026-01-20
 
 ### Added

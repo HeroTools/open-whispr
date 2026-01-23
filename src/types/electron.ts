@@ -278,6 +278,18 @@ declare global {
         scope?: string;
         source?: string;
       }) => Promise<void>;
+      getDebugState: () => Promise<{
+        enabled: boolean;
+        logPath: string | null;
+        logLevel: string;
+      }>;
+      setDebugLogging: (enabled: boolean) => Promise<{
+        success: boolean;
+        enabled?: boolean;
+        logPath?: string | null;
+        error?: string;
+      }>;
+      openLogsFolder: () => Promise<{ success: boolean; error?: string }>;
 
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<FFmpegAvailabilityResult>;

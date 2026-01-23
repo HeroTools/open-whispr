@@ -183,6 +183,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
 
+  // Debug logging management
+  getDebugState: () => ipcRenderer.invoke("get-debug-state"),
+  setDebugLogging: (enabled) => ipcRenderer.invoke("set-debug-logging", enabled),
+  openLogsFolder: () => ipcRenderer.invoke("open-logs-folder"),
+
   // System settings helpers for microphone/audio permissions
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
