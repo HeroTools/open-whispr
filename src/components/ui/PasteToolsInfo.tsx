@@ -133,23 +133,23 @@ export default function PasteToolsInfo({
                 )}
 
                 {isWayland && recommendedTool !== "wtype" && (
-                  <p className="text-sm text-amber-700 mt-3">
+                  <p className="text-sm text-amber-700 dark:text-amber-400 mt-3">
                     Note: automatic pasting works for XWayland apps only.
                   </p>
                 )}
               </>
             ) : (
-              <p className="text-sm text-amber-800 mt-1">
+              <p className="text-sm text-amber-800 dark:text-amber-300 mt-1">
                 Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text
                 to your clipboard so you can paste manually with{" "}
-                <kbd className="bg-amber-100 px-1 rounded text-xs">Ctrl+V</kbd>.
+                <kbd className="bg-amber-500/20 px-1 rounded text-xs">Ctrl+V</kbd>.
               </p>
             )}
 
             {showInstall && (
-              <p className="text-sm text-amber-700 mt-3">
+              <p className="text-sm text-amber-700 dark:text-amber-400 mt-3">
                 Without this tool, OpenWhispr will copy text to your clipboard. You can then paste
-                manually with <kbd className="bg-amber-100 px-1 rounded text-xs">Ctrl+V</kbd>.
+                manually with <kbd className="bg-amber-500/20 px-1 rounded text-xs">Ctrl+V</kbd>.
               </p>
             )}
           </div>
