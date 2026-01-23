@@ -305,11 +305,22 @@ export default function ReasoningModelSelector({
 
   const handleApplyCustomBase = useCallback(() => {
     const trimmedBase = customBaseInput.trim();
-    setCustomBaseInput(trimmedBase);
-    setCloudReasoningBaseUrl(trimmedBase);
+    const normalized = trimmedBase ? normalizeBaseUrl(trimmedBase) : trimmedBase;
+    setCustomBaseInput(normalized);
+    setCloudReasoningBaseUrl(normalized);
     lastLoadedBaseRef.current = null;
-    loadRemoteModels(trimmedBase, true);
+    loadRemoteModels(normalized, true);
   }, [customBaseInput, setCloudReasoningBaseUrl, loadRemoteModels]);
+
+  const handleBaseUrlBlur = useCallback(() => {
+    const trimmedBase = customBaseInput.trim();
+    if (!trimmedBase) return;
+
+    // Auto-apply on blur if changed
+    if (trimmedBase !== (cloudReasoningBaseUrl || "").trim()) {
+      handleApplyCustomBase();
+    }
+  }, [customBaseInput, cloudReasoningBaseUrl, handleApplyCustomBase]);
 
   const handleResetCustomBase = useCallback(() => {
     const defaultBase = API_ENDPOINTS.OPENAI_BASE;
@@ -557,6 +568,7 @@ export default function ReasoningModelSelector({
                         <Input
                           value={customBaseInput}
                           onChange={(event) => setCustomBaseInput(event.target.value)}
+                          onBlur={handleBaseUrlBlur}
                           placeholder="https://api.openai.com/v1"
                           className="text-sm"
                         />
@@ -566,19 +578,11 @@ export default function ReasoningModelSelector({
                           (Ollama),{" "}
                           <code className="text-purple-600">http://localhost:8080/v1</code>{" "}
                           (LocalAI).
-                          <br />
-                          We'll query{" "}
-                          <code>
-                            {hasCustomBase
-                              ? `${effectiveReasoningBase}/models`
-                              : `${defaultOpenAIBase}/models`}
-                          </code>{" "}
-                          for available models.
                         </p>
                       </div>
 
                       {/* 2. API Key - SECOND */}
-                      <div className="space-y-3 pt-4 border-t border-gray-200">
+                      <div className="space-y-3 pt-4">
                         <h4 className="font-medium text-gray-900">API Key (Optional)</h4>
                         <ApiKeyInput
                           apiKey={openaiApiKey}
@@ -589,7 +593,7 @@ export default function ReasoningModelSelector({
                       </div>
 
                       {/* 3. Model Selection - THIRD */}
-                      <div className="space-y-3 pt-4 border-t border-gray-200">
+                      <div className="space-y-3 pt-4">
                         <div className="flex items-center justify-between">
                           <h4 className="text-sm font-medium text-gray-700">Available Models</h4>
                           <div className="flex gap-2">
@@ -620,9 +624,18 @@ export default function ReasoningModelSelector({
                             </Button>
                           </div>
                         </div>
+                        <p className="text-xs text-gray-500">
+                          We'll query{" "}
+                          <code>
+                            {hasCustomBase
+                              ? `${effectiveReasoningBase}/models`
+                              : `${defaultOpenAIBase}/models`}
+                          </code>{" "}
+                          for available models.
+                        </p>
                         {isCustomBaseDirty && (
-                          <p className="text-xs text-amber-600">
-                            Click "Apply & Refresh" to load models from the new endpoint.
+                          <p className="text-xs text-blue-600">
+                            Models will reload when you click away from the URL field or click "Apply & Refresh".
                           </p>
                         )}
                         {!hasCustomBase && (
@@ -761,7 +774,7 @@ export default function ReasoningModelSelector({
                       )}
 
                       {/* 2. Model Selection - BOTTOM */}
-                      <div className="pt-4 border-t border-gray-200 space-y-3">
+                      <div className="pt-4 space-y-3">
                         <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
                         <ModelCardList
                           models={selectedCloudModels}

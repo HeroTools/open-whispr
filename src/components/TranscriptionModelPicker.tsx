@@ -563,7 +563,7 @@ export default function TranscriptionModelPicker({
                   </div>
 
                   {/* 2. API Key - SECOND */}
-                  <div className="space-y-3 pt-4 border-t border-gray-200">
+                  <div className="space-y-3 pt-4">
                     <h4 className="font-medium text-gray-900">API Key (Optional)</h4>
                     <ApiKeyInput
                       apiKey={openaiApiKey}
@@ -574,7 +574,7 @@ export default function TranscriptionModelPicker({
                   </div>
 
                   {/* 3. Model Name - THIRD */}
-                  <div className="space-y-2 pt-4 border-t border-gray-200">
+                  <div className="space-y-2 pt-4">
                     <label className="block text-sm font-medium text-gray-700">Model Name</label>
                     <Input
                       value={selectedCloudModel}
@@ -620,7 +620,7 @@ export default function TranscriptionModelPicker({
                   </div>
 
                   {/* Model Selection Below */}
-                  <div className="pt-4 border-t border-gray-200 space-y-3">
+                  <div className="pt-4 space-y-3">
                     <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
                     <ModelCardList
                       models={cloudModelOptions}
