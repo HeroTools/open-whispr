@@ -473,10 +473,10 @@ export default function ReasoningModelSelector({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between p-4 bg-green-500/10 dark:bg-green-500/20 border border-green-500/30 rounded-xl">
+      <div className="flex items-center justify-between p-4 bg-success/10 dark:bg-success/20 border border-success/30 rounded-xl">
         <div>
-          <label className="text-sm font-medium text-green-700 dark:text-green-300">Enable AI Text Enhancement</label>
-          <p className="text-xs text-green-700 dark:text-green-400">
+          <label className="text-sm font-medium text-success dark:text-success">Enable AI Text Enhancement</label>
+          <p className="text-xs text-success dark:text-success">
             Use AI to automatically improve transcription quality
           </p>
         </div>
@@ -489,7 +489,7 @@ export default function ReasoningModelSelector({
           />
           <div
             className={`w-11 h-6 bg-muted rounded-full transition-colors duration-200 ${
-              useReasoningModel ? "bg-green-600" : "bg-muted"
+              useReasoningModel ? "bg-success" : "bg-muted"
             }`}
           >
             <div
@@ -517,7 +517,7 @@ export default function ReasoningModelSelector({
                   <Cloud className="w-6 h-6 text-primary" />
                   <h4 className="font-medium text-foreground">Cloud AI</h4>
                 </div>
-                <span className="text-xs text-green-600 bg-green-500/10 dark:bg-green-500/20 px-2 py-1 rounded-full">
+                <span className="text-xs text-success bg-success/10 dark:bg-success/20 px-2 py-1 rounded-full">
                   Powerful
                 </span>
               </div>
@@ -640,7 +640,7 @@ export default function ReasoningModelSelector({
                           </p>
                         )}
                         {!hasCustomBase && (
-                          <p className="text-xs text-amber-600">
+                          <p className="text-xs text-warning">
                             Enter an endpoint URL above to load models.
                           </p>
                         )}
@@ -657,7 +657,7 @@ export default function ReasoningModelSelector({
                             {!customModelsLoading &&
                               !customModelsError &&
                               customModelOptions.length === 0 && (
-                                <p className="text-xs text-amber-600">
+                                <p className="text-xs text-warning">
                                   No models returned. Check your endpoint URL.
                                 </p>
                               )}

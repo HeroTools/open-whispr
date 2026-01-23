@@ -18,7 +18,7 @@ export function ActivationModeSelector({
       <div
         className={`
           relative flex rounded-xl border-2 p-1 transition-all duration-200
-          ${disabled ? "bg-muted/30 border-border opacity-60" : "bg-muted/30 border-border"}
+          ${disabled ? "bg-muted border-border opacity-60" : "bg-muted border-border"}
         `}
       >
         <div

@@ -419,8 +419,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </div>
 
             <InfoBox variant="warning">
-              <h4 className="font-medium text-amber-900 dark:text-amber-200 mb-2">🔒 Privacy Note</h4>
-              <p className="text-sm text-amber-800 dark:text-amber-300">
+              <h4 className="font-medium text-warning dark:text-warning mb-2">🔒 Privacy Note</h4>
+              <p className="text-sm text-warning/90 dark:text-warning">
                 OpenWhispr only uses these permissions for dictation.
                 {useLocalWhisper
                   ? " With local processing, your voice never leaves your device."
@@ -462,7 +462,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 {activationMode === "tap" ? (
                   <>
                     Click in the text area, press{" "}
-                    <kbd className="bg-card px-2 py-1 rounded text-xs font-mono border border-border">
+                    <kbd className="bg-muted px-2 py-1 rounded text-xs font-mono border border-border">
                       {readableHotkey}
                     </kbd>{" "}
                     to start recording, speak, then press it again to stop.
@@ -470,7 +470,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 ) : (
                   <>
                     Click in the text area, hold{" "}
-                    <kbd className="bg-card px-2 py-1 rounded text-xs font-mono border border-border">
+                    <kbd className="bg-muted px-2 py-1 rounded text-xs font-mono border border-border">
                       {readableHotkey}
                     </kbd>{" "}
                     while speaking, then release to process.
@@ -608,12 +608,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex-shrink-0 z-10">
         <TitleBar
           showTitle={true}
-          className="bg-background/95 backdrop-blur-xl border-b border-border shadow-sm"
+          className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
         ></TitleBar>
       </div>
 
       {/* Progress Bar */}
-      <div className="flex-shrink-0 bg-background/90 backdrop-blur-xl border-b border-border p-6 md:px-16 z-10">
+      <div className="flex-shrink-0 bg-background backdrop-blur-xl border-b border-border p-6 md:px-16 z-10">
         <div className="max-w-4xl mx-auto">
           <StepProgress steps={steps} currentStep={currentStep} />
         </div>
@@ -622,7 +622,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       {/* Content - This will grow to fill available space */}
       <div className="flex-1 px-6 md:px-16 py-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <Card className="bg-card/95 backdrop-blur-xl border border-border shadow-lg rounded-2xl overflow-hidden">
+          <Card className="bg-card backdrop-blur-xl border border-border shadow-lg rounded-2xl overflow-hidden">
             <CardContent className="p-12 md:p-16">
               <div className="space-y-8">{renderStep()}</div>
             </CardContent>
@@ -631,7 +631,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </div>
 
       {/* Footer - This will stick to the bottom */}
-      <div className="flex-shrink-0 bg-background/95 backdrop-blur-xl border-t border-border px-6 md:px-16 py-8 z-10 shadow-sm">
+      <div className="flex-shrink-0 bg-background backdrop-blur-xl border-t border-border px-6 md:px-16 py-8 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Button
             onClick={prevStep}
@@ -648,7 +648,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Button
                 onClick={finishOnboarding}
                 disabled={!canProceed()}
-                className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 px-8 py-3 h-12 text-sm font-medium"
+                className="bg-success hover:bg-success/90 dark:bg-success dark:hover:bg-success/80 px-8 py-3 h-12 text-sm font-medium"
               >
                 <Check className="w-4 h-4 mr-2" />
                 Complete Setup

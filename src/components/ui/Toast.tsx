@@ -91,13 +91,13 @@ const Toast: React.FC<ToastProps & { onClose?: () => void }> = ({
   const variantClasses = {
     default: "bg-card border-border text-card-foreground",
     destructive: "bg-destructive/10 border-destructive/20 text-destructive",
-    success: "bg-green-500/10 dark:bg-green-500/20 border-green-500/20 dark:border-green-500/30 text-green-700 dark:text-green-400",
+    success: "bg-success/10 dark:bg-success/20 border-success/20 dark:border-success/30 text-success dark:text-success",
   };
 
   const iconClasses = {
     default: "text-muted-foreground",
     destructive: "text-destructive",
-    success: "text-green-600 dark:text-green-400",
+    success: "text-success dark:text-success",
   };
 
   return (

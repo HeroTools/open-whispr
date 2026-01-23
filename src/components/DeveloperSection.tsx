@@ -183,7 +183,7 @@ export default function DeveloperSection() {
             disabled={isLoading || isToggling}
             className={`flex-1 font-medium ${
               debugEnabled
-                ? "bg-amber-600 dark:bg-amber-500 hover:bg-amber-700 dark:hover:bg-amber-600 text-white shadow-md shadow-amber-600/20"
+                ? "bg-warning dark:bg-warning hover:bg-warning/90 dark:hover:bg-warning/80 text-warning-foreground shadow-md shadow-warning/20"
                 : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20"
             }`}
           >
@@ -279,12 +279,12 @@ export default function DeveloperSection() {
 
         {/* Performance Note */}
         {debugEnabled && (
-          <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg">
+          <div className="p-4 bg-warning/10 dark:bg-warning/20 border border-warning/30 rounded-lg">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-warning dark:text-warning mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <h4 className="font-medium text-amber-900 dark:text-amber-300 mb-1">Performance Note</h4>
-                <p className="text-sm text-amber-800 dark:text-amber-400">
+                <h4 className="font-medium text-warning dark:text-warning mb-1">Performance Note</h4>
+                <p className="text-sm text-warning dark:text-warning">
                   Debug logging writes detailed information to disk and may have a minor impact on
                   app performance. Disable it when not troubleshooting.
                 </p>

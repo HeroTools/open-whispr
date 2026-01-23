@@ -334,7 +334,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       }}
                       disabled={downloadingUpdate}
                       variant="default"
-                      className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
+                      className="w-full bg-success hover:bg-success/90 dark:bg-success dark:hover:bg-success/80"
                     >
                       {downloadingUpdate ? (
                         <>
@@ -353,7 +353,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <div className="space-y-1">
                         <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                           <div
-                            className="h-full bg-green-600 transition-all duration-200"
+                            className="h-full bg-success transition-all duration-200"
                             style={{
                               width: `${Math.min(100, Math.max(0, updateDownloadProgress))}%`,
                             }}
@@ -563,18 +563,18 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </p>
                 </div>
                 <div className="text-center p-3 border border-border rounded-lg bg-card">
-                  <div className="w-7 h-7 mx-auto mb-2 bg-emerald-600 dark:bg-emerald-500 rounded-lg flex items-center justify-center">
+                  <div className="w-7 h-7 mx-auto mb-2 bg-success dark:bg-success rounded-lg flex items-center justify-center">
                     <span className="text-white text-xs">🏷️</span>
                   </div>
                   <p className="font-medium text-card-foreground mb-1 text-xs">Version</p>
                   <p className="text-muted-foreground text-xs">{currentVersion || "0.1.0"}</p>
                 </div>
                 <div className="text-center p-3 border border-border rounded-lg bg-card">
-                  <div className="w-7 h-7 mx-auto mb-2 bg-green-600 dark:bg-green-500 rounded-lg flex items-center justify-center">
+                  <div className="w-7 h-7 mx-auto mb-2 bg-success dark:bg-success rounded-lg flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
                   </div>
                   <p className="font-medium text-card-foreground mb-1 text-xs">Status</p>
-                  <p className="text-green-600 dark:text-green-400 text-xs font-medium">Active</p>
+                  <p className="text-success dark:text-success text-xs font-medium">Active</p>
                 </div>
               </div>
 

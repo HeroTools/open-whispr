@@ -60,7 +60,7 @@ export default function MicPermissionWarning({
 
   return (
     <InfoBox variant="warning" className="space-y-3">
-      <p className="text-sm text-amber-900 dark:text-amber-200">{error || config.message}</p>
+      <p className="text-sm text-warning dark:text-warning">{error || config.message}</p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" onClick={onOpenSoundSettings}>
           {config.soundLabel}

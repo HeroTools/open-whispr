@@ -8,9 +8,9 @@ const infoBoxVariants = cva(
     variants: {
       variant: {
         default: "bg-primary/5 border-primary/20",
-        success: "bg-green-500/10 dark:bg-green-500/20 border-green-500/30",
-        warning: "bg-amber-500/10 dark:bg-amber-500/20 border-amber-500/30",
-        info: "bg-blue-500/10 dark:bg-blue-500/20 border-blue-500/30",
+        success: "bg-success/10 dark:bg-success/20 border-success/30",
+        warning: "bg-warning/10 dark:bg-warning/20 border-warning/30",
+        info: "bg-info/10 dark:bg-info/20 border-info/30",
         muted: "bg-muted/30 border-border",
       },
     },

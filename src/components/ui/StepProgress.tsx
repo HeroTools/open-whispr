@@ -24,7 +24,7 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
           <div key={index} className="flex">
             <div
               className={`flex items-center gap-2 ${
-                isActive ? "text-primary" : isCompleted ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                isActive ? "text-primary" : isCompleted ? "text-success dark:text-success" : "text-muted-foreground"
               }`}
             >
               <div
@@ -32,7 +32,7 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
                   isActive
                     ? "border-primary bg-primary/10 dark:bg-primary/20 shadow-sm"
                     : isCompleted
-                      ? "border-green-600 dark:border-green-500 bg-green-500/10 dark:bg-green-500/20 shadow-sm"
+                      ? "border-success dark:border-success bg-success/10 dark:bg-success/20 shadow-sm"
                       : "border-border bg-card"
                 }`}
               >
@@ -43,7 +43,7 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
             {index < steps.length - 1 && (
               <div
                 className={`flex-1 h-0.5 mx-3 rounded-full transition-colors duration-200 ${
-                  isCompleted ? "bg-green-600 dark:bg-green-500" : "bg-border"
+                  isCompleted ? "bg-success dark:bg-success" : "bg-border"
                 }`}
               />
             )}
