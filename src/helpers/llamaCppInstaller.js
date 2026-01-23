@@ -12,13 +12,34 @@ const { promises: fsPromises } = require("fs");
  */
 class LlamaCppInstaller {
   constructor() {
-    this.installDir = path.join(app.getPath("userData"), "llama-cpp");
+    // IMPORTANT: Do NOT call app.getPath() here!
+    // It can hang or fail before app.whenReady() in Electron 36+.
+    this.installDir = null;
     this.binPath = null;
     this.platform = process.platform;
     this.arch = process.arch;
+    this._initialized = false;
+  }
+
+  /**
+   * Ensures the installer is initialized. Safe to call multiple times.
+   */
+  ensureInitialized() {
+    if (this._initialized) return;
+
+    if (!app.isReady()) {
+      throw new Error(
+        "LlamaCppInstaller cannot be initialized before app.whenReady(). " +
+          "This is a programming error."
+      );
+    }
+
+    this.installDir = path.join(app.getPath("userData"), "llama-cpp");
+    this._initialized = true;
   }
 
   async ensureInstallDir() {
+    this.ensureInitialized();
     await fsPromises.mkdir(this.installDir, { recursive: true });
   }
 
@@ -28,6 +49,7 @@ class LlamaCppInstaller {
   }
 
   getInstalledBinaryPath() {
+    this.ensureInitialized();
     return path.join(this.installDir, this.getBinaryName());
   }
 
