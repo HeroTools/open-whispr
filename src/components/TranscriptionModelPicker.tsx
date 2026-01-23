@@ -614,11 +614,8 @@ export default function TranscriptionModelPicker({
                     <ApiKeyInput
                       apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
                       setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
-                      helpText={
-                        selectedCloudProvider === "groq"
-                          ? "Required for Groq's ultra-fast Whisper transcription."
-                          : "Required for OpenAI's transcription API."
-                      }
+                      label=""
+                      helpText=""
                     />
                   </div>
 

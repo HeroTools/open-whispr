@@ -679,7 +679,7 @@ export default function ReasoningModelSelector({
                             apiKey={openaiApiKey}
                             setApiKey={setOpenaiApiKey}
                             label=""
-                            helpText="Required for OpenAI's reasoning models."
+                            helpText=""
                           />
                         </div>
                       )}
@@ -705,7 +705,7 @@ export default function ReasoningModelSelector({
                             setApiKey={setAnthropicApiKey}
                             placeholder="sk-ant-..."
                             label=""
-                            helpText="Required for Claude models."
+                            helpText=""
                           />
                         </div>
                       )}
@@ -731,7 +731,7 @@ export default function ReasoningModelSelector({
                             setApiKey={setGeminiApiKey}
                             placeholder="AIza..."
                             label=""
-                            helpText="Required for Gemini models."
+                            helpText=""
                           />
                         </div>
                       )}
@@ -755,7 +755,7 @@ export default function ReasoningModelSelector({
                             setApiKey={setGroqApiKey}
                             placeholder="gsk_..."
                             label=""
-                            helpText="Required for Groq's fast inference."
+                            helpText=""
                           />
                         </div>
                       )}
