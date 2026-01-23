@@ -203,10 +203,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Eye className="w-5 h-5 text-blue-600" />
+          <Eye className="w-5 h-5 text-primary" />
           Current AI Prompts
         </h3>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           These are the exact prompts currently being sent to your AI models. Understanding these
           helps you see how OpenWhispr thinks!
         </p>
@@ -215,12 +215,12 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="w-4 h-4 text-purple-600" />
+            <Sparkles className="w-4 h-4 text-primary" />
             Agent Mode Prompt (when you say "Hey {agentName}")
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm">
+          <div className="bg-muted border rounded-lg p-4 font-mono text-sm">
             <pre className="whitespace-pre-wrap">
               {editedAgentPrompt.replace(/\{\{agentName\}\}/g, agentName)}
             </pre>
@@ -245,7 +245,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm">
+          <div className="bg-muted border rounded-lg p-4 font-mono text-sm">
             <pre className="whitespace-pre-wrap">{editedRegularPrompt}</pre>
           </div>
           <Button
@@ -266,10 +266,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Edit3 className="w-5 h-5 text-indigo-600" />
+          <Edit3 className="w-5 h-5 text-primary" />
           Customize Your AI Prompts
         </h3>
-        <p className="text-sm text-gray-600 mb-6">
+        <p className="text-sm text-muted-foreground mb-6">
           Edit these prompts to change how your AI behaves. Use <code>{"{{agentName}}"}</code> and{" "}
           <code>{"{{text}}"}</code> as placeholders.
         </p>
@@ -337,7 +337,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             <TestTube className="w-5 h-5 text-green-600" />
             Test Your Prompts
           </h3>
-          <p className="text-sm text-gray-600 mb-6">
+          <p className="text-sm text-muted-foreground mb-6">
             Test your custom prompts with the actual AI model to see real results.
           </p>
         </div>
@@ -360,14 +360,14 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           <CardContent className="p-6 space-y-4">
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <span className="text-gray-600">Current Model:</span>
+                <span className="text-muted-foreground">Current Model:</span>
                 <span className="ml-2 font-medium">{reasoningModel}</span>
               </div>
               <div>
-                <span className="text-gray-600">Provider:</span>
+                <span className="text-muted-foreground">Provider:</span>
                 <span className="ml-2 font-medium capitalize">{providerLabel}</span>
                 {providerConfig.baseStorageKey && (
-                  <div className="text-xs text-gray-500 mt-1 break-all">
+                  <div className="text-xs text-muted-foreground mt-1 break-all">
                     Endpoint: {providerEndpoint || "Not configured"}
                   </div>
                 )}
@@ -383,14 +383,14 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                 placeholder="Enter text to test with your custom prompts..."
               />
               <div className="flex items-center justify-between mt-2">
-                <p className="text-xs text-gray-500">
+                <p className="text-xs text-muted-foreground">
                   Try including "{agentName}" in your text to test agent mode prompts
                 </p>
                 {testText && (
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
                       testText.toLowerCase().includes(agentName.toLowerCase())
-                        ? "bg-purple-100 text-purple-700"
+                        ? "bg-primary/10 text-primary"
                         : "bg-green-100 text-green-700"
                     }`}
                   >
@@ -423,7 +423,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                   className={`border rounded-lg p-4 text-sm max-h-60 overflow-y-auto ${
                     testResult.startsWith("⚠️") || testResult.startsWith("❌")
                       ? "bg-amber-50 border-amber-200 text-amber-800"
-                      : "bg-gray-50 border-gray-200"
+                      : "bg-muted border-border"
                   }`}
                 >
                   <pre className="whitespace-pre-wrap">{testResult}</pre>
@@ -447,7 +447,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       />
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-border mb-6">
         {[
           { id: "current", label: "Current Prompts", icon: Eye },
           { id: "edit", label: "Customize", icon: Edit3 },
@@ -460,8 +460,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-600 hover:text-gray-900"
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
               <Icon className="w-4 h-4" />

@@ -109,31 +109,31 @@ export default function DeveloperSection() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Troubleshooting</h3>
-        <p className="text-sm text-gray-600">
+        <h3 className="text-lg font-semibold text-foreground mb-2">Troubleshooting</h3>
+        <p className="text-sm text-muted-foreground">
           Enable debug logging to diagnose issues and share logs for support
         </p>
       </div>
 
       {/* Main Debug Logging Card */}
-      <div className="space-y-4 p-6 bg-linear-to-br from-slate-50 via-slate-50 to-slate-100 border border-slate-200 rounded-xl shadow-sm">
+      <div className="space-y-4 p-6 bg-linear-to-br from-muted/30 via-muted/30 to-muted border border-border rounded-xl shadow-sm">
         {/* Header with status */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-800 rounded-lg">
-              <Wrench className="w-5 h-5 text-slate-100" />
+            <div className="p-2 bg-primary rounded-lg">
+              <Wrench className="w-5 h-5 text-primary-foreground" />
             </div>
             <div>
-              <h4 className="font-semibold text-slate-900">Debug Logging</h4>
+              <h4 className="font-semibold text-foreground">Debug Logging</h4>
               <div className="flex items-center gap-2 mt-1">
                 <div
                   className={`w-2 h-2 rounded-full ${
                     debugEnabled
                       ? "bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50"
-                      : "bg-slate-300"
+                      : "bg-muted"
                   }`}
                 />
-                <span className="text-xs font-medium text-slate-600">
+                <span className="text-xs font-medium text-muted-foreground">
                   {isLoading ? "Loading..." : debugEnabled ? "Active" : "Inactive"}
                 </span>
               </div>
@@ -142,7 +142,7 @@ export default function DeveloperSection() {
         </div>
 
         {/* Description */}
-        <p className="text-sm text-slate-600 leading-relaxed">
+        <p className="text-sm text-muted-foreground leading-relaxed">
           Captures detailed logs of audio processing, transcription, and system operations. Enable
           this when experiencing issues to help diagnose problems.
         </p>
@@ -150,11 +150,11 @@ export default function DeveloperSection() {
         {/* Log Path Display - Only when active */}
         {debugEnabled && logPath && (
           <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Current Log File
             </label>
             <div className="flex gap-2">
-              <div className="flex-1 p-3 bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
+              <div className="flex-1 p-3 bg-card/50 dark:bg-card rounded-lg border border-border overflow-hidden">
                 <code className="text-xs text-emerald-400 break-all leading-relaxed">
                   {logPath}
                 </code>
@@ -163,13 +163,13 @@ export default function DeveloperSection() {
                 onClick={handleCopyPath}
                 variant="outline"
                 size="icon"
-                className="h-12 w-12 border-slate-300 hover:bg-slate-100"
+                className="h-12 w-12 border-border hover:bg-muted"
                 title="Copy log path"
               >
                 {copiedPath ? (
                   <Check className="h-4 w-4 text-emerald-600" />
                 ) : (
-                  <Copy className="h-4 w-4 text-slate-600" />
+                  <Copy className="h-4 w-4 text-muted-foreground" />
                 )}
               </Button>
             </div>
@@ -183,8 +183,8 @@ export default function DeveloperSection() {
             disabled={isLoading || isToggling}
             className={`flex-1 font-medium ${
               debugEnabled
-                ? "bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20"
-                : "bg-slate-800 hover:bg-slate-900 text-white shadow-md shadow-slate-800/20"
+                ? "bg-amber-600 dark:bg-amber-500 hover:bg-amber-700 dark:hover:bg-amber-600 text-white shadow-md shadow-amber-600/20"
+                : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20"
             }`}
           >
             {isToggling ? (
@@ -203,7 +203,7 @@ export default function DeveloperSection() {
             disabled={!debugEnabled || isLoading}
             className={`flex-1 font-medium ${
               debugEnabled
-                ? "border-slate-300 hover:bg-slate-100 hover:border-slate-400"
+                ? "border-border hover:bg-muted hover:border-border"
                 : "opacity-50 cursor-not-allowed"
             }`}
           >
@@ -215,14 +215,14 @@ export default function DeveloperSection() {
 
       {/* Sharing Instructions - Only when enabled */}
       {debugEnabled && (
-        <div className="p-5 bg-linear-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl">
+        <div className="p-5 bg-linear-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-xl">
           <div className="flex items-start gap-3">
-            <div className="p-2 bg-indigo-600 rounded-lg mt-0.5">
+            <div className="p-2 bg-primary rounded-lg mt-0.5">
               <FileText className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1">
-              <h4 className="font-semibold text-indigo-900 mb-2">How to Share Logs for Support</h4>
-              <div className="text-sm text-indigo-800 space-y-2">
+              <h4 className="font-semibold text-foreground mb-2">How to Share Logs for Support</h4>
+              <div className="text-sm text-primary space-y-2">
                 <p>To help us diagnose your issue:</p>
                 <ol className="space-y-1 ml-4 list-decimal">
                   <li>Reproduce the issue while debug mode is enabled</li>
@@ -230,7 +230,7 @@ export default function DeveloperSection() {
                   <li>Find the most recent log file (sorted by date)</li>
                   <li>Attach the log file to your bug report or support email</li>
                 </ol>
-                <p className="text-xs text-indigo-700 mt-3 pt-3 border-t border-indigo-200">
+                <p className="text-xs text-primary mt-3 pt-3 border-t border-primary/20">
                   Your logs don't contain API keys or sensitive data
                 </p>
               </div>
@@ -242,34 +242,34 @@ export default function DeveloperSection() {
       {/* Information Cards */}
       <div className="grid grid-cols-1 gap-4">
         {/* What Gets Logged */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+        <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
           <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <Info className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-blue-900 mb-2">What Gets Logged</h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-blue-800">
+              <h4 className="font-medium text-foreground mb-2">What Gets Logged</h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-primary">
                 <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
+                  <div className="w-1 h-1 rounded-full bg-primary" />
                   <span>Audio processing</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
+                  <div className="w-1 h-1 rounded-full bg-primary" />
                   <span>API requests</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
+                  <div className="w-1 h-1 rounded-full bg-primary" />
                   <span>FFmpeg operations</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
+                  <div className="w-1 h-1 rounded-full bg-primary" />
                   <span>System diagnostics</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
+                  <div className="w-1 h-1 rounded-full bg-primary" />
                   <span>Transcription pipeline</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
+                  <div className="w-1 h-1 rounded-full bg-primary" />
                   <span>Error details</span>
                 </div>
               </div>
@@ -279,12 +279,12 @@ export default function DeveloperSection() {
 
         {/* Performance Note */}
         {debugEnabled && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-lg">
             <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <h4 className="font-medium text-amber-900 mb-1">Performance Note</h4>
-                <p className="text-sm text-amber-800">
+                <h4 className="font-medium text-amber-900 dark:text-amber-300 mb-1">Performance Note</h4>
+                <p className="text-sm text-amber-800 dark:text-amber-400">
                   Debug logging writes detailed information to disk and may have a minor impact on
                   app performance. Disable it when not troubleshooting.
                 </p>

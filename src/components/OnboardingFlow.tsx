@@ -671,7 +671,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </p>
                 </div>
 
-                <div className="space-y-3 pt-4 border-t border-blue-100">
+                <div className="space-y-3 pt-4 border-t border-primary/10">
                   <h4 className="font-medium text-foreground">Reasoning Model</h4>
                   {hasEnteredReasoningBase ? (
                     <>
@@ -849,7 +849,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 {activationMode === "tap" ? (
                   <>
                     Click in the text area, press{" "}
-                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-primary/20">
+                    <kbd className="bg-card px-2 py-1 rounded text-xs font-mono border border-primary/20">
                       {readableHotkey}
                     </kbd>{" "}
                     to start recording, speak, then press it again to stop.
@@ -857,7 +857,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 ) : (
                   <>
                     Click in the text area, hold{" "}
-                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-primary/20">
+                    <kbd className="bg-card px-2 py-1 rounded text-xs font-mono border border-primary/20">
                       {readableHotkey}
                     </kbd>{" "}
                     while speaking, then release to process.
@@ -885,9 +885,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </p>
             </div>
 
-            <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">How this helps:</h4>
-              <ul className="text-sm text-purple-800 space-y-1">
+            <div className="space-y-4 p-4 bg-gradient-to-r from-primary/5 to-primary/10 border border-primary/20 rounded-xl">
+              <h4 className="font-medium text-foreground mb-3">How this helps:</h4>
+              <ul className="text-sm text-primary space-y-1">
                 <li>
                   • Say "Hey {agentName || "Agent"}, write a formal email" for specific instructions
                 </li>
@@ -998,7 +998,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         onOk={() => {}}
       />
       {/* Left margin line for entire page */}
-      <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>
+      <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-primary/10 z-0"></div>
 
       {/* Title Bar */}
       <div className="flex-shrink-0 z-10">

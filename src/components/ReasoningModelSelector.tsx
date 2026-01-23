@@ -461,10 +461,10 @@ export default function ReasoningModelSelector({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-xl">
+      <div className="flex items-center justify-between p-4 bg-green-500/10 dark:bg-green-500/20 border border-green-500/30 rounded-xl">
         <div>
-          <label className="text-sm font-medium text-green-800">Enable AI Text Enhancement</label>
-          <p className="text-xs text-green-700">
+          <label className="text-sm font-medium text-green-700 dark:text-green-300">Enable AI Text Enhancement</label>
+          <p className="text-xs text-green-700 dark:text-green-400">
             Use AI to automatically improve transcription quality
           </p>
         </div>
@@ -476,12 +476,12 @@ export default function ReasoningModelSelector({
             onChange={(e) => setUseReasoningModel(e.target.checked)}
           />
           <div
-            className={`w-11 h-6 bg-gray-200 rounded-full transition-colors duration-200 ${
-              useReasoningModel ? "bg-green-600" : "bg-gray-300"
+            className={`w-11 h-6 bg-muted rounded-full transition-colors duration-200 ${
+              useReasoningModel ? "bg-green-600" : "bg-muted"
             }`}
           >
             <div
-              className={`absolute top-0.5 left-0.5 bg-white border border-gray-300 rounded-full h-5 w-5 transition-transform duration-200 ${
+              className={`absolute top-0.5 left-0.5 bg-card border border-border rounded-full h-5 w-5 transition-transform duration-200 ${
                 useReasoningModel ? "translate-x-5" : "translate-x-0"
               }`}
             />
@@ -496,20 +496,20 @@ export default function ReasoningModelSelector({
               onClick={() => handleModeChange("cloud")}
               className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
                 selectedMode === "cloud"
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-neutral-200 bg-white hover:border-neutral-300"
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-card hover:border-border"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
-                  <Cloud className="w-6 h-6 text-blue-600" />
-                  <h4 className="font-medium text-neutral-900">Cloud AI</h4>
+                  <Cloud className="w-6 h-6 text-primary" />
+                  <h4 className="font-medium text-foreground">Cloud AI</h4>
                 </div>
-                <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                <span className="text-xs text-green-600 bg-green-500/10 dark:bg-green-500/20 px-2 py-1 rounded-full">
                   Powerful
                 </span>
               </div>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-muted-foreground">
                 Advanced models via API. Fast and capable, requires internet.
               </p>
             </button>
@@ -518,20 +518,20 @@ export default function ReasoningModelSelector({
               onClick={() => handleModeChange("local")}
               className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
                 selectedMode === "local"
-                  ? "border-indigo-500 bg-indigo-50"
-                  : "border-neutral-200 bg-white hover:border-neutral-300"
+                  ? "border-primary bg-primary/10"
+                  : "border-border bg-card hover:border-border"
               }`}
             >
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-3">
-                  <Lock className="w-6 h-6 text-purple-600" />
-                  <h4 className="font-medium text-neutral-900">Local AI</h4>
+                  <Lock className="w-6 h-6 text-primary" />
+                  <h4 className="font-medium text-foreground">Local AI</h4>
                 </div>
-                <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                <span className="text-xs text-primary bg-primary/10 dark:bg-primary/20 px-2 py-1 rounded-full">
                   Private
                 </span>
               </div>
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm text-muted-foreground">
                 Runs on your device. Complete privacy, works offline.
               </p>
             </button>
@@ -539,7 +539,7 @@ export default function ReasoningModelSelector({
 
           {selectedMode === "cloud" ? (
             <div className="space-y-4">
-              <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <div className="border border-border rounded-xl overflow-hidden">
                 <ProviderTabs
                   providers={cloudProviders}
                   selectedId={selectedCloudProvider}
@@ -551,7 +551,7 @@ export default function ReasoningModelSelector({
                   {selectedCloudProvider === "custom" ? (
                     <>
                       <div className="space-y-3">
-                        <h4 className="font-medium text-gray-900">Endpoint Settings</h4>
+                        <h4 className="font-medium text-foreground">Endpoint Settings</h4>
                         <Input
                           value={customBaseInput}
                           onChange={(event) => setCustomBaseInput(event.target.value)}
@@ -588,7 +588,7 @@ export default function ReasoningModelSelector({
                             Apply the new base URL to refresh models.
                           </p>
                         )}
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-muted-foreground">
                           We'll query{" "}
                           <code>
                             {hasCustomBase
@@ -599,8 +599,8 @@ export default function ReasoningModelSelector({
                         </p>
                       </div>
 
-                      <div className="space-y-3 pt-4 border-t border-gray-200">
-                        <h4 className="font-medium text-gray-900">Authentication</h4>
+                      <div className="space-y-3 pt-4 border-t border-border">
+                        <h4 className="font-medium text-foreground">Authentication</h4>
                         <ApiKeyInput
                           apiKey={openaiApiKey}
                           setApiKey={setOpenaiApiKey}
@@ -608,18 +608,18 @@ export default function ReasoningModelSelector({
                         />
                       </div>
 
-                      <div className="space-y-3 pt-4 border-t border-gray-200">
-                        <h4 className="text-sm font-medium text-gray-700">Available Models</h4>
+                      <div className="space-y-3 pt-4 border-t border-border">
+                        <h4 className="text-sm font-medium text-foreground">Available Models</h4>
                         {!hasCustomBase && (
                           <p className="text-xs text-amber-600">Enter a base URL to load models.</p>
                         )}
                         {hasCustomBase && (
                           <>
                             {customModelsLoading && (
-                              <p className="text-xs text-blue-600">Fetching model list...</p>
+                              <p className="text-xs text-primary">Fetching model list...</p>
                             )}
                             {customModelsError && (
-                              <p className="text-xs text-red-600">{customModelsError}</p>
+                              <p className="text-xs text-destructive">{customModelsError}</p>
                             )}
                             {!customModelsLoading &&
                               !customModelsError &&
@@ -640,7 +640,7 @@ export default function ReasoningModelSelector({
                   ) : (
                     <>
                       <div className="space-y-3">
-                        <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
+                        <h4 className="text-sm font-medium text-foreground">Select Model</h4>
                         <ModelCardList
                           models={selectedCloudModels}
                           selectedModel={reasoningModel}
@@ -648,10 +648,10 @@ export default function ReasoningModelSelector({
                         />
                       </div>
 
-                      <div className="mt-4 pt-4 border-t border-gray-200">
+                      <div className="mt-4 pt-4 border-t border-border">
                         {selectedCloudProvider === "openai" && (
                           <div className="space-y-3">
-                            <h4 className="font-medium text-gray-900">API Configuration</h4>
+                            <h4 className="font-medium text-foreground">API Configuration</h4>
                             <ApiKeyInput
                               apiKey={openaiApiKey}
                               setApiKey={setOpenaiApiKey}
@@ -662,7 +662,7 @@ export default function ReasoningModelSelector({
                                     href="https://platform.openai.com"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-600 underline"
+                                    className="text-primary underline"
                                   >
                                     platform.openai.com
                                   </a>
@@ -674,7 +674,7 @@ export default function ReasoningModelSelector({
 
                         {selectedCloudProvider === "anthropic" && (
                           <div className="space-y-3">
-                            <h4 className="font-medium text-gray-900">API Configuration</h4>
+                            <h4 className="font-medium text-foreground">API Configuration</h4>
                             <ApiKeyInput
                               apiKey={anthropicApiKey}
                               setApiKey={setAnthropicApiKey}
@@ -686,7 +686,7 @@ export default function ReasoningModelSelector({
                                     href="https://console.anthropic.com"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-600 underline"
+                                    className="text-primary underline"
                                   >
                                     console.anthropic.com
                                   </a>
@@ -698,7 +698,7 @@ export default function ReasoningModelSelector({
 
                         {selectedCloudProvider === "gemini" && (
                           <div className="space-y-3">
-                            <h4 className="font-medium text-gray-900">API Configuration</h4>
+                            <h4 className="font-medium text-foreground">API Configuration</h4>
                             <ApiKeyInput
                               apiKey={geminiApiKey}
                               setApiKey={setGeminiApiKey}
@@ -710,7 +710,7 @@ export default function ReasoningModelSelector({
                                     href="https://makersuite.google.com/app/apikey"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-600 underline"
+                                    className="text-primary underline"
                                   >
                                     makersuite.google.com
                                   </a>
@@ -722,7 +722,7 @@ export default function ReasoningModelSelector({
 
                         {selectedCloudProvider === "groq" && (
                           <div className="space-y-3">
-                            <h4 className="font-medium text-gray-900">API Configuration</h4>
+                            <h4 className="font-medium text-foreground">API Configuration</h4>
                             <ApiKeyInput
                               apiKey={groqApiKey}
                               setApiKey={setGroqApiKey}
@@ -734,7 +734,7 @@ export default function ReasoningModelSelector({
                                     href="https://console.groq.com"
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="text-blue-600 underline"
+                                    className="text-primary underline"
                                   >
                                     console.groq.com
                                   </a>
