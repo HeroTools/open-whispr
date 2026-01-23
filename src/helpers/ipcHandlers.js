@@ -583,10 +583,7 @@ class IPCHandlers {
           return { success: false, error: `Model "${modelId}" not found` };
         }
 
-        const modelPath = require("path").join(
-          modelManager.modelsDir,
-          modelInfo.model.fileName
-        );
+        const modelPath = require("path").join(modelManager.modelsDir, modelInfo.model.fileName);
 
         await modelManager.serverManager.start(modelPath, {
           contextSize: modelInfo.model.contextLength || 4096,

@@ -5,10 +5,7 @@ export const LEGACY_PROMPTS = promptData.LEGACY_PROMPTS;
 
 export function buildPrompt(text: string, agentName: string | null): string {
   const name = agentName?.trim() || "Assistant";
-  return UNIFIED_SYSTEM_PROMPT.replace(/\{\{agentName\}\}/g, name).replace(
-    /\{\{text\}\}/g,
-    text
-  );
+  return UNIFIED_SYSTEM_PROMPT.replace(/\{\{agentName\}\}/g, name).replace(/\{\{text\}\}/g, text);
 }
 
 export function getSystemPrompt(agentName: string | null): string {

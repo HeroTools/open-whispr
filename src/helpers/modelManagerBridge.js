@@ -54,6 +54,16 @@ class ModelManager {
     }
   }
 
+  async ensureLlamaCpp() {
+    if (!this.serverManager.isAvailable()) {
+      throw new ModelError(
+        "llama-server binary not found. Please ensure the app is installed correctly.",
+        "LLAMASERVER_NOT_FOUND"
+      );
+    }
+    return true;
+  }
+
   async getAllModels() {
     try {
       const models = [];

@@ -18,6 +18,7 @@ import {
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
 import { getProviderIcon } from "../utils/providerIcons";
 import { API_ENDPOINTS } from "../config/constants";
+import { createExternalLinkHandler } from "../utils/externalLinks";
 
 interface WhisperModel {
   model: string;
@@ -222,8 +223,10 @@ export default function TranscriptionModelPicker({
       const provider = cloudProviders.find((p) => p.id === providerId);
 
       if (providerId === "custom") {
-        // Don't change base URL or model when switching to custom
-        // The user will enter their own URL
+        // Clear model to whisper-1 (standard fallback) to avoid sending
+        // provider-specific models to custom endpoints
+        onCloudModelSelect("whisper-1");
+        // Don't change base URL - user will enter their own
         return;
       }
 
@@ -247,6 +250,28 @@ export default function TranscriptionModelPicker({
     },
     [onLocalProviderSelect]
   );
+
+  const handleBaseUrlBlur = useCallback(async () => {
+    if (!setCloudTranscriptionBaseUrl || selectedCloudProvider !== "custom") return;
+
+    const { validateTranscriptionSettings } = await import("../utils/urlUtils");
+    const validated = validateTranscriptionSettings(cloudTranscriptionBaseUrl);
+
+    // Update to normalized URL
+    setCloudTranscriptionBaseUrl(validated.baseUrl);
+
+    // Auto-detect known providers
+    if (validated.provider !== "custom" && validated.provider !== selectedCloudProvider) {
+      onCloudProviderSelect(validated.provider);
+      onCloudModelSelect("whisper-1");
+    }
+  }, [
+    cloudTranscriptionBaseUrl,
+    selectedCloudProvider,
+    setCloudTranscriptionBaseUrl,
+    onCloudProviderSelect,
+    onCloudModelSelect,
+  ]);
 
   const handleDelete = useCallback(
     (modelId: string) => {
@@ -434,49 +459,54 @@ export default function TranscriptionModelPicker({
 
   return (
     <div className={`space-y-4 ${className}`}>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <button
-          onClick={() => handleModeChange(false)}
-          className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-            !useLocalWhisper
-              ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <Cloud className="w-6 h-6 text-blue-600" />
-              <h4 className="font-medium text-neutral-900">Cloud</h4>
+      {/* Only show mode selector in settings, not in onboarding (which has its own) */}
+      {variant === "settings" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <button
+            onClick={() => handleModeChange(false)}
+            className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
+              !useLocalWhisper
+                ? "border-purple-500 bg-purple-50"
+                : "border-neutral-200 bg-white hover:border-neutral-300"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <Cloud className="w-6 h-6 text-blue-600" />
+                <h4 className="font-medium text-neutral-900">Cloud</h4>
+              </div>
+              <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
+                Fast
+              </span>
             </div>
-            <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">Fast</span>
-          </div>
-          <p className="text-sm text-neutral-600">
-            Transcription via API. Fast and accurate, requires internet.
-          </p>
-        </button>
+            <p className="text-sm text-neutral-600">
+              Transcription via API. Fast and accurate, requires internet.
+            </p>
+          </button>
 
-        <button
-          onClick={() => handleModeChange(true)}
-          className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-            useLocalWhisper
-              ? "border-purple-500 bg-purple-50"
-              : "border-neutral-200 bg-white hover:border-neutral-300"
-          }`}
-        >
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <Lock className="w-6 h-6 text-purple-600" />
-              <h4 className="font-medium text-neutral-900">Local</h4>
+          <button
+            onClick={() => handleModeChange(true)}
+            className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
+              useLocalWhisper
+                ? "border-purple-500 bg-purple-50"
+                : "border-neutral-200 bg-white hover:border-neutral-300"
+            }`}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                <Lock className="w-6 h-6 text-purple-600" />
+                <h4 className="font-medium text-neutral-900">Local</h4>
+              </div>
+              <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
+                Private
+              </span>
             </div>
-            <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">
-              Private
-            </span>
-          </div>
-          <p className="text-sm text-neutral-600">
-            Runs on your device. Complete privacy, works offline.
-          </p>
-        </button>
-      </div>
+            <p className="text-sm text-neutral-600">
+              Runs on your device. Complete privacy, works offline.
+            </p>
+          </button>
+        </div>
+      )}
 
       {!useLocalWhisper ? (
         <div className="space-y-4">
@@ -493,32 +523,45 @@ export default function TranscriptionModelPicker({
               {selectedCloudProvider === "custom" ? (
                 <div className="space-y-4">
                   <div className="space-y-3">
-                    <h4 className="text-sm font-medium text-gray-700">Custom Endpoint Configuration</h4>
+                    <h4 className="text-sm font-medium text-gray-700">Custom Endpoint</h4>
                     <p className="text-xs text-gray-500">
-                      Enter an OpenAI-compatible transcription endpoint URL.
+                      Connect to any OpenAI-compatible transcription API.
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Transcription Base URL
-                    </label>
+                  {/* 1. Endpoint URL - TOP */}
+                  <div className="space-y-3">
+                    <h4 className="font-medium text-gray-900">Endpoint URL</h4>
                     <Input
                       value={cloudTranscriptionBaseUrl}
                       onChange={(e) => setCloudTranscriptionBaseUrl?.(e.target.value)}
+                      onBlur={handleBaseUrlBlur}
                       placeholder="https://your-api.example.com/v1"
                       className="text-sm"
                     />
                     <p className="text-xs text-gray-500">
-                      The endpoint should be compatible with OpenAI's{" "}
-                      <code>/audio/transcriptions</code> API format.
+                      Examples: <code className="text-purple-600">http://localhost:11434/v1</code>{" "}
+                      (Ollama), <code className="text-purple-600">http://localhost:8080/v1</code>{" "}
+                      (LocalAI).
+                      <br />
+                      Known providers (Groq, OpenAI) will be auto-detected.
                     </p>
                   </div>
 
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-gray-700">
-                      Model Name (optional)
-                    </label>
+                  {/* 2. API Key - SECOND */}
+                  <div className="space-y-3 pt-4 border-t border-gray-200">
+                    <h4 className="font-medium text-gray-900">API Key (Optional)</h4>
+                    <ApiKeyInput
+                      apiKey={openaiApiKey}
+                      setApiKey={setOpenaiApiKey}
+                      label=""
+                      helpText="Optional. Sent as a Bearer token for authentication."
+                    />
+                  </div>
+
+                  {/* 3. Model Name - THIRD */}
+                  <div className="space-y-2 pt-4 border-t border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700">Model Name</label>
                     <Input
                       value={selectedCloudModel}
                       onChange={(e) => onCloudModelSelect(e.target.value)}
@@ -526,24 +569,47 @@ export default function TranscriptionModelPicker({
                       className="text-sm"
                     />
                     <p className="text-xs text-gray-500">
-                      Enter the model name supported by your custom endpoint.
+                      The model name supported by your endpoint (defaults to whisper-1).
                     </p>
-                  </div>
-
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-gray-900">API Key</h4>
-                      <ApiKeyInput
-                        apiKey={openaiApiKey}
-                        setApiKey={setOpenaiApiKey}
-                        helpText="Enter the API key for your custom endpoint."
-                      />
-                    </div>
                   </div>
                 </div>
               ) : (
                 <>
-                  <div className="space-y-3">
+                  {/* API Configuration First */}
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-baseline justify-between">
+                      <h4 className="font-medium text-gray-900">API Key</h4>
+                      <a
+                        href={
+                          selectedCloudProvider === "groq"
+                            ? "https://console.groq.com/keys"
+                            : "https://platform.openai.com/api-keys"
+                        }
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={createExternalLinkHandler(
+                          selectedCloudProvider === "groq"
+                            ? "https://console.groq.com/keys"
+                            : "https://platform.openai.com/api-keys"
+                        )}
+                        className="text-xs text-blue-600 hover:text-blue-700 underline cursor-pointer"
+                      >
+                        Get your API key →
+                      </a>
+                    </div>
+                    <ApiKeyInput
+                      apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
+                      setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
+                      helpText={
+                        selectedCloudProvider === "groq"
+                          ? "Required for Groq's ultra-fast Whisper transcription."
+                          : "Required for OpenAI's transcription API."
+                      }
+                    />
+                  </div>
+
+                  {/* Model Selection Below */}
+                  <div className="pt-4 border-t border-gray-200 space-y-3">
                     <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
                     <ModelCardList
                       models={cloudModelOptions}
@@ -551,43 +617,6 @@ export default function TranscriptionModelPicker({
                       onModelSelect={onCloudModelSelect}
                       colorScheme={colorScheme === "purple" ? "purple" : "indigo"}
                     />
-                  </div>
-
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-gray-900">API Configuration</h4>
-                      <ApiKeyInput
-                        apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
-                        setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
-                        helpText={
-                          selectedCloudProvider === "groq" ? (
-                            <>
-                              Need an API key?{" "}
-                              <a
-                                href="https://console.groq.com"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline"
-                              >
-                                console.groq.com
-                              </a>
-                            </>
-                          ) : (
-                            <>
-                              Need an API key?{" "}
-                              <a
-                                href="https://platform.openai.com"
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 underline"
-                              >
-                                platform.openai.com
-                              </a>
-                            </>
-                          )
-                        }
-                      />
-                    </div>
                   </div>
                 </>
               )}

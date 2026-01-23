@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -9,17 +9,14 @@ import {
   Check,
   Settings,
   Mic,
-  Key,
   Shield,
   Command,
   Sparkles,
-  Lock,
   User,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
-import LocalWhisperPicker from "./LocalWhisperPicker";
+import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import ProcessingModeSelector from "./ui/ProcessingModeSelector";
-import ApiKeyInput from "./ui/ApiKeyInput";
 import PermissionCard from "./ui/PermissionCard";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import PasteToolsInfo from "./ui/PasteToolsInfo";
@@ -30,14 +27,9 @@ import { useDialogs } from "../hooks/useDialogs";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
-import { getLanguageLabel } from "../utils/languages";
-import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import LanguageSelector from "./ui/LanguageSelector";
-import ModelCardList from "./ui/ModelCardList";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
-import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
-import { isSecureEndpoint } from "../utils/urlUtils";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
@@ -46,16 +38,9 @@ interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
-type ReasoningModelOption = {
-  value: string;
-  label: string;
-  description?: string;
-  icon?: string;
-};
-
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  // Max valid step index for the current onboarding flow (6 steps, index 0-5)
-  const MAX_STEP = 5;
+  // Max valid step index for the current onboarding flow (5 steps, index 0-4)
+  const MAX_STEP = 4;
 
   const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
     "onboardingCurrentStep",
@@ -77,38 +62,27 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     useLocalWhisper,
     whisperModel,
     preferredLanguage,
+    cloudTranscriptionProvider,
+    cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
-    cloudReasoningBaseUrl,
-    useReasoningModel,
-    reasoningModel,
     openaiApiKey,
+    groqApiKey,
     dictationKey,
     activationMode,
     setActivationMode,
-    setUseLocalWhisper,
     setWhisperModel,
-    setPreferredLanguage,
     setDictationKey,
+    setOpenaiApiKey,
+    setGroqApiKey,
     updateTranscriptionSettings,
-    updateReasoningSettings,
-    updateApiKeys,
   } = useSettings();
 
-  const [apiKey, setApiKey] = useState(openaiApiKey);
   const [hotkey, setHotkey] = useState(dictationKey || "`");
-  const [transcriptionBaseUrl, setTranscriptionBaseUrl] = useState(cloudTranscriptionBaseUrl);
-  const [reasoningBaseUrl, setReasoningBaseUrl] = useState(cloudReasoningBaseUrl);
   const [agentName, setAgentName] = useState("Agent");
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
-  const {
-    alertDialog,
-    confirmDialog,
-    showAlertDialog,
-    showConfirmDialog,
-    hideAlertDialog,
-    hideConfirmDialog,
-  } = useDialogs();
+  const { alertDialog, confirmDialog, showAlertDialog, hideAlertDialog, hideConfirmDialog } =
+    useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
   // Ref to prevent React.StrictMode double-invocation of auto-registration
@@ -125,214 +99,16 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     showErrorToast: false,
   });
 
-  const trimmedReasoningBase = (reasoningBaseUrl || "").trim();
-  const normalizedReasoningBaseUrl = useMemo(
-    () => normalizeBaseUrl(trimmedReasoningBase),
-    [trimmedReasoningBase]
-  );
-  const hasEnteredReasoningBase = trimmedReasoningBase.length > 0;
-  const isValidReasoningBase = Boolean(
-    normalizedReasoningBaseUrl && normalizedReasoningBaseUrl.includes("://")
-  );
-  const usingCustomReasoningBase = hasEnteredReasoningBase && isValidReasoningBase;
-
-  const [customReasoningModels, setCustomReasoningModels] = useState<ReasoningModelOption[]>([]);
-  const [customModelsLoading, setCustomModelsLoading] = useState(false);
-  const [customModelsError, setCustomModelsError] = useState<string | null>(null);
-
-  const defaultReasoningModels = useMemo<ReasoningModelOption[]>(() => {
-    const provider = REASONING_PROVIDERS.openai;
-    return (
-      provider?.models?.map((model) => ({
-        value: model.value,
-        label: model.label,
-        description: model.description,
-      })) ?? []
-    );
-  }, []);
-
-  const displayedReasoningModels = usingCustomReasoningBase
-    ? customReasoningModels
-    : defaultReasoningModels;
-
-  const reasoningModelsEndpoint = useMemo(() => {
-    const base =
-      usingCustomReasoningBase && normalizedReasoningBaseUrl
-        ? normalizedReasoningBaseUrl
-        : API_ENDPOINTS.OPENAI_BASE;
-    return buildApiUrl(base, "/models");
-  }, [usingCustomReasoningBase, normalizedReasoningBaseUrl]);
-
-  const persistOpenAIKey = useCallback(
-    async (nextKey: string) => {
-      const trimmedKey = nextKey.trim();
-      if (useLocalWhisper || !trimmedKey) {
-        return false;
-      }
-      if (trimmedKey === openaiApiKey.trim()) {
-        return true;
-      }
-
-      try {
-        if (window.electronAPI?.saveOpenAIKey) {
-          await window.electronAPI.saveOpenAIKey(trimmedKey);
-        }
-        updateApiKeys({ openaiApiKey: trimmedKey });
-        return true;
-      } catch (error) {
-        console.error("Failed to save OpenAI key", error);
-        return false;
-      }
-    },
-    [useLocalWhisper, updateApiKeys, openaiApiKey]
-  );
-
-  const reasoningModelRef = useRef(reasoningModel);
-  useEffect(() => {
-    reasoningModelRef.current = reasoningModel;
-  }, [reasoningModel]);
-
-  useEffect(() => {
-    if (!usingCustomReasoningBase) {
-      setCustomModelsLoading(false);
-      setCustomReasoningModels([]);
-      setCustomModelsError(null);
-      return;
-    }
-
-    if (!normalizedReasoningBaseUrl) {
-      return;
-    }
-
-    let isCancelled = false;
-    const controller = new AbortController();
-
-    const loadModels = async () => {
-      setCustomModelsLoading(true);
-      setCustomModelsError(null);
-      try {
-        if (!isSecureEndpoint(normalizedReasoningBaseUrl)) {
-          throw new Error("HTTPS required (HTTP allowed for local network only).");
-        }
-
-        const headers: Record<string, string> = {};
-        const trimmedKey = apiKey.trim();
-        if (trimmedKey) {
-          headers.Authorization = `Bearer ${trimmedKey}`;
-        }
-
-        const response = await fetch(buildApiUrl(normalizedReasoningBaseUrl, "/models"), {
-          method: "GET",
-          headers,
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => "");
-          throw new Error(
-            errorText
-              ? `${response.status} ${errorText.slice(0, 200)}`
-              : `${response.status} ${response.statusText}`
-          );
-        }
-
-        const payload = await response.json().catch(() => ({}));
-        const rawModels = Array.isArray(payload?.data)
-          ? payload.data
-          : Array.isArray(payload?.models)
-            ? payload.models
-            : [];
-
-        const mappedModels = (rawModels as Array<any>)
-          .map((item) => {
-            const value = item?.id || item?.name;
-            if (!value) {
-              return null;
-            }
-
-            const description =
-              typeof item?.description === "string" && item.description.trim()
-                ? item.description.trim()
-                : undefined;
-            const ownedBy = typeof item?.owned_by === "string" ? item.owned_by : undefined;
-
-            return {
-              value,
-              label: item?.id || item?.name || value,
-              description: description || (ownedBy ? `Owner: ${ownedBy}` : undefined),
-            } as ReasoningModelOption;
-          })
-          .filter(Boolean) as ReasoningModelOption[];
-
-        if (isCancelled) {
-          return;
-        }
-
-        setCustomReasoningModels(mappedModels);
-
-        if (mappedModels.length === 0) {
-          setCustomModelsError("No models returned by this endpoint.");
-        } else if (
-          reasoningModelRef.current &&
-          !mappedModels.some((model) => model.value === reasoningModelRef.current)
-        ) {
-          updateReasoningSettings({ reasoningModel: "" });
-        }
-      } catch (error) {
-        if (isCancelled) {
-          return;
-        }
-        if ((error as Error).name === "AbortError") {
-          return;
-        }
-        setCustomModelsError((error as Error).message || "Unable to load models from endpoint.");
-        setCustomReasoningModels([]);
-      } finally {
-        if (!isCancelled) {
-          setCustomModelsLoading(false);
-        }
-      }
-    };
-
-    loadModels();
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [usingCustomReasoningBase, normalizedReasoningBaseUrl, apiKey, updateReasoningSettings]);
-
-  useEffect(() => {
-    if (!usingCustomReasoningBase && defaultReasoningModels.length > 0) {
-      if (
-        reasoningModel &&
-        !defaultReasoningModels.some((model) => model.value === reasoningModel)
-      ) {
-        updateReasoningSettings({ reasoningModel: "" });
-      }
-    }
-  }, [usingCustomReasoningBase, defaultReasoningModels, reasoningModel, updateReasoningSettings]);
-
-  const activeReasoningModelLabel = useMemo(() => {
-    const match = displayedReasoningModels.find((model) => model.value === reasoningModel);
-    return match?.label || reasoningModel;
-  }, [displayedReasoningModels, reasoningModel]);
-
   const permissionsHook = usePermissions(showAlertDialog);
-  const { pasteFromClipboard } = useClipboard(showAlertDialog);
+  useClipboard(showAlertDialog); // Initialize clipboard hook for permission checks
 
   const steps = [
     { title: "Welcome", icon: Sparkles },
-    { title: "Privacy", icon: Lock },
     { title: "Setup", icon: Settings },
     { title: "Permissions", icon: Shield },
     { title: "Hotkey & Test", icon: Command },
     { title: "Agent Name", icon: User },
   ];
-
-  const updateProcessingMode = (useLocal: boolean) => {
-    updateTranscriptionSettings({ useLocalWhisper: useLocal });
-  };
 
   // Check if selected whisper model is downloaded
   useEffect(() => {
@@ -362,10 +138,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   }, [currentStep]);
 
-  // Auto-register default hotkey when entering the hotkey step (step 4)
+  // Auto-register default hotkey when entering the hotkey step (step 3)
   useEffect(() => {
-    if (currentStep !== 4) {
-      // Reset initialization flag when leaving step 4
+    if (currentStep !== 3) {
+      // Reset initialization flag when leaving step 3
       hotkeyStepInitializedRef.current = false;
       return;
     }
@@ -428,26 +204,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [hotkey, showAlertDialog]);
 
   const saveSettings = useCallback(async () => {
-    const normalizedTranscriptionBase = (transcriptionBaseUrl || "").trim();
-    const normalizedReasoningBaseValue = (reasoningBaseUrl || "").trim();
-
-    // Detect if user entered a non-default custom URL
-    const isCustomTranscriptionUrl =
-      normalizedTranscriptionBase !== "" &&
-      normalizedTranscriptionBase !== API_ENDPOINTS.TRANSCRIPTION_BASE &&
-      normalizedTranscriptionBase !== "https://api.openai.com/v1";
-
-    updateTranscriptionSettings({
-      whisperModel,
-      preferredLanguage,
-      cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
-      cloudTranscriptionProvider: isCustomTranscriptionUrl ? "custom" : "openai",
-    });
-    updateReasoningSettings({
-      useReasoningModel,
-      reasoningModel,
-      cloudReasoningBaseUrl: normalizedReasoningBaseValue,
-    });
+    // Settings are already persisted via updateTranscriptionSettings and updateReasoningSettings
+    // Just need to save hotkey and agent name
     const hotkeyRegistered = await ensureHotkeyRegistered();
     if (!hotkeyRegistered) {
       return false;
@@ -461,28 +219,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       permissionsHook.accessibilityPermissionGranted.toString()
     );
     localStorage.setItem("onboardingCompleted", "true");
-    const trimmedApiKey = apiKey.trim();
-    const skipAuth = trimmedApiKey.length === 0;
-    localStorage.setItem("skipAuth", skipAuth.toString());
 
-    if (!useLocalWhisper && trimmedApiKey) {
-      await persistOpenAIKey(trimmedApiKey);
-    }
     return true;
   }, [
-    whisperModel,
     hotkey,
-    preferredLanguage,
     agentName,
     permissionsHook.micPermissionGranted,
     permissionsHook.accessibilityPermissionGranted,
-    useLocalWhisper,
-    apiKey,
-    transcriptionBaseUrl,
-    reasoningBaseUrl,
-    updateTranscriptionSettings,
-    updateReasoningSettings,
-    persistOpenAIKey,
     setDictationKey,
     ensureHotkeyRegistered,
   ]);
@@ -493,20 +236,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     const newStep = currentStep + 1;
-
-    if (currentStep === 2 && !useLocalWhisper) {
-      await persistOpenAIKey(apiKey);
-    }
-
     setCurrentStep(newStep);
 
-    // Show dictation panel when moving from permissions step (3) to hotkey & test step (4)
-    if (currentStep === 3 && newStep === 4) {
+    // Show dictation panel when moving from permissions step (2) to hotkey & test step (3)
+    if (currentStep === 2 && newStep === 3) {
       if (window.electronAPI?.showDictationPanel) {
         window.electronAPI.showDictationPanel();
       }
     }
-  }, [currentStep, setCurrentStep, steps.length, useLocalWhisper, persistOpenAIKey, apiKey]);
+  }, [currentStep, setCurrentStep, steps.length]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -551,182 +289,50 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 1: // Choose Mode
+      case 1: // Setup - Choose Mode & Configure
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">
-                Choose Your Processing Mode
-              </h2>
-              <p className="text-stone-600">How would you like to convert your speech to text?</p>
-            </div>
-
-            <ProcessingModeSelector
-              useLocalWhisper={useLocalWhisper}
-              setUseLocalWhisper={updateProcessingMode}
-            />
-          </div>
-        );
-
-      case 2: // Setup Processing
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {useLocalWhisper ? "Local Processing Setup" : "Cloud Processing Setup"}
-              </h2>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Setup Your Transcription</h2>
               <p className="text-gray-600">
-                {useLocalWhisper
-                  ? "Let's install and configure Whisper on your device"
-                  : "Enter your OpenAI API key to get started"}
+                Choose between local (private) or cloud (faster) processing
               </p>
             </div>
 
-            {useLocalWhisper ? (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Mic className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Choose Your Model</h3>
-                  <p className="text-sm text-gray-600">
-                    Select a transcription model based on your needs.
-                  </p>
-                </div>
+            {/* Mode Selector */}
+            <div className="space-y-4">
+              <ProcessingModeSelector
+                useLocalWhisper={useLocalWhisper}
+                setUseLocalWhisper={(useLocal) =>
+                  updateTranscriptionSettings({ useLocalWhisper: useLocal })
+                }
+              />
+            </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Model quality
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    Larger models are more accurate but slower. Base is recommended for most users.
-                  </p>
-                </div>
-
-                <LocalWhisperPicker
-                  selectedModel={whisperModel}
-                  onModelSelect={setWhisperModel}
-                  onModelDownloaded={(modelId) => {
-                    setIsModelDownloaded(true);
-                    setWhisperModel(modelId);
-                  }}
-                  variant="onboarding"
-                />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Key className="w-8 h-8 text-blue-600" />
-                  </div>
-                </div>
-
-                <ApiKeyInput
-                  apiKey={apiKey}
-                  setApiKey={setApiKey}
-                  label="OpenAI API Key"
-                  helpText={
-                    <>
-                      Need an API key?{" "}
-                      <a
-                        href="https://platform.openai.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        platform.openai.com
-                      </a>
-                    </>
-                  }
-                />
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">
-                    Custom transcription base URL (optional)
-                  </label>
-                  <Input
-                    value={transcriptionBaseUrl}
-                    onChange={(event) => setTranscriptionBaseUrl(event.target.value)}
-                    placeholder="https://api.openai.com/v1"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-blue-800">
-                    Cloud transcription requests default to{" "}
-                    <code>{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>. Enter an OpenAI-compatible base
-                    URL to override.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">
-                    Custom reasoning base URL (optional)
-                  </label>
-                  <Input
-                    value={reasoningBaseUrl}
-                    onChange={(event) => setReasoningBaseUrl(event.target.value)}
-                    placeholder="https://api.openai.com/v1"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-blue-800">
-                    We'll load AI models from this endpoint's /v1/models route during setup. Leave
-                    empty to use the default OpenAI endpoint.
-                  </p>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t border-blue-100">
-                  <h4 className="font-medium text-blue-900">Reasoning Model</h4>
-                  {hasEnteredReasoningBase ? (
-                    <>
-                      {isValidReasoningBase ? (
-                        <p className="text-xs text-blue-800 break-all">
-                          Models load from <code>{reasoningModelsEndpoint}</code>.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-amber-600">
-                          Enter a full base URL including protocol (e.g. https://server/v1).
-                        </p>
-                      )}
-                      {isValidReasoningBase && customModelsLoading && (
-                        <p className="text-xs text-blue-600">Fetching models...</p>
-                      )}
-                      {isValidReasoningBase && customModelsError && (
-                        <p className="text-xs text-red-600">{customModelsError}</p>
-                      )}
-                      {isValidReasoningBase &&
-                        !customModelsLoading &&
-                        !customModelsError &&
-                        displayedReasoningModels.length === 0 && (
-                          <p className="text-xs text-amber-600">
-                            No models returned by this endpoint.
-                          </p>
-                        )}
-                    </>
-                  ) : (
-                    <p className="text-xs text-blue-800">
-                      Using OpenAI defaults from <code>{reasoningModelsEndpoint}</code>.
-                    </p>
-                  )}
-                  <ModelCardList
-                    models={displayedReasoningModels}
-                    selectedModel={reasoningModel}
-                    onModelSelect={(modelId) =>
-                      updateReasoningSettings({ reasoningModel: modelId })
-                    }
-                  />
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">How to get your API key:</h4>
-                  <ol className="text-sm text-blue-800 space-y-1">
-                    <li>1. Go to platform.openai.com</li>
-                    <li>2. Sign in to your account</li>
-                    <li>3. Navigate to API Keys</li>
-                    <li>4. Create a new secret key</li>
-                    <li>5. Copy and paste it here</li>
-                  </ol>
-                </div>
-              </div>
-            )}
+            {/* Configuration for selected mode */}
+            <TranscriptionModelPicker
+              selectedCloudProvider={cloudTranscriptionProvider}
+              onCloudProviderSelect={(provider) =>
+                updateTranscriptionSettings({ cloudTranscriptionProvider: provider })
+              }
+              selectedCloudModel={cloudTranscriptionModel}
+              onCloudModelSelect={(model) =>
+                updateTranscriptionSettings({ cloudTranscriptionModel: model })
+              }
+              selectedLocalModel={whisperModel}
+              onLocalModelSelect={setWhisperModel}
+              useLocalWhisper={useLocalWhisper}
+              onModeChange={() => {}}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+              setCloudTranscriptionBaseUrl={(url) =>
+                updateTranscriptionSettings({ cloudTranscriptionBaseUrl: url })
+              }
+              variant="onboarding"
+            />
 
             {/* Language Selection - shown for both modes */}
             <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
@@ -744,13 +350,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <p className="text-xs text-gray-600 mt-1">
                 {useLocalWhisper
                   ? "Helps Whisper better understand your speech"
-                  : "Improves OpenAI transcription speed and accuracy. AI text enhancement is enabled by default."}
+                  : "Improves transcription speed and accuracy. AI text enhancement is enabled by default."}
               </p>
             </div>
           </div>
         );
 
-      case 3: // Permissions
+      case 2: // Permissions
         const platform = permissionsHook.pasteToolsInfo?.platform;
         const isMacOS = platform === "darwin";
 
@@ -819,7 +425,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 4: // Hotkey & Test (combined)
+      case 3: // Hotkey & Test (combined)
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -877,7 +483,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 5: // Agent Name (final step)
+      case 4: // Agent Name (final step)
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -919,26 +525,25 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return true;
+        return true; // Welcome
       case 1:
-        return true; // Mode selection
-      case 2:
+        // Setup - check if configuration is complete
         if (useLocalWhisper) {
           return whisperModel !== "" && isModelDownloaded;
         } else {
-          const trimmedKey = apiKey.trim();
-          if (!trimmedKey) {
-            return false;
-          }
-          if (!hasEnteredReasoningBase) {
+          // For cloud mode, check if appropriate API key is set
+          if (cloudTranscriptionProvider === "openai") {
+            return openaiApiKey.trim().length > 0;
+          } else if (cloudTranscriptionProvider === "groq") {
+            return groqApiKey.trim().length > 0;
+          } else if (cloudTranscriptionProvider === "custom") {
+            // Custom can work without API key for local endpoints
             return true;
           }
-          if (!isValidReasoningBase) {
-            return false;
-          }
-          return customReasoningModels.length > 0 && !customModelsLoading && !customModelsError;
+          return openaiApiKey.trim().length > 0; // Default to OpenAI
         }
-      case 3: {
+      case 2: {
+        // Permissions
         if (!permissionsHook.micPermissionGranted) {
           return false;
         }
@@ -948,9 +553,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         }
         return true;
       }
-      case 4:
+      case 3:
         return hotkey.trim() !== ""; // Hotkey & Test step
-      case 5:
+      case 4:
         return agentName.trim() !== ""; // Agent name step (final)
       default:
         return false;
@@ -973,12 +578,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     <div
       className="h-screen flex flex-col bg-gradient-to-br from-stone-50 via-white to-blue-50/30"
       style={{
-        backgroundImage: `repeating-linear-gradient(
-          transparent,
-          transparent 24px,
-          #e7e5e4 24px,
-          #e7e5e4 25px
-        )`,
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
@@ -999,8 +598,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         description={alertDialog.description}
         onOk={() => {}}
       />
-      {/* Left margin line for entire page */}
-      <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>
 
       {/* Title Bar */}
       <div className="flex-shrink-0 z-10">

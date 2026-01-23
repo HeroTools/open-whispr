@@ -34,9 +34,7 @@ class LlamaServerManager {
     const arch = process.arch;
     const platformArch = `${platform}-${arch}`;
     const binaryName =
-      platform === "win32"
-        ? `llama-server-${platformArch}.exe`
-        : `llama-server-${platformArch}`;
+      platform === "win32" ? `llama-server-${platformArch}.exe` : `llama-server-${platformArch}`;
     const genericName = platform === "win32" ? "llama-server.exe" : "llama-server";
 
     const candidates = [];
@@ -189,9 +187,7 @@ class LlamaServerManager {
         const info = getProcessInfo ? getProcessInfo() : {};
         const stderr = info.stderr ? info.stderr.trim().slice(0, 500) : "";
         const details = stderr || (info.exitCode !== null ? `exit code: ${info.exitCode}` : "");
-        throw new Error(
-          `llama-server process died during startup${details ? `: ${details}` : ""}`
-        );
+        throw new Error(`llama-server process died during startup${details ? `: ${details}` : ""}`);
       }
 
       pollCount++;

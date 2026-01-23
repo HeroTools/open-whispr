@@ -155,7 +155,12 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             setTestResult(`Local model error: ${result.error}`);
           }
         } else {
-          const result = await ReasoningService.processText(testText, reasoningModel, agentName, {});
+          const result = await ReasoningService.processText(
+            testText,
+            reasoningModel,
+            agentName,
+            {}
+          );
           setTestResult(result);
         }
       } finally {
@@ -220,9 +225,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                     <strong>Instruction mode</strong>: When you directly address "{agentName}" with
                     a command, it executes the instruction AND cleans up the text
                   </li>
-                  <li>
-                    The AI intelligently detects which mode to use based on context
-                  </li>
+                  <li>The AI intelligently detects which mode to use based on context</li>
                 </ul>
               </div>
             </div>
@@ -363,9 +366,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               />
               <div className="flex items-center justify-between mt-2">
                 <div className="text-xs text-gray-500 space-y-1">
-                  <p>
-                    Try: "um so like I think we should uh schedule a meeting" (cleanup mode)
-                  </p>
+                  <p>Try: "um so like I think we should uh schedule a meeting" (cleanup mode)</p>
                   <p>
                     Try: "Hey {agentName}, make this more formal: gonna send the report tomorrow"
                     (instruction mode)

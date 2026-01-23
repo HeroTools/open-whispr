@@ -54,8 +54,7 @@ class LlamaCppInstaller {
     return new Promise((resolve) => {
       // Cross-platform command resolution
       const checkCmd = this.platform === "win32" ? "where" : "which";
-      const binaryNames =
-        this.platform === "win32" ? ["llama-server.exe"] : ["llama-server"];
+      const binaryNames = this.platform === "win32" ? ["llama-server.exe"] : ["llama-server"];
 
       let found = false;
       let remaining = binaryNames.length;
