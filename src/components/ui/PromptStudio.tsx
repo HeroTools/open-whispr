@@ -130,13 +130,13 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
       if (!useReasoningModel) {
         setTestResult(
-          "AI text enhancement is disabled. Enable it in AI Models settings to test prompts."
+          "AI text enhancement is disabled. Enable it in AI Text Cleanup settings to test prompts."
         );
         return;
       }
 
       if (!reasoningModel) {
-        setTestResult("No reasoning model selected. Choose one in AI Models settings.");
+        setTestResult("No reasoning model selected. Choose one in AI Text Cleanup settings.");
         return;
       }
 
@@ -148,7 +148,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       if (providerConfig.baseStorageKey) {
         const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
         if (!baseUrl) {
-          setTestResult(`${providerLabel} base URL missing. Add it in AI Models settings.`);
+          setTestResult(`${providerLabel} base URL missing. Add it in AI Text Cleanup settings.`);
           return;
         }
       }
@@ -348,7 +348,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               <div>
                 <p className="text-sm text-amber-800 font-medium">AI Text Enhancement Disabled</p>
                 <p className="text-sm text-amber-700 mt-1">
-                  Enable AI text enhancement in the AI Models settings to test prompts.
+                  Enable AI text enhancement in the AI Text Cleanup settings to test prompts.
                 </p>
               </div>
             </div>
