@@ -72,6 +72,23 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
   // Load saved custom prompt from localStorage
   useEffect(() => {
+    // Migrate legacy two-prompt system (customPrompts → customUnifiedPrompt)
+    const legacyPrompts = localStorage.getItem("customPrompts");
+    if (legacyPrompts && !localStorage.getItem("customUnifiedPrompt")) {
+      try {
+        const parsed = JSON.parse(legacyPrompts);
+        // Use agent prompt as base (it's more comprehensive than regular prompt)
+        if (parsed.agent) {
+          localStorage.setItem("customUnifiedPrompt", JSON.stringify(parsed.agent));
+          localStorage.removeItem("customPrompts");
+          console.log("Migrated legacy custom prompts to unified format");
+        }
+      } catch (e) {
+        console.error("Failed to migrate legacy custom prompts:", e);
+      }
+    }
+
+    // Load current custom prompt
     const customPrompt = localStorage.getItem("customUnifiedPrompt");
     if (customPrompt) {
       try {

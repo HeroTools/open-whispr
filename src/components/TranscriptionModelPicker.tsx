@@ -251,19 +251,30 @@ export default function TranscriptionModelPicker({
     [onLocalProviderSelect]
   );
 
-  const handleBaseUrlBlur = useCallback(async () => {
+  const handleBaseUrlBlur = useCallback(() => {
     if (!setCloudTranscriptionBaseUrl || selectedCloudProvider !== "custom") return;
 
-    const { validateTranscriptionSettings } = await import("../utils/urlUtils");
-    const validated = validateTranscriptionSettings(cloudTranscriptionBaseUrl);
+    const trimmed = (cloudTranscriptionBaseUrl || "").trim();
+    if (!trimmed) return;
 
-    // Update to normalized URL
-    setCloudTranscriptionBaseUrl(validated.baseUrl);
+    // Normalize the URL using the existing util from constants
+    const { normalizeBaseUrl } = require("../config/constants");
+    const normalized = normalizeBaseUrl(trimmed);
 
-    // Auto-detect known providers
-    if (validated.provider !== "custom" && validated.provider !== selectedCloudProvider) {
-      onCloudProviderSelect(validated.provider);
-      onCloudModelSelect("whisper-1");
+    if (normalized && normalized !== cloudTranscriptionBaseUrl) {
+      setCloudTranscriptionBaseUrl(normalized);
+    }
+
+    // Auto-detect if this matches a known provider
+    if (normalized) {
+      for (const provider of cloudProviders) {
+        const providerNormalized = normalizeBaseUrl(provider.baseUrl);
+        if (normalized === providerNormalized) {
+          onCloudProviderSelect(provider.id);
+          onCloudModelSelect("whisper-1");
+          break;
+        }
+      }
     }
   }, [
     cloudTranscriptionBaseUrl,
@@ -271,6 +282,7 @@ export default function TranscriptionModelPicker({
     setCloudTranscriptionBaseUrl,
     onCloudProviderSelect,
     onCloudModelSelect,
+    cloudProviders,
   ]);
 
   const handleDelete = useCallback(
