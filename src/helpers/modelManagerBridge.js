@@ -32,22 +32,52 @@ class ModelNotFoundError extends ModelError {
 
 class ModelManager {
   constructor() {
-    this.modelsDir = this.getModelsDir();
+    this.modelsDir = null;
     this.downloadProgress = new Map();
     this.activeDownloads = new Map();
     this.activeRequests = new Map(); // Track HTTP requests for cancellation
     this.serverManager = new LlamaServerManager();
     this.currentServerModelId = null;
+    this._initialized = false;
+
+    // IMPORTANT: Do NOT call app.getPath() here!
+    // It can hang or fail before app.whenReady() in Electron 36+.
+    // Initialization will happen on first use via ensureInitialized().
+  }
+
+  /**
+   * Ensures the manager is initialized. Safe to call multiple times.
+   * This must be called before any operation that requires modelsDir.
+   */
+  ensureInitialized() {
+    if (this._initialized) return;
+
+    // Check if app is ready before accessing app.getPath()
+    if (!app.isReady()) {
+      throw new Error(
+        "ModelManager cannot be initialized before app.whenReady(). " +
+          "This is a programming error - ensure ModelManager methods are only called after app is ready."
+      );
+    }
+
+    this.modelsDir = this.getModelsDir();
+    this._initialized = true;
+    // Don't await - let this run in background
     this.ensureModelsDirExists();
   }
 
   getModelsDir() {
-    const homeDir = app.getPath("home");
+    const os = require("os");
+    // Use os.homedir() as fallback if app.getPath fails
+    const homeDir = app.isReady() ? app.getPath("home") : os.homedir();
     return path.join(homeDir, ".cache", "openwhispr", "models");
   }
 
   async ensureModelsDirExists() {
     try {
+      if (!this.modelsDir) {
+        this.ensureInitialized();
+      }
       await fsPromises.mkdir(this.modelsDir, { recursive: true });
     } catch (error) {
       console.error("Failed to create models directory:", error);
@@ -65,6 +95,7 @@ class ModelManager {
   }
 
   async getAllModels() {
+    this.ensureInitialized();
     try {
       const models = [];
 
@@ -95,6 +126,7 @@ class ModelManager {
   }
 
   async isModelDownloaded(modelId) {
+    this.ensureInitialized();
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) return false;
 
@@ -131,6 +163,7 @@ class ModelManager {
   }
 
   async downloadModel(modelId, onProgress) {
+    this.ensureInitialized();
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) {
       throw new ModelNotFoundError(modelId);
@@ -378,6 +411,7 @@ class ModelManager {
   }
 
   async deleteModel(modelId) {
+    this.ensureInitialized();
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) {
       throw new ModelNotFoundError(modelId);
@@ -391,6 +425,7 @@ class ModelManager {
   }
 
   async deleteAllModels() {
+    this.ensureInitialized();
     try {
       if (fsPromises.rm) {
         await fsPromises.rm(this.modelsDir, { recursive: true, force: true });
@@ -419,6 +454,7 @@ class ModelManager {
   }
 
   async runInference(modelId, prompt, options = {}) {
+    this.ensureInitialized();
     const startTime = Date.now();
     debugLogger.logReasoning("INFERENCE_START", {
       modelId,
@@ -526,6 +562,7 @@ class ModelManager {
 
   async prewarmServer(modelId) {
     if (!modelId) return false;
+    this.ensureInitialized();
 
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) return false;

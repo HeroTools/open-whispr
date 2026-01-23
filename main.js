@@ -294,7 +294,15 @@ if (gotSingleInstanceLock) {
   });
 
   app.whenReady().then(() => {
-    startApp();
+    startApp().catch((error) => {
+      console.error("CRITICAL: Failed to start app:", error);
+      // Show an error dialog before crashing
+      dialog.showErrorBox(
+        "OpenWhispr Startup Error",
+        `Failed to start the application:\n\n${error.message}\n\nPlease report this issue.`
+      );
+      app.exit(1);
+    });
   });
 
   app.on("window-all-closed", () => {

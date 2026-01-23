@@ -93,14 +93,20 @@ class WindowManager {
   }
 
   async loadMainWindow() {
-    const appUrl = DevServerManager.getAppUrl(false);
     if (process.env.NODE_ENV === "development") {
+      const appUrl = DevServerManager.getAppUrl(false);
       const isReady = await DevServerManager.waitForDevServer();
       if (!isReady) {
         // Dev server not ready, continue anyway
       }
+      this.mainWindow.loadURL(appUrl);
+    } else {
+      // Production: use loadFile() for better compatibility with Electron 36+
+      const fileInfo = DevServerManager.getAppFilePath(false);
+      if (fileInfo) {
+        this.mainWindow.loadFile(fileInfo.path, { query: fileInfo.query });
+      }
     }
-    this.mainWindow.loadURL(appUrl);
   }
 
   createHotkeyCallback() {
@@ -267,14 +273,20 @@ class WindowManager {
   }
 
   async loadControlPanel() {
-    const appUrl = DevServerManager.getAppUrl(true);
     if (process.env.NODE_ENV === "development") {
+      const appUrl = DevServerManager.getAppUrl(true);
       const isReady = await DevServerManager.waitForDevServer();
       if (!isReady) {
         console.error("Dev server not ready for control panel, loading anyway...");
       }
+      this.controlPanelWindow.loadURL(appUrl);
+    } else {
+      // Production: use loadFile() for better compatibility with Electron 36+
+      const fileInfo = DevServerManager.getAppFilePath(true);
+      if (fileInfo) {
+        this.controlPanelWindow.loadFile(fileInfo.path, { query: fileInfo.query });
+      }
     }
-    this.controlPanelWindow.loadURL(appUrl);
   }
 
   showDictationPanel(options = {}) {
