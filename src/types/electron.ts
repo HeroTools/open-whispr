@@ -98,16 +98,9 @@ export interface PasteToolsResult {
   method: string | null;
   requiresPermission: boolean;
   isWayland?: boolean;
+  xwaylandAvailable?: boolean;
   tools?: string[];
   recommendedInstall?: string;
-}
-
-// Additional interface missing from preload.js
-export interface SaveSettings {
-  useLocalWhisper: boolean;
-  apiKey: string;
-  whisperModel: string;
-  hotkey: string;
 }
 
 declare global {
@@ -138,25 +131,14 @@ declare global {
       createProductionEnvFile: (key: string) => Promise<void>;
       getAnthropicKey: () => Promise<string | null>;
       saveAnthropicKey: (key: string) => Promise<void>;
+      saveAllKeysToEnv: () => Promise<{ success: boolean; path: string }>;
 
       // Clipboard operations
       readClipboard: () => Promise<string>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
-      pasteFromClipboard: () => Promise<{ success: boolean; error?: string }>;
-      pasteFromClipboardWithFallback: () => Promise<{ success: boolean; error?: string }>;
       checkPasteTools: () => Promise<PasteToolsResult>;
 
-      // Settings
-      getSettings: () => Promise<any>;
-      updateSettings: (settings: any) => Promise<void>;
-
       // Audio
-      getAudioDevices: () => Promise<MediaDeviceInfo[]>;
-      transcribeAudio: (audioData: ArrayBuffer) => Promise<{
-        success: boolean;
-        text?: string;
-        error?: string;
-      }>;
       onNoAudioDetected: (callback: (event: any, data?: any) => void) => (() => void) | void;
 
       // Whisper operations (whisper.cpp)
@@ -189,6 +171,7 @@ declare global {
       modelDelete: (modelId: string) => Promise<void>;
       modelDeleteAll: () => Promise<{ success: boolean; error?: string; code?: string }>;
       modelCheckRuntime: () => Promise<boolean>;
+      modelCancelDownload: (modelId: string) => Promise<{ success: boolean; error?: string }>;
       onModelDownloadProgress: (callback: (event: any, data: any) => void) => (() => void) | void;
 
       // Local reasoning
@@ -226,8 +209,6 @@ declare global {
       // App management
       appQuit: () => Promise<void>;
       cleanupApp: () => Promise<{ success: boolean; message: string }>;
-      getTranscriptionHistory: () => Promise<any[]>;
-      clearTranscriptionHistory: () => Promise<void>;
 
       // Update operations
       checkForUpdates: () => Promise<UpdateCheckResult>;
@@ -246,14 +227,8 @@ declare global {
       ) => (() => void) | void;
       onUpdateError: (callback: (event: any, error: any) => void) => (() => void) | void;
 
-      // Settings management (used by OnboardingFlow but not in preload.js)
-      saveSettings?: (settings: SaveSettings) => Promise<void>;
-
       // External URL operations
       openExternal: (url: string) => Promise<{ success: boolean; error?: string } | void>;
-
-      // Event listener cleanup
-      removeAllListeners: (channel: string) => void;
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
@@ -287,6 +262,18 @@ declare global {
         scope?: string;
         source?: string;
       }) => Promise<void>;
+      getDebugState: () => Promise<{
+        enabled: boolean;
+        logPath: string | null;
+        logLevel: string;
+      }>;
+      setDebugLogging: (enabled: boolean) => Promise<{
+        success: boolean;
+        enabled?: boolean;
+        logPath?: string | null;
+        error?: string;
+      }>;
+      openLogsFolder: () => Promise<{ success: boolean; error?: string }>;
 
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<FFmpegAvailabilityResult>;

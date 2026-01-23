@@ -4,75 +4,82 @@ const path = require("path");
 const {
   downloadFile,
   extractZip,
+  findBinaryInDir,
   parseArgs,
   setExecutable,
   cleanupFiles,
 } = require("./lib/download-utils");
 
-const WHISPER_CPP_REPO = "OpenWhispr/whisper.cpp";
-const WHISPER_CPP_VERSION = "0.0.6";
+const LLAMA_CPP_REPO = "ggerganov/llama.cpp";
+const LLAMA_CPP_VERSION = "b4621";
 
 const BINARIES = {
   "darwin-arm64": {
-    zipName: "whisper-server-darwin-arm64.zip",
-    binaryName: "whisper-server-darwin-arm64",
-    outputName: "whisper-server-darwin-arm64",
+    zipName: `llama-${LLAMA_CPP_VERSION}-bin-macos-arm64.zip`,
+    binaryPath: "build/bin/llama-server",
+    outputName: "llama-server-darwin-arm64",
   },
   "darwin-x64": {
-    zipName: "whisper-server-darwin-x64.zip",
-    binaryName: "whisper-server-darwin-x64",
-    outputName: "whisper-server-darwin-x64",
+    zipName: `llama-${LLAMA_CPP_VERSION}-bin-macos-x64.zip`,
+    binaryPath: "build/bin/llama-server",
+    outputName: "llama-server-darwin-x64",
   },
   "win32-x64": {
-    zipName: "whisper-server-win32-x64-cpu.zip",
-    binaryName: "whisper-server-win32-x64-cpu.exe",
-    outputName: "whisper-server-win32-x64.exe",
+    zipName: `llama-${LLAMA_CPP_VERSION}-bin-win-avx2-x64.zip`,
+    binaryPath: "build/bin/llama-server.exe",
+    outputName: "llama-server-win32-x64.exe",
   },
   "linux-x64": {
-    zipName: "whisper-server-linux-x64-cpu.zip",
-    binaryName: "whisper-server-linux-x64-cpu",
-    outputName: "whisper-server-linux-x64",
+    zipName: `llama-${LLAMA_CPP_VERSION}-bin-ubuntu-x64.zip`,
+    binaryPath: "build/bin/llama-server",
+    outputName: "llama-server-linux-x64",
   },
 };
 
 const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
 
 function getDownloadUrl(zipName) {
-  return `https://github.com/${WHISPER_CPP_REPO}/releases/download/${WHISPER_CPP_VERSION}/${zipName}`;
+  return `https://github.com/${LLAMA_CPP_REPO}/releases/download/${LLAMA_CPP_VERSION}/${zipName}`;
 }
 
 async function downloadBinary(platformArch, config) {
   if (!config) {
-    console.log(`  [server] ${platformArch}: Not supported`);
+    console.log(`  ${platformArch}: Not supported`);
     return false;
   }
 
   const outputPath = path.join(BIN_DIR, config.outputName);
 
   if (fs.existsSync(outputPath)) {
-    console.log(`  [server] ${platformArch}: Already exists, skipping`);
+    console.log(`  ${platformArch}: Already exists, skipping`);
     return true;
   }
 
   const url = getDownloadUrl(config.zipName);
-  console.log(`  [server] ${platformArch}: Downloading from ${url}`);
+  console.log(`  ${platformArch}: Downloading from ${url}`);
 
   const zipPath = path.join(BIN_DIR, config.zipName);
 
   try {
     await downloadFile(url, zipPath);
 
-    const extractDir = path.join(BIN_DIR, `temp-whisper-${platformArch}`);
+    const extractDir = path.join(BIN_DIR, `temp-llama-${platformArch}`);
     fs.mkdirSync(extractDir, { recursive: true });
     extractZip(zipPath, extractDir);
 
-    const binaryPath = path.join(extractDir, config.binaryName);
-    if (fs.existsSync(binaryPath)) {
+    const binaryName = path.basename(config.binaryPath);
+    let binaryPath = path.join(extractDir, config.binaryPath);
+
+    if (!fs.existsSync(binaryPath)) {
+      binaryPath = findBinaryInDir(extractDir, binaryName);
+    }
+
+    if (binaryPath && fs.existsSync(binaryPath)) {
       fs.copyFileSync(binaryPath, outputPath);
       setExecutable(outputPath);
-      console.log(`  [server] ${platformArch}: Extracted to ${config.outputName}`);
+      console.log(`  ${platformArch}: Extracted to ${config.outputName}`);
     } else {
-      console.error(`  [server] ${platformArch}: Binary not found in archive`);
+      console.error(`  ${platformArch}: Binary '${binaryName}' not found in archive`);
       return false;
     }
 
@@ -80,14 +87,14 @@ async function downloadBinary(platformArch, config) {
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
     return true;
   } catch (error) {
-    console.error(`  [server] ${platformArch}: Failed - ${error.message}`);
+    console.error(`  ${platformArch}: Failed - ${error.message}`);
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
     return false;
   }
 }
 
 async function main() {
-  console.log(`\nDownloading whisper-server binaries (${WHISPER_CPP_VERSION})...\n`);
+  console.log(`\nDownloading llama-server binaries (${LLAMA_CPP_VERSION})...\n`);
 
   fs.mkdirSync(BIN_DIR, { recursive: true });
 
@@ -109,7 +116,7 @@ async function main() {
     }
 
     if (args.shouldCleanup) {
-      cleanupFiles(BIN_DIR, "whisper-server", `whisper-server-${args.platformArch}`);
+      cleanupFiles(BIN_DIR, "llama-server", `llama-server-${args.platformArch}`);
     }
   } else {
     console.log("Downloading binaries for all platforms:");
@@ -120,16 +127,16 @@ async function main() {
 
   console.log("\n---");
 
-  const files = fs.readdirSync(BIN_DIR).filter((f) => f.startsWith("whisper-server"));
+  const files = fs.readdirSync(BIN_DIR).filter((f) => f.startsWith("llama-server"));
   if (files.length > 0) {
-    console.log("Available whisper-server binaries:\n");
+    console.log("Available llama-server binaries:\n");
     files.forEach((f) => {
       const stats = fs.statSync(path.join(BIN_DIR, f));
       console.log(`  - ${f} (${Math.round(stats.size / 1024 / 1024)}MB)`);
     });
   } else {
     console.log("No binaries downloaded yet.");
-    console.log(`\nMake sure release exists: https://github.com/${WHISPER_CPP_REPO}/releases`);
+    console.log(`\nCheck: https://github.com/${LLAMA_CPP_REPO}/releases/tag/${LLAMA_CPP_VERSION}`);
   }
 }
 

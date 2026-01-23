@@ -209,14 +209,7 @@ class WhisperServerManager {
     const ffmpegPath = this.getFFmpegPath();
     const spawnEnv = { ...process.env };
 
-    const args = [
-      "--model",
-      modelPath,
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(this.port),
-    ];
+    const args = ["--model", modelPath, "--host", "127.0.0.1", "--port", String(this.port)];
 
     // Only add --convert flag if FFmpeg is available
     this.canConvert = !!ffmpegPath;

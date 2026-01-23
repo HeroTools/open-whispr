@@ -5,6 +5,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.15] - 2026-01-22
+
+### Added
+- **ydotool Fallback for Linux**: Added ydotool as additional fallback option for clipboard paste operations on Linux systems
+
+### Changed
+- **Unified Prompt System**: Refactored to single intelligent prompt system for improved consistency and maintainability
+- **whisper.cpp Remote**: Refactored remote whisper.cpp integration for better reliability
+
+## [1.2.14] - 2026-01-22
+
+### Added
+- **Troubleshooting Mode**: New debug logging section in settings with toggle for detailed diagnostic logs, log file path display, and direct folder access for easier support
+- **Custom Transcription Endpoint**: Support for custom OpenAI-compatible transcription endpoints with configurable base URLs
+- **Enhanced Clipboard Debugging**: Detailed clipboard operation logging for diagnosing paste issues across platforms
+
+### Changed
+- **API Key Management**: Consolidated and refactored API key persistence with improved .env file handling and recovery mechanisms
+- **Local Network Detection**: Refactored URL detection into reusable utility for better code organization
+- **Electron Builder**: Updated to latest version for improved build performance
+
+### Fixed
+- **Windows/Linux Taskbar**: Prevented dual taskbar entries on Windows and Linux by properly configuring window behavior
+- **Single Instance Lock**: Enforced single instance lock with cleaner window state checks
+- **Model Provider Consistency**: Removed redundant fallbacks and ensured consistent use of getModelProvider()
+- **Cross-env Support**: Fixed Windows compatibility in pack script using cross-env
+- **Linux X11 Paste**: Improved paste reliability by capturing target window ID upfront with windowactivate --sync, added xdotool type fallback for terminals
+- **Tray Minimize**: Fixed minimize to tray functionality
+
+## [1.2.12] - 2026-01-20
+
+### Added
+- **LLM Download Cancellation**: Added ability to cancel in-progress local LLM model downloads with throttled progress updates to prevent UI flashing
+
+### Changed
+- **Gemini Model Updates**: Updated Gemini models to latest versions
+- **Linux Wayland Improvements**: Improved Wayland paste detection with GNOME-specific handling and XWayland fallback support
+- **whisper.cpp CUDA Support**: Updated whisper.cpp download script to include CUDA-enabled binaries
+
+### Fixed
+- **Windows Paste Delay**: Adjusted paste delay timing on Windows for more reliable text insertion
+- **Blank Audio Prevention**: Fixed issue where blank/silent audio recordings would paste empty text
+- **Newline Handling**: Fixed newline formatting issues in transcribed text
+
+## [1.2.11] - 2026-01-18
+
+### Fixed
+- **ASAR Path Resolution**: Fixed path resolution issues for bundled resources in packaged builds
+- **Update Checker**: Fixed auto-update checker initialization
+- **Build Includes**: Ensured services and models are properly included in production builds
+- **OS Module Import**: Fixed OS module import ordering
+
+## [1.2.10] - 2026-01-17
+
+### Fixed
+- **Streaming Backpressure**: Fixed proper streaming backpressure handling in audio processing
+- **Quit and Install**: Fixed update installation on app quit
+
+## [1.2.9] - 2026-01-17
+
+### Fixed
+- **Path Resolution**: Improved path resolution for better cross-platform compatibility
+
 ## [1.2.8] - 2026-01-16
 
 ### Added

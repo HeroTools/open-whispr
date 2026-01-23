@@ -20,14 +20,11 @@ class EnvironmentManager {
       path.join(process.resourcesPath, "app", ".env"),
     ];
 
-    let envLoaded = false;
-
     for (const envPath of possibleEnvPaths) {
       try {
         if (fs.existsSync(envPath)) {
           const result = require("dotenv").config({ path: envPath });
           if (!result.error) {
-            envLoaded = true;
             break;
           }
         }
@@ -37,129 +34,89 @@ class EnvironmentManager {
     }
   }
 
+  _getKey(envVarName) {
+    return process.env[envVarName] || "";
+  }
+
+  _saveKey(envVarName, key) {
+    process.env[envVarName] = key;
+    return { success: true };
+  }
+
   getOpenAIKey() {
-    const apiKey = process.env.OPENAI_API_KEY;
-    return apiKey || "";
+    return this._getKey("OPENAI_API_KEY");
   }
 
   saveOpenAIKey(key) {
-    try {
-      // Update the environment variable in memory for immediate use
-      process.env.OPENAI_API_KEY = key;
-      // Persist all keys to file
-      this.saveAllKeysToEnvFile();
-      return { success: true };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    return this._saveKey("OPENAI_API_KEY", key);
   }
 
   getAnthropicKey() {
-    const apiKey = process.env.ANTHROPIC_API_KEY;
-    return apiKey || "";
+    return this._getKey("ANTHROPIC_API_KEY");
   }
 
   saveAnthropicKey(key) {
-    try {
-      // Update the environment variable in memory for immediate use
-      process.env.ANTHROPIC_API_KEY = key;
-      // Persist all keys to file
-      this.saveAllKeysToEnvFile();
-      return { success: true };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    return this._saveKey("ANTHROPIC_API_KEY", key);
   }
 
   getGeminiKey() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    return apiKey || "";
+    return this._getKey("GEMINI_API_KEY");
   }
 
   saveGeminiKey(key) {
-    try {
-      // Update the environment variable in memory for immediate use
-      process.env.GEMINI_API_KEY = key;
-      // Persist all keys to file
-      this.saveAllKeysToEnvFile();
-      return { success: true };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    return this._saveKey("GEMINI_API_KEY", key);
   }
 
   getGroqKey() {
-    const apiKey = process.env.GROQ_API_KEY;
-    return apiKey || "";
+    return this._getKey("GROQ_API_KEY");
   }
 
   saveGroqKey(key) {
-    try {
-      // Update the environment variable in memory for immediate use
-      process.env.GROQ_API_KEY = key;
-      // Persist all keys to file
-      this.saveAllKeysToEnvFile();
-      return { success: true };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    return this._saveKey("GROQ_API_KEY", key);
   }
 
   createProductionEnvFile(apiKey) {
-    try {
-      const envPath = path.join(app.getPath("userData"), ".env");
+    const envPath = path.join(app.getPath("userData"), ".env");
 
-      const envContent = `# OpenWhispr Environment Variables
+    const envContent = `# OpenWhispr Environment Variables
 # This file was created automatically for production use
 OPENAI_API_KEY=${apiKey}
 `;
 
-      fs.writeFileSync(envPath, envContent, "utf8");
+    fs.writeFileSync(envPath, envContent, "utf8");
 
-      require("dotenv").config({ path: envPath });
+    require("dotenv").config({ path: envPath });
 
-      return { success: true, path: envPath };
-    } catch (error) {
-      // Silent error - already throwing
-      throw error;
-    }
+    return { success: true, path: envPath };
   }
 
   saveAllKeysToEnvFile() {
-    try {
-      const envPath = path.join(app.getPath("userData"), ".env");
+    const envPath = path.join(app.getPath("userData"), ".env");
 
-      // Build env content with all current keys
-      let envContent = `# OpenWhispr Environment Variables
+    // Build env content with all current keys
+    let envContent = `# OpenWhispr Environment Variables
 # This file was created automatically for production use
 `;
 
-      if (process.env.OPENAI_API_KEY) {
-        envContent += `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}\n`;
-      }
-      if (process.env.ANTHROPIC_API_KEY) {
-        envContent += `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}\n`;
-      }
-      if (process.env.GEMINI_API_KEY) {
-        envContent += `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}\n`;
-      }
-      if (process.env.GROQ_API_KEY) {
-        envContent += `GROQ_API_KEY=${process.env.GROQ_API_KEY}\n`;
-      }
-
-      fs.writeFileSync(envPath, envContent, "utf8");
-
-      // Reload the env file
-      require("dotenv").config({ path: envPath });
-
-      return { success: true, path: envPath };
-    } catch (error) {
-      throw error;
+    if (process.env.OPENAI_API_KEY) {
+      envContent += `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}\n`;
     }
+    if (process.env.ANTHROPIC_API_KEY) {
+      envContent += `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}\n`;
+    }
+    if (process.env.GEMINI_API_KEY) {
+      envContent += `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}\n`;
+    }
+    if (process.env.GROQ_API_KEY) {
+      envContent += `GROQ_API_KEY=${process.env.GROQ_API_KEY}\n`;
+    }
+
+    fs.writeFileSync(envPath, envContent, "utf8");
+
+    // Reload the env file
+    require("dotenv").config({ path: envPath });
+
+    return { success: true, path: envPath };
   }
 }
 

@@ -60,9 +60,7 @@ export const LANGUAGE_OPTIONS = [
 ];
 
 // Languages that can be selected (excludes "auto")
-export const SELECTABLE_LANGUAGES = LANGUAGE_OPTIONS.filter(
-  (lang) => lang.value !== "auto"
-);
+export const SELECTABLE_LANGUAGES = LANGUAGE_OPTIONS.filter((lang) => lang.value !== "auto");
 
 // Get language label by code
 export const getLanguageLabel = (code: string): string => {

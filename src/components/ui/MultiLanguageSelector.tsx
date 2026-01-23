@@ -151,15 +151,11 @@ export default function MultiLanguageSelector({
                       type="button"
                       onClick={() => handleSetDefault(langCode)}
                       className={`p-0.5 rounded-full transition-colors ${
-                        isDefault
-                          ? "text-blue-600"
-                          : "text-gray-400 hover:text-yellow-500"
+                        isDefault ? "text-blue-600" : "text-gray-400 hover:text-yellow-500"
                       }`}
                       title={isDefault ? "Default language" : "Set as default"}
                     >
-                      <Star
-                        className={`w-3.5 h-3.5 ${isDefault ? "fill-current" : ""}`}
-                      />
+                      <Star className={`w-3.5 h-3.5 ${isDefault ? "fill-current" : ""}`} />
                     </button>
                   )}
                   <span>{getLanguageName(langCode)}</span>

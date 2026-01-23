@@ -11,15 +11,16 @@ function killProcess(proc, signal = "SIGTERM") {
 
   try {
     if (process.platform === "win32") {
-      // On Windows, just call kill() without a signal - it terminates the process
-      // For SIGKILL equivalent, we use taskkill /F for forceful termination
       if (signal === "SIGKILL") {
-        spawn("taskkill", ["/pid", proc.pid.toString(), "/f", "/t"], { detached: true });
+        const taskkill = spawn("taskkill", ["/pid", proc.pid.toString(), "/f", "/t"], {
+          stdio: "ignore",
+          windowsHide: true,
+        });
+        taskkill.on("error", () => {});
       } else {
         proc.kill();
       }
     } else {
-      // On Unix-like systems, use the signal as intended
       proc.kill(signal);
     }
   } catch (e) {

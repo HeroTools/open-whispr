@@ -42,11 +42,75 @@ class DevServerManager {
     if (process.env.NODE_ENV === "development") {
       return isControlPanel ? "http://localhost:5174/?panel=true" : "http://localhost:5174/";
     } else {
-      const path = require("path");
-      const htmlPath = path.join(__dirname, "..", "..", "src", "dist", "index.html");
-      const url = isControlPanel ? `file://${htmlPath}?panel=true` : `file://${htmlPath}`;
-      return url;
+      // For production, return null - caller should use loadFile() instead
+      return null;
     }
+  }
+
+  /**
+   * Get the path to the index.html file for production builds.
+   * In Electron 36+, loadFile() is preferred over loadURL() with file:// protocol.
+   * @param {boolean} isControlPanel - Whether this is for the control panel
+   * @returns {{ path: string, query: object } | null} - Path info for loadFile() or null for dev
+   */
+  static getAppFilePath(isControlPanel = false) {
+    const isDev = process.env.NODE_ENV === "development";
+    console.log("[DevServerManager] getAppFilePath called:", {
+      isControlPanel,
+      NODE_ENV: process.env.NODE_ENV,
+      isDev,
+    });
+
+    if (isDev) {
+      console.log("[DevServerManager] Development mode - returning null for dev server");
+      return null; // Use getAppUrl() for dev server
+    }
+
+    const path = require("path");
+    const { app } = require("electron");
+    const fs = require("fs");
+
+    // In packaged app, files are relative to app.getAppPath()
+    // which points to the app.asar or app directory
+    const appPath = app.getAppPath();
+    const htmlPath = path.join(appPath, "src", "dist", "index.html");
+
+    console.log("[DevServerManager] Production mode paths:", {
+      appPath,
+      htmlPath,
+      htmlExists: fs.existsSync(htmlPath),
+      resourcesPath: process.resourcesPath,
+    });
+
+    // Log additional diagnostic info
+    try {
+      const distDir = path.join(appPath, "src", "dist");
+      if (fs.existsSync(distDir)) {
+        console.log(
+          "[DevServerManager] dist directory contents:",
+          fs.readdirSync(distDir).slice(0, 10)
+        );
+      } else {
+        console.error("[DevServerManager] dist directory does not exist:", distDir);
+        // Try alternative paths
+        const altPaths = [
+          path.join(appPath, "dist", "index.html"),
+          path.join(process.resourcesPath || "", "app", "src", "dist", "index.html"),
+          path.join(process.resourcesPath || "", "src", "dist", "index.html"),
+        ];
+        console.log("[DevServerManager] Checking alternative paths:");
+        for (const altPath of altPaths) {
+          console.log(`  ${altPath}: ${fs.existsSync(altPath)}`);
+        }
+      }
+    } catch (err) {
+      console.error("[DevServerManager] Error checking paths:", err.message);
+    }
+
+    return {
+      path: htmlPath,
+      query: isControlPanel ? { panel: "true" } : {},
+    };
   }
 }
 

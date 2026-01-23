@@ -178,6 +178,10 @@ sudo pacman -S xdotool
 ```
 
 **Wayland (Modern Linux Desktop)**:
+
+Choose **one** of the following paste tools:
+
+**Option 1: wtype** (requires virtual keyboard protocol support)
 ```bash
 # Debian/Ubuntu
 sudo apt install wtype
@@ -187,15 +191,35 @@ sudo dnf install wtype
 
 # Arch
 sudo pacman -S wtype
-
-# Alternative: ydotool (requires uinput permissions)
-sudo apt install ydotool  # or equivalent for your distro
-
-# On KDE Wayland you will additionally need `kdotool` to detect if a terminal is focused for automatically pasting with Ctrl+Shift+V instead of Ctrl+V. Automatic terminal detection on non-KDE Wayland is not yet supported.
-sudo apt install kdotool # or equivalent for your distro
 ```
 
-> ℹ️ **Note**: OpenWhispr automatically detects your display server (X11 vs Wayland) and uses the appropriate paste tool. If no paste tool is installed, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
+**Option 2: ydotool** (works on more compositors, requires daemon)
+```bash
+# Debian/Ubuntu
+sudo apt install ydotool
+sudo systemctl enable --now ydotoold
+
+# Fedora/RHEL
+sudo dnf install ydotool
+sudo systemctl enable --now ydotoold
+
+# Arch
+sudo pacman -S ydotool
+sudo systemctl enable --now ydotoold
+```
+
+**Terminal Detection** (Optional - for KDE Wayland users):
+```bash
+# On KDE Wayland, kdotool enables automatic terminal detection
+# to paste with Ctrl+Shift+V instead of Ctrl+V
+sudo apt install kdotool  # Debian/Ubuntu
+sudo dnf install kdotool  # Fedora/RHEL
+sudo pacman -S kdotool    # Arch
+```
+
+> ℹ️ **Note**: OpenWhispr automatically tries paste tools in this order: `wtype` → `ydotool` → `xdotool` (for XWayland apps). If no paste tool is installed, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
+
+> ⚠️ **ydotool Requirements**: The `ydotoold` daemon must be running for ydotool to work. Start it manually with `sudo ydotoold &` or enable the systemd service as shown above.
 
 > 🔒 **Flatpak Security**: The Flatpak package includes sandboxing with explicit permissions for microphone, clipboard, and file access. See [electron-builder.json](electron-builder.json) for the complete permission list.
 
@@ -490,7 +514,11 @@ OpenWhispr is designed with privacy and security in mind:
    - If bundled binary fails, install via `brew install whisper-cpp` (macOS)
    - Check available disk space for models
 5. **Global hotkey conflicts**: Change the hotkey in the Control Panel - any key can be used
-6. **Text not pasting**: Check accessibility permissions and try manual paste with Cmd+V
+6. **Text not pasting**:
+   - macOS: Check accessibility permissions (System Settings → Privacy & Security → Accessibility)
+   - Linux X11: Install `xdotool`
+   - Linux Wayland: Install `wtype` or `ydotool` (ensure `ydotoold` daemon is running)
+   - All platforms: Text is always copied to clipboard - use Ctrl+V (Cmd+V on macOS) to paste manually
 7. **Panel position**: If the panel appears off-screen, restart the app to reset position
 
 ### Getting Help
@@ -530,7 +558,7 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.2.7
+OpenWhispr is actively maintained and ready for production use. Current version: 1.2.12
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support (macOS, Windows, Linux)

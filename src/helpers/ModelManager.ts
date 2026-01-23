@@ -7,6 +7,7 @@ import { app } from "electron";
 import { modelRegistry } from "../models/ModelRegistry";
 import { inferenceConfig } from "../config/InferenceConfig";
 import { MODEL_CONSTRAINTS } from "../config/constants";
+import { parseLlamaCppOutput } from "../utils/llamaOutputParser";
 
 // Error types
 export class ModelError extends Error {
@@ -314,7 +315,7 @@ class ModelManager {
 
       llamaProcess.on("close", (code) => {
         if (code === 0) {
-          resolve(output.trim());
+          resolve(parseLlamaCppOutput(output));
         } else {
           reject(new ModelError(`Inference failed: ${error}`, "INFERENCE_ERROR"));
         }

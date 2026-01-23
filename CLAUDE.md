@@ -42,7 +42,10 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 ### Helper Modules (src/helpers/)
 
 - **audioManager.js**: Handles audio device management
-- **clipboard.js**: Cross-platform clipboard operations with AppleScript fallback
+- **clipboard.js**: Cross-platform clipboard operations
+  - macOS: AppleScript-based paste with accessibility permission check
+  - Windows: PowerShell SendKeys with nircmd.exe fallback
+  - Linux: Multi-tool support (wtype, ydotool, xdotool) for X11/Wayland compatibility
 - **database.js**: SQLite operations for transcription history
 - **debugLogger.js**: Debug logging system with file output
 - **devServerManager.js**: Vite dev server integration
@@ -300,8 +303,12 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
    - Verify FFmpeg is executable
 
 3. **Clipboard Not Working**:
-   - macOS: Check accessibility permissions
-   - Use AppleScript fallback on macOS
+   - macOS: Check accessibility permissions (required for AppleScript paste)
+   - Linux X11: Install `xdotool` for paste simulation
+   - Linux Wayland: Install `wtype` or `ydotool` (requires `ydotoold` daemon)
+     - GNOME Wayland: Use `xdotool` for XWayland apps only
+     - Other Wayland compositors: `wtype` (if compositor supports virtual keyboard) or `ydotool`
+   - Windows: PowerShell SendKeys (built-in) or nircmd.exe (bundled)
 
 4. **Build Issues**:
    - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
@@ -337,6 +344,12 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - No standardized URL scheme for system settings (user must open manually)
 - Privacy settings button hidden in UI (not applicable on Linux)
 - Recommend `pavucontrol` for audio device management
+- **Clipboard paste tools** (at least one required for auto-paste):
+  - **X11**: `xdotool` (recommended)
+  - **Wayland** (non-GNOME): `wtype` (requires virtual keyboard protocol) or `ydotool` (requires `ydotoold` daemon)
+  - **GNOME Wayland**: `xdotool` for XWayland apps only (native Wayland apps require manual paste)
+  - Terminal detection: Auto-detects terminal emulators and uses Ctrl+Shift+V
+  - Fallback: Text copied to clipboard with manual paste instructions
 
 ## Code Style and Conventions
 

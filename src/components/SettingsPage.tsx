@@ -23,13 +23,15 @@ import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
+import DeveloperSection from "./DeveloperSection";
 
 export type SettingsSectionType =
   | "general"
   | "transcription"
   | "aiModels"
   | "agentConfig"
-  | "prompts";
+  | "prompts"
+  | "developer";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
@@ -51,6 +53,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     allowOpenAIFallback,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
+    cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     useReasoningModel,
     reasoningModel,
@@ -630,13 +633,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             <TranscriptionModelPicker
               selectedCloudProvider={cloudTranscriptionProvider}
-              onCloudProviderSelect={(providerId) => {
-                setCloudTranscriptionProvider(providerId);
-                const provider = getTranscriptionProviders().find((p) => p.id === providerId);
-                if (provider) {
-                  setCloudTranscriptionBaseUrl(provider.baseUrl);
-                }
-              }}
+              onCloudProviderSelect={setCloudTranscriptionProvider}
               selectedCloudModel={cloudTranscriptionModel}
               onCloudModelSelect={setCloudTranscriptionModel}
               selectedLocalModel={whisperModel}
@@ -650,6 +647,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setOpenaiApiKey={setOpenaiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
+              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
               variant="settings"
             />
 
@@ -723,7 +722,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </p>
             </div>
 
-            <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
+            <div className="space-y-4 p-4 bg-linear-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
               <h4 className="font-medium text-purple-900 mb-3">💡 How to use agent names:</h4>
               <ul className="text-sm text-purple-800 space-y-2">
                 <li>• Say "Hey {agentName}, write a formal email" for specific instructions</li>
@@ -784,16 +783,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Prompt Management</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Prompt Studio</h3>
               <p className="text-sm text-gray-600 mb-6">
-                View and customize the prompts that power OpenWhispr's AI text processing. Adjust
-                these to change how your transcriptions are formatted and enhanced.
+                OpenWhispr uses a single unified system prompt that handles both text cleanup and
+                instruction detection. View, customize, and test the prompt that powers your AI
+                assistant.
               </p>
             </div>
 
             <PromptStudio />
           </div>
         );
+
+      case "developer":
+        return <DeveloperSection />;
+
       default:
         return null;
     }

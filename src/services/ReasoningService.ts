@@ -3,14 +3,17 @@ import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS, getSystemPrompt } from "../config/prompts";
 import logger from "../utils/logger";
 import { getLanguageName } from "../utils/languages";
 import type { LanguageContext } from "../types/language";
+import { isSecureEndpoint } from "../utils/urlUtils";
 
-export const DEFAULT_PROMPTS = {
-  agent: `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`,
-  regular: `Process and improve the following text:\n\n{{text}}\n\nImproved text:`,
-};
+/**
+ * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
+ * Kept for backwards compatibility with PromptStudio UI
+ */
+export const DEFAULT_PROMPTS = LEGACY_PROMPTS;
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
@@ -105,12 +108,9 @@ INSTRUCTIONS:
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
-      // Security: Only allow HTTPS endpoints (except localhost for development)
-      const isLocalhost =
-        normalized.includes("://localhost") || normalized.includes("://127.0.0.1");
-      if (!normalized.startsWith("https://") && !isLocalhost) {
+      if (!isSecureEndpoint(normalized)) {
         logger.logReasoning("OPENAI_BASE_REJECTED", {
-          reason: "Non-HTTPS endpoint rejected for security",
+          reason: "HTTPS required (HTTP allowed for local network only)",
           attempted: normalized,
         });
         return API_ENDPOINTS.OPENAI_BASE;
@@ -261,7 +261,7 @@ INSTRUCTIONS:
     languageContext: LanguageContext | null = null
   ): Promise<string> {
     const systemPrompt = this.buildSystemPrompt(languageContext);
-    const userPrompt = this.getReasoningPrompt(text, agentName, config);
+    const userPrompt = text;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -511,7 +511,7 @@ INSTRUCTIONS:
 
     try {
       const systemPrompt = this.buildSystemPrompt(languageContext);
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
+      const userPrompt = text;
 
       // Build messages array (used by both APIs)
       const messages = [
@@ -722,12 +722,10 @@ INSTRUCTIONS:
         hasLanguageContext: !!languageContext,
       });
 
-      const result = await window.electronAPI.processAnthropicReasoning(
-        text,
-        model,
-        agentName,
-        { ...config, systemPrompt }
-      );
+      const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
+        ...config,
+        systemPrompt,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -845,7 +843,7 @@ INSTRUCTIONS:
 
     try {
       const systemPrompt = this.buildSystemPrompt(languageContext);
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
+      const userPrompt = text;
 
       const requestBody = {
         contents: [
@@ -862,7 +860,7 @@ INSTRUCTIONS:
           maxOutputTokens:
             config.maxTokens ||
             Math.max(
-              2000, // Gemini 2.5 Pro needs more tokens for its thinking process
+              2000, // Gemini 3 Pro need more tokens for thinking processes
               this.calculateMaxTokens(
                 text.length,
                 TOKEN_LIMITS.MIN_TOKENS_GEMINI,
@@ -1056,6 +1054,20 @@ INSTRUCTIONS:
         name: (error as Error).name,
       });
       return false;
+    }
+  }
+
+  /**
+   * Clear cached API key for a specific provider or all providers.
+   * Call this when API keys change to ensure fresh keys are used.
+   */
+  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq"): void {
+    if (provider) {
+      this.apiKeyCache.delete(provider);
+      logger.logReasoning("API_KEY_CACHE_CLEARED", { provider });
+    } else {
+      this.apiKeyCache.clear();
+      logger.logReasoning("API_KEY_CACHE_CLEARED", { provider: "all" });
     }
   }
 
