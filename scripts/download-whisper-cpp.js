@@ -24,13 +24,13 @@ const BINARIES = {
     outputName: "whisper-server-darwin-x64",
   },
   "win32-x64": {
-    zipName: "whisper-server-win32-x64.zip",
-    binaryName: "whisper-server-win32-x64.exe",
+    zipName: "whisper-server-win32-x64-cpu.zip",
+    binaryName: "whisper-server-win32-x64-cpu.exe",
     outputName: "whisper-server-win32-x64.exe",
   },
   "linux-x64": {
-    zipName: "whisper-server-linux-x64.zip",
-    binaryName: "whisper-server-linux-x64",
+    zipName: "whisper-server-linux-x64-cpu.zip",
+    binaryName: "whisper-server-linux-x64-cpu",
     outputName: "whisper-server-linux-x64",
   },
 };
