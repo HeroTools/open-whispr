@@ -39,9 +39,8 @@ class WindowManager {
 
     if (process.platform === "darwin") {
       this.mainWindow.setSkipTaskbar(false);
-    } else if (process.platform === "win32") {
-      // Keep in taskbar on Windows for discoverability
-      this.mainWindow.setSkipTaskbar(false);
+    } else {
+      this.mainWindow.setSkipTaskbar(true);
     }
 
     this.setMainWindowInteractivity(false);
@@ -228,11 +227,7 @@ class WindowManager {
     this.controlPanelWindow.on("close", (event) => {
       if (!this.isQuitting) {
         event.preventDefault();
-        if (process.platform === "darwin") {
-          this.controlPanelWindow.minimize();
-        } else {
-          this.hideControlPanelToTray();
-        }
+        this.hideControlPanelToTray();
       }
     });
 

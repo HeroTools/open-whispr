@@ -1,5 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useLocalStorage } from "./useLocalStorage";
+import { useDebouncedCallback } from "./useDebouncedCallback";
 import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
@@ -147,14 +148,57 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Sync API keys from main process on first mount (if localStorage was cleared)
+  const hasRunApiKeySync = useRef(false);
+  useEffect(() => {
+    if (hasRunApiKeySync.current) return;
+    hasRunApiKeySync.current = true;
+
+    const syncKeys = async () => {
+      if (typeof window === "undefined" || !window.electronAPI) return;
+
+      // Only sync keys that are missing from localStorage
+      if (!openaiApiKey) {
+        const envKey = await window.electronAPI.getOpenAIKey?.();
+        if (envKey) setOpenaiApiKeyLocal(envKey);
+      }
+      if (!anthropicApiKey) {
+        const envKey = await window.electronAPI.getAnthropicKey?.();
+        if (envKey) setAnthropicApiKeyLocal(envKey);
+      }
+      if (!geminiApiKey) {
+        const envKey = await window.electronAPI.getGeminiKey?.();
+        if (envKey) setGeminiApiKeyLocal(envKey);
+      }
+      if (!groqApiKey) {
+        const envKey = await window.electronAPI.getGroqKey?.();
+        if (envKey) setGroqApiKeyLocal(envKey);
+      }
+    };
+
+    syncKeys().catch(() => {
+      // Silently ignore sync errors
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const debouncedPersistToEnv = useDebouncedCallback(() => {
+    if (typeof window !== "undefined" && window.electronAPI?.saveAllKeysToEnv) {
+      window.electronAPI.saveAllKeysToEnv().catch(() => {
+        // Silently ignore persistence errors
+      });
+    }
+  }, 1000);
+
   // Wrapped setters that sync to Electron IPC and invalidate cache
   const setOpenaiApiKey = useCallback(
     (key: string) => {
       setOpenaiApiKeyLocal(key);
       window.electronAPI?.saveOpenAIKey?.(key);
       ReasoningService.clearApiKeyCache("openai");
+      debouncedPersistToEnv();
     },
-    [setOpenaiApiKeyLocal]
+    [setOpenaiApiKeyLocal, debouncedPersistToEnv]
   );
 
   const setAnthropicApiKey = useCallback(
@@ -162,8 +206,9 @@ export function useSettings() {
       setAnthropicApiKeyLocal(key);
       window.electronAPI?.saveAnthropicKey?.(key);
       ReasoningService.clearApiKeyCache("anthropic");
+      debouncedPersistToEnv();
     },
-    [setAnthropicApiKeyLocal]
+    [setAnthropicApiKeyLocal, debouncedPersistToEnv]
   );
 
   const setGeminiApiKey = useCallback(
@@ -171,8 +216,9 @@ export function useSettings() {
       setGeminiApiKeyLocal(key);
       window.electronAPI?.saveGeminiKey?.(key);
       ReasoningService.clearApiKeyCache("gemini");
+      debouncedPersistToEnv();
     },
-    [setGeminiApiKeyLocal]
+    [setGeminiApiKeyLocal, debouncedPersistToEnv]
   );
 
   const setGroqApiKey = useCallback(
@@ -180,8 +226,9 @@ export function useSettings() {
       setGroqApiKeyLocal(key);
       window.electronAPI?.saveGroqKey?.(key);
       ReasoningService.clearApiKeyCache("groq");
+      debouncedPersistToEnv();
     },
-    [setGroqApiKeyLocal]
+    [setGroqApiKeyLocal, debouncedPersistToEnv]
   );
 
   // Hotkey

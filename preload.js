@@ -70,9 +70,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   createProductionEnvFile: (key) =>
     ipcRenderer.invoke("create-production-env-file", key),
 
-  // Settings management
-  saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
-
   // Clipboard functions
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
@@ -163,6 +160,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
 
+  saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
+
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),
@@ -177,9 +176,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
   llamaCppUninstall: () => ipcRenderer.invoke("llama-cpp-uninstall"),
-  
+
+  // llama-server
+  llamaServerStart: (modelId) => ipcRenderer.invoke("llama-server-start", modelId),
+  llamaServerStop: () => ipcRenderer.invoke("llama-server-stop"),
+  llamaServerStatus: () => ipcRenderer.invoke("llama-server-status"),
+
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
+
+  // Debug logging management
+  getDebugState: () => ipcRenderer.invoke("get-debug-state"),
+  setDebugLogging: (enabled) => ipcRenderer.invoke("set-debug-logging", enabled),
+  openLogsFolder: () => ipcRenderer.invoke("open-logs-folder"),
 
   // System settings helpers for microphone/audio permissions
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
@@ -209,10 +218,5 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const listener = (_event, data) => callback?.(data);
     ipcRenderer.on("hotkey-registration-failed", listener);
     return () => ipcRenderer.removeListener("hotkey-registration-failed", listener);
-  },
-
-  // Remove all listeners for a channel
-  removeAllListeners: (channel) => {
-    ipcRenderer.removeAllListeners(channel);
   },
 });

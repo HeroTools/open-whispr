@@ -1,12 +1,9 @@
-const { spawn } = require("child_process");
 const { app } = require("electron");
 const fs = require("fs");
 const fsPromises = require("fs").promises;
 const os = require("os");
 const path = require("path");
-const crypto = require("crypto");
 const https = require("https");
-const { runCommand, killProcess, TIMEOUTS } = require("../utils/process");
 const debugLogger = require("./debugLogger");
 const WhisperServerManager = require("./whisperServer");
 
@@ -43,14 +40,12 @@ const WHISPER_MODELS = {
 
 class WhisperManager {
   constructor() {
-    this.cachedBinaryPath = null;
     this.cachedFFmpegPath = null;
     this.currentDownloadProcess = null;
     this.ffmpegAvailabilityCache = { result: null, expiresAt: 0 };
     this.isInitialized = false;
-    // Server manager for HTTP-based transcription (faster for repeated use)
+    // Server manager for HTTP-based transcription
     this.serverManager = new WhisperServerManager();
-    this.useServerMode = true; // Prefer server mode when available
     this.currentServerModel = null;
     // Force CPU variant (set to true after GPU variant fails)
     this.forceCpuVariant = false;
@@ -75,289 +70,10 @@ class WhisperManager {
     return path.join(this.getModelsDir(), `ggml-${modelName}.bin`);
   }
 
-  getBundledBinaryPath() {
-    const platform = process.platform;
-    const arch = process.arch;
-    const platformArch = `${platform}-${arch}`;
-
-    // Determine variant for Windows/Linux (GPU if available, CPU otherwise)
-    let variant = "";
-    if ((platform === "win32" || platform === "linux") && !this.forceCpuVariant) {
-      const gpuDetector = require("./gpuDetector");
-      const recommendedVariant = gpuDetector.getRecommendedVariantSync();
-      variant = recommendedVariant === "gpu" ? "-gpu" : "";
-    }
-
-    // Binary naming: whisper-cpp-{platform}-{arch}[-gpu][.exe]
-    const platformBinaryName =
-      platform === "win32"
-        ? `whisper-cpp-${platformArch}${variant}.exe`
-        : `whisper-cpp-${platformArch}${variant}`;
-    const genericBinaryName = platform === "win32" ? "whisper-cpp.exe" : "whisper-cpp";
-
-    const candidates = [];
-    const binDirs = [];
-
-    // Production: extraResources copies to {resourcesPath}/bin/
-    if (process.resourcesPath) {
-      const prodBinDir = path.join(process.resourcesPath, "bin");
-      binDirs.push(prodBinDir);
-      candidates.push(
-        path.join(prodBinDir, platformBinaryName),
-        path.join(prodBinDir, genericBinaryName)
-      );
-    }
-
-    // Development: check project resources
-    const devBinDir = path.join(__dirname, "..", "..", "resources", "bin");
-    binDirs.push(devBinDir);
-    candidates.push(
-      path.join(devBinDir, platformBinaryName),
-      path.join(devBinDir, genericBinaryName)
-    );
-
-    // Try to find the binary
-    let foundPath = null;
-    let usedGpuVariant = false;
-
-    for (const candidate of candidates) {
-      if (fs.existsSync(candidate)) {
-        try {
-          const stats = fs.statSync(candidate);
-          const isGpuVariant = candidate.includes("-gpu");
-          const variantLabel = isGpuVariant ? "GPU (CUDA)" : platform === "darwin" ? "Metal" : "CPU";
-
-          debugLogger.info("Found whisper.cpp binary", {
-            path: candidate,
-            size: stats.size,
-            variant: variantLabel,
-            platform,
-            forceCpu: this.forceCpuVariant,
-          });
-
-          // Log prominently for user visibility
-          console.log(`[Whisper] Using ${variantLabel} variant: ${path.basename(candidate)}`);
-
-          foundPath = candidate;
-          usedGpuVariant = isGpuVariant;
-          break;
-        } catch (statError) {
-          debugLogger.warn("Binary exists but cannot be accessed", {
-            path: candidate,
-            error: statError.message,
-          });
-        }
-      }
-    }
-
-    // If GPU variant not found but was requested, try CPU fallback
-    if (!foundPath && variant === "-gpu") {
-      debugLogger.warn("GPU variant not found, falling back to CPU variant");
-      const cpuBinaryName =
-        platform === "win32" ? `whisper-cpp-${platformArch}.exe` : `whisper-cpp-${platformArch}`;
-
-      for (const binDir of binDirs) {
-        const cpuCandidate = path.join(binDir, cpuBinaryName);
-        if (fs.existsSync(cpuCandidate)) {
-          debugLogger.info("Using CPU variant as fallback", { path: cpuCandidate });
-          console.log(`[Whisper] GPU variant unavailable, using CPU variant: ${path.basename(cpuCandidate)}`);
-          foundPath = cpuCandidate;
-          usedGpuVariant = false;
-          break;
-        }
-      }
-    }
-
-    // Clean up unused variant to save disk space (only in production)
-    if (foundPath && process.resourcesPath && (platform === "win32" || platform === "linux")) {
-      this.cleanupUnusedVariant(foundPath, usedGpuVariant, binDirs[0]); // Use production bin dir
-    }
-
-    if (!foundPath) {
-      debugLogger.warn("whisper.cpp binary not found", {
-        platform,
-        arch,
-        searchedPaths: candidates,
-      });
-    }
-
-    return foundPath;
-  }
-
-  /**
-   * Removes the unused binary variant to save disk space.
-   * Called after successful binary selection in production.
-   *
-   * @param {string} selectedPath - Path to the binary that was selected
-   * @param {boolean} isGpuVariant - Whether the selected binary is the GPU variant
-   * @param {string} binDir - Directory containing binaries
-   */
-  cleanupUnusedVariant(selectedPath, isGpuVariant, binDir) {
-    try {
-      const platform = process.platform;
-      const arch = process.arch;
-      const platformArch = `${platform}-${arch}`;
-
-      // Determine which variant to remove
-      const variantToRemove = isGpuVariant ? "" : "-gpu";
-      const binaryToRemove =
-        platform === "win32"
-          ? `whisper-cpp-${platformArch}${variantToRemove}.exe`
-          : `whisper-cpp-${platformArch}${variantToRemove}`;
-
-      const pathToRemove = path.join(binDir, binaryToRemove);
-
-      if (fs.existsSync(pathToRemove) && pathToRemove !== selectedPath) {
-        const stats = fs.statSync(pathToRemove);
-        const sizeMB = (stats.size / (1024 * 1024)).toFixed(1);
-
-        fs.unlinkSync(pathToRemove);
-        debugLogger.info("Cleaned up unused variant", {
-          removed: binaryToRemove,
-          freedMB: sizeMB,
-        });
-        console.log(`[Whisper] Removed unused variant (saved ${sizeMB}MB): ${binaryToRemove}`);
-      }
-    } catch (error) {
-      // Non-critical - log but don't fail
-      debugLogger.warn("Failed to cleanup unused variant", {
-        error: error.message,
-      });
-    }
-  }
-
-  async getSystemBinaryPath() {
-    // On Linux, avoid "whisper" as it conflicts with Python's openai-whisper package
-    const binaryNames =
-      process.platform === "win32"
-        ? ["whisper-cpp.exe", "whisper.exe"]
-        : process.platform === "linux"
-          ? ["whisper-cpp", "main"]
-          : ["whisper-cpp", "whisper", "main"];
-
-    for (const name of binaryNames) {
-      try {
-        const checkCmd = process.platform === "win32" ? "where" : "which";
-        const { output } = await runCommand(checkCmd, [name], { timeout: TIMEOUTS.QUICK_CHECK });
-        const binaryPath = output.trim().split("\n")[0];
-        if (
-          binaryPath &&
-          fs.existsSync(binaryPath) &&
-          (await this.isWhisperCppBinary(binaryPath))
-        ) {
-          return binaryPath;
-        }
-      } catch {
-        continue;
-      }
-    }
-
-    // Check common Homebrew paths on macOS
-    if (process.platform === "darwin") {
-      const commonPaths = [
-        "/opt/homebrew/bin/whisper-cpp",
-        "/opt/homebrew/bin/whisper",
-        "/usr/local/bin/whisper-cpp",
-        "/usr/local/bin/whisper",
-      ];
-      for (const p of commonPaths) {
-        if (fs.existsSync(p) && (await this.isWhisperCppBinary(p))) {
-          return p;
-        }
-      }
-    }
-
-    return null;
-  }
-
-  async isWhisperCppBinary(binaryPath) {
-    try {
-      // whisper.cpp uses "-m FNAME" and "-f FNAME" flags; Python whisper uses different args
-      const { output } = await runCommand(binaryPath, ["--help"], {
-        timeout: TIMEOUTS.QUICK_CHECK,
-      });
-      return (
-        output.includes("-m FNAME") ||
-        output.includes("-f FNAME") ||
-        output.includes("--model FNAME")
-      );
-    } catch {
-      return false;
-    }
-  }
-
-  async getWhisperBinaryPath() {
-    // Use cached path if file still exists (binary type already validated during discovery)
-    if (this.cachedBinaryPath && fs.existsSync(this.cachedBinaryPath)) {
-      return this.cachedBinaryPath;
-    }
-    this.cachedBinaryPath = null;
-
-    // Priority: bundled > system
-    let binaryPath = this.getBundledBinaryPath();
-
-    if (!binaryPath) {
-      binaryPath = await this.getSystemBinaryPath();
-    }
-
-    if (binaryPath) {
-      this.cachedBinaryPath = binaryPath;
-      debugLogger.log("Using whisper.cpp binary:", binaryPath);
-    }
-
-    return binaryPath;
-  }
-
-  clearBinaryCache() {
-    this.cachedBinaryPath = null;
-  }
-
-  /**
-   * Detects CUDA-related errors that should trigger fallback to CPU variant.
-   * Based on known error patterns from whisper.cpp CUDA initialization failures.
-   *
-   * @param {Error} error - Error object from transcription attempt
-   * @returns {boolean} True if error is CUDA-related
-   */
-  isCudaRuntimeError(error) {
-    const errorStr = (error.message || "").toLowerCase();
-    const stderrStr = (error.stderr || "").toLowerCase();
-    const stdoutStr = (error.stdout || "").toLowerCase();
-    const combinedOutput = `${errorStr} ${stderrStr} ${stdoutStr}`;
-
-    // Known CUDA error patterns from whisper.cpp runtime issues
-    const cudaErrorPatterns = [
-      "cuda",                           // General CUDA errors
-      "cudart",                         // CUDA runtime library errors
-      "cublas",                         // cuBLAS library errors
-      "cublaslt",                       // cuBLAS LT library errors
-      "ggml_cuda_init: failed",         // Specific whisper.cpp error
-      "ggml-cuda",                      // GGML CUDA backend errors
-      "no cuda-capable device",         // No GPU detected at runtime
-      "cuda driver",                    // Driver issues
-      "nvcc",                           // CUDA compiler errors
-      "nv-driver",                      // NVIDIA driver errors
-      "cudnn",                          // cuDNN errors
-      "could not load dynamic library", // Windows DLL loading errors
-      "cannot open shared object",      // Linux .so loading errors
-    ];
-
-    const hasCudaError = cudaErrorPatterns.some(pattern => combinedOutput.includes(pattern));
-
-    // Additional check: Exit code indicating library loading failure
-    const isLibraryLoadError = error.code === 127 || error.code === "ENOENT";
-
-    // Only treat as CUDA error if we're using a GPU binary
-    const isUsingGpuBinary = this.cachedBinaryPath && this.cachedBinaryPath.includes("-gpu");
-
-    return (hasCudaError || (isLibraryLoadError && isUsingGpuBinary));
-  }
-
   async initializeAtStartup(settings = {}) {
     const startTime = Date.now();
 
     try {
-      await this.getWhisperBinaryPath();
       this.isInitialized = true;
 
       // Pre-warm whisper-server if local mode enabled (eliminates 2-5s cold-start delay)
@@ -426,10 +142,6 @@ class WhisperManager {
         available: this.serverManager.isAvailable(),
         path: this.serverManager.getServerBinaryPath(),
       },
-      whisperCli: {
-        available: this.cachedBinaryPath !== null,
-        path: this.cachedBinaryPath,
-      },
       ffmpeg: {
         available: false,
         path: null,
@@ -468,7 +180,6 @@ class WhisperManager {
     const serverStatus = status.whisperServer.available
       ? `✓ ${status.whisperServer.path}`
       : "✗ Not found";
-    const cliStatus = status.whisperCli.available ? `✓ ${status.whisperCli.path}` : "✗ Not found";
     const ffmpegStatus = status.ffmpeg.available ? `✓ ${status.ffmpeg.path}` : "✗ Not found";
     const modelsStatus =
       status.models.length > 0
@@ -476,14 +187,12 @@ class WhisperManager {
         : "None downloaded";
 
     debugLogger.info(`[Dependencies] whisper-server: ${serverStatus}`);
-    debugLogger.info(`[Dependencies] whisper-cli: ${cliStatus}`);
     debugLogger.info(`[Dependencies] FFmpeg: ${ffmpegStatus}`);
     debugLogger.info(`[Dependencies] Models: ${modelsStatus}`);
   }
 
   async startServer(modelName) {
     if (!this.serverManager.isAvailable()) {
-      debugLogger.debug("whisper-server not available, will use CLI fallback");
       return { success: false, reason: "whisper-server binary not found" };
     }
 
@@ -516,18 +225,16 @@ class WhisperManager {
   }
 
   async checkWhisperInstallation() {
-    const binaryPath = await this.getWhisperBinaryPath();
-    if (!binaryPath) {
+    const serverPath = this.serverManager.getServerBinaryPath();
+    if (!serverPath) {
       return { installed: false, working: false };
     }
 
-    // Verify binary works
-    try {
-      await runCommand(binaryPath, ["--help"], { timeout: TIMEOUTS.QUICK_CHECK });
-      return { installed: true, working: true, path: binaryPath };
-    } catch (error) {
-      return { installed: true, working: false, error: error.message };
-    }
+    return {
+      installed: true,
+      working: this.serverManager.isAvailable(),
+      path: serverPath,
+    };
   }
 
   async transcribeLocalWhisper(audioBlob, options = {}) {
@@ -535,10 +242,16 @@ class WhisperManager {
       options,
       audioBlobType: audioBlob?.constructor?.name,
       audioBlobSize: audioBlob?.byteLength || audioBlob?.size || 0,
-      serverMode: this.useServerMode,
       serverAvailable: this.serverManager.isAvailable(),
       serverReady: this.serverManager.ready,
     });
+
+    // Server mode required
+    if (!this.serverManager.isAvailable()) {
+      throw new Error(
+        "whisper-server binary not found. Please ensure the app is installed correctly."
+      );
+    }
 
     const model = options.model || "base";
     const language = options.language || null;
@@ -549,20 +262,7 @@ class WhisperManager {
       throw new Error(`Whisper model "${model}" not downloaded. Please download it from Settings.`);
     }
 
-    // Try server mode first (faster for repeated transcriptions)
-    if (this.useServerMode && this.serverManager.isAvailable()) {
-      try {
-        return await this.transcribeViaServer(audioBlob, model, language);
-      } catch (serverError) {
-        debugLogger.warn("Server transcription failed, falling back to CLI", {
-          error: serverError.message,
-        });
-        // Fall through to CLI mode
-      }
-    }
-
-    // Fallback to CLI mode (spawns process per transcription)
-    return this.transcribeViaCLI(audioBlob, model, language, modelPath);
+    return await this.transcribeViaServer(audioBlob, model, language);
   }
 
   async transcribeViaServer(audioBlob, model, language) {
@@ -611,313 +311,6 @@ class WhisperManager {
     });
 
     return this.parseWhisperResult(result);
-  }
-
-  async transcribeViaCLI(audioBlob, _model, language, modelPath) {
-    debugLogger.info("Transcription mode: CLI (fallback)", {
-      model: path.basename(modelPath, ".bin").replace("ggml-", ""),
-      language: language || "auto",
-      reason: !this.useServerMode
-        ? "server mode disabled"
-        : !this.serverManager.isAvailable()
-          ? "server binary not found"
-          : "server failed",
-    });
-    const binaryPath = await this.getWhisperBinaryPath();
-    if (!binaryPath) {
-      throw new Error(
-        "whisper.cpp not found. Please install it via Homebrew (brew install whisper-cpp) or ensure it is bundled with the app."
-      );
-    }
-
-    const tempAudioPath = await this.createTempAudioFile(audioBlob);
-
-    try {
-      const result = await this.runWhisperProcess(binaryPath, tempAudioPath, modelPath, language);
-      return this.parseWhisperResult(result);
-    } catch (error) {
-      // Check for CUDA runtime errors first (before checking exit code 2)
-      if (this.isCudaRuntimeError(error) && !this.forceCpuVariant) {
-        debugLogger.warn("CUDA runtime error detected, falling back to CPU variant", {
-          error: error.message,
-          binaryPath,
-        });
-
-        // Force CPU variant for this and future transcriptions
-        this.clearBinaryCache();
-        this.forceCpuVariant = true;
-
-        // Retry with CPU variant
-        debugLogger.info("Retrying transcription with CPU variant");
-        const cpuBinaryPath = await this.getWhisperBinaryPath();
-        if (cpuBinaryPath && cpuBinaryPath !== binaryPath) {
-          debugLogger.info("Using CPU variant:", cpuBinaryPath);
-          const result = await this.runWhisperProcess(cpuBinaryPath, tempAudioPath, modelPath, language);
-          return this.parseWhisperResult(result);
-        }
-      }
-
-      // Exit code 2 typically means argument error - possibly wrong binary (Python whisper vs whisper.cpp)
-      if (error.message?.includes("code 2") && this.cachedBinaryPath) {
-        debugLogger.debug("Transcription failed with code 2, clearing cache and retrying", {
-          binaryPath,
-        });
-        this.clearBinaryCache();
-        const retryBinaryPath = await this.getWhisperBinaryPath();
-        if (retryBinaryPath && retryBinaryPath !== binaryPath) {
-          debugLogger.log("Retrying with different binary:", retryBinaryPath);
-          const result = await this.runWhisperProcess(
-            retryBinaryPath,
-            tempAudioPath,
-            modelPath,
-            language
-          );
-          return this.parseWhisperResult(result);
-        }
-      }
-      throw error;
-    } finally {
-      await this.cleanupTempFile(tempAudioPath);
-    }
-  }
-
-  async createTempAudioFile(audioBlob) {
-    const tempDir = os.tmpdir();
-    const uniqueId = crypto.randomUUID();
-
-    debugLogger.logAudioData("createTempAudioFile", audioBlob);
-
-    let buffer;
-    if (audioBlob instanceof ArrayBuffer) {
-      buffer = Buffer.from(audioBlob);
-    } else if (audioBlob instanceof Uint8Array) {
-      buffer = Buffer.from(audioBlob);
-    } else if (typeof audioBlob === "string") {
-      buffer = Buffer.from(audioBlob, "base64");
-    } else if (audioBlob && audioBlob.buffer) {
-      buffer = Buffer.from(audioBlob.buffer);
-    } else {
-      throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
-    }
-
-    if (!buffer || buffer.length === 0) {
-      throw new Error("Audio buffer is empty - no audio data received");
-    }
-
-    const MIN_AUDIO_SIZE = 44;
-    if (buffer.length < MIN_AUDIO_SIZE) {
-      throw new Error(`Audio data too small (${buffer.length} bytes) - recording may have failed`);
-    }
-
-    // Check if the audio is already in WAV format (starts with "RIFF" header)
-    const isWav =
-      buffer.length >= 4 &&
-      buffer[0] === 0x52 &&
-      buffer[1] === 0x49 &&
-      buffer[2] === 0x46 &&
-      buffer[3] === 0x46;
-
-    if (isWav) {
-      // Already WAV format - write directly
-      const tempAudioPath = path.join(tempDir, `whisper_audio_${uniqueId}.wav`);
-      await fsPromises.writeFile(tempAudioPath, buffer);
-      const stats = await fsPromises.stat(tempAudioPath);
-      debugLogger.logWhisperPipeline("Temp audio file created (WAV passthrough)", {
-        path: tempAudioPath,
-        size: stats.size,
-      });
-      return tempAudioPath;
-    }
-
-    // Audio is in WebM/Opus or other format - convert to WAV using FFmpeg
-    const inputPath = path.join(tempDir, `whisper_input_${uniqueId}.webm`);
-    const outputPath = path.join(tempDir, `whisper_audio_${uniqueId}.wav`);
-
-    await fsPromises.writeFile(inputPath, buffer);
-
-    const ffmpegPath = await this.getFFmpegPath();
-    if (!ffmpegPath) {
-      // Clean up input file
-      await fsPromises.unlink(inputPath).catch(() => {});
-      throw new Error("FFmpeg not found - required for audio format conversion");
-    }
-
-    debugLogger.logWhisperPipeline("Converting audio to WAV format", {
-      inputPath,
-      outputPath,
-      ffmpegPath,
-      inputSize: buffer.length,
-    });
-
-    try {
-      // Convert to 16kHz mono WAV (optimal for Whisper)
-      await new Promise((resolve, reject) => {
-        const ffmpegProcess = spawn(
-          ffmpegPath,
-          [
-            "-i",
-            inputPath,
-            "-ar",
-            "16000", // 16kHz sample rate
-            "-ac",
-            "1", // Mono
-            "-c:a",
-            "pcm_s16le", // 16-bit PCM
-            "-y", // Overwrite output
-            outputPath,
-          ],
-          {
-            stdio: ["ignore", "pipe", "pipe"],
-            windowsHide: true,
-          }
-        );
-
-        let stderrData = "";
-        let settled = false;
-
-        const settle = (resolver, value) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timeout);
-          resolver(value);
-        };
-
-        // Timeout after 30 seconds
-        const timeout = setTimeout(() => {
-          ffmpegProcess.kill("SIGTERM");
-          settle(reject, new Error("FFmpeg conversion timed out"));
-        }, 30000);
-
-        ffmpegProcess.stderr.on("data", (data) => {
-          stderrData += data.toString();
-        });
-
-        ffmpegProcess.on("close", (code) => {
-          if (code === 0) {
-            settle(resolve, undefined);
-          } else {
-            settle(reject, new Error(`FFmpeg conversion failed (code ${code}): ${stderrData}`));
-          }
-        });
-
-        ffmpegProcess.on("error", (err) => {
-          settle(reject, new Error(`FFmpeg process error: ${err.message}`));
-        });
-      });
-
-      // Clean up input file
-      await fsPromises.unlink(inputPath).catch(() => {});
-
-      const stats = await fsPromises.stat(outputPath);
-      debugLogger.logWhisperPipeline("Audio converted to WAV", {
-        path: outputPath,
-        size: stats.size,
-      });
-
-      return outputPath;
-    } catch (error) {
-      // Clean up both files on error
-      await fsPromises.unlink(inputPath).catch(() => {});
-      await fsPromises.unlink(outputPath).catch(() => {});
-      throw error;
-    }
-  }
-
-  async runWhisperProcess(binaryPath, audioPath, modelPath, language) {
-    // whisper.cpp --output-json writes to a file, not stdout
-    const outputBasePath = audioPath.replace(/\.[^.]+$/, "");
-    const jsonOutputPath = `${outputBasePath}.json`;
-
-    const args = [
-      "-m",
-      modelPath,
-      "-f",
-      audioPath,
-      "--output-json",
-      "-of",
-      outputBasePath,
-      "--no-prints",
-    ];
-    if (language && language !== "auto") {
-      args.push("-l", language);
-    }
-
-    debugLogger.logProcessStart(binaryPath, args, {});
-
-    const cleanupJsonFile = () => fsPromises.unlink(jsonOutputPath).catch(() => {});
-
-    const { code, stderr } = await new Promise((resolve, reject) => {
-      const whisperProcess = spawn(binaryPath, args, {
-        stdio: ["ignore", "pipe", "pipe"],
-        windowsHide: true,
-      });
-
-      let stderrData = "";
-      let settled = false;
-
-      const settle = (resolver, value) => {
-        if (settled) return;
-        settled = true;
-        clearTimeout(timeout);
-        resolver(value);
-      };
-
-      const timeout = setTimeout(() => {
-        killProcess(whisperProcess, "SIGTERM");
-        settle(reject, new Error("Whisper transcription timed out"));
-      }, TIMEOUTS.TRANSCRIPTION);
-
-      whisperProcess.stdout.on("data", (data) =>
-        debugLogger.logProcessOutput("Whisper", "stdout", data)
-      );
-      whisperProcess.stderr.on("data", (data) => {
-        stderrData += data.toString();
-        debugLogger.logProcessOutput("Whisper", "stderr", data);
-      });
-
-      whisperProcess.on("close", (exitCode) =>
-        settle(resolve, { code: exitCode, stderr: stderrData })
-      );
-      whisperProcess.on("error", (err) => {
-        debugLogger.error("Whisper process spawn failed", {
-          error: err.code || err.message,
-          binaryPath,
-          binaryExists: fs.existsSync(binaryPath),
-        });
-        settle(reject, new Error(`Failed to start whisper.cpp: ${err.message}`));
-      });
-    });
-
-    debugLogger.logWhisperPipeline("Process closed", {
-      code,
-      stderrLength: stderr.length,
-      jsonOutputPath,
-    });
-
-    if (code !== 0) {
-      await cleanupJsonFile();
-      throw new Error(`Whisper transcription failed (code ${code}): ${stderr}`);
-    }
-
-    // Check stderr for errors - whisper.cpp may exit 0 even on failure
-    if (stderr.includes("error:")) {
-      await cleanupJsonFile();
-      throw new Error(`Whisper processing error: ${stderr}`);
-    }
-
-    // Verify JSON file was created
-    if (!fs.existsSync(jsonOutputPath)) {
-      throw new Error(`Whisper did not produce output. stderr: ${stderr || "(empty)"}`);
-    }
-
-    try {
-      const jsonContent = await fsPromises.readFile(jsonOutputPath, "utf-8");
-      await cleanupJsonFile();
-      return jsonContent;
-    } catch (readError) {
-      await cleanupJsonFile();
-      throw new Error(`Failed to read Whisper output: ${readError.message}`);
-    }
   }
 
   // Normalize whitespace: replace newlines with spaces and collapse multiple spaces
@@ -974,14 +367,6 @@ class WhisperManager {
     // whisper.cpp outputs "[BLANK_AUDIO]" when there's silence or insufficient audio
     const normalized = text.trim().toLowerCase();
     return normalized === "[blank_audio]" || normalized === "[ blank_audio ]";
-  }
-
-  async cleanupTempFile(tempAudioPath) {
-    try {
-      await fsPromises.unlink(tempAudioPath);
-    } catch {
-      // Temp file cleanup error is not critical
-    }
   }
 
   // Model management methods
@@ -1327,24 +712,21 @@ class WhisperManager {
       debugLogger.warn("Bundled FFmpeg not available", { error: err.message });
     }
 
-    // Try system FFmpeg
+    // Try system FFmpeg paths
     const systemCandidates =
       process.platform === "darwin"
-        ? ["ffmpeg", "/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
+        ? ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
         : process.platform === "win32"
-          ? ["ffmpeg", "C:\\ffmpeg\\bin\\ffmpeg.exe"]
-          : ["ffmpeg", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
+          ? ["C:\\ffmpeg\\bin\\ffmpeg.exe"]
+          : ["/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"];
 
     debugLogger.debug("Trying system FFmpeg candidates", { candidates: systemCandidates });
 
     for (const candidate of systemCandidates) {
-      try {
-        await runCommand(candidate, ["-version"], { timeout: TIMEOUTS.QUICK_CHECK });
+      if (fs.existsSync(candidate)) {
         debugLogger.debug("Found system FFmpeg", { path: candidate });
         this.cachedFFmpegPath = candidate;
         return candidate;
-      } catch {
-        continue;
       }
     }
 
@@ -1377,7 +759,6 @@ class WhisperManager {
       resourcesPath: process.resourcesPath || null,
       isPackaged: !!process.resourcesPath && !process.resourcesPath.includes("node_modules"),
       ffmpeg: { available: false, path: null, error: null },
-      whisperBinary: { available: false, path: null, error: null },
       whisperServer: { available: false, path: null },
       modelsDir: this.getModelsDir(),
       models: [],
@@ -1396,24 +777,11 @@ class WhisperManager {
       diagnostics.ffmpeg = { available: false, path: null, error: err.message };
     }
 
-    // Check whisper binary
-    try {
-      this.cachedBinaryPath = null; // Clear cache for fresh check
-      const whisperPath = await this.getWhisperBinaryPath();
-      if (whisperPath) {
-        diagnostics.whisperBinary = { available: true, path: whisperPath, error: null };
-      } else {
-        diagnostics.whisperBinary = { available: false, path: null, error: "Not found" };
-      }
-    } catch (err) {
-      diagnostics.whisperBinary = { available: false, path: null, error: err.message };
-    }
-
     // Check whisper server
     if (this.serverManager) {
-      const serverPath = this.serverManager.getBinaryPath?.();
+      const serverPath = this.serverManager.getServerBinaryPath?.();
       diagnostics.whisperServer = {
-        available: !!serverPath && fs.existsSync(serverPath),
+        available: this.serverManager.isAvailable(),
         path: serverPath || null,
       };
     }
