@@ -1,6 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Badge } from "./ui/badge";
 import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-react";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
@@ -271,17 +272,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </div>
                 <div className="flex items-center gap-2">
                   {updateStatus.isDevelopment ? (
-                    <span className="text-xs text-amber-600 dark:text-amber-400 bg-amber-100 dark:bg-amber-950/50 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-900/50">
-                      Dev
-                    </span>
+                    <Badge variant="warning">Dev</Badge>
                   ) : updateStatus.updateAvailable ? (
-                    <span className="text-xs text-green-600 dark:text-green-400 bg-green-500/10 dark:bg-green-950/50 px-2 py-0.5 rounded-md border border-green-200 dark:border-green-900/50">
-                      Update
-                    </span>
+                    <Badge variant="success">Update</Badge>
                   ) : (
-                    <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-md border border-border">
-                      Latest
-                    </span>
+                    <Badge variant="outline">Latest</Badge>
                   )}
                 </div>
               </div>
@@ -338,7 +333,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         }
                       }}
                       disabled={downloadingUpdate}
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      variant="default"
+                      className="w-full bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600"
                     >
                       {downloadingUpdate ? (
                         <>

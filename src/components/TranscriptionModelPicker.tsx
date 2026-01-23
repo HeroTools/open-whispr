@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Badge } from "./ui/badge";
 import { Download, Trash2, Check, Cloud, Lock, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
@@ -449,11 +450,7 @@ export default function TranscriptionModelPicker({
       >
         <ProviderIcon provider={provider.id} className="w-5 h-5" />
         <span>{provider.name}</span>
-        {provider.badge && (
-          <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-            {provider.badge}
-          </span>
-        )}
+        {provider.badge && <Badge variant="outline">{provider.badge}</Badge>}
       </button>
     );
   };
@@ -476,9 +473,7 @@ export default function TranscriptionModelPicker({
                 <Cloud className="w-6 h-6 text-primary" />
                 <h4 className="font-medium text-foreground">Cloud</h4>
               </div>
-              <span className="text-xs text-green-700 dark:text-green-400 bg-green-500/10 dark:bg-green-500/20 px-2 py-1 rounded-full">
-                Fast
-              </span>
+              <Badge variant="success">Fast</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
               Transcription via API. Fast and accurate, requires internet.
@@ -498,9 +493,7 @@ export default function TranscriptionModelPicker({
                 <Lock className="w-6 h-6 text-primary" />
                 <h4 className="font-medium text-foreground">Local</h4>
               </div>
-              <span className="text-xs text-primary bg-primary/10 px-2 py-1 rounded-full">
-                Private
-              </span>
+              <Badge variant="default">Private</Badge>
             </div>
             <p className="text-sm text-muted-foreground">
               Runs on your device. Complete privacy, works offline.

@@ -3,6 +3,7 @@ import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
+import { InfoBox } from "./ui/InfoBox";
 import {
   ChevronRight,
   ChevronLeft,
@@ -281,7 +282,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 Let's set up your voice dictation in just a few simple steps.
               </p>
             </div>
-            <div className="bg-primary/5 p-4 rounded-lg border border-primary/20">
+            <InfoBox>
               <p className="text-sm text-foreground">
                 🎤 Turn your voice into text instantly
                 <br />
@@ -289,7 +290,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <br />
                 🔒 Your privacy is protected
               </p>
-            </div>
+            </InfoBox>
           </div>
         );
 
@@ -417,7 +418,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 )}
             </div>
 
-            <div className="bg-amber-500/10 dark:bg-amber-500/20 p-4 rounded-lg border border-amber-500/20">
+            <InfoBox variant="warning">
               <h4 className="font-medium text-amber-900 dark:text-amber-200 mb-2">🔒 Privacy Note</h4>
               <p className="text-sm text-amber-800 dark:text-amber-300">
                 OpenWhispr only uses these permissions for dictation.
@@ -425,7 +426,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   ? " With local processing, your voice never leaves your device."
                   : " Your voice is sent to OpenAI's servers for transcription."}
               </p>
-            </div>
+            </InfoBox>
           </div>
         );
 
@@ -455,7 +456,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
             </div>
 
-            <div className="bg-primary/5 p-5 rounded-lg border border-primary/20">
+            <InfoBox className="p-5">
               <h3 className="font-semibold text-foreground mb-3">Try It Now</h3>
               <p className="text-sm text-muted-foreground mb-3">
                 {activationMode === "tap" ? (
@@ -483,7 +484,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </label>
                 <Textarea rows={3} placeholder="Click here, then use your hotkey to dictate..." />
               </div>
-            </div>
+            </InfoBox>
           </div>
         );
 
@@ -497,7 +498,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </p>
             </div>
 
-            <div className="space-y-4 p-4 bg-primary/5 border border-primary/20 rounded-xl">
+            <InfoBox className="space-y-4 rounded-xl">
               <h4 className="font-medium text-foreground mb-3">How this helps:</h4>
               <ul className="text-sm text-muted-foreground space-y-1">
                 <li>
@@ -506,7 +507,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <li>• Use the name to distinguish between dictation and commands</li>
                 <li>• Makes interactions feel more natural and personal</li>
               </ul>
-            </div>
+            </InfoBox>
 
             <div className="space-y-4">
               <label className="block text-sm font-medium text-foreground mb-2">Agent Name</label>
@@ -647,7 +648,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Button
                 onClick={finishOnboarding}
                 disabled={!canProceed()}
-                className="bg-green-600 hover:bg-green-700 px-8 py-3 h-12 text-sm font-medium"
+                className="bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 px-8 py-3 h-12 text-sm font-medium"
               >
                 <Check className="w-4 h-4 mr-2" />
                 Complete Setup

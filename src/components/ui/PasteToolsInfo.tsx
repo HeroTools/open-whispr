@@ -1,5 +1,6 @@
 import { Check, Terminal, Info } from "lucide-react";
 import { Button } from "./button";
+import { InfoBox } from "./InfoBox";
 import type { PasteToolsResult } from "../../types/electron";
 
 interface PasteToolsInfoProps {
@@ -35,7 +36,7 @@ export default function PasteToolsInfo({
   // Windows - always ready
   if (pasteToolsInfo.platform === "win32") {
     return (
-      <div className="border border-green-500/30 bg-green-500/10 dark:bg-green-500/20 rounded-lg p-4">
+      <InfoBox variant="success">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Terminal className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -50,7 +51,7 @@ export default function PasteToolsInfo({
             <Check className="w-5 h-5" />
           </div>
         </div>
-      </div>
+      </InfoBox>
     );
   }
 
@@ -61,7 +62,7 @@ export default function PasteToolsInfo({
       pasteToolsInfo.isWayland && method === "xdotool" ? " (XWayland apps only)." : ".";
 
     return (
-      <div className="border border-green-500/30 bg-green-500/10 dark:bg-green-500/20 rounded-lg p-4">
+      <InfoBox variant="success">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Terminal className="w-6 h-6 text-green-600 dark:text-green-400" />
@@ -77,7 +78,7 @@ export default function PasteToolsInfo({
             <Check className="w-5 h-5" />
           </div>
         </div>
-      </div>
+      </InfoBox>
     );
   }
 
@@ -89,7 +90,7 @@ export default function PasteToolsInfo({
     const showInstall = !!recommendedTool;
 
     return (
-      <div className="border border-amber-500/30 bg-amber-500/10 dark:bg-amber-500/20 rounded-lg p-4 space-y-3">
+      <InfoBox variant="warning" className="space-y-3">
         <div className="flex items-start gap-3">
           <Info className="w-6 h-6 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
@@ -160,7 +161,7 @@ export default function PasteToolsInfo({
             {isChecking ? "Checking..." : "Re-check"}
           </Button>
         </div>
-      </div>
+      </InfoBox>
     );
   }
 
