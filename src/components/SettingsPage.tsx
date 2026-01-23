@@ -22,13 +22,15 @@ import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
+import DeveloperSection from "./DeveloperSection";
 
 export type SettingsSectionType =
   | "general"
   | "transcription"
   | "aiModels"
   | "agentConfig"
-  | "prompts";
+  | "prompts"
+  | "developer";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
@@ -695,7 +697,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </p>
             </div>
 
-            <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
+            <div className="space-y-4 p-4 bg-linear-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
               <h4 className="font-medium text-purple-900 mb-3">💡 How to use agent names:</h4>
               <ul className="text-sm text-purple-800 space-y-2">
                 <li>• Say "Hey {agentName}, write a formal email" for specific instructions</li>
@@ -766,6 +768,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             <PromptStudio />
           </div>
         );
+
+      case "developer":
+        return <DeveloperSection />;
+
       default:
         return null;
     }
