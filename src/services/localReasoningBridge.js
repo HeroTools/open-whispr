@@ -1,5 +1,6 @@
 const modelManager = require("../helpers/modelManagerBridge").default;
 const debugLogger = require("../helpers/debugLogger");
+const { getSystemPrompt } = require("../helpers/prompts");
 
 class LocalReasoningService {
   constructor() {
@@ -55,7 +56,7 @@ class LocalReasoningService {
         repeatPenalty: config.repeatPenalty || 1.1,
         contextSize: config.contextSize || 4096,
         threads: config.threads || 4,
-        systemPrompt: "You are a helpful AI assistant that processes and improves text.",
+        systemPrompt: getSystemPrompt(agentName),
       };
 
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
@@ -99,24 +100,10 @@ class LocalReasoningService {
   }
 
   getReasoningPrompt(text, agentName, customPrompts) {
-    // Default prompts
-    const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`;
-    const DEFAULT_REGULAR_PROMPT = `Process and improve the following text:\n\n{{text}}\n\nImproved text:`;
-
-    let agentPrompt = DEFAULT_AGENT_PROMPT;
-    let regularPrompt = DEFAULT_REGULAR_PROMPT;
-
-    if (customPrompts) {
-      agentPrompt = customPrompts.agent || DEFAULT_AGENT_PROMPT;
-      regularPrompt = customPrompts.regular || DEFAULT_REGULAR_PROMPT;
-    }
-
-    // Check if agent name is mentioned
-    if (agentName && text.toLowerCase().includes(agentName.toLowerCase())) {
-      return agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
-    }
-
-    return regularPrompt.replace(/\{\{text\}\}/g, text);
+    // With the unified prompt approach, all instructions are in the system prompt
+    // The user message is just the transcribed text
+    // Agent detection is now handled by the LLM itself based on the system prompt
+    return text;
   }
 
   calculateMaxTokens(textLength, minTokens = 100, maxTokens = 2048, multiplier = 2) {

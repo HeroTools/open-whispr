@@ -2,6 +2,7 @@ const { ipcMain, app, shell, BrowserWindow } = require("electron");
 const path = require("path");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
+const { getSystemPrompt } = require("./prompts");
 
 class IPCHandlers {
   constructor(managers) {
@@ -10,7 +11,7 @@ class IPCHandlers {
     this.clipboardManager = managers.clipboardManager;
     this.whisperManager = managers.whisperManager;
     this.windowManager = managers.windowManager;
-    this.modelManager = managers.modelManager;
+    this.updateManager = managers.updateManager;
     this.setupHandlers();
   }
 
@@ -447,6 +448,10 @@ class IPCHandlers {
       return this.environmentManager.saveAnthropicKey(key);
     });
 
+    ipcMain.handle("save-all-keys-to-env", async () => {
+      return this.environmentManager.saveAllKeysToEnvFile();
+    });
+
     // Local reasoning handler
     ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
       try {
@@ -469,12 +474,9 @@ class IPCHandlers {
             throw new Error("Anthropic API key not configured");
           }
 
-          const systemPrompt =
-            "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-          const userPrompt =
-            agentName && text.toLowerCase().includes(agentName.toLowerCase())
-              ? `You are ${agentName}, a helpful AI assistant. Clean up the following dictated text by fixing grammar, punctuation, and formatting. Remove any reference to your name. Output ONLY the cleaned text without explanations or options:\n\n${text}`
-              : `Clean up the following dictated text by fixing grammar, punctuation, and formatting. Output ONLY the cleaned text without any explanations, options, or commentary:\n\n${text}`;
+          // Use the unified system prompt - LLM handles agent detection
+          const systemPrompt = getSystemPrompt(agentName);
+          const userPrompt = text;
 
           if (!modelId) {
             throw new Error("No model specified for Anthropic API call");
@@ -561,6 +563,48 @@ class IPCHandlers {
         return result;
       } catch (error) {
         return { success: false, error: error.message };
+      }
+    });
+
+    // llama-server management handlers
+    ipcMain.handle("llama-server-start", async (event, modelId) => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        const modelInfo = modelManager.findModelById(modelId);
+        if (!modelInfo) {
+          return { success: false, error: `Model "${modelId}" not found` };
+        }
+
+        const modelPath = require("path").join(modelManager.modelsDir, modelInfo.model.fileName);
+
+        await modelManager.serverManager.start(modelPath, {
+          contextSize: modelInfo.model.contextLength || 4096,
+          threads: 4,
+        });
+        modelManager.currentServerModelId = modelId;
+
+        return { success: true, port: modelManager.serverManager.port };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("llama-server-stop", async () => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        await modelManager.stopServer();
+        return { success: true };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("llama-server-status", async () => {
+      try {
+        const modelManager = require("./modelManagerBridge").default;
+        return modelManager.getServerStatus();
+      } catch (error) {
+        return { available: false, running: false, error: error.message };
       }
     });
 
@@ -709,6 +753,31 @@ class IPCHandlers {
         debugLogger.error("Failed to open logs folder:", error);
         return { success: false, error: error.message };
       }
+    });
+
+    // Update handlers
+    ipcMain.handle("check-for-updates", async () => {
+      return this.updateManager.checkForUpdates();
+    });
+
+    ipcMain.handle("download-update", async () => {
+      return this.updateManager.downloadUpdate();
+    });
+
+    ipcMain.handle("install-update", async () => {
+      return this.updateManager.installUpdate();
+    });
+
+    ipcMain.handle("get-app-version", async () => {
+      return this.updateManager.getAppVersion();
+    });
+
+    ipcMain.handle("get-update-status", async () => {
+      return this.updateManager.getUpdateStatus();
+    });
+
+    ipcMain.handle("get-update-info", async () => {
+      return this.updateManager.getUpdateInfo();
     });
   }
 
