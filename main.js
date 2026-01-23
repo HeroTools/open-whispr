@@ -33,8 +33,7 @@ process.on("unhandledRejection", (reason, promise) => {
   console.error("Unhandled Rejection at:", promise, "reason:", reason);
 });
 
-// Import helper modules
-const debugLogger = require("./src/helpers/debugLogger");
+// Import helper module classes (but don't instantiate yet - wait for app.whenReady())
 const EnvironmentManager = require("./src/helpers/environment");
 const WindowManager = require("./src/helpers/windowManager");
 const DatabaseManager = require("./src/helpers/database");
@@ -45,92 +44,115 @@ const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 
+// Manager instances - initialized after app.whenReady()
+let debugLogger = null;
+let environmentManager = null;
+let windowManager = null;
+let hotkeyManager = null;
+let databaseManager = null;
+let clipboardManager = null;
+let whisperManager = null;
+let trayManager = null;
+let updateManager = null;
+let globeKeyManager = null;
+let globeKeyAlertShown = false;
+
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
 function setupProductionPath() {
-  if (process.platform === 'darwin' && process.env.NODE_ENV !== 'development') {
+  if (process.platform === "darwin" && process.env.NODE_ENV !== "development") {
     const commonPaths = [
-      '/usr/local/bin',
-      '/opt/homebrew/bin',
-      '/usr/bin',
-      '/bin',
-      '/usr/sbin',
-      '/sbin'
+      "/usr/local/bin",
+      "/opt/homebrew/bin",
+      "/usr/bin",
+      "/bin",
+      "/usr/sbin",
+      "/sbin",
     ];
 
-    const currentPath = process.env.PATH || '';
-    const pathsToAdd = commonPaths.filter(p => !currentPath.includes(p));
+    const currentPath = process.env.PATH || "";
+    const pathsToAdd = commonPaths.filter((p) => !currentPath.includes(p));
 
     if (pathsToAdd.length > 0) {
-      process.env.PATH = `${currentPath}:${pathsToAdd.join(':')}`;
+      process.env.PATH = `${currentPath}:${pathsToAdd.join(":")}`;
     }
   }
 }
 
-// Set up PATH before initializing managers
-setupProductionPath();
+// Initialize all managers - called after app.whenReady()
+function initializeManagers() {
+  // Set up PATH before initializing managers
+  setupProductionPath();
 
-// Initialize managers
-const environmentManager = new EnvironmentManager();
-debugLogger.refreshLogLevel();
-const windowManager = new WindowManager();
-const hotkeyManager = windowManager.hotkeyManager;
-const databaseManager = new DatabaseManager();
-const clipboardManager = new ClipboardManager();
-const whisperManager = new WhisperManager();
-const trayManager = new TrayManager();
-const updateManager = new UpdateManager();
-const globeKeyManager = new GlobeKeyManager();
-let globeKeyAlertShown = false;
+  // Now it's safe to call app.getPath() and initialize managers
+  debugLogger = require("./src/helpers/debugLogger");
+  environmentManager = new EnvironmentManager();
+  debugLogger.refreshLogLevel();
+  windowManager = new WindowManager();
+  hotkeyManager = windowManager.hotkeyManager;
+  databaseManager = new DatabaseManager();
+  clipboardManager = new ClipboardManager();
+  whisperManager = new WhisperManager();
+  trayManager = new TrayManager();
+  updateManager = new UpdateManager();
+  globeKeyManager = new GlobeKeyManager();
 
-if (process.platform === "darwin") {
-  globeKeyManager.on("error", (error) => {
-    if (globeKeyAlertShown) {
-      return;
-    }
-    globeKeyAlertShown = true;
+  // Set up Globe key error handler on macOS
+  if (process.platform === "darwin") {
+    globeKeyManager.on("error", (error) => {
+      if (globeKeyAlertShown) {
+        return;
+      }
+      globeKeyAlertShown = true;
 
-    const detailLines = [
-      error?.message || "Unknown error occurred while starting the Globe listener.",
-      "The Globe key shortcut will remain disabled; existing keyboard shortcuts continue to work.",
-    ];
+      const detailLines = [
+        error?.message || "Unknown error occurred while starting the Globe listener.",
+        "The Globe key shortcut will remain disabled; existing keyboard shortcuts continue to work.",
+      ];
 
-    if (process.env.NODE_ENV === "development") {
-      detailLines.push("Run `npm run compile:globe` and rebuild the app to regenerate the listener binary.");
-    } else {
-      detailLines.push("Try reinstalling OpenWhispr or contact support if the issue persists.");
-    }
+      if (process.env.NODE_ENV === "development") {
+        detailLines.push(
+          "Run `npm run compile:globe` and rebuild the app to regenerate the listener binary."
+        );
+      } else {
+        detailLines.push("Try reinstalling OpenWhispr or contact support if the issue persists.");
+      }
 
-    dialog.showMessageBox({
-      type: "warning",
-      title: "Globe Hotkey Unavailable",
-      message: "OpenWhispr could not activate the Globe key hotkey.",
-      detail: detailLines.join("\n\n"),
+      dialog.showMessageBox({
+        type: "warning",
+        title: "Globe Hotkey Unavailable",
+        message: "OpenWhispr could not activate the Globe key hotkey.",
+        detail: detailLines.join("\n\n"),
+      });
     });
+  }
+
+  // Initialize IPC handlers with all managers
+  const _ipcHandlers = new IPCHandlers({
+    environmentManager,
+    databaseManager,
+    clipboardManager,
+    whisperManager,
+    windowManager,
+    updateManager,
   });
 }
 
-// Initialize IPC handlers with all managers
-const _ipcHandlers = new IPCHandlers({
-  environmentManager,
-  databaseManager,
-  clipboardManager,
-  whisperManager,
-  windowManager,
-  updateManager,
-});
-
 // Main application startup
 async function startApp() {
+  // Initialize all managers now that app is ready
+  // This must happen first as other code depends on these managers
+  initializeManagers();
+
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === "development") {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
   // Ensure dock is visible on macOS and stays visible
-  if (process.platform === 'darwin' && app.dock) {
+  if (process.platform === "darwin" && app.dock) {
     app.dock.show();
     // Prevent dock from hiding when windows use setVisibleOnAllWorkspaces
-    app.setActivationPolicy('regular');
+    app.setActivationPolicy("regular");
   }
 
   // Initialize Whisper manager at startup (don't await to avoid blocking)
@@ -178,21 +200,13 @@ async function startApp() {
   }
 
   // Set up tray
-  trayManager.setWindows(
-    windowManager.mainWindow,
-    windowManager.controlPanelWindow
-  );
+  trayManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   trayManager.setWindowManager(windowManager);
-  trayManager.setCreateControlPanelCallback(() =>
-    windowManager.createControlPanelWindow()
-  );
+  trayManager.setCreateControlPanelCallback(() => windowManager.createControlPanelWindow());
   await trayManager.createTray();
 
   // Set windows for update manager and check for updates
-  updateManager.setWindows(
-    windowManager.mainWindow,
-    windowManager.controlPanelWindow
-  );
+  updateManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   updateManager.checkForUpdatesOnStartup();
 
   if (process.platform === "darwin") {
@@ -320,7 +334,7 @@ if (gotSingleInstanceLock) {
         // If control panel doesn't exist, create it
         windowManager.createControlPanelWindow();
       }
-      
+
       // Ensure dictation panel maintains its always-on-top status
       if (windowManager && isLiveWindow(windowManager.mainWindow)) {
         windowManager.enforceMainWindowOnTop();
@@ -330,10 +344,16 @@ if (gotSingleInstanceLock) {
 
   app.on("will-quit", () => {
     globalShortcut.unregisterAll();
-    globeKeyManager.stop();
-    updateManager.cleanup();
+    if (globeKeyManager) {
+      globeKeyManager.stop();
+    }
+    if (updateManager) {
+      updateManager.cleanup();
+    }
     // Stop whisper server if running
-    whisperManager.stopServer().catch(() => {});
+    if (whisperManager) {
+      whisperManager.stopServer().catch(() => {});
+    }
     // Stop llama-server if running
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.stopServer().catch(() => {});
