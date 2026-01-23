@@ -3,13 +3,15 @@ import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS, getSystemPrompt } from "../config/prompts";
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
 
-export const DEFAULT_PROMPTS = {
-  agent: `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`,
-  regular: `Process and improve the following text:\n\n{{text}}\n\nImproved text:`,
-};
+/**
+ * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
+ * Kept for backwards compatibility with PromptStudio UI
+ */
+export const DEFAULT_PROMPTS = LEGACY_PROMPTS;
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
@@ -207,9 +209,8 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt =
-      "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-    const userPrompt = this.getReasoningPrompt(text, agentName, config);
+    const systemPrompt = getSystemPrompt(agentName);
+    const userPrompt = text;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -429,9 +430,8 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt =
-        "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
+      const systemPrompt = getSystemPrompt(agentName);
+      const userPrompt = text;
 
       // Build messages array (used by both APIs)
       const messages = [
@@ -743,9 +743,8 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt =
-        "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
+      const systemPrompt = getSystemPrompt(agentName);
+      const userPrompt = text;
 
       const requestBody = {
         contents: [

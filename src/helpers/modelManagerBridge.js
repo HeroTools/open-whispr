@@ -1,5 +1,4 @@
 const path = require("path");
-const { spawn } = require("child_process");
 const fs = require("fs");
 const { promises: fsPromises } = require("fs");
 const https = require("https");
@@ -7,7 +6,7 @@ const { pipeline } = require("stream");
 const { app } = require("electron");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
-const { parseLlamaCppOutput } = require("../utils/llamaOutputParser");
+const LlamaServerManager = require("./llamaServer");
 const debugLogger = require("./debugLogger");
 
 const MIN_FILE_SIZE = 1_000_000; // 1MB minimum for valid model files
@@ -37,7 +36,8 @@ class ModelManager {
     this.downloadProgress = new Map();
     this.activeDownloads = new Map();
     this.activeRequests = new Map(); // Track HTTP requests for cancellation
-    this.llamaCppPath = null;
+    this.serverManager = new LlamaServerManager();
+    this.currentServerModelId = null;
     this.ensureModelsDirExists();
   }
 
@@ -52,6 +52,16 @@ class ModelManager {
     } catch (error) {
       console.error("Failed to create models directory:", error);
     }
+  }
+
+  async ensureLlamaCpp() {
+    if (!this.serverManager.isAvailable()) {
+      throw new ModelError(
+        "llama-server binary not found. Please ensure the app is installed correctly.",
+        "LLAMASERVER_NOT_FOUND"
+      );
+    }
+    return true;
   }
 
   async getAllModels() {
@@ -408,27 +418,6 @@ class ModelManager {
     }
   }
 
-  async ensureLlamaCpp() {
-    debugLogger.logReasoning("ENSURE_LLAMACPP_START", {});
-
-    const llamaCppInstaller = require("./llamaCppInstaller").default;
-
-    const isInstalled = await llamaCppInstaller.isInstalled();
-    debugLogger.logReasoning("ENSURE_LLAMACPP_CHECK", { isInstalled });
-
-    if (!isInstalled) {
-      debugLogger.logReasoning("ENSURE_LLAMACPP_NOT_INSTALLED", {});
-      console.error("[LocalAI] llama.cpp is not installed");
-      throw new ModelError("llama.cpp is not installed", "LLAMACPP_NOT_INSTALLED");
-    }
-
-    this.llamaCppPath = await llamaCppInstaller.getBinaryPath();
-    debugLogger.logReasoning("ENSURE_LLAMACPP_SUCCESS", {
-      llamaCppPath: this.llamaCppPath,
-    });
-    return true;
-  }
-
   async runInference(modelId, prompt, options = {}) {
     const startTime = Date.now();
     debugLogger.logReasoning("INFERENCE_START", {
@@ -437,15 +426,18 @@ class ModelManager {
       options: { ...options, systemPrompt: options.systemPrompt ? "[set]" : "[not set]" },
     });
 
-    await this.ensureLlamaCpp();
-    debugLogger.logReasoning("INFERENCE_LLAMACPP_READY", {
-      llamaCppPath: this.llamaCppPath,
-    });
+    // Ensure server is available
+    if (!this.serverManager.isAvailable()) {
+      debugLogger.logReasoning("INFERENCE_SERVER_NOT_AVAILABLE", {});
+      throw new ModelError(
+        "llama-server binary not found. Please ensure the app is installed correctly.",
+        "LLAMASERVER_NOT_FOUND"
+      );
+    }
 
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) {
       debugLogger.logReasoning("INFERENCE_MODEL_NOT_FOUND", { modelId });
-      console.error(`[LocalAI] Model not found: ${modelId}`);
       throw new ModelNotFoundError(modelId);
     }
 
@@ -458,141 +450,103 @@ class ModelManager {
 
     if (!(await this.checkModelValid(modelPath))) {
       debugLogger.logReasoning("INFERENCE_MODEL_INVALID", { modelId, modelPath });
-      console.error(`[LocalAI] Model invalid or not downloaded: ${modelPath}`);
       throw new ModelError(
         `Model ${modelId} is not downloaded or is corrupted`,
         "MODEL_NOT_DOWNLOADED",
-        {
-          modelId,
-        }
+        { modelId }
       );
     }
 
-    const formattedPrompt = this.formatPrompt(
-      modelInfo.provider,
-      prompt,
-      options.systemPrompt || ""
-    );
+    // Start/restart server if needed or if model changed
+    if (!this.serverManager.ready || this.currentServerModelId !== modelId) {
+      debugLogger.logReasoning("INFERENCE_STARTING_SERVER", {
+        currentModel: this.currentServerModelId,
+        requestedModel: modelId,
+        serverReady: this.serverManager.ready,
+      });
 
-    debugLogger.logReasoning("INFERENCE_PROMPT_FORMATTED", {
-      formattedPromptLength: formattedPrompt.length,
-      promptPreview:
-        formattedPrompt.substring(0, 200) + (formattedPrompt.length > 200 ? "..." : ""),
+      await this.serverManager.start(modelPath, {
+        contextSize: options.contextSize || modelInfo.model.contextLength || 4096,
+        threads: options.threads || 4,
+      });
+      this.currentServerModelId = modelId;
+
+      debugLogger.logReasoning("INFERENCE_SERVER_STARTED", {
+        port: this.serverManager.port,
+        model: modelId,
+      });
+    }
+
+    // Build messages for chat completion
+    const messages = [
+      { role: "system", content: options.systemPrompt || "" },
+      { role: "user", content: prompt },
+    ];
+
+    debugLogger.logReasoning("INFERENCE_SENDING_REQUEST", {
+      messageCount: messages.length,
+      systemPromptLength: (options.systemPrompt || "").length,
+      userPromptLength: prompt.length,
     });
 
-    return new Promise((resolve, reject) => {
-      const args = [
-        "-m",
-        modelPath,
-        "-p",
-        formattedPrompt,
-        "-n",
-        String(options.maxTokens || 512),
-        "--temp",
-        String(options.temperature || 0.7),
-        "--top-k",
-        String(options.topK || 40),
-        "--top-p",
-        String(options.topP || 0.9),
-        "--repeat-penalty",
-        String(options.repeatPenalty || 1.1),
-        "-c",
-        String(options.contextSize || modelInfo.model.contextLength),
-        "-t",
-        String(options.threads || 4),
-        "--no-display-prompt",
-        "-no-cnv", // Disable conversation mode (model waits for stdin otherwise)
-      ];
-
-      debugLogger.logReasoning("INFERENCE_SPAWN", {
-        command: this.llamaCppPath,
-        argsCount: args.length,
-        maxTokens: options.maxTokens || 512,
-        contextSize: options.contextSize || modelInfo.model.contextLength,
+    try {
+      const result = await this.serverManager.inference(messages, {
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens ?? 512,
       });
 
-      const proc = spawn(this.llamaCppPath, args);
-      let output = "";
-      let error = "";
-
-      debugLogger.logReasoning("INFERENCE_PROCESS_STARTED", {
-        pid: proc.pid,
+      const totalTime = Date.now() - startTime;
+      debugLogger.logReasoning("INFERENCE_SUCCESS", {
+        totalTimeMs: totalTime,
+        resultLength: result.length,
+        resultPreview: result.substring(0, 200) + (result.length > 200 ? "..." : ""),
       });
 
-      proc.stdout.on("data", (data) => {
-        output += data.toString();
-        debugLogger.logReasoning("INFERENCE_STDOUT_CHUNK", {
-          chunkLength: data.length,
-          totalOutputLength: output.length,
-          elapsedMs: Date.now() - startTime,
-        });
+      return result;
+    } catch (error) {
+      const totalTime = Date.now() - startTime;
+      debugLogger.logReasoning("INFERENCE_FAILED", {
+        totalTimeMs: totalTime,
+        error: error.message,
       });
-
-      proc.stderr.on("data", (data) => {
-        error += data.toString();
-        debugLogger.logReasoning("INFERENCE_STDERR_CHUNK", {
-          chunkLength: data.length,
-          preview: data.toString().substring(0, 200),
-          elapsedMs: Date.now() - startTime,
-        });
+      throw new ModelError(`Inference failed: ${error.message}`, "INFERENCE_FAILED", {
+        error: error.message,
       });
-
-      proc.on("close", (code) => {
-        const totalTime = Date.now() - startTime;
-        debugLogger.logReasoning("INFERENCE_CLOSE", {
-          exitCode: code,
-          totalTimeMs: totalTime,
-          outputLength: output.length,
-          errorLength: error.length,
-        });
-
-        if (code !== 0) {
-          debugLogger.logReasoning("INFERENCE_FAILED", {
-            code,
-            error: error.substring(0, 1000),
-            outputPreview: output.substring(0, 500),
-          });
-          console.error(`[LocalAI] Inference failed (${totalTime}ms): ${error.substring(0, 200)}`);
-          reject(
-            new ModelError(`Inference failed with code ${code}: ${error}`, "INFERENCE_FAILED", {
-              code,
-              error,
-            })
-          );
-        } else {
-          const parsed = parseLlamaCppOutput(output);
-          debugLogger.logReasoning("INFERENCE_SUCCESS", {
-            totalTimeMs: totalTime,
-            rawOutputLength: output.length,
-            parsedOutputLength: parsed.length,
-            parsedPreview: parsed.substring(0, 200) + (parsed.length > 200 ? "..." : ""),
-          });
-          resolve(parsed);
-        }
-      });
-
-      proc.on("error", (err) => {
-        const totalTime = Date.now() - startTime;
-        debugLogger.logReasoning("INFERENCE_PROCESS_ERROR", {
-          error: err.message,
-          stack: err.stack,
-          totalTimeMs: totalTime,
-        });
-        console.error(`[LocalAI] Process error: ${err.message}`);
-        reject(
-          new ModelError(`Failed to start inference: ${err.message}`, "INFERENCE_START_FAILED", {
-            error: err.message,
-          })
-        );
-      });
-    });
+    }
   }
 
-  formatPrompt(provider, text, systemPrompt) {
-    if (provider.promptTemplate) {
-      return provider.promptTemplate.replace("{system}", systemPrompt).replace("{user}", text);
+  async stopServer() {
+    await this.serverManager.stop();
+    this.currentServerModelId = null;
+  }
+
+  getServerStatus() {
+    return this.serverManager.getStatus();
+  }
+
+  async prewarmServer(modelId) {
+    if (!modelId) return false;
+
+    const modelInfo = this.findModelById(modelId);
+    if (!modelInfo) return false;
+
+    const modelPath = path.join(this.modelsDir, modelInfo.model.fileName);
+    if (!(await this.checkModelValid(modelPath))) return false;
+
+    if (!this.serverManager.isAvailable()) return false;
+
+    try {
+      await this.serverManager.start(modelPath, {
+        contextSize: modelInfo.model.contextLength || 4096,
+        threads: 4,
+      });
+      this.currentServerModelId = modelId;
+      debugLogger.info("llama-server pre-warmed", { modelId });
+      return true;
+    } catch (error) {
+      debugLogger.warn("Failed to pre-warm llama-server", { error: error.message });
+      return false;
     }
-    return `${systemPrompt}\n\n${text}`;
   }
 }
 

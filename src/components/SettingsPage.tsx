@@ -758,10 +758,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Prompt Management</h3>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Prompt Studio</h3>
               <p className="text-sm text-gray-600 mb-6">
-                View and customize the prompts that power OpenWhispr's AI text processing. Adjust
-                these to change how your transcriptions are formatted and enhanced.
+                OpenWhispr uses a single unified system prompt that handles both text cleanup and
+                instruction detection. View, customize, and test the prompt that powers your AI
+                assistant.
               </p>
             </div>
 
