@@ -554,7 +554,7 @@ class ClipboardManager {
 
     const canUseWtype = isWayland && !isGnome;
     const canUseYdotool = isWayland;
-    const canUseXdotool = isWayland ? !!xdotoolWindowClass : xdotoolExists;
+    const canUseXdotool = isWayland ? xwaylandAvailable && xdotoolExists : xdotoolExists;
 
     // Define paste tools in preference order based on display server
     // For X11, use windowactivate to ensure correct window receives the keystroke
