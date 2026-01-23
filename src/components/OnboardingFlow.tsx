@@ -77,7 +77,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     updateTranscriptionSettings,
   } = useSettings();
 
-  const [hotkey, setHotkey] = useState(dictationKey || "`");
+  const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
   const [agentName, setAgentName] = useState("Agent");
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);

@@ -262,6 +262,7 @@ class HotkeyManager {
     try {
       const result = this.setupShortcuts(hotkey, callback);
       if (result.success) {
+        this.saveHotkeyToRenderer(hotkey);
         return { success: true, message: `Hotkey updated to: ${hotkey}` };
       } else {
         return {
