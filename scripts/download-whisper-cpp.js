@@ -9,7 +9,7 @@ const {
   cleanupFiles,
 } = require("./lib/download-utils");
 
-const WHISPER_CPP_REPO = "gabrielste1n/whisper.cpp";
+const WHISPER_CPP_REPO = "OpenWhispr/whisper.cpp";
 const WHISPER_CPP_VERSION = "0.0.5";
 
 const BINARIES = {
