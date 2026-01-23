@@ -13,6 +13,7 @@
     "node_modules/**/*",
     "src/dist/**/*",
     "src/helpers/**/*",
+    "src/config/**/*",
     "src/hooks/**/*",
     "src/models/**/*",
     "src/services/localReasoningBridge.js",

@@ -11,7 +11,7 @@ const {
 } = require("./lib/download-utils");
 
 const WHISPER_CPP_REPO = "OpenWhispr/whisper.cpp";
-const WHISPER_CPP_VERSION = "0.0.5";
+const WHISPER_CPP_VERSION = "0.0.6";
 
 /**
  * Detects if an NVIDIA GPU is present using nvidia-smi command.
