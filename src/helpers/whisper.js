@@ -52,6 +52,8 @@ class WhisperManager {
     this.serverManager = new WhisperServerManager();
     this.useServerMode = true; // Prefer server mode when available
     this.currentServerModel = null;
+    // Force CPU variant (set to true after GPU variant fails)
+    this.forceCpuVariant = false;
   }
 
   getModelsDir() {
@@ -78,37 +80,67 @@ class WhisperManager {
     const arch = process.arch;
     const platformArch = `${platform}-${arch}`;
 
-    // Binary naming matches download-whisper-cpp.js output: whisper-cpp-darwin-arm64, whisper-cpp-win32-x64.exe
+    // Determine variant for Windows/Linux (GPU if available, CPU otherwise)
+    let variant = "";
+    if ((platform === "win32" || platform === "linux") && !this.forceCpuVariant) {
+      const gpuDetector = require("./gpuDetector");
+      const recommendedVariant = gpuDetector.getRecommendedVariantSync();
+      variant = recommendedVariant === "gpu" ? "-gpu" : "";
+    }
+
+    // Binary naming: whisper-cpp-{platform}-{arch}[-gpu][.exe]
     const platformBinaryName =
-      platform === "win32" ? `whisper-cpp-${platformArch}.exe` : `whisper-cpp-${platformArch}`;
+      platform === "win32"
+        ? `whisper-cpp-${platformArch}${variant}.exe`
+        : `whisper-cpp-${platformArch}${variant}`;
     const genericBinaryName = platform === "win32" ? "whisper-cpp.exe" : "whisper-cpp";
 
     const candidates = [];
+    const binDirs = [];
 
-    // Production: extraResources copies to {resourcesPath}/bin/ via from/to mapping
+    // Production: extraResources copies to {resourcesPath}/bin/
     if (process.resourcesPath) {
-      // Primary location: extraResources with "to": "bin/"
+      const prodBinDir = path.join(process.resourcesPath, "bin");
+      binDirs.push(prodBinDir);
       candidates.push(
-        path.join(process.resourcesPath, "bin", platformBinaryName),
-        path.join(process.resourcesPath, "bin", genericBinaryName)
+        path.join(prodBinDir, platformBinaryName),
+        path.join(prodBinDir, genericBinaryName)
       );
     }
 
     // Development: check project resources
+    const devBinDir = path.join(__dirname, "..", "..", "resources", "bin");
+    binDirs.push(devBinDir);
     candidates.push(
-      path.join(__dirname, "..", "..", "resources", "bin", platformBinaryName),
-      path.join(__dirname, "..", "..", "resources", "bin", genericBinaryName)
+      path.join(devBinDir, platformBinaryName),
+      path.join(devBinDir, genericBinaryName)
     );
+
+    // Try to find the binary
+    let foundPath = null;
+    let usedGpuVariant = false;
 
     for (const candidate of candidates) {
       if (fs.existsSync(candidate)) {
         try {
           const stats = fs.statSync(candidate);
-          debugLogger.debug("Found whisper.cpp binary", {
+          const isGpuVariant = candidate.includes("-gpu");
+          const variantLabel = isGpuVariant ? "GPU (CUDA)" : platform === "darwin" ? "Metal" : "CPU";
+
+          debugLogger.info("Found whisper.cpp binary", {
             path: candidate,
             size: stats.size,
+            variant: variantLabel,
+            platform,
+            forceCpu: this.forceCpuVariant,
           });
-          return candidate;
+
+          // Log prominently for user visibility
+          console.log(`[Whisper] Using ${variantLabel} variant: ${path.basename(candidate)}`);
+
+          foundPath = candidate;
+          usedGpuVariant = isGpuVariant;
+          break;
         } catch (statError) {
           debugLogger.warn("Binary exists but cannot be accessed", {
             path: candidate,
@@ -118,12 +150,80 @@ class WhisperManager {
       }
     }
 
-    debugLogger.warn("whisper.cpp binary not found", {
-      platform,
-      arch,
-      searchedPaths: candidates,
-    });
-    return null;
+    // If GPU variant not found but was requested, try CPU fallback
+    if (!foundPath && variant === "-gpu") {
+      debugLogger.warn("GPU variant not found, falling back to CPU variant");
+      const cpuBinaryName =
+        platform === "win32" ? `whisper-cpp-${platformArch}.exe` : `whisper-cpp-${platformArch}`;
+
+      for (const binDir of binDirs) {
+        const cpuCandidate = path.join(binDir, cpuBinaryName);
+        if (fs.existsSync(cpuCandidate)) {
+          debugLogger.info("Using CPU variant as fallback", { path: cpuCandidate });
+          console.log(`[Whisper] GPU variant unavailable, using CPU variant: ${path.basename(cpuCandidate)}`);
+          foundPath = cpuCandidate;
+          usedGpuVariant = false;
+          break;
+        }
+      }
+    }
+
+    // Clean up unused variant to save disk space (only in production)
+    if (foundPath && process.resourcesPath && (platform === "win32" || platform === "linux")) {
+      this.cleanupUnusedVariant(foundPath, usedGpuVariant, binDirs[0]); // Use production bin dir
+    }
+
+    if (!foundPath) {
+      debugLogger.warn("whisper.cpp binary not found", {
+        platform,
+        arch,
+        searchedPaths: candidates,
+      });
+    }
+
+    return foundPath;
+  }
+
+  /**
+   * Removes the unused binary variant to save disk space.
+   * Called after successful binary selection in production.
+   *
+   * @param {string} selectedPath - Path to the binary that was selected
+   * @param {boolean} isGpuVariant - Whether the selected binary is the GPU variant
+   * @param {string} binDir - Directory containing binaries
+   */
+  cleanupUnusedVariant(selectedPath, isGpuVariant, binDir) {
+    try {
+      const platform = process.platform;
+      const arch = process.arch;
+      const platformArch = `${platform}-${arch}`;
+
+      // Determine which variant to remove
+      const variantToRemove = isGpuVariant ? "" : "-gpu";
+      const binaryToRemove =
+        platform === "win32"
+          ? `whisper-cpp-${platformArch}${variantToRemove}.exe`
+          : `whisper-cpp-${platformArch}${variantToRemove}`;
+
+      const pathToRemove = path.join(binDir, binaryToRemove);
+
+      if (fs.existsSync(pathToRemove) && pathToRemove !== selectedPath) {
+        const stats = fs.statSync(pathToRemove);
+        const sizeMB = (stats.size / (1024 * 1024)).toFixed(1);
+
+        fs.unlinkSync(pathToRemove);
+        debugLogger.info("Cleaned up unused variant", {
+          removed: binaryToRemove,
+          freedMB: sizeMB,
+        });
+        console.log(`[Whisper] Removed unused variant (saved ${sizeMB}MB): ${binaryToRemove}`);
+      }
+    } catch (error) {
+      // Non-critical - log but don't fail
+      debugLogger.warn("Failed to cleanup unused variant", {
+        error: error.message,
+      });
+    }
   }
 
   async getSystemBinaryPath() {
@@ -210,6 +310,47 @@ class WhisperManager {
 
   clearBinaryCache() {
     this.cachedBinaryPath = null;
+  }
+
+  /**
+   * Detects CUDA-related errors that should trigger fallback to CPU variant.
+   * Based on known error patterns from whisper.cpp CUDA initialization failures.
+   *
+   * @param {Error} error - Error object from transcription attempt
+   * @returns {boolean} True if error is CUDA-related
+   */
+  isCudaRuntimeError(error) {
+    const errorStr = (error.message || "").toLowerCase();
+    const stderrStr = (error.stderr || "").toLowerCase();
+    const stdoutStr = (error.stdout || "").toLowerCase();
+    const combinedOutput = `${errorStr} ${stderrStr} ${stdoutStr}`;
+
+    // Known CUDA error patterns from whisper.cpp runtime issues
+    const cudaErrorPatterns = [
+      "cuda",                           // General CUDA errors
+      "cudart",                         // CUDA runtime library errors
+      "cublas",                         // cuBLAS library errors
+      "cublaslt",                       // cuBLAS LT library errors
+      "ggml_cuda_init: failed",         // Specific whisper.cpp error
+      "ggml-cuda",                      // GGML CUDA backend errors
+      "no cuda-capable device",         // No GPU detected at runtime
+      "cuda driver",                    // Driver issues
+      "nvcc",                           // CUDA compiler errors
+      "nv-driver",                      // NVIDIA driver errors
+      "cudnn",                          // cuDNN errors
+      "could not load dynamic library", // Windows DLL loading errors
+      "cannot open shared object",      // Linux .so loading errors
+    ];
+
+    const hasCudaError = cudaErrorPatterns.some(pattern => combinedOutput.includes(pattern));
+
+    // Additional check: Exit code indicating library loading failure
+    const isLibraryLoadError = error.code === 127 || error.code === "ENOENT";
+
+    // Only treat as CUDA error if we're using a GPU binary
+    const isUsingGpuBinary = this.cachedBinaryPath && this.cachedBinaryPath.includes("-gpu");
+
+    return (hasCudaError || (isLibraryLoadError && isUsingGpuBinary));
   }
 
   async initializeAtStartup(settings = {}) {
@@ -495,6 +636,27 @@ class WhisperManager {
       const result = await this.runWhisperProcess(binaryPath, tempAudioPath, modelPath, language);
       return this.parseWhisperResult(result);
     } catch (error) {
+      // Check for CUDA runtime errors first (before checking exit code 2)
+      if (this.isCudaRuntimeError(error) && !this.forceCpuVariant) {
+        debugLogger.warn("CUDA runtime error detected, falling back to CPU variant", {
+          error: error.message,
+          binaryPath,
+        });
+
+        // Force CPU variant for this and future transcriptions
+        this.clearBinaryCache();
+        this.forceCpuVariant = true;
+
+        // Retry with CPU variant
+        debugLogger.info("Retrying transcription with CPU variant");
+        const cpuBinaryPath = await this.getWhisperBinaryPath();
+        if (cpuBinaryPath && cpuBinaryPath !== binaryPath) {
+          debugLogger.info("Using CPU variant:", cpuBinaryPath);
+          const result = await this.runWhisperProcess(cpuBinaryPath, tempAudioPath, modelPath, language);
+          return this.parseWhisperResult(result);
+        }
+      }
+
       // Exit code 2 typically means argument error - possibly wrong binary (Python whisper vs whisper.cpp)
       if (error.message?.includes("code 2") && this.cachedBinaryPath) {
         debugLogger.debug("Transcription failed with code 2, clearing cache and retrying", {

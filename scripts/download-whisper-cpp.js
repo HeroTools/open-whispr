@@ -21,7 +21,7 @@ const DEFAULT_VARIANT = "cpu";
 
 /**
  * Detects if an NVIDIA GPU is present using nvidia-smi command.
- * Returns 'cuda' if GPU found, 'cpu' otherwise.
+ * Returns 'gpu' if GPU found, 'cpu' otherwise.
  */
 function detectGpuVariant() {
   return new Promise((resolve) => {
@@ -62,7 +62,7 @@ function detectGpuVariant() {
       if (code === 0 && stdout.trim()) {
         const gpuName = stdout.trim().split("\n")[0];
         console.log(`  Detected NVIDIA GPU: ${gpuName}`);
-        resolve("cuda");
+        resolve("gpu");
       } else {
         console.log("  No NVIDIA GPU detected, using CPU variant");
         resolve("cpu");
@@ -95,24 +95,24 @@ const CLI_BINARIES = {
     cpu: {
       zipName: "whisper-cpp-win32-x64-cpu.zip",
       binaryName: "whisper-cpp-win32-x64-cpu.exe",
-      outputName: "whisper-cpp-win32-x64.exe",
+      outputName: "whisper-cpp-win32-x64.exe", // Keep default naming (no breaking change)
     },
-    cuda: {
+    gpu: {
       zipName: "whisper-cpp-win32-x64-cuda.zip",
       binaryName: "whisper-cpp-win32-x64-cuda.exe",
-      outputName: "whisper-cpp-win32-x64.exe",
+      outputName: "whisper-cpp-win32-x64-gpu.exe", // GPU variant with -gpu suffix
     },
   },
   "linux-x64": {
     cpu: {
       zipName: "whisper-cpp-linux-x64-cpu.zip",
       binaryName: "whisper-cpp-linux-x64-cpu",
-      outputName: "whisper-cpp-linux-x64",
+      outputName: "whisper-cpp-linux-x64", // Keep default naming (no breaking change)
     },
-    cuda: {
+    gpu: {
       zipName: "whisper-cpp-linux-x64-cuda.zip",
       binaryName: "whisper-cpp-linux-x64-cuda",
-      outputName: "whisper-cpp-linux-x64",
+      outputName: "whisper-cpp-linux-x64-gpu", // GPU variant with -gpu suffix
     },
   },
 };
@@ -133,24 +133,24 @@ const SERVER_BINARIES = {
     cpu: {
       zipName: "whisper-server-win32-x64-cpu.zip",
       binaryName: "whisper-server-win32-x64-cpu.exe",
-      outputName: "whisper-server-win32-x64.exe",
+      outputName: "whisper-server-win32-x64.exe", // Keep default naming (no breaking change)
     },
-    cuda: {
+    gpu: {
       zipName: "whisper-server-win32-x64-cuda.zip",
       binaryName: "whisper-server-win32-x64-cuda.exe",
-      outputName: "whisper-server-win32-x64.exe",
+      outputName: "whisper-server-win32-x64-gpu.exe", // GPU variant with -gpu suffix
     },
   },
   "linux-x64": {
     cpu: {
       zipName: "whisper-server-linux-x64-cpu.zip",
       binaryName: "whisper-server-linux-x64-cpu",
-      outputName: "whisper-server-linux-x64",
+      outputName: "whisper-server-linux-x64", // Keep default naming (no breaking change)
     },
-    cuda: {
+    gpu: {
       zipName: "whisper-server-linux-x64-cuda.zip",
       binaryName: "whisper-server-linux-x64-cuda",
-      outputName: "whisper-server-linux-x64",
+      outputName: "whisper-server-linux-x64-gpu", // GPU variant with -gpu suffix
     },
   },
 };
@@ -265,7 +265,7 @@ function downloadFile(url, dest, retryCount = 0) {
 
 function resolveVariantConfig(config, variant) {
   if (!config) return null;
-  if (config.cpu || config.cuda) {
+  if (config.cpu || config.gpu) {
     const selectedVariant = variant || DEFAULT_VARIANT;
     if (!config[selectedVariant]) {
       return null;
@@ -277,29 +277,33 @@ function resolveVariantConfig(config, variant) {
 
 function parseVariant(args) {
   const hasCpuFlag = args.includes("--cpu");
-  const hasCudaFlag = args.includes("--cuda");
+  const hasGpuFlag = args.includes("--gpu") || args.includes("--cuda"); // Support both --gpu and --cuda for compatibility
   const variantIndex = args.indexOf("--variant");
   let variant = process.env.WHISPER_CPP_VARIANT || null;
 
-  if (hasCpuFlag && hasCudaFlag) {
-    console.error("Choose only one of --cpu or --cuda.");
+  if (hasCpuFlag && hasGpuFlag) {
+    console.error("Choose only one of --cpu or --gpu.");
     return null;
   }
 
   if (variantIndex !== -1) {
     const value = args[variantIndex + 1];
     if (!value) {
-      console.error("Missing value for --variant (cpu or cuda).");
+      console.error("Missing value for --variant (cpu or gpu).");
       return null;
     }
-    variant = value;
+    // Normalize 'cuda' to 'gpu' for backward compatibility
+    variant = value === "cuda" ? "gpu" : value;
   }
 
   if (hasCpuFlag) variant = "cpu";
-  if (hasCudaFlag) variant = "cuda";
+  if (hasGpuFlag) variant = "gpu";
 
-  if (variant && variant !== "cpu" && variant !== "cuda") {
-    console.error(`Unsupported variant: ${variant}. Use cpu or cuda.`);
+  // Normalize environment variable (cuda -> gpu)
+  if (variant === "cuda") variant = "gpu";
+
+  if (variant && variant !== "cpu" && variant !== "gpu") {
+    console.error(`Unsupported variant: ${variant}. Use cpu or gpu.`);
     return null;
   }
 
@@ -353,27 +357,16 @@ async function downloadBinary(platformArch, configMap, label, variant, forceDown
       }
       console.log(`  ${label}${variantTag} ${platformArch}: Extracted to ${config.outputName}`);
 
-      // For Windows, handle CUDA DLLs based on variant
-      if (platformArch === "win32-x64") {
+      // For Windows, handle CUDA DLLs for GPU variant
+      if (platformArch === "win32-x64" && config.variant === "gpu") {
         const cudaDlls = ["cudart64_12.dll", "cublas64_12.dll", "cublasLt64_12.dll"];
-        if (config.variant === "cuda") {
-          // Extract bundled CUDA DLLs for CUDA variant
-          for (const dll of cudaDlls) {
-            const dllPath = path.join(extractDir, dll);
-            if (fs.existsSync(dllPath)) {
-              const destPath = path.join(BIN_DIR, dll);
-              fs.copyFileSync(dllPath, destPath);
-              console.log(`  ${label}${variantTag} ${platformArch}: Extracted ${dll}`);
-            }
-          }
-        } else if (config.variant === "cpu") {
-          // Clean up stale CUDA DLLs when switching to CPU variant
-          for (const dll of cudaDlls) {
+        // Extract bundled CUDA DLLs for GPU variant
+        for (const dll of cudaDlls) {
+          const dllPath = path.join(extractDir, dll);
+          if (fs.existsSync(dllPath)) {
             const destPath = path.join(BIN_DIR, dll);
-            if (fs.existsSync(destPath)) {
-              fs.unlinkSync(destPath);
-              console.log(`  ${label}${variantTag} ${platformArch}: Removed stale ${dll}`);
-            }
+            fs.copyFileSync(dllPath, destPath);
+            console.log(`  ${label}${variantTag} ${platformArch}: Extracted ${dll}`);
           }
         }
       }
@@ -395,7 +388,19 @@ async function downloadBinary(platformArch, configMap, label, variant, forceDown
 }
 
 async function downloadForPlatform(platformArch, variant, forceDownload) {
-  // Download both CLI and server binaries for the platform
+  const config = CLI_BINARIES[platformArch];
+
+  // If platform has both CPU and GPU variants and no variant specified, download both
+  if (config && config.cpu && config.gpu && !variant) {
+    console.log(`\n${platformArch}: Downloading both CPU and GPU variants...`);
+    const cpuCliOk = await downloadBinary(platformArch, CLI_BINARIES, "[cli]", "cpu", forceDownload);
+    const cpuServerOk = await downloadBinary(platformArch, SERVER_BINARIES, "[server]", "cpu", forceDownload);
+    const gpuCliOk = await downloadBinary(platformArch, CLI_BINARIES, "[cli]", "gpu", forceDownload);
+    const gpuServerOk = await downloadBinary(platformArch, SERVER_BINARIES, "[server]", "gpu", forceDownload);
+    return cpuCliOk && cpuServerOk && gpuCliOk && gpuServerOk;
+  }
+
+  // Otherwise download specified variant (or single variant for macOS)
   const cliOk = await downloadBinary(platformArch, CLI_BINARIES, "[cli]", variant, forceDownload);
   const serverOk = await downloadBinary(platformArch, SERVER_BINARIES, "[server]", variant, forceDownload);
   return cliOk && serverOk;
@@ -470,13 +475,18 @@ async function main() {
     }
 
     if (shouldCleanup) {
-      // Clean old binaries that don't match target platform/arch
+      // Clean old binaries that don't match target platform/arch (keep both CPU and GPU variants)
       const existingFiles = fs.readdirSync(BIN_DIR).filter(f => f.startsWith("whisper-"));
-      const targetPrefix = `whisper-cpp-${targetPlatformArch}`;
-      const targetServerPrefix = `whisper-server-${targetPlatformArch}`;
+      const keepPrefixes = [
+        `whisper-cpp-${targetPlatformArch}`,      // CPU variant (default naming)
+        `whisper-cpp-${targetPlatformArch}-gpu`,  // GPU variant
+        `whisper-server-${targetPlatformArch}`,   // Server CPU variant
+        `whisper-server-${targetPlatformArch}-gpu` // Server GPU variant
+      ];
 
       existingFiles.forEach(file => {
-        if (!file.startsWith(targetPrefix) && !file.startsWith(targetServerPrefix)) {
+        const shouldKeep = keepPrefixes.some(prefix => file.startsWith(prefix));
+        if (!shouldKeep) {
           const filePath = path.join(BIN_DIR, file);
           console.log(`Removing old binary: ${file}`);
           fs.unlinkSync(filePath);

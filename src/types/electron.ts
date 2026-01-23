@@ -103,6 +103,14 @@ export interface PasteToolsResult {
   recommendedInstall?: string;
 }
 
+export interface GpuDetectionResult {
+  hasNvidiaGpu: boolean;
+  gpuName?: string;
+  gpuCount?: number;
+  gpus?: string[];
+  error?: string;
+}
+
 // Additional interface missing from preload.js
 export interface SaveSettings {
   useLocalWhisper: boolean;
@@ -299,6 +307,11 @@ declare global {
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
       openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
+
+      // GPU detection for whisper.cpp variant selection
+      detectNvidiaGpu?: () => Promise<GpuDetectionResult>;
+      getRecommendedWhisperVariant?: () => Promise<"cpu" | "gpu">;
+      clearGpuCache?: () => Promise<{ success: boolean; error?: string }>;
     };
 
     api?: {

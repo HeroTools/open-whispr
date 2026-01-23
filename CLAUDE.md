@@ -277,21 +277,42 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 
 ### 12. GPU Detection for whisper.cpp
 
-The app detects NVIDIA GPUs to select the appropriate whisper.cpp binary variant (CPU or CUDA).
+The app automatically detects NVIDIA GPUs and selects the appropriate whisper.cpp binary variant at runtime.
+
+**Binary Naming Convention** (no breaking changes):
+- CPU variant: `whisper-cpp-{platform}-{arch}[.exe]` (default naming)
+- GPU variant: `whisper-cpp-{platform}-{arch}-gpu[.exe]` (CUDA/GPU suffix)
+- Server CPU: `whisper-server-{platform}-{arch}[.exe]`
+- Server GPU: `whisper-server-{platform}-{arch}-gpu[.exe]`
+
+**Runtime Selection** (Windows/Linux only):
+1. App detects NVIDIA GPU using `nvidia-smi` command
+2. Selects GPU variant if available, CPU variant otherwise
+3. Automatic fallback to CPU if GPU variant fails (CUDA runtime missing)
+4. Unused variant is deleted to save disk space (~30-50MB)
+5. macOS always uses CPU binary (Metal acceleration built-in, not CUDA)
 
 **IPC Handlers** (in `ipcHandlers.js`):
 - `detect-nvidia-gpu`: Returns GPU detection result with name and count
-- `get-recommended-whisper-variant`: Returns `'cpu'` or `'cuda'` based on detection
+- `get-recommended-whisper-variant`: Returns `'cpu'` or `'gpu'` based on detection
+- `clear-gpu-cache`: Clears cached GPU detection result
 
 **Detection Method**:
 - Uses `nvidia-smi --query-gpu=name --format=csv,noheader`
+- Synchronous and asynchronous variants available
 - Results are cached to avoid repeated checks
 - 3-second timeout for detection process
 - macOS always returns `'cpu'` (uses Metal, not CUDA)
 
+**Error Recovery**:
+- If GPU variant fails with CUDA runtime errors, automatically retries with CPU variant
+- `forceCpuVariant` flag prevents future GPU attempts after failure
+- Comprehensive error pattern matching for CUDA-related issues
+
 **Exposed via preload.js**:
 - `window.electronAPI.detectNvidiaGpu()`
-- `window.electronAPI.getRecommendedWhisperVariant()`
+- `window.electronAPI.getRecommendedWhisperVariant()` (returns `'cpu'` or `'gpu'`)
+- `window.electronAPI.clearGpuCache()`
 
 ## Development Guidelines
 
@@ -338,12 +359,14 @@ The app detects NVIDIA GPUs to select the appropriate whisper.cpp binary variant
    - Use `npm run download:whisper-cpp:all` for multi-platform packaging
    - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
    - **whisper.cpp download flags** (for `scripts/download-whisper-cpp.js`):
-     - `--current`: Download for current platform only (default uses auto-detect)
-     - `--cpu`: Force CPU variant (Windows/Linux only)
-     - `--cuda`: Force CUDA variant (Windows/Linux only)
-     - `--auto-detect`: Auto-detect GPU and select appropriate variant
+     - `--current`: Download for current platform only
+       - Windows/Linux: Downloads BOTH CPU and GPU variants by default
+       - macOS: Downloads single Metal-enabled binary
+     - `--cpu`: Force CPU variant only (for testing/dev)
+     - `--gpu` or `--cuda`: Force GPU variant only (for testing/dev)
      - `--force`: Re-download even if binaries exist
-     - `WHISPER_CPP_VARIANT=cpu|cuda`: Environment variable override
+     - `--all`: Download for all platforms
+     - `WHISPER_CPP_VARIANT=cpu|gpu`: Environment variable override (deprecated)
 
 ### Platform-Specific Notes
 
@@ -354,6 +377,7 @@ The app detects NVIDIA GPUs to select the appropriate whisper.cpp binary variant
 - Notarization needed for distribution
 - Shows in dock with indicator dot when running (LSUIElement: false)
 - whisper.cpp bundled for both arm64 and x64
+- Uses Metal acceleration (built-in, no GPU detection needed)
 - System settings accessible via `x-apple.systempreferences:` URL scheme
 
 **Windows**:
@@ -361,18 +385,24 @@ The app detects NVIDIA GPUs to select the appropriate whisper.cpp binary variant
 - Microphone privacy settings at `ms-settings:privacy-microphone`
 - Sound settings at `ms-settings:sound`
 - NSIS installer for distribution
-- whisper.cpp bundled for x64 (CPU and CUDA variants available)
-- CUDA support requires NVIDIA drivers; DLLs bundled with CUDA builds
+- whisper.cpp: Both CPU and GPU (CUDA) variants bundled
+- GPU variant auto-selected if NVIDIA GPU detected
+- Unused variant deleted after selection (~30-50MB saved)
+- CUDA support requires NVIDIA drivers; CUDA DLLs bundled with GPU builds
+- Auto-fallback to CPU variant if CUDA runtime unavailable
 
 **Linux**:
 - Multiple package manager support
 - Standard XDG directories
 - AppImage for distribution
-- whisper.cpp bundled for x64 (CPU and CUDA variants available)
+- whisper.cpp: Both CPU and GPU (CUDA) variants bundled
+- GPU variant auto-selected if NVIDIA GPU detected
+- Unused variant deleted after selection (~30-50MB saved)
 - No standardized URL scheme for system settings (user must open manually)
 - Privacy settings button hidden in UI (not applicable on Linux)
 - Recommend `pavucontrol` for audio device management
 - CUDA support requires NVIDIA drivers and `nvidia-smi` in PATH
+- Auto-fallback to CPU variant if CUDA runtime unavailable
 
 ## Code Style and Conventions
 

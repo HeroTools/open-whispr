@@ -154,7 +154,7 @@ function clearCache() {
 
 /**
  * Returns the recommended whisper.cpp variant based on GPU detection.
- * @returns {Promise<'cpu' | 'cuda'>}
+ * @returns {Promise<'cpu' | 'gpu'>}
  */
 async function getRecommendedVariant() {
   // Only relevant for Windows and Linux
@@ -163,11 +163,74 @@ async function getRecommendedVariant() {
   }
 
   const result = await detectNvidiaGpu();
-  return result.hasNvidiaGpu ? "cuda" : "cpu";
+  return result.hasNvidiaGpu ? "gpu" : "cpu";
+}
+
+/**
+ * Synchronous version of getRecommendedVariant() using cached results.
+ * If detection hasn't run yet, performs synchronous detection.
+ * Falls back to CPU if detection fails or times out.
+ *
+ * @returns {'cpu' | 'gpu'}
+ */
+function getRecommendedVariantSync() {
+  // macOS always uses CPU (Metal is built-in)
+  if (process.platform !== "win32" && process.platform !== "linux") {
+    return "cpu";
+  }
+
+  // If we have a cached result, use it
+  if (cachedResult !== null) {
+    return cachedResult.hasNvidiaGpu ? "gpu" : "cpu";
+  }
+
+  // Perform synchronous detection as fallback
+  // This is safe because getBundledBinaryPath() is called lazily (not at startup)
+  try {
+    const { execSync } = require("child_process");
+    const stdout = execSync("nvidia-smi --query-gpu=name --format=csv,noheader", {
+      encoding: "utf8",
+      timeout: 3000,
+      stdio: ["pipe", "pipe", "ignore"], // Suppress stderr
+      windowsHide: true,
+    });
+
+    if (stdout && stdout.trim()) {
+      const gpuNames = stdout
+        .trim()
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+
+      debugLogger.log("[gpuDetector] GPU detected (sync):", gpuNames[0]);
+
+      // Cache the result for future use
+      cachedResult = {
+        hasNvidiaGpu: true,
+        gpuName: gpuNames[0],
+        gpuCount: gpuNames.length,
+        gpus: gpuNames,
+      };
+
+      return "gpu";
+    }
+  } catch (error) {
+    // nvidia-smi not found or failed - use CPU
+    debugLogger.log("[gpuDetector] Sync detection failed, using CPU:", error.message);
+  }
+
+  // Default to CPU and cache the result
+  cachedResult = {
+    hasNvidiaGpu: false,
+    error: "Synchronous detection failed or no GPU found",
+  };
+
+  return "cpu";
 }
 
 module.exports = {
   detectNvidiaGpu,
   clearCache,
   getRecommendedVariant,
+  getRecommendedVariantSync,
 };

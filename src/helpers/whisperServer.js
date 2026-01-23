@@ -24,6 +24,8 @@ class WhisperServerManager {
     this.cachedServerBinaryPath = null;
     this.cachedFFmpegPath = null;
     this.canConvert = false;
+    // Force CPU variant (set to true if GPU variant fails)
+    this.forceCpuVariant = false;
   }
 
   getFFmpegPath() {
@@ -122,34 +124,82 @@ class WhisperServerManager {
     const platform = process.platform;
     const arch = process.arch;
     const platformArch = `${platform}-${arch}`;
+
+    // Determine variant for Windows/Linux (GPU if available, CPU otherwise)
+    let variant = "";
+    if ((platform === "win32" || platform === "linux") && !this.forceCpuVariant) {
+      const gpuDetector = require("./gpuDetector");
+      const recommendedVariant = gpuDetector.getRecommendedVariantSync();
+      variant = recommendedVariant === "gpu" ? "-gpu" : "";
+    }
+
+    // Binary naming: whisper-server-{platform}-{arch}[-gpu][.exe]
     const binaryName =
       platform === "win32"
-        ? `whisper-server-${platformArch}.exe`
-        : `whisper-server-${platformArch}`;
+        ? `whisper-server-${platformArch}${variant}.exe`
+        : `whisper-server-${platformArch}${variant}`;
     const genericName = platform === "win32" ? "whisper-server.exe" : "whisper-server";
 
     const candidates = [];
+    const binDirs = [];
 
     if (process.resourcesPath) {
+      const prodBinDir = path.join(process.resourcesPath, "bin");
+      binDirs.push(prodBinDir);
       candidates.push(
-        path.join(process.resourcesPath, "bin", binaryName),
-        path.join(process.resourcesPath, "bin", genericName)
+        path.join(prodBinDir, binaryName),
+        path.join(prodBinDir, genericName)
       );
     }
 
+    const devBinDir = path.join(__dirname, "..", "..", "resources", "bin");
+    binDirs.push(devBinDir);
     candidates.push(
-      path.join(__dirname, "..", "..", "resources", "bin", binaryName),
-      path.join(__dirname, "..", "..", "resources", "bin", genericName)
+      path.join(devBinDir, binaryName),
+      path.join(devBinDir, genericName)
     );
 
+    // Try to find the binary
     for (const candidate of candidates) {
       if (fs.existsSync(candidate)) {
         try {
           fs.statSync(candidate);
+          const isGpuVariant = candidate.includes("-gpu");
+          const variantLabel = isGpuVariant ? "GPU (CUDA)" : platform === "darwin" ? "Metal" : "CPU";
+
+          debugLogger.info("Found whisper-server binary", {
+            path: candidate,
+            variant: variantLabel,
+          });
+
           this.cachedServerBinaryPath = candidate;
           return candidate;
         } catch {
           // Can't access binary
+        }
+      }
+    }
+
+    // If GPU variant not found, try CPU fallback
+    if (variant === "-gpu") {
+      const cpuBinaryName =
+        platform === "win32"
+          ? `whisper-server-${platformArch}.exe`
+          : `whisper-server-${platformArch}`;
+
+      for (const binDir of binDirs) {
+        const cpuCandidate = path.join(binDir, cpuBinaryName);
+        if (fs.existsSync(cpuCandidate)) {
+          try {
+            fs.statSync(cpuCandidate);
+            debugLogger.info("Using CPU variant as fallback for whisper-server", {
+              path: cpuCandidate,
+            });
+            this.cachedServerBinaryPath = cpuCandidate;
+            return cpuCandidate;
+          } catch {
+            // Can't access binary
+          }
         }
       }
     }
@@ -159,6 +209,10 @@ class WhisperServerManager {
 
   isAvailable() {
     return this.getServerBinaryPath() !== null;
+  }
+
+  clearServerBinaryCache() {
+    this.cachedServerBinaryPath = null;
   }
 
   async findAvailablePort() {
