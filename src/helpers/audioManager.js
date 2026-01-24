@@ -18,6 +18,131 @@ const isValidApiKey = (key, provider = "openai") => {
   return key !== placeholder;
 };
 
+/**
+ * Resolve which language to use for transcription
+ * v4: Only retry if detected language is NOT in user's list
+ * @param {Object} params
+ * @param {string[]} params.selected - User's selected languages
+ * @param {string} params.fallback - Default fallback language
+ * @param {string|null} params.detected - Whisper's detected language
+ * @returns {{language: string|null, reason: string, needsRetry: boolean}}
+ */
+const resolveLanguage = ({ selected, fallback, detected }) => {
+  // No languages configured → pure auto
+  if (!selected || selected.length === 0) {
+    return { language: null, reason: "auto", needsRetry: false };
+  }
+
+  // Single language → always use it
+  if (selected.length === 1) {
+    return { language: selected[0], reason: "single", needsRetry: false };
+  }
+
+  // Multiple languages: check if detected is in list
+  if (detected && selected.includes(detected)) {
+    // Even if "wrong" (RU vs UA), Reasoning Service will fix semantically
+    return { language: detected, reason: "detected", needsRetry: false };
+  }
+
+  // Detected NOT in list → need to retry with fallback
+  return { language: fallback || null, reason: "fallback", needsRetry: true };
+};
+
+/**
+ * Get language settings from localStorage
+ * @returns {{selected: string[], fallback: string}}
+ */
+const getLanguageSettings = () => {
+  try {
+    const selectedRaw = localStorage.getItem("selectedLanguages");
+    const selected = selectedRaw ? JSON.parse(selectedRaw) : [];
+    const fallback = localStorage.getItem("defaultLanguage") || "";
+    return { selected, fallback };
+  } catch (error) {
+    logger.warn("Failed to parse language settings", { error: error.message }, "language");
+    return { selected: [], fallback: "" };
+  }
+};
+
+/**
+ * Normalize OpenAI language names to ISO codes
+ * OpenAI returns "english", "russian" - we need "en", "ru"
+ * @param {string} languageName
+ * @returns {string|null}
+ */
+const normalizeLanguageCode = (languageName) => {
+  if (!languageName) return null;
+
+  const nameToCode = {
+    english: "en",
+    russian: "ru",
+    ukrainian: "uk",
+    dutch: "nl",
+    german: "de",
+    french: "fr",
+    spanish: "es",
+    portuguese: "pt",
+    italian: "it",
+    polish: "pl",
+    japanese: "ja",
+    chinese: "zh",
+    korean: "ko",
+    arabic: "ar",
+    hindi: "hi",
+    turkish: "tr",
+    vietnamese: "vi",
+    thai: "th",
+    indonesian: "id",
+    malay: "ms",
+    swedish: "sv",
+    norwegian: "no",
+    danish: "da",
+    finnish: "fi",
+    czech: "cs",
+    slovak: "sk",
+    hungarian: "hu",
+    romanian: "ro",
+    bulgarian: "bg",
+    croatian: "hr",
+    serbian: "sr",
+    slovenian: "sl",
+    greek: "el",
+    hebrew: "he",
+    persian: "fa",
+    urdu: "ur",
+    bengali: "bn",
+    tamil: "ta",
+    telugu: "te",
+    marathi: "mr",
+    gujarati: "gu",
+    kannada: "kn",
+    malayalam: "ml",
+    punjabi: "pa",
+    afrikaans: "af",
+    swahili: "sw",
+    welsh: "cy",
+    irish: "ga",
+    icelandic: "is",
+    latvian: "lv",
+    lithuanian: "lt",
+    estonian: "et",
+    armenian: "hy",
+    azerbaijani: "az",
+    belarusian: "be",
+    bosnian: "bs",
+    catalan: "ca",
+    galician: "gl",
+    kazakh: "kk",
+    macedonian: "mk",
+    maori: "mi",
+    nepali: "ne",
+    tagalog: "tl",
+  };
+
+  const normalized = languageName.toLowerCase().trim();
+  return nameToCode[normalized] || (normalized.length === 2 ? normalized : null);
+};
+
 class AudioManager {
   constructor() {
     this.mediaRecorder = null;
@@ -241,56 +366,149 @@ class AudioManager {
 
   async processWithLocalWhisper(audioBlob, model = "base", metadata = {}) {
     const timings = {};
+    const { selected, fallback } = getLanguageSettings();
+
+    logger.logReasoning("LANGUAGE_SETTINGS", { selected, fallback });
 
     try {
-      // Send original audio to main process - FFmpeg in main process handles conversion
-      // (renderer-side AudioContext conversion was unreliable with WebM/Opus format)
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const language = localStorage.getItem("preferredLanguage");
-      const options = { model };
-      if (language && language !== "auto") {
-        options.language = language;
-      }
 
       logger.debug(
         "Local transcription starting",
         {
           audioFormat: audioBlob.type,
           audioSizeBytes: audioBlob.size,
+          languageMode: selected.length === 0 ? "auto" : selected.length === 1 ? "single" : "multi",
         },
         "performance"
       );
 
+      // OPTIMIZATION: Single language = skip auto-detect entirely
+      if (selected.length === 1) {
+        const options = { model, language: selected[0] };
+
+        const transcriptionStart = performance.now();
+        const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
+        timings.transcriptionProcessingDurationMs = Math.round(
+          performance.now() - transcriptionStart
+        );
+
+        if (result.success && result.text) {
+          const languageContext = {
+            candidates: selected,
+            fallback,
+            detected: selected[0],
+            confidence: 1.0,
+            used: selected[0],
+            reason: "single",
+          };
+
+          const reasoningStart = performance.now();
+          const text = await this.processTranscription(result.text, "local", languageContext);
+          timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
+          return {
+            success: true,
+            text: text || result.text,
+            source: "local",
+            detectedLanguage: selected[0],
+            detectedConfidence: 1.0,
+            languageUsed: selected[0],
+            languageDecisionReason: "single",
+            timings,
+          };
+        }
+        throw new Error(result.message || result.error || "Transcription failed");
+      }
+
+      // STEP 1: Full transcription with auto-detect (NOT a detection pass!)
+      const autoOptions = { model }; // No language = auto-detect
       const transcriptionStart = performance.now();
-      const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
+      const autoResult = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, autoOptions);
       timings.transcriptionProcessingDurationMs = Math.round(
         performance.now() - transcriptionStart
       );
 
-      logger.debug(
-        "Local transcription complete",
-        {
-          transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
-          success: result.success,
-        },
-        "performance"
-      );
-
-      if (result.success && result.text) {
-        const reasoningStart = performance.now();
-        const text = await this.processTranscription(result.text, "local");
-        timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
-
-        if (text !== null && text !== undefined) {
-          return { success: true, text: text || result.text, source: "local", timings };
-        } else {
-          throw new Error("No text transcribed");
+      if (!autoResult.success) {
+        if (autoResult.message === "No audio detected") {
+          throw new Error("No audio detected");
         }
-      } else if (result.success === false && result.message === "No audio detected") {
-        throw new Error("No audio detected");
-      } else {
-        throw new Error(result.message || result.error || "Local Whisper transcription failed");
+        throw new Error(autoResult.message || "Transcription failed");
       }
+
+      const detected = autoResult.detectedLanguage;
+      const confidence = autoResult.detectedConfidence;
+
+      logger.logReasoning("LANGUAGE_DETECTION", {
+        detected,
+        confidence,
+        userLanguages: selected,
+        inList: detected ? selected.includes(detected) : false,
+      });
+
+      // STEP 2: Resolve language (check if detected is in user's list)
+      const decision = resolveLanguage({ selected, fallback, detected });
+
+      logger.logReasoning("LANGUAGE_DECISION", {
+        ...decision,
+        detected,
+        fallback,
+      });
+
+      // STEP 2b: RETRY only if detected language NOT in user's list
+      let finalText = autoResult.text;
+      let usedLanguage = detected;
+
+      if (decision.needsRetry && decision.language) {
+        logger.logReasoning("LANGUAGE_RETRY", {
+          reason: "Detected language not in user's list",
+          detected,
+          retryingWith: decision.language,
+        });
+
+        const retryStart = performance.now();
+        const retryOptions = { model, language: decision.language };
+        const retryResult = await window.electronAPI.transcribeLocalWhisper(
+          arrayBuffer,
+          retryOptions
+        );
+        timings.retryProcessingDurationMs = Math.round(performance.now() - retryStart);
+
+        if (retryResult.success && retryResult.text) {
+          finalText = retryResult.text;
+          usedLanguage = decision.language;
+        }
+        // If retry fails, keep original auto-detect result
+      } else {
+        usedLanguage = decision.language || detected;
+      }
+
+      // STEP 3: Process with Reasoning (pass ALL candidates!)
+      const languageContext = {
+        candidates: selected,
+        fallback,
+        detected,
+        confidence,
+        used: usedLanguage,
+        reason: decision.reason,
+      };
+
+      logger.logReasoning("LANGUAGE_CONTEXT", languageContext);
+
+      const reasoningStart = performance.now();
+      const text = await this.processTranscription(finalText, "local", languageContext);
+      timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
+      return {
+        success: true,
+        text: text || finalText,
+        source: "local",
+        detectedLanguage: detected,
+        detectedConfidence: confidence,
+        languageUsed: usedLanguage,
+        languageDecisionReason: decision.reason,
+        timings,
+      };
     } catch (error) {
       if (error.message === "No audio detected") {
         throw error;
@@ -438,17 +656,25 @@ class AudioManager {
     return new Blob([arrayBuffer], { type: "audio/wav" });
   }
 
-  async processWithReasoningModel(text, model, agentName) {
+  async processWithReasoningModel(text, model, agentName, config = {}, languageContext = null) {
     logger.logReasoning("CALLING_REASONING_SERVICE", {
       model,
       agentName,
       textLength: text.length,
+      hasLanguageContext: !!languageContext,
+      languageCandidates: languageContext?.candidates,
     });
 
     const startTime = Date.now();
 
     try {
-      const result = await ReasoningService.processText(text, model, agentName);
+      const result = await ReasoningService.processText(
+        text,
+        model,
+        agentName,
+        config,
+        languageContext
+      );
 
       const processingTime = Date.now() - startTime;
 
@@ -539,7 +765,7 @@ class AudioManager {
     }
   }
 
-  async processTranscription(text, source) {
+  async processTranscription(text, source, languageContext = null) {
     const normalizedText = typeof text === "string" ? text.trim() : "";
 
     logger.logReasoning("TRANSCRIPTION_RECEIVED", {
@@ -547,6 +773,14 @@ class AudioManager {
       textLength: normalizedText.length,
       textPreview: normalizedText.substring(0, 100) + (normalizedText.length > 100 ? "..." : ""),
       timestamp: new Date().toISOString(),
+      languageContext: languageContext
+        ? {
+            detected: languageContext.detected,
+            used: languageContext.used,
+            reason: languageContext.reason,
+            candidatesCount: languageContext.candidates?.length,
+          }
+        : null,
     });
 
     const reasoningModel =
@@ -575,6 +809,7 @@ class AudioManager {
       reasoningModel,
       reasoningProvider,
       agentName,
+      hasLanguageContext: !!languageContext,
     });
 
     if (useReasoning) {
@@ -583,12 +818,21 @@ class AudioManager {
           preparedTextLength: normalizedText.length,
           model: reasoningModel,
           provider: reasoningProvider,
+          languageContext: languageContext
+            ? {
+                candidates: languageContext.candidates,
+                detected: languageContext.detected,
+                reason: languageContext.reason,
+              }
+            : null,
         });
 
         const result = await this.processWithReasoningModel(
           normalizedText,
           reasoningModel,
-          agentName
+          agentName,
+          {},
+          languageContext
         );
 
         logger.logReasoning("REASONING_SUCCESS", {
@@ -772,9 +1016,21 @@ class AudioManager {
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
     const timings = {};
-    const language = localStorage.getItem("preferredLanguage");
+    const { selected, fallback } = getLanguageSettings();
     const allowLocalFallback = localStorage.getItem("allowLocalFallback") === "true";
     const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
+
+    // Determine language mode
+    const languageMode =
+      selected.length === 0 ? "auto" : selected.length === 1 ? "single" : "multi";
+    const explicitLanguage = selected.length === 1 ? selected[0] : null;
+
+    logger.logReasoning("OPENAI_LANGUAGE_SETTINGS", {
+      selected,
+      fallback,
+      languageMode,
+      explicitLanguage,
+    });
 
     try {
       const durationSeconds = metadata.durationSeconds ?? null;
@@ -794,7 +1050,8 @@ class AudioManager {
           blobSize: audioBlob.size,
           blobType: audioBlob.type,
           durationSeconds,
-          language,
+          languageMode,
+          explicitLanguage,
         },
         "transcription"
       );
@@ -849,8 +1106,16 @@ class AudioManager {
       formData.append("file", optimizedAudio, `audio.${extension}`);
       formData.append("model", model);
 
-      if (language && language !== "auto") {
-        formData.append("language", language);
+      // Single language mode: pass explicit language for best accuracy
+      if (explicitLanguage) {
+        formData.append("language", explicitLanguage);
+      }
+
+      // Multi-language mode: use verbose_json to get detected language (whisper-1 only)
+      // gpt-4o-transcribe models don't support verbose_json or return language
+      const useVerboseJson = languageMode === "multi" && model === "whisper-1";
+      if (useVerboseJson) {
+        formData.append("response_format", "verbose_json");
       }
 
       const shouldStream = this.shouldStreamTranscription(model, provider);
@@ -983,8 +1248,35 @@ class AudioManager {
       if (result.text && result.text.trim().length > 0) {
         timings.transcriptionProcessingDurationMs = Math.round(performance.now() - apiCallStart);
 
+        // Extract detected language from verbose_json response (whisper-1 only)
+        let detectedLanguage = null;
+        if (useVerboseJson && result.language) {
+          // OpenAI returns full language names like "english", "russian"
+          detectedLanguage = normalizeLanguageCode(result.language);
+          logger.logReasoning("OPENAI_LANGUAGE_DETECTION", {
+            rawLanguage: result.language,
+            normalized: detectedLanguage,
+            userLanguages: selected,
+            inList: detectedLanguage ? selected.includes(detectedLanguage) : false,
+          });
+        }
+
+        // Build language context for reasoning
+        const languageContext =
+          selected.length > 0
+            ? {
+                candidates: selected,
+                fallback,
+                detected: detectedLanguage,
+                confidence: 0.8, // OpenAI doesn't provide confidence
+                used: explicitLanguage || detectedLanguage,
+                reason:
+                  languageMode === "single" ? "single" : detectedLanguage ? "detected" : "auto",
+              }
+            : null;
+
         const reasoningStart = performance.now();
-        const text = await this.processTranscription(result.text, "openai");
+        const text = await this.processTranscription(result.text, "openai", languageContext);
         timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
 
         const source = (await this.isReasoningAvailable()) ? "openai-reasoned" : "openai";
@@ -994,12 +1286,22 @@ class AudioManager {
             originalLength: result.text.length,
             processedLength: text.length,
             source,
+            detectedLanguage,
+            languageMode,
             transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
             reasoningProcessingDurationMs: timings.reasoningProcessingDurationMs,
           },
           "transcription"
         );
-        return { success: true, text, source, timings };
+        return {
+          success: true,
+          text,
+          source,
+          detectedLanguage,
+          languageUsed: explicitLanguage || detectedLanguage,
+          languageDecisionReason: languageMode === "single" ? "single" : "detected",
+          timings,
+        };
       } else {
         // Log at info level so it shows without debug mode
         logger.info(
@@ -1036,14 +1338,31 @@ class AudioManager {
         try {
           const arrayBuffer = await audioBlob.arrayBuffer();
           const options = { model: fallbackModel };
-          if (language && language !== "auto") {
-            options.language = language;
+          // Use single language if set, otherwise auto-detect
+          if (explicitLanguage) {
+            options.language = explicitLanguage;
           }
 
-          const result = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
+          const localResult = await window.electronAPI.transcribeLocalWhisper(arrayBuffer, options);
 
-          if (result.success && result.text) {
-            const text = await this.processTranscription(result.text, "local-fallback");
+          if (localResult.success && localResult.text) {
+            const localLanguageContext =
+              selected.length > 0
+                ? {
+                    candidates: selected,
+                    fallback,
+                    detected: localResult.detectedLanguage || explicitLanguage,
+                    confidence: localResult.detectedConfidence || 0.8,
+                    used: explicitLanguage || localResult.detectedLanguage,
+                    reason: explicitLanguage ? "single" : "detected",
+                  }
+                : null;
+
+            const text = await this.processTranscription(
+              localResult.text,
+              "local-fallback",
+              localLanguageContext
+            );
             if (text) {
               return { success: true, text, source: "local-fallback" };
             }

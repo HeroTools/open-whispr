@@ -12,6 +12,8 @@ export interface TranscriptionSettings {
   allowLocalFallback: boolean;
   fallbackWhisperModel: string;
   preferredLanguage: string;
+  selectedLanguages: string[];
+  defaultLanguage: string;
   cloudTranscriptionProvider: string;
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
@@ -79,6 +81,42 @@ export function useSettings() {
     serialize: String,
     deserialize: String,
   });
+
+  const [selectedLanguages, setSelectedLanguages] = useLocalStorage<string[]>(
+    "selectedLanguages",
+    [],
+    {
+      serialize: (value) => JSON.stringify(value),
+      deserialize: (value) => {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      },
+    }
+  );
+
+  const [defaultLanguage, setDefaultLanguage] = useLocalStorage("defaultLanguage", "", {
+    serialize: String,
+    deserialize: String,
+  });
+
+  // Migration from old preferredLanguage to new multi-language format
+  useEffect(() => {
+    const hasNewFormat = localStorage.getItem("selectedLanguages") !== null;
+    if (hasNewFormat) return;
+
+    const oldLang = localStorage.getItem("preferredLanguage");
+    if (oldLang && oldLang !== "auto") {
+      localStorage.setItem("selectedLanguages", JSON.stringify([oldLang]));
+      localStorage.setItem("defaultLanguage", oldLang);
+    } else {
+      localStorage.setItem("selectedLanguages", JSON.stringify([]));
+      localStorage.setItem("defaultLanguage", "");
+    }
+  }, []);
 
   const [cloudTranscriptionProvider, setCloudTranscriptionProvider] = useLocalStorage(
     "cloudTranscriptionProvider",
@@ -273,6 +311,9 @@ export function useSettings() {
         setFallbackWhisperModel(settings.fallbackWhisperModel);
       if (settings.preferredLanguage !== undefined)
         setPreferredLanguage(settings.preferredLanguage);
+      if (settings.selectedLanguages !== undefined)
+        setSelectedLanguages(settings.selectedLanguages);
+      if (settings.defaultLanguage !== undefined) setDefaultLanguage(settings.defaultLanguage);
       if (settings.cloudTranscriptionProvider !== undefined)
         setCloudTranscriptionProvider(settings.cloudTranscriptionProvider);
       if (settings.cloudTranscriptionModel !== undefined)
@@ -287,6 +328,8 @@ export function useSettings() {
       setAllowLocalFallback,
       setFallbackWhisperModel,
       setPreferredLanguage,
+      setSelectedLanguages,
+      setDefaultLanguage,
       setCloudTranscriptionProvider,
       setCloudTranscriptionModel,
       setCloudTranscriptionBaseUrl,
@@ -322,6 +365,8 @@ export function useSettings() {
     allowLocalFallback,
     fallbackWhisperModel,
     preferredLanguage,
+    selectedLanguages,
+    defaultLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
@@ -340,6 +385,8 @@ export function useSettings() {
     setAllowLocalFallback,
     setFallbackWhisperModel,
     setPreferredLanguage,
+    setSelectedLanguages,
+    setDefaultLanguage,
     setCloudTranscriptionProvider,
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,

@@ -86,7 +86,10 @@ class DevServerManager {
     try {
       const distDir = path.join(appPath, "src", "dist");
       if (fs.existsSync(distDir)) {
-        console.log("[DevServerManager] dist directory contents:", fs.readdirSync(distDir).slice(0, 10));
+        console.log(
+          "[DevServerManager] dist directory contents:",
+          fs.readdirSync(distDir).slice(0, 10)
+        );
       } else {
         console.error("[DevServerManager] dist directory does not exist:", distDir);
         // Try alternative paths

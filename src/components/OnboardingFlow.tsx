@@ -61,7 +61,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const {
     useLocalWhisper,
     whisperModel,
-    preferredLanguage,
+    selectedLanguages,
+    defaultLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
@@ -71,6 +72,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     activationMode,
     setActivationMode,
     setWhisperModel,
+    setSelectedLanguages,
+    setDefaultLanguage,
     setDictationKey,
     setOpenaiApiKey,
     setGroqApiKey,
@@ -340,20 +343,32 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             {/* Language Selection - shown for both modes */}
             <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900 mb-3">🌍 Preferred Language</h4>
+              <h4 className="font-medium text-gray-900 mb-3">🌍 Primary Language</h4>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Which language do you primarily speak?
               </label>
               <LanguageSelector
-                value={preferredLanguage}
+                value={
+                  selectedLanguages.length > 0 ? selectedLanguages[0] : defaultLanguage || "auto"
+                }
                 onChange={(value) => {
-                  updateTranscriptionSettings({ preferredLanguage: value });
+                  if (value === "auto") {
+                    setSelectedLanguages([]);
+                    setDefaultLanguage("");
+                  } else {
+                    setSelectedLanguages([value]);
+                    setDefaultLanguage(value);
+                  }
+                  updateTranscriptionSettings({
+                    selectedLanguages: value === "auto" ? [] : [value],
+                    defaultLanguage: value === "auto" ? "" : value,
+                  });
                 }}
                 className="w-full"
               />
               <p className="text-xs text-gray-600 mt-1">
                 {useLocalWhisper
-                  ? "Helps Whisper better understand your speech"
+                  ? "Helps Whisper better understand your speech. You can add more languages in Settings later."
                   : "Improves transcription speed and accuracy. AI text enhancement is enabled by default."}
               </p>
             </div>

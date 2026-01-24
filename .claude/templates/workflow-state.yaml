@@ -1,0 +1,74 @@
+# Workflow State Template
+# This file tracks the complete lifecycle of a task
+
+task_id: OWS-XX
+title: "[Task Title]"
+branch: feature/ows-XX-description
+created: "[ISO timestamp]"
+task_type: development  # development | quick
+
+workflow:
+  current_phase: design  # design | plan | implement | pr | complete
+  status: awaiting_input  # awaiting_input | in_progress | checkpoint | complete | blocked
+
+phases:
+  design:
+    status: pending  # pending | in_progress | checkpoint | complete | skipped
+    design_doc: null  # Path to design document when created
+    draft_ready: false
+    finalized: false
+    review_file: null  # Path to review file
+    review_verdict: null  # APPROVE | APPROVE_WITH_SUGGESTIONS | NEEDS_REVISION
+    review_completed: false
+
+  plan:
+    status: pending
+    plan_file: null  # Path to plan file when created
+    approved: false
+
+  implement:
+    status: pending
+    current_step: 0
+    total_steps: 0
+    commits: []  # List of commit SHAs
+    last_phase_completed: null
+
+  pr:
+    status: pending
+    pr_url: null
+    pr_number: null
+    reviews_addressed: 0
+    approved: false
+
+  complete:
+    status: pending
+    aggregation_files_updated: false
+    merged_at: null
+
+history: []
+  # Format for history entries:
+  # - timestamp: "[ISO timestamp]"
+  #   action: "[action_type]"
+  #   phase: "[phase_name]"
+  #   details: "[description]"
+
+# History action types:
+# - workflow_started
+# - design_started
+# - design_draft_ready
+# - design_review_complete
+# - design_finalized
+# - plan_created
+# - plan_approved
+# - phase_completed
+# - commit_created
+# - pushed_to_remote
+# - pr_created
+# - review_addressed
+# - pr_approved
+# - pr_merged
+# - project_sync_complete
+# - workflow_complete
+# - workflow_paused
+# - workflow_resumed
+# - workflow_blocked

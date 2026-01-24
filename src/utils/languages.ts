@@ -59,7 +59,21 @@ export const LANGUAGE_OPTIONS = [
   { value: "cy", label: "Welsh" },
 ];
 
+// Languages that can be selected (excludes "auto")
+export const SELECTABLE_LANGUAGES = LANGUAGE_OPTIONS.filter((lang) => lang.value !== "auto");
+
+// Get language label by code
 export const getLanguageLabel = (code: string): string => {
   const option = LANGUAGE_OPTIONS.find((lang) => lang.value === code);
   return option?.label || code;
 };
+
+// Alias for prompt construction
+export const getLanguageName = getLanguageLabel;
+
+// Validate language code
+export const isValidLanguageCode = (code: string): boolean =>
+  SELECTABLE_LANGUAGES.some((lang) => lang.value === code);
+
+// Maximum recommended languages (to prevent AI confusion)
+export const MAX_RECOMMENDED_LANGUAGES = 4;
