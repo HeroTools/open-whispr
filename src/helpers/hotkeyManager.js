@@ -162,11 +162,10 @@ class HotkeyManager {
       globalShortcut.unregisterAll();
     }
 
-    mainWindow.webContents.once("did-finish-load", () => {
-      setTimeout(() => {
-        this.loadSavedHotkeyOrDefault(mainWindow, callback);
-      }, 1000);
-    });
+    // Window is already loaded at this point (called from did-finish-load)
+    // Register hotkey immediately with a small delay to ensure localStorage is ready
+    debugLogger.log("[HotkeyManager] Initializing hotkey after window load");
+    await this.loadSavedHotkeyOrDefault(mainWindow, callback);
 
     this.isInitialized = true;
   }

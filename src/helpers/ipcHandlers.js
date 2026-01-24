@@ -296,6 +296,9 @@ class IPCHandlers {
     });
 
     ipcMain.handle("update-hotkey", async (event, hotkey) => {
+      // Save hotkey to persistent config
+      this.environmentManager.saveHotkey(hotkey);
+      // Update the active hotkey registration
       return await this.windowManager.updateHotkey(hotkey);
     });
 
@@ -446,6 +449,72 @@ class IPCHandlers {
 
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
+    });
+
+    // NEW: Dictation (transcription) API key handlers
+    ipcMain.handle("get-dictation-openai-key", async (event) => {
+      return this.environmentManager.getDictationOpenAIKey();
+    });
+
+    ipcMain.handle("save-dictation-openai-key", async (event, key) => {
+      return this.environmentManager.saveDictationOpenAIKey(key);
+    });
+
+    ipcMain.handle("get-dictation-groq-key", async (event) => {
+      return this.environmentManager.getDictationGroqKey();
+    });
+
+    ipcMain.handle("save-dictation-groq-key", async (event, key) => {
+      return this.environmentManager.saveDictationGroqKey(key);
+    });
+
+    ipcMain.handle("get-dictation-custom-key", async (event) => {
+      return this.environmentManager.getDictationCustomKey();
+    });
+
+    ipcMain.handle("save-dictation-custom-key", async (event, key) => {
+      return this.environmentManager.saveDictationCustomKey(key);
+    });
+
+    // NEW: Reasoning (post-processing) API key handlers
+    ipcMain.handle("get-reasoning-openai-key", async (event) => {
+      return this.environmentManager.getReasoningOpenAIKey();
+    });
+
+    ipcMain.handle("save-reasoning-openai-key", async (event, key) => {
+      return this.environmentManager.saveReasoningOpenAIKey(key);
+    });
+
+    ipcMain.handle("get-reasoning-anthropic-key", async (event) => {
+      return this.environmentManager.getReasoningAnthropicKey();
+    });
+
+    ipcMain.handle("save-reasoning-anthropic-key", async (event, key) => {
+      return this.environmentManager.saveReasoningAnthropicKey(key);
+    });
+
+    ipcMain.handle("get-reasoning-gemini-key", async (event) => {
+      return this.environmentManager.getReasoningGeminiKey();
+    });
+
+    ipcMain.handle("save-reasoning-gemini-key", async (event, key) => {
+      return this.environmentManager.saveReasoningGeminiKey(key);
+    });
+
+    ipcMain.handle("get-reasoning-groq-key", async (event) => {
+      return this.environmentManager.getReasoningGroqKey();
+    });
+
+    ipcMain.handle("save-reasoning-groq-key", async (event, key) => {
+      return this.environmentManager.saveReasoningGroqKey(key);
+    });
+
+    ipcMain.handle("get-reasoning-custom-key", async (event) => {
+      return this.environmentManager.getReasoningCustomKey();
+    });
+
+    ipcMain.handle("save-reasoning-custom-key", async (event, key) => {
+      return this.environmentManager.saveReasoningCustomKey(key);
     });
 
     ipcMain.handle("save-all-keys-to-env", async () => {

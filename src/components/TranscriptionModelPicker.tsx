@@ -41,6 +41,8 @@ interface TranscriptionModelPickerProps {
   setOpenaiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
+  customApiKey: string;
+  setCustomApiKey: (key: string) => void;
   cloudTranscriptionBaseUrl?: string;
   setCloudTranscriptionBaseUrl?: (url: string) => void;
   className?: string;
@@ -75,6 +77,8 @@ export default function TranscriptionModelPicker({
   setOpenaiApiKey,
   groqApiKey,
   setGroqApiKey,
+  customApiKey,
+  setCustomApiKey,
   cloudTranscriptionBaseUrl = "",
   setCloudTranscriptionBaseUrl,
   className = "",
@@ -566,8 +570,8 @@ export default function TranscriptionModelPicker({
                   <div className="space-y-3 pt-4">
                     <h4 className="font-medium text-gray-900">API Key (Optional)</h4>
                     <ApiKeyInput
-                      apiKey={openaiApiKey}
-                      setApiKey={setOpenaiApiKey}
+                      apiKey={customApiKey}
+                      setApiKey={setCustomApiKey}
                       label=""
                       helpText="Optional. Sent as a Bearer token for authentication."
                     />

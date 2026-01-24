@@ -57,10 +57,25 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
+
+    // Dictation (transcription) API keys
+    dictation_openaiApiKey,
+    dictation_groqApiKey,
+    dictation_customApiKey,
+
+    // Reasoning (post-processing) API keys
+    reasoning_openaiApiKey,
+    reasoning_anthropicApiKey,
+    reasoning_geminiApiKey,
+    reasoning_groqApiKey,
+    reasoning_customApiKey,
+
+    // LEGACY keys (kept for backward compatibility)
     openaiApiKey,
     anthropicApiKey,
     geminiApiKey,
     groqApiKey,
+
     dictationKey,
     activationMode,
     setActivationMode,
@@ -78,10 +93,25 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider,
+
+    // Dictation setters
+    setDictation_OpenaiApiKey,
+    setDictation_GroqApiKey,
+    setDictation_CustomApiKey,
+
+    // Reasoning setters
+    setReasoning_OpenaiApiKey,
+    setReasoning_AnthropicApiKey,
+    setReasoning_GeminiApiKey,
+    setReasoning_GroqApiKey,
+    setReasoning_CustomApiKey,
+
+    // LEGACY setters (kept for backward compatibility)
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -638,10 +668,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 setUseLocalWhisper(isLocal);
                 updateTranscriptionSettings({ useLocalWhisper: isLocal });
               }}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
+              openaiApiKey={dictation_openaiApiKey || openaiApiKey}
+              setOpenaiApiKey={setDictation_OpenaiApiKey}
+              groqApiKey={dictation_groqApiKey || groqApiKey}
+              setGroqApiKey={setDictation_GroqApiKey}
+              customApiKey={dictation_customApiKey || ""}
+              setCustomApiKey={setDictation_CustomApiKey}
               cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
               setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
               variant="settings"
@@ -673,14 +705,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setReasoningModel={setReasoningModel}
               localReasoningProvider={localReasoningProvider}
               setLocalReasoningProvider={setLocalReasoningProvider}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              anthropicApiKey={anthropicApiKey}
-              setAnthropicApiKey={setAnthropicApiKey}
-              geminiApiKey={geminiApiKey}
-              setGeminiApiKey={setGeminiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
+              openaiApiKey={reasoning_openaiApiKey || openaiApiKey}
+              setOpenaiApiKey={setReasoning_OpenaiApiKey}
+              anthropicApiKey={reasoning_anthropicApiKey || anthropicApiKey}
+              setAnthropicApiKey={setReasoning_AnthropicApiKey}
+              geminiApiKey={reasoning_geminiApiKey || geminiApiKey}
+              setGeminiApiKey={setReasoning_GeminiApiKey}
+              groqApiKey={reasoning_groqApiKey || groqApiKey}
+              setGroqApiKey={setReasoning_GroqApiKey}
+              customApiKey={reasoning_customApiKey || ""}
+              setCustomApiKey={setReasoning_CustomApiKey}
               showAlertDialog={showAlertDialog}
             />
           </div>

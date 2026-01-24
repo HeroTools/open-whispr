@@ -167,7 +167,7 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
-  private async getApiKey(provider: "openai" | "anthropic" | "gemini" | "groq"): Promise<string> {
+  private async getApiKey(provider: "openai" | "anthropic" | "gemini" | "groq" | "custom"): Promise<string> {
     let apiKey = this.apiKeyCache.get(provider);
 
     logger.logReasoning(`${provider.toUpperCase()}_KEY_RETRIEVAL`, {
@@ -179,10 +179,11 @@ class ReasoningService extends BaseReasoningService {
     if (!apiKey) {
       try {
         const keyGetters = {
-          openai: () => window.electronAPI.getOpenAIKey(),
-          anthropic: () => window.electronAPI.getAnthropicKey(),
-          gemini: () => window.electronAPI.getGeminiKey(),
-          groq: () => window.electronAPI.getGroqKey(),
+          openai: () => window.electronAPI.getReasoningOpenAIKey?.() || window.electronAPI.getOpenAIKey(),
+          anthropic: () => window.electronAPI.getReasoningAnthropicKey?.() || window.electronAPI.getAnthropicKey(),
+          gemini: () => window.electronAPI.getReasoningGeminiKey?.() || window.electronAPI.getGeminiKey(),
+          groq: () => window.electronAPI.getReasoningGroqKey?.() || window.electronAPI.getGroqKey(),
+          custom: () => window.electronAPI.getReasoningCustomKey?.(),
         };
         apiKey = (await keyGetters[provider]()) ?? undefined;
 
@@ -398,6 +399,9 @@ class ReasoningService extends BaseReasoningService {
           break;
         case "groq":
           result = await this.processWithGroq(text, model, agentName, config);
+          break;
+        case "custom":
+          result = await this.processWithCustom(text, model, agentName, config);
           break;
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
@@ -962,6 +966,73 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
+  private async processWithCustom(
+    text: string,
+    model: string,
+    agentName: string | null = null,
+    config: ReasoningConfig = {}
+  ): Promise<string> {
+    logger.logReasoning("CUSTOM_START", { model, agentName });
+
+    if (this.isProcessing) {
+      throw new Error("Already processing a request");
+    }
+
+    // Get custom base URL from localStorage
+    const customBaseUrl = localStorage.getItem("cloudReasoningBaseUrl") || "";
+    if (!customBaseUrl || !customBaseUrl.trim()) {
+      throw new Error("Custom reasoning base URL not configured");
+    }
+
+    const normalizedBase = normalizeBaseUrl(customBaseUrl);
+    if (!normalizedBase) {
+      throw new Error("Invalid custom reasoning base URL");
+    }
+
+    // Get custom API key (optional for some custom endpoints)
+    let apiKey = "";
+    try {
+      apiKey = await this.getApiKey("custom");
+    } catch (error) {
+      // Custom API key is optional - some local/custom endpoints don't require auth
+      logger.logReasoning("CUSTOM_NO_API_KEY", {
+        message: "No custom API key configured (proceeding without authentication)",
+      });
+    }
+
+    this.isProcessing = true;
+
+    try {
+      const endpoint = buildApiUrl(normalizedBase, "/chat/completions");
+      logger.logReasoning("CUSTOM_ENDPOINT", {
+        customBaseUrl,
+        normalizedBase,
+        endpoint,
+        hasApiKey: !!apiKey,
+      });
+
+      return await this.callChatCompletionsApi(
+        endpoint,
+        apiKey,
+        model,
+        text,
+        agentName,
+        config,
+        "Custom"
+      );
+    } catch (error) {
+      logger.logReasoning("CUSTOM_ERROR", {
+        model,
+        customBaseUrl,
+        error: (error as Error).message,
+        errorType: (error as Error).name,
+      });
+      throw error;
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
       // Check if we have at least one configured API key or local model available
@@ -994,7 +1065,7 @@ class ReasoningService extends BaseReasoningService {
    * Clear cached API key for a specific provider or all providers.
    * Call this when API keys change to ensure fresh keys are used.
    */
-  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq"): void {
+  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq" | "custom"): void {
     if (provider) {
       this.apiKeyCache.delete(provider);
       logger.logReasoning("API_KEY_CACHE_CLEARED", { provider });

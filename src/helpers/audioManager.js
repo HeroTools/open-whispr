@@ -330,29 +330,35 @@ class AudioManager {
 
     if (provider === "custom") {
       // Custom endpoints: API key is optional
-      // Try OpenAI key first as it's commonly used for compatible endpoints
-      apiKey = await window.electronAPI.getOpenAIKey();
+      // Try dictation custom key first, then fall back to OpenAI dictation key
+      apiKey = await window.electronAPI.getDictationCustomKey?.();
       if (!isValidApiKey(apiKey, "openai")) {
-        apiKey = localStorage.getItem("openaiApiKey");
+        apiKey = await window.electronAPI.getDictationOpenAIKey?.();
+      }
+      if (!isValidApiKey(apiKey, "openai")) {
+        apiKey = localStorage.getItem("dictation_customApiKey");
+      }
+      if (!isValidApiKey(apiKey, "openai")) {
+        apiKey = localStorage.getItem("dictation_openaiApiKey");
       }
       // For custom, we allow null/empty - the endpoint may not require auth
       if (!isValidApiKey(apiKey, "openai")) {
         apiKey = null;
       }
     } else if (provider === "groq") {
-      // Try to get Groq API key
-      apiKey = await window.electronAPI.getGroqKey?.();
+      // Try to get Groq dictation API key
+      apiKey = await window.electronAPI.getDictationGroqKey?.();
       if (!isValidApiKey(apiKey, "groq")) {
-        apiKey = localStorage.getItem("groqApiKey");
+        apiKey = localStorage.getItem("dictation_groqApiKey");
       }
       if (!isValidApiKey(apiKey, "groq")) {
         throw new Error("Groq API key not found. Please set your API key in the Control Panel.");
       }
     } else {
-      // Default to OpenAI
-      apiKey = await window.electronAPI.getOpenAIKey();
+      // Default to OpenAI dictation key
+      apiKey = await window.electronAPI.getDictationOpenAIKey?.();
       if (!isValidApiKey(apiKey, "openai")) {
-        apiKey = localStorage.getItem("openaiApiKey");
+        apiKey = localStorage.getItem("dictation_openaiApiKey");
       }
       if (!isValidApiKey(apiKey, "openai")) {
         throw new Error(

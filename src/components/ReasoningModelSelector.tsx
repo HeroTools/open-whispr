@@ -59,6 +59,8 @@ interface ReasoningModelSelectorProps {
   setGeminiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
+  customApiKey: string;
+  setCustomApiKey: (key: string) => void;
   showAlertDialog: (dialog: { title: string; description: string }) => void;
 }
 
@@ -79,6 +81,9 @@ export default function ReasoningModelSelector({
   setGeminiApiKey,
   groqApiKey,
   setGroqApiKey,
+  customApiKey,
+  setCustomApiKey,
+  showAlertDialog,
 }: ReasoningModelSelectorProps) {
   const [selectedMode, setSelectedMode] = useState<"cloud" | "local">("cloud");
   const [selectedCloudProvider, setSelectedCloudProvider] = useState("openai");
@@ -585,8 +590,8 @@ export default function ReasoningModelSelector({
                       <div className="space-y-3 pt-4">
                         <h4 className="font-medium text-gray-900">API Key (Optional)</h4>
                         <ApiKeyInput
-                          apiKey={openaiApiKey}
-                          setApiKey={setOpenaiApiKey}
+                          apiKey={customApiKey}
+                          setApiKey={setCustomApiKey}
                           label=""
                           helpText="Optional. Sent as a Bearer token for authentication."
                         />

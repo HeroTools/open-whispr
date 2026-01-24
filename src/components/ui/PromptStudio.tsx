@@ -33,12 +33,13 @@ type ProviderConfig = {
 };
 
 const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
-  openai: { label: "OpenAI", apiKeyStorageKey: "openaiApiKey" },
-  anthropic: { label: "Anthropic", apiKeyStorageKey: "anthropicApiKey" },
-  gemini: { label: "Gemini", apiKeyStorageKey: "geminiApiKey" },
+  openai: { label: "OpenAI", apiKeyStorageKey: "reasoning_openaiApiKey" },
+  anthropic: { label: "Anthropic", apiKeyStorageKey: "reasoning_anthropicApiKey" },
+  gemini: { label: "Gemini", apiKeyStorageKey: "reasoning_geminiApiKey" },
+  groq: { label: "Groq", apiKeyStorageKey: "reasoning_groqApiKey" },
   custom: {
     label: "Custom endpoint",
-    apiKeyStorageKey: "openaiApiKey",
+    apiKeyStorageKey: "reasoning_customApiKey",
     baseStorageKey: "cloudReasoningBaseUrl",
   },
   local: { label: "Local" },

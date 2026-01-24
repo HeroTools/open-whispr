@@ -65,13 +65,24 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
+
+    // Dictation API keys
+    dictation_openaiApiKey,
+    dictation_groqApiKey,
+    dictation_customApiKey,
+
+    // Legacy keys (for backward compatibility)
     openaiApiKey,
     groqApiKey,
+
     dictationKey,
     activationMode,
     setActivationMode,
     setWhisperModel,
     setDictationKey,
+    setDictation_OpenaiApiKey,
+    setDictation_GroqApiKey,
+    setDictation_CustomApiKey,
     setOpenaiApiKey,
     setGroqApiKey,
     updateTranscriptionSettings,
@@ -327,10 +338,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               onLocalModelSelect={setWhisperModel}
               useLocalWhisper={useLocalWhisper}
               onModeChange={() => {}}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
+              openaiApiKey={dictation_openaiApiKey || openaiApiKey}
+              setOpenaiApiKey={setDictation_OpenaiApiKey}
+              groqApiKey={dictation_groqApiKey || groqApiKey}
+              setGroqApiKey={setDictation_GroqApiKey}
+              customApiKey={dictation_customApiKey || ""}
+              setCustomApiKey={setDictation_CustomApiKey}
               cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
               setCloudTranscriptionBaseUrl={(url) =>
                 updateTranscriptionSettings({ cloudTranscriptionBaseUrl: url })

@@ -125,13 +125,33 @@ declare global {
         callback: (payload: { cleared: number }) => void
       ) => (() => void) | void;
 
-      // API key management
+      // API key management (legacy - for backward compatibility)
       getOpenAIKey: () => Promise<string>;
       saveOpenAIKey: (key: string) => Promise<{ success: boolean }>;
       createProductionEnvFile: (key: string) => Promise<void>;
       getAnthropicKey: () => Promise<string | null>;
       saveAnthropicKey: (key: string) => Promise<void>;
       saveAllKeysToEnv: () => Promise<{ success: boolean; path: string }>;
+
+      // Dictation (transcription) API keys
+      getDictationOpenAIKey?: () => Promise<string | null>;
+      saveDictationOpenAIKey?: (key: string) => Promise<{ success: boolean }>;
+      getDictationGroqKey?: () => Promise<string | null>;
+      saveDictationGroqKey?: (key: string) => Promise<{ success: boolean }>;
+      getDictationCustomKey?: () => Promise<string | null>;
+      saveDictationCustomKey?: (key: string) => Promise<{ success: boolean }>;
+
+      // Reasoning (post-processing) API keys
+      getReasoningOpenAIKey?: () => Promise<string | null>;
+      saveReasoningOpenAIKey?: (key: string) => Promise<{ success: boolean }>;
+      getReasoningAnthropicKey?: () => Promise<string | null>;
+      saveReasoningAnthropicKey?: (key: string) => Promise<{ success: boolean }>;
+      getReasoningGeminiKey?: () => Promise<string | null>;
+      saveReasoningGeminiKey?: (key: string) => Promise<{ success: boolean }>;
+      getReasoningGroqKey?: () => Promise<string | null>;
+      saveReasoningGroqKey?: (key: string) => Promise<{ success: boolean }>;
+      getReasoningCustomKey?: () => Promise<string | null>;
+      saveReasoningCustomKey?: (key: string) => Promise<{ success: boolean }>;
 
       // Clipboard operations
       readClipboard: () => Promise<string>;

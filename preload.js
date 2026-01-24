@@ -162,6 +162,26 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
 
+  // NEW: Dictation (transcription) API keys
+  getDictationOpenAIKey: () => ipcRenderer.invoke("get-dictation-openai-key"),
+  saveDictationOpenAIKey: (key) => ipcRenderer.invoke("save-dictation-openai-key", key),
+  getDictationGroqKey: () => ipcRenderer.invoke("get-dictation-groq-key"),
+  saveDictationGroqKey: (key) => ipcRenderer.invoke("save-dictation-groq-key", key),
+  getDictationCustomKey: () => ipcRenderer.invoke("get-dictation-custom-key"),
+  saveDictationCustomKey: (key) => ipcRenderer.invoke("save-dictation-custom-key", key),
+
+  // NEW: Reasoning (post-processing) API keys
+  getReasoningOpenAIKey: () => ipcRenderer.invoke("get-reasoning-openai-key"),
+  saveReasoningOpenAIKey: (key) => ipcRenderer.invoke("save-reasoning-openai-key", key),
+  getReasoningAnthropicKey: () => ipcRenderer.invoke("get-reasoning-anthropic-key"),
+  saveReasoningAnthropicKey: (key) => ipcRenderer.invoke("save-reasoning-anthropic-key", key),
+  getReasoningGeminiKey: () => ipcRenderer.invoke("get-reasoning-gemini-key"),
+  saveReasoningGeminiKey: (key) => ipcRenderer.invoke("save-reasoning-gemini-key", key),
+  getReasoningGroqKey: () => ipcRenderer.invoke("get-reasoning-groq-key"),
+  saveReasoningGroqKey: (key) => ipcRenderer.invoke("save-reasoning-groq-key", key),
+  getReasoningCustomKey: () => ipcRenderer.invoke("get-reasoning-custom-key"),
+  saveReasoningCustomKey: (key) => ipcRenderer.invoke("save-reasoning-custom-key", key),
+
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),

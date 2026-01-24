@@ -92,6 +92,7 @@ function initializeManagers() {
   debugLogger.refreshLogLevel();
 
   windowManager = new WindowManager();
+  windowManager.setEnvironmentManager(environmentManager);
   hotkeyManager = windowManager.hotkeyManager;
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();

@@ -15,10 +15,15 @@ class WindowManager {
     this.isQuitting = false;
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
+    this.environmentManager = null;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
     });
+  }
+
+  setEnvironmentManager(environmentManager) {
+    this.environmentManager = environmentManager;
   }
 
   async createMainWindow() {
@@ -63,11 +68,18 @@ class WindowManager {
     this.mainWindow.webContents.on("did-finish-load", () => {
       this.mainWindow.setTitle("Voice Recorder");
       this.enforceMainWindowOnTop();
+
+      // Initialize hotkey after window is fully loaded
+      // Use setTimeout to ensure DOM and localStorage are ready
+      setTimeout(() => {
+        this.initializeHotkey().catch((error) => {
+          console.error("[WindowManager] Failed to initialize hotkey:", error);
+        });
+      }, 500);
     });
 
     // Now load the window content
     await this.loadMainWindow();
-    await this.initializeHotkey();
     this.dragManager.setTargetWindow(this.mainWindow);
     MenuManager.setupMainMenu();
   }
@@ -177,7 +189,10 @@ class WindowManager {
   }
 
   async initializeHotkey() {
-    await this.hotkeyManager.initializeHotkey(this.mainWindow, this.createHotkeyCallback());
+    await this.hotkeyManager.initializeHotkey(
+      this.mainWindow,
+      this.createHotkeyCallback()
+    );
   }
 
   async updateHotkey(hotkey) {

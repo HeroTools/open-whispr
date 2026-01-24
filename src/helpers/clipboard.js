@@ -437,6 +437,35 @@ class ClipboardManager {
     const wtypeExists = this.commandExists("wtype");
     const ydotoolExists = this.commandExists("ydotool");
 
+    // Fix ydotool socket path for user-level ydotoold
+    // System service uses /tmp/.ydotool_socket but user-level uses /run/user/UID/.ydotool_socket
+    if (ydotoolExists && !process.env.YDOTOOL_SOCKET) {
+      const userSocket = `/run/user/${process.getuid()}/.ydotool_socket`;
+      const systemSocket = "/tmp/.ydotool_socket";
+
+      try {
+        if (fs.existsSync(userSocket)) {
+          process.env.YDOTOOL_SOCKET = userSocket;
+          this.safeLog(`🔧 Set YDOTOOL_SOCKET to user socket: ${userSocket}`);
+        } else if (fs.existsSync(systemSocket)) {
+          process.env.YDOTOOL_SOCKET = systemSocket;
+          this.safeLog(`🔧 Set YDOTOOL_SOCKET to system socket: ${systemSocket}`);
+        } else {
+          // No socket found - ydotoold is not running
+          debugLogger.warn(
+            "ydotool socket not found",
+            {
+              checkedPaths: [userSocket, systemSocket],
+              ydotoolInstalled: ydotoolExists,
+            },
+            "clipboard"
+          );
+        }
+      } catch (error) {
+        // Ignore error, will use default socket
+      }
+    }
+
     debugLogger.debug(
       "Linux paste environment",
       {
@@ -780,13 +809,34 @@ class ClipboardManager {
       } else if (!wtypeExists && !ydotoolExists) {
         if (!xwaylandAvailable) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires wtype or ydotool. Please install one or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on Wayland requires wtype or ydotool.\n\n" +
+            "Install ydotool (recommended):\n" +
+            "  Fedora/RHEL: sudo dnf install ydotool\n" +
+            "  Debian/Ubuntu: sudo apt install ydotool\n" +
+            "  Arch: sudo pacman -S ydotool\n" +
+            "\nThen start the daemon:\n" +
+            "  sudo systemctl start ydotool\n" +
+            "  sudo systemctl enable ydotool\n" +
+            "\nAlternatively, paste manually with Ctrl+V.";
         } else if (!xdotoolExists) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires wtype/ydotool (Wayland apps) or xdotool (XWayland apps). Please install one or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on Wayland requires wtype/ydotool (Wayland apps) or xdotool (XWayland apps).\n\n" +
+            "Install ydotool (recommended for Wayland):\n" +
+            "  Fedora/RHEL: sudo dnf install ydotool\n" +
+            "  Debian/Ubuntu: sudo apt install ydotool\n" +
+            "\nOR install xdotool (for XWayland apps):\n" +
+            "  Fedora/RHEL: sudo dnf install xdotool\n" +
+            "  Debian/Ubuntu: sudo apt install xdotool\n" +
+            "\nAlternatively, paste manually with Ctrl+V.";
         } else if (!xdotoolWindowClass) {
           errorMsg =
-            "Clipboard copied, but the active app isn't running under XWayland. Please install wtype or ydotool for Wayland apps or paste manually with Ctrl+V.";
+            "Clipboard copied, but the active app isn't running under XWayland.\n\n" +
+            "Install ydotool for native Wayland apps:\n" +
+            "  Fedora/RHEL: sudo dnf install ydotool\n" +
+            "  Debian/Ubuntu: sudo apt install ydotool\n" +
+            "\nThen start the daemon:\n" +
+            "  sudo systemctl start ydotool\n" +
+            "\nAlternatively, paste manually with Ctrl+V.";
         } else {
           errorMsg =
             "Clipboard copied, but paste simulation failed via XWayland. Please paste manually with Ctrl+V.";
@@ -796,15 +846,39 @@ class ClipboardManager {
           xwaylandAvailable && xdotoolExists
             ? " If this is an XWayland app, xdotool can also be used."
             : "";
-        const installNote =
-          !ydotoolExists
-            ? " Consider installing ydotool as an alternative (requires ydotoold daemon)."
-            : " If using ydotool, ensure the ydotoold daemon is running.";
+
+        // Check if ydotool is installed but daemon is not running
+        const userSocket = `/run/user/${process.getuid()}/.ydotool_socket`;
+        const systemSocket = "/tmp/.ydotool_socket";
+        const hasYdotoolSocket = fs.existsSync(userSocket) || fs.existsSync(systemSocket);
+
+        let installNote;
+        if (!ydotoolExists) {
+          installNote =
+            "\n\nTo fix this, install ydotool:\n" +
+            "  Fedora/RHEL: sudo dnf install ydotool\n" +
+            "  Debian/Ubuntu: sudo apt install ydotool\n" +
+            "  Arch: sudo pacman -S ydotool\n" +
+            "\nThen start the daemon:\n" +
+            "  sudo systemctl start ydotool\n" +
+            "  sudo systemctl enable ydotool  # for auto-start";
+        } else if (!hasYdotoolSocket) {
+          installNote =
+            "\n\nydotool is installed but ydotoold daemon is NOT running!\n" +
+            "\nStart it with:\n" +
+            "  sudo systemctl start ydotool\n" +
+            "  sudo systemctl enable ydotool  # for auto-start\n" +
+            "\nOR run manually:\n" +
+            "  ydotoold --socket-path=/run/user/$(id -u)/.ydotool_socket --socket-own=$(id -u):$(id -g) &";
+        } else {
+          installNote = " The ydotoold daemon is running but paste failed. Try restarting it.";
+        }
+
         errorMsg =
           "Clipboard copied, but paste simulation failed on Wayland. Your compositor may not support the virtual keyboard protocol." +
           installNote +
           xwaylandNote +
-          " Alternatively, paste manually with Ctrl+V.";
+          "\n\nAlternatively, paste manually with Ctrl+V.";
       }
     } else {
       errorMsg =
