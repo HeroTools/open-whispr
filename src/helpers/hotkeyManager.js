@@ -1,6 +1,5 @@
 const { globalShortcut } = require("electron");
 const debugLogger = require("./debugLogger");
-const PortalHotkeyManager = require("./hotkeyManagerPortal");
 const GnomeShortcutManager = require("./gnomeShortcut");
 
 // Check if running on Wayland
@@ -22,9 +21,6 @@ class HotkeyManager {
     this.currentHotkey = "`";
     this.isInitialized = false;
     this.isListeningMode = false;
-    // Portal support for Wayland
-    this.portalManager = null;
-    this.usePortal = false;
     // GNOME native shortcut support
     this.gnomeManager = null;
     this.useGnome = false;
@@ -164,15 +160,14 @@ class HotkeyManager {
   }
 
   /**
-   * Try to initialize Wayland-compatible global shortcuts
-   * Priority: GNOME native > XDG Portal > X11/XWayland
+   * Try to initialize GNOME native shortcuts for Wayland
    */
-  async initializeWaylandShortcuts(callback) {
+  async initializeGnomeShortcuts(callback) {
     if (process.platform !== "linux" || !isWayland) {
       return false;
     }
 
-    // 1. Try GNOME native keyboard shortcuts (best - no special permissions)
+    // Try GNOME native keyboard shortcuts (no special permissions needed)
     if (GnomeShortcutManager.isGnome()) {
       try {
         this.gnomeManager = new GnomeShortcutManager();
@@ -182,32 +177,15 @@ class HotkeyManager {
         if (dbusOk) {
           this.useGnome = true;
           this.hotkeyCallback = callback;
-          return "gnome";
+          return true;
         }
       } catch (err) {
+        debugLogger.log("[HotkeyManager] GNOME shortcut init failed:", err.message);
         this.gnomeManager = null;
         this.useGnome = false;
       }
     }
 
-    // 2. Try XDG Portal (works on KDE, Hyprland, etc.)
-    try {
-      this.portalManager = new PortalHotkeyManager();
-      await this.portalManager.init();
-      await this.portalManager.createSession();
-
-      this.usePortal = true;
-      this.hotkeyCallback = callback;
-      return true;
-    } catch (err) {
-      if (this.portalManager) {
-        this.portalManager.close().catch(() => {});
-      }
-      this.portalManager = null;
-      this.usePortal = false;
-    }
-
-    // 3. Fall back to X11/XWayland
     return false;
   }
 
@@ -219,11 +197,11 @@ class HotkeyManager {
     this.mainWindow = mainWindow;
     this.hotkeyCallback = callback;
 
-    // On Linux Wayland, try native methods first
+    // On Linux Wayland + GNOME, try native shortcuts first
     if (process.platform === "linux" && isWayland) {
-      const result = await this.initializeWaylandShortcuts(callback);
+      const gnomeOk = await this.initializeGnomeShortcuts(callback);
 
-      if (result === "gnome") {
+      if (gnomeOk) {
         // GNOME D-Bus service ready, register keybinding after window loads
         const registerGnomeHotkey = async () => {
           try {
@@ -235,7 +213,9 @@ class HotkeyManager {
 
             await this.gnomeManager.registerKeybinding(gnomeHotkey);
             this.currentHotkey = hotkey;
+            debugLogger.log(`[HotkeyManager] GNOME hotkey "${hotkey}" registered successfully`);
           } catch (err) {
+            debugLogger.log("[HotkeyManager] GNOME keybinding failed, falling back to X11:", err.message);
             // Fall back to X11
             this.useGnome = false;
             this.loadSavedHotkeyOrDefault(mainWindow, callback);
@@ -246,23 +226,6 @@ class HotkeyManager {
           mainWindow.webContents.once("did-finish-load", () => setTimeout(registerGnomeHotkey, 1000));
         } else {
           setTimeout(registerGnomeHotkey, 1000);
-        }
-        this.isInitialized = true;
-        return;
-      }
-
-      if (result === true) {
-        // XDG Portal initialized, bind hotkey after renderer is ready
-        const bindHotkey = () => {
-          setTimeout(() => {
-            this.loadSavedHotkeyOrDefaultWithPortal(mainWindow, callback);
-          }, 1000);
-        };
-
-        if (mainWindow.webContents.isLoading()) {
-          mainWindow.webContents.once("did-finish-load", bindHotkey);
-        } else {
-          bindHotkey();
         }
         this.isInitialized = true;
         return;
@@ -280,44 +243,6 @@ class HotkeyManager {
     });
 
     this.isInitialized = true;
-  }
-
-  /**
-   * Load saved hotkey and bind via portal
-   */
-  async loadSavedHotkeyOrDefaultWithPortal(mainWindow, callback) {
-    try {
-      const savedHotkey = await mainWindow.webContents.executeJavaScript(`
-        localStorage.getItem("dictationKey") || ""
-      `);
-
-      const hotkey = savedHotkey && savedHotkey.trim() !== ""
-        ? savedHotkey
-        : "Alt+R";  // Default for portal
-
-      debugLogger.log(`[HotkeyManager] Binding hotkey "${hotkey}" via XDG Portal`);
-
-      await this.portalManager.bindShortcut(hotkey, callback);
-      this.currentHotkey = hotkey;
-      debugLogger.log(`[HotkeyManager] Portal hotkey "${hotkey}" bound successfully`);
-
-      // Notify the user about portal mode
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("hotkey-portal-mode", {
-          hotkey,
-          message: `Using native Wayland shortcuts via XDG Portal. Hotkey: ${hotkey}`,
-        });
-      }
-    } catch (err) {
-      this.usePortal = false;
-      if (this.portalManager) {
-        this.portalManager.close().catch(() => {});
-      }
-      this.portalManager = null;
-
-      // Fallback to X11/XWayland
-      this.loadSavedHotkeyOrDefault(mainWindow, callback);
-    }
   }
 
   async loadSavedHotkeyOrDefault(mainWindow, callback) {
@@ -424,20 +349,7 @@ class HotkeyManager {
         await this.gnomeManager.updateKeybinding(gnomeHotkey);
         this.currentHotkey = hotkey;
         this.saveHotkeyToRenderer(hotkey);
-        return { success: true, message: `Hotkey updated to: ${hotkey} (via GNOME native shortcut - works everywhere!)` };
-      }
-
-      // If using portal, rebind via portal
-      if (this.usePortal && this.portalManager) {
-        debugLogger.log(`[HotkeyManager] Updating portal hotkey to "${hotkey}"`);
-        // Close existing session and create new one
-        await this.portalManager.close();
-        await this.portalManager.init();
-        await this.portalManager.createSession();
-        await this.portalManager.bindShortcut(hotkey, callback);
-        this.currentHotkey = hotkey;
-        this.saveHotkeyToRenderer(hotkey);
-        return { success: true, message: `Hotkey updated to: ${hotkey} (via XDG Portal)` };
+        return { success: true, message: `Hotkey updated to: ${hotkey} (via GNOME native shortcut)` };
       }
 
       const result = this.setupShortcuts(hotkey, callback);
@@ -473,22 +385,7 @@ class HotkeyManager {
       this.gnomeManager = null;
       this.useGnome = false;
     }
-    // Close portal session if active
-    if (this.portalManager) {
-      this.portalManager.close().catch((err) => {
-        debugLogger.warn("[HotkeyManager] Error closing portal session:", err.message);
-      });
-      this.portalManager = null;
-      this.usePortal = false;
-    }
     globalShortcut.unregisterAll();
-  }
-
-  /**
-   * Check if using XDG Portal for shortcuts
-   */
-  isUsingPortal() {
-    return this.usePortal;
   }
 
   /**
