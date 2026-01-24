@@ -1,5 +1,12 @@
 const { app, globalShortcut, BrowserWindow, dialog } = require("electron");
 
+// Enable GlobalShortcutsPortal feature for native Wayland global shortcuts support
+// This allows global shortcuts to work in native Wayland apps (not just XWayland)
+// See: https://github.com/electron/electron/pull/45171
+if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
+  app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal");
+}
+
 // Group all windows under single taskbar entry on Windows
 if (process.platform === "win32") {
   app.setAppUserModelId("com.herotools.openwispr");
