@@ -39,6 +39,7 @@ const WindowManager = require("./src/helpers/windowManager");
 const DatabaseManager = require("./src/helpers/database");
 const ClipboardManager = require("./src/helpers/clipboard");
 const WhisperManager = require("./src/helpers/whisper");
+const ParakeetManager = require("./src/helpers/parakeet");
 const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
@@ -52,6 +53,7 @@ let hotkeyManager = null;
 let databaseManager = null;
 let clipboardManager = null;
 let whisperManager = null;
+let parakeetManager = null;
 let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
@@ -117,6 +119,10 @@ function initializeManagers() {
   whisperManager = new WhisperManager();
   console.log("[initializeManagers] WhisperManager created");
 
+  console.log("[initializeManagers] Creating ParakeetManager...");
+  parakeetManager = new ParakeetManager();
+  console.log("[initializeManagers] ParakeetManager created");
+
   console.log("[initializeManagers] Creating TrayManager...");
   trayManager = new TrayManager();
   console.log("[initializeManagers] TrayManager created");
@@ -165,6 +171,7 @@ function initializeManagers() {
     databaseManager,
     clipboardManager,
     whisperManager,
+    parakeetManager,
     windowManager,
     updateManager,
   });
@@ -208,6 +215,12 @@ async function startApp() {
   whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
     // Whisper not being available at startup is not critical
     debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
+  });
+
+  // Initialize Parakeet manager at startup (don't await to avoid blocking)
+  parakeetManager.initializeAtStartup().catch((err) => {
+    // Parakeet not being available at startup is not critical
+    debugLogger.debug("Parakeet startup init error (non-fatal)", { error: err.message });
   });
 
   // Pre-warm llama-server if local reasoning is configured

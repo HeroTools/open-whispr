@@ -14,6 +14,7 @@ import {
   getTranscriptionProviders,
   TranscriptionProviderData,
   WHISPER_MODEL_INFO,
+  PARAKEET_MODEL_INFO,
 } from "../models/ModelRegistry";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
 import { getProviderIcon } from "../utils/providerIcons";
@@ -57,7 +58,7 @@ const VALID_CLOUD_PROVIDER_IDS = CLOUD_PROVIDER_TABS.map((p) => p.id);
 
 const LOCAL_PROVIDER_TABS = [
   { id: "whisper", name: "OpenAI Whisper" },
-  { id: "nvidia", name: "Nvidia", disabled: true, badge: "Coming Soon" },
+  { id: "nvidia", name: "NVIDIA Parakeet", badge: "50x Faster" },
 ];
 
 export default function TranscriptionModelPicker({
@@ -81,10 +82,14 @@ export default function TranscriptionModelPicker({
   variant = "settings",
 }: TranscriptionModelPickerProps) {
   const [localModels, setLocalModels] = useState<WhisperModel[]>([]);
+  const [parakeetModels, setParakeetModels] = useState<WhisperModel[]>([]);
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
   const hasLoadedRef = useRef(false);
+  const hasLoadedParakeetRef = useRef(false);
   const isLoadingRef = useRef(false);
+  const isLoadingParakeetRef = useRef(false);
   const loadLocalModelsRef = useRef<(() => Promise<void>) | null>(null);
+  const loadParakeetModelsRef = useRef<(() => Promise<void>) | null>(null);
   const ensureValidCloudSelectionRef = useRef<(() => void) | null>(null);
   const selectedLocalModelRef = useRef(selectedLocalModel);
   const onLocalModelSelectRef = useRef(onLocalModelSelect);
@@ -133,6 +138,23 @@ export default function TranscriptionModelPicker({
     }
   }, [validateAndSelectModel]);
 
+  const loadParakeetModels = useCallback(async () => {
+    if (isLoadingParakeetRef.current) return;
+    isLoadingParakeetRef.current = true;
+
+    try {
+      const result = await window.electronAPI?.listParakeetModels();
+      if (result?.success) {
+        setParakeetModels(result.models);
+      }
+    } catch (error) {
+      console.error("[TranscriptionModelPicker] Failed to load Parakeet models:", error);
+      setParakeetModels([]);
+    } finally {
+      isLoadingParakeetRef.current = false;
+    }
+  }, []);
+
   const ensureValidCloudSelection = useCallback(() => {
     const isValidProvider = VALID_CLOUD_PROVIDER_IDS.includes(selectedCloudProvider);
 
@@ -175,20 +197,27 @@ export default function TranscriptionModelPicker({
     loadLocalModelsRef.current = loadLocalModels;
   }, [loadLocalModels]);
   useEffect(() => {
+    loadParakeetModelsRef.current = loadParakeetModels;
+  }, [loadParakeetModels]);
+  useEffect(() => {
     ensureValidCloudSelectionRef.current = ensureValidCloudSelection;
   }, [ensureValidCloudSelection]);
 
   useEffect(() => {
     if (useLocalWhisper) {
-      if (!hasLoadedRef.current) {
+      if (internalLocalProvider === "whisper" && !hasLoadedRef.current) {
         hasLoadedRef.current = true;
         loadLocalModelsRef.current?.();
+      } else if (internalLocalProvider === "nvidia" && !hasLoadedParakeetRef.current) {
+        hasLoadedParakeetRef.current = true;
+        loadParakeetModelsRef.current?.();
       }
     } else {
       hasLoadedRef.current = false;
+      hasLoadedParakeetRef.current = false;
       ensureValidCloudSelectionRef.current?.();
     }
-  }, [useLocalWhisper]);
+  }, [useLocalWhisper, internalLocalProvider]);
 
   useEffect(() => {
     const handleModelsCleared = () => loadLocalModels();
@@ -207,6 +236,19 @@ export default function TranscriptionModelPicker({
   } = useModelDownload({
     modelType: "whisper",
     onDownloadComplete: loadLocalModels,
+  });
+
+  const {
+    downloadingModel: downloadingParakeetModel,
+    downloadProgress: parakeetDownloadProgress,
+    downloadModel: downloadParakeetModel,
+    deleteModel: deleteParakeetModel,
+    isDownloadingModel: isDownloadingParakeetModel,
+    cancelDownload: cancelParakeetDownload,
+    isCancelling: isCancellingParakeet,
+  } = useModelDownload({
+    modelType: "parakeet",
+    onDownloadComplete: loadParakeetModels,
   });
 
   const handleModeChange = useCallback(
@@ -322,16 +364,32 @@ export default function TranscriptionModelPicker({
   }, [currentCloudProvider, selectedCloudProvider]);
 
   const progressDisplay = useMemo(() => {
-    if (!downloadingModel || !useLocalWhisper) return null;
-    const modelInfo = WHISPER_MODEL_INFO[downloadingModel];
-    return (
-      <DownloadProgressBar
-        modelName={modelInfo?.name || downloadingModel}
-        progress={downloadProgress}
-        styles={styles}
-      />
-    );
-  }, [downloadingModel, downloadProgress, useLocalWhisper, styles]);
+    if (!useLocalWhisper) return null;
+
+    if (downloadingModel && internalLocalProvider === "whisper") {
+      const modelInfo = WHISPER_MODEL_INFO[downloadingModel];
+      return (
+        <DownloadProgressBar
+          modelName={modelInfo?.name || downloadingModel}
+          progress={downloadProgress}
+          styles={styles}
+        />
+      );
+    }
+
+    if (downloadingParakeetModel && internalLocalProvider === "nvidia") {
+      const modelInfo = PARAKEET_MODEL_INFO[downloadingParakeetModel];
+      return (
+        <DownloadProgressBar
+          modelName={modelInfo?.name || downloadingParakeetModel}
+          progress={parakeetDownloadProgress}
+          styles={styles}
+        />
+      );
+    }
+
+    return null;
+  }, [downloadingModel, downloadProgress, downloadingParakeetModel, parakeetDownloadProgress, useLocalWhisper, internalLocalProvider, styles]);
 
   const renderLocalModels = () => (
     <div className="space-y-2">
@@ -426,6 +484,179 @@ export default function TranscriptionModelPicker({
           </div>
         );
       })}
+    </div>
+  );
+
+  const handleParakeetDelete = useCallback(
+    (modelId: string) => {
+      showConfirmDialog({
+        title: "Delete Model",
+        description:
+          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        onConfirm: async () => {
+          await deleteParakeetModel(modelId, async () => {
+            const result = await window.electronAPI?.listParakeetModels();
+            if (result?.success) {
+              setParakeetModels(result.models);
+            }
+          });
+        },
+        variant: "destructive",
+      });
+    },
+    [showConfirmDialog, deleteParakeetModel]
+  );
+
+  const renderParakeetModels = () => (
+    <div className="space-y-2">
+      {parakeetModels.length === 0 ? (
+        <div className="space-y-2">
+          {Object.entries(PARAKEET_MODEL_INFO).map(([modelId, info]) => (
+            <div
+              key={modelId}
+              className={`p-3 rounded-lg border-2 transition-all ${styles.modelCard.default}`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <ProviderIcon provider="nvidia" className="w-4 h-4" />
+                    <span className="font-medium text-gray-900">{info.name}</span>
+                    {info.recommended && (
+                      <span className={styles.badges.recommended}>Recommended</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-600">{info.description}</span>
+                    <span className="text-xs text-gray-500">• {info.size}</span>
+                    <span className="text-xs text-blue-600">
+                      {info.language === "multilingual" ? "25 languages" : "English"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {isDownloadingParakeetModel(modelId) ? (
+                    <Button
+                      onClick={cancelParakeetDownload}
+                      disabled={isCancellingParakeet}
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 border-red-300 hover:bg-red-50"
+                    >
+                      <X size={14} />
+                      <span className="ml-1">{isCancellingParakeet ? "..." : "Cancel"}</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => downloadParakeetModel(modelId, onLocalModelSelect)}
+                      size="sm"
+                      className={styles.buttons.download}
+                    >
+                      <Download size={14} />
+                      <span className="ml-1">Download</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        parakeetModels.map((model) => {
+          const modelId = model.model;
+          const info = PARAKEET_MODEL_INFO[modelId] || {
+            name: modelId,
+            description: "NVIDIA Parakeet Model",
+            size: "Unknown",
+            language: "en",
+          };
+          const isSelected = modelId === selectedLocalModel;
+          const isDownloading = isDownloadingParakeetModel(modelId);
+          const isDownloaded = model.downloaded;
+
+          return (
+            <div
+              key={modelId}
+              className={`p-3 rounded-lg border-2 transition-all ${
+                isSelected ? styles.modelCard.selected : styles.modelCard.default
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <ProviderIcon provider="nvidia" className="w-4 h-4" />
+                    <span className="font-medium text-gray-900">{info.name}</span>
+                    {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
+                    {info.recommended && (
+                      <span className={styles.badges.recommended}>Recommended</span>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-xs text-gray-600">{info.description}</span>
+                    <span className="text-xs text-gray-500">
+                      • {model.size_mb ? `${model.size_mb}MB` : info.size}
+                    </span>
+                    <span className="text-xs text-blue-600">
+                      {info.language === "multilingual" ? "25 languages" : "English"}
+                    </span>
+                    {isDownloaded && (
+                      <span className={styles.badges.downloaded}>
+                        <Check className="inline w-3 h-3 mr-1" />
+                        Downloaded
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-2">
+                  {isDownloaded ? (
+                    <>
+                      {!isSelected && (
+                        <Button
+                          onClick={() => onLocalModelSelect(modelId)}
+                          size="sm"
+                          variant="outline"
+                          className={styles.buttons.select}
+                        >
+                          Select
+                        </Button>
+                      )}
+                      <Button
+                        onClick={() => handleParakeetDelete(modelId)}
+                        size="sm"
+                        variant="outline"
+                        className={styles.buttons.delete}
+                      >
+                        <Trash2 size={14} />
+                        <span className="ml-1">Delete</span>
+                      </Button>
+                    </>
+                  ) : isDownloading ? (
+                    <Button
+                      onClick={cancelParakeetDownload}
+                      disabled={isCancellingParakeet}
+                      size="sm"
+                      variant="outline"
+                      className="text-red-600 border-red-300 hover:bg-red-50"
+                    >
+                      <X size={14} />
+                      <span className="ml-1">{isCancellingParakeet ? "..." : "Cancel"}</span>
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => downloadParakeetModel(modelId, onLocalModelSelect)}
+                      size="sm"
+                      className={styles.buttons.download}
+                    >
+                      <Download size={14} />
+                      <span className="ml-1">Download</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })
+      )}
     </div>
   );
 
@@ -648,9 +879,7 @@ export default function TranscriptionModelPicker({
             <h5 className={`${styles.header} mb-3`}>Available Models</h5>
 
             {internalLocalProvider === "whisper" && renderLocalModels()}
-            {internalLocalProvider === "nvidia" && (
-              <p className="text-sm text-gray-500">Nvidia GPU acceleration coming soon.</p>
-            )}
+            {internalLocalProvider === "nvidia" && renderParakeetModels()}
           </div>
         </div>
       )}

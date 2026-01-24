@@ -66,7 +66,19 @@ export interface WhisperModelInfo {
 
 export type WhisperModelsMap = Record<string, WhisperModelInfo>;
 
+export interface ParakeetModelInfo {
+  name: string;
+  description: string;
+  size: string;
+  sizeMb: number;
+  language: string;
+  recommended?: boolean;
+}
+
+export type ParakeetModelsMap = Record<string, ParakeetModelInfo>;
+
 interface ModelRegistryData {
+  parakeetModels: ParakeetModelsMap;
   whisperModels: WhisperModelsMap;
   transcriptionProviders: TranscriptionProviderData[];
   cloudProviders: CloudProviderData[];
@@ -285,3 +297,13 @@ export function getCloudModel(modelId: string): CloudModelDefinition | undefined
   }
   return undefined;
 }
+
+export function getParakeetModels(): ParakeetModelsMap {
+  return modelData.parakeetModels;
+}
+
+export function getParakeetModelInfo(modelId: string): ParakeetModelInfo | undefined {
+  return modelData.parakeetModels[modelId];
+}
+
+export const PARAKEET_MODEL_INFO = modelData.parakeetModels;

@@ -14,7 +14,7 @@ export interface DownloadProgress {
   eta?: number;
 }
 
-export type ModelType = "whisper" | "llm";
+export type ModelType = "whisper" | "llm" | "parakeet";
 
 interface UseModelDownloadOptions {
   modelType: ModelType;
@@ -109,10 +109,15 @@ export function useModelDownload({
   }, []);
 
   useEffect(() => {
-    const dispose =
-      modelType === "whisper"
-        ? window.electronAPI?.onWhisperDownloadProgress(handleWhisperProgress)
-        : window.electronAPI?.onModelDownloadProgress(handleLLMProgress);
+    let dispose: (() => void) | undefined;
+
+    if (modelType === "whisper") {
+      dispose = window.electronAPI?.onWhisperDownloadProgress(handleWhisperProgress);
+    } else if (modelType === "parakeet") {
+      dispose = window.electronAPI?.onParakeetDownloadProgress(handleWhisperProgress);
+    } else {
+      dispose = window.electronAPI?.onModelDownloadProgress(handleLLMProgress);
+    }
 
     return () => {
       dispose?.();
@@ -139,6 +144,16 @@ export function useModelDownload({
 
         if (modelType === "whisper") {
           const result = await window.electronAPI?.downloadWhisperModel(modelId);
+          if (!result?.success && !result?.error?.includes("interrupted by user")) {
+            showAlertDialog({
+              title: "Download Failed",
+              description: `Failed to download model: ${result?.error}`,
+            });
+          } else {
+            success = result?.success ?? false;
+          }
+        } else if (modelType === "parakeet") {
+          const result = await window.electronAPI?.downloadParakeetModel(modelId);
           if (!result?.success && !result?.error?.includes("interrupted by user")) {
             showAlertDialog({
               title: "Download Failed",
@@ -200,6 +215,14 @@ export function useModelDownload({
               description: `Model deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
             });
           }
+        } else if (modelType === "parakeet") {
+          const result = await window.electronAPI?.deleteParakeetModel(modelId);
+          if (result?.success) {
+            toast({
+              title: "Model Deleted",
+              description: `Model deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
+            });
+          }
         } else {
           await window.electronAPI?.modelDelete?.(modelId);
           toast({
@@ -227,6 +250,8 @@ export function useModelDownload({
     try {
       if (modelType === "whisper") {
         await window.electronAPI?.cancelWhisperDownload();
+      } else if (modelType === "parakeet") {
+        await window.electronAPI?.cancelParakeetDownload();
       } else {
         await window.electronAPI?.modelCancelDownload?.(downloadingModel);
       }

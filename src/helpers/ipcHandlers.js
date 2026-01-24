@@ -10,6 +10,7 @@ class IPCHandlers {
     this.databaseManager = managers.databaseManager;
     this.clipboardManager = managers.clipboardManager;
     this.whisperManager = managers.whisperManager;
+    this.parakeetManager = managers.parakeetManager;
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.setupHandlers();
@@ -283,6 +284,105 @@ class IPCHandlers {
 
     ipcMain.handle("check-ffmpeg-availability", async (event) => {
       return this.whisperManager.checkFFmpegAvailability();
+    });
+
+    // Parakeet (NVIDIA) handlers
+    ipcMain.handle("transcribe-local-parakeet", async (event, audioBlob, options = {}) => {
+      debugLogger.log("transcribe-local-parakeet called", {
+        audioBlobType: typeof audioBlob,
+        audioBlobSize: audioBlob?.byteLength || audioBlob?.length || 0,
+        options,
+      });
+
+      try {
+        const result = await this.parakeetManager.transcribeLocalParakeet(audioBlob, options);
+
+        debugLogger.log("Parakeet result", {
+          success: result.success,
+          hasText: !!result.text,
+          message: result.message,
+          error: result.error,
+        });
+
+        if (!result.success && result.message === "No audio detected") {
+          debugLogger.log("Sending no-audio-detected event to renderer");
+          event.sender.send("no-audio-detected");
+        }
+
+        return result;
+      } catch (error) {
+        debugLogger.error("Local Parakeet transcription error", error);
+        const errorMessage = error.message || "Unknown error";
+
+        if (errorMessage.includes("sherpa-onnx") && errorMessage.includes("not found")) {
+          return {
+            success: false,
+            error: "parakeet_not_found",
+            message: "Parakeet binary is missing. Please reinstall the app.",
+          };
+        }
+        if (errorMessage.includes("model") && errorMessage.includes("not downloaded")) {
+          return {
+            success: false,
+            error: "model_not_found",
+            message: errorMessage,
+          };
+        }
+
+        throw error;
+      }
+    });
+
+    ipcMain.handle("check-parakeet-installation", async (event) => {
+      return this.parakeetManager.checkInstallation();
+    });
+
+    ipcMain.handle("download-parakeet-model", async (event, modelName) => {
+      try {
+        const result = await this.parakeetManager.downloadParakeetModel(modelName, (progressData) => {
+          event.sender.send("parakeet-download-progress", progressData);
+        });
+
+        event.sender.send("parakeet-download-progress", {
+          type: "complete",
+          model: modelName,
+          result: result,
+        });
+
+        return result;
+      } catch (error) {
+        event.sender.send("parakeet-download-progress", {
+          type: "error",
+          model: modelName,
+          error: error.message,
+        });
+
+        throw error;
+      }
+    });
+
+    ipcMain.handle("check-parakeet-model-status", async (event, modelName) => {
+      return this.parakeetManager.checkModelStatus(modelName);
+    });
+
+    ipcMain.handle("list-parakeet-models", async (event) => {
+      return this.parakeetManager.listParakeetModels();
+    });
+
+    ipcMain.handle("delete-parakeet-model", async (event, modelName) => {
+      return this.parakeetManager.deleteParakeetModel(modelName);
+    });
+
+    ipcMain.handle("delete-all-parakeet-models", async () => {
+      return this.parakeetManager.deleteAllParakeetModels();
+    });
+
+    ipcMain.handle("cancel-parakeet-download", async (event) => {
+      return this.parakeetManager.cancelDownload();
+    });
+
+    ipcMain.handle("get-parakeet-diagnostics", async () => {
+      return this.parakeetManager.getDiagnostics();
     });
 
     // Utility handlers

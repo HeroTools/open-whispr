@@ -13,7 +13,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **Desktop Framework**: Electron 36 with context isolation
 - **Database**: better-sqlite3 for local transcription history
 - **UI Components**: shadcn/ui with Radix primitives
-- **Speech Processing**: whisper.cpp (bundled native binary) + OpenAI API
+- **Speech Processing**: whisper.cpp + NVIDIA Parakeet (via sherpa-onnx) + OpenAI API
 - **Audio Processing**: FFmpeg (bundled via ffmpeg-static)
 
 ### Key Architectural Decisions
@@ -59,6 +59,8 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **menuManager.js**: Application menu management
 - **tray.js**: System tray icon and menu
 - **whisper.js**: Local whisper.cpp integration and model management
+- **parakeet.js**: NVIDIA Parakeet model management via sherpa-onnx
+- **parakeetServer.js**: sherpa-onnx CLI wrapper for transcription
 - **windowConfig.js**: Centralized window configuration
 - **windowManager.js**: Window creation and lifecycle management
 
@@ -100,6 +102,20 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
   - Falls back to system installation (`brew install whisper-cpp`)
   - GGML model downloads from HuggingFace
   - Models stored in `~/.cache/openwhispr/whisper-models/`
+
+### NVIDIA Parakeet Integration (via sherpa-onnx)
+
+- **parakeet.js**: Model management for NVIDIA Parakeet ASR models
+  - Uses sherpa-onnx runtime for cross-platform ONNX inference
+  - Bundled binaries in `resources/bin/sherpa-onnx-{platform}-{arch}`
+  - INT8 quantized models for efficient CPU inference (50x faster than Whisper)
+  - Models stored in `~/.cache/openwhispr/parakeet-models/`
+
+- **Available Models**:
+  - `parakeet-tdt-0.6b-v2`: English-only, ~670MB, fastest
+  - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
+
+- **Download URLs**: Models from sherpa-onnx ASR models release on GitHub
 
 ## Key Implementation Details
 

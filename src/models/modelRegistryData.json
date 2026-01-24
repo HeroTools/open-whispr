@@ -1,4 +1,21 @@
 {
+  "parakeetModels": {
+    "parakeet-tdt-0.6b-v2": {
+      "name": "Parakeet TDT 0.6B",
+      "description": "NVIDIA's fastest ASR model, 50x faster than alternatives",
+      "size": "670MB",
+      "sizeMb": 670,
+      "language": "en",
+      "recommended": true
+    },
+    "parakeet-tdt-0.6b-v3": {
+      "name": "Parakeet TDT 0.6B v3",
+      "description": "Multilingual (25 languages), auto language detection",
+      "size": "680MB",
+      "sizeMb": 680,
+      "language": "multilingual"
+    }
+  },
   "whisperModels": {
     "tiny": {
       "name": "Tiny",
