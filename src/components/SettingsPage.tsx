@@ -27,6 +27,7 @@ import DeveloperSection from "./DeveloperSection";
 export type SettingsSectionType =
   | "general"
   | "transcription"
+  | "dictionary"
   | "aiModels"
   | "agentConfig"
   | "prompts"
@@ -54,6 +55,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
+    customDictionary,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -75,6 +77,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
+    setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider,
@@ -131,6 +134,24 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
+
+  // Custom dictionary state
+  const [newDictionaryWord, setNewDictionaryWord] = useState("");
+
+  const handleAddDictionaryWord = useCallback(() => {
+    const word = newDictionaryWord.trim();
+    if (word && !customDictionary.includes(word)) {
+      setCustomDictionary([...customDictionary, word]);
+      setNewDictionaryWord("");
+    }
+  }, [newDictionaryWord, customDictionary, setCustomDictionary]);
+
+  const handleRemoveDictionaryWord = useCallback(
+    (wordToRemove: string) => {
+      setCustomDictionary(customDictionary.filter((word) => word !== wordToRemove));
+    },
+    [customDictionary, setCustomDictionary]
+  );
 
   // Auto-start state
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
@@ -712,6 +733,81 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
               variant="settings"
             />
+          </div>
+        );
+
+      case "dictionary":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Custom Dictionary</h3>
+              <p className="text-sm text-gray-600 mb-6">
+                Add words, names, or technical terms that OpenWhispr should recognize during
+                transcription. These words are used as hints to improve accuracy.
+              </p>
+            </div>
+
+            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+              <h4 className="font-medium text-gray-900">Add Words</h4>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter a word or phrase..."
+                  value={newDictionaryWord}
+                  onChange={(e) => setNewDictionaryWord(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddDictionaryWord();
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button onClick={handleAddDictionaryWord} disabled={!newDictionaryWord.trim()}>
+                  Add
+                </Button>
+              </div>
+              <p className="text-xs text-gray-500">
+                Press Enter or click Add to add the word to your dictionary.
+              </p>
+            </div>
+
+            {customDictionary.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-medium text-gray-900">
+                  Your Dictionary ({customDictionary.length} words)
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {customDictionary.map((word) => (
+                    <span
+                      key={word}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm"
+                    >
+                      {word}
+                      <button
+                        onClick={() => handleRemoveDictionaryWord(word)}
+                        className="ml-1 text-indigo-600 hover:text-indigo-900 font-bold"
+                        title="Remove word"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
+              <h4 className="font-medium text-blue-900 mb-2">How it works</h4>
+              <p className="text-sm text-blue-800 mb-3">
+                Words in your custom dictionary are provided as context to the speech recognition
+                model. This helps improve accuracy for uncommon names, technical jargon, brand
+                names, or any words that are frequently misrecognized.
+              </p>
+              <p className="text-sm text-blue-800">
+                <strong>Tip:</strong> For difficult words, try adding context phrases like "The
+                word is Synty" alongside the word itself. Adding related terms (e.g., "Synty" and
+                "SyntyStudios") also helps the model understand the intended spelling.
+              </p>
+            </div>
           </div>
         );
 

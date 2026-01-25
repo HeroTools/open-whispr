@@ -15,6 +15,7 @@ export interface TranscriptionSettings {
   cloudTranscriptionProvider: string;
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
+  customDictionary: string[];
 }
 
 export interface ReasoningSettings {
@@ -113,6 +114,23 @@ export function useSettings() {
     {
       serialize: String,
       deserialize: String,
+    }
+  );
+
+  // Custom dictionary for improving transcription of specific words
+  const [customDictionary, setCustomDictionary] = useLocalStorage<string[]>(
+    "customDictionary",
+    [],
+    {
+      serialize: JSON.stringify,
+      deserialize: (value) => {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      },
     }
   );
 
@@ -303,6 +321,7 @@ export function useSettings() {
         setCloudTranscriptionModel(settings.cloudTranscriptionModel);
       if (settings.cloudTranscriptionBaseUrl !== undefined)
         setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
+      if (settings.customDictionary !== undefined) setCustomDictionary(settings.customDictionary);
     },
     [
       setUseLocalWhisper,
@@ -314,6 +333,7 @@ export function useSettings() {
       setCloudTranscriptionProvider,
       setCloudTranscriptionModel,
       setCloudTranscriptionBaseUrl,
+      setCustomDictionary,
     ]
   );
 
@@ -350,6 +370,7 @@ export function useSettings() {
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
+    customDictionary,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -368,6 +389,7 @@ export function useSettings() {
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
+    setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider: (provider: string) => {

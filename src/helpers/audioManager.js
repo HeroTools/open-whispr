@@ -271,6 +271,16 @@ class AudioManager {
         options.language = language;
       }
 
+      // Add custom dictionary as initial prompt to help Whisper recognize specific words
+      try {
+        const customDictionary = JSON.parse(localStorage.getItem("customDictionary") || "[]");
+        if (Array.isArray(customDictionary) && customDictionary.length > 0) {
+          options.initialPrompt = customDictionary.join(", ");
+        }
+      } catch {
+        // Ignore parse errors
+      }
+
       logger.debug(
         "Local transcription starting",
         {

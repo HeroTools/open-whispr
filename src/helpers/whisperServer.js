@@ -368,7 +368,7 @@ class WhisperServerManager {
         : 'too short',
     });
 
-    const { language } = options;
+    const { language, initialPrompt } = options;
     const boundary = `----WhisperBoundary${Date.now()}`;
     const parts = [];
 
@@ -403,6 +403,16 @@ class WhisperServerManager {
           `Content-Disposition: form-data; name="language"\r\n\r\n` +
           `${language}\r\n`
       );
+    }
+
+    // Add initial prompt for custom dictionary words
+    if (initialPrompt) {
+      parts.push(
+        `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
+          `${initialPrompt}\r\n`
+      );
+      debugLogger.info("Using custom dictionary prompt", { prompt: initialPrompt });
     }
 
     parts.push(
