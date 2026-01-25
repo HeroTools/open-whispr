@@ -132,6 +132,42 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
 
+  // Auto-start state
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+  const [autoStartLoading, setAutoStartLoading] = useState(true);
+
+  // Load auto-start state on mount
+  useEffect(() => {
+    const loadAutoStart = async () => {
+      if (window.electronAPI?.getAutoStartEnabled) {
+        try {
+          const enabled = await window.electronAPI.getAutoStartEnabled();
+          setAutoStartEnabled(enabled);
+        } catch (error) {
+          console.error("Failed to get auto-start status:", error);
+        }
+      }
+      setAutoStartLoading(false);
+    };
+    loadAutoStart();
+  }, []);
+
+  const handleAutoStartChange = async (enabled: boolean) => {
+    if (window.electronAPI?.setAutoStartEnabled) {
+      try {
+        setAutoStartLoading(true);
+        const result = await window.electronAPI.setAutoStartEnabled(enabled);
+        if (result.success) {
+          setAutoStartEnabled(enabled);
+        }
+      } catch (error) {
+        console.error("Failed to set auto-start:", error);
+      } finally {
+        setAutoStartLoading(false);
+      }
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -449,6 +485,36 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   Activation Mode
                 </label>
                 <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+              </div>
+            </div>
+
+            <div className="border-t pt-8">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Startup</h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Control how OpenWhispr starts when you log in.
+                </p>
+              </div>
+              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <p className="font-medium text-gray-900">Launch at Login</p>
+                  <p className="text-sm text-gray-600">
+                    Automatically start OpenWhispr when you log in to your computer
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleAutoStartChange(!autoStartEnabled)}
+                  disabled={autoStartLoading}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    autoStartEnabled ? "bg-indigo-600" : "bg-gray-200"
+                  } ${autoStartLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      autoStartEnabled ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
               </div>
             </div>
 

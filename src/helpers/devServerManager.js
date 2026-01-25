@@ -1,5 +1,5 @@
 class DevServerManager {
-  static async waitForDevServer(url = "http://localhost:5174/", maxAttempts = 30, delay = 1000) {
+  static async waitForDevServer(url = "http://localhost:5080/", maxAttempts = 30, delay = 1000) {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const http = require("http");
@@ -38,7 +38,7 @@ class DevServerManager {
 
   static getAppUrl(isControlPanel = false) {
     if (process.env.NODE_ENV === "development") {
-      return isControlPanel ? "http://localhost:5174/?panel=true" : "http://localhost:5174/";
+      return isControlPanel ? "http://localhost:5080/?panel=true" : "http://localhost:5080/";
     } else {
       // For production, return null - caller should use loadFile() instead
       return null;

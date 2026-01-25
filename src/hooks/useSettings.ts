@@ -232,18 +232,42 @@ export function useSettings() {
   );
 
   // Hotkey
-  const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {
+  const [dictationKey, setDictationKeyLocal] = useLocalStorage("dictationKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [activationMode, setActivationMode] = useLocalStorage<"tap" | "push">(
+  // Wrap setDictationKey to notify main process (for Windows Push-to-Talk)
+  const setDictationKey = useCallback(
+    (key: string) => {
+      setDictationKeyLocal(key);
+      // Notify main process so Windows key listener can restart with new key
+      if (typeof window !== "undefined" && window.electronAPI?.notifyHotkeyChanged) {
+        window.electronAPI.notifyHotkeyChanged(key);
+      }
+    },
+    [setDictationKeyLocal]
+  );
+
+  const [activationMode, setActivationModeLocal] = useLocalStorage<"tap" | "push">(
     "activationMode",
     "tap",
     {
       serialize: String,
       deserialize: (value) => (value === "push" ? "push" : "tap"),
     }
+  );
+
+  // Wrap setActivationMode to notify main process (for Windows Push-to-Talk)
+  const setActivationMode = useCallback(
+    (mode: "tap" | "push") => {
+      setActivationModeLocal(mode);
+      // Notify main process so Windows key listener can start/stop
+      if (typeof window !== "undefined" && window.electronAPI?.notifyActivationModeChanged) {
+        window.electronAPI.notifyActivationModeChanged(mode);
+      }
+    },
+    [setActivationModeLocal]
   );
 
   // Microphone settings

@@ -119,9 +119,18 @@ class WindowManager {
     let lastToggleTime = 0;
     const DEBOUNCE_MS = 150;
 
-    return () => {
+    return async () => {
       if (this.hotkeyManager.isInListeningMode()) {
         return;
+      }
+
+      // On Windows in push mode, don't toggle - let windowsKeyManager handle key events
+      if (process.platform === "win32") {
+        const activationMode = await this.getActivationMode();
+        if (activationMode === "push") {
+          console.log("[HotkeyCallback] Windows push mode - skipping toggle, windowsKeyManager handles this");
+          return;
+        }
       }
 
       const now = Date.now();

@@ -214,4 +214,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("hotkey-registration-failed", listener);
     return () => ipcRenderer.removeListener("hotkey-registration-failed", listener);
   },
+
+  // Notify main process of activation mode changes (for Windows Push-to-Talk)
+  notifyActivationModeChanged: (mode) => ipcRenderer.send("activation-mode-changed", mode),
+  notifyHotkeyChanged: (hotkey) => ipcRenderer.send("hotkey-changed", hotkey),
+
+  // Auto-start management
+  getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
+  setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),
 });

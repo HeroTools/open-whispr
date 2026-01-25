@@ -90,6 +90,18 @@ class AudioManager {
       const constraints = await this.getAudioConstraints();
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
+      // Log which microphone is actually being used
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        const settings = audioTrack.getSettings();
+        logger.info("Recording started with microphone", {
+          label: audioTrack.label,
+          deviceId: settings.deviceId?.slice(0, 20) + "...",
+          sampleRate: settings.sampleRate,
+          channelCount: settings.channelCount,
+        }, "audio");
+      }
+
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
@@ -105,6 +117,13 @@ class AudioManager {
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
+
+        // Debug: Log audio blob info
+        logger.info("Recording stopped", {
+          blobSize: audioBlob.size,
+          blobType: audioBlob.type,
+          chunksCount: this.audioChunks.length,
+        }, "audio");
 
         const durationSeconds = this.recordingStartTime
           ? (Date.now() - this.recordingStartTime) / 1000

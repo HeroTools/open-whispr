@@ -12,6 +12,7 @@ class IPCHandlers {
     this.whisperManager = managers.whisperManager;
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
+    this.windowsKeyManager = managers.windowsKeyManager;
     this.setupHandlers();
   }
 
@@ -301,6 +302,47 @@ class IPCHandlers {
 
     ipcMain.handle("set-hotkey-listening-mode", async (event, enabled) => {
       this.windowManager.setHotkeyListeningMode(enabled);
+      const hotkeyManager = this.windowManager.hotkeyManager;
+      const currentHotkey = hotkeyManager.getCurrentHotkey();
+
+      if (enabled) {
+        // Entering capture mode - unregister globalShortcut so it doesn't consume key events
+        if (currentHotkey && currentHotkey !== "GLOBE") {
+          debugLogger.log(`[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`);
+          const { globalShortcut } = require("electron");
+          globalShortcut.unregister(currentHotkey);
+        }
+
+        // On Windows, also stop the Windows key listener
+        if (process.platform === "win32" && this.windowsKeyManager) {
+          debugLogger.log("[IPC] Stopping Windows key listener for hotkey capture mode");
+          this.windowsKeyManager.stop();
+        }
+      } else {
+        // Exiting capture mode - re-register the globalShortcut if not already registered
+        // (updateHotkey may have already registered a new hotkey)
+        if (currentHotkey && currentHotkey !== "GLOBE") {
+          const { globalShortcut } = require("electron");
+          if (!globalShortcut.isRegistered(currentHotkey)) {
+            debugLogger.log(`[IPC] Re-registering globalShortcut "${currentHotkey}" after capture mode`);
+            const callback = this.windowManager.createHotkeyCallback();
+            globalShortcut.register(currentHotkey, callback);
+          }
+        }
+
+        // On Windows, restart the listener if in push mode
+        if (process.platform === "win32" && this.windowsKeyManager) {
+          const activationMode = await this.windowManager.getActivationMode();
+          debugLogger.log(
+            `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${currentHotkey}"`
+          );
+          if (activationMode === "push" && currentHotkey && currentHotkey !== "GLOBE") {
+            debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${currentHotkey}`);
+            this.windowsKeyManager.start(currentHotkey);
+          }
+        }
+      }
+
       return { success: true };
     });
 
@@ -318,6 +360,31 @@ class IPCHandlers {
         await shell.openExternal(url);
         return { success: true };
       } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Auto-start handlers
+    ipcMain.handle("get-auto-start-enabled", async () => {
+      try {
+        const loginSettings = app.getLoginItemSettings();
+        return loginSettings.openAtLogin;
+      } catch (error) {
+        debugLogger.error("Error getting auto-start status:", error);
+        return false;
+      }
+    });
+
+    ipcMain.handle("set-auto-start-enabled", async (event, enabled) => {
+      try {
+        app.setLoginItemSettings({
+          openAtLogin: enabled,
+          openAsHidden: true, // Start minimized to tray
+        });
+        debugLogger.debug("Auto-start setting updated", { enabled });
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Error setting auto-start:", error);
         return { success: false, error: error.message };
       }
     });

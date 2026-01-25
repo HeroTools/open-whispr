@@ -208,6 +208,11 @@ class WhisperServerManager {
     // Check for FFmpeg first - only use --convert flag if FFmpeg is available
     const ffmpegPath = this.getFFmpegPath();
     const spawnEnv = { ...process.env };
+    const pathSep = process.platform === "win32" ? ";" : ":";
+
+    // Add the whisper-server directory to PATH so any companion DLLs are found
+    const serverBinaryDir = path.dirname(serverBinary);
+    spawnEnv.PATH = serverBinaryDir + pathSep + (process.env.PATH || "");
 
     const args = ["--model", modelPath, "--host", "127.0.0.1", "--port", String(this.port)];
 
@@ -216,8 +221,7 @@ class WhisperServerManager {
     if (ffmpegPath) {
       args.push("--convert");
       const ffmpegDir = path.dirname(ffmpegPath);
-      const pathSep = process.platform === "win32" ? ";" : ":";
-      spawnEnv.PATH = ffmpegDir + pathSep + (process.env.PATH || "");
+      spawnEnv.PATH = ffmpegDir + pathSep + spawnEnv.PATH;
     } else {
       debugLogger.warn("FFmpeg not found - whisper-server will only accept WAV format");
     }
@@ -227,13 +231,13 @@ class WhisperServerManager {
       args.push("--language", options.language);
     }
 
-    debugLogger.debug("Starting whisper-server", { port: this.port, modelPath, args });
+    debugLogger.debug("Starting whisper-server", { port: this.port, modelPath, args, cwd: serverBinaryDir });
 
     this.process = spawn(serverBinary, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
       env: spawnEnv,
-      cwd: os.tmpdir(),
+      cwd: serverBinaryDir,
     });
 
     let stderrBuffer = "";
@@ -355,6 +359,15 @@ class WhisperServerManager {
       throw new Error("whisper-server is not running");
     }
 
+    // Debug: Log audio buffer info
+    debugLogger.debug("whisper-server transcribe called", {
+      bufferLength: audioBuffer?.length || 0,
+      bufferType: audioBuffer?.constructor?.name,
+      firstBytes: audioBuffer?.length >= 16
+        ? Array.from(audioBuffer.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ')
+        : 'too short',
+    });
+
     const { language } = options;
     const boundary = `----WhisperBoundary${Date.now()}`;
     const parts = [];
@@ -426,6 +439,8 @@ class WhisperServerManager {
             debugLogger.debug("whisper-server transcription completed", {
               statusCode: res.statusCode,
               elapsed: Date.now() - startTime,
+              responseLength: data.length,
+              responsePreview: data.slice(0, 500),
             });
 
             if (res.statusCode !== 200) {

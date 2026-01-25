@@ -43,6 +43,7 @@ const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
+const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -55,6 +56,7 @@ let whisperManager = null;
 let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
+let windowsKeyManager = null;
 let globeKeyAlertShown = false;
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
@@ -99,6 +101,7 @@ function initializeManagers() {
   trayManager = new TrayManager();
   updateManager = new UpdateManager();
   globeKeyManager = new GlobeKeyManager();
+  windowsKeyManager = new WindowsKeyManager();
 
   // Set up Globe key error handler on macOS
   if (process.platform === "darwin") {
@@ -138,6 +141,7 @@ function initializeManagers() {
     whisperManager,
     windowManager,
     updateManager,
+    windowsKeyManager,
   });
 }
 
@@ -257,6 +261,136 @@ async function startApp() {
 
     globeKeyManager.start();
   }
+
+  // Set up Windows Push-to-Talk handling
+  if (process.platform === "win32") {
+    console.log("[Push-to-Talk] *** WINDOWS PUSH-TO-TALK SETUP STARTING ***");
+    let winKeyDownTime = 0;
+    let winKeyIsRecording = false;
+    const WIN_MIN_HOLD_DURATION_MS = 150;
+
+    // Helper to check if hotkey is valid for Windows key listener
+    // Now supports compound hotkeys like "CommandOrControl+F11"
+    const isValidHotkey = (hotkey) => {
+      if (!hotkey) return false;
+      if (hotkey === "GLOBE") return false; // GLOBE is macOS only
+      return true;
+    };
+
+    windowsKeyManager.on("key-down", async (key) => {
+      console.log(`[Push-to-Talk] Key DOWN received: "${key}"`);
+      // Handle dictation if in push-to-talk mode
+      if (isLiveWindow(windowManager.mainWindow)) {
+        const activationMode = await windowManager.getActivationMode();
+        console.log(`[Push-to-Talk] Activation mode: "${activationMode}"`);
+        if (activationMode === "push") {
+          console.log(`[Push-to-Talk] Starting recording...`);
+          windowManager.showDictationPanel();
+          // Track when key was pressed for push-to-talk
+          winKeyDownTime = Date.now();
+          winKeyIsRecording = false;
+          // Start recording after a brief delay to distinguish tap from hold
+          setTimeout(async () => {
+            if (winKeyDownTime > 0 && !winKeyIsRecording) {
+              winKeyIsRecording = true;
+              console.log(`[Push-to-Talk] Sending start dictation command`);
+              windowManager.sendStartDictation();
+            }
+          }, WIN_MIN_HOLD_DURATION_MS);
+        }
+      }
+    });
+
+    windowsKeyManager.on("key-up", async () => {
+      console.log(`[Push-to-Talk] Key UP received`);
+      if (isLiveWindow(windowManager.mainWindow)) {
+        const activationMode = await windowManager.getActivationMode();
+        if (activationMode === "push") {
+          winKeyDownTime = 0;
+          if (winKeyIsRecording) {
+            winKeyIsRecording = false;
+            console.log(`[Push-to-Talk] Sending stop dictation command`);
+            windowManager.sendStopDictation();
+          }
+        }
+      }
+    });
+
+    windowsKeyManager.on("error", (error) => {
+      debugLogger.warn("Windows key listener error (Push-to-Talk may not work):", error.message);
+    });
+
+    windowsKeyManager.on("unavailable", () => {
+      debugLogger.debug("Windows key listener not available - Push-to-Talk will use tap mode only");
+    });
+
+    // Log when WindowsKeyManager is ready
+    windowsKeyManager.on("ready", () => {
+      console.log(`[Push-to-Talk] WindowsKeyManager is READY and listening`);
+    });
+
+    // Start the Windows key listener with the current hotkey
+    const startWindowsKeyListener = async () => {
+      console.log(`[Push-to-Talk] Checking if should start Windows key listener...`);
+      if (!isLiveWindow(windowManager.mainWindow)) {
+        console.log(`[Push-to-Talk] Main window not live, skipping`);
+        return;
+      }
+      const activationMode = await windowManager.getActivationMode();
+      const currentHotkey = hotkeyManager.getCurrentHotkey();
+      console.log(`[Push-to-Talk] Activation mode: "${activationMode}", Hotkey: "${currentHotkey}"`);
+
+      if (activationMode === "push") {
+        if (isValidHotkey(currentHotkey)) {
+          console.log(`[Push-to-Talk] Starting Windows key listener for: "${currentHotkey}"`);
+          windowsKeyManager.start(currentHotkey);
+        } else {
+          console.log(`[Push-to-Talk] No valid hotkey to start listener`);
+        }
+      } else {
+        console.log(`[Push-to-Talk] Not in push mode, skipping listener start`);
+      }
+    };
+
+    // Start listener after window is ready - use longer delay to ensure settings are loaded
+    // The hotkeyManager loads saved hotkey 1 second after did-finish-load, so we wait 3 seconds
+    console.log("[Push-to-Talk] Scheduling listener start in 3 seconds...");
+    setTimeout(startWindowsKeyListener, 3000);
+
+    // Listen for activation mode changes from renderer
+    const { ipcMain } = require("electron");
+    ipcMain.on("activation-mode-changed", async (_event, mode) => {
+      console.log(`[Push-to-Talk] IPC: Activation mode changed to "${mode}"`);
+      if (mode === "push") {
+        const currentHotkey = hotkeyManager.getCurrentHotkey();
+        console.log(`[Push-to-Talk] Current hotkey: "${currentHotkey}"`);
+        if (isValidHotkey(currentHotkey)) {
+          console.log(`[Push-to-Talk] Starting listener for: "${currentHotkey}"`);
+          windowsKeyManager.start(currentHotkey);
+        }
+      } else {
+        console.log(`[Push-to-Talk] Stopping listener (mode is tap)`);
+        windowsKeyManager.stop();
+      }
+    });
+
+    // Listen for hotkey changes from renderer
+    ipcMain.on("hotkey-changed", async (_event, hotkey) => {
+      console.log(`[Push-to-Talk] IPC: Hotkey changed to "${hotkey}"`);
+      if (!isLiveWindow(windowManager.mainWindow)) {
+        return;
+      }
+      const activationMode = await windowManager.getActivationMode();
+      console.log(`[Push-to-Talk] Current activation mode: "${activationMode}"`);
+      if (activationMode === "push") {
+        windowsKeyManager.stop();
+        if (isValidHotkey(hotkey)) {
+          console.log(`[Push-to-Talk] Starting listener for new hotkey: "${hotkey}"`);
+          windowsKeyManager.start(hotkey);
+        }
+      }
+    });
+  }
 }
 
 // App event handlers
@@ -348,6 +482,9 @@ if (gotSingleInstanceLock) {
     globalShortcut.unregisterAll();
     if (globeKeyManager) {
       globeKeyManager.stop();
+    }
+    if (windowsKeyManager) {
+      windowsKeyManager.stop();
     }
     if (updateManager) {
       updateManager.cleanup();
