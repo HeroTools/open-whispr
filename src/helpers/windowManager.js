@@ -25,17 +25,10 @@ class WindowManager {
     const display = screen.getPrimaryDisplay();
     const position = WindowPositionUtil.getMainWindowPosition(display);
 
-    console.log("[WindowManager] Creating main window with position:", position);
-    console.log("[WindowManager] Display bounds:", display.bounds);
-    console.log("[WindowManager] Display workArea:", display.workArea);
-    console.log("[WindowManager] Platform:", process.platform);
-
     this.mainWindow = new BrowserWindow({
       ...MAIN_WINDOW_CONFIG,
       ...position,
     });
-
-    console.log("[WindowManager] Main window created, id:", this.mainWindow.id);
 
     if (process.platform === "darwin") {
       this.mainWindow.setSkipTaskbar(false);
@@ -46,24 +39,18 @@ class WindowManager {
     this.setMainWindowInteractivity(false);
     this.registerMainWindowEvents();
 
-    // IMPORTANT: Register load event handlers BEFORE loading to catch all events
+    // Register load event handlers BEFORE loading to catch all events
     this.mainWindow.webContents.on(
       "did-fail-load",
       async (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
         if (!isMainFrame) {
           return;
         }
-        console.error("[WindowManager] did-fail-load:", errorCode, errorDescription, validatedURL);
-        if (
-          process.env.NODE_ENV === "development" &&
-          validatedURL &&
-          validatedURL.includes("localhost:5174")
-        ) {
+        if (process.env.NODE_ENV === "development" && validatedURL && validatedURL.includes("localhost:5174")) {
           // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();
             if (isReady) {
-              console.log("[WindowManager] Dev server ready, reloading...");
               this.mainWindow.reload();
             }
           }, 2000);
@@ -74,7 +61,6 @@ class WindowManager {
     );
 
     this.mainWindow.webContents.on("did-finish-load", () => {
-      console.log("[WindowManager] Main window did-finish-load");
       this.mainWindow.setTitle("Voice Recorder");
       this.enforceMainWindowOnTop();
     });
@@ -99,49 +85,34 @@ class WindowManager {
     this.isMainWindowInteractive = shouldCapture;
   }
 
-  async loadMainWindow() {
+  /**
+   * Load content into a BrowserWindow, handling both dev server and production file loading.
+   * @param {BrowserWindow} window - The window to load content into
+   * @param {boolean} isControlPanel - Whether this is the control panel
+   */
+  async loadWindowContent(window, isControlPanel = false) {
     if (process.env.NODE_ENV === "development") {
-      const appUrl = DevServerManager.getAppUrl(false);
-      console.log("[WindowManager] Loading main window (dev):", appUrl);
-      const isReady = await DevServerManager.waitForDevServer();
-      if (!isReady) {
-        console.warn("[WindowManager] Dev server not ready, attempting to load anyway...");
-      }
-      try {
-        await this.mainWindow.loadURL(appUrl);
-        console.log("[WindowManager] Main window loaded successfully (dev)");
-      } catch (error) {
-        console.error("[WindowManager] Failed to load main window (dev):", error);
-        throw error;
-      }
+      const appUrl = DevServerManager.getAppUrl(isControlPanel);
+      await DevServerManager.waitForDevServer();
+      await window.loadURL(appUrl);
     } else {
       // Production: use loadFile() for better compatibility with Electron 36+
-      const fileInfo = DevServerManager.getAppFilePath(false);
-      console.log("[WindowManager] Loading main window (prod), fileInfo:", fileInfo);
-
+      const fileInfo = DevServerManager.getAppFilePath(isControlPanel);
       if (!fileInfo) {
-        const error = new Error("Failed to get app file path for main window");
-        console.error("[WindowManager]", error.message);
-        throw error;
+        throw new Error("Failed to get app file path");
       }
 
-      // Verify the file exists before attempting to load
       const fs = require("fs");
       if (!fs.existsSync(fileInfo.path)) {
-        const error = new Error(`Main window HTML file not found: ${fileInfo.path}`);
-        console.error("[WindowManager]", error.message);
-        throw error;
+        throw new Error(`HTML file not found: ${fileInfo.path}`);
       }
 
-      try {
-        console.log("[WindowManager] Calling loadFile:", fileInfo.path);
-        await this.mainWindow.loadFile(fileInfo.path, { query: fileInfo.query });
-        console.log("[WindowManager] Main window loaded successfully (prod)");
-      } catch (error) {
-        console.error("[WindowManager] Failed to load main window (prod):", error);
-        throw error;
-      }
+      await window.loadFile(fileInfo.path, { query: fileInfo.query });
     }
+  }
+
+  async loadMainWindow() {
+    await this.loadWindowContent(this.mainWindow, false);
   }
 
   createHotkeyCallback() {
@@ -303,55 +274,11 @@ class WindowManager {
       }
     );
 
-    console.log("📱 Loading control panel content...");
     await this.loadControlPanel();
   }
 
   async loadControlPanel() {
-    if (process.env.NODE_ENV === "development") {
-      const appUrl = DevServerManager.getAppUrl(true);
-      console.log("[WindowManager] Loading control panel (dev):", appUrl);
-      const isReady = await DevServerManager.waitForDevServer();
-      if (!isReady) {
-        console.warn(
-          "[WindowManager] Dev server not ready for control panel, attempting to load anyway..."
-        );
-      }
-      try {
-        await this.controlPanelWindow.loadURL(appUrl);
-        console.log("[WindowManager] Control panel loaded successfully (dev)");
-      } catch (error) {
-        console.error("[WindowManager] Failed to load control panel (dev):", error);
-        throw error;
-      }
-    } else {
-      // Production: use loadFile() for better compatibility with Electron 36+
-      const fileInfo = DevServerManager.getAppFilePath(true);
-      console.log("[WindowManager] Loading control panel (prod), fileInfo:", fileInfo);
-
-      if (!fileInfo) {
-        const error = new Error("Failed to get app file path for control panel");
-        console.error("[WindowManager]", error.message);
-        throw error;
-      }
-
-      // Verify the file exists before attempting to load
-      const fs = require("fs");
-      if (!fs.existsSync(fileInfo.path)) {
-        const error = new Error(`Control panel HTML file not found: ${fileInfo.path}`);
-        console.error("[WindowManager]", error.message);
-        throw error;
-      }
-
-      try {
-        console.log("[WindowManager] Calling loadFile:", fileInfo.path);
-        await this.controlPanelWindow.loadFile(fileInfo.path, { query: fileInfo.query });
-        console.log("[WindowManager] Control panel loaded successfully (prod)");
-      } catch (error) {
-        console.error("[WindowManager] Failed to load control panel (prod):", error);
-        throw error;
-      }
-    }
+    await this.loadWindowContent(this.controlPanelWindow, true);
   }
 
   showDictationPanel(options = {}) {
@@ -410,19 +337,14 @@ class WindowManager {
     }
 
     // Safety timeout: force show the window if ready-to-show doesn't fire within 10 seconds
-    // This helps diagnose issues where the renderer fails to load
     const showTimeout = setTimeout(() => {
-      console.warn("[WindowManager] ready-to-show timeout - forcing window to show");
       if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isVisible()) {
-        console.log("[WindowManager] Main window was not visible after 10s, forcing show");
         this.mainWindow.show();
-        this.mainWindow.webContents.openDevTools();
       }
     }, 10000);
 
     this.mainWindow.once("ready-to-show", () => {
       clearTimeout(showTimeout);
-      console.log("[WindowManager] Main window ready-to-show event fired");
       this.enforceMainWindowOnTop();
       if (!this.mainWindow.isVisible()) {
         if (typeof this.mainWindow.showInactive === "function") {

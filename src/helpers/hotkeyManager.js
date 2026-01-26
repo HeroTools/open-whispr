@@ -116,6 +116,10 @@ class HotkeyManager {
       const alreadyRegistered = globalShortcut.isRegistered(hotkey);
       debugLogger.log(`[HotkeyManager] Is "${hotkey}" already registered? ${alreadyRegistered}`);
 
+      if (process.platform === "linux") {
+        globalShortcut.unregister(hotkey);
+      }
+
       const success = globalShortcut.register(hotkey, callback);
       debugLogger.log(`[HotkeyManager] Registration result for "${hotkey}": ${success}`);
 
@@ -153,6 +157,10 @@ class HotkeyManager {
     }
 
     this.mainWindow = mainWindow;
+
+    if (process.platform === "linux") {
+      globalShortcut.unregisterAll();
+    }
 
     mainWindow.webContents.once("did-finish-load", () => {
       setTimeout(() => {

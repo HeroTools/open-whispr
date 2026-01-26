@@ -75,6 +75,22 @@ class EnvironmentManager {
     return this._saveKey("GROQ_API_KEY", key);
   }
 
+  getCustomTranscriptionKey() {
+    return this._getKey("CUSTOM_TRANSCRIPTION_API_KEY");
+  }
+
+  saveCustomTranscriptionKey(key) {
+    return this._saveKey("CUSTOM_TRANSCRIPTION_API_KEY", key);
+  }
+
+  getCustomReasoningKey() {
+    return this._getKey("CUSTOM_REASONING_API_KEY");
+  }
+
+  saveCustomReasoningKey(key) {
+    return this._saveKey("CUSTOM_REASONING_API_KEY", key);
+  }
+
   createProductionEnvFile(apiKey) {
     const envPath = path.join(app.getPath("userData"), ".env");
 
@@ -109,6 +125,12 @@ OPENAI_API_KEY=${apiKey}
     }
     if (process.env.GROQ_API_KEY) {
       envContent += `GROQ_API_KEY=${process.env.GROQ_API_KEY}\n`;
+    }
+    if (process.env.CUSTOM_TRANSCRIPTION_API_KEY) {
+      envContent += `CUSTOM_TRANSCRIPTION_API_KEY=${process.env.CUSTOM_TRANSCRIPTION_API_KEY}\n`;
+    }
+    if (process.env.CUSTOM_REASONING_API_KEY) {
+      envContent += `CUSTOM_REASONING_API_KEY=${process.env.CUSTOM_REASONING_API_KEY}\n`;
     }
 
     fs.writeFileSync(envPath, envContent, "utf8");
