@@ -2,9 +2,6 @@ const { globalShortcut } = require("electron");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
 
-// Check if running on Wayland
-const isWayland = process.env.XDG_SESSION_TYPE === "wayland";
-
 // Suggested alternative hotkeys when registration fails
 const SUGGESTED_HOTKEYS = {
   single: ["F8", "F9", "F10", "Pause", "ScrollLock"],
@@ -163,7 +160,7 @@ class HotkeyManager {
    * Try to initialize GNOME native shortcuts for Wayland
    */
   async initializeGnomeShortcuts(callback) {
-    if (process.platform !== "linux" || !isWayland) {
+    if (process.platform !== "linux" || !GnomeShortcutManager.isWayland()) {
       return false;
     }
 
@@ -198,7 +195,7 @@ class HotkeyManager {
     this.hotkeyCallback = callback;
 
     // On Linux Wayland + GNOME, try native shortcuts first
-    if (process.platform === "linux" && isWayland) {
+    if (process.platform === "linux" && GnomeShortcutManager.isWayland()) {
       const gnomeOk = await this.initializeGnomeShortcuts(callback);
 
       if (gnomeOk) {
@@ -211,12 +208,17 @@ class HotkeyManager {
             const hotkey = savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Alt+R";
             const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(hotkey);
 
-            await this.gnomeManager.registerKeybinding(gnomeHotkey);
-            this.currentHotkey = hotkey;
-            debugLogger.log(`[HotkeyManager] GNOME hotkey "${hotkey}" registered successfully`);
+            const success = await this.gnomeManager.registerKeybinding(gnomeHotkey);
+            if (success) {
+              this.currentHotkey = hotkey;
+              debugLogger.log(`[HotkeyManager] GNOME hotkey "${hotkey}" registered successfully`);
+            } else {
+              debugLogger.log("[HotkeyManager] GNOME keybinding failed, falling back to X11");
+              this.useGnome = false;
+              this.loadSavedHotkeyOrDefault(mainWindow, callback);
+            }
           } catch (err) {
             debugLogger.log("[HotkeyManager] GNOME keybinding failed, falling back to X11:", err.message);
-            // Fall back to X11
             this.useGnome = false;
             this.loadSavedHotkeyOrDefault(mainWindow, callback);
           }
@@ -346,7 +348,13 @@ class HotkeyManager {
       if (this.useGnome && this.gnomeManager) {
         debugLogger.log(`[HotkeyManager] Updating GNOME hotkey to "${hotkey}"`);
         const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(hotkey);
-        await this.gnomeManager.updateKeybinding(gnomeHotkey);
+        const success = await this.gnomeManager.updateKeybinding(gnomeHotkey);
+        if (!success) {
+          return {
+            success: false,
+            message: `Failed to update GNOME hotkey to "${hotkey}". Check the format is valid.`,
+          };
+        }
         this.currentHotkey = hotkey;
         this.saveHotkeyToRenderer(hotkey);
         return { success: true, message: `Hotkey updated to: ${hotkey} (via GNOME native shortcut)` };
@@ -364,6 +372,7 @@ class HotkeyManager {
         };
       }
     } catch (error) {
+      debugLogger.error("[HotkeyManager] Failed to update hotkey:", error);
       return {
         success: false,
         message: `Failed to update hotkey: ${error.message}`,
