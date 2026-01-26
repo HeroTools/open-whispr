@@ -8,21 +8,26 @@ const { execSync } = require("child_process");
 const debugLogger = require("./debugLogger");
 const ParakeetServerManager = require("./parakeetServer");
 
-// Parakeet model definitions with download URLs from sherpa-onnx releases
-const PARAKEET_MODELS = {
-  "parakeet-tdt-0.6b-v2": {
-    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2",
-    size: 700_000_000, // ~670MB compressed
-    language: "en",
-    extractDir: "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8",
-  },
-  "parakeet-tdt-0.6b-v3": {
-    url: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2",
-    size: 710_000_000, // ~680MB compressed
-    language: "multilingual",
-    extractDir: "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
-  },
-};
+// Load Parakeet model definitions from centralized registry
+const modelRegistryData = require("../models/modelRegistryData.json");
+
+// Helper to get model config from registry
+function getParakeetModelConfig(modelName) {
+  const modelInfo = modelRegistryData.parakeetModels[modelName];
+  if (!modelInfo) return null;
+  return {
+    url: modelInfo.downloadUrl,
+    size: modelInfo.sizeMb * 1_000_000,
+    language: modelInfo.language,
+    supportedLanguages: modelInfo.supportedLanguages || [],
+    extractDir: modelInfo.extractDir,
+  };
+}
+
+// Get all valid model names from registry
+function getValidModelNames() {
+  return Object.keys(modelRegistryData.parakeetModels);
+}
 
 class ParakeetManager {
   constructor() {
@@ -37,9 +42,11 @@ class ParakeetManager {
   }
 
   validateModelName(modelName) {
-    const validModels = Object.keys(PARAKEET_MODELS);
+    const validModels = getValidModelNames();
     if (!validModels.includes(modelName)) {
-      throw new Error(`Invalid Parakeet model: ${modelName}. Valid models: ${validModels.join(", ")}`);
+      throw new Error(
+        `Invalid Parakeet model: ${modelName}. Valid models: ${validModels.join(", ")}`
+      );
     }
     return true;
   }
@@ -78,7 +85,7 @@ class ParakeetManager {
     };
 
     // Check downloaded models
-    for (const modelName of Object.keys(PARAKEET_MODELS)) {
+    for (const modelName of getValidModelNames()) {
       const modelPath = this.getModelPath(modelName);
       if (this.serverManager.isModelDownloaded(modelName)) {
         try {
@@ -138,7 +145,9 @@ class ParakeetManager {
     const model = options.model || "parakeet-tdt-0.6b-v2";
 
     if (!this.serverManager.isModelDownloaded(model)) {
-      throw new Error(`Parakeet model "${model}" not downloaded. Please download it from Settings.`);
+      throw new Error(
+        `Parakeet model "${model}" not downloaded. Please download it from Settings.`
+      );
     }
 
     // Convert audioBlob to Buffer if needed
@@ -165,7 +174,8 @@ class ParakeetManager {
     });
 
     const startTime = Date.now();
-    const result = await this.serverManager.transcribe(audioBuffer, { modelName: model });
+    const language = options.language || "auto";
+    const result = await this.serverManager.transcribe(audioBuffer, { modelName: model, language });
     const elapsed = Date.now() - startTime;
 
     debugLogger.logSTTPipeline("transcribeLocalParakeet - completed", {
@@ -193,7 +203,7 @@ class ParakeetManager {
   // Model management methods
   async downloadParakeetModel(modelName, progressCallback = null) {
     this.validateModelName(modelName);
-    const modelConfig = PARAKEET_MODELS[modelName];
+    const modelConfig = getParakeetModelConfig(modelName);
 
     const modelPath = this.getModelPath(modelName);
     const modelsDir = this.getModelsDir();
@@ -379,19 +389,15 @@ class ParakeetManager {
 
   async _extractModel(archivePath, modelName) {
     const modelsDir = this.getModelsDir();
-    const modelConfig = PARAKEET_MODELS[modelName];
+    const modelConfig = getParakeetModelConfig(modelName);
     const extractDir = path.join(modelsDir, `temp-extract-${modelName}`);
 
     try {
       // Create temp extract directory
       fs.mkdirSync(extractDir, { recursive: true });
 
-      // Extract tar.bz2
-      if (process.platform === "win32") {
-        execSync(`tar -xjf "${archivePath}" -C "${extractDir}"`, { stdio: "pipe" });
-      } else {
-        execSync(`tar -xjf "${archivePath}" -C "${extractDir}"`, { stdio: "pipe" });
-      }
+      // Extract tar.bz2 (tar is available on Windows 10+ and all Unix systems)
+      execSync(`tar -xjf "${archivePath}" -C "${extractDir}"`, { stdio: "pipe" });
 
       // Find the extracted directory (usually has a specific name)
       const extractedDir = path.join(extractDir, modelConfig.extractDir);
@@ -467,7 +473,7 @@ class ParakeetManager {
   }
 
   async listParakeetModels() {
-    const models = Object.keys(PARAKEET_MODELS);
+    const models = getValidModelNames();
     const modelInfo = [];
 
     for (const model of models) {

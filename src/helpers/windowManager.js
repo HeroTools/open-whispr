@@ -54,7 +54,11 @@ class WindowManager {
           return;
         }
         console.error("[WindowManager] did-fail-load:", errorCode, errorDescription, validatedURL);
-        if (process.env.NODE_ENV === "development" && validatedURL && validatedURL.includes("localhost:5174")) {
+        if (
+          process.env.NODE_ENV === "development" &&
+          validatedURL &&
+          validatedURL.includes("localhost:5174")
+        ) {
           // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();
@@ -309,7 +313,9 @@ class WindowManager {
       console.log("[WindowManager] Loading control panel (dev):", appUrl);
       const isReady = await DevServerManager.waitForDevServer();
       if (!isReady) {
-        console.warn("[WindowManager] Dev server not ready for control panel, attempting to load anyway...");
+        console.warn(
+          "[WindowManager] Dev server not ready for control panel, attempting to load anyway..."
+        );
       }
       try {
         await this.controlPanelWindow.loadURL(appUrl);

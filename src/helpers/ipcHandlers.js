@@ -333,15 +333,18 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("check-parakeet-installation", async (event) => {
+    ipcMain.handle("check-parakeet-installation", async () => {
       return this.parakeetManager.checkInstallation();
     });
 
     ipcMain.handle("download-parakeet-model", async (event, modelName) => {
       try {
-        const result = await this.parakeetManager.downloadParakeetModel(modelName, (progressData) => {
-          event.sender.send("parakeet-download-progress", progressData);
-        });
+        const result = await this.parakeetManager.downloadParakeetModel(
+          modelName,
+          (progressData) => {
+            event.sender.send("parakeet-download-progress", progressData);
+          }
+        );
 
         event.sender.send("parakeet-download-progress", {
           type: "complete",
@@ -361,15 +364,15 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("check-parakeet-model-status", async (event, modelName) => {
+    ipcMain.handle("check-parakeet-model-status", async (_event, modelName) => {
       return this.parakeetManager.checkModelStatus(modelName);
     });
 
-    ipcMain.handle("list-parakeet-models", async (event) => {
+    ipcMain.handle("list-parakeet-models", async () => {
       return this.parakeetManager.listParakeetModels();
     });
 
-    ipcMain.handle("delete-parakeet-model", async (event, modelName) => {
+    ipcMain.handle("delete-parakeet-model", async (_event, modelName) => {
       return this.parakeetManager.deleteParakeetModel(modelName);
     });
 
@@ -377,7 +380,7 @@ class IPCHandlers {
       return this.parakeetManager.deleteAllParakeetModels();
     });
 
-    ipcMain.handle("cancel-parakeet-download", async (event) => {
+    ipcMain.handle("cancel-parakeet-download", async () => {
       return this.parakeetManager.cancelDownload();
     });
 

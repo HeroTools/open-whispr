@@ -41,20 +41,6 @@ const BINARIES = {
   },
 };
 
-// Parakeet model configurations
-const PARAKEET_MODELS = {
-  "parakeet-tdt-0.6b-v2": {
-    archiveName: "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2",
-    baseUrl: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models",
-    files: ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"],
-  },
-  "parakeet-tdt-0.6b-v3": {
-    archiveName: "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2",
-    baseUrl: "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models",
-    files: ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"],
-  },
-};
-
 const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
 
 function getDownloadUrl(archiveName) {
@@ -63,12 +49,8 @@ function getDownloadUrl(archiveName) {
 
 function extractTarBz2(archivePath, destDir) {
   fs.mkdirSync(destDir, { recursive: true });
-  if (process.platform === "win32") {
-    // Windows: use tar (available in Windows 10+)
-    execSync(`tar -xjf "${archivePath}" -C "${destDir}"`, { stdio: "inherit" });
-  } else {
-    execSync(`tar -xjf "${archivePath}" -C "${destDir}"`, { stdio: "inherit" });
-  }
+  // tar is available on Windows 10+ and all Unix systems
+  execSync(`tar -xjf "${archivePath}" -C "${destDir}"`, { stdio: "inherit" });
 }
 
 function findLibrariesInDir(dir, pattern, maxDepth = 5, currentDepth = 0) {
@@ -216,8 +198,5 @@ async function main() {
     console.log(`\nCheck: https://github.com/k2-fsa/sherpa-onnx/releases/tag/v${SHERPA_ONNX_VERSION}`);
   }
 }
-
-// Export model configurations for use by parakeet.js
-module.exports = { PARAKEET_MODELS, SHERPA_ONNX_VERSION };
 
 main().catch(console.error);

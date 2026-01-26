@@ -66,7 +66,12 @@ class ParakeetServerManager {
    */
   isModelDownloaded(modelName) {
     const modelDir = path.join(this.getModelsDir(), modelName);
-    const requiredFiles = ["encoder.int8.onnx", "decoder.int8.onnx", "joiner.int8.onnx", "tokens.txt"];
+    const requiredFiles = [
+      "encoder.int8.onnx",
+      "decoder.int8.onnx",
+      "joiner.int8.onnx",
+      "tokens.txt",
+    ];
 
     if (!fs.existsSync(modelDir)) return false;
 
@@ -83,10 +88,12 @@ class ParakeetServerManager {
    * Transcribe audio using sherpa-onnx-offline CLI
    * @param {Buffer} audioBuffer - Audio data (WAV format preferred)
    * @param {Object} options - Transcription options
+   * @param {string} options.modelName - Model name (default: parakeet-tdt-0.6b-v2)
+   * @param {string} options.language - Language code for transcription (used for logging/validation)
    * @returns {Promise<{text: string, language?: string}>}
    */
   async transcribe(audioBuffer, options = {}) {
-    const { modelName = "parakeet-tdt-0.6b-v2", language } = options;
+    const { modelName = "parakeet-tdt-0.6b-v2", language = "auto" } = options;
 
     const binaryPath = this.getBinaryPath();
     if (!binaryPath) {
@@ -98,6 +105,12 @@ class ParakeetServerManager {
       throw new Error(`Parakeet model "${modelName}" not downloaded`);
     }
 
+    debugLogger.debug("Parakeet transcription request", {
+      modelName,
+      language,
+      audioSize: audioBuffer?.length || 0,
+    });
+
     // Write audio to temporary file
     const tempDir = os.tmpdir();
     const tempAudioPath = path.join(tempDir, `parakeet-${Date.now()}.wav`);
@@ -105,8 +118,11 @@ class ParakeetServerManager {
     try {
       fs.writeFileSync(tempAudioPath, audioBuffer);
 
-      const result = await this._runTranscription(binaryPath, modelDir, tempAudioPath, options);
-      return result;
+      const result = await this._runTranscription(binaryPath, modelDir, tempAudioPath, {
+        language,
+      });
+      // Include the requested language in the result for reference
+      return { ...result, language };
     } finally {
       // Cleanup temp file
       try {
@@ -121,12 +137,20 @@ class ParakeetServerManager {
 
   /**
    * Run the sherpa-onnx-offline transcription process
+   * @param {string} binaryPath - Path to sherpa-onnx-offline binary
+   * @param {string} modelDir - Path to model directory
+   * @param {string} audioPath - Path to audio file
+   * @param {Object} options - Transcription options
+   * @param {string} options.language - Language code (for logging, Parakeet auto-detects)
    */
   async _runTranscription(binaryPath, modelDir, audioPath, options = {}) {
+    const { language = "auto" } = options;
+
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
 
       // Build command arguments for sherpa-onnx-offline (transducer model)
+      // Note: Parakeet models auto-detect language, no explicit language parameter needed
       const args = [
         "--tokens",
         path.join(modelDir, "tokens.txt"),
@@ -145,7 +169,8 @@ class ParakeetServerManager {
         binaryPath,
         modelDir,
         audioPath,
-        args: args.slice(0, 8), // Log first few args
+        language,
+        numArgs: args.length,
       });
 
       const proc = spawn(binaryPath, args, {

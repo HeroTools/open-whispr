@@ -889,7 +889,12 @@ class AudioManager {
           endpoint,
           method: "POST",
           hasAuthHeader: !!apiKey,
-          formDataFields: ["file", "model", language && language !== "auto" ? "language" : null, shouldStream ? "stream" : null].filter(Boolean),
+          formDataFields: [
+            "file",
+            "model",
+            language && language !== "auto" ? "language" : null,
+            shouldStream ? "stream" : null,
+          ].filter(Boolean),
         },
         "transcription"
       );
@@ -1111,7 +1116,8 @@ class AudioManager {
         ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
         : "";
 
-    const isCustomEndpoint = currentProvider === "custom" ||
+    const isCustomEndpoint =
+      currentProvider === "custom" ||
       (currentBaseUrl && currentBaseUrl !== API_ENDPOINTS.TRANSCRIPTION_BASE);
 
     // Invalidate cache if provider or base URL changed
@@ -1193,11 +1199,7 @@ class AudioManager {
       let endpoint;
       if (/\/audio\/(transcriptions|translations)$/i.test(normalizedBase)) {
         endpoint = normalizedBase;
-        logger.debug(
-          "STT endpoint: using full path from config",
-          { endpoint },
-          "transcription"
-        );
+        logger.debug("STT endpoint: using full path from config", { endpoint }, "transcription");
       } else {
         endpoint = buildApiUrl(normalizedBase, "/audio/transcriptions");
         logger.debug(

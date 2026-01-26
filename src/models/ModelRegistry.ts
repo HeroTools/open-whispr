@@ -72,7 +72,10 @@ export interface ParakeetModelInfo {
   size: string;
   sizeMb: number;
   language: string;
+  supportedLanguages: string[];
   recommended?: boolean;
+  downloadUrl: string;
+  extractDir: string;
 }
 
 export type ParakeetModelsMap = Record<string, ParakeetModelInfo>;

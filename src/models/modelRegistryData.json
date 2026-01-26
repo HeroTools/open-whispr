@@ -2,18 +2,50 @@
   "parakeetModels": {
     "parakeet-tdt-0.6b-v2": {
       "name": "Parakeet TDT 0.6B",
-      "description": "NVIDIA's fastest ASR model, 50x faster than alternatives",
+      "description": "NVIDIA's fastest ASR model, optimized for English",
       "size": "670MB",
       "sizeMb": 670,
       "language": "en",
-      "recommended": true
+      "supportedLanguages": ["en"],
+      "recommended": true,
+      "downloadUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8.tar.bz2",
+      "extractDir": "sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8"
     },
     "parakeet-tdt-0.6b-v3": {
       "name": "Parakeet TDT 0.6B v3",
-      "description": "Multilingual (25 languages), auto language detection",
+      "description": "Multilingual with auto language detection",
       "size": "680MB",
       "sizeMb": 680,
-      "language": "multilingual"
+      "language": "multilingual",
+      "supportedLanguages": [
+        "en",
+        "de",
+        "es",
+        "fr",
+        "it",
+        "pt",
+        "nl",
+        "pl",
+        "ru",
+        "uk",
+        "zh",
+        "ja",
+        "ko",
+        "ar",
+        "hi",
+        "tr",
+        "vi",
+        "th",
+        "id",
+        "cs",
+        "ro",
+        "hu",
+        "el",
+        "he",
+        "sv"
+      ],
+      "downloadUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2",
+      "extractDir": "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8"
     }
   },
   "whisperModels": {
