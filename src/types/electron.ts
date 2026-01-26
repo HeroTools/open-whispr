@@ -92,6 +92,63 @@ export interface WhisperDownloadProgressData {
   result?: any;
 }
 
+export interface ParakeetCheckResult {
+  installed: boolean;
+  working: boolean;
+  path?: string;
+}
+
+export interface ParakeetModelResult {
+  success: boolean;
+  model: string;
+  downloaded: boolean;
+  path?: string;
+  size_bytes?: number;
+  size_mb?: number;
+  error?: string;
+}
+
+export interface ParakeetModelDeleteResult {
+  success: boolean;
+  model: string;
+  deleted: boolean;
+  freed_bytes?: number;
+  freed_mb?: number;
+  error?: string;
+}
+
+export interface ParakeetModelsListResult {
+  success: boolean;
+  models: Array<{ model: string; downloaded: boolean; size_mb?: number }>;
+  cache_dir: string;
+}
+
+export interface ParakeetDownloadProgressData {
+  type: string;
+  model: string;
+  percentage?: number;
+  downloaded_bytes?: number;
+  total_bytes?: number;
+  error?: string;
+}
+
+export interface ParakeetTranscriptionResult {
+  success: boolean;
+  text?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface ParakeetDiagnosticsResult {
+  platform: string;
+  arch: string;
+  resourcesPath: string | null;
+  isPackaged: boolean;
+  sherpaOnnx: { available: boolean; path: string | null };
+  modelsDir: string;
+  models: string[];
+}
+
 export interface PasteToolsResult {
   platform: "darwin" | "win32" | "linux";
   available: boolean;
@@ -163,6 +220,33 @@ declare global {
         message?: string;
         error?: string;
       }>;
+
+      // Parakeet operations (NVIDIA via sherpa-onnx)
+      transcribeLocalParakeet: (
+        audioBlob: ArrayBuffer,
+        options?: { model?: string; language?: string }
+      ) => Promise<ParakeetTranscriptionResult>;
+      checkParakeetInstallation: () => Promise<ParakeetCheckResult>;
+      downloadParakeetModel: (modelName: string) => Promise<ParakeetModelResult>;
+      onParakeetDownloadProgress: (
+        callback: (event: any, data: ParakeetDownloadProgressData) => void
+      ) => (() => void) | void;
+      checkParakeetModelStatus: (modelName: string) => Promise<ParakeetModelResult>;
+      listParakeetModels: () => Promise<ParakeetModelsListResult>;
+      deleteParakeetModel: (modelName: string) => Promise<ParakeetModelDeleteResult>;
+      deleteAllParakeetModels: () => Promise<{
+        success: boolean;
+        deleted_count?: number;
+        freed_bytes?: number;
+        freed_mb?: number;
+        error?: string;
+      }>;
+      cancelParakeetDownload: () => Promise<{
+        success: boolean;
+        message?: string;
+        error?: string;
+      }>;
+      getParakeetDiagnostics: () => Promise<ParakeetDiagnosticsResult>;
 
       // Local AI model management
       modelGetAll: () => Promise<any[]>;

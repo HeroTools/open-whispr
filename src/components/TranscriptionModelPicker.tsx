@@ -320,6 +320,25 @@ export default function TranscriptionModelPicker({
     [onLocalProviderSelect]
   );
 
+  // Wrapper to set both model and provider when selecting a local model
+  const handleWhisperModelSelect = useCallback(
+    (modelId: string) => {
+      onLocalProviderSelect?.("whisper");
+      setInternalLocalProvider("whisper");
+      onLocalModelSelect(modelId);
+    },
+    [onLocalModelSelect, onLocalProviderSelect]
+  );
+
+  const handleParakeetModelSelect = useCallback(
+    (modelId: string) => {
+      onLocalProviderSelect?.("nvidia");
+      setInternalLocalProvider("nvidia");
+      onLocalModelSelect(modelId);
+    },
+    [onLocalModelSelect, onLocalProviderSelect]
+  );
+
   const handleBaseUrlBlur = useCallback(() => {
     if (!setCloudTranscriptionBaseUrl || selectedCloudProvider !== "custom") return;
 
@@ -544,9 +563,9 @@ export default function TranscriptionModelPicker({
             isCancelling={isCancelling}
             recommended={info.recommended}
             provider="whisper"
-            onSelect={() => onLocalModelSelect(modelId)}
+            onSelect={() => handleWhisperModelSelect(modelId)}
             onDelete={() => handleDelete(modelId)}
-            onDownload={() => downloadModel(modelId, onLocalModelSelect)}
+            onDownload={() => downloadModel(modelId, handleWhisperModelSelect)}
             onCancel={cancelDownload}
             styles={styles}
           />
@@ -617,9 +636,9 @@ export default function TranscriptionModelPicker({
               recommended={info.recommended}
               provider="nvidia"
               languageLabel={getParakeetLanguageLabel(info.language)}
-              onSelect={() => onLocalModelSelect(modelId)}
+              onSelect={() => handleParakeetModelSelect(modelId)}
               onDelete={() => handleParakeetDelete(modelId)}
-              onDownload={() => downloadParakeetModel(modelId, onLocalModelSelect)}
+              onDownload={() => downloadParakeetModel(modelId, handleParakeetModelSelect)}
               onCancel={cancelParakeetDownload}
               styles={styles}
             />

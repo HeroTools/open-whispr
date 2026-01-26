@@ -199,4 +199,15 @@ async function main() {
   }
 }
 
-main().catch(console.error);
+// Export config for potential imports
+module.exports = {
+  SHERPA_ONNX_VERSION,
+  BINARIES,
+  BIN_DIR,
+  getDownloadUrl,
+};
+
+// Only run main() when executed directly
+if (require.main === module) {
+  main().catch(console.error);
+}

@@ -49,6 +49,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const {
     useLocalWhisper,
     whisperModel,
+    localTranscriptionProvider,
+    parakeetModel,
     allowOpenAIFallback,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
@@ -70,6 +72,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setSelectedMicDeviceId,
     setUseLocalWhisper,
     setWhisperModel,
+    setLocalTranscriptionProvider,
+    setParakeetModel,
     setAllowOpenAIFallback,
     setCloudTranscriptionProvider,
     setCloudTranscriptionModel,
@@ -635,8 +639,18 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               onCloudProviderSelect={setCloudTranscriptionProvider}
               selectedCloudModel={cloudTranscriptionModel}
               onCloudModelSelect={setCloudTranscriptionModel}
-              selectedLocalModel={whisperModel}
-              onLocalModelSelect={setWhisperModel}
+              selectedLocalModel={
+                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+              }
+              onLocalModelSelect={(modelId) => {
+                if (localTranscriptionProvider === "nvidia") {
+                  setParakeetModel(modelId);
+                } else {
+                  setWhisperModel(modelId);
+                }
+              }}
+              selectedLocalProvider={localTranscriptionProvider}
+              onLocalProviderSelect={setLocalTranscriptionProvider}
               useLocalWhisper={useLocalWhisper}
               onModeChange={(isLocal) => {
                 setUseLocalWhisper(isLocal);

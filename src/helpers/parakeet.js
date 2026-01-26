@@ -4,7 +4,7 @@ const fsPromises = require("fs").promises;
 const os = require("os");
 const path = require("path");
 const https = require("https");
-const { execSync } = require("child_process");
+const { spawn } = require("child_process");
 const debugLogger = require("./debugLogger");
 const ParakeetServerManager = require("./parakeetServer");
 
@@ -394,10 +394,10 @@ class ParakeetManager {
 
     try {
       // Create temp extract directory
-      fs.mkdirSync(extractDir, { recursive: true });
+      await fsPromises.mkdir(extractDir, { recursive: true });
 
-      // Extract tar.bz2 (tar is available on Windows 10+ and all Unix systems)
-      execSync(`tar -xjf "${archivePath}" -C "${extractDir}"`, { stdio: "pipe" });
+      // Extract tar.bz2 asynchronously (tar is available on Windows 10+ and all Unix systems)
+      await this._runTarExtract(archivePath, extractDir);
 
       // Find the extracted directory (usually has a specific name)
       const extractedDir = path.join(extractDir, modelConfig.extractDir);
@@ -407,37 +407,70 @@ class ParakeetManager {
       if (fs.existsSync(extractedDir)) {
         // Remove target if exists
         if (fs.existsSync(targetDir)) {
-          fs.rmSync(targetDir, { recursive: true, force: true });
+          await fsPromises.rm(targetDir, { recursive: true, force: true });
         }
-        fs.renameSync(extractedDir, targetDir);
+        await fsPromises.rename(extractedDir, targetDir);
       } else {
         // If extracted directory doesn't match expected name, try to find it
-        const entries = fs.readdirSync(extractDir);
-        const modelDir = entries.find(
-          (e) => fs.statSync(path.join(extractDir, e)).isDirectory() && e.includes("parakeet")
-        );
+        const entries = await fsPromises.readdir(extractDir);
+        let modelDir = null;
+
+        for (const entry of entries) {
+          const entryPath = path.join(extractDir, entry);
+          const stat = await fsPromises.stat(entryPath);
+          if (stat.isDirectory() && entry.includes("parakeet")) {
+            modelDir = entry;
+            break;
+          }
+        }
 
         if (modelDir) {
           if (fs.existsSync(targetDir)) {
-            fs.rmSync(targetDir, { recursive: true, force: true });
+            await fsPromises.rm(targetDir, { recursive: true, force: true });
           }
-          fs.renameSync(path.join(extractDir, modelDir), targetDir);
+          await fsPromises.rename(path.join(extractDir, modelDir), targetDir);
         } else {
           throw new Error("Could not find model directory in extracted archive");
         }
       }
 
       // Cleanup temp directory
-      fs.rmSync(extractDir, { recursive: true, force: true });
+      await fsPromises.rm(extractDir, { recursive: true, force: true });
 
       debugLogger.info("Parakeet model extracted", { modelName, targetDir });
     } catch (error) {
       // Cleanup on error
       try {
-        fs.rmSync(extractDir, { recursive: true, force: true });
+        await fsPromises.rm(extractDir, { recursive: true, force: true });
       } catch {}
       throw error;
     }
+  }
+
+  _runTarExtract(archivePath, extractDir) {
+    return new Promise((resolve, reject) => {
+      const tarProcess = spawn("tar", ["-xjf", archivePath, "-C", extractDir], {
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      let stderr = "";
+
+      tarProcess.stderr.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      tarProcess.on("close", (code) => {
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`tar extraction failed with code ${code}: ${stderr}`));
+        }
+      });
+
+      tarProcess.on("error", (err) => {
+        reject(new Error(`Failed to start tar process: ${err.message}`));
+      });
+    });
   }
 
   async cancelDownload() {

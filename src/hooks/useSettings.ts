@@ -8,6 +8,8 @@ import ReasoningService from "../services/ReasoningService";
 export interface TranscriptionSettings {
   useLocalWhisper: boolean;
   whisperModel: string;
+  localTranscriptionProvider: string;
+  parakeetModel: string;
   allowOpenAIFallback: boolean;
   allowLocalFallback: boolean;
   fallbackWhisperModel: string;
@@ -50,6 +52,20 @@ export function useSettings() {
   });
 
   const [whisperModel, setWhisperModel] = useLocalStorage("whisperModel", "base", {
+    serialize: String,
+    deserialize: String,
+  });
+
+  const [localTranscriptionProvider, setLocalTranscriptionProvider] = useLocalStorage(
+    "localTranscriptionProvider",
+    "whisper",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [parakeetModel, setParakeetModel] = useLocalStorage("parakeetModel", "", {
     serialize: String,
     deserialize: String,
   });
@@ -313,6 +329,9 @@ export function useSettings() {
     (settings: Partial<TranscriptionSettings>) => {
       if (settings.useLocalWhisper !== undefined) setUseLocalWhisper(settings.useLocalWhisper);
       if (settings.whisperModel !== undefined) setWhisperModel(settings.whisperModel);
+      if (settings.localTranscriptionProvider !== undefined)
+        setLocalTranscriptionProvider(settings.localTranscriptionProvider);
+      if (settings.parakeetModel !== undefined) setParakeetModel(settings.parakeetModel);
       if (settings.allowOpenAIFallback !== undefined)
         setAllowOpenAIFallback(settings.allowOpenAIFallback);
       if (settings.allowLocalFallback !== undefined)
@@ -331,6 +350,8 @@ export function useSettings() {
     [
       setUseLocalWhisper,
       setWhisperModel,
+      setLocalTranscriptionProvider,
+      setParakeetModel,
       setAllowOpenAIFallback,
       setAllowLocalFallback,
       setFallbackWhisperModel,
@@ -366,6 +387,8 @@ export function useSettings() {
   return {
     useLocalWhisper,
     whisperModel,
+    localTranscriptionProvider,
+    parakeetModel,
     allowOpenAIFallback,
     allowLocalFallback,
     fallbackWhisperModel,
@@ -384,6 +407,8 @@ export function useSettings() {
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
+    setLocalTranscriptionProvider,
+    setParakeetModel,
     setAllowOpenAIFallback,
     setAllowLocalFallback,
     setFallbackWhisperModel,
