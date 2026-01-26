@@ -39,6 +39,8 @@ export interface ApiKeySettings {
   anthropicApiKey: string;
   geminiApiKey: string;
   groqApiKey: string;
+  customTranscriptionApiKey: string;
+  customReasoningApiKey: string;
 }
 
 export function useSettings() {
@@ -147,6 +149,25 @@ export function useSettings() {
     serialize: String,
     deserialize: String,
   });
+
+  // Custom endpoint API keys (not synced to .env - stored in localStorage only)
+  const [customTranscriptionApiKey, setCustomTranscriptionApiKey] = useLocalStorage(
+    "customTranscriptionApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [customReasoningApiKey, setCustomReasoningApiKey] = useLocalStorage(
+    "customReasoningApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
 
   // Sync API keys from main process on first mount (if localStorage was cleared)
   const hasRunApiKeySync = useRef(false);
@@ -355,6 +376,10 @@ export function useSettings() {
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
+    customReasoningApiKey,
+    setCustomReasoningApiKey,
     setDictationKey,
     activationMode,
     setActivationMode,

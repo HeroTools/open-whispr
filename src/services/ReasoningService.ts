@@ -31,6 +31,19 @@ class ReasoningService extends BaseReasoningService {
     }
 
     try {
+      const provider = window.localStorage.getItem("reasoningProvider") || "";
+      const isCustomProvider = provider === "custom";
+
+      if (!isCustomProvider) {
+        logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+          hasCustomUrl: false,
+          provider,
+          reason: "Provider is not 'custom', using default OpenAI endpoint",
+          defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+        });
+        return API_ENDPOINTS.OPENAI_BASE;
+      }
+
       const stored = window.localStorage.getItem("cloudReasoningBaseUrl") || "";
       const trimmed = stored.trim();
 
@@ -38,6 +51,7 @@ class ReasoningService extends BaseReasoningService {
       if (!trimmed) {
         logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
           hasCustomUrl: false,
+          provider,
           usingDefault: true,
           defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
         });
@@ -48,6 +62,7 @@ class ReasoningService extends BaseReasoningService {
 
       logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
         hasCustomUrl: true,
+        provider,
         rawUrl: trimmed,
         normalizedUrl: normalized,
         defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
@@ -80,7 +95,8 @@ class ReasoningService extends BaseReasoningService {
 
       logger.logReasoning("CUSTOM_REASONING_ENDPOINT_RESOLVED", {
         customEndpoint: normalized,
-        isCustom: normalized !== API_ENDPOINTS.OPENAI_BASE,
+        isCustom: true,
+        provider,
       });
 
       return normalized;
@@ -167,7 +183,24 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
-  private async getApiKey(provider: "openai" | "anthropic" | "gemini" | "groq"): Promise<string> {
+  private async getApiKey(
+    provider: "openai" | "anthropic" | "gemini" | "groq" | "custom"
+  ): Promise<string> {
+    // For custom provider, get API key from localStorage (not from .env)
+    if (provider === "custom") {
+      const customKey = window.localStorage?.getItem("customReasoningApiKey") || "";
+      const trimmedKey = customKey.trim();
+
+      logger.logReasoning("CUSTOM_KEY_RETRIEVAL", {
+        provider,
+        hasKey: !!trimmedKey,
+        keyLength: trimmedKey.length,
+        keyPreview: trimmedKey ? `${trimmedKey.substring(0, 8)}...` : "none",
+      });
+
+      return trimmedKey;
+    }
+
     let apiKey = this.apiKeyCache.get(provider);
 
     logger.logReasoning(`${provider.toUpperCase()}_KEY_RETRIEVAL`, {
@@ -432,9 +465,13 @@ class ReasoningService extends BaseReasoningService {
     agentName: string | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
+    const reasoningProvider = window.localStorage?.getItem("reasoningProvider") || "";
+    const isCustomProvider = reasoningProvider === "custom";
+
     logger.logReasoning("OPENAI_START", {
       model,
       agentName,
+      isCustomProvider,
       hasApiKey: false, // Will update after fetching
     });
 
@@ -442,7 +479,7 @@ class ReasoningService extends BaseReasoningService {
       throw new Error("Already processing a request");
     }
 
-    const apiKey = await this.getApiKey("openai");
+    const apiKey = await this.getApiKey(isCustomProvider ? "custom" : "openai");
 
     logger.logReasoning("OPENAI_API_KEY", {
       hasApiKey: !!apiKey,

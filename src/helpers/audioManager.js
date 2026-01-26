@@ -329,14 +329,21 @@ class AudioManager {
     let apiKey = null;
 
     if (provider === "custom") {
-      // Custom endpoints: API key is optional
-      // Try OpenAI key first as it's commonly used for compatible endpoints
-      apiKey = await window.electronAPI.getOpenAIKey();
-      if (!isValidApiKey(apiKey, "openai")) {
-        apiKey = localStorage.getItem("openaiApiKey");
-      }
-      // For custom, we allow null/empty - the endpoint may not require auth
-      if (!isValidApiKey(apiKey, "openai")) {
+      apiKey = localStorage.getItem("customTranscriptionApiKey") || "";
+      apiKey = apiKey.trim();
+
+      logger.debug(
+        "Custom STT API key retrieval",
+        {
+          provider,
+          hasKey: !!apiKey,
+          keyLength: apiKey?.length || 0,
+          keyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "(none)",
+        },
+        "transcription"
+      );
+
+      if (!apiKey) {
         apiKey = null;
       }
     } else if (provider === "groq") {
@@ -889,7 +896,12 @@ class AudioManager {
           endpoint,
           method: "POST",
           hasAuthHeader: !!apiKey,
-          formDataFields: ["file", "model", language && language !== "auto" ? "language" : null, shouldStream ? "stream" : null].filter(Boolean),
+          formDataFields: [
+            "file",
+            "model",
+            language && language !== "auto" ? "language" : null,
+            shouldStream ? "stream" : null,
+          ].filter(Boolean),
         },
         "transcription"
       );
@@ -1111,8 +1123,8 @@ class AudioManager {
         ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
         : "";
 
-    const isCustomEndpoint = currentProvider === "custom" ||
-      (currentBaseUrl && currentBaseUrl !== API_ENDPOINTS.TRANSCRIPTION_BASE);
+    // Only use custom URL when provider is explicitly "custom"
+    const isCustomEndpoint = currentProvider === "custom";
 
     // Invalidate cache if provider or base URL changed
     if (
@@ -1138,7 +1150,17 @@ class AudioManager {
     }
 
     try {
-      const base = currentBaseUrl.trim() || API_ENDPOINTS.TRANSCRIPTION_BASE;
+      // Use custom URL only when provider is "custom", otherwise use provider-specific defaults
+      let base;
+      if (isCustomEndpoint) {
+        base = currentBaseUrl.trim() || API_ENDPOINTS.TRANSCRIPTION_BASE;
+      } else if (currentProvider === "groq") {
+        base = API_ENDPOINTS.GROQ_BASE;
+      } else {
+        // OpenAI or other standard providers
+        base = API_ENDPOINTS.TRANSCRIPTION_BASE;
+      }
+
       const normalizedBase = normalizeBaseUrl(base);
 
       logger.debug(
@@ -1181,7 +1203,8 @@ class AudioManager {
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
 
-      if (!isSecureEndpoint(normalizedBase)) {
+      // Only validate HTTPS for custom endpoints (known providers are already HTTPS)
+      if (isCustomEndpoint && !isSecureEndpoint(normalizedBase)) {
         logger.warn(
           "STT endpoint: HTTPS required, falling back to default",
           { attemptedUrl: normalizedBase },
@@ -1193,11 +1216,7 @@ class AudioManager {
       let endpoint;
       if (/\/audio\/(transcriptions|translations)$/i.test(normalizedBase)) {
         endpoint = normalizedBase;
-        logger.debug(
-          "STT endpoint: using full path from config",
-          { endpoint },
-          "transcription"
-        );
+        logger.debug("STT endpoint: using full path from config", { endpoint }, "transcription");
       } else {
         endpoint = buildApiUrl(normalizedBase, "/audio/transcriptions");
         logger.debug(
