@@ -67,6 +67,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     cloudTranscriptionBaseUrl,
     openaiApiKey,
     groqApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
     dictationKey,
     activationMode,
     setActivationMode,
@@ -331,6 +333,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               setOpenaiApiKey={setOpenaiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
+              customTranscriptionApiKey={customTranscriptionApiKey}
+              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
               cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
               setCloudTranscriptionBaseUrl={(url) =>
                 updateTranscriptionSettings({ cloudTranscriptionBaseUrl: url })

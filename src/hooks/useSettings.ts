@@ -40,6 +40,8 @@ export interface ApiKeySettings {
   anthropicApiKey: string;
   geminiApiKey: string;
   groqApiKey: string;
+  customTranscriptionApiKey: string;
+  customReasoningApiKey: string;
 }
 
 export function useSettings() {
@@ -166,6 +168,25 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Custom endpoint API keys - synced to .env like other keys
+  const [customTranscriptionApiKey, setCustomTranscriptionApiKeyLocal] = useLocalStorage(
+    "customTranscriptionApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [customReasoningApiKey, setCustomReasoningApiKeyLocal] = useLocalStorage(
+    "customReasoningApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   // Sync API keys from main process on first mount (if localStorage was cleared)
   const hasRunApiKeySync = useRef(false);
   useEffect(() => {
@@ -191,6 +212,14 @@ export function useSettings() {
       if (!groqApiKey) {
         const envKey = await window.electronAPI.getGroqKey?.();
         if (envKey) setGroqApiKeyLocal(envKey);
+      }
+      if (!customTranscriptionApiKey) {
+        const envKey = await window.electronAPI.getCustomTranscriptionKey?.();
+        if (envKey) setCustomTranscriptionApiKeyLocal(envKey);
+      }
+      if (!customReasoningApiKey) {
+        const envKey = await window.electronAPI.getCustomReasoningKey?.();
+        if (envKey) setCustomReasoningApiKeyLocal(envKey);
       }
     };
 
@@ -247,6 +276,25 @@ export function useSettings() {
       debouncedPersistToEnv();
     },
     [setGroqApiKeyLocal, debouncedPersistToEnv]
+  );
+
+  const setCustomTranscriptionApiKey = useCallback(
+    (key: string) => {
+      setCustomTranscriptionApiKeyLocal(key);
+      window.electronAPI?.saveCustomTranscriptionKey?.(key);
+      debouncedPersistToEnv();
+    },
+    [setCustomTranscriptionApiKeyLocal, debouncedPersistToEnv]
+  );
+
+  const setCustomReasoningApiKey = useCallback(
+    (key: string) => {
+      setCustomReasoningApiKeyLocal(key);
+      window.electronAPI?.saveCustomReasoningKey?.(key);
+      ReasoningService.clearApiKeyCache("custom");
+      debouncedPersistToEnv();
+    },
+    [setCustomReasoningApiKeyLocal, debouncedPersistToEnv]
   );
 
   // Hotkey
@@ -401,6 +449,10 @@ export function useSettings() {
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
+    customReasoningApiKey,
+    setCustomReasoningApiKey,
     setDictationKey,
     activationMode,
     setActivationMode,

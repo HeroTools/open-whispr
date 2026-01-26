@@ -85,6 +85,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
+    customReasoningApiKey,
+    setCustomReasoningApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -729,6 +733,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setOpenaiApiKey={setOpenaiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
+              customTranscriptionApiKey={customTranscriptionApiKey}
+              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
               cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
               setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
               variant="settings"
@@ -843,6 +849,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setGeminiApiKey={setGeminiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
+              customReasoningApiKey={customReasoningApiKey}
+              setCustomReasoningApiKey={setCustomReasoningApiKey}
               showAlertDialog={showAlertDialog}
             />
           </div>

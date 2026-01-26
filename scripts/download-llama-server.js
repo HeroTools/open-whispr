@@ -19,28 +19,24 @@ const BINARIES = {
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-darwin-arm64",
     libPattern: "*.dylib",
-    libDir: "build/bin",
   },
   "darwin-x64": {
     zipName: `llama-${LLAMA_CPP_VERSION}-bin-macos-x64.zip`,
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-darwin-x64",
     libPattern: "*.dylib",
-    libDir: "build/bin",
   },
   "win32-x64": {
     zipName: `llama-${LLAMA_CPP_VERSION}-bin-win-avx2-x64.zip`,
     binaryPath: "build/bin/llama-server.exe",
     outputName: "llama-server-win32-x64.exe",
     libPattern: "*.dll",
-    libDir: "build/bin",
   },
   "linux-x64": {
     zipName: `llama-${LLAMA_CPP_VERSION}-bin-ubuntu-x64.zip`,
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-linux-x64",
     libPattern: "*.so*",
-    libDir: "build/bin",
   },
 };
 
@@ -121,8 +117,7 @@ async function downloadBinary(platformArch, config) {
 
       // Copy shared libraries (dylib/dll/so files)
       if (config.libPattern) {
-        const libDir = path.join(extractDir, config.libDir);
-        const libraries = findLibrariesInDir(libDir, config.libPattern);
+        const libraries = findLibrariesInDir(extractDir, config.libPattern);
 
         for (const libPath of libraries) {
           const libName = path.basename(libPath);

@@ -160,6 +160,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
 
+  // Custom endpoint API keys
+  getCustomTranscriptionKey: () => ipcRenderer.invoke("get-custom-transcription-key"),
+  saveCustomTranscriptionKey: (key) => ipcRenderer.invoke("save-custom-transcription-key", key),
+  getCustomReasoningKey: () => ipcRenderer.invoke("get-custom-reasoning-key"),
+  saveCustomReasoningKey: (key) => ipcRenderer.invoke("save-custom-reasoning-key", key),
+
   saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
 
   // Local reasoning
