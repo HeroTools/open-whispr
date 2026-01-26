@@ -150,8 +150,8 @@ export function useSettings() {
     deserialize: String,
   });
 
-  // Custom endpoint API keys (not synced to .env - stored in localStorage only)
-  const [customTranscriptionApiKey, setCustomTranscriptionApiKey] = useLocalStorage(
+  // Custom endpoint API keys - synced to .env like other keys
+  const [customTranscriptionApiKey, setCustomTranscriptionApiKeyLocal] = useLocalStorage(
     "customTranscriptionApiKey",
     "",
     {
@@ -160,7 +160,7 @@ export function useSettings() {
     }
   );
 
-  const [customReasoningApiKey, setCustomReasoningApiKey] = useLocalStorage(
+  const [customReasoningApiKey, setCustomReasoningApiKeyLocal] = useLocalStorage(
     "customReasoningApiKey",
     "",
     {
@@ -194,6 +194,14 @@ export function useSettings() {
       if (!groqApiKey) {
         const envKey = await window.electronAPI.getGroqKey?.();
         if (envKey) setGroqApiKeyLocal(envKey);
+      }
+      if (!customTranscriptionApiKey) {
+        const envKey = await window.electronAPI.getCustomTranscriptionKey?.();
+        if (envKey) setCustomTranscriptionApiKeyLocal(envKey);
+      }
+      if (!customReasoningApiKey) {
+        const envKey = await window.electronAPI.getCustomReasoningKey?.();
+        if (envKey) setCustomReasoningApiKeyLocal(envKey);
       }
     };
 
@@ -250,6 +258,25 @@ export function useSettings() {
       debouncedPersistToEnv();
     },
     [setGroqApiKeyLocal, debouncedPersistToEnv]
+  );
+
+  const setCustomTranscriptionApiKey = useCallback(
+    (key: string) => {
+      setCustomTranscriptionApiKeyLocal(key);
+      window.electronAPI?.saveCustomTranscriptionKey?.(key);
+      debouncedPersistToEnv();
+    },
+    [setCustomTranscriptionApiKeyLocal, debouncedPersistToEnv]
+  );
+
+  const setCustomReasoningApiKey = useCallback(
+    (key: string) => {
+      setCustomReasoningApiKeyLocal(key);
+      window.electronAPI?.saveCustomReasoningKey?.(key);
+      ReasoningService.clearApiKeyCache("custom");
+      debouncedPersistToEnv();
+    },
+    [setCustomReasoningApiKeyLocal, debouncedPersistToEnv]
   );
 
   // Hotkey

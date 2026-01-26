@@ -186,9 +186,16 @@ class ReasoningService extends BaseReasoningService {
   private async getApiKey(
     provider: "openai" | "anthropic" | "gemini" | "groq" | "custom"
   ): Promise<string> {
-    // For custom provider, get API key from localStorage (not from .env)
     if (provider === "custom") {
-      const customKey = window.localStorage?.getItem("customReasoningApiKey") || "";
+      let customKey = "";
+      try {
+        customKey = (await window.electronAPI?.getCustomReasoningKey?.()) || "";
+      } catch (err) {
+        logger.logReasoning("CUSTOM_KEY_IPC_FALLBACK", { error: (err as Error)?.message });
+      }
+      if (!customKey || !customKey.trim()) {
+        customKey = window.localStorage?.getItem("customReasoningApiKey") || "";
+      }
       const trimmedKey = customKey.trim();
 
       logger.logReasoning("CUSTOM_KEY_RETRIEVAL", {
@@ -198,6 +205,7 @@ class ReasoningService extends BaseReasoningService {
         keyPreview: trimmedKey ? `${trimmedKey.substring(0, 8)}...` : "none",
       });
 
+      // Custom endpoints may not require an API key
       return trimmedKey;
     }
 
@@ -1030,10 +1038,14 @@ class ReasoningService extends BaseReasoningService {
   /**
    * Clear cached API key for a specific provider or all providers.
    * Call this when API keys change to ensure fresh keys are used.
+   * Note: "custom" keys are not cached (read fresh from localStorage each time).
    */
-  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq"): void {
+  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq" | "custom"): void {
     if (provider) {
-      this.apiKeyCache.delete(provider);
+      // Custom keys aren't cached, but we accept the type for consistency
+      if (provider !== "custom") {
+        this.apiKeyCache.delete(provider);
+      }
       logger.logReasoning("API_KEY_CACHE_CLEARED", { provider });
     } else {
       this.apiKeyCache.clear();

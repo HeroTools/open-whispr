@@ -329,8 +329,19 @@ class AudioManager {
     let apiKey = null;
 
     if (provider === "custom") {
-      apiKey = localStorage.getItem("customTranscriptionApiKey") || "";
-      apiKey = apiKey.trim();
+      try {
+        apiKey = await window.electronAPI.getCustomTranscriptionKey?.();
+      } catch (err) {
+        logger.debug(
+          "Failed to get custom transcription key via IPC, falling back to localStorage",
+          { error: err?.message },
+          "transcription"
+        );
+      }
+      if (!apiKey || !apiKey.trim()) {
+        apiKey = localStorage.getItem("customTranscriptionApiKey") || "";
+      }
+      apiKey = apiKey?.trim() || "";
 
       logger.debug(
         "Custom STT API key retrieval",
@@ -343,6 +354,7 @@ class AudioManager {
         "transcription"
       );
 
+      // For custom, we allow null/empty - the endpoint may not require auth
       if (!apiKey) {
         apiKey = null;
       }
