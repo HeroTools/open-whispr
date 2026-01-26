@@ -88,7 +88,11 @@ class HotkeyManager {
     // If we're already using this hotkey AND it's actually registered, return success
     // Note: We need to check isRegistered because on first run, currentHotkey is set to "`"
     // but it's not actually registered yet
-    if (hotkey === this.currentHotkey && hotkey !== "GLOBE" && globalShortcut.isRegistered(hotkey)) {
+    if (
+      hotkey === this.currentHotkey &&
+      hotkey !== "GLOBE" &&
+      globalShortcut.isRegistered(hotkey)
+    ) {
       debugLogger.log(
         `[HotkeyManager] Hotkey "${hotkey}" is already the current hotkey and registered, no change needed`
       );

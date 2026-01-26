@@ -803,8 +803,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 names, or any words that are frequently misrecognized.
               </p>
               <p className="text-sm text-blue-800">
-                <strong>Tip:</strong> For difficult words, try adding context phrases like "The
-                word is Synty" alongside the word itself. Adding related terms (e.g., "Synty" and
+                <strong>Tip:</strong> For difficult words, try adding context phrases like "The word
+                is Synty" alongside the word itself. Adding related terms (e.g., "Synty" and
                 "SyntyStudios") also helps the model understand the intended spelling.
               </p>
             </div>

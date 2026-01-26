@@ -231,7 +231,12 @@ class WhisperServerManager {
       args.push("--language", options.language);
     }
 
-    debugLogger.debug("Starting whisper-server", { port: this.port, modelPath, args, cwd: serverBinaryDir });
+    debugLogger.debug("Starting whisper-server", {
+      port: this.port,
+      modelPath,
+      args,
+      cwd: serverBinaryDir,
+    });
 
     this.process = spawn(serverBinary, args, {
       stdio: ["ignore", "pipe", "pipe"],
@@ -363,9 +368,12 @@ class WhisperServerManager {
     debugLogger.debug("whisper-server transcribe called", {
       bufferLength: audioBuffer?.length || 0,
       bufferType: audioBuffer?.constructor?.name,
-      firstBytes: audioBuffer?.length >= 16
-        ? Array.from(audioBuffer.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ')
-        : 'too short',
+      firstBytes:
+        audioBuffer?.length >= 16
+          ? Array.from(audioBuffer.slice(0, 16))
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join(" ")
+          : "too short",
     });
 
     const { language, initialPrompt } = options;

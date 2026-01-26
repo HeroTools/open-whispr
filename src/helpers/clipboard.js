@@ -796,10 +796,9 @@ class ClipboardManager {
           xwaylandAvailable && xdotoolExists
             ? " If this is an XWayland app, xdotool can also be used."
             : "";
-        const installNote =
-          !ydotoolExists
-            ? " Consider installing ydotool as an alternative (requires ydotoold daemon)."
-            : " If using ydotool, ensure the ydotoold daemon is running.";
+        const installNote = !ydotoolExists
+          ? " Consider installing ydotool as an alternative (requires ydotoold daemon)."
+          : " If using ydotool, ensure the ydotoold daemon is running.";
         errorMsg =
           "Clipboard copied, but paste simulation failed on Wayland. Your compositor may not support the virtual keyboard protocol." +
           installNote +

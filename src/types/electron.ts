@@ -284,6 +284,14 @@ declare global {
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
       openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
+
+      // Windows Push-to-Talk notifications
+      notifyActivationModeChanged?: (mode: "tap" | "push") => void;
+      notifyHotkeyChanged?: (hotkey: string) => void;
+
+      // Auto-start at login
+      getAutoStartEnabled?: () => Promise<boolean>;
+      setAutoStartEnabled?: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
     };
 
     api?: {

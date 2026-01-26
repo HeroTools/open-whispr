@@ -1,4 +1,14 @@
 #!/usr/bin/env node
+/**
+ * Ensures the Windows key listener binary is available.
+ *
+ * Strategy:
+ * 1. If binary exists and is up-to-date, do nothing
+ * 2. Try to download prebuilt binary from GitHub releases
+ * 3. Fall back to local compilation if download fails
+ *
+ * This allows developers without a C compiler to still build the app.
+ */
 
 const { spawnSync } = require("child_process");
 const fs = require("fs");
@@ -6,7 +16,7 @@ const path = require("path");
 
 const isWindows = process.platform === "win32";
 if (!isWindows) {
-  // Only build on Windows
+  // Only needed on Windows
   process.exit(0);
 }
 
@@ -25,91 +35,139 @@ function ensureDir(dirPath) {
   }
 }
 
-if (!fs.existsSync(cSource)) {
-  console.error(`[windows-key-listener] C source not found at ${cSource}`);
-  process.exit(1);
-}
+// Check if binary exists and is up-to-date
+function isBinaryUpToDate() {
+  if (!fs.existsSync(outputBinary)) {
+    return false;
+  }
 
-ensureDir(outputDir);
+  // If source doesn't exist, can't check if rebuild needed - assume binary is good
+  if (!fs.existsSync(cSource)) {
+    return true;
+  }
 
-// Check if rebuild is needed
-let needsBuild = true;
-if (fs.existsSync(outputBinary)) {
   try {
     const binaryStat = fs.statSync(outputBinary);
     const sourceStat = fs.statSync(cSource);
-    if (binaryStat.mtimeMs >= sourceStat.mtimeMs) {
-      needsBuild = false;
-    }
+    return binaryStat.mtimeMs >= sourceStat.mtimeMs;
   } catch {
-    needsBuild = true;
+    return false;
   }
 }
 
-if (!needsBuild) {
-  log("Binary is up to date, skipping build.");
-  process.exit(0);
-}
+// Try to download prebuilt binary
+async function tryDownload() {
+  log("Attempting to download prebuilt binary...");
 
-// Try different compilers in order of preference
-const compilers = [
-  // MSVC (Visual Studio)
-  {
-    name: "MSVC",
-    command: "cl",
-    args: ["/O2", "/nologo", cSource, `/Fe:${outputBinary}`, "user32.lib"],
-  },
-  // MinGW-w64
-  {
-    name: "MinGW-w64",
-    command: "gcc",
-    args: ["-O2", "-mwindows", cSource, "-o", outputBinary, "-luser32"],
-  },
-  // Clang (LLVM)
-  {
-    name: "Clang",
-    command: "clang",
-    args: ["-O2", cSource, "-o", outputBinary, "-luser32"],
-  },
-];
-
-let success = false;
-for (const compiler of compilers) {
-  log(`Trying ${compiler.name}...`);
-
-  // Check if compiler is available
-  const checkResult = spawnSync(compiler.command, ["--version"], {
-    stdio: "pipe",
-    shell: true,
-  });
-
-  if (checkResult.status !== 0 && checkResult.error) {
-    log(`${compiler.name} not found, trying next...`);
-    continue;
+  const downloadScript = path.join(__dirname, "download-windows-key-listener.js");
+  if (!fs.existsSync(downloadScript)) {
+    log("Download script not found, skipping download");
+    return false;
   }
 
-  log(`Compiling with: ${compiler.command} ${compiler.args.join(" ")}`);
-  const result = spawnSync(compiler.command, compiler.args, {
+  const result = spawnSync(process.execPath, [downloadScript, "--force"], {
     stdio: "inherit",
     cwd: projectRoot,
-    shell: true,
   });
 
-  if (result.status === 0) {
-    success = true;
-    log(`Successfully built with ${compiler.name}`);
-    break;
-  } else {
+  if (result.status === 0 && fs.existsSync(outputBinary)) {
+    log("Successfully downloaded prebuilt binary");
+    return true;
+  }
+
+  log("Download failed or binary not found after download");
+  return false;
+}
+
+// Try to compile locally
+function tryCompile() {
+  if (!fs.existsSync(cSource)) {
+    log("C source not found, cannot compile locally");
+    return false;
+  }
+
+  log("Attempting local compilation...");
+
+  const compilers = [
+    // MSVC (Visual Studio)
+    {
+      name: "MSVC",
+      command: "cl",
+      args: ["/O2", "/nologo", cSource, `/Fe:${outputBinary}`, "user32.lib"],
+    },
+    // MinGW-w64
+    {
+      name: "MinGW-w64",
+      command: "gcc",
+      args: ["-O2", "-mwindows", cSource, "-o", outputBinary, "-luser32"],
+    },
+    // Clang (LLVM)
+    {
+      name: "Clang",
+      command: "clang",
+      args: ["-O2", cSource, "-o", outputBinary, "-luser32"],
+    },
+  ];
+
+  for (const compiler of compilers) {
+    log(`Trying ${compiler.name}...`);
+
+    // Check if compiler is available
+    const checkResult = spawnSync(compiler.command, ["--version"], {
+      stdio: "pipe",
+      shell: true,
+    });
+
+    if (checkResult.status !== 0 && checkResult.error) {
+      log(`${compiler.name} not found, trying next...`);
+      continue;
+    }
+
+    log(`Compiling with: ${compiler.command} ${compiler.args.join(" ")}`);
+    const result = spawnSync(compiler.command, compiler.args, {
+      stdio: "inherit",
+      cwd: projectRoot,
+      shell: true,
+    });
+
+    if (result.status === 0 && fs.existsSync(outputBinary)) {
+      log(`Successfully built with ${compiler.name}`);
+      return true;
+    }
+
     log(`${compiler.name} compilation failed, trying next...`);
   }
+
+  return false;
 }
 
-if (!success) {
-  console.warn("[windows-key-listener] Could not compile Windows key listener.");
-  console.warn("[windows-key-listener] Push to Talk on Windows will use fallback mode.");
-  console.warn("[windows-key-listener] To enable, install Visual Studio Build Tools or MinGW-w64.");
-  // Don't fail the build - Push to Talk can work in fallback mode
-  process.exit(0);
+async function main() {
+  ensureDir(outputDir);
+
+  // Check if rebuild is needed
+  if (isBinaryUpToDate()) {
+    log("Binary is up to date, skipping build");
+    return;
+  }
+
+  // Try download first, then compile
+  const downloaded = await tryDownload();
+  if (downloaded) {
+    return;
+  }
+
+  const compiled = tryCompile();
+  if (compiled) {
+    return;
+  }
+
+  // Neither worked - warn but don't fail
+  console.warn("[windows-key-listener] Could not obtain Windows key listener binary.");
+  console.warn("[windows-key-listener] Push-to-Talk on Windows will use fallback mode.");
+  console.warn("[windows-key-listener] To compile locally, install Visual Studio Build Tools or MinGW-w64.");
 }
 
-log("Windows key listener built successfully.");
+main().catch((error) => {
+  console.error("[windows-key-listener] Unexpected error:", error);
+  // Don't fail the build
+});

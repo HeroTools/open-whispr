@@ -9,6 +9,7 @@ const { spawn } = require("child_process");
 const path = require("path");
 const EventEmitter = require("events");
 const fs = require("fs");
+const debugLogger = require("./debugLogger");
 
 class WindowsKeyManager extends EventEmitter {
   constructor() {
@@ -22,7 +23,7 @@ class WindowsKeyManager extends EventEmitter {
 
   /**
    * Start listening for the specified key
-   * @param {string} key - The key to listen for (e.g., "`", "F8", "F11")
+   * @param {string} key - The key to listen for (e.g., "`", "F8", "F11", "CommandOrControl+F11")
    */
   start(key = "`") {
     if (!this.isSupported) {
@@ -48,8 +49,10 @@ class WindowsKeyManager extends EventEmitter {
     this.isReady = false;
     this.currentKey = key;
 
-    console.log(`[WindowsKeyManager] Starting key listener for key: "${key}"`);
-    console.log(`[WindowsKeyManager] Binary path: ${listenerPath}`);
+    debugLogger.debug("[WindowsKeyManager] Starting key listener", {
+      key,
+      binaryPath: listenerPath,
+    });
 
     try {
       this.process = spawn(listenerPath, [key], {
@@ -57,34 +60,31 @@ class WindowsKeyManager extends EventEmitter {
         windowsHide: true,
       });
     } catch (error) {
-      console.error(`[WindowsKeyManager] Failed to spawn process:`, error);
+      debugLogger.error("[WindowsKeyManager] Failed to spawn process", { error: error.message });
       this.reportError(error);
       return;
     }
 
     this.process.stdout.setEncoding("utf8");
     this.process.stdout.on("data", (chunk) => {
-      // Log raw chunk for debugging
-      console.log(`[WindowsKeyManager] RAW STDOUT: "${chunk.replace(/\r/g, '\\r').replace(/\n/g, '\\n')}"`);
-
       chunk
         .split(/\r?\n/)
         .map((line) => line.trim())
         .filter(Boolean)
         .forEach((line) => {
-          console.log(`[WindowsKeyManager] Parsed line: "${line}"`);
           if (line === "READY") {
-            console.log(`[WindowsKeyManager] Listener READY for key: "${key}"`);
+            debugLogger.debug("[WindowsKeyManager] Listener ready", { key });
             this.isReady = true;
             this.emit("ready");
           } else if (line === "KEY_DOWN") {
-            console.log(`[WindowsKeyManager] KEY_DOWN detected for: "${key}"`);
+            debugLogger.debug("[WindowsKeyManager] KEY_DOWN detected", { key });
             this.emit("key-down", key);
           } else if (line === "KEY_UP") {
-            console.log(`[WindowsKeyManager] KEY_UP detected for: "${key}"`);
+            debugLogger.debug("[WindowsKeyManager] KEY_UP detected", { key });
             this.emit("key-up", key);
           } else {
-            console.log(`[WindowsKeyManager] Unknown line: "${line}"`);
+            // Log unknown output at debug level (could be native binary's stderr info)
+            debugLogger.debug("[WindowsKeyManager] Unknown output", { line });
           }
         });
     });
@@ -93,8 +93,8 @@ class WindowsKeyManager extends EventEmitter {
     this.process.stderr.on("data", (data) => {
       const message = data.toString().trim();
       if (message.length > 0) {
-        console.error("WindowsKeyManager stderr:", message);
-        this.reportError(new Error(message));
+        // Native binary logs to stderr for info messages, don't treat as error
+        debugLogger.debug("[WindowsKeyManager] Native stderr", { message });
       }
     });
 
@@ -120,6 +120,7 @@ class WindowsKeyManager extends EventEmitter {
    */
   stop() {
     if (this.process) {
+      debugLogger.debug("[WindowsKeyManager] Stopping key listener");
       try {
         this.process.kill();
       } catch {
@@ -139,7 +140,7 @@ class WindowsKeyManager extends EventEmitter {
   }
 
   /**
-   * Report an error (only once)
+   * Report an error (only once per session to avoid log spam)
    */
   reportError(error) {
     if (this.hasReportedError) {
@@ -157,7 +158,7 @@ class WindowsKeyManager extends EventEmitter {
       }
     }
 
-    console.error("WindowsKeyManager error:", error);
+    debugLogger.warn("[WindowsKeyManager] Error occurred", { error: error.message });
     this.emit("error", error);
   }
 

@@ -308,7 +308,9 @@ class IPCHandlers {
       if (enabled) {
         // Entering capture mode - unregister globalShortcut so it doesn't consume key events
         if (currentHotkey && currentHotkey !== "GLOBE") {
-          debugLogger.log(`[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`);
+          debugLogger.log(
+            `[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`
+          );
           const { globalShortcut } = require("electron");
           globalShortcut.unregister(currentHotkey);
         }
@@ -324,7 +326,9 @@ class IPCHandlers {
         if (currentHotkey && currentHotkey !== "GLOBE") {
           const { globalShortcut } = require("electron");
           if (!globalShortcut.isRegistered(currentHotkey)) {
-            debugLogger.log(`[IPC] Re-registering globalShortcut "${currentHotkey}" after capture mode`);
+            debugLogger.log(
+              `[IPC] Re-registering globalShortcut "${currentHotkey}" after capture mode`
+            );
             const callback = this.windowManager.createHotkeyCallback();
             globalShortcut.register(currentHotkey, callback);
           }

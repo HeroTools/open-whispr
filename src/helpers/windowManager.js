@@ -46,7 +46,11 @@ class WindowManager {
         if (!isMainFrame) {
           return;
         }
-        if (process.env.NODE_ENV === "development" && validatedURL && validatedURL.includes("localhost:5174")) {
+        if (
+          process.env.NODE_ENV === "development" &&
+          validatedURL &&
+          validatedURL.includes("localhost:5174")
+        ) {
           // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();
@@ -128,7 +132,9 @@ class WindowManager {
       if (process.platform === "win32") {
         const activationMode = await this.getActivationMode();
         if (activationMode === "push") {
-          console.log("[HotkeyCallback] Windows push mode - skipping toggle, windowsKeyManager handles this");
+          console.log(
+            "[HotkeyCallback] Windows push mode - skipping toggle, windowsKeyManager handles this"
+          );
           return;
         }
       }
