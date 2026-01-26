@@ -14,11 +14,14 @@ const DBUS_SERVICE_NAME = "com.openwhispr.App";
 const DBUS_OBJECT_PATH = "/com/openwhispr/App";
 const DBUS_INTERFACE = "com.openwhispr.App";
 
-const KEYBINDING_PATH = "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/openwhispr/";
+const KEYBINDING_PATH =
+  "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/openwhispr/";
 const KEYBINDING_SCHEMA = "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding";
 
-// Valid pattern for GNOME shortcut format (e.g., "<Alt>r", "<Control><Shift>a")
-const VALID_SHORTCUT_PATTERN = /^(<(Control|Alt|Shift|Super)>)*[a-zA-Z0-9]$/;
+// Valid pattern for GNOME shortcut format (e.g., "<Alt>r", "<Control><Shift>space")
+// Supports: single letters/digits, function keys (F1-F12), and named keys (space, escape, tab, backspace, grave)
+const VALID_SHORTCUT_PATTERN =
+  /^(<(Control|Alt|Shift|Super)>)*(F[1-9]|F1[0-2]|[a-z0-9]|space|escape|tab|backspace|grave)$/i;
 
 // Lazy-loaded dbus-next module (Linux only)
 let dbus = null;
@@ -50,9 +53,11 @@ class GnomeShortcutManager {
    */
   static isGnome() {
     const desktop = process.env.XDG_CURRENT_DESKTOP || "";
-    return desktop.toLowerCase().includes("gnome") ||
-           desktop.toLowerCase().includes("ubuntu") ||
-           desktop.toLowerCase().includes("unity");
+    return (
+      desktop.toLowerCase().includes("gnome") ||
+      desktop.toLowerCase().includes("ubuntu") ||
+      desktop.toLowerCase().includes("unity")
+    );
   }
 
   /**
@@ -162,15 +167,36 @@ class GnomeShortcutManager {
       const command = `dbus-send --session --type=method_call --dest=${DBUS_SERVICE_NAME} ${DBUS_OBJECT_PATH} ${DBUS_INTERFACE}.Toggle`;
 
       // Always set name, binding, and command to ensure they're up-to-date
-      execFileSync("gsettings", ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "name", "OpenWhispr Toggle"], { stdio: "pipe" });
-      execFileSync("gsettings", ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "binding", shortcut], { stdio: "pipe" });
-      execFileSync("gsettings", ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "command", command], { stdio: "pipe" });
+      execFileSync(
+        "gsettings",
+        ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "name", "OpenWhispr Toggle"],
+        { stdio: "pipe" }
+      );
+      execFileSync(
+        "gsettings",
+        ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "binding", shortcut],
+        { stdio: "pipe" }
+      );
+      execFileSync(
+        "gsettings",
+        ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "command", command],
+        { stdio: "pipe" }
+      );
 
       // Add to keybindings list only if not already present
       if (!alreadyRegistered) {
         const newBindings = [...existing, KEYBINDING_PATH];
         const bindingsStr = "['" + newBindings.join("', '") + "']";
-        execFileSync("gsettings", ["set", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings", bindingsStr], { stdio: "pipe" });
+        execFileSync(
+          "gsettings",
+          [
+            "set",
+            "org.gnome.settings-daemon.plugins.media-keys",
+            "custom-keybindings",
+            bindingsStr,
+          ],
+          { stdio: "pipe" }
+        );
       }
 
       this.isRegistered = true;
@@ -198,7 +224,11 @@ class GnomeShortcutManager {
     }
 
     try {
-      execFileSync("gsettings", ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "binding", shortcut], { stdio: "pipe" });
+      execFileSync(
+        "gsettings",
+        ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "binding", shortcut],
+        { stdio: "pipe" }
+      );
       debugLogger.log(`[GnomeShortcut] Keybinding updated to "${shortcut}"`);
       return true;
     } catch (err) {
@@ -214,19 +244,38 @@ class GnomeShortcutManager {
   async unregisterKeybinding() {
     try {
       const existing = this.getExistingKeybindings();
-      const filtered = existing.filter(p => p !== KEYBINDING_PATH);
+      const filtered = existing.filter((p) => p !== KEYBINDING_PATH);
 
       if (filtered.length === 0) {
-        execFileSync("gsettings", ["set", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings", "[]"], { stdio: "pipe" });
+        execFileSync(
+          "gsettings",
+          ["set", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings", "[]"],
+          { stdio: "pipe" }
+        );
       } else {
         const bindingsStr = "['" + filtered.join("', '") + "']";
-        execFileSync("gsettings", ["set", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings", bindingsStr], { stdio: "pipe" });
+        execFileSync(
+          "gsettings",
+          [
+            "set",
+            "org.gnome.settings-daemon.plugins.media-keys",
+            "custom-keybindings",
+            bindingsStr,
+          ],
+          { stdio: "pipe" }
+        );
       }
 
       // Reset the keybinding settings
-      execFileSync("gsettings", ["reset", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "name"], { stdio: "pipe" });
-      execFileSync("gsettings", ["reset", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "binding"], { stdio: "pipe" });
-      execFileSync("gsettings", ["reset", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "command"], { stdio: "pipe" });
+      execFileSync("gsettings", ["reset", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "name"], {
+        stdio: "pipe",
+      });
+      execFileSync("gsettings", ["reset", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "binding"], {
+        stdio: "pipe",
+      });
+      execFileSync("gsettings", ["reset", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "command"], {
+        stdio: "pipe",
+      });
 
       this.isRegistered = false;
       debugLogger.log("[GnomeShortcut] Keybinding unregistered successfully");
@@ -243,15 +292,23 @@ class GnomeShortcutManager {
    */
   getExistingKeybindings() {
     try {
-      const output = execFileSync("gsettings", ["get", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings"], { encoding: "utf-8" });
+      const output = execFileSync(
+        "gsettings",
+        ["get", "org.gnome.settings-daemon.plugins.media-keys", "custom-keybindings"],
+        { encoding: "utf-8" }
+      );
       const match = output.match(/\[([^\]]*)\]/);
       if (!match) return [];
 
       const content = match[1];
       if (!content.trim()) return [];
 
-      return content.split(",").map(s => s.trim().replace(/'/g, "")).filter(Boolean);
-    } catch {
+      return content
+        .split(",")
+        .map((s) => s.trim().replace(/'/g, ""))
+        .filter(Boolean);
+    } catch (err) {
+      debugLogger.log("[GnomeShortcut] Failed to read existing keybindings:", err.message);
       return [];
     }
   }
@@ -265,16 +322,41 @@ class GnomeShortcutManager {
     if (!hotkey || typeof hotkey !== "string") {
       return "";
     }
-    return hotkey
-      .replace(/CommandOrControl/gi, "<Control>")
-      .replace(/Control/gi, "<Control>")
-      .replace(/Ctrl/gi, "<Control>")
-      .replace(/Alt/gi, "<Alt>")
-      .replace(/Shift/gi, "<Shift>")
-      .replace(/Super/gi, "<Super>")
-      .replace(/Meta/gi, "<Super>")
-      .replace(/\+/g, "")
-      .replace(/\s/g, "");
+
+    const parts = hotkey
+      .split("+")
+      .map((p) => p.trim())
+      .filter(Boolean);
+    if (parts.length === 0) {
+      return "";
+    }
+
+    // Last part is the key, rest are modifiers
+    const key = parts.pop();
+    const modifiers = parts
+      .map((mod) => {
+        const m = mod.toLowerCase();
+        if (m === "commandorcontrol" || m === "control" || m === "ctrl") return "<Control>";
+        if (m === "alt") return "<Alt>";
+        if (m === "shift") return "<Shift>";
+        if (m === "super" || m === "meta") return "<Super>";
+        return "";
+      })
+      .filter(Boolean)
+      .join("");
+
+    // Convert key to GNOME format (lowercase, special key names)
+    let gnomeKey = key.toLowerCase();
+    // Handle backtick/grave accent
+    if (gnomeKey === "`" || gnomeKey === "backquote") {
+      gnomeKey = "grave";
+    }
+    // Handle space
+    if (gnomeKey === " ") {
+      gnomeKey = "space";
+    }
+
+    return modifiers + gnomeKey;
   }
 
   /**

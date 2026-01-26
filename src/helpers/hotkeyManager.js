@@ -2,6 +2,9 @@ const { globalShortcut } = require("electron");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
 
+// Delay to ensure localStorage is accessible after window load
+const HOTKEY_REGISTRATION_DELAY_MS = 1000;
+
 // Suggested alternative hotkeys when registration fails
 const SUGGESTED_HOTKEYS = {
   single: ["F8", "F9", "F10", "Pause", "ScrollLock"],
@@ -218,16 +221,21 @@ class HotkeyManager {
               this.loadSavedHotkeyOrDefault(mainWindow, callback);
             }
           } catch (err) {
-            debugLogger.log("[HotkeyManager] GNOME keybinding failed, falling back to X11:", err.message);
+            debugLogger.log(
+              "[HotkeyManager] GNOME keybinding failed, falling back to X11:",
+              err.message
+            );
             this.useGnome = false;
             this.loadSavedHotkeyOrDefault(mainWindow, callback);
           }
         };
 
         if (mainWindow.webContents.isLoading()) {
-          mainWindow.webContents.once("did-finish-load", () => setTimeout(registerGnomeHotkey, 1000));
+          mainWindow.webContents.once("did-finish-load", () =>
+            setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS)
+          );
         } else {
-          setTimeout(registerGnomeHotkey, 1000);
+          setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS);
         }
         this.isInitialized = true;
         return;
@@ -241,7 +249,7 @@ class HotkeyManager {
     mainWindow.webContents.once("did-finish-load", () => {
       setTimeout(() => {
         this.loadSavedHotkeyOrDefault(mainWindow, callback);
-      }, 1000);
+      }, HOTKEY_REGISTRATION_DELAY_MS);
     });
 
     this.isInitialized = true;
@@ -300,7 +308,7 @@ class HotkeyManager {
       this.notifyHotkeyFailure(defaultHotkey, result);
     } catch (err) {
       console.error("Failed to initialize hotkey:", err);
-      debugLogger.error("[HotkeyManager] Failed to initialize hotkey:", err);
+      debugLogger.error("[HotkeyManager] Failed to initialize hotkey:", err.message);
     }
   }
 
@@ -313,7 +321,7 @@ class HotkeyManager {
       `
         )
         .catch((err) => {
-          debugLogger.error("[HotkeyManager] Failed to save hotkey to localStorage:", err);
+          debugLogger.error("[HotkeyManager] Failed to save hotkey to localStorage:", err.message);
         });
     }
   }
@@ -357,7 +365,10 @@ class HotkeyManager {
         }
         this.currentHotkey = hotkey;
         this.saveHotkeyToRenderer(hotkey);
-        return { success: true, message: `Hotkey updated to: ${hotkey} (via GNOME native shortcut)` };
+        return {
+          success: true,
+          message: `Hotkey updated to: ${hotkey} (via GNOME native shortcut)`,
+        };
       }
 
       const result = this.setupShortcuts(hotkey, callback);
@@ -372,7 +383,7 @@ class HotkeyManager {
         };
       }
     } catch (error) {
-      debugLogger.error("[HotkeyManager] Failed to update hotkey:", error);
+      debugLogger.error("[HotkeyManager] Failed to update hotkey:", error.message);
       return {
         success: false,
         message: `Failed to update hotkey: ${error.message}`,

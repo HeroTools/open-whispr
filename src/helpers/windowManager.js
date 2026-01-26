@@ -46,7 +46,11 @@ class WindowManager {
         if (!isMainFrame) {
           return;
         }
-        if (process.env.NODE_ENV === "development" && validatedURL && validatedURL.includes("localhost:5174")) {
+        if (
+          process.env.NODE_ENV === "development" &&
+          validatedURL &&
+          validatedURL.includes("localhost:5174")
+        ) {
           // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();

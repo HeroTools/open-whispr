@@ -352,7 +352,12 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
-    globalShortcut.unregisterAll();
+    // Use hotkeyManager to clean up both globalShortcut and GNOME keybindings
+    if (hotkeyManager) {
+      hotkeyManager.unregisterAll();
+    } else {
+      globalShortcut.unregisterAll();
+    }
     if (globeKeyManager) {
       globeKeyManager.stop();
     }
