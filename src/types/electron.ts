@@ -233,6 +233,7 @@ declare global {
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
       setHotkeyListeningMode?: (enabled: boolean) => Promise<{ success: boolean }>;
+      getHotkeyModeInfo?: () => Promise<{ isUsingGnome: boolean }>;
 
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
