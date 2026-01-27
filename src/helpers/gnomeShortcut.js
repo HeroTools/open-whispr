@@ -10,9 +10,9 @@ const KEYBINDING_PATH =
 const KEYBINDING_SCHEMA = "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding";
 
 // Valid pattern for GNOME shortcut format (e.g., "<Alt>r", "<Control><Shift>space")
-// Supports: letters/digits, function keys (F1-F12), navigation, and special keys
+// Supports: letters/digits, function keys (F1-F24), navigation, and special keys
 const VALID_SHORTCUT_PATTERN =
-  /^(<(Control|Alt|Shift|Super)>)*(F[1-9]|F1[0-2]|[a-z0-9]|space|escape|tab|backspace|grave|pause|scroll_lock|insert|delete|home|end|page_up|page_down|up|down|left|right|return|print)$/i;
+  /^(<(Control|Alt|Shift|Super)>)*(F([1-9]|1[0-9]|2[0-4])|[a-z0-9]|space|escape|tab|backspace|grave|pause|scroll_lock|insert|delete|home|end|page_up|page_down|up|down|left|right|return|print)$/i;
 
 // Map Electron key names to GNOME keysym names
 const ELECTRON_TO_GNOME_KEY_MAP = {

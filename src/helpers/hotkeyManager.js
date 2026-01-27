@@ -92,10 +92,16 @@ class HotkeyManager {
     debugLogger.log(`[HotkeyManager] Platform: ${process.platform}, Arch: ${process.arch}`);
     debugLogger.log(`[HotkeyManager] Current hotkey: "${this.currentHotkey}"`);
 
-    // If we're already using this hotkey, just return success
-    if (hotkey === this.currentHotkey) {
+    // If we're already using this hotkey AND it's actually registered, return success
+    // Note: We need to check isRegistered because on first run, currentHotkey is set to "`"
+    // but it's not actually registered yet
+    if (
+      hotkey === this.currentHotkey &&
+      hotkey !== "GLOBE" &&
+      globalShortcut.isRegistered(hotkey)
+    ) {
       debugLogger.log(
-        `[HotkeyManager] Hotkey "${hotkey}" is already the current hotkey, no change needed`
+        `[HotkeyManager] Hotkey "${hotkey}" is already the current hotkey and registered, no change needed`
       );
       return { success: true, hotkey };
     }

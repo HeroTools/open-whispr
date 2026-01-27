@@ -176,6 +176,12 @@ declare global {
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+
+      // Dictionary operations
+      getDictionary: () => Promise<string[]>;
+      setDictionary: (words: string[]) => Promise<{ success: boolean }>;
+
+      // Database event listeners
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => (() => void) | void;
       onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
       onTranscriptionsCleared?: (
@@ -316,7 +322,10 @@ declare global {
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
-      setHotkeyListeningMode?: (enabled: boolean) => Promise<{ success: boolean }>;
+      setHotkeyListeningMode?: (
+        enabled: boolean,
+        newHotkey?: string | null
+      ) => Promise<{ success: boolean }>;
       getHotkeyModeInfo?: () => Promise<{ isUsingGnome: boolean }>;
 
       // Globe key listener for hotkey capture (macOS only)
@@ -369,6 +378,14 @@ declare global {
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
       openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
+
+      // Windows Push-to-Talk notifications
+      notifyActivationModeChanged?: (mode: "tap" | "push") => void;
+      notifyHotkeyChanged?: (hotkey: string) => void;
+
+      // Auto-start at login
+      getAutoStartEnabled?: () => Promise<boolean>;
+      setAutoStartEnabled?: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
     };
 
     api?: {

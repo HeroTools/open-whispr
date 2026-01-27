@@ -3,7 +3,7 @@ import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
-import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS, getSystemPrompt } from "../config/prompts";
+import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../config/prompts";
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
 
@@ -271,7 +271,7 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt = getSystemPrompt(agentName);
+    const systemPrompt = this.getSystemPrompt(agentName);
     const userPrompt = text;
 
     const messages = [
@@ -497,7 +497,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = getSystemPrompt(agentName);
+      const systemPrompt = this.getSystemPrompt(agentName);
       const userPrompt = text;
 
       // Build messages array (used by both APIs)
@@ -822,7 +822,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = getSystemPrompt(agentName);
+      const systemPrompt = this.getSystemPrompt(agentName);
       const userPrompt = text;
 
       const requestBody = {

@@ -71,6 +71,19 @@ const CODE_TO_KEY: Record<string, string> = {
   F10: "F10",
   F11: "F11",
   F12: "F12",
+  // Extended function keys (F13-F24)
+  F13: "F13",
+  F14: "F14",
+  F15: "F15",
+  F16: "F16",
+  F17: "F17",
+  F18: "F18",
+  F19: "F19",
+  F20: "F20",
+  F21: "F21",
+  F22: "F22",
+  F23: "F23",
+  F24: "F24",
   // Arrow keys
   ArrowUp: "Up",
   ArrowDown: "Down",
@@ -167,6 +180,7 @@ export function HotkeyInput({
   const [isCapturing, setIsCapturing] = useState(false);
   const [activeModifiers, setActiveModifiers] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
+  const lastCapturedHotkeyRef = useRef<string | null>(null);
   const isMac = typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
 
   const handleKeyDown = useCallback(
@@ -183,6 +197,7 @@ export function HotkeyInput({
 
       const hotkey = mapKeyboardEventToHotkey(e.nativeEvent);
       if (hotkey) {
+        lastCapturedHotkeyRef.current = hotkey;
         onChange(hotkey);
         setIsCapturing(false);
         setActiveModifiers(new Set());
@@ -206,7 +221,8 @@ export function HotkeyInput({
   const handleBlur = useCallback(() => {
     setIsCapturing(false);
     setActiveModifiers(new Set());
-    window.electronAPI?.setHotkeyListeningMode?.(false);
+    window.electronAPI?.setHotkeyListeningMode?.(false, lastCapturedHotkeyRef.current);
+    lastCapturedHotkeyRef.current = null;
     onBlur?.();
   }, [onBlur]);
 
@@ -218,7 +234,7 @@ export function HotkeyInput({
 
   useEffect(() => {
     return () => {
-      window.electronAPI?.setHotkeyListeningMode?.(false);
+      window.electronAPI?.setHotkeyListeningMode?.(false, null);
     };
   }, []);
 
@@ -226,6 +242,7 @@ export function HotkeyInput({
     if (!isCapturing || !isMac) return;
 
     const dispose = window.electronAPI?.onGlobeKeyPressed?.(() => {
+      lastCapturedHotkeyRef.current = "GLOBE";
       onChange("GLOBE");
       setIsCapturing(false);
       setActiveModifiers(new Set());

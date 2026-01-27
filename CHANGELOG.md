@@ -10,9 +10,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - **NVIDIA Parakeet Support**: Fast local transcription via sherpa-onnx runtime with INT8 quantized models
   - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
+- **Windows Push-to-Talk**: Native Windows key listener with low-level keyboard hook for true push-to-talk functionality
+  - Supports compound hotkeys like `Ctrl+Shift+F11` or `CommandOrControl+Space`
+  - Prebuilt binary automatically downloaded from GitHub releases
+  - Fallback to tap mode if binary unavailable
+- **Custom Dictionary**: Improve transcription accuracy for specific words, names, and technical terms
+  - Add custom words through Settings → Custom Dictionary
+  - Words are passed as hints to Whisper for better recognition
+  - Works with both local and cloud transcription
+- **GitHub Actions Workflow**: Automated CI workflow to build and release Windows key listener binary
+- **Shared Download Utilities**: New `scripts/lib/download-utils.js` module with reusable download, extraction, and GitHub release fetching functions
+
+### Changed
+- **Download Scripts Refactored**: All download scripts now use shared utilities for consistency
+- **GitHub API Authentication**: Download scripts support `GITHUB_TOKEN` to avoid API rate limits in CI
+- **Dev Server Port Alignment**: Development server port configuration improved for consistency
 
 ### Fixed
 - **Whisper Model Path Resolution**: Fixed `large` and `turbo` model lookup failures by using registry-defined filenames (`ggml-large-v3.bin`, `ggml-large-v3-turbo.bin`) instead of hardcoded pattern
+- **Windows Production Build**: Fixed Windows production build issues with proper binary bundling
+- **Code Quality**: Various code quality improvements in download scripts and dev server management
 
 ## [1.2.15] - 2026-01-22
 

@@ -1,5 +1,8 @@
+const DEV_SERVER_PORT = 5174;
+const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}/`;
+
 class DevServerManager {
-  static async waitForDevServer(url = "http://localhost:5174/", maxAttempts = 30, delay = 1000) {
+  static async waitForDevServer(url = DEV_SERVER_URL, maxAttempts = 30, delay = 1000) {
     for (let i = 0; i < maxAttempts; i++) {
       try {
         const http = require("http");
@@ -38,7 +41,7 @@ class DevServerManager {
 
   static getAppUrl(isControlPanel = false) {
     if (process.env.NODE_ENV === "development") {
-      return isControlPanel ? "http://localhost:5174/?panel=true" : "http://localhost:5174/";
+      return isControlPanel ? `${DEV_SERVER_URL}?panel=true` : DEV_SERVER_URL;
     } else {
       // For production, return null - caller should use loadFile() instead
       return null;
@@ -71,3 +74,5 @@ class DevServerManager {
 }
 
 module.exports = DevServerManager;
+module.exports.DEV_SERVER_PORT = DEV_SERVER_PORT;
+module.exports.DEV_SERVER_URL = DEV_SERVER_URL;
