@@ -122,6 +122,19 @@ class ParakeetManager {
     };
   }
 
+  async startServer(modelName) {
+    this.validateModelName(modelName);
+    return this.serverManager.startServer(modelName);
+  }
+
+  async stopServer() {
+    await this.serverManager.stopServer();
+  }
+
+  getServerStatus() {
+    return this.serverManager.getServerStatus();
+  }
+
   async transcribeLocalParakeet(audioBlob, options = {}) {
     debugLogger.logSTTPipeline("transcribeLocalParakeet - start", {
       options,

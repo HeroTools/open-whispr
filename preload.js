@@ -117,6 +117,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cancelParakeetDownload: () => ipcRenderer.invoke("cancel-parakeet-download"),
   getParakeetDiagnostics: () => ipcRenderer.invoke("get-parakeet-diagnostics"),
 
+  // Parakeet server functions (faster repeated transcriptions)
+  parakeetServerStart: (modelName) =>
+    ipcRenderer.invoke("parakeet-server-start", modelName),
+  parakeetServerStop: () => ipcRenderer.invoke("parakeet-server-stop"),
+  parakeetServerStatus: () => ipcRenderer.invoke("parakeet-server-status"),
+
   // Window control functions
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),
   windowMaximize: () => ipcRenderer.invoke("window-maximize"),

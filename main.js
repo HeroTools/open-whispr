@@ -375,6 +375,10 @@ if (gotSingleInstanceLock) {
     if (whisperManager) {
       whisperManager.stopServer().catch(() => {});
     }
+    // Stop parakeet WS server if running
+    if (parakeetManager) {
+      parakeetManager.stopServer().catch(() => {});
+    }
     // Stop llama-server if running
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.stopServer().catch(() => {});

@@ -18,26 +18,26 @@ const GITHUB_RELEASE_URL = `https://github.com/k2-fsa/sherpa-onnx/releases/downl
 const BINARIES = {
   "darwin-arm64": {
     archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-osx-universal2-shared.tar.bz2`,
-    binaryPath: "sherpa-onnx-offline",
-    outputName: "sherpa-onnx-darwin-arm64",
+    binaryPath: "sherpa-onnx-offline-websocket-server",
+    outputName: "sherpa-onnx-ws-darwin-arm64",
     libPattern: "*.dylib",
   },
   "darwin-x64": {
     archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-osx-universal2-shared.tar.bz2`,
-    binaryPath: "sherpa-onnx-offline",
-    outputName: "sherpa-onnx-darwin-x64",
+    binaryPath: "sherpa-onnx-offline-websocket-server",
+    outputName: "sherpa-onnx-ws-darwin-x64",
     libPattern: "*.dylib",
   },
   "win32-x64": {
     archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-win-x64-shared.tar.bz2`,
-    binaryPath: "sherpa-onnx-offline.exe",
-    outputName: "sherpa-onnx-win32-x64.exe",
+    binaryPath: "sherpa-onnx-offline-websocket-server.exe",
+    outputName: "sherpa-onnx-ws-win32-x64.exe",
     libPattern: "*.dll",
   },
   "linux-x64": {
     archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-linux-x64-shared.tar.bz2`,
-    binaryPath: "sherpa-onnx-offline",
-    outputName: "sherpa-onnx-linux-x64",
+    binaryPath: "sherpa-onnx-offline-websocket-server",
+    outputName: "sherpa-onnx-ws-linux-x64",
     libPattern: "*.so*",
   },
 };
@@ -175,8 +175,19 @@ async function main() {
       return;
     }
 
+    // Remove old CLI-style binaries replaced by WS server binaries
+    const oldBinaryName =
+      args.platformArch.startsWith("win32")
+        ? `sherpa-onnx-${args.platformArch}.exe`
+        : `sherpa-onnx-${args.platformArch}`;
+    const oldBinaryPath = path.join(BIN_DIR, oldBinaryName);
+    if (fs.existsSync(oldBinaryPath)) {
+      console.log(`  Removing old CLI binary: ${oldBinaryName}`);
+      fs.unlinkSync(oldBinaryPath);
+    }
+
     if (args.shouldCleanup) {
-      cleanupFiles(BIN_DIR, "sherpa-onnx", `sherpa-onnx-${args.platformArch}`);
+      cleanupFiles(BIN_DIR, "sherpa-onnx", `sherpa-onnx-ws-${args.platformArch}`);
     }
   } else {
     console.log("Downloading binaries for all platforms:");

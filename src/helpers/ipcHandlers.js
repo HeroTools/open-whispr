@@ -388,6 +388,19 @@ class IPCHandlers {
       return this.parakeetManager.getDiagnostics();
     });
 
+    // Parakeet server handlers (for faster repeated transcriptions)
+    ipcMain.handle("parakeet-server-start", async (event, modelName) => {
+      return this.parakeetManager.startServer(modelName);
+    });
+
+    ipcMain.handle("parakeet-server-stop", async () => {
+      return this.parakeetManager.stopServer();
+    });
+
+    ipcMain.handle("parakeet-server-status", async () => {
+      return this.parakeetManager.getServerStatus();
+    });
+
     // Utility handlers
     ipcMain.handle("cleanup-app", async (event) => {
       try {
