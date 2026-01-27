@@ -188,6 +188,10 @@ class WindowManager {
     return await this.hotkeyManager.updateHotkey(hotkey, this.createHotkeyCallback());
   }
 
+  isUsingGnomeHotkeys() {
+    return this.hotkeyManager.isUsingGnome();
+  }
+
   async startWindowDrag() {
     return await this.dragManager.startWindowDrag();
   }

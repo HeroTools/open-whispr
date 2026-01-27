@@ -304,6 +304,12 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("get-hotkey-mode-info", async () => {
+      return {
+        isUsingGnome: this.windowManager.isUsingGnomeHotkeys(),
+      };
+    });
+
     ipcMain.handle("start-window-drag", async (event) => {
       return await this.windowManager.startWindowDrag();
     });

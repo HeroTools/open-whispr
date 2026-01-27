@@ -82,6 +82,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
   const [agentName, setAgentName] = useState("Agent");
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
+  const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
   const { alertDialog, confirmDialog, showAlertDialog, hideAlertDialog, hideConfirmDialog } =
     useDialogs();
@@ -111,6 +112,21 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Hotkey & Test", icon: Command },
     { title: "Agent Name", icon: User },
   ];
+
+  useEffect(() => {
+    const checkHotkeyMode = async () => {
+      try {
+        const info = await window.electronAPI?.getHotkeyModeInfo();
+        if (info?.isUsingGnome) {
+          setIsUsingGnomeHotkeys(true);
+          setActivationMode("tap");
+        }
+      } catch (error) {
+        console.error("Failed to check hotkey mode:", error);
+      }
+    };
+    checkHotkeyMode();
+  }, [setActivationMode]);
 
   // Check if selected whisper model is downloaded
   useEffect(() => {
@@ -452,17 +468,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               disabled={isHotkeyRegistering}
             />
 
-            <div className="pt-2">
-              <label className="block text-sm font-medium text-gray-700 mb-3">
-                Activation Mode
-              </label>
-              <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
-            </div>
+            {!isUsingGnomeHotkeys && (
+              <div className="pt-2">
+                <label className="block text-sm font-medium text-gray-700 mb-3">
+                  Activation Mode
+                </label>
+                <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+              </div>
+            )}
 
             <div className="bg-blue-50/50 p-5 rounded-lg border border-blue-200/60">
               <h3 className="font-semibold text-blue-900 mb-3">Try It Now</h3>
               <p className="text-sm text-blue-800 mb-3">
-                {activationMode === "tap" ? (
+                {activationMode === "tap" || isUsingGnomeHotkeys ? (
                   <>
                     Click in the text area, press{" "}
                     <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
