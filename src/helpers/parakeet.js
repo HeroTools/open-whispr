@@ -1,17 +1,14 @@
-const { app } = require("electron");
 const fs = require("fs");
 const fsPromises = require("fs").promises;
-const os = require("os");
 const path = require("path");
 const https = require("https");
 const { spawn } = require("child_process");
 const debugLogger = require("./debugLogger");
 const ParakeetServerManager = require("./parakeetServer");
+const { getModelsDirForService } = require("./modelDirUtils");
 
-// Load Parakeet model definitions from centralized registry
 const modelRegistryData = require("../models/modelRegistryData.json");
 
-// Helper to get model config from registry
 function getParakeetModelConfig(modelName) {
   const modelInfo = modelRegistryData.parakeetModels[modelName];
   if (!modelInfo) return null;
@@ -24,7 +21,6 @@ function getParakeetModelConfig(modelName) {
   };
 }
 
-// Get all valid model names from registry
 function getValidModelNames() {
   return Object.keys(modelRegistryData.parakeetModels);
 }
@@ -37,8 +33,7 @@ class ParakeetManager {
   }
 
   getModelsDir() {
-    const homeDir = app?.getPath?.("home") || os.homedir();
-    return path.join(homeDir, ".cache", "openwhispr", "parakeet-models");
+    return getModelsDirForService("parakeet");
   }
 
   validateModelName(modelName) {
@@ -62,7 +57,6 @@ class ParakeetManager {
     try {
       this.isInitialized = true;
 
-      // Log dependency status
       await this.logDependencyStatus();
     } catch (error) {
       debugLogger.warn("Parakeet initialization error", { error: error.message });
@@ -150,7 +144,6 @@ class ParakeetManager {
       );
     }
 
-    // Convert audioBlob to Buffer if needed
     let audioBuffer;
     if (audioBlob instanceof ArrayBuffer) {
       audioBuffer = Buffer.from(audioBlob);
@@ -224,7 +217,6 @@ class ParakeetManager {
     const tempPath = path.join(modelsDir, `${modelName}.tar.bz2.tmp`);
     const archivePath = path.join(modelsDir, `${modelName}.tar.bz2`);
 
-    // Track active download for cancellation
     let activeRequest = null;
     let activeFile = null;
     let isCancelled = false;
@@ -246,7 +238,6 @@ class ParakeetManager {
       } catch {}
     };
 
-    // Store cancellation function
     this.currentDownloadProcess = {
       abort: () => {
         isCancelled = true;
@@ -274,7 +265,6 @@ class ParakeetManager {
             return;
           }
 
-          // Handle redirects
           if (response.statusCode === 302 || response.statusCode === 301) {
             const redirectUrl = response.headers.location;
             if (!redirectUrl) {
@@ -331,13 +321,10 @@ class ParakeetManager {
             this.currentDownloadProcess = null;
 
             try {
-              // Rename temp to archive
               await fsPromises.rename(tempPath, archivePath);
 
-              // Extract the archive
               await this._extractModel(archivePath, modelName);
 
-              // Cleanup archive
               await fsPromises.unlink(archivePath);
 
               if (progressCallback) {
@@ -376,7 +363,6 @@ class ParakeetManager {
           reject(err);
         });
 
-        // Request timeout (10 minutes for large models)
         activeRequest.setTimeout(600000, () => {
           cleanup();
           reject(new Error("Download request timed out"));

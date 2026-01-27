@@ -61,7 +61,15 @@ export interface WhisperModelInfo {
   description: string;
   size: string;
   sizeMb: number;
+  fileName: string;
+  downloadUrl: string;
   recommended?: boolean;
+}
+
+export interface WhisperModelConfig {
+  url: string;
+  size: number;
+  fileName: string;
 }
 
 export type WhisperModelsMap = Record<string, WhisperModelInfo>;
@@ -310,3 +318,17 @@ export function getParakeetModelInfo(modelId: string): ParakeetModelInfo | undef
 }
 
 export const PARAKEET_MODEL_INFO = modelData.parakeetModels;
+
+export function getWhisperModelConfig(modelId: string): WhisperModelConfig | null {
+  const modelInfo = modelData.whisperModels[modelId];
+  if (!modelInfo) return null;
+  return {
+    url: modelInfo.downloadUrl,
+    size: modelInfo.sizeMb * 1_000_000,
+    fileName: modelInfo.fileName,
+  };
+}
+
+export function getValidWhisperModelNames(): string[] {
+  return Object.keys(modelData.whisperModels);
+}

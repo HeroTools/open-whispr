@@ -14,27 +14,28 @@ const SHERPA_ONNX_VERSION = "1.12.23";
 const GITHUB_RELEASE_URL = `https://github.com/k2-fsa/sherpa-onnx/releases/download/v${SHERPA_ONNX_VERSION}`;
 
 // Binary configurations for each platform
+// Note: macOS uses universal2 builds that work on both arm64 and x64
 const BINARIES = {
   "darwin-arm64": {
-    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-osx-arm64.tar.bz2`,
+    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-osx-universal2-shared.tar.bz2`,
     binaryPath: "sherpa-onnx-offline",
     outputName: "sherpa-onnx-darwin-arm64",
     libPattern: "*.dylib",
   },
   "darwin-x64": {
-    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-osx-x86_64.tar.bz2`,
+    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-osx-universal2-shared.tar.bz2`,
     binaryPath: "sherpa-onnx-offline",
     outputName: "sherpa-onnx-darwin-x64",
     libPattern: "*.dylib",
   },
   "win32-x64": {
-    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-win-x64.tar.bz2`,
+    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-win-x64-shared.tar.bz2`,
     binaryPath: "sherpa-onnx-offline.exe",
     outputName: "sherpa-onnx-win32-x64.exe",
     libPattern: "*.dll",
   },
   "linux-x64": {
-    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-linux-x86_64.tar.bz2`,
+    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-linux-x64-shared.tar.bz2`,
     binaryPath: "sherpa-onnx-offline",
     outputName: "sherpa-onnx-linux-x64",
     libPattern: "*.so*",

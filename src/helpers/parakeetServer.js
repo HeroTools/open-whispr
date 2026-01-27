@@ -3,6 +3,7 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const debugLogger = require("./debugLogger");
+const { getModelsDirForService } = require("./modelDirUtils");
 
 const TRANSCRIPTION_TIMEOUT_MS = 300000; // 5 minutes
 
@@ -57,8 +58,7 @@ class ParakeetServerManager {
    * Get the models directory for Parakeet models
    */
   getModelsDir() {
-    const homeDir = os.homedir();
-    return path.join(homeDir, ".cache", "openwhispr", "parakeet-models");
+    return getModelsDirForService("parakeet");
   }
 
   /**
