@@ -21,11 +21,19 @@ function fetchJson(url, redirectCount = 0) {
       return;
     }
 
+    const headers = {
+      "User-Agent": "OpenWhispr-Downloader",
+      Accept: "application/vnd.github+json",
+    };
+
+    // Use GitHub token if available (increases rate limit from 60 to 5000/hour)
+    const token = process.env.GITHUB_TOKEN || process.env.GH_TOKEN;
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+
     const options = {
-      headers: {
-        "User-Agent": "OpenWhispr-Downloader",
-        Accept: "application/vnd.github+json",
-      },
+      headers,
       timeout: REQUEST_TIMEOUT,
     };
 
