@@ -112,6 +112,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cleanupApp: () => ipcRenderer.invoke("cleanup-app"),
   updateHotkey: (hotkey) => ipcRenderer.invoke("update-hotkey", hotkey),
   setHotkeyListeningMode: (enabled) => ipcRenderer.invoke("set-hotkey-listening-mode", enabled),
+  getHotkeyModeInfo: () => ipcRenderer.invoke("get-hotkey-mode-info"),
   startWindowDrag: () => ipcRenderer.invoke("start-window-drag"),
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
@@ -159,6 +160,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Groq API
   getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
+
+  // Custom endpoint API keys
+  getCustomTranscriptionKey: () => ipcRenderer.invoke("get-custom-transcription-key"),
+  saveCustomTranscriptionKey: (key) => ipcRenderer.invoke("save-custom-transcription-key", key),
+  getCustomReasoningKey: () => ipcRenderer.invoke("get-custom-reasoning-key"),
+  saveCustomReasoningKey: (key) => ipcRenderer.invoke("save-custom-reasoning-key", key),
 
   saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
 

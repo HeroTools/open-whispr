@@ -304,6 +304,12 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("get-hotkey-mode-info", async () => {
+      return {
+        isUsingGnome: this.windowManager.isUsingGnomeHotkeys(),
+      };
+    });
+
     ipcMain.handle("start-window-drag", async (event) => {
       return await this.windowManager.startWindowDrag();
     });
@@ -442,6 +448,22 @@ class IPCHandlers {
 
     ipcMain.handle("save-groq-key", async (event, key) => {
       return this.environmentManager.saveGroqKey(key);
+    });
+
+    ipcMain.handle("get-custom-transcription-key", async () => {
+      return this.environmentManager.getCustomTranscriptionKey();
+    });
+
+    ipcMain.handle("save-custom-transcription-key", async (event, key) => {
+      return this.environmentManager.saveCustomTranscriptionKey(key);
+    });
+
+    ipcMain.handle("get-custom-reasoning-key", async () => {
+      return this.environmentManager.getCustomReasoningKey();
+    });
+
+    ipcMain.handle("save-custom-reasoning-key", async (event, key) => {
+      return this.environmentManager.saveCustomReasoningKey(key);
     });
 
     ipcMain.handle("save-anthropic-key", async (event, key) => {

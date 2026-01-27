@@ -68,6 +68,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     cloudTranscriptionBaseUrl,
     openaiApiKey,
     groqApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
     dictationKey,
     activationMode,
     setActivationMode,
@@ -78,9 +80,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     updateTranscriptionSettings,
   } = useSettings();
 
-  const [hotkey, setHotkey] = useState(dictationKey || "`");
+  const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
   const [agentName, setAgentName] = useState("Agent");
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
+  const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
   const { alertDialog, confirmDialog, showAlertDialog, hideAlertDialog, hideConfirmDialog } =
     useDialogs();
@@ -110,6 +113,21 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     { title: "Hotkey & Test", icon: Command },
     { title: "Agent Name", icon: User },
   ];
+
+  useEffect(() => {
+    const checkHotkeyMode = async () => {
+      try {
+        const info = await window.electronAPI?.getHotkeyModeInfo();
+        if (info?.isUsingGnome) {
+          setIsUsingGnomeHotkeys(true);
+          setActivationMode("tap");
+        }
+      } catch (error) {
+        console.error("Failed to check hotkey mode:", error);
+      }
+    };
+    checkHotkeyMode();
+  }, [setActivationMode]);
 
   // Check if selected whisper model is downloaded
   useEffect(() => {
@@ -332,6 +350,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               setOpenaiApiKey={setOpenaiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
+              customTranscriptionApiKey={customTranscriptionApiKey}
+              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
               cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
               setCloudTranscriptionBaseUrl={(url) =>
                 updateTranscriptionSettings({ cloudTranscriptionBaseUrl: url })
@@ -449,17 +469,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               disabled={isHotkeyRegistering}
             />
 
-            <div className="pt-2">
-              <label className="block text-sm font-medium text-foreground mb-3">
-                Activation Mode
-              </label>
-              <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
-            </div>
+            {!isUsingGnomeHotkeys && (
+              <div className="pt-2">
+                <label className="block text-sm font-medium text-foreground mb-3">
+                  Activation Mode
+                </label>
+                <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+              </div>
+            )}
 
             <InfoBox className="p-5">
               <h3 className="font-semibold text-foreground mb-3">Try It Now</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                {activationMode === "tap" ? (
+                {activationMode === "tap" || isUsingGnomeHotkeys ? (
                   <>
                     Click in the text area, press{" "}
                     <kbd className="bg-muted px-2 py-1 rounded text-xs font-mono border border-border">

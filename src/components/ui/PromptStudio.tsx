@@ -19,6 +19,7 @@ import { useDialogs } from "../../hooks/useDialogs";
 import { useAgentName } from "../../utils/agentName";
 import ReasoningService from "../../services/ReasoningService";
 import { getModelProvider } from "../../models/ModelRegistry";
+import logger from "../../utils/logger";
 import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../../config/prompts";
 
 interface PromptStudioProps {
@@ -127,8 +128,23 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
       const reasoningModel = localStorage.getItem("reasoningModel") || "";
       const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
+      const customBaseUrl = localStorage.getItem("cloudReasoningBaseUrl") || "";
+
+      logger.debug(
+        "PromptStudio test starting",
+        {
+          useReasoningModel,
+          reasoningModel,
+          reasoningProvider,
+          customBaseUrl: customBaseUrl ? `${customBaseUrl.substring(0, 50)}...` : "(none)",
+          testTextLength: testText.length,
+          agentName,
+        },
+        "prompt-studio"
+      );
 
       if (!useReasoningModel) {
+        logger.debug("PromptStudio test aborted: AI enhancement disabled", {}, "prompt-studio");
         setTestResult(
           "AI text enhancement is disabled. Enable it in AI Text Cleanup settings to test prompts."
         );
@@ -136,6 +152,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       }
 
       if (!reasoningModel) {
+        logger.debug("PromptStudio test aborted: no model selected", {}, "prompt-studio");
         setTestResult("No reasoning model selected. Choose one in AI Text Cleanup settings.");
         return;
       }
@@ -148,6 +165,11 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       if (providerConfig.baseStorageKey) {
         const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
         if (!baseUrl) {
+          logger.debug(
+            "PromptStudio test aborted: missing base URL for custom endpoint",
+            { provider: reasoningProvider },
+            "prompt-studio"
+          );
           setTestResult(`${providerLabel} base URL missing. Add it in AI Text Cleanup settings.`);
           return;
         }
@@ -157,8 +179,16 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       const currentCustomPrompt = localStorage.getItem("customUnifiedPrompt");
       localStorage.setItem("customUnifiedPrompt", JSON.stringify(editedPrompt));
 
+      const startTime = Date.now();
+
       try {
         if (reasoningProvider === "local") {
+          logger.debug(
+            "PromptStudio: sending to local model",
+            { model: reasoningModel, textLength: testText.length },
+            "prompt-studio"
+          );
+
           const result = await window.electronAPI.processLocalReasoning(
             testText,
             reasoningModel,
@@ -166,18 +196,61 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             {}
           );
 
+          const processingTime = Date.now() - startTime;
+
           if (result.success) {
-            setTestResult(result.text);
+            const resultText = result.text || "";
+            logger.debug(
+              "PromptStudio: local model success",
+              {
+                processingTimeMs: processingTime,
+                resultLength: resultText.length,
+                resultPreview: resultText.substring(0, 100),
+              },
+              "prompt-studio"
+            );
+            setTestResult(resultText);
           } else {
+            logger.debug(
+              "PromptStudio: local model error",
+              { processingTimeMs: processingTime, error: result.error },
+              "prompt-studio"
+            );
             setTestResult(`Local model error: ${result.error}`);
           }
         } else {
+          logger.debug(
+            "PromptStudio: sending to cloud provider",
+            {
+              provider: reasoningProvider,
+              model: reasoningModel,
+              textLength: testText.length,
+              isCustomEndpoint: reasoningProvider === "custom",
+              customBaseUrl: customBaseUrl || "(default)",
+            },
+            "prompt-studio"
+          );
+
           const result = await ReasoningService.processText(
             testText,
             reasoningModel,
             agentName,
             {}
           );
+
+          const processingTime = Date.now() - startTime;
+
+          logger.debug(
+            "PromptStudio: cloud provider success",
+            {
+              provider: reasoningProvider,
+              processingTimeMs: processingTime,
+              resultLength: result.length,
+              resultPreview: result.substring(0, 100),
+            },
+            "prompt-studio"
+          );
+
           setTestResult(result);
         }
       } finally {
@@ -189,8 +262,16 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         }
       }
     } catch (error) {
-      console.error("Test failed:", error);
-      setTestResult(`Test failed: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(
+        "PromptStudio test failed",
+        {
+          error: errorMessage,
+          stack: error instanceof Error ? error.stack : undefined,
+        },
+        "prompt-studio"
+      );
+      setTestResult(`Test failed: ${errorMessage}`);
     } finally {
       setIsLoading(false);
     }

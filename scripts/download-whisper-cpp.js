@@ -9,8 +9,8 @@ const {
   cleanupFiles,
 } = require("./lib/download-utils");
 
-const WHISPER_CPP_REPO = "gabrielste1n/whisper.cpp";
-const WHISPER_CPP_VERSION = "0.0.5";
+const WHISPER_CPP_REPO = "OpenWhispr/whisper.cpp";
+const WHISPER_CPP_VERSION = "0.0.6";
 
 const BINARIES = {
   "darwin-arm64": {
@@ -24,13 +24,13 @@ const BINARIES = {
     outputName: "whisper-server-darwin-x64",
   },
   "win32-x64": {
-    zipName: "whisper-server-win32-x64.zip",
-    binaryName: "whisper-server-win32-x64.exe",
+    zipName: "whisper-server-win32-x64-cpu.zip",
+    binaryName: "whisper-server-win32-x64-cpu.exe",
     outputName: "whisper-server-win32-x64.exe",
   },
   "linux-x64": {
-    zipName: "whisper-server-linux-x64.zip",
-    binaryName: "whisper-server-linux-x64",
+    zipName: "whisper-server-linux-x64-cpu.zip",
+    binaryName: "whisper-server-linux-x64-cpu",
     outputName: "whisper-server-linux-x64",
   },
 };

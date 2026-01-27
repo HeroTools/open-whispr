@@ -25,17 +25,10 @@ class WindowManager {
     const display = screen.getPrimaryDisplay();
     const position = WindowPositionUtil.getMainWindowPosition(display);
 
-    console.log("[WindowManager] Creating main window with position:", position);
-    console.log("[WindowManager] Display bounds:", display.bounds);
-    console.log("[WindowManager] Display workArea:", display.workArea);
-    console.log("[WindowManager] Platform:", process.platform);
-
     this.mainWindow = new BrowserWindow({
       ...MAIN_WINDOW_CONFIG,
       ...position,
     });
-
-    console.log("[WindowManager] Main window created, id:", this.mainWindow.id);
 
     if (process.platform === "darwin") {
       this.mainWindow.setSkipTaskbar(false);
@@ -46,24 +39,22 @@ class WindowManager {
     this.setMainWindowInteractivity(false);
     this.registerMainWindowEvents();
 
-    await this.loadMainWindow();
-    await this.initializeHotkey();
-    this.dragManager.setTargetWindow(this.mainWindow);
-    MenuManager.setupMainMenu();
-
+    // Register load event handlers BEFORE loading to catch all events
     this.mainWindow.webContents.on(
       "did-fail-load",
       async (_event, errorCode, errorDescription, validatedURL, isMainFrame) => {
         if (!isMainFrame) {
           return;
         }
-        console.error("Failed to load main window:", errorCode, errorDescription, validatedURL);
-        if (process.env.NODE_ENV === "development" && validatedURL.includes("localhost:5174")) {
+        if (
+          process.env.NODE_ENV === "development" &&
+          validatedURL &&
+          validatedURL.includes("localhost:5174")
+        ) {
           // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();
             if (isReady) {
-              console.log("Dev server ready, reloading...");
               this.mainWindow.reload();
             }
           }, 2000);
@@ -77,6 +68,12 @@ class WindowManager {
       this.mainWindow.setTitle("Voice Recorder");
       this.enforceMainWindowOnTop();
     });
+
+    // Now load the window content
+    await this.loadMainWindow();
+    await this.initializeHotkey();
+    this.dragManager.setTargetWindow(this.mainWindow);
+    MenuManager.setupMainMenu();
   }
 
   setMainWindowInteractivity(shouldCapture) {
@@ -92,15 +89,34 @@ class WindowManager {
     this.isMainWindowInteractive = shouldCapture;
   }
 
-  async loadMainWindow() {
-    const appUrl = DevServerManager.getAppUrl(false);
+  /**
+   * Load content into a BrowserWindow, handling both dev server and production file loading.
+   * @param {BrowserWindow} window - The window to load content into
+   * @param {boolean} isControlPanel - Whether this is the control panel
+   */
+  async loadWindowContent(window, isControlPanel = false) {
     if (process.env.NODE_ENV === "development") {
-      const isReady = await DevServerManager.waitForDevServer();
-      if (!isReady) {
-        // Dev server not ready, continue anyway
+      const appUrl = DevServerManager.getAppUrl(isControlPanel);
+      await DevServerManager.waitForDevServer();
+      await window.loadURL(appUrl);
+    } else {
+      // Production: use loadFile() for better compatibility with Electron 36+
+      const fileInfo = DevServerManager.getAppFilePath(isControlPanel);
+      if (!fileInfo) {
+        throw new Error("Failed to get app file path");
       }
+
+      const fs = require("fs");
+      if (!fs.existsSync(fileInfo.path)) {
+        throw new Error(`HTML file not found: ${fileInfo.path}`);
+      }
+
+      await window.loadFile(fileInfo.path, { query: fileInfo.query });
     }
-    this.mainWindow.loadURL(appUrl);
+  }
+
+  async loadMainWindow() {
+    await this.loadWindowContent(this.mainWindow, false);
   }
 
   createHotkeyCallback() {
@@ -170,6 +186,10 @@ class WindowManager {
 
   async updateHotkey(hotkey) {
     return await this.hotkeyManager.updateHotkey(hotkey, this.createHotkeyCallback());
+  }
+
+  isUsingGnomeHotkeys() {
+    return this.hotkeyManager.isUsingGnome();
   }
 
   async startWindowDrag() {
@@ -262,19 +282,11 @@ class WindowManager {
       }
     );
 
-    console.log("📱 Loading control panel content...");
     await this.loadControlPanel();
   }
 
   async loadControlPanel() {
-    const appUrl = DevServerManager.getAppUrl(true);
-    if (process.env.NODE_ENV === "development") {
-      const isReady = await DevServerManager.waitForDevServer();
-      if (!isReady) {
-        console.error("Dev server not ready for control panel, loading anyway...");
-      }
-    }
-    this.controlPanelWindow.loadURL(appUrl);
+    await this.loadWindowContent(this.controlPanelWindow, true);
   }
 
   showDictationPanel(options = {}) {
@@ -332,7 +344,15 @@ class WindowManager {
       return;
     }
 
+    // Safety timeout: force show the window if ready-to-show doesn't fire within 10 seconds
+    const showTimeout = setTimeout(() => {
+      if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isVisible()) {
+        this.mainWindow.show();
+      }
+    }, 10000);
+
     this.mainWindow.once("ready-to-show", () => {
+      clearTimeout(showTimeout);
       this.enforceMainWindowOnTop();
       if (!this.mainWindow.isVisible()) {
         if (typeof this.mainWindow.showInactive === "function") {

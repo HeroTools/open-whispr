@@ -59,6 +59,8 @@ interface ReasoningModelSelectorProps {
   setGeminiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
+  customReasoningApiKey?: string;
+  setCustomReasoningApiKey?: (key: string) => void;
   showAlertDialog: (dialog: { title: string; description: string }) => void;
 }
 
@@ -79,6 +81,8 @@ export default function ReasoningModelSelector({
   setGeminiApiKey,
   groqApiKey,
   setGroqApiKey,
+  customReasoningApiKey = "",
+  setCustomReasoningApiKey,
 }: ReasoningModelSelectorProps) {
   const [selectedMode, setSelectedMode] = useState<"cloud" | "local">("cloud");
   const [selectedCloudProvider, setSelectedCloudProvider] = useState("openai");
@@ -147,11 +151,9 @@ export default function ReasoningModelSelector({
       let apiKey: string | undefined;
 
       try {
-        const keyFromState = openaiApiKey?.trim();
-        apiKey =
-          keyFromState && keyFromState.length > 0
-            ? keyFromState
-            : await window.electronAPI?.getOpenAIKey?.();
+        // Use the custom reasoning API key for custom endpoints
+        const keyFromState = customReasoningApiKey?.trim();
+        apiKey = keyFromState && keyFromState.length > 0 ? keyFromState : undefined;
 
         if (!normalizedBase.includes("://")) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
@@ -245,7 +247,7 @@ export default function ReasoningModelSelector({
         }
       }
     },
-    [cloudReasoningBaseUrl, openaiApiKey, reasoningModel, setReasoningModel]
+    [cloudReasoningBaseUrl, customReasoningApiKey, reasoningModel, setReasoningModel]
   );
 
   const trimmedCustomBase = customBaseInput.trim();
@@ -585,10 +587,10 @@ export default function ReasoningModelSelector({
                       <div className="space-y-3 pt-4">
                         <h4 className="font-medium text-foreground">API Key (Optional)</h4>
                         <ApiKeyInput
-                          apiKey={openaiApiKey}
-                          setApiKey={setOpenaiApiKey}
+                          apiKey={customReasoningApiKey}
+                          setApiKey={setCustomReasoningApiKey || (() => {})}
                           label=""
-                          helpText="Optional. Sent as a Bearer token for authentication."
+                          helpText="Optional. Sent as a Bearer token for authentication. This is separate from your OpenAI API key."
                         />
                       </div>
 

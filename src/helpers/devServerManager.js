@@ -26,15 +26,13 @@ class DevServerManager {
         });
 
         if (result) {
-          console.log(`Dev server ready after ${i + 1} attempts`);
           return true;
         }
-      } catch (error) {
-        console.log(`Waiting for dev server... attempt ${i + 1}/${maxAttempts}`);
+      } catch {
+        // Dev server not ready yet, continue waiting
       }
       await new Promise((resolve) => setTimeout(resolve, delay));
     }
-    console.error("Dev server failed to start within timeout");
     return false;
   }
 
@@ -42,11 +40,33 @@ class DevServerManager {
     if (process.env.NODE_ENV === "development") {
       return isControlPanel ? "http://localhost:5174/?panel=true" : "http://localhost:5174/";
     } else {
-      const path = require("path");
-      const htmlPath = path.join(__dirname, "..", "..", "src", "dist", "index.html");
-      const url = isControlPanel ? `file://${htmlPath}?panel=true` : `file://${htmlPath}`;
-      return url;
+      // For production, return null - caller should use loadFile() instead
+      return null;
     }
+  }
+
+  /**
+   * Get the path to the index.html file for production builds.
+   * In Electron 36+, loadFile() is preferred over loadURL() with file:// protocol.
+   * @param {boolean} isControlPanel - Whether this is for the control panel
+   * @returns {{ path: string, query: object } | null} - Path info for loadFile() or null for dev
+   */
+  static getAppFilePath(isControlPanel = false) {
+    if (process.env.NODE_ENV === "development") {
+      return null; // Use getAppUrl() for dev server
+    }
+
+    const path = require("path");
+    const { app } = require("electron");
+
+    // In packaged app, files are relative to app.getAppPath()
+    const appPath = app.getAppPath();
+    const htmlPath = path.join(appPath, "src", "dist", "index.html");
+
+    return {
+      path: htmlPath,
+      query: isControlPanel ? { panel: "true" } : {},
+    };
   }
 }
 

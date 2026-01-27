@@ -84,6 +84,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
+    customReasoningApiKey,
+    setCustomReasoningApiKey,
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
@@ -134,6 +138,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
+  const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -154,6 +159,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       clearTimeout(timer);
     };
   }, [whisperHook, getAppVersion]);
+
+  useEffect(() => {
+    const checkHotkeyMode = async () => {
+      try {
+        const info = await window.electronAPI?.getHotkeyModeInfo();
+        if (info?.isUsingGnome) {
+          setIsUsingGnomeHotkeys(true);
+          setActivationMode("tap");
+        }
+      } catch (error) {
+        console.error("Failed to check hotkey mode:", error);
+      }
+    };
+    checkHotkeyMode();
+  }, [setActivationMode]);
 
   // Show alert dialog on update errors
   useEffect(() => {
@@ -478,12 +498,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 disabled={isHotkeyRegistering}
               />
 
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-foreground mb-3">
-                  Activation Mode
-                </label>
-                <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
-              </div>
+              {!isUsingGnomeHotkeys && (
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-foreground mb-3">
+                    Activation Mode
+                  </label>
+                  <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+                </div>
+              )}
             </div>
 
             <div className="border-t border-border pt-8">
@@ -678,6 +700,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setOpenaiApiKey={setOpenaiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
+              customTranscriptionApiKey={customTranscriptionApiKey}
+              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
               cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
               setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
               variant="settings"
@@ -717,6 +741,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setGeminiApiKey={setGeminiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
+              customReasoningApiKey={customReasoningApiKey}
+              setCustomReasoningApiKey={setCustomReasoningApiKey}
               showAlertDialog={showAlertDialog}
             />
           </div>

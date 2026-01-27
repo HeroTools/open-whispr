@@ -138,10 +138,23 @@ class LlamaServerManager {
 
     debugLogger.debug("Starting llama-server", { port: this.port, modelPath, args });
 
+    // Set library path for dynamic library loading
+    const binDir = path.dirname(serverBinary);
+    const env = { ...process.env };
+
+    if (process.platform === "darwin") {
+      // macOS: Set DYLD_LIBRARY_PATH to find .dylib files
+      env.DYLD_LIBRARY_PATH = binDir + (env.DYLD_LIBRARY_PATH ? `:${env.DYLD_LIBRARY_PATH}` : "");
+    } else if (process.platform === "linux") {
+      // Linux: Set LD_LIBRARY_PATH to find .so files
+      env.LD_LIBRARY_PATH = binDir + (env.LD_LIBRARY_PATH ? `:${env.LD_LIBRARY_PATH}` : "");
+    }
+
     this.process = spawn(serverBinary, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
       cwd: os.tmpdir(),
+      env,
     });
 
     let stderrBuffer = "";
