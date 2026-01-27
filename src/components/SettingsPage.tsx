@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-react";
+import { RefreshCw, Download, Command, Mic, Shield, FolderOpen, Sparkles } from "lucide-react";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -281,11 +281,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             <div className="space-y-6">
               <div>
                 <h3 className="text-base font-semibold text-foreground mb-1.5">App Updates</h3>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                   Keep OpenWhispr up to date with the latest features and improvements.
                 </p>
               </div>
-              <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
+              <div className="flex items-center justify-between p-4 bg-card rounded-xl border border-border">
                 <div>
                   <p className="text-sm font-medium text-foreground">Current Version</p>
                   <p className="text-xs text-muted-foreground">{currentVersion || "Loading..."}</p>
@@ -429,7 +429,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 )}
 
                 {updateInfo?.version && (
-                  <div className="p-3 bg-muted/30 border border-border rounded-lg">
+                  <div className="p-4 bg-card border border-border rounded-xl">
                     <h4 className="font-medium text-foreground text-sm mb-2">Update v{updateInfo.version}</h4>
                     {updateInfo.releaseDate && (
                       <p className="text-xs text-muted-foreground mb-2">
@@ -447,15 +447,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </div>
             </div>
 
-            <div className="border-t border-border pt-8">
+            <div className="border-t border-border/40 pt-10">
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <h3 className="text-base font-semibold text-foreground">Appearance</h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">Theme preference</p>
+                  <p className="text-sm text-muted-foreground mt-0.5">Theme preference</p>
                 </div>
               </div>
 
-              <div className="inline-flex items-center gap-1 p-1 bg-muted/30 rounded-lg">
+              <div className="inline-flex items-center gap-0.5 p-1 bg-muted/20 rounded-xl border border-border/50">
                 {(
                   [
                     { value: "light", icon: "☀️", label: "Light" },
@@ -467,12 +467,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     key={option.value}
                     onClick={() => setTheme(option.value)}
                     className={`
-                      relative px-3 py-1.5 rounded-md text-xs font-medium
+                      relative px-4 py-2 rounded-lg text-xs font-medium
                       transition-all duration-200 ease-out
                       ${
                         theme === option.value
-                          ? "bg-primary text-primary-foreground shadow-sm"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                          ? "bg-card text-foreground shadow-sm border border-border/50"
+                          : "text-muted-foreground hover:text-foreground"
                       }
                     `}
                   >
@@ -483,10 +483,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </div>
             </div>
 
-            <div className="border-t border-border pt-8">
+            <div className="border-t border-border/40 pt-10">
               <div>
                 <h3 className="text-base font-semibold text-foreground mb-1.5">Dictation Hotkey</h3>
-                <p className="text-xs text-muted-foreground mb-6">
+                <p className="text-sm text-muted-foreground mb-6">
                   Configure the key or key combination you press to start and stop voice dictation.
                 </p>
               </div>
@@ -508,10 +508,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               )}
             </div>
 
-            <div className="border-t border-border pt-8">
+            <div className="border-t border-border/40 pt-10">
               <div>
                 <h3 className="text-base font-semibold text-foreground mb-1.5">Permissions</h3>
-                <p className="text-xs text-muted-foreground mb-6">
+                <p className="text-sm text-muted-foreground mb-6">
                   Test and manage app permissions for microphone and accessibility.
                 </p>
               </div>
@@ -550,10 +550,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </div>
             </div>
 
-            <div className="border-t border-border pt-8">
+            <div className="border-t border-border/40 pt-10">
               <div>
                 <h3 className="text-base font-semibold text-foreground mb-1.5">Microphone Input</h3>
-                <p className="text-xs text-muted-foreground mb-6">
+                <p className="text-sm text-muted-foreground mb-6">
                   Choose which microphone to use for dictation. Enable "Prefer Built-in" to prevent
                   audio interruptions when using Bluetooth headphones.
                 </p>
@@ -566,16 +566,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               />
             </div>
 
-            <div className="border-t border-border pt-8">
+            <div className="border-t border-border/40 pt-10">
               <div>
                 <h3 className="text-base font-semibold text-foreground mb-1.5">About OpenWhispr</h3>
-                <p className="text-xs text-muted-foreground mb-6">
+                <p className="text-sm text-muted-foreground mb-6">
                   OpenWhispr converts your speech to text using AI. Press your hotkey, speak, and
                   we'll type what you said wherever your cursor is.
                 </p>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm mb-6">
-                <div className="text-center p-3 border border-border rounded-lg bg-card">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
+                <div className="text-center p-4 border border-border/60 rounded-xl bg-card">
                   <div className="w-7 h-7 mx-auto mb-2 bg-primary rounded-lg flex items-center justify-center">
                     <Command className="w-3.5 h-3.5 text-primary-foreground" />
                   </div>
@@ -584,14 +584,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     {formatHotkeyLabel(dictationKey)}
                   </p>
                 </div>
-                <div className="text-center p-3 border border-border rounded-lg bg-card">
+                <div className="text-center p-4 border border-border/60 rounded-xl bg-card">
                   <div className="w-7 h-7 mx-auto mb-2 bg-success dark:bg-success rounded-lg flex items-center justify-center">
                     <span className="text-white text-xs">🏷️</span>
                   </div>
                   <p className="font-medium text-card-foreground mb-1 text-xs">Version</p>
                   <p className="text-muted-foreground text-xs">{currentVersion || "0.1.0"}</p>
                 </div>
-                <div className="text-center p-3 border border-border rounded-lg bg-card">
+                <div className="text-center p-4 border border-border/60 rounded-xl bg-card">
                   <div className="w-7 h-7 mx-auto mb-2 bg-success dark:bg-success rounded-lg flex items-center justify-center">
                     <span className="text-white text-xs">✓</span>
                   </div>
@@ -637,8 +637,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </Button>
               </div>
 
-              <div className="space-y-3 mt-6 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                <h4 className="font-medium text-destructive text-sm">Local Model Storage</h4>
+              <div className="space-y-3 mt-8 p-4 bg-destructive/5 border border-destructive/20 rounded-xl">
+                <h4 className="font-medium text-destructive text-sm">Danger Zone</h4>
                 <p className="text-xs text-muted-foreground">
                   Remove all downloaded Whisper models from your cache directory to reclaim disk
                   space. You can re-download any model later.
@@ -673,12 +673,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
       case "transcription":
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div>
-              <h3 className="text-base font-semibold text-foreground mb-1.5">
-                Speech to Text Processing
-              </h3>
-              <p className="text-xs text-muted-foreground mb-4">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                  <Mic className="w-4 h-4" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground tracking-tight">
+                  Speech to Text Processing
+                </h3>
+              </div>
+              <p className="text-sm text-muted-foreground ml-11">
                 Choose a cloud provider for fast transcription or use local Whisper models for
                 complete privacy.
               </p>
@@ -711,10 +716,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
       case "aiModels":
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
             <div>
-              <h3 className="text-base font-semibold text-foreground mb-1.5">AI Text Enhancement</h3>
-              <p className="text-xs text-muted-foreground mb-6">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground tracking-tight">AI Text Enhancement</h3>
+              </div>
+              <p className="text-sm text-muted-foreground ml-11 mb-2">
                 Configure how AI models clean up and format your transcriptions. This handles
                 commands like "scratch that", creates proper lists, and fixes obvious errors while
                 preserving your natural tone.
@@ -753,13 +763,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           <div className="space-y-6">
             <div>
               <h3 className="text-base font-semibold text-foreground mb-1.5">Agent Configuration</h3>
-              <p className="text-xs text-muted-foreground mb-6">
+              <p className="text-sm text-muted-foreground mb-6">
                 Customize your AI assistant's name and behavior to make interactions more personal
                 and effective.
               </p>
             </div>
 
-            <div className="space-y-3 p-3 bg-muted/30 border border-border rounded-lg">
+            <div className="space-y-3 p-4 bg-muted/10 border border-dashed border-border rounded-xl">
               <h4 className="font-medium text-foreground text-sm mb-2">💡 How to use agent names:</h4>
               <ul className="text-xs text-muted-foreground space-y-1.5">
                 <li>• Say "Hey {agentName}, write a formal email" for specific instructions</li>
@@ -777,7 +787,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </ul>
             </div>
 
-            <div className="space-y-3 p-3 bg-card border border-border rounded-lg">
+            <div className="space-y-3 p-4 bg-card border border-border rounded-xl">
               <h4 className="font-medium text-card-foreground text-sm">Current Agent Name</h4>
               <div className="flex gap-3">
                 <Input
@@ -804,7 +814,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </p>
             </div>
 
-            <div className="bg-muted/30 border border-border p-3 rounded-lg">
+            <div className="bg-muted/10 border border-dashed border-border p-4 rounded-xl">
               <h4 className="font-medium text-foreground text-sm mb-2">🎯 Example Usage:</h4>
               <div className="text-xs text-muted-foreground space-y-1">
                 <p>• "Hey {agentName}, write an email to my team about the meeting"</p>
@@ -820,7 +830,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Prompt Studio</h3>
+              <h3 className="text-base font-semibold text-foreground mb-1.5">Prompt Studio</h3>
               <p className="text-sm text-muted-foreground mb-6">
                 OpenWhispr uses a single unified system prompt that handles both text cleanup and
                 instruction detection. View, customize, and test the prompt that powers your AI

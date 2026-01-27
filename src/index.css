@@ -37,12 +37,12 @@
   --opacity-medium: 0.5;
   --opacity-high: 0.9;
 
-  /* Border Radius */
-  --radius: 0.5rem;
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  /* Border Radius — generous Clerk-style rounding */
+  --radius: 0.625rem;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.625rem;
+  --radius-xl: 0.875rem;
 
   /* Custom Light Mode Brand Colors (Parchment Theme) */
   --color-parchment-bg: #f9f6f1;
@@ -57,25 +57,25 @@
 }
 
 .dark {
-  /* Dark mode - high contrast with clear visual hierarchy */
-  --color-background: oklch(0.08 0 0);
-  --color-foreground: oklch(0.98 0 0);
-  --color-card: oklch(0.13 0 0);
-  --color-card-foreground: oklch(0.98 0 0);
-  --color-popover: oklch(0.13 0 0);
-  --color-popover-foreground: oklch(0.98 0 0);
+  /* Dark mode — clear surface hierarchy: bg < muted < card < popover */
+  --color-background: oklch(0.10 0.005 270);
+  --color-foreground: oklch(0.95 0 0);
+  --color-card: oklch(0.15 0.008 270);
+  --color-card-foreground: oklch(0.95 0 0);
+  --color-popover: oklch(0.17 0.008 270);
+  --color-popover-foreground: oklch(0.95 0 0);
   --color-primary: oklch(0.65 0.25 250);
   --color-primary-foreground: oklch(0.99 0 0);
-  --color-secondary: oklch(0.17 0 0);
-  --color-secondary-foreground: oklch(0.95 0 0);
-  --color-muted: oklch(0.15 0 0);
-  --color-muted-foreground: oklch(0.62 0 0);
+  --color-secondary: oklch(0.18 0.005 270);
+  --color-secondary-foreground: oklch(0.92 0 0);
+  --color-muted: oklch(0.13 0.005 270);
+  --color-muted-foreground: oklch(0.55 0 0);
   --color-accent: oklch(0.65 0.25 250);
   --color-accent-foreground: oklch(0.99 0 0);
-  --color-destructive: oklch(0.65 0.25 25);
+  --color-destructive: oklch(0.60 0.25 25);
   --color-destructive-foreground: oklch(0.99 0 0);
-  --color-border: oklch(0.25 0 0);
-  --color-input: oklch(0.12 0 0);
+  --color-border: oklch(0.23 0.005 270);
+  --color-input: oklch(0.12 0.005 270);
   --color-ring: oklch(0.65 0.25 250);
   --color-success: oklch(0.70 0.18 145);
   --color-success-foreground: oklch(0.99 0 0);
@@ -83,15 +83,34 @@
   --color-warning-foreground: oklch(0.15 0 0);
   --color-info: oklch(0.68 0.20 240);
   --color-info-foreground: oklch(0.99 0 0);
+
+  /* Surface hierarchy — layered depth system */
+  --color-surface-0: oklch(0.10 0.005 270);
+  --color-surface-1: oklch(0.13 0.006 270);
+  --color-surface-2: oklch(0.155 0.008 270);
+  --color-surface-3: oklch(0.18 0.010 270);
+  --color-surface-raised: oklch(0.20 0.012 270);
+
+  /* Border states */
+  --color-border-subtle: oklch(0.20 0.004 270);
+  --color-border-hover: oklch(0.28 0.010 270);
+  --color-border-active: oklch(0.45 0.15 250);
+
+  /* Card depth shadows — no glow, clean depth only */
+  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.25);
+  --shadow-card-hover: 0 2px 8px oklch(0 0 0 / 0.35);
+  --shadow-elevated: 0 8px 24px oklch(0 0 0 / 0.4);
+  --shadow-modal: 0 24px 48px -12px oklch(0 0 0 / 0.5);
 }
 
 @layer base {
   * {
     border-color: var(--color-border);
     transition:
-      background-color 200ms ease-in-out,
-      border-color 200ms ease-in-out,
-      color 200ms ease-in-out;
+      background-color 150ms ease,
+      border-color 150ms ease,
+      color 150ms ease,
+      box-shadow 150ms ease;
   }
 
   body {
@@ -151,8 +170,8 @@ h5,
 h6 {
   font-family: var(--font-family-sans);
   font-weight: 600;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 h1 {
@@ -202,18 +221,19 @@ textarea {
   background-color: var(--color-background);
 }
 
-/* Dark mode inputs */
+/* Dark mode inputs — flat, no embossed shadow */
 .dark input,
 .dark textarea {
-  background-color: oklch(0.15 0 0);
-  border: 1px solid oklch(0.25 0 0);
+  background-color: var(--color-input);
+  border: 1px solid var(--color-border);
   color: oklch(0.9 0 0);
+  box-shadow: none;
 }
 
 .dark input:focus,
 .dark textarea:focus {
-  border-color: oklch(0.55 0.25 250);
-  box-shadow: 0 0 0 2px oklch(0.55 0.25 250 / 0.2);
+  border-color: var(--color-border-active);
+  box-shadow: 0 0 0 2px oklch(0.65 0.25 250 / 0.15);
 }
 
 /* Card styling - elevated parchment */
@@ -232,6 +252,18 @@ textarea {
     0 8px 16px oklch(from var(--color-parchment-text) l c h / var(--opacity-subtle)),
     0 1px 0 oklch(from var(--color-card) l c h / var(--opacity-medium)) inset;
   transform: translateY(-1px);
+}
+
+/* Dark mode cards — grounded, no lift, subtle border glow */
+.dark .card {
+  border-color: var(--color-border-subtle);
+  box-shadow: var(--shadow-card);
+}
+
+.dark .card:hover {
+  box-shadow: var(--shadow-card-hover);
+  transform: none;
+  border-color: var(--color-border-hover);
 }
 
 /* Link styling */
@@ -268,5 +300,31 @@ a:hover {
 
 .text-brand-link {
   color: var(--color-brand-link);
+}
+
+/* ---- Premium UI Utilities ---- */
+
+/* Section panel — grouped settings container */
+.section-panel {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-xl);
+}
+
+/* Gradient accent bar — top border highlight for panels */
+.accent-bar {
+  position: relative;
+}
+
+.dark .accent-bar::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, oklch(0.65 0.25 250 / 0.5), oklch(0.70 0.18 280 / 0.3), transparent 80%);
+  pointer-events: none;
+  z-index: 1;
 }
 

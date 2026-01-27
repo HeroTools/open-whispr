@@ -19,18 +19,6 @@ interface ProviderTabsProps {
   scrollable?: boolean;
 }
 
-const COLOR_CONFIG: Record<
-  Exclude<ColorScheme, "dynamic">,
-  { selectedClass: string }
-> = {
-  indigo: {
-    selectedClass: "border-b-2 border-primary bg-primary/10 dark:bg-primary/20 text-primary",
-  },
-  purple: {
-    selectedClass: "border-b-2 border-primary bg-primary/10 dark:bg-primary/20 text-primary",
-  },
-};
-
 export function ProviderTabs({
   providers,
   selectedId,
@@ -39,26 +27,24 @@ export function ProviderTabs({
   colorScheme = "indigo",
   scrollable = false,
 }: ProviderTabsProps) {
-  const colors = colorScheme !== "dynamic" ? COLOR_CONFIG[colorScheme] : null;
-
   return (
     <div
-      className={`flex bg-muted/30 border-b border-border ${scrollable ? "overflow-x-auto" : ""}`}
+      className={`relative flex p-0.5 rounded-lg bg-muted/40 dark:bg-[oklch(0.10_0.005_270)] ${scrollable ? "overflow-x-auto" : ""}`}
     >
       {providers.map((provider) => {
         const isSelected = selectedId === provider.id;
-
-        const selectedClass = colors?.selectedClass || "border-b-2 border-primary bg-primary/10 dark:bg-primary/20 text-primary";
-        const baseClass = "flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all";
-        const stateClass = isSelected
-          ? selectedClass
-          : "text-muted-foreground hover:bg-muted";
 
         return (
           <button
             key={provider.id}
             onClick={() => onSelect(provider.id)}
-            className={`${baseClass} ${scrollable ? "whitespace-nowrap" : ""} ${stateClass}`}
+            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all duration-150 ${
+              scrollable ? "whitespace-nowrap" : ""
+            } ${
+              isSelected
+                ? "bg-card text-primary shadow-sm dark:bg-[oklch(0.18_0.008_270)] dark:text-primary border border-primary/15 dark:border-primary/20"
+                : "text-muted-foreground hover:text-foreground border border-transparent"
+            }`}
           >
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
             <span>{provider.name}</span>

@@ -9,25 +9,40 @@ interface DownloadProgressBarProps {
 
 export function DownloadProgressBar({ modelName, progress, styles }: DownloadProgressBarProps) {
   const { percentage, speed, eta } = progress;
-  const progressText = `${Math.round(percentage)}%`;
-  const speedText = speed ? ` • ${speed.toFixed(1)} MB/s` : "";
-  const etaText = eta ? ` • ETA: ${formatETA(eta)}` : "";
+  const pct = Math.round(percentage);
+  const speedText = speed ? `${speed.toFixed(1)} MB/s` : "";
+  const etaText = eta ? formatETA(eta) : "";
 
   return (
-    <div className={`${styles.progress} p-3`}>
-      <div className="flex items-center justify-between mb-2">
-        <span className={`text-sm font-medium ${styles.progressText}`}>
-          Downloading {modelName}...
-        </span>
-        <span className={`text-xs ${styles.progressText}`}>
-          {progressText}
-          {speedText}
-          {etaText}
-        </span>
+    <div className="p-4 border-b border-border/50 dark:border-[oklch(0.20_0.004_270)]">
+      <div className="flex items-center gap-3 mb-3">
+        {/* Animated pulse indicator */}
+        <div className="relative flex items-center justify-center w-8 h-8">
+          <div className="absolute inset-0 rounded-lg bg-primary/15 animate-pulse" />
+          <span className="relative text-xs font-bold text-primary tabular-nums">{pct}%</span>
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-foreground truncate">
+            Downloading {modelName}
+          </p>
+          <div className="flex items-center gap-2 mt-0.5">
+            {speedText && (
+              <span className="text-xs text-muted-foreground tabular-nums">{speedText}</span>
+            )}
+            {etaText && (
+              <>
+                <span className="text-xs text-muted-foreground/40">·</span>
+                <span className="text-xs text-muted-foreground tabular-nums">{etaText} remaining</span>
+              </>
+            )}
+          </div>
+        </div>
       </div>
-      <div className={`w-full ${styles.progressBar} rounded-full h-2`}>
+
+      {/* Progress bar with gradient fill */}
+      <div className="w-full h-1.5 rounded-full bg-muted dark:bg-[oklch(0.10_0.005_270)] overflow-hidden">
         <div
-          className={`${styles.progressFill} h-2 rounded-full transition-all duration-300 ease-out`}
+          className="h-full rounded-full transition-all duration-300 ease-out bg-linear-to-r from-primary via-primary to-primary/70"
           style={{ width: `${Math.min(percentage, 100)}%` }}
         />
       </div>
