@@ -50,6 +50,100 @@ interface LocalModelCardProps {
 // Backwards compatibility alias
 type WhisperModel = LocalModel;
 
+function LocalModelCard({
+  modelId,
+  name,
+  description,
+  size,
+  actualSizeMb,
+  isSelected,
+  isDownloaded,
+  isDownloading,
+  isCancelling,
+  recommended,
+  provider,
+  languageLabel,
+  onSelect,
+  onDelete,
+  onDownload,
+  onCancel,
+  styles: cardStyles,
+}: LocalModelCardProps) {
+  return (
+    <div
+      className={`p-3 rounded-lg border-2 transition-all ${
+        isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
+      }`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <ProviderIcon provider={provider} className="w-4 h-4" />
+            <span className="font-medium text-gray-900">{name}</span>
+            {isSelected && <span className={cardStyles.badges.selected}>✓ Selected</span>}
+            {recommended && <span className={cardStyles.badges.recommended}>Recommended</span>}
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-gray-600">{description}</span>
+            <span className="text-xs text-gray-500">
+              • {actualSizeMb ? `${actualSizeMb}MB` : size}
+            </span>
+            {languageLabel && <span className="text-xs text-blue-600">{languageLabel}</span>}
+            {isDownloaded && (
+              <span className={cardStyles.badges.downloaded}>
+                <Check className="inline w-3 h-3 mr-1" />
+                Downloaded
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          {isDownloaded ? (
+            <>
+              {!isSelected && (
+                <Button
+                  onClick={onSelect}
+                  size="sm"
+                  variant="outline"
+                  className={cardStyles.buttons.select}
+                >
+                  Select
+                </Button>
+              )}
+              <Button
+                onClick={onDelete}
+                size="sm"
+                variant="outline"
+                className={cardStyles.buttons.delete}
+              >
+                <Trash2 size={14} />
+                <span className="ml-1">Delete</span>
+              </Button>
+            </>
+          ) : isDownloading ? (
+            <Button
+              onClick={onCancel}
+              disabled={isCancelling}
+              size="sm"
+              variant="outline"
+              className="text-red-600 border-red-300 hover:bg-red-50"
+            >
+              <X size={14} />
+              <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
+            </Button>
+          ) : (
+            <Button onClick={onDownload} size="sm" className={cardStyles.buttons.download}>
+              <Download size={14} />
+              <span className="ml-1">Download</span>
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface TranscriptionModelPickerProps {
   selectedCloudProvider: string;
   onCloudProviderSelect: (providerId: string) => void;
@@ -258,6 +352,7 @@ export default function TranscriptionModelPicker({
     downloadModel,
     deleteModel,
     isDownloadingModel,
+    isInstalling,
     cancelDownload,
     isCancelling,
   } = useModelDownload({
@@ -271,6 +366,7 @@ export default function TranscriptionModelPicker({
     downloadModel: downloadParakeetModel,
     deleteModel: deleteParakeetModel,
     isDownloadingModel: isDownloadingParakeetModel,
+    isInstalling: isInstallingParakeet,
     cancelDownload: cancelParakeetDownload,
     isCancelling: isCancellingParakeet,
   } = useModelDownload({
@@ -418,6 +514,7 @@ export default function TranscriptionModelPicker({
         <DownloadProgressBar
           modelName={modelInfo?.name || downloadingModel}
           progress={downloadProgress}
+          isInstalling={isInstalling}
           styles={styles}
         />
       );
@@ -429,6 +526,7 @@ export default function TranscriptionModelPicker({
         <DownloadProgressBar
           modelName={modelInfo?.name || downloadingParakeetModel}
           progress={parakeetDownloadProgress}
+          isInstalling={isInstallingParakeet}
           styles={styles}
         />
       );
@@ -438,106 +536,14 @@ export default function TranscriptionModelPicker({
   }, [
     downloadingModel,
     downloadProgress,
+    isInstalling,
     downloadingParakeetModel,
     parakeetDownloadProgress,
+    isInstallingParakeet,
     useLocalWhisper,
     internalLocalProvider,
     styles,
   ]);
-
-  // Shared component for rendering local model cards (Whisper and Parakeet)
-  const LocalModelCard = ({
-    modelId,
-    name,
-    description,
-    size,
-    actualSizeMb,
-    isSelected,
-    isDownloaded,
-    isDownloading,
-    isCancelling,
-    recommended,
-    provider,
-    languageLabel,
-    onSelect,
-    onDelete,
-    onDownload,
-    onCancel,
-    styles: cardStyles,
-  }: LocalModelCardProps) => (
-    <div
-      key={modelId}
-      className={`p-3 rounded-lg border-2 transition-all ${
-        isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
-      }`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <ProviderIcon provider={provider} className="w-4 h-4" />
-            <span className="font-medium text-gray-900">{name}</span>
-            {isSelected && <span className={cardStyles.badges.selected}>✓ Selected</span>}
-            {recommended && <span className={cardStyles.badges.recommended}>Recommended</span>}
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-gray-600">{description}</span>
-            <span className="text-xs text-gray-500">
-              • {actualSizeMb ? `${actualSizeMb}MB` : size}
-            </span>
-            {languageLabel && <span className="text-xs text-blue-600">{languageLabel}</span>}
-            {isDownloaded && (
-              <span className={cardStyles.badges.downloaded}>
-                <Check className="inline w-3 h-3 mr-1" />
-                Downloaded
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="flex gap-2">
-          {isDownloaded ? (
-            <>
-              {!isSelected && (
-                <Button
-                  onClick={onSelect}
-                  size="sm"
-                  variant="outline"
-                  className={cardStyles.buttons.select}
-                >
-                  Select
-                </Button>
-              )}
-              <Button
-                onClick={onDelete}
-                size="sm"
-                variant="outline"
-                className={cardStyles.buttons.delete}
-              >
-                <Trash2 size={14} />
-                <span className="ml-1">Delete</span>
-              </Button>
-            </>
-          ) : isDownloading ? (
-            <Button
-              onClick={onCancel}
-              disabled={isCancelling}
-              size="sm"
-              variant="outline"
-              className="text-red-600 border-red-300 hover:bg-red-50"
-            >
-              <X size={14} />
-              <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
-            </Button>
-          ) : (
-            <Button onClick={onDownload} size="sm" className={cardStyles.buttons.download}>
-              <Download size={14} />
-              <span className="ml-1">Download</span>
-            </Button>
-          )}
-        </div>
-      </div>
-    </div>
-  );
 
   const renderLocalModels = () => (
     <div className="space-y-2">
