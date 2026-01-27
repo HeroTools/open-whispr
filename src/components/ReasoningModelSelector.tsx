@@ -477,7 +477,9 @@ export default function ReasoningModelSelector({
     <div className="space-y-6">
       <div className="flex items-center justify-between p-4 bg-success/10 dark:bg-success/20 border border-success/30 rounded-xl">
         <div>
-          <label className="text-sm font-medium text-success dark:text-success">Enable AI Text Enhancement</label>
+          <label className="text-sm font-medium text-success dark:text-success">
+            Enable AI Text Enhancement
+          </label>
           <p className="text-xs text-success dark:text-success">
             Use AI to automatically improve transcription quality
           </p>
@@ -575,10 +577,8 @@ export default function ReasoningModelSelector({
                           className="text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Examples:{" "}
-                          <code className="text-primary">http://localhost:11434/v1</code>{" "}
-                          (Ollama),{" "}
-                          <code className="text-primary">http://localhost:8080/v1</code>{" "}
+                          Examples: <code className="text-primary">http://localhost:11434/v1</code>{" "}
+                          (Ollama), <code className="text-primary">http://localhost:8080/v1</code>{" "}
                           (LocalAI).
                         </p>
                       </div>

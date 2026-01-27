@@ -283,7 +283,9 @@ export default function DeveloperSection() {
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-warning dark:text-warning mt-0.5 flex-shrink-0" />
               <div className="flex-1">
-                <h4 className="font-medium text-warning dark:text-warning mb-1">Performance Note</h4>
+                <h4 className="font-medium text-warning dark:text-warning mb-1">
+                  Performance Note
+                </h4>
                 <p className="text-sm text-warning dark:text-warning">
                   Debug logging writes detailed information to disk and may have a minor impact on
                   app performance. Disable it when not troubleshooting.

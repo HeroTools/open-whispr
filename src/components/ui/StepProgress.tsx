@@ -24,7 +24,11 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
           <div key={index} className="flex">
             <div
               className={`flex items-center gap-2 ${
-                isActive ? "text-primary" : isCompleted ? "text-success dark:text-success" : "text-muted-foreground"
+                isActive
+                  ? "text-primary"
+                  : isCompleted
+                    ? "text-success dark:text-success"
+                    : "text-muted-foreground"
               }`}
             >
               <div

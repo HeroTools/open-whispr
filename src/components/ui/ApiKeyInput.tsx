@@ -26,7 +26,8 @@ export default function ApiKeyInput({
 
   const variantClasses = variant === "purple" ? "border-primary focus:border-primary" : "";
 
-  const buttonVariantClasses = variant === "purple" ? "border-primary text-primary hover:bg-primary/10" : "";
+  const buttonVariantClasses =
+    variant === "purple" ? "border-primary text-primary hover:bg-primary/10" : "";
 
   return (
     <div className={className}>

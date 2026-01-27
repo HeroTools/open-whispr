@@ -16,11 +16,13 @@ export function DownloadProgressBar({
   const etaText = eta ? formatETA(eta) : "";
 
   return (
-    <div className="p-4 border-b border-border/50 dark:border-[oklch(0.20_0.004_270)]">
+    <div className="p-4 border-b border-border/50 dark:border-border-subtle">
       <div className="flex items-center gap-3 mb-3">
         {/* Animated pulse indicator */}
         <div className="relative flex items-center justify-center w-8 h-8">
-          <div className={`absolute inset-0 rounded-lg bg-primary/15 ${isInstalling ? "animate-pulse" : "animate-pulse"}`} />
+          <div
+            className={`absolute inset-0 rounded-lg bg-primary/15 ${isInstalling ? "animate-pulse" : "animate-pulse"}`}
+          />
           <span className="relative text-xs font-bold text-primary tabular-nums">
             {isInstalling ? "..." : `${pct}%`}
           </span>
@@ -37,7 +39,9 @@ export function DownloadProgressBar({
               {etaText && (
                 <>
                   <span className="text-xs text-muted-foreground/40">·</span>
-                  <span className="text-xs text-muted-foreground tabular-nums">{etaText} remaining</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {etaText} remaining
+                  </span>
                 </>
               )}
             </div>

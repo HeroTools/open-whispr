@@ -41,7 +41,9 @@ export default function PasteToolsInfo({
           <div className="flex items-center gap-3">
             <Terminal className="w-6 h-6 text-success dark:text-success" />
             <div>
-              <h3 className="font-semibold text-success dark:text-success">Automatic Pasting Ready</h3>
+              <h3 className="font-semibold text-success dark:text-success">
+                Automatic Pasting Ready
+              </h3>
               <p className="text-sm text-success dark:text-success">
                 Windows supports automatic pasting out of the box. No setup required!
               </p>
@@ -67,10 +69,12 @@ export default function PasteToolsInfo({
           <div className="flex items-center gap-3">
             <Terminal className="w-6 h-6 text-success dark:text-success" />
             <div>
-              <h3 className="font-semibold text-success dark:text-success">Automatic Pasting Ready</h3>
+              <h3 className="font-semibold text-success dark:text-success">
+                Automatic Pasting Ready
+              </h3>
               <p className="text-sm text-success dark:text-success">
-                Using <code className="bg-success/20 px-1 rounded">{method}</code> for automatic text
-                pasting{methodSuffix}
+                Using <code className="bg-success/20 px-1 rounded">{method}</code> for automatic
+                text pasting{methodSuffix}
               </p>
             </div>
           </div>

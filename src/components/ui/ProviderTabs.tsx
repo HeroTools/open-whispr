@@ -29,7 +29,7 @@ export function ProviderTabs({
 }: ProviderTabsProps) {
   return (
     <div
-      className={`relative flex p-0.5 rounded-lg bg-muted/40 dark:bg-[oklch(0.10_0.005_270)] ${scrollable ? "overflow-x-auto" : ""}`}
+      className={`relative flex p-0.5 rounded-lg bg-muted/40 dark:bg-background ${scrollable ? "overflow-x-auto" : ""}`}
     >
       {providers.map((provider) => {
         const isSelected = selectedId === provider.id;
@@ -42,7 +42,7 @@ export function ProviderTabs({
               scrollable ? "whitespace-nowrap" : ""
             } ${
               isSelected
-                ? "bg-card text-primary shadow-sm dark:bg-[oklch(0.18_0.008_270)] dark:text-primary border border-primary/15 dark:border-primary/20"
+                ? "bg-card text-primary shadow-sm dark:bg-surface-3 dark:text-primary border border-primary/15 dark:border-primary/20"
                 : "text-muted-foreground hover:text-foreground border border-transparent"
             }`}
           >

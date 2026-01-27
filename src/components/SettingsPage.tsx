@@ -503,7 +503,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
                 {updateInfo?.version && (
                   <div className="p-4 bg-card border border-border rounded-xl">
-                    <h4 className="font-medium text-foreground text-sm mb-2">Update v{updateInfo.version}</h4>
+                    <h4 className="font-medium text-foreground text-sm mb-2">
+                      Update v{updateInfo.version}
+                    </h4>
                     {updateInfo.releaseDate && (
                       <p className="text-xs text-muted-foreground mb-2">
                         Released: {new Date(updateInfo.releaseDate).toLocaleDateString()}
@@ -913,7 +915,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 <div className="w-8 h-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center">
                   <Sparkles className="w-4 h-4" />
                 </div>
-                <h3 className="text-lg font-semibold text-foreground tracking-tight">AI Text Enhancement</h3>
+                <h3 className="text-lg font-semibold text-foreground tracking-tight">
+                  AI Text Enhancement
+                </h3>
               </div>
               <p className="text-sm text-muted-foreground ml-11 mb-2">
                 Configure how AI models clean up and format your transcriptions. This handles
@@ -953,7 +957,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-base font-semibold text-foreground mb-1.5">Agent Configuration</h3>
+              <h3 className="text-base font-semibold text-foreground mb-1.5">
+                Agent Configuration
+              </h3>
               <p className="text-sm text-muted-foreground mb-6">
                 Customize your AI assistant's name and behavior to make interactions more personal
                 and effective.
@@ -961,7 +967,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             </div>
 
             <div className="space-y-3 p-4 bg-muted/10 border border-dashed border-border rounded-xl">
-              <h4 className="font-medium text-foreground text-sm mb-2">💡 How to use agent names:</h4>
+              <h4 className="font-medium text-foreground text-sm mb-2">
+                💡 How to use agent names:
+              </h4>
               <ul className="text-xs text-muted-foreground space-y-1.5">
                 <li>• Say "Hey {agentName}, write a formal email" for specific instructions</li>
                 <li>

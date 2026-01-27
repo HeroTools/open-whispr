@@ -20,10 +20,9 @@ const buttonVariants = cva(
           "border border-border bg-transparent text-foreground hover:bg-muted/60 hover:border-muted-foreground/25",
         // Tertiary — subtle filled background
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-[oklch(0.18_0.005_270)] dark:hover:bg-[oklch(0.22_0.008_270)]",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 dark:bg-secondary dark:hover:bg-border",
         // Ghost — minimal, text only
-        ghost:
-          "text-foreground hover:bg-muted/60",
+        ghost: "text-foreground hover:bg-muted/60",
         // Link — inline text
         link: "text-primary underline-offset-4 hover:underline",
       },

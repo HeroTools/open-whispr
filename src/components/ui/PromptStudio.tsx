@@ -309,7 +309,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 mb-4">
+          <div className="bg-primary/10 border border-primary/25 rounded-lg p-4 mb-4 dark:bg-primary/5 dark:border-primary/20">
             <div className="flex items-start gap-3">
               <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
               <div className="text-sm text-foreground">
@@ -357,8 +357,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         </h3>
         <p className="text-sm text-muted-foreground mb-2">
           Edit the system prompt to change how your AI processes speech. Use{" "}
-          <code className="bg-muted px-1 rounded">{"{{agentName}}"}</code> as a placeholder for
-          your agent's name.
+          <code className="bg-muted px-1 rounded">{"{{agentName}}"}</code> as a placeholder for your
+          agent's name.
         </p>
         <p className="text-sm text-warning dark:text-warning mb-6">
           <strong>Caution:</strong> Modifying this prompt may affect transcription quality. The
@@ -427,7 +427,9 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             <div className="flex items-start gap-3">
               <AlertTriangle className="w-5 h-5 text-warning dark:text-warning flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm text-warning dark:text-warning font-medium">AI Text Enhancement Disabled</p>
+                <p className="text-sm text-warning dark:text-warning font-medium">
+                  AI Text Enhancement Disabled
+                </p>
                 <p className="text-sm text-warning dark:text-warning mt-1">
                   Enable AI text enhancement in the AI Text Cleanup settings to test prompts.
                 </p>

@@ -539,7 +539,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 onChange={(e) => setAgentName(e.target.value)}
                 className="text-center text-lg font-mono"
               />
-              <p className="text-xs text-muted-foreground mt-2">You can change this anytime in settings</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                You can change this anytime in settings
+              </p>
             </div>
           </div>
         );

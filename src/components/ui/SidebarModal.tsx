@@ -33,17 +33,21 @@ export default function SidebarModal<T extends string>({
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/60 backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-        <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-50 max-h-[90vh] w-[90vw] max-w-5xl translate-x-[-50%] translate-y-[-50%] rounded-2xl p-0 overflow-hidden bg-background border border-border/50 shadow-2xl dark:bg-[oklch(0.10_0.005_270)] dark:border-[oklch(0.25_0.008_270)] dark:shadow-[0_24px_48px_-12px_oklch(0_0_0/0.5)] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
+        <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-50 max-h-[90vh] w-[90vw] max-w-5xl translate-x-[-50%] translate-y-[-50%] rounded-2xl p-0 overflow-hidden bg-background border border-border/50 shadow-2xl dark:bg-background dark:border-border dark:shadow-modal duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]">
           <div className="relative h-full max-h-[90vh] overflow-hidden">
-            <DialogPrimitive.Close className="absolute right-6 top-6 z-10 rounded-full p-2 opacity-70 ring-offset-background transition-all hover:opacity-100 bg-muted hover:bg-muted/80 dark:bg-[oklch(0.155_0.008_270)] dark:hover:bg-[oklch(0.20_0.012_270)] focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
+            <DialogPrimitive.Close className="absolute right-6 top-6 z-10 rounded-full p-2 opacity-70 ring-offset-background transition-all hover:opacity-100 bg-muted hover:bg-muted/80 dark:bg-surface-2 dark:hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2">
               <X className="h-4 w-4 text-muted-foreground" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
 
             <div className="flex h-[90vh]">
               {/* Sidebar */}
-              <div className={`${sidebarWidth} border-r border-border p-5 bg-muted/50 dark:bg-[oklch(0.13_0.006_270)] dark:border-r-[oklch(0.20_0.004_270)]`}>
-                <h2 className="text-lg font-semibold text-foreground mb-6 px-3 tracking-tight">{title}</h2>
+              <div
+                className={`${sidebarWidth} border-r border-border p-5 bg-muted dark:bg-surface-1 dark:border-r-border-subtle`}
+              >
+                <h2 className="text-lg font-semibold text-foreground mb-6 px-3 tracking-tight">
+                  {title}
+                </h2>
                 <nav className="space-y-1">
                   {sidebarItems.map((item) => {
                     const Icon = item.icon;
@@ -54,8 +58,8 @@ export default function SidebarModal<T extends string>({
                         onClick={() => onSectionChange(item.id)}
                         className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left text-sm rounded-lg transition-all duration-200 border-l-2 ${
                           isActive
-                            ? "bg-primary/8 text-foreground border-l-primary dark:bg-primary/10"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/30 dark:hover:bg-[oklch(0.155_0.008_270)] border-l-transparent"
+                            ? "bg-primary/12 text-foreground border-l-primary dark:bg-primary/10"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/30 dark:hover:bg-surface-2 border-l-transparent"
                         }`}
                       >
                         <Icon
@@ -71,7 +75,7 @@ export default function SidebarModal<T extends string>({
               </div>
 
               {/* Main Content */}
-              <div className="flex-1 overflow-y-auto bg-background dark:bg-[oklch(0.10_0.005_270)]">
+              <div className="flex-1 overflow-y-auto bg-background dark:bg-background">
                 <div className="p-10">
                   <div className="max-w-2xl">{children}</div>
                 </div>

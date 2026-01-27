@@ -145,7 +145,9 @@ export default function LanguageSelector({
                     type="button"
                     onClick={() => handleSelect(language.value)}
                     className={`w-full px-3 py-2 text-left text-sm text-foreground hover:bg-muted focus:bg-muted focus:outline-none ${
-                      language.value === value ? "bg-primary/10 dark:bg-primary/20 text-primary" : ""
+                      language.value === value
+                        ? "bg-primary/10 dark:bg-primary/20 text-primary"
+                        : ""
                     } ${index === highlightedIndex ? "bg-muted" : ""}`}
                     role="option"
                     aria-selected={language.value === value}

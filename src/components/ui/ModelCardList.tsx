@@ -24,16 +24,19 @@ const COLOR_CONFIG: Record<
   }
 > = {
   indigo: {
-    selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
+    selected: "border-primary/30 bg-primary/10 dark:bg-primary/6 dark:border-primary/25",
+    default:
+      "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
   },
   purple: {
-    selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
+    selected: "border-primary/30 bg-primary/10 dark:bg-primary/6 dark:border-primary/25",
+    default:
+      "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
   },
   blue: {
-    selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
+    selected: "border-primary/30 bg-primary/10 dark:bg-primary/6 dark:border-primary/25",
+    default:
+      "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
   },
 };
 
@@ -61,9 +64,11 @@ export default function ModelCardList({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                  isSelected ? "bg-primary/15" : "bg-muted dark:bg-[oklch(0.13_0.006_270)]"
-                }`}>
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                    isSelected ? "bg-primary/15" : "bg-muted dark:bg-surface-1"
+                  }`}
+                >
                   {model.icon ? (
                     <img src={model.icon} alt="" className="w-4 h-4" aria-hidden="true" />
                   ) : (

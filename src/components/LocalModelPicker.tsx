@@ -141,9 +141,7 @@ export default function LocalModelPicker({
 
     const modelName = models.find((m) => m.id === downloadingModel)?.name || downloadingModel;
 
-    return (
-      <DownloadProgressBar modelName={modelName} progress={downloadProgress} />
-    );
+    return <DownloadProgressBar modelName={modelName} progress={downloadProgress} />;
   }, [downloadingModel, downloadProgress, models]);
 
   return (

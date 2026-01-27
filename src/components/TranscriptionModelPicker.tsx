@@ -103,7 +103,9 @@ function LocalModelCard({
                 Recommended
               </span>
             )}
-            {languageLabel && <span className="text-[10px] text-primary/80 font-medium">{languageLabel}</span>}
+            {languageLabel && (
+              <span className="text-[10px] text-primary/80 font-medium">{languageLabel}</span>
+            )}
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <p className="text-xs text-muted-foreground truncate">{description}</p>
@@ -121,12 +123,7 @@ function LocalModelCard({
           {isDownloaded ? (
             <>
               {!isSelected && (
-                <Button
-                  onClick={onSelect}
-                  size="sm"
-                  variant="default"
-                  className="h-7 px-3 text-xs"
-                >
+                <Button onClick={onSelect} size="sm" variant="default" className="h-7 px-3 text-xs">
                   Select
                 </Button>
               )}
@@ -154,12 +151,7 @@ function LocalModelCard({
               {isCancelling ? "..." : "Cancel"}
             </Button>
           ) : (
-            <Button
-              onClick={onDownload}
-              size="sm"
-              variant="default"
-              className="h-7 px-3 text-xs"
-            >
+            <Button onClick={onDownload} size="sm" variant="default" className="h-7 px-3 text-xs">
               <Download size={12} className="mr-1" />
               Download
             </Button>
@@ -691,13 +683,17 @@ export default function TranscriptionModelPicker({
           isDisabled
             ? "text-muted-foreground cursor-default opacity-50"
             : isSelected
-              ? "bg-card text-primary shadow-sm dark:bg-[oklch(0.18_0.008_270)] dark:text-primary border border-primary/15 dark:border-primary/20"
+              ? "bg-card text-primary shadow-sm dark:bg-surface-3 dark:text-primary border border-primary/15 dark:border-primary/20"
               : "text-muted-foreground hover:text-foreground border border-transparent"
         }`}
       >
         <ProviderIcon provider={provider.id} className="w-4.5 h-4.5" />
         <span>{provider.name}</span>
-        {provider.badge && <Badge variant="outline" className="text-[10px] px-1.5 py-0">{provider.badge}</Badge>}
+        {provider.badge && (
+          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+            {provider.badge}
+          </Badge>
+        )}
       </button>
     );
   };
@@ -713,7 +709,7 @@ export default function TranscriptionModelPicker({
             className={`group relative overflow-hidden rounded-xl text-left transition-all duration-200 cursor-pointer border ${
               !useLocalWhisper
                 ? "border-primary/40 bg-primary/[0.06] dark:bg-primary/[0.08] dark:border-primary/30"
-                : "border-border bg-card dark:bg-[oklch(0.13_0.006_270)] dark:border-[oklch(0.22_0.005_270)] hover:border-muted-foreground/30 dark:hover:border-[oklch(0.28_0.010_270)]"
+                : "border-border bg-card dark:bg-surface-1 dark:border-border hover:border-muted-foreground/30 dark:hover:border-border-hover"
             }`}
           >
             {/* Top accent gradient — only when selected */}
@@ -723,27 +719,33 @@ export default function TranscriptionModelPicker({
             <div className="p-5">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                    !useLocalWhisper
-                      ? "bg-primary/15 dark:bg-primary/20"
-                      : "bg-muted dark:bg-[oklch(0.16_0.006_270)]"
-                  }`}>
-                    <Cloud className={`w-5 h-5 ${!useLocalWhisper ? "text-primary" : "text-muted-foreground"}`} />
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                      !useLocalWhisper
+                        ? "bg-primary/15 dark:bg-primary/20"
+                        : "bg-muted dark:bg-surface-2"
+                    }`}
+                  >
+                    <Cloud
+                      className={`w-5 h-5 ${!useLocalWhisper ? "text-primary" : "text-muted-foreground"}`}
+                    />
                   </div>
                   <div>
                     <h4 className="font-semibold text-foreground text-[15px]">Cloud</h4>
-                    <span className={`text-[11px] font-semibold uppercase tracking-wider ${!useLocalWhisper ? "text-success" : "text-muted-foreground"}`}>Fast</span>
+                    <span
+                      className={`text-[11px] font-semibold uppercase tracking-wider ${!useLocalWhisper ? "text-success" : "text-muted-foreground"}`}
+                    >
+                      Fast
+                    </span>
                   </div>
                 </div>
                 {/* Radio indicator */}
-                <div className={`mt-1 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  !useLocalWhisper
-                    ? "border-primary bg-primary"
-                    : "border-muted-foreground/25"
-                }`}>
-                  {!useLocalWhisper && (
-                    <Check className="w-2.5 h-2.5 text-primary-foreground" />
-                  )}
+                <div
+                  className={`mt-1 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center transition-all ${
+                    !useLocalWhisper ? "border-primary bg-primary" : "border-muted-foreground/25"
+                  }`}
+                >
+                  {!useLocalWhisper && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                 </div>
               </div>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
@@ -758,7 +760,7 @@ export default function TranscriptionModelPicker({
             className={`group relative overflow-hidden rounded-xl text-left transition-all duration-200 cursor-pointer border ${
               useLocalWhisper
                 ? "border-primary/40 bg-primary/[0.06] dark:bg-primary/[0.08] dark:border-primary/30"
-                : "border-border bg-card dark:bg-[oklch(0.13_0.006_270)] dark:border-[oklch(0.22_0.005_270)] hover:border-muted-foreground/30 dark:hover:border-[oklch(0.28_0.010_270)]"
+                : "border-border bg-card dark:bg-surface-1 dark:border-border hover:border-muted-foreground/30 dark:hover:border-border-hover"
             }`}
           >
             {/* Top accent gradient — only when selected */}
@@ -768,27 +770,33 @@ export default function TranscriptionModelPicker({
             <div className="p-5">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                    useLocalWhisper
-                      ? "bg-primary/15 dark:bg-primary/20"
-                      : "bg-muted dark:bg-[oklch(0.16_0.006_270)]"
-                  }`}>
-                    <Lock className={`w-5 h-5 ${useLocalWhisper ? "text-primary" : "text-muted-foreground"}`} />
+                  <div
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                      useLocalWhisper
+                        ? "bg-primary/15 dark:bg-primary/20"
+                        : "bg-muted dark:bg-surface-2"
+                    }`}
+                  >
+                    <Lock
+                      className={`w-5 h-5 ${useLocalWhisper ? "text-primary" : "text-muted-foreground"}`}
+                    />
                   </div>
                   <div>
                     <h4 className="font-semibold text-foreground text-[15px]">Local</h4>
-                    <span className={`text-[11px] font-semibold uppercase tracking-wider ${useLocalWhisper ? "text-primary" : "text-muted-foreground"}`}>Private</span>
+                    <span
+                      className={`text-[11px] font-semibold uppercase tracking-wider ${useLocalWhisper ? "text-primary" : "text-muted-foreground"}`}
+                    >
+                      Private
+                    </span>
                   </div>
                 </div>
                 {/* Radio indicator */}
-                <div className={`mt-1 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center transition-all ${
-                  useLocalWhisper
-                    ? "border-primary bg-primary"
-                    : "border-muted-foreground/25"
-                }`}>
-                  {useLocalWhisper && (
-                    <Check className="w-2.5 h-2.5 text-primary-foreground" />
-                  )}
+                <div
+                  className={`mt-1 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center transition-all ${
+                    useLocalWhisper ? "border-primary bg-primary" : "border-muted-foreground/25"
+                  }`}
+                >
+                  {useLocalWhisper && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
                 </div>
               </div>
               <p className="text-[13px] text-muted-foreground leading-relaxed">
@@ -918,7 +926,7 @@ export default function TranscriptionModelPicker({
       ) : (
         <div className={styles.container}>
           <div className="p-3 pb-0">
-            <div className="flex p-0.5 rounded-lg bg-muted/40 dark:bg-[oklch(0.10_0.005_270)]">
+            <div className="flex p-0.5 rounded-lg bg-muted/40 dark:bg-background">
               {LOCAL_PROVIDER_TABS.map((provider) =>
                 renderLocalProviderTab(provider, internalLocalProvider === provider.id)
               )}
