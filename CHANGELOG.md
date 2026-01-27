@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.2.16] - 2026-01-26
+## [1.3.0] - 2026-01-26
 
 ### Added
 - **NVIDIA Parakeet Support**: Fast local transcription via sherpa-onnx runtime with INT8 quantized models
@@ -24,12 +24,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Download Scripts Refactored**: All download scripts now use shared utilities for consistency
 - **GitHub API Authentication**: Download scripts support `GITHUB_TOKEN` to avoid API rate limits in CI
-- **Dev Server Port Alignment**: Development server port configuration improved for consistency
+- **Debug Logging Cleanup**: Extracted common window loading code and cleaned up debug logging
 
 ### Fixed
-- **Whisper Model Path Resolution**: Fixed `large` and `turbo` model lookup failures by using registry-defined filenames (`ggml-large-v3.bin`, `ggml-large-v3-turbo.bin`) instead of hardcoded pattern
-- **Windows Production Build**: Fixed Windows production build issues with proper binary bundling
-- **Code Quality**: Various code quality improvements in download scripts and dev server management
+- **GNOME Wayland Hotkey Improvements**: Improved hotkey handling on GNOME Wayland
+- **Hotkey Persistence**: Fixed hotkey selection not persisting correctly
+- **Custom Endpoint API Keys**: Fixed custom endpoint API keys not persisting to `.env` file
+- **Custom Endpoint State**: Fixed custom endpoint using shared state instead of its own
+- **Linux Stale Hotkey Registrations**: Clear stale hotkey registrations on startup on Linux
+- **Wayland XWayland Paste**: Try xdotool on Wayland when XWayland is available
+- **llama-server Libraries**: Bundle llama-server shared libraries and search from extract root for varying archive structures
+- **STT/Reasoning Debug Logging**: Added missing debug logging for STT and reasoning pipelines
+
+## [1.2.16] - 2026-01-24
+
+### Fixed
+- **App Startup Hang**: Fixed app initialization timing issues with Electron 36+
+- **Manager Initialization**: Deferred manager initialization until after `app.whenReady()` to prevent hangs
+- **Debug Logger Initialization**: Deferred debugLogger file initialization until `app.whenReady()`
+- **Config Bundling**: Fixed missing config files in production builds
+- **whisper.cpp Binary Version**: Updated whisper.cpp release names and bumped binary version
 
 ## [1.2.15] - 2026-01-22
 

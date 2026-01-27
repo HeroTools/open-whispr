@@ -67,8 +67,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    cp env.example .env
    # Edit .env and add your API keys:
    # OPENAI_API_KEY=your_openai_key
-   # ANTHROPIC_API_KEY=your_anthropic_key  
+   # ANTHROPIC_API_KEY=your_anthropic_key
    # GEMINI_API_KEY=your_gemini_key
+   # GROQ_API_KEY=your_groq_key
    ```
    
    **Method B - In-app configuration**:
@@ -394,6 +395,10 @@ open-whispr/
 - `npm run build:renderer` - Build the React app only
 - `npm run download:whisper-cpp` - Download whisper.cpp for the current platform
 - `npm run download:whisper-cpp:all` - Download whisper.cpp for all platforms
+- `npm run download:llama-server` - Download llama.cpp server for local LLM inference
+- `npm run download:llama-server:all` - Download llama.cpp server for all platforms
+- `npm run download:sherpa-onnx` - Download sherpa-onnx for Parakeet local transcription
+- `npm run download:sherpa-onnx:all` - Download sherpa-onnx for all platforms
 - `npm run compile:native` - Compile native helpers (Globe key listener for macOS, key listener for Windows)
 - `npm run build` - Full build with signing (requires certificates)
 - `npm run build:mac` - macOS build with signing
@@ -402,6 +407,8 @@ open-whispr/
 - `npm run pack` - Build without signing (for personal use)
 - `npm run dist` - Build and package with signing
 - `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run clean` - Clean build artifacts
 - `npm run preview` - Preview production build
 
 ### Architecture
@@ -444,7 +451,7 @@ npm run build:win      # Windows NSIS + Portable
 npm run build:linux    # AppImage + DEB
 ```
 
-Note: build/pack/dist scripts download whisper.cpp for the current platform automatically. For multi-platform packaging from one host, run `npm run download:whisper-cpp:all` first.
+Note: build/pack/dist scripts automatically download whisper.cpp, llama-server, and sherpa-onnx for the current platform. For multi-platform packaging from one host, run the `:all` variants first (`npm run download:whisper-cpp:all`, `npm run download:llama-server:all`, `npm run download:sherpa-onnx:all`).
 
 ## Configuration
 
@@ -465,8 +472,11 @@ LANGUAGE=
 # Optional: Anthropic API Configuration
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
-# Optional: Google Gemini API Configuration  
+# Optional: Google Gemini API Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional: Groq API Configuration (ultra-fast inference)
+GROQ_API_KEY=your_groq_api_key_here
 
 # Optional: Debug mode
 DEBUG=false
@@ -604,7 +614,7 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.2.16
+OpenWhispr is actively maintained and ready for production use. Current version: 1.3.0
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support (macOS, Windows, Linux)
@@ -613,6 +623,8 @@ OpenWhispr is actively maintained and ready for production use. Current version:
 - ✅ Compound hotkey support
 - ✅ Windows Push-to-Talk with native key listener
 - ✅ Custom dictionary for improved transcription accuracy
+- ✅ NVIDIA Parakeet support via sherpa-onnx
+- ✅ GNOME Wayland native global shortcuts
 
 ## Acknowledgments
 
