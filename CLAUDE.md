@@ -2,6 +2,10 @@
 
 This document provides comprehensive technical details about the OpenWhispr project architecture for AI assistants working on the codebase.
 
+## AI Assistant Skills
+
+**IMPORTANT**: When writing or modifying code, always proactively invoke the `code-quality` skill (via `/code-quality`). This skill enforces code quality standards by studying existing codebase patterns before writing code and self-reviewing for quality, consistency, and correctness after completing work. Do not wait for the user to ask — use it automatically on every code task.
+
 ## Project Overview
 
 OpenWhispr is an Electron-based desktop dictation application that uses whisper.cpp for speech-to-text transcription. It supports both local (privacy-focused) and cloud (OpenAI API) processing modes.
