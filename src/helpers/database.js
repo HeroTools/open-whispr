@@ -28,6 +28,14 @@ class DatabaseManager {
         )
       `);
 
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS custom_dictionary (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          word TEXT NOT NULL UNIQUE,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
       return true;
     } catch (error) {
       console.error("Database initialization failed:", error.message);
@@ -92,6 +100,43 @@ class DatabaseManager {
       return { success: result.changes > 0, id };
     } catch (error) {
       console.error("❌ Error deleting transcription:", error);
+      throw error;
+    }
+  }
+
+  getDictionary() {
+    try {
+      if (!this.db) {
+        throw new Error("Database not initialized");
+      }
+      const stmt = this.db.prepare("SELECT word FROM custom_dictionary ORDER BY id ASC");
+      const rows = stmt.all();
+      return rows.map((row) => row.word);
+    } catch (error) {
+      console.error("Error getting dictionary:", error.message);
+      throw error;
+    }
+  }
+
+  setDictionary(words) {
+    try {
+      if (!this.db) {
+        throw new Error("Database not initialized");
+      }
+      const transaction = this.db.transaction((wordList) => {
+        this.db.prepare("DELETE FROM custom_dictionary").run();
+        const insert = this.db.prepare("INSERT OR IGNORE INTO custom_dictionary (word) VALUES (?)");
+        for (const word of wordList) {
+          const trimmed = typeof word === "string" ? word.trim() : "";
+          if (trimmed) {
+            insert.run(trimmed);
+          }
+        }
+      });
+      transaction(words);
+      return { success: true };
+    } catch (error) {
+      console.error("Error setting dictionary:", error.message);
       throw error;
     }
   }

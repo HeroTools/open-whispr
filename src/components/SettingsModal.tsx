@@ -1,5 +1,5 @@
 import React from "react";
-import { Settings, Mic, Brain, User, Sparkles, UserCircle } from "lucide-react";
+import { Settings, Mic, Brain, User, Sparkles, UserCircle, Wrench, BookOpen } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
 
@@ -13,9 +13,11 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
     { id: "account", label: "Account", icon: UserCircle },
     { id: "general", label: "General", icon: Settings },
     { id: "transcription", label: "Transcription Mode", icon: Mic },
-    { id: "aiModels", label: "AI Models", icon: Brain },
+    { id: "dictionary", label: "Custom Dictionary", icon: BookOpen },
+    { id: "aiModels", label: "AI Text Cleanup", icon: Brain },
     { id: "agentConfig", label: "Agent Configuration", icon: User },
     { id: "prompts", label: "AI Prompts", icon: Sparkles },
+    { id: "developer", label: "Troubleshooting", icon: Wrench },
   ];
 
   const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("account");

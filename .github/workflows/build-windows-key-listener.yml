@@ -1,0 +1,72 @@
+name: Build Windows Key Listener
+
+on:
+  push:
+    paths:
+      - 'resources/windows-key-listener.c'
+      - '.github/workflows/build-windows-key-listener.yml'
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., 1.0.0)'
+        required: false
+        default: '1.0.0'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSVC
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup MSVC environment
+        uses: ilammy/msvc-dev-cmd@v1
+
+      - name: Compile Windows Key Listener
+        run: |
+          cl /O2 /nologo resources/windows-key-listener.c /Fe:windows-key-listener.exe user32.lib
+        shell: cmd
+
+      - name: Verify binary
+        run: |
+          if (Test-Path "windows-key-listener.exe") {
+            Write-Host "Binary built successfully"
+            Get-Item "windows-key-listener.exe" | Select-Object Name, Length
+          } else {
+            Write-Error "Binary not found"
+            exit 1
+          }
+        shell: pwsh
+
+      - name: Create zip archive
+        run: |
+          Compress-Archive -Path windows-key-listener.exe -DestinationPath windows-key-listener-win32-x64.zip
+        shell: pwsh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-key-listener
+          path: windows-key-listener-win32-x64.zip
+
+      - name: Create or update release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: windows-key-listener-v${{ inputs.version || '1.0.0' }}
+          name: Windows Key Listener v${{ inputs.version || '1.0.0' }}
+          body: |
+            Prebuilt Windows key listener binary for Push-to-Talk functionality.
+
+            This binary uses Windows Low-Level Keyboard Hook to detect key press/release events.
+          files: windows-key-listener-win32-x64.zip
+          make_latest: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

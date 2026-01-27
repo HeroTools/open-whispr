@@ -61,12 +61,35 @@ export interface WhisperModelInfo {
   description: string;
   size: string;
   sizeMb: number;
+  fileName: string;
+  downloadUrl: string;
   recommended?: boolean;
+}
+
+export interface WhisperModelConfig {
+  url: string;
+  size: number;
+  fileName: string;
 }
 
 export type WhisperModelsMap = Record<string, WhisperModelInfo>;
 
+export interface ParakeetModelInfo {
+  name: string;
+  description: string;
+  size: string;
+  sizeMb: number;
+  language: string;
+  supportedLanguages: string[];
+  recommended?: boolean;
+  downloadUrl: string;
+  extractDir: string;
+}
+
+export type ParakeetModelsMap = Record<string, ParakeetModelInfo>;
+
 interface ModelRegistryData {
+  parakeetModels: ParakeetModelsMap;
   whisperModels: WhisperModelsMap;
   transcriptionProviders: TranscriptionProviderData[];
   cloudProviders: CloudProviderData[];
@@ -284,4 +307,28 @@ export function getCloudModel(modelId: string): CloudModelDefinition | undefined
     if (model) return model;
   }
   return undefined;
+}
+
+export function getParakeetModels(): ParakeetModelsMap {
+  return modelData.parakeetModels;
+}
+
+export function getParakeetModelInfo(modelId: string): ParakeetModelInfo | undefined {
+  return modelData.parakeetModels[modelId];
+}
+
+export const PARAKEET_MODEL_INFO = modelData.parakeetModels;
+
+export function getWhisperModelConfig(modelId: string): WhisperModelConfig | null {
+  const modelInfo = modelData.whisperModels[modelId];
+  if (!modelInfo) return null;
+  return {
+    url: modelInfo.downloadUrl,
+    size: modelInfo.sizeMb * 1_000_000,
+    fileName: modelInfo.fileName,
+  };
+}
+
+export function getValidWhisperModelNames(): string[] {
+  return Object.keys(modelData.whisperModels);
 }

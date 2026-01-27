@@ -2,6 +2,7 @@ import ReasoningService from "../services/ReasoningService";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
+import { isSecureEndpoint } from "../utils/urlUtils";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -34,6 +35,18 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
+  }
+
+  getCustomDictionaryPrompt() {
+    try {
+      const raw = localStorage.getItem("customDictionary");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.join(", ");
+    } catch {
+      // ignore parse errors
+    }
+    return null;
   }
 
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
@@ -89,6 +102,22 @@ class AudioManager {
       const constraints = await this.getAudioConstraints();
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
+      // Log which microphone is actually being used
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        const settings = audioTrack.getSettings();
+        logger.info(
+          "Recording started with microphone",
+          {
+            label: audioTrack.label,
+            deviceId: settings.deviceId?.slice(0, 20) + "...",
+            sampleRate: settings.sampleRate,
+            channelCount: settings.channelCount,
+          },
+          "audio"
+        );
+      }
+
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
@@ -104,6 +133,17 @@ class AudioManager {
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
+
+        // Debug: Log audio blob info
+        logger.info(
+          "Recording stopped",
+          {
+            blobSize: audioBlob.size,
+            blobType: audioBlob.type,
+            chunksCount: this.audioChunks.length,
+          },
+          "audio"
+        );
 
         const durationSeconds = this.recordingStartTime
           ? (Date.now() - this.recordingStartTime) / 1000
@@ -181,12 +221,22 @@ class AudioManager {
 
     try {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
+      const localProvider = localStorage.getItem("localTranscriptionProvider") || "whisper";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
+      const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
 
       let result;
+      let activeModel;
       if (useLocalWhisper) {
-        result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
+        if (localProvider === "nvidia") {
+          activeModel = parakeetModel;
+          result = await this.processWithLocalParakeet(audioBlob, parakeetModel, metadata);
+        } else {
+          activeModel = whisperModel;
+          result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
+        }
       } else {
+        activeModel = this.getTranscriptionModel();
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
 
@@ -195,8 +245,8 @@ class AudioManager {
       const roundTripDurationMs = Math.round(performance.now() - pipelineStart);
 
       const timingData = {
-        mode: useLocalWhisper ? "local" : "cloud",
-        model: useLocalWhisper ? whisperModel : this.getTranscriptionModel(),
+        mode: useLocalWhisper ? `local-${localProvider}` : "cloud",
+        model: activeModel,
         audioDurationMs: metadata.durationSeconds
           ? Math.round(metadata.durationSeconds * 1000)
           : null,
@@ -249,6 +299,12 @@ class AudioManager {
       const options = { model };
       if (language && language !== "auto") {
         options.language = language;
+      }
+
+      // Add custom dictionary as initial prompt to help Whisper recognize specific words
+      const dictionaryPrompt = this.getCustomDictionaryPrompt();
+      if (dictionaryPrompt) {
+        options.initialPrompt = dictionaryPrompt;
       }
 
       logger.debug(
@@ -313,6 +369,80 @@ class AudioManager {
     }
   }
 
+  async processWithLocalParakeet(audioBlob, model = "parakeet-tdt-0.6b-v3", metadata = {}) {
+    const timings = {};
+
+    try {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const language = localStorage.getItem("preferredLanguage");
+      const options = { model };
+      if (language && language !== "auto") {
+        options.language = language;
+      }
+
+      logger.debug(
+        "Parakeet transcription starting",
+        {
+          audioFormat: audioBlob.type,
+          audioSizeBytes: audioBlob.size,
+          model,
+        },
+        "performance"
+      );
+
+      const transcriptionStart = performance.now();
+      const result = await window.electronAPI.transcribeLocalParakeet(arrayBuffer, options);
+      timings.transcriptionProcessingDurationMs = Math.round(
+        performance.now() - transcriptionStart
+      );
+
+      logger.debug(
+        "Parakeet transcription complete",
+        {
+          transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
+          success: result.success,
+        },
+        "performance"
+      );
+
+      if (result.success && result.text) {
+        const reasoningStart = performance.now();
+        const text = await this.processTranscription(result.text, "local-parakeet");
+        timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
+        if (text !== null && text !== undefined) {
+          return { success: true, text: text || result.text, source: "local-parakeet", timings };
+        } else {
+          throw new Error("No text transcribed");
+        }
+      } else if (result.success === false && result.message === "No audio detected") {
+        throw new Error("No audio detected");
+      } else {
+        throw new Error(result.message || result.error || "Parakeet transcription failed");
+      }
+    } catch (error) {
+      if (error.message === "No audio detected") {
+        throw error;
+      }
+
+      const allowOpenAIFallback = localStorage.getItem("allowOpenAIFallback") === "true";
+      const isLocalMode = localStorage.getItem("useLocalWhisper") === "true";
+
+      if (allowOpenAIFallback && isLocalMode) {
+        try {
+          const fallbackResult = await this.processWithOpenAIAPI(audioBlob, metadata);
+          return { ...fallbackResult, source: "openai-fallback" };
+        } catch (fallbackError) {
+          throw new Error(
+            `Parakeet failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`
+          );
+        }
+      } else {
+        throw new Error(`Parakeet failed: ${error.message}`);
+      }
+    }
+  }
+
   async getAPIKey() {
     // Get the current transcription provider
     const provider =
@@ -328,14 +458,33 @@ class AudioManager {
     let apiKey = null;
 
     if (provider === "custom") {
-      // Custom endpoints: API key is optional
-      // Try OpenAI key first as it's commonly used for compatible endpoints
-      apiKey = await window.electronAPI.getOpenAIKey();
-      if (!isValidApiKey(apiKey, "openai")) {
-        apiKey = localStorage.getItem("openaiApiKey");
+      try {
+        apiKey = await window.electronAPI.getCustomTranscriptionKey?.();
+      } catch (err) {
+        logger.debug(
+          "Failed to get custom transcription key via IPC, falling back to localStorage",
+          { error: err?.message },
+          "transcription"
+        );
       }
+      if (!apiKey || !apiKey.trim()) {
+        apiKey = localStorage.getItem("customTranscriptionApiKey") || "";
+      }
+      apiKey = apiKey?.trim() || "";
+
+      logger.debug(
+        "Custom STT API key retrieval",
+        {
+          provider,
+          hasKey: !!apiKey,
+          keyLength: apiKey?.length || 0,
+          keyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "(none)",
+        },
+        "transcription"
+      );
+
       // For custom, we allow null/empty - the endpoint may not require auth
-      if (!isValidApiKey(apiKey, "openai")) {
+      if (!apiKey) {
         apiKey = null;
       }
     } else if (provider === "groq") {
@@ -852,12 +1001,21 @@ class AudioManager {
         formData.append("language", language);
       }
 
+      // Add custom dictionary as prompt hint for cloud transcription
+      const dictionaryPrompt = this.getCustomDictionaryPrompt();
+      if (dictionaryPrompt) {
+        formData.append("prompt", dictionaryPrompt);
+      }
+
       const shouldStream = this.shouldStreamTranscription(model, provider);
       if (shouldStream) {
         formData.append("stream", "true");
       }
 
       const endpoint = this.getTranscriptionEndpoint();
+      const isCustomEndpoint =
+        provider === "custom" ||
+        (!endpoint.includes("api.openai.com") && !endpoint.includes("api.groq.com"));
 
       logger.debug(
         "Making transcription API request",
@@ -865,6 +1023,10 @@ class AudioManager {
           endpoint,
           shouldStream,
           model,
+          provider,
+          isCustomEndpoint,
+          hasApiKey: !!apiKey,
+          apiKeyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "(none)",
         },
         "transcription"
       );
@@ -874,6 +1036,22 @@ class AudioManager {
       if (apiKey) {
         headers.Authorization = `Bearer ${apiKey}`;
       }
+
+      logger.debug(
+        "STT request details",
+        {
+          endpoint,
+          method: "POST",
+          hasAuthHeader: !!apiKey,
+          formDataFields: [
+            "file",
+            "model",
+            language && language !== "auto" ? "language" : null,
+            shouldStream ? "stream" : null,
+          ].filter(Boolean),
+        },
+        "transcription"
+      );
 
       const apiCallStart = performance.now();
       const response = await fetch(endpoint, {
@@ -1092,12 +1270,25 @@ class AudioManager {
         ? localStorage.getItem("cloudTranscriptionBaseUrl") || ""
         : "";
 
+    // Only use custom URL when provider is explicitly "custom"
+    const isCustomEndpoint = currentProvider === "custom";
+
     // Invalidate cache if provider or base URL changed
     if (
       this.cachedTranscriptionEndpoint &&
       (this.cachedEndpointProvider !== currentProvider ||
         this.cachedEndpointBaseUrl !== currentBaseUrl)
     ) {
+      logger.debug(
+        "STT endpoint cache invalidated",
+        {
+          previousProvider: this.cachedEndpointProvider,
+          newProvider: currentProvider,
+          previousBaseUrl: this.cachedEndpointBaseUrl,
+          newBaseUrl: currentBaseUrl,
+        },
+        "transcription"
+      );
       this.cachedTranscriptionEndpoint = null;
     }
 
@@ -1106,37 +1297,89 @@ class AudioManager {
     }
 
     try {
-      const base = currentBaseUrl.trim() || API_ENDPOINTS.TRANSCRIPTION_BASE;
+      // Use custom URL only when provider is "custom", otherwise use provider-specific defaults
+      let base;
+      if (isCustomEndpoint) {
+        base = currentBaseUrl.trim() || API_ENDPOINTS.TRANSCRIPTION_BASE;
+      } else if (currentProvider === "groq") {
+        base = API_ENDPOINTS.GROQ_BASE;
+      } else {
+        // OpenAI or other standard providers
+        base = API_ENDPOINTS.TRANSCRIPTION_BASE;
+      }
+
       const normalizedBase = normalizeBaseUrl(base);
+
+      logger.debug(
+        "STT endpoint resolution",
+        {
+          provider: currentProvider,
+          isCustomEndpoint,
+          rawBaseUrl: currentBaseUrl,
+          normalizedBase,
+          defaultBase: API_ENDPOINTS.TRANSCRIPTION_BASE,
+        },
+        "transcription"
+      );
 
       const cacheResult = (endpoint) => {
         this.cachedTranscriptionEndpoint = endpoint;
         this.cachedEndpointProvider = currentProvider;
         this.cachedEndpointBaseUrl = currentBaseUrl;
+
+        logger.debug(
+          "STT endpoint resolved",
+          {
+            endpoint,
+            provider: currentProvider,
+            isCustomEndpoint,
+            usingDefault: endpoint === API_ENDPOINTS.TRANSCRIPTION,
+          },
+          "transcription"
+        );
+
         return endpoint;
       };
 
       if (!normalizedBase) {
+        logger.debug(
+          "STT endpoint: using default (normalization failed)",
+          { rawBase: base },
+          "transcription"
+        );
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
 
-      const isLocalhost =
-        normalizedBase.includes("://localhost") || normalizedBase.includes("://127.0.0.1");
-      if (!normalizedBase.startsWith("https://") && !isLocalhost) {
-        console.warn("Non-HTTPS endpoint rejected for security. Using default.");
+      // Only validate HTTPS for custom endpoints (known providers are already HTTPS)
+      if (isCustomEndpoint && !isSecureEndpoint(normalizedBase)) {
+        logger.warn(
+          "STT endpoint: HTTPS required, falling back to default",
+          { attemptedUrl: normalizedBase },
+          "transcription"
+        );
         return cacheResult(API_ENDPOINTS.TRANSCRIPTION);
       }
 
       let endpoint;
       if (/\/audio\/(transcriptions|translations)$/i.test(normalizedBase)) {
         endpoint = normalizedBase;
+        logger.debug("STT endpoint: using full path from config", { endpoint }, "transcription");
       } else {
         endpoint = buildApiUrl(normalizedBase, "/audio/transcriptions");
+        logger.debug(
+          "STT endpoint: appending /audio/transcriptions to base",
+          { base: normalizedBase, endpoint },
+          "transcription"
+        );
       }
 
       return cacheResult(endpoint);
     } catch (error) {
-      console.warn("Failed to resolve transcription endpoint:", error);
+      logger.error(
+        "STT endpoint resolution failed",
+        { error: error.message, stack: error.stack },
+        "transcription"
+      );
       this.cachedTranscriptionEndpoint = API_ENDPOINTS.TRANSCRIPTION;
       this.cachedEndpointProvider = currentProvider;
       this.cachedEndpointBaseUrl = currentBaseUrl;

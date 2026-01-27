@@ -1,5 +1,6 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useLocalStorage } from "./useLocalStorage";
+import { useDebouncedCallback } from "./useDebouncedCallback";
 import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
@@ -7,6 +8,8 @@ import ReasoningService from "../services/ReasoningService";
 export interface TranscriptionSettings {
   useLocalWhisper: boolean;
   whisperModel: string;
+  localTranscriptionProvider: string;
+  parakeetModel: string;
   allowOpenAIFallback: boolean;
   allowLocalFallback: boolean;
   fallbackWhisperModel: string;
@@ -14,6 +17,7 @@ export interface TranscriptionSettings {
   cloudTranscriptionProvider: string;
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
+  customDictionary: string[];
 }
 
 export interface ReasoningSettings {
@@ -38,6 +42,8 @@ export interface ApiKeySettings {
   anthropicApiKey: string;
   geminiApiKey: string;
   groqApiKey: string;
+  customTranscriptionApiKey: string;
+  customReasoningApiKey: string;
 }
 
 export function useSettings() {
@@ -47,6 +53,20 @@ export function useSettings() {
   });
 
   const [whisperModel, setWhisperModel] = useLocalStorage("whisperModel", "base", {
+    serialize: String,
+    deserialize: String,
+  });
+
+  const [localTranscriptionProvider, setLocalTranscriptionProvider] = useLocalStorage(
+    "localTranscriptionProvider",
+    "whisper",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [parakeetModel, setParakeetModel] = useLocalStorage("parakeetModel", "", {
     serialize: String,
     deserialize: String,
   });
@@ -115,6 +135,60 @@ export function useSettings() {
     }
   );
 
+  // Custom dictionary for improving transcription of specific words
+  const [customDictionary, setCustomDictionaryRaw] = useLocalStorage<string[]>(
+    "customDictionary",
+    [],
+    {
+      serialize: JSON.stringify,
+      deserialize: (value) => {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      },
+    }
+  );
+
+  // Wrap setter to sync dictionary to SQLite
+  const setCustomDictionary = useCallback(
+    (words: string[]) => {
+      setCustomDictionaryRaw(words);
+      window.electronAPI?.setDictionary(words).catch(() => {
+        // Silently ignore SQLite sync errors
+      });
+    },
+    [setCustomDictionaryRaw]
+  );
+
+  // One-time sync: reconcile localStorage ↔ SQLite on startup
+  const hasRunDictionarySync = useRef(false);
+  useEffect(() => {
+    if (hasRunDictionarySync.current) return;
+    hasRunDictionarySync.current = true;
+
+    const syncDictionary = async () => {
+      if (typeof window === "undefined" || !window.electronAPI?.getDictionary) return;
+      try {
+        const dbWords = await window.electronAPI.getDictionary();
+        if (dbWords.length === 0 && customDictionary.length > 0) {
+          // Seed SQLite from localStorage (first-time migration)
+          await window.electronAPI.setDictionary(customDictionary);
+        } else if (dbWords.length > 0 && customDictionary.length === 0) {
+          // Recover localStorage from SQLite (e.g. localStorage was cleared)
+          setCustomDictionaryRaw(dbWords);
+        }
+      } catch {
+        // Silently ignore sync errors
+      }
+    };
+
+    syncDictionary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Reasoning settings
   const [useReasoningModel, setUseReasoningModel] = useLocalStorage("useReasoningModel", true, {
     serialize: String,
@@ -147,14 +221,84 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Custom endpoint API keys - synced to .env like other keys
+  const [customTranscriptionApiKey, setCustomTranscriptionApiKeyLocal] = useLocalStorage(
+    "customTranscriptionApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [customReasoningApiKey, setCustomReasoningApiKeyLocal] = useLocalStorage(
+    "customReasoningApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  // Sync API keys from main process on first mount (if localStorage was cleared)
+  const hasRunApiKeySync = useRef(false);
+  useEffect(() => {
+    if (hasRunApiKeySync.current) return;
+    hasRunApiKeySync.current = true;
+
+    const syncKeys = async () => {
+      if (typeof window === "undefined" || !window.electronAPI) return;
+
+      // Only sync keys that are missing from localStorage
+      if (!openaiApiKey) {
+        const envKey = await window.electronAPI.getOpenAIKey?.();
+        if (envKey) setOpenaiApiKeyLocal(envKey);
+      }
+      if (!anthropicApiKey) {
+        const envKey = await window.electronAPI.getAnthropicKey?.();
+        if (envKey) setAnthropicApiKeyLocal(envKey);
+      }
+      if (!geminiApiKey) {
+        const envKey = await window.electronAPI.getGeminiKey?.();
+        if (envKey) setGeminiApiKeyLocal(envKey);
+      }
+      if (!groqApiKey) {
+        const envKey = await window.electronAPI.getGroqKey?.();
+        if (envKey) setGroqApiKeyLocal(envKey);
+      }
+      if (!customTranscriptionApiKey) {
+        const envKey = await window.electronAPI.getCustomTranscriptionKey?.();
+        if (envKey) setCustomTranscriptionApiKeyLocal(envKey);
+      }
+      if (!customReasoningApiKey) {
+        const envKey = await window.electronAPI.getCustomReasoningKey?.();
+        if (envKey) setCustomReasoningApiKeyLocal(envKey);
+      }
+    };
+
+    syncKeys().catch(() => {
+      // Silently ignore sync errors
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const debouncedPersistToEnv = useDebouncedCallback(() => {
+    if (typeof window !== "undefined" && window.electronAPI?.saveAllKeysToEnv) {
+      window.electronAPI.saveAllKeysToEnv().catch(() => {
+        // Silently ignore persistence errors
+      });
+    }
+  }, 1000);
+
   // Wrapped setters that sync to Electron IPC and invalidate cache
   const setOpenaiApiKey = useCallback(
     (key: string) => {
       setOpenaiApiKeyLocal(key);
       window.electronAPI?.saveOpenAIKey?.(key);
       ReasoningService.clearApiKeyCache("openai");
+      debouncedPersistToEnv();
     },
-    [setOpenaiApiKeyLocal]
+    [setOpenaiApiKeyLocal, debouncedPersistToEnv]
   );
 
   const setAnthropicApiKey = useCallback(
@@ -162,8 +306,9 @@ export function useSettings() {
       setAnthropicApiKeyLocal(key);
       window.electronAPI?.saveAnthropicKey?.(key);
       ReasoningService.clearApiKeyCache("anthropic");
+      debouncedPersistToEnv();
     },
-    [setAnthropicApiKeyLocal]
+    [setAnthropicApiKeyLocal, debouncedPersistToEnv]
   );
 
   const setGeminiApiKey = useCallback(
@@ -171,8 +316,9 @@ export function useSettings() {
       setGeminiApiKeyLocal(key);
       window.electronAPI?.saveGeminiKey?.(key);
       ReasoningService.clearApiKeyCache("gemini");
+      debouncedPersistToEnv();
     },
-    [setGeminiApiKeyLocal]
+    [setGeminiApiKeyLocal, debouncedPersistToEnv]
   );
 
   const setGroqApiKey = useCallback(
@@ -180,23 +326,67 @@ export function useSettings() {
       setGroqApiKeyLocal(key);
       window.electronAPI?.saveGroqKey?.(key);
       ReasoningService.clearApiKeyCache("groq");
+      debouncedPersistToEnv();
     },
-    [setGroqApiKeyLocal]
+    [setGroqApiKeyLocal, debouncedPersistToEnv]
+  );
+
+  const setCustomTranscriptionApiKey = useCallback(
+    (key: string) => {
+      setCustomTranscriptionApiKeyLocal(key);
+      window.electronAPI?.saveCustomTranscriptionKey?.(key);
+      debouncedPersistToEnv();
+    },
+    [setCustomTranscriptionApiKeyLocal, debouncedPersistToEnv]
+  );
+
+  const setCustomReasoningApiKey = useCallback(
+    (key: string) => {
+      setCustomReasoningApiKeyLocal(key);
+      window.electronAPI?.saveCustomReasoningKey?.(key);
+      ReasoningService.clearApiKeyCache("custom");
+      debouncedPersistToEnv();
+    },
+    [setCustomReasoningApiKeyLocal, debouncedPersistToEnv]
   );
 
   // Hotkey
-  const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {
+  const [dictationKey, setDictationKeyLocal] = useLocalStorage("dictationKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [activationMode, setActivationMode] = useLocalStorage<"tap" | "push">(
+  // Wrap setDictationKey to notify main process (for Windows Push-to-Talk)
+  const setDictationKey = useCallback(
+    (key: string) => {
+      setDictationKeyLocal(key);
+      // Notify main process so Windows key listener can restart with new key
+      if (typeof window !== "undefined" && window.electronAPI?.notifyHotkeyChanged) {
+        window.electronAPI.notifyHotkeyChanged(key);
+      }
+    },
+    [setDictationKeyLocal]
+  );
+
+  const [activationMode, setActivationModeLocal] = useLocalStorage<"tap" | "push">(
     "activationMode",
     "tap",
     {
       serialize: String,
       deserialize: (value) => (value === "push" ? "push" : "tap"),
     }
+  );
+
+  // Wrap setActivationMode to notify main process (for Windows Push-to-Talk)
+  const setActivationMode = useCallback(
+    (mode: "tap" | "push") => {
+      setActivationModeLocal(mode);
+      // Notify main process so Windows key listener can start/stop
+      if (typeof window !== "undefined" && window.electronAPI?.notifyActivationModeChanged) {
+        window.electronAPI.notifyActivationModeChanged(mode);
+      }
+    },
+    [setActivationModeLocal]
   );
 
   // Microphone settings
@@ -218,6 +408,9 @@ export function useSettings() {
     (settings: Partial<TranscriptionSettings>) => {
       if (settings.useLocalWhisper !== undefined) setUseLocalWhisper(settings.useLocalWhisper);
       if (settings.whisperModel !== undefined) setWhisperModel(settings.whisperModel);
+      if (settings.localTranscriptionProvider !== undefined)
+        setLocalTranscriptionProvider(settings.localTranscriptionProvider);
+      if (settings.parakeetModel !== undefined) setParakeetModel(settings.parakeetModel);
       if (settings.allowOpenAIFallback !== undefined)
         setAllowOpenAIFallback(settings.allowOpenAIFallback);
       if (settings.allowLocalFallback !== undefined)
@@ -232,10 +425,13 @@ export function useSettings() {
         setCloudTranscriptionModel(settings.cloudTranscriptionModel);
       if (settings.cloudTranscriptionBaseUrl !== undefined)
         setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
+      if (settings.customDictionary !== undefined) setCustomDictionary(settings.customDictionary);
     },
     [
       setUseLocalWhisper,
       setWhisperModel,
+      setLocalTranscriptionProvider,
+      setParakeetModel,
       setAllowOpenAIFallback,
       setAllowLocalFallback,
       setFallbackWhisperModel,
@@ -243,6 +439,7 @@ export function useSettings() {
       setCloudTranscriptionProvider,
       setCloudTranscriptionModel,
       setCloudTranscriptionBaseUrl,
+      setCustomDictionary,
     ]
   );
 
@@ -271,6 +468,8 @@ export function useSettings() {
   return {
     useLocalWhisper,
     whisperModel,
+    localTranscriptionProvider,
+    parakeetModel,
     allowOpenAIFallback,
     allowLocalFallback,
     fallbackWhisperModel,
@@ -279,6 +478,7 @@ export function useSettings() {
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
+    customDictionary,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -289,6 +489,8 @@ export function useSettings() {
     dictationKey,
     setUseLocalWhisper,
     setWhisperModel,
+    setLocalTranscriptionProvider,
+    setParakeetModel,
     setAllowOpenAIFallback,
     setAllowLocalFallback,
     setFallbackWhisperModel,
@@ -297,6 +499,7 @@ export function useSettings() {
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
+    setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider: (provider: string) => {
@@ -308,6 +511,10 @@ export function useSettings() {
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
+    customReasoningApiKey,
+    setCustomReasoningApiKey,
     setDictationKey,
     activationMode,
     setActivationMode,

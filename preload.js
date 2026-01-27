@@ -47,6 +47,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   clearTranscriptions: () => ipcRenderer.invoke("db-clear-transcriptions"),
   deleteTranscription: (id) =>
     ipcRenderer.invoke("db-delete-transcription", id),
+  // Dictionary functions
+  getDictionary: () => ipcRenderer.invoke("db-get-dictionary"),
+  setDictionary: (words) => ipcRenderer.invoke("db-set-dictionary", words),
+
   onTranscriptionAdded: (callback) => {
     const listener = (_event, transcription) => callback?.(transcription);
     ipcRenderer.on("transcription-added", listener);
@@ -69,9 +73,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   saveOpenAIKey: (key) => ipcRenderer.invoke("save-openai-key", key),
   createProductionEnvFile: (key) =>
     ipcRenderer.invoke("create-production-env-file", key),
-
-  // Settings management
-  saveSettings: (settings) => ipcRenderer.invoke("save-settings", settings),
 
   // Clipboard functions
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
@@ -103,6 +104,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
   whisperServerStop: () => ipcRenderer.invoke("whisper-server-stop"),
   whisperServerStatus: () => ipcRenderer.invoke("whisper-server-status"),
 
+  // Local Parakeet (NVIDIA) functions
+  transcribeLocalParakeet: (audioBlob, options) =>
+    ipcRenderer.invoke("transcribe-local-parakeet", audioBlob, options),
+  checkParakeetInstallation: () =>
+    ipcRenderer.invoke("check-parakeet-installation"),
+  downloadParakeetModel: (modelName) =>
+    ipcRenderer.invoke("download-parakeet-model", modelName),
+  onParakeetDownloadProgress: registerListener("parakeet-download-progress"),
+  checkParakeetModelStatus: (modelName) =>
+    ipcRenderer.invoke("check-parakeet-model-status", modelName),
+  listParakeetModels: () => ipcRenderer.invoke("list-parakeet-models"),
+  deleteParakeetModel: (modelName) =>
+    ipcRenderer.invoke("delete-parakeet-model", modelName),
+  deleteAllParakeetModels: () => ipcRenderer.invoke("delete-all-parakeet-models"),
+  cancelParakeetDownload: () => ipcRenderer.invoke("cancel-parakeet-download"),
+  getParakeetDiagnostics: () => ipcRenderer.invoke("get-parakeet-diagnostics"),
+
+  // Parakeet server functions (faster repeated transcriptions)
+  parakeetServerStart: (modelName) =>
+    ipcRenderer.invoke("parakeet-server-start", modelName),
+  parakeetServerStop: () => ipcRenderer.invoke("parakeet-server-stop"),
+  parakeetServerStatus: () => ipcRenderer.invoke("parakeet-server-status"),
+
   // Window control functions
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),
   windowMaximize: () => ipcRenderer.invoke("window-maximize"),
@@ -114,7 +138,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Cleanup function
   cleanupApp: () => ipcRenderer.invoke("cleanup-app"),
   updateHotkey: (hotkey) => ipcRenderer.invoke("update-hotkey", hotkey),
-  setHotkeyListeningMode: (enabled) => ipcRenderer.invoke("set-hotkey-listening-mode", enabled),
+  setHotkeyListeningMode: (enabled, newHotkey) =>
+    ipcRenderer.invoke("set-hotkey-listening-mode", enabled, newHotkey),
+  getHotkeyModeInfo: () => ipcRenderer.invoke("get-hotkey-mode-info"),
   startWindowDrag: () => ipcRenderer.invoke("start-window-drag"),
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
@@ -166,6 +192,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
 
+  // Custom endpoint API keys
+  getCustomTranscriptionKey: () => ipcRenderer.invoke("get-custom-transcription-key"),
+  saveCustomTranscriptionKey: (key) => ipcRenderer.invoke("save-custom-transcription-key", key),
+  getCustomReasoningKey: () => ipcRenderer.invoke("get-custom-reasoning-key"),
+  saveCustomReasoningKey: (key) => ipcRenderer.invoke("save-custom-reasoning-key", key),
+
+  saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
+
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) => 
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),
@@ -180,9 +214,19 @@ contextBridge.exposeInMainWorld("electronAPI", {
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
   llamaCppUninstall: () => ipcRenderer.invoke("llama-cpp-uninstall"),
-  
+
+  // llama-server
+  llamaServerStart: (modelId) => ipcRenderer.invoke("llama-server-start", modelId),
+  llamaServerStop: () => ipcRenderer.invoke("llama-server-stop"),
+  llamaServerStatus: () => ipcRenderer.invoke("llama-server-status"),
+
   getLogLevel: () => ipcRenderer.invoke("get-log-level"),
   log: (entry) => ipcRenderer.invoke("app-log", entry),
+
+  // Debug logging management
+  getDebugState: () => ipcRenderer.invoke("get-debug-state"),
+  setDebugLogging: (enabled) => ipcRenderer.invoke("set-debug-logging", enabled),
+  openLogsFolder: () => ipcRenderer.invoke("open-logs-folder"),
 
   // System settings helpers for microphone/audio permissions
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
@@ -209,9 +253,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("hotkey-registration-failed", listener);
     return () => ipcRenderer.removeListener("hotkey-registration-failed", listener);
   },
+  onWindowsPushToTalkUnavailable: registerListener("windows-ptt-unavailable"),
 
-  // Remove all listeners for a channel
-  removeAllListeners: (channel) => {
-    ipcRenderer.removeAllListeners(channel);
-  },
+  // Notify main process of activation mode changes (for Windows Push-to-Talk)
+  notifyActivationModeChanged: (mode) => ipcRenderer.send("activation-mode-changed", mode),
+  notifyHotkeyChanged: (hotkey) => ipcRenderer.send("hotkey-changed", hotkey),
+
+  // Auto-start management
+  getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
+  setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),
 });

@@ -10,6 +10,8 @@ import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constant
 import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import { modelRegistry } from "../models/ModelRegistry";
 import { getProviderIcon } from "../utils/providerIcons";
+import { isSecureEndpoint } from "../utils/urlUtils";
+import { createExternalLinkHandler } from "../utils/externalLinks";
 
 type CloudModelOption = {
   value: string;
@@ -57,6 +59,8 @@ interface ReasoningModelSelectorProps {
   setGeminiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
+  customReasoningApiKey?: string;
+  setCustomReasoningApiKey?: (key: string) => void;
   showAlertDialog: (dialog: { title: string; description: string }) => void;
 }
 
@@ -77,6 +81,8 @@ export default function ReasoningModelSelector({
   setGeminiApiKey,
   groqApiKey,
   setGroqApiKey,
+  customReasoningApiKey = "",
+  setCustomReasoningApiKey,
 }: ReasoningModelSelectorProps) {
   const [selectedMode, setSelectedMode] = useState<"cloud" | "local">("cloud");
   const [selectedCloudProvider, setSelectedCloudProvider] = useState("openai");
@@ -145,11 +151,9 @@ export default function ReasoningModelSelector({
       let apiKey: string | undefined;
 
       try {
-        const keyFromState = openaiApiKey?.trim();
-        apiKey =
-          keyFromState && keyFromState.length > 0
-            ? keyFromState
-            : await window.electronAPI?.getOpenAIKey?.();
+        // Use the custom reasoning API key for custom endpoints
+        const keyFromState = customReasoningApiKey?.trim();
+        apiKey = keyFromState && keyFromState.length > 0 ? keyFromState : undefined;
 
         if (!normalizedBase.includes("://")) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
@@ -161,13 +165,9 @@ export default function ReasoningModelSelector({
           return;
         }
 
-        const isLocalhost =
-          normalizedBase.includes("://localhost") || normalizedBase.includes("://127.0.0.1");
-        if (!normalizedBase.startsWith("https://") && !isLocalhost) {
+        if (!isSecureEndpoint(normalizedBase)) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-            setCustomModelsError(
-              "Only HTTPS endpoints are allowed (except localhost for testing)."
-            );
+            setCustomModelsError("HTTPS required (HTTP allowed for local network only).");
             setCustomModelsLoading(false);
           }
           return;
@@ -247,7 +247,7 @@ export default function ReasoningModelSelector({
         }
       }
     },
-    [cloudReasoningBaseUrl, openaiApiKey, reasoningModel, setReasoningModel]
+    [cloudReasoningBaseUrl, customReasoningApiKey, reasoningModel, setReasoningModel]
   );
 
   const trimmedCustomBase = customBaseInput.trim();
@@ -307,11 +307,22 @@ export default function ReasoningModelSelector({
 
   const handleApplyCustomBase = useCallback(() => {
     const trimmedBase = customBaseInput.trim();
-    setCustomBaseInput(trimmedBase);
-    setCloudReasoningBaseUrl(trimmedBase);
+    const normalized = trimmedBase ? normalizeBaseUrl(trimmedBase) : trimmedBase;
+    setCustomBaseInput(normalized);
+    setCloudReasoningBaseUrl(normalized);
     lastLoadedBaseRef.current = null;
-    loadRemoteModels(trimmedBase, true);
+    loadRemoteModels(normalized, true);
   }, [customBaseInput, setCloudReasoningBaseUrl, loadRemoteModels]);
+
+  const handleBaseUrlBlur = useCallback(() => {
+    const trimmedBase = customBaseInput.trim();
+    if (!trimmedBase) return;
+
+    // Auto-apply on blur if changed
+    if (trimmedBase !== (cloudReasoningBaseUrl || "").trim()) {
+      handleApplyCustomBase();
+    }
+  }, [customBaseInput, cloudReasoningBaseUrl, handleApplyCustomBase]);
 
   const handleResetCustomBase = useCallback(() => {
     const defaultBase = API_ENDPOINTS.OPENAI_BASE;
@@ -553,45 +564,69 @@ export default function ReasoningModelSelector({
                 <div className="p-4">
                   {selectedCloudProvider === "custom" ? (
                     <>
+                      {/* 1. Endpoint URL - TOP */}
                       <div className="space-y-3">
-                        <h4 className="font-medium text-gray-900">Endpoint Settings</h4>
+                        <h4 className="font-medium text-gray-900">Endpoint URL</h4>
                         <Input
                           value={customBaseInput}
                           onChange={(event) => setCustomBaseInput(event.target.value)}
+                          onBlur={handleBaseUrlBlur}
                           placeholder="https://api.openai.com/v1"
                           className="text-sm"
                         />
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={handleResetCustomBase}
-                          >
-                            Reset to Default
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            onClick={handleRefreshCustomModels}
-                            disabled={
-                              customModelsLoading || (!trimmedCustomBase && !hasSavedCustomBase)
-                            }
-                          >
-                            {customModelsLoading
-                              ? "Loading models..."
-                              : isCustomBaseDirty
-                                ? "Apply & Refresh"
-                                : "Refresh Models"}
-                          </Button>
+                        <p className="text-xs text-gray-500">
+                          Examples:{" "}
+                          <code className="text-purple-600">http://localhost:11434/v1</code>{" "}
+                          (Ollama),{" "}
+                          <code className="text-purple-600">http://localhost:8080/v1</code>{" "}
+                          (LocalAI).
+                        </p>
+                      </div>
+
+                      {/* 2. API Key - SECOND */}
+                      <div className="space-y-3 pt-4">
+                        <h4 className="font-medium text-gray-900">API Key (Optional)</h4>
+                        <ApiKeyInput
+                          apiKey={customReasoningApiKey}
+                          setApiKey={setCustomReasoningApiKey || (() => {})}
+                          label=""
+                          helpText="Optional. Sent as a Bearer token for authentication. This is separate from your OpenAI API key."
+                        />
+                      </div>
+
+                      {/* 3. Model Selection - THIRD */}
+                      <div className="space-y-3 pt-4">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-medium text-gray-700">Available Models</h4>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={handleResetCustomBase}
+                              className="text-xs"
+                            >
+                              Reset
+                            </Button>
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              onClick={handleRefreshCustomModels}
+                              disabled={
+                                customModelsLoading || (!trimmedCustomBase && !hasSavedCustomBase)
+                              }
+                              className="text-xs"
+                            >
+                              {customModelsLoading
+                                ? "Loading..."
+                                : isCustomBaseDirty
+                                  ? "Apply & Refresh"
+                                  : "Refresh"}
+                            </Button>
+                          </div>
                         </div>
-                        {isCustomBaseDirty && (
-                          <p className="text-xs text-amber-600">
-                            Apply the new base URL to refresh models.
-                          </p>
-                        )}
-                        <p className="text-xs text-gray-600">
+                        <p className="text-xs text-gray-500">
                           We'll query{" "}
                           <code>
                             {hasCustomBase
@@ -600,26 +635,23 @@ export default function ReasoningModelSelector({
                           </code>{" "}
                           for available models.
                         </p>
-                      </div>
-
-                      <div className="space-y-3 pt-4 border-t border-gray-200">
-                        <h4 className="font-medium text-gray-900">Authentication</h4>
-                        <ApiKeyInput
-                          apiKey={openaiApiKey}
-                          setApiKey={setOpenaiApiKey}
-                          helpText="Optional. Added as a Bearer token for your custom endpoint."
-                        />
-                      </div>
-
-                      <div className="space-y-3 pt-4 border-t border-gray-200">
-                        <h4 className="text-sm font-medium text-gray-700">Available Models</h4>
+                        {isCustomBaseDirty && (
+                          <p className="text-xs text-blue-600">
+                            Models will reload when you click away from the URL field or click
+                            "Apply & Refresh".
+                          </p>
+                        )}
                         {!hasCustomBase && (
-                          <p className="text-xs text-amber-600">Enter a base URL to load models.</p>
+                          <p className="text-xs text-amber-600">
+                            Enter an endpoint URL above to load models.
+                          </p>
                         )}
                         {hasCustomBase && (
                           <>
                             {customModelsLoading && (
-                              <p className="text-xs text-blue-600">Fetching model list...</p>
+                              <p className="text-xs text-blue-600">
+                                Fetching model list from endpoint...
+                              </p>
                             )}
                             {customModelsError && (
                               <p className="text-xs text-red-600">{customModelsError}</p>
@@ -628,7 +660,7 @@ export default function ReasoningModelSelector({
                               !customModelsError &&
                               customModelOptions.length === 0 && (
                                 <p className="text-xs text-amber-600">
-                                  No models returned by this endpoint.
+                                  No models returned. Check your endpoint URL.
                                 </p>
                               )}
                           </>
@@ -642,110 +674,116 @@ export default function ReasoningModelSelector({
                     </>
                   ) : (
                     <>
-                      <div className="space-y-3">
+                      {/* 1. API Key - TOP */}
+                      {selectedCloudProvider === "openai" && (
+                        <div className="space-y-3">
+                          <div className="flex items-baseline justify-between">
+                            <h4 className="font-medium text-gray-900">API Key</h4>
+                            <a
+                              href="https://platform.openai.com/api-keys"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={createExternalLinkHandler(
+                                "https://platform.openai.com/api-keys"
+                              )}
+                              className="text-xs text-blue-600 hover:text-blue-700 underline cursor-pointer"
+                            >
+                              Get your API key →
+                            </a>
+                          </div>
+                          <ApiKeyInput
+                            apiKey={openaiApiKey}
+                            setApiKey={setOpenaiApiKey}
+                            label=""
+                            helpText=""
+                          />
+                        </div>
+                      )}
+
+                      {selectedCloudProvider === "anthropic" && (
+                        <div className="space-y-3">
+                          <div className="flex items-baseline justify-between">
+                            <h4 className="font-medium text-gray-900">API Key</h4>
+                            <a
+                              href="https://console.anthropic.com/settings/keys"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={createExternalLinkHandler(
+                                "https://console.anthropic.com/settings/keys"
+                              )}
+                              className="text-xs text-blue-600 hover:text-blue-700 underline cursor-pointer"
+                            >
+                              Get your API key →
+                            </a>
+                          </div>
+                          <ApiKeyInput
+                            apiKey={anthropicApiKey}
+                            setApiKey={setAnthropicApiKey}
+                            placeholder="sk-ant-..."
+                            label=""
+                            helpText=""
+                          />
+                        </div>
+                      )}
+
+                      {selectedCloudProvider === "gemini" && (
+                        <div className="space-y-3">
+                          <div className="flex items-baseline justify-between">
+                            <h4 className="font-medium text-gray-900">API Key</h4>
+                            <a
+                              href="https://aistudio.google.com/app/api-keys"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={createExternalLinkHandler(
+                                "https://aistudio.google.com/app/api-keys"
+                              )}
+                              className="text-xs text-blue-600 hover:text-blue-700 underline cursor-pointer"
+                            >
+                              Get your API key →
+                            </a>
+                          </div>
+                          <ApiKeyInput
+                            apiKey={geminiApiKey}
+                            setApiKey={setGeminiApiKey}
+                            placeholder="AIza..."
+                            label=""
+                            helpText=""
+                          />
+                        </div>
+                      )}
+
+                      {selectedCloudProvider === "groq" && (
+                        <div className="space-y-3">
+                          <div className="flex items-baseline justify-between">
+                            <h4 className="font-medium text-gray-900">API Key</h4>
+                            <a
+                              href="https://console.groq.com/keys"
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={createExternalLinkHandler("https://console.groq.com/keys")}
+                              className="text-xs text-blue-600 hover:text-blue-700 underline cursor-pointer"
+                            >
+                              Get your API key →
+                            </a>
+                          </div>
+                          <ApiKeyInput
+                            apiKey={groqApiKey}
+                            setApiKey={setGroqApiKey}
+                            placeholder="gsk_..."
+                            label=""
+                            helpText=""
+                          />
+                        </div>
+                      )}
+
+                      {/* 2. Model Selection - BOTTOM */}
+                      <div className="pt-4 space-y-3">
                         <h4 className="text-sm font-medium text-gray-700">Select Model</h4>
                         <ModelCardList
                           models={selectedCloudModels}
                           selectedModel={reasoningModel}
                           onModelSelect={setReasoningModel}
                         />
-                      </div>
-
-                      <div className="mt-4 pt-4 border-t border-gray-200">
-                        {selectedCloudProvider === "openai" && (
-                          <div className="space-y-3">
-                            <h4 className="font-medium text-gray-900">API Configuration</h4>
-                            <ApiKeyInput
-                              apiKey={openaiApiKey}
-                              setApiKey={setOpenaiApiKey}
-                              helpText={
-                                <>
-                                  Need an API key?{" "}
-                                  <a
-                                    href="https://platform.openai.com"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 underline"
-                                  >
-                                    platform.openai.com
-                                  </a>
-                                </>
-                              }
-                            />
-                          </div>
-                        )}
-
-                        {selectedCloudProvider === "anthropic" && (
-                          <div className="space-y-3">
-                            <h4 className="font-medium text-gray-900">API Configuration</h4>
-                            <ApiKeyInput
-                              apiKey={anthropicApiKey}
-                              setApiKey={setAnthropicApiKey}
-                              placeholder="sk-ant-..."
-                              helpText={
-                                <>
-                                  Need an API key?{" "}
-                                  <a
-                                    href="https://console.anthropic.com"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 underline"
-                                  >
-                                    console.anthropic.com
-                                  </a>
-                                </>
-                              }
-                            />
-                          </div>
-                        )}
-
-                        {selectedCloudProvider === "gemini" && (
-                          <div className="space-y-3">
-                            <h4 className="font-medium text-gray-900">API Configuration</h4>
-                            <ApiKeyInput
-                              apiKey={geminiApiKey}
-                              setApiKey={setGeminiApiKey}
-                              placeholder="AIza..."
-                              helpText={
-                                <>
-                                  Need an API key?{" "}
-                                  <a
-                                    href="https://makersuite.google.com/app/apikey"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 underline"
-                                  >
-                                    makersuite.google.com
-                                  </a>
-                                </>
-                              }
-                            />
-                          </div>
-                        )}
-
-                        {selectedCloudProvider === "groq" && (
-                          <div className="space-y-3">
-                            <h4 className="font-medium text-gray-900">API Configuration</h4>
-                            <ApiKeyInput
-                              apiKey={groqApiKey}
-                              setApiKey={setGroqApiKey}
-                              placeholder="gsk_..."
-                              helpText={
-                                <>
-                                  Need an API key?{" "}
-                                  <a
-                                    href="https://console.groq.com"
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-blue-600 underline"
-                                  >
-                                    console.groq.com
-                                  </a>
-                                </>
-                              }
-                            />
-                          </div>
-                        )}
                       </div>
                     </>
                   )}

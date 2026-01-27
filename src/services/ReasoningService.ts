@@ -3,12 +3,15 @@ import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../config/prompts";
 import logger from "../utils/logger";
+import { isSecureEndpoint } from "../utils/urlUtils";
 
-export const DEFAULT_PROMPTS = {
-  agent: `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`,
-  regular: `Process and improve the following text:\n\n{{text}}\n\nImproved text:`,
-};
+/**
+ * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
+ * Kept for backwards compatibility with PromptStudio UI
+ */
+export const DEFAULT_PROMPTS = LEGACY_PROMPTS;
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
@@ -28,15 +31,42 @@ class ReasoningService extends BaseReasoningService {
     }
 
     try {
+      const provider = window.localStorage.getItem("reasoningProvider") || "";
+      const isCustomProvider = provider === "custom";
+
+      if (!isCustomProvider) {
+        logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+          hasCustomUrl: false,
+          provider,
+          reason: "Provider is not 'custom', using default OpenAI endpoint",
+          defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+        });
+        return API_ENDPOINTS.OPENAI_BASE;
+      }
+
       const stored = window.localStorage.getItem("cloudReasoningBaseUrl") || "";
       const trimmed = stored.trim();
 
       // If no custom URL is stored, use the default
       if (!trimmed) {
+        logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+          hasCustomUrl: false,
+          provider,
+          usingDefault: true,
+          defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+        });
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
       const normalized = normalizeBaseUrl(trimmed) || API_ENDPOINTS.OPENAI_BASE;
+
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+        hasCustomUrl: true,
+        provider,
+        rawUrl: trimmed,
+        normalizedUrl: normalized,
+        defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+      });
 
       // Don't use the custom URL if it's a known non-OpenAI provider URL
       // These should be handled by their dedicated provider methods
@@ -55,19 +85,26 @@ class ReasoningService extends BaseReasoningService {
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
-      // Security: Only allow HTTPS endpoints (except localhost for development)
-      const isLocalhost =
-        normalized.includes("://localhost") || normalized.includes("://127.0.0.1");
-      if (!normalized.startsWith("https://") && !isLocalhost) {
+      if (!isSecureEndpoint(normalized)) {
         logger.logReasoning("OPENAI_BASE_REJECTED", {
-          reason: "Non-HTTPS endpoint rejected for security",
+          reason: "HTTPS required (HTTP allowed for local network only)",
           attempted: normalized,
         });
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_RESOLVED", {
+        customEndpoint: normalized,
+        isCustom: true,
+        provider,
+      });
+
       return normalized;
-    } catch {
+    } catch (error) {
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_ERROR", {
+        error: (error as Error).message,
+        fallbackTo: API_ENDPOINTS.OPENAI_BASE,
+      });
       return API_ENDPOINTS.OPENAI_BASE;
     }
   }
@@ -146,7 +183,32 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
-  private async getApiKey(provider: "openai" | "anthropic" | "gemini" | "groq"): Promise<string> {
+  private async getApiKey(
+    provider: "openai" | "anthropic" | "gemini" | "groq" | "custom"
+  ): Promise<string> {
+    if (provider === "custom") {
+      let customKey = "";
+      try {
+        customKey = (await window.electronAPI?.getCustomReasoningKey?.()) || "";
+      } catch (err) {
+        logger.logReasoning("CUSTOM_KEY_IPC_FALLBACK", { error: (err as Error)?.message });
+      }
+      if (!customKey || !customKey.trim()) {
+        customKey = window.localStorage?.getItem("customReasoningApiKey") || "";
+      }
+      const trimmedKey = customKey.trim();
+
+      logger.logReasoning("CUSTOM_KEY_RETRIEVAL", {
+        provider,
+        hasKey: !!trimmedKey,
+        keyLength: trimmedKey.length,
+        keyPreview: trimmedKey ? `${trimmedKey.substring(0, 8)}...` : "none",
+      });
+
+      // Custom endpoints may not require an API key
+      return trimmedKey;
+    }
+
     let apiKey = this.apiKeyCache.get(provider);
 
     logger.logReasoning(`${provider.toUpperCase()}_KEY_RETRIEVAL`, {
@@ -209,9 +271,8 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt =
-      "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-    const userPrompt = this.getReasoningPrompt(text, agentName, config);
+    const systemPrompt = this.getSystemPrompt(agentName);
+    const userPrompt = text;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -236,8 +297,9 @@ class ReasoningService extends BaseReasoningService {
     };
 
     // Check model registry for provider-specific options
+    // Note: chat_template_kwargs is not supported by Groq's API
     const modelDef = getCloudModel(model);
-    if (modelDef?.disableThinking) {
+    if (modelDef?.disableThinking && providerName.toLowerCase() !== "groq") {
       requestBody.chat_template_kwargs = { enable_thinking: false };
       logger.logReasoning("THINKING_DISABLED", { model, provider: providerName });
     }
@@ -411,9 +473,13 @@ class ReasoningService extends BaseReasoningService {
     agentName: string | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
+    const reasoningProvider = window.localStorage?.getItem("reasoningProvider") || "";
+    const isCustomProvider = reasoningProvider === "custom";
+
     logger.logReasoning("OPENAI_START", {
       model,
       agentName,
+      isCustomProvider,
       hasApiKey: false, // Will update after fetching
     });
 
@@ -421,7 +487,7 @@ class ReasoningService extends BaseReasoningService {
       throw new Error("Already processing a request");
     }
 
-    const apiKey = await this.getApiKey("openai");
+    const apiKey = await this.getApiKey(isCustomProvider ? "custom" : "openai");
 
     logger.logReasoning("OPENAI_API_KEY", {
       hasApiKey: !!apiKey,
@@ -431,9 +497,8 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt =
-        "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
+      const systemPrompt = this.getSystemPrompt(agentName);
+      const userPrompt = text;
 
       // Build messages array (used by both APIs)
       const messages = [
@@ -446,12 +511,24 @@ class ReasoningService extends BaseReasoningService {
 
       const openAiBase = this.getConfiguredOpenAIBase();
       const endpointCandidates = this.getOpenAIEndpointCandidates(openAiBase);
+      const isCustomEndpoint = openAiBase !== API_ENDPOINTS.OPENAI_BASE;
 
       logger.logReasoning("OPENAI_ENDPOINTS", {
         base: openAiBase,
+        isCustomEndpoint,
         candidates: endpointCandidates.map((candidate) => candidate.url),
         preference: this.getStoredOpenAiPreference(openAiBase) || null,
       });
+
+      if (isCustomEndpoint) {
+        logger.logReasoning("CUSTOM_TEXT_CLEANUP_REQUEST", {
+          customBase: openAiBase,
+          model,
+          textLength: text.length,
+          hasApiKey: !!apiKey,
+          apiKeyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "(none)",
+        });
+      }
 
       const response = await withRetry(async () => {
         let lastError: Error | null = null;
@@ -745,9 +822,8 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt =
-        "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
+      const systemPrompt = this.getSystemPrompt(agentName);
+      const userPrompt = text;
 
       const requestBody = {
         contents: [
@@ -962,10 +1038,14 @@ class ReasoningService extends BaseReasoningService {
   /**
    * Clear cached API key for a specific provider or all providers.
    * Call this when API keys change to ensure fresh keys are used.
+   * Note: "custom" keys are not cached (read fresh from localStorage each time).
    */
-  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq"): void {
+  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq" | "custom"): void {
     if (provider) {
-      this.apiKeyCache.delete(provider);
+      // Custom keys aren't cached, but we accept the type for consistency
+      if (provider !== "custom") {
+        this.apiKeyCache.delete(provider);
+      }
       logger.logReasoning("API_KEY_CACHE_CLEARED", { provider });
     } else {
       this.apiKeyCache.clear();

@@ -27,6 +27,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📱 **Control Panel**: Manage settings, view history, and configure API keys
 - 🗄️ **Transcription History**: SQLite database stores all your transcriptions locally
 - 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large, turbo)
+- ⚡ **NVIDIA Parakeet**: Fast local transcription via sherpa-onnx (multilingual, 25 languages)
 - 🧹 **Model Cleanup**: One-click removal of cached Whisper models with uninstall hooks to keep disks tidy
 - 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
@@ -34,6 +35,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
 - 🌐 **Globe Key Toggle (macOS)**: Optional Fn/Globe key listener for a hardware-level dictation trigger
 - ⌨️ **Compound Hotkeys**: Support for multi-key combinations like `Cmd+Shift+K`
+- 🎙️ **Push-to-Talk (Windows)**: Native low-level keyboard hook for true push-to-talk with compound hotkey support
+- 📖 **Custom Dictionary**: Add words, names, and technical terms to improve transcription accuracy
+- 🐧 **GNOME Wayland Support**: Native global shortcuts via D-Bus for GNOME Wayland users
 
 ## Prerequisites
 
@@ -63,8 +67,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    cp env.example .env
    # Edit .env and add your API keys:
    # OPENAI_API_KEY=your_openai_key
-   # ANTHROPIC_API_KEY=your_anthropic_key  
+   # ANTHROPIC_API_KEY=your_anthropic_key
    # GEMINI_API_KEY=your_gemini_key
+   # GROQ_API_KEY=your_groq_key
    ```
    
    **Method B - In-app configuration**:
@@ -178,6 +183,10 @@ sudo pacman -S xdotool
 ```
 
 **Wayland (Modern Linux Desktop)**:
+
+Choose **one** of the following paste tools:
+
+**Option 1: wtype** (requires virtual keyboard protocol support)
 ```bash
 # Debian/Ubuntu
 sudo apt install wtype
@@ -187,15 +196,47 @@ sudo dnf install wtype
 
 # Arch
 sudo pacman -S wtype
-
-# Alternative: ydotool (requires uinput permissions)
-sudo apt install ydotool  # or equivalent for your distro
-
-# On KDE Wayland you will additionally need `kdotool` to detect if a terminal is focused for automatically pasting with Ctrl+Shift+V instead of Ctrl+V. Automatic terminal detection on non-KDE Wayland is not yet supported.
-sudo apt install kdotool # or equivalent for your distro
 ```
 
-> ℹ️ **Note**: OpenWhispr automatically detects your display server (X11 vs Wayland) and uses the appropriate paste tool. If no paste tool is installed, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
+**Option 2: ydotool** (works on more compositors, requires daemon)
+```bash
+# Debian/Ubuntu
+sudo apt install ydotool
+sudo systemctl enable --now ydotoold
+
+# Fedora/RHEL
+sudo dnf install ydotool
+sudo systemctl enable --now ydotoold
+
+# Arch
+sudo pacman -S ydotool
+sudo systemctl enable --now ydotoold
+```
+
+**Terminal Detection** (Optional - for KDE Wayland users):
+```bash
+# On KDE Wayland, kdotool enables automatic terminal detection
+# to paste with Ctrl+Shift+V instead of Ctrl+V
+sudo apt install kdotool  # Debian/Ubuntu
+sudo dnf install kdotool  # Fedora/RHEL
+sudo pacman -S kdotool    # Arch
+```
+
+> ℹ️ **Note**: OpenWhispr automatically tries paste tools in this order: `wtype` → `ydotool` → `xdotool` (for XWayland apps). If no paste tool is installed, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
+
+> ⚠️ **ydotool Requirements**: The `ydotoold` daemon must be running for ydotool to work. Start it manually with `sudo ydotoold &` or enable the systemd service as shown above.
+
+**GNOME Wayland Global Hotkeys**:
+
+On GNOME Wayland, Electron's standard global shortcuts don't work due to Wayland's security model. OpenWhispr automatically uses native GNOME keyboard shortcuts via D-Bus and gsettings:
+
+- Hotkeys are registered as GNOME custom shortcuts (visible in Settings → Keyboard → Shortcuts)
+- Default hotkey is `Alt+R` (backtick not supported on GNOME Wayland)
+- **Push-to-talk mode is not available** on GNOME Wayland (only tap-to-talk)
+- Falls back to X11/XWayland shortcuts if GNOME integration fails
+- No additional dependencies required - uses `dbus-next` npm package
+
+> ℹ️ **GNOME Wayland Limitation**: GNOME system shortcuts only fire a single toggle event (no key-up detection), so push-to-talk mode cannot work. The app automatically uses tap-to-talk mode on GNOME Wayland.
 
 > 🔒 **Flatpak Security**: The Flatpak package includes sandboxing with explicit permissions for microphone, clipboard, and file access. See [electron-builder.json](electron-builder.json) for the complete permission list.
 
@@ -273,8 +314,21 @@ Once you've named your agent during setup, you can interact with it using multip
 
 The AI automatically detects when you're giving it commands versus dictating regular text, and removes agent name references from the final output.
 
+### Custom Dictionary
+Improve transcription accuracy for specific words, names, or technical terms:
+
+1. **Access Settings**: Open Control Panel → Settings → Custom Dictionary
+2. **Add Words**: Enter words, names, or phrases that are frequently misrecognized
+3. **How It Works**: Words are provided as context hints to the speech recognition model
+
+**Examples of words to add**:
+- Uncommon names (e.g., "Sergey", "Xanthe")
+- Technical jargon (e.g., "Kubernetes", "OAuth")
+- Brand names (e.g., "OpenWhispr", "whisper.cpp")
+- Domain-specific terms (e.g., "amortization", "polymerase")
+
 ### Processing Options
-- **Local Processing**: 
+- **Local Processing**:
   - Install Whisper automatically through the Control Panel
   - Download models: tiny (fastest), base (recommended), small, medium, large (best quality)
   - Complete privacy - audio never leaves your device
@@ -328,7 +382,7 @@ open-whispr/
 - **Desktop**: Electron 36 with context isolation
 - **UI Components**: shadcn/ui with Radix primitives
 - **Database**: better-sqlite3 for local transcription storage
-- **Speech-to-Text**: OpenAI Whisper (powered by whisper.cpp for local, OpenAI API for cloud)
+- **Speech-to-Text**: OpenAI Whisper (whisper.cpp) + NVIDIA Parakeet (sherpa-onnx) for local, OpenAI API for cloud
 - **Icons**: Lucide React for consistent iconography
 
 ## Development
@@ -341,6 +395,11 @@ open-whispr/
 - `npm run build:renderer` - Build the React app only
 - `npm run download:whisper-cpp` - Download whisper.cpp for the current platform
 - `npm run download:whisper-cpp:all` - Download whisper.cpp for all platforms
+- `npm run download:llama-server` - Download llama.cpp server for local LLM inference
+- `npm run download:llama-server:all` - Download llama.cpp server for all platforms
+- `npm run download:sherpa-onnx` - Download sherpa-onnx for Parakeet local transcription
+- `npm run download:sherpa-onnx:all` - Download sherpa-onnx for all platforms
+- `npm run compile:native` - Compile native helpers (Globe key listener for macOS, key listener for Windows)
 - `npm run build` - Full build with signing (requires certificates)
 - `npm run build:mac` - macOS build with signing
 - `npm run build:win` - Windows build with signing
@@ -348,6 +407,8 @@ open-whispr/
 - `npm run pack` - Build without signing (for personal use)
 - `npm run dist` - Build and package with signing
 - `npm run lint` - Run ESLint
+- `npm run format` - Format code with Prettier
+- `npm run clean` - Clean build artifacts
 - `npm run preview` - Preview production build
 
 ### Architecture
@@ -390,7 +451,7 @@ npm run build:win      # Windows NSIS + Portable
 npm run build:linux    # AppImage + DEB
 ```
 
-Note: build/pack/dist scripts download whisper.cpp for the current platform automatically. For multi-platform packaging from one host, run `npm run download:whisper-cpp:all` first.
+Note: build/pack/dist scripts automatically download whisper.cpp, llama-server, and sherpa-onnx for the current platform. For multi-platform packaging from one host, run the `:all` variants first (`npm run download:whisper-cpp:all`, `npm run download:llama-server:all`, `npm run download:sherpa-onnx:all`).
 
 ## Configuration
 
@@ -411,8 +472,11 @@ LANGUAGE=
 # Optional: Anthropic API Configuration
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
 
-# Optional: Google Gemini API Configuration  
+# Optional: Google Gemini API Configuration
 GEMINI_API_KEY=your_gemini_api_key_here
+
+# Optional: Groq API Configuration (ultra-fast inference)
+GROQ_API_KEY=your_groq_api_key_here
 
 # Optional: Debug mode
 DEBUG=false
@@ -436,6 +500,21 @@ For local processing, OpenWhispr uses OpenAI's Whisper model via whisper.cpp - a
 - Sufficient disk space for models (75MB - 3GB depending on model)
 
 **Upgrading from Python-based version**: If you previously used the Python-based Whisper, you'll need to re-download models in GGML format. You can safely delete the old Python environment (`~/.openwhispr/python/`) and PyTorch models (`~/.cache/whisper/`) to reclaim disk space.
+
+### Local Parakeet Setup (Alternative)
+
+OpenWhispr also supports NVIDIA Parakeet models via sherpa-onnx - a fast alternative to Whisper:
+
+1. **Bundled Binary**: sherpa-onnx is bundled with the app for all platforms
+2. **INT8 Quantized Models**: Efficient CPU inference
+3. **Models stored in**: `~/.cache/openwhispr/parakeet-models/`
+
+**Available Models**:
+- `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
+
+**When to use Parakeet vs Whisper**:
+- **Parakeet**: Best for speed-critical use cases or lower-end hardware
+- **Whisper**: Best for quality-critical use cases or when you need specific model sizes
 
 ### Customization
 
@@ -490,7 +569,12 @@ OpenWhispr is designed with privacy and security in mind:
    - If bundled binary fails, install via `brew install whisper-cpp` (macOS)
    - Check available disk space for models
 5. **Global hotkey conflicts**: Change the hotkey in the Control Panel - any key can be used
-6. **Text not pasting**: Check accessibility permissions and try manual paste with Cmd+V
+   - GNOME Wayland: Hotkeys are registered via gsettings; check Settings → Keyboard → Shortcuts for conflicts
+6. **Text not pasting**:
+   - macOS: Check accessibility permissions (System Settings → Privacy & Security → Accessibility)
+   - Linux X11: Install `xdotool`
+   - Linux Wayland: Install `wtype` or `ydotool` (ensure `ydotoold` daemon is running)
+   - All platforms: Text is always copied to clipboard - use Ctrl+V (Cmd+V on macOS) to paste manually
 7. **Panel position**: If the panel appears off-screen, restart the app to reset position
 
 ### Getting Help
@@ -530,18 +614,24 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.2.12
+OpenWhispr is actively maintained and ready for production use. Current version: 1.3.0
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support (macOS, Windows, Linux)
 - ✅ Local and cloud processing
 - ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Local)
 - ✅ Compound hotkey support
+- ✅ Windows Push-to-Talk with native key listener
+- ✅ Custom dictionary for improved transcription accuracy
+- ✅ NVIDIA Parakeet support via sherpa-onnx
+- ✅ GNOME Wayland native global shortcuts
 
 ## Acknowledgments
 
 - **[OpenAI Whisper](https://github.com/openai/whisper)** - The speech recognition model that powers both local and cloud transcription
 - **[whisper.cpp](https://github.com/ggerganov/whisper.cpp)** - High-performance C++ implementation of Whisper for local processing
+- **[NVIDIA Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)** - Fast ASR model for efficient local transcription
+- **[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)** - Cross-platform ONNX runtime for Parakeet model inference
 - **[Electron](https://www.electronjs.org/)** - Cross-platform desktop application framework
 - **[React](https://react.dev/)** - UI component library
 - **[shadcn/ui](https://ui.shadcn.com/)** - Beautiful UI components built on Radix primitives

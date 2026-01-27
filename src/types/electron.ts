@@ -92,6 +92,63 @@ export interface WhisperDownloadProgressData {
   result?: any;
 }
 
+export interface ParakeetCheckResult {
+  installed: boolean;
+  working: boolean;
+  path?: string;
+}
+
+export interface ParakeetModelResult {
+  success: boolean;
+  model: string;
+  downloaded: boolean;
+  path?: string;
+  size_bytes?: number;
+  size_mb?: number;
+  error?: string;
+}
+
+export interface ParakeetModelDeleteResult {
+  success: boolean;
+  model: string;
+  deleted: boolean;
+  freed_bytes?: number;
+  freed_mb?: number;
+  error?: string;
+}
+
+export interface ParakeetModelsListResult {
+  success: boolean;
+  models: Array<{ model: string; downloaded: boolean; size_mb?: number }>;
+  cache_dir: string;
+}
+
+export interface ParakeetDownloadProgressData {
+  type: string;
+  model: string;
+  percentage?: number;
+  downloaded_bytes?: number;
+  total_bytes?: number;
+  error?: string;
+}
+
+export interface ParakeetTranscriptionResult {
+  success: boolean;
+  text?: string;
+  message?: string;
+  error?: string;
+}
+
+export interface ParakeetDiagnosticsResult {
+  platform: string;
+  arch: string;
+  resourcesPath: string | null;
+  isPackaged: boolean;
+  sherpaOnnx: { available: boolean; path: string | null };
+  modelsDir: string;
+  models: string[];
+}
+
 export interface PasteToolsResult {
   platform: "darwin" | "win32" | "linux";
   available: boolean;
@@ -101,14 +158,6 @@ export interface PasteToolsResult {
   xwaylandAvailable?: boolean;
   tools?: string[];
   recommendedInstall?: string;
-}
-
-// Additional interface missing from preload.js
-export interface SaveSettings {
-  useLocalWhisper: boolean;
-  apiKey: string;
-  whisperModel: string;
-  hotkey: string;
 }
 
 declare global {
@@ -127,6 +176,12 @@ declare global {
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+
+      // Dictionary operations
+      getDictionary: () => Promise<string[]>;
+      setDictionary: (words: string[]) => Promise<{ success: boolean }>;
+
+      // Database event listeners
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => (() => void) | void;
       onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
       onTranscriptionsCleared?: (
@@ -139,25 +194,14 @@ declare global {
       createProductionEnvFile: (key: string) => Promise<void>;
       getAnthropicKey: () => Promise<string | null>;
       saveAnthropicKey: (key: string) => Promise<void>;
+      saveAllKeysToEnv: () => Promise<{ success: boolean; path: string }>;
 
       // Clipboard operations
       readClipboard: () => Promise<string>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
-      pasteFromClipboard: () => Promise<{ success: boolean; error?: string }>;
-      pasteFromClipboardWithFallback: () => Promise<{ success: boolean; error?: string }>;
       checkPasteTools: () => Promise<PasteToolsResult>;
 
-      // Settings
-      getSettings: () => Promise<any>;
-      updateSettings: (settings: any) => Promise<void>;
-
       // Audio
-      getAudioDevices: () => Promise<MediaDeviceInfo[]>;
-      transcribeAudio: (audioData: ArrayBuffer) => Promise<{
-        success: boolean;
-        text?: string;
-        error?: string;
-      }>;
       onNoAudioDetected: (callback: (event: any, data?: any) => void) => (() => void) | void;
 
       // Whisper operations (whisper.cpp)
@@ -182,6 +226,33 @@ declare global {
         message?: string;
         error?: string;
       }>;
+
+      // Parakeet operations (NVIDIA via sherpa-onnx)
+      transcribeLocalParakeet: (
+        audioBlob: ArrayBuffer,
+        options?: { model?: string; language?: string }
+      ) => Promise<ParakeetTranscriptionResult>;
+      checkParakeetInstallation: () => Promise<ParakeetCheckResult>;
+      downloadParakeetModel: (modelName: string) => Promise<ParakeetModelResult>;
+      onParakeetDownloadProgress: (
+        callback: (event: any, data: ParakeetDownloadProgressData) => void
+      ) => (() => void) | void;
+      checkParakeetModelStatus: (modelName: string) => Promise<ParakeetModelResult>;
+      listParakeetModels: () => Promise<ParakeetModelsListResult>;
+      deleteParakeetModel: (modelName: string) => Promise<ParakeetModelDeleteResult>;
+      deleteAllParakeetModels: () => Promise<{
+        success: boolean;
+        deleted_count?: number;
+        freed_bytes?: number;
+        freed_mb?: number;
+        error?: string;
+      }>;
+      cancelParakeetDownload: () => Promise<{
+        success: boolean;
+        message?: string;
+        error?: string;
+      }>;
+      getParakeetDiagnostics: () => Promise<ParakeetDiagnosticsResult>;
 
       // Local AI model management
       modelGetAll: () => Promise<any[]>;
@@ -228,8 +299,6 @@ declare global {
       // App management
       appQuit: () => Promise<void>;
       cleanupApp: () => Promise<{ success: boolean; message: string }>;
-      getTranscriptionHistory: () => Promise<any[]>;
-      clearTranscriptionHistory: () => Promise<void>;
 
       // Update operations
       checkForUpdates: () => Promise<UpdateCheckResult>;
@@ -248,18 +317,16 @@ declare global {
       ) => (() => void) | void;
       onUpdateError: (callback: (event: any, error: any) => void) => (() => void) | void;
 
-      // Settings management (used by OnboardingFlow but not in preload.js)
-      saveSettings?: (settings: SaveSettings) => Promise<void>;
-
       // External URL operations
       openExternal: (url: string) => Promise<{ success: boolean; error?: string } | void>;
 
-      // Event listener cleanup
-      removeAllListeners: (channel: string) => void;
-
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
-      setHotkeyListeningMode?: (enabled: boolean) => Promise<{ success: boolean }>;
+      setHotkeyListeningMode?: (
+        enabled: boolean,
+        newHotkey?: string | null
+      ) => Promise<{ success: boolean }>;
+      getHotkeyModeInfo?: () => Promise<{ isUsingGnome: boolean }>;
 
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
@@ -289,6 +356,18 @@ declare global {
         scope?: string;
         source?: string;
       }) => Promise<void>;
+      getDebugState: () => Promise<{
+        enabled: boolean;
+        logPath: string | null;
+        logLevel: string;
+      }>;
+      setDebugLogging: (enabled: boolean) => Promise<{
+        success: boolean;
+        enabled?: boolean;
+        logPath?: string | null;
+        error?: string;
+      }>;
+      openLogsFolder: () => Promise<{ success: boolean; error?: string }>;
 
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<FFmpegAvailabilityResult>;
@@ -299,6 +378,14 @@ declare global {
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
       openWhisperModelsFolder?: () => Promise<{ success: boolean; error?: string }>;
+
+      // Windows Push-to-Talk notifications
+      notifyActivationModeChanged?: (mode: "tap" | "push") => void;
+      notifyHotkeyChanged?: (hotkey: string) => void;
+
+      // Auto-start at login
+      getAutoStartEnabled?: () => Promise<boolean>;
+      setAutoStartEnabled?: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
     };
 
     api?: {
