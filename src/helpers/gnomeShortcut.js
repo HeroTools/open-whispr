@@ -19,9 +19,22 @@ const KEYBINDING_PATH =
 const KEYBINDING_SCHEMA = "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding";
 
 // Valid pattern for GNOME shortcut format (e.g., "<Alt>r", "<Control><Shift>space")
-// Supports: single letters/digits, function keys (F1-F12), and named keys (space, escape, tab, backspace, grave)
+// Supports: letters/digits, function keys (F1-F12), navigation, and special keys
 const VALID_SHORTCUT_PATTERN =
-  /^(<(Control|Alt|Shift|Super)>)*(F[1-9]|F1[0-2]|[a-z0-9]|space|escape|tab|backspace|grave)$/i;
+  /^(<(Control|Alt|Shift|Super)>)*(F[1-9]|F1[0-2]|[a-z0-9]|space|escape|tab|backspace|grave|pause|scroll_lock|insert|delete|home|end|page_up|page_down|up|down|left|right|return|print)$/i;
+
+// Map Electron key names to GNOME keysym names
+const ELECTRON_TO_GNOME_KEY_MAP = {
+  pageup: "page_up",
+  pagedown: "page_down",
+  scrolllock: "scroll_lock",
+  printscreen: "print",
+  enter: "return",
+  arrowup: "up",
+  arrowdown: "down",
+  arrowleft: "left",
+  arrowright: "right",
+};
 
 // Lazy-loaded dbus-next module (Linux only)
 let dbus = null;
@@ -347,6 +360,7 @@ class GnomeShortcutManager {
 
     // Convert key to GNOME format (lowercase, special key names)
     let gnomeKey = key.toLowerCase();
+
     // Handle backtick/grave accent
     if (gnomeKey === "`" || gnomeKey === "backquote") {
       gnomeKey = "grave";
@@ -354,6 +368,10 @@ class GnomeShortcutManager {
     // Handle space
     if (gnomeKey === " ") {
       gnomeKey = "space";
+    }
+    // Apply Electron→GNOME key mapping
+    if (ELECTRON_TO_GNOME_KEY_MAP[gnomeKey]) {
+      gnomeKey = ELECTRON_TO_GNOME_KEY_MAP[gnomeKey];
     }
 
     return modifiers + gnomeKey;
