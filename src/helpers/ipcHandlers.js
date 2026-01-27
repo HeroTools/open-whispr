@@ -17,6 +17,14 @@ class IPCHandlers {
     this.setupHandlers();
   }
 
+  _getDictionarySafe() {
+    try {
+      return this.databaseManager.getDictionary();
+    } catch {
+      return [];
+    }
+  }
+
   setupHandlers() {
     // Window control handlers
     ipcMain.handle("window-minimize", () => {
@@ -117,6 +125,18 @@ class IPCHandlers {
         });
       }
       return result;
+    });
+
+    // Dictionary handlers
+    ipcMain.handle("db-get-dictionary", async () => {
+      return this.databaseManager.getDictionary();
+    });
+
+    ipcMain.handle("db-set-dictionary", async (event, words) => {
+      if (!Array.isArray(words)) {
+        throw new Error("words must be an array");
+      }
+      return this.databaseManager.setDictionary(words);
     });
 
     // Clipboard handlers
@@ -572,7 +592,10 @@ class IPCHandlers {
     ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
       try {
         const LocalReasoningService = require("../services/localReasoningBridge").default;
-        const result = await LocalReasoningService.processText(text, modelId, agentName, config);
+        const result = await LocalReasoningService.processText(text, modelId, agentName, {
+          ...config,
+          customDictionary: this._getDictionarySafe(),
+        });
         return { success: true, text: result };
       } catch (error) {
         return { success: false, error: error.message };
@@ -590,8 +613,7 @@ class IPCHandlers {
             throw new Error("Anthropic API key not configured");
           }
 
-          // Use the unified system prompt - LLM handles agent detection
-          const systemPrompt = getSystemPrompt(agentName);
+          const systemPrompt = getSystemPrompt(agentName, this._getDictionarySafe());
           const userPrompt = text;
 
           if (!modelId) {

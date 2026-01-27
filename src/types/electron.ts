@@ -119,6 +119,12 @@ declare global {
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
+
+      // Dictionary operations
+      getDictionary: () => Promise<string[]>;
+      setDictionary: (words: string[]) => Promise<{ success: boolean }>;
+
+      // Database event listeners
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => (() => void) | void;
       onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
       onTranscriptionsCleared?: (

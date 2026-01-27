@@ -120,7 +120,7 @@ export function useSettings() {
   );
 
   // Custom dictionary for improving transcription of specific words
-  const [customDictionary, setCustomDictionary] = useLocalStorage<string[]>(
+  const [customDictionary, setCustomDictionaryRaw] = useLocalStorage<string[]>(
     "customDictionary",
     [],
     {
@@ -135,6 +135,43 @@ export function useSettings() {
       },
     }
   );
+
+  // Wrap setter to sync dictionary to SQLite
+  const setCustomDictionary = useCallback(
+    (words: string[]) => {
+      setCustomDictionaryRaw(words);
+      window.electronAPI?.setDictionary(words).catch(() => {
+        // Silently ignore SQLite sync errors
+      });
+    },
+    [setCustomDictionaryRaw]
+  );
+
+  // One-time sync: reconcile localStorage ↔ SQLite on startup
+  const hasRunDictionarySync = useRef(false);
+  useEffect(() => {
+    if (hasRunDictionarySync.current) return;
+    hasRunDictionarySync.current = true;
+
+    const syncDictionary = async () => {
+      if (typeof window === "undefined" || !window.electronAPI?.getDictionary) return;
+      try {
+        const dbWords = await window.electronAPI.getDictionary();
+        if (dbWords.length === 0 && customDictionary.length > 0) {
+          // Seed SQLite from localStorage (first-time migration)
+          await window.electronAPI.setDictionary(customDictionary);
+        } else if (dbWords.length > 0 && customDictionary.length === 0) {
+          // Recover localStorage from SQLite (e.g. localStorage was cleared)
+          setCustomDictionaryRaw(dbWords);
+        }
+      } catch {
+        // Silently ignore sync errors
+      }
+    };
+
+    syncDictionary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reasoning settings
   const [useReasoningModel, setUseReasoningModel] = useLocalStorage("useReasoningModel", true, {

@@ -37,6 +37,18 @@ class AudioManager {
     this.cachedReasoningPreference = null;
   }
 
+  getCustomDictionaryPrompt() {
+    try {
+      const raw = localStorage.getItem("customDictionary");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.join(", ");
+    } catch {
+      // ignore parse errors
+    }
+    return null;
+  }
+
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
     this.onStateChange = onStateChange;
     this.onError = onError;
@@ -280,13 +292,9 @@ class AudioManager {
       }
 
       // Add custom dictionary as initial prompt to help Whisper recognize specific words
-      try {
-        const customDictionary = JSON.parse(localStorage.getItem("customDictionary") || "[]");
-        if (Array.isArray(customDictionary) && customDictionary.length > 0) {
-          options.initialPrompt = customDictionary.join(", ");
-        }
-      } catch {
-        // Ignore parse errors
+      const dictionaryPrompt = this.getCustomDictionaryPrompt();
+      if (dictionaryPrompt) {
+        options.initialPrompt = dictionaryPrompt;
       }
 
       logger.debug(
@@ -907,6 +915,12 @@ class AudioManager {
 
       if (language && language !== "auto") {
         formData.append("language", language);
+      }
+
+      // Add custom dictionary as prompt hint for cloud transcription
+      const dictionaryPrompt = this.getCustomDictionaryPrompt();
+      if (dictionaryPrompt) {
+        formData.append("prompt", dictionaryPrompt);
       }
 
       const shouldStream = this.shouldStreamTranscription(model, provider);

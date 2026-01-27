@@ -2,13 +2,14 @@ import promptData from "./promptData.json";
 
 export const UNIFIED_SYSTEM_PROMPT = promptData.UNIFIED_SYSTEM_PROMPT;
 export const LEGACY_PROMPTS = promptData.LEGACY_PROMPTS;
+const DICTIONARY_SUFFIX = promptData.DICTIONARY_SUFFIX;
 
 export function buildPrompt(text: string, agentName: string | null): string {
   const name = agentName?.trim() || "Assistant";
   return UNIFIED_SYSTEM_PROMPT.replace(/\{\{agentName\}\}/g, name).replace(/\{\{text\}\}/g, text);
 }
 
-export function getSystemPrompt(agentName: string | null): string {
+export function getSystemPrompt(agentName: string | null, customDictionary?: string[]): string {
   const name = agentName?.trim() || "Assistant";
 
   let promptTemplate = UNIFIED_SYSTEM_PROMPT;
@@ -23,7 +24,13 @@ export function getSystemPrompt(agentName: string | null): string {
     }
   }
 
-  return promptTemplate.replace(/\{\{agentName\}\}/g, name);
+  let prompt = promptTemplate.replace(/\{\{agentName\}\}/g, name);
+
+  if (customDictionary && customDictionary.length > 0) {
+    prompt += DICTIONARY_SUFFIX + customDictionary.join(", ");
+  }
+
+  return prompt;
 }
 
 export function getUserPrompt(text: string): string {

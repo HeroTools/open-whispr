@@ -36,16 +36,9 @@ class LocalReasoningService {
     const startTime = Date.now();
 
     try {
-      // Get custom prompts from the request context
-      const customPrompts = config.customPrompts || null;
-
-      // Build the reasoning prompt
-      const reasoningPrompt = this.getReasoningPrompt(text, agentName, customPrompts);
-
       debugLogger.logReasoning("LOCAL_BRIDGE_PROMPT", {
-        promptLength: reasoningPrompt.length,
+        promptLength: text.length,
         hasAgentName: !!agentName,
-        hasCustomPrompts: !!customPrompts,
       });
 
       const inferenceConfig = {
@@ -56,7 +49,7 @@ class LocalReasoningService {
         repeatPenalty: config.repeatPenalty || 1.1,
         contextSize: config.contextSize || 4096,
         threads: config.threads || 4,
-        systemPrompt: getSystemPrompt(agentName),
+        systemPrompt: getSystemPrompt(agentName, config.customDictionary),
       };
 
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
@@ -65,7 +58,7 @@ class LocalReasoningService {
       });
 
       // Run inference
-      const result = await modelManager.runInference(modelId, reasoningPrompt, inferenceConfig);
+      const result = await modelManager.runInference(modelId, text, inferenceConfig);
 
       const processingTime = Date.now() - startTime;
 
@@ -91,19 +84,6 @@ class LocalReasoningService {
     } finally {
       this.isProcessing = false;
     }
-  }
-
-  getCustomPrompts() {
-    // In main process, we can't access localStorage directly
-    // This should be passed from the renderer process
-    return null;
-  }
-
-  getReasoningPrompt(text, agentName, customPrompts) {
-    // With the unified prompt approach, all instructions are in the system prompt
-    // The user message is just the transcribed text
-    // Agent detection is now handled by the LLM itself based on the system prompt
-    return text;
   }
 
   calculateMaxTokens(textLength, minTokens = 100, maxTokens = 2048, multiplier = 2) {
