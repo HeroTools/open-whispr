@@ -32,11 +32,8 @@ class LocalReasoningService extends BaseReasoningService {
     const startTime = Date.now();
 
     try {
-      // Get prompt using the base class method
-      const reasoningPrompt = this.getReasoningPrompt(text, agentName, config);
-
       logger.logReasoning("LOCAL_MODEL_PROMPT_PREPARED", {
-        promptLength: reasoningPrompt.length,
+        promptLength: text.length,
         hasAgentName: !!agentName,
       });
 
@@ -61,7 +58,7 @@ class LocalReasoningService extends BaseReasoningService {
       });
 
       // Run inference
-      const result = await modelManager.runInference(modelId, reasoningPrompt, {
+      const result = await modelManager.runInference(modelId, text, {
         ...inferenceOptions,
         maxTokens,
         temperature: config.temperature || inferenceOptions.temperature,

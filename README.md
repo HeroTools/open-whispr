@@ -34,6 +34,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 🔄 **OpenAI Responses API**: Using the latest Responses API for improved performance
 - 🌐 **Globe Key Toggle (macOS)**: Optional Fn/Globe key listener for a hardware-level dictation trigger
 - ⌨️ **Compound Hotkeys**: Support for multi-key combinations like `Cmd+Shift+K`
+- 🎙️ **Push-to-Talk (Windows)**: Native low-level keyboard hook for true push-to-talk with compound hotkey support
+- 📖 **Custom Dictionary**: Add words, names, and technical terms to improve transcription accuracy
 - 🐧 **GNOME Wayland Support**: Native global shortcuts via D-Bus for GNOME Wayland users
 
 ## Prerequisites
@@ -310,8 +312,21 @@ Once you've named your agent during setup, you can interact with it using multip
 
 The AI automatically detects when you're giving it commands versus dictating regular text, and removes agent name references from the final output.
 
+### Custom Dictionary
+Improve transcription accuracy for specific words, names, or technical terms:
+
+1. **Access Settings**: Open Control Panel → Settings → Custom Dictionary
+2. **Add Words**: Enter words, names, or phrases that are frequently misrecognized
+3. **How It Works**: Words are provided as context hints to the speech recognition model
+
+**Examples of words to add**:
+- Uncommon names (e.g., "Sergey", "Xanthe")
+- Technical jargon (e.g., "Kubernetes", "OAuth")
+- Brand names (e.g., "OpenWhispr", "whisper.cpp")
+- Domain-specific terms (e.g., "amortization", "polymerase")
+
 ### Processing Options
-- **Local Processing**: 
+- **Local Processing**:
   - Install Whisper automatically through the Control Panel
   - Download models: tiny (fastest), base (recommended), small, medium, large (best quality)
   - Complete privacy - audio never leaves your device
@@ -378,6 +393,7 @@ open-whispr/
 - `npm run build:renderer` - Build the React app only
 - `npm run download:whisper-cpp` - Download whisper.cpp for the current platform
 - `npm run download:whisper-cpp:all` - Download whisper.cpp for all platforms
+- `npm run compile:native` - Compile native helpers (Globe key listener for macOS, key listener for Windows)
 - `npm run build` - Full build with signing (requires certificates)
 - `npm run build:mac` - macOS build with signing
 - `npm run build:win` - Windows build with signing
@@ -572,13 +588,15 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.2.12
+OpenWhispr is actively maintained and ready for production use. Current version: 1.2.16
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support (macOS, Windows, Linux)
 - ✅ Local and cloud processing
 - ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Local)
 - ✅ Compound hotkey support
+- ✅ Windows Push-to-Talk with native key listener
+- ✅ Custom dictionary for improved transcription accuracy
 
 ## Acknowledgments
 

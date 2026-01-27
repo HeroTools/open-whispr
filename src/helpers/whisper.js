@@ -253,6 +253,7 @@ class WhisperManager {
 
     const model = options.model || "base";
     const language = options.language || null;
+    const initialPrompt = options.initialPrompt || null;
     const modelPath = this.getModelPath(model);
 
     // Check if model exists
@@ -260,10 +261,10 @@ class WhisperManager {
       throw new Error(`Whisper model "${model}" not downloaded. Please download it from Settings.`);
     }
 
-    return await this.transcribeViaServer(audioBlob, model, language);
+    return await this.transcribeViaServer(audioBlob, model, language, initialPrompt);
   }
 
-  async transcribeViaServer(audioBlob, model, language) {
+  async transcribeViaServer(audioBlob, model, language, initialPrompt = null) {
     debugLogger.info("Transcription mode: SERVER", { model, language: language || "auto" });
     const modelPath = this.getModelPath(model);
 
@@ -300,7 +301,7 @@ class WhisperManager {
     });
 
     const startTime = Date.now();
-    const result = await this.serverManager.transcribe(audioBuffer, { language });
+    const result = await this.serverManager.transcribe(audioBuffer, { language, initialPrompt });
     const elapsed = Date.now() - startTime;
 
     debugLogger.logWhisperPipeline("transcribeViaServer - completed", {

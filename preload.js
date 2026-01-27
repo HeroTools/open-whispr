@@ -47,6 +47,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   clearTranscriptions: () => ipcRenderer.invoke("db-clear-transcriptions"),
   deleteTranscription: (id) =>
     ipcRenderer.invoke("db-delete-transcription", id),
+  // Dictionary functions
+  getDictionary: () => ipcRenderer.invoke("db-get-dictionary"),
+  setDictionary: (words) => ipcRenderer.invoke("db-set-dictionary", words),
+
   onTranscriptionAdded: (callback) => {
     const listener = (_event, transcription) => callback?.(transcription);
     ipcRenderer.on("transcription-added", listener);
@@ -111,7 +115,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Cleanup function
   cleanupApp: () => ipcRenderer.invoke("cleanup-app"),
   updateHotkey: (hotkey) => ipcRenderer.invoke("update-hotkey", hotkey),
-  setHotkeyListeningMode: (enabled) => ipcRenderer.invoke("set-hotkey-listening-mode", enabled),
+  setHotkeyListeningMode: (enabled, newHotkey) =>
+    ipcRenderer.invoke("set-hotkey-listening-mode", enabled, newHotkey),
   getHotkeyModeInfo: () => ipcRenderer.invoke("get-hotkey-mode-info"),
   startWindowDrag: () => ipcRenderer.invoke("start-window-drag"),
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
@@ -221,4 +226,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("hotkey-registration-failed", listener);
     return () => ipcRenderer.removeListener("hotkey-registration-failed", listener);
   },
+  onWindowsPushToTalkUnavailable: registerListener("windows-ptt-unavailable"),
+
+  // Notify main process of activation mode changes (for Windows Push-to-Talk)
+  notifyActivationModeChanged: (mode) => ipcRenderer.send("activation-mode-changed", mode),
+  notifyHotkeyChanged: (hotkey) => ipcRenderer.send("hotkey-changed", hotkey),
+
+  // Auto-start management
+  getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
+  setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),
 });

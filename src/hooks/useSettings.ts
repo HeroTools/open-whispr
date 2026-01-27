@@ -15,6 +15,7 @@ export interface TranscriptionSettings {
   cloudTranscriptionProvider: string;
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
+  customDictionary: string[];
 }
 
 export interface ReasoningSettings {
@@ -117,6 +118,60 @@ export function useSettings() {
       deserialize: String,
     }
   );
+
+  // Custom dictionary for improving transcription of specific words
+  const [customDictionary, setCustomDictionaryRaw] = useLocalStorage<string[]>(
+    "customDictionary",
+    [],
+    {
+      serialize: JSON.stringify,
+      deserialize: (value) => {
+        try {
+          const parsed = JSON.parse(value);
+          return Array.isArray(parsed) ? parsed : [];
+        } catch {
+          return [];
+        }
+      },
+    }
+  );
+
+  // Wrap setter to sync dictionary to SQLite
+  const setCustomDictionary = useCallback(
+    (words: string[]) => {
+      setCustomDictionaryRaw(words);
+      window.electronAPI?.setDictionary(words).catch(() => {
+        // Silently ignore SQLite sync errors
+      });
+    },
+    [setCustomDictionaryRaw]
+  );
+
+  // One-time sync: reconcile localStorage ↔ SQLite on startup
+  const hasRunDictionarySync = useRef(false);
+  useEffect(() => {
+    if (hasRunDictionarySync.current) return;
+    hasRunDictionarySync.current = true;
+
+    const syncDictionary = async () => {
+      if (typeof window === "undefined" || !window.electronAPI?.getDictionary) return;
+      try {
+        const dbWords = await window.electronAPI.getDictionary();
+        if (dbWords.length === 0 && customDictionary.length > 0) {
+          // Seed SQLite from localStorage (first-time migration)
+          await window.electronAPI.setDictionary(customDictionary);
+        } else if (dbWords.length > 0 && customDictionary.length === 0) {
+          // Recover localStorage from SQLite (e.g. localStorage was cleared)
+          setCustomDictionaryRaw(dbWords);
+        }
+      } catch {
+        // Silently ignore sync errors
+      }
+    };
+
+    syncDictionary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Reasoning settings
   const [useReasoningModel, setUseReasoningModel] = useLocalStorage("useReasoningModel", true, {
@@ -280,18 +335,42 @@ export function useSettings() {
   );
 
   // Hotkey
-  const [dictationKey, setDictationKey] = useLocalStorage("dictationKey", "", {
+  const [dictationKey, setDictationKeyLocal] = useLocalStorage("dictationKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  const [activationMode, setActivationMode] = useLocalStorage<"tap" | "push">(
+  // Wrap setDictationKey to notify main process (for Windows Push-to-Talk)
+  const setDictationKey = useCallback(
+    (key: string) => {
+      setDictationKeyLocal(key);
+      // Notify main process so Windows key listener can restart with new key
+      if (typeof window !== "undefined" && window.electronAPI?.notifyHotkeyChanged) {
+        window.electronAPI.notifyHotkeyChanged(key);
+      }
+    },
+    [setDictationKeyLocal]
+  );
+
+  const [activationMode, setActivationModeLocal] = useLocalStorage<"tap" | "push">(
     "activationMode",
     "tap",
     {
       serialize: String,
       deserialize: (value) => (value === "push" ? "push" : "tap"),
     }
+  );
+
+  // Wrap setActivationMode to notify main process (for Windows Push-to-Talk)
+  const setActivationMode = useCallback(
+    (mode: "tap" | "push") => {
+      setActivationModeLocal(mode);
+      // Notify main process so Windows key listener can start/stop
+      if (typeof window !== "undefined" && window.electronAPI?.notifyActivationModeChanged) {
+        window.electronAPI.notifyActivationModeChanged(mode);
+      }
+    },
+    [setActivationModeLocal]
   );
 
   // Microphone settings
@@ -327,6 +406,7 @@ export function useSettings() {
         setCloudTranscriptionModel(settings.cloudTranscriptionModel);
       if (settings.cloudTranscriptionBaseUrl !== undefined)
         setCloudTranscriptionBaseUrl(settings.cloudTranscriptionBaseUrl);
+      if (settings.customDictionary !== undefined) setCustomDictionary(settings.customDictionary);
     },
     [
       setUseLocalWhisper,
@@ -338,6 +418,7 @@ export function useSettings() {
       setCloudTranscriptionProvider,
       setCloudTranscriptionModel,
       setCloudTranscriptionBaseUrl,
+      setCustomDictionary,
     ]
   );
 
@@ -374,6 +455,7 @@ export function useSettings() {
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
+    customDictionary,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -392,6 +474,7 @@ export function useSettings() {
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
+    setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider: (provider: string) => {
