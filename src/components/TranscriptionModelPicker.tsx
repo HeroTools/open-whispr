@@ -541,7 +541,6 @@ export default function TranscriptionModelPicker({
           modelName={modelInfo?.name || downloadingModel}
           progress={downloadProgress}
           isInstalling={isInstalling}
-          styles={styles}
         />
       );
     }
@@ -553,7 +552,6 @@ export default function TranscriptionModelPicker({
           modelName={modelInfo?.name || downloadingParakeetModel}
           progress={parakeetDownloadProgress}
           isInstalling={isInstallingParakeet}
-          styles={styles}
         />
       );
     }
@@ -568,7 +566,6 @@ export default function TranscriptionModelPicker({
     isInstallingParakeet,
     useLocalWhisper,
     internalLocalProvider,
-    styles,
   ]);
 
   const renderLocalModels = () => (

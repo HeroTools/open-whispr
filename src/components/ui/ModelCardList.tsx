@@ -25,15 +25,15 @@ const COLOR_CONFIG: Record<
 > = {
   indigo: {
     selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_250)] hover:border-muted-foreground/30",
+    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
   },
   purple: {
     selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_250)] hover:border-muted-foreground/30",
+    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
   },
   blue: {
     selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_250)] hover:border-muted-foreground/30",
+    default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
   },
 };
 

@@ -132,10 +132,9 @@ export default function LocalWhisperPicker({
       <DownloadProgressBar
         modelName={modelInfo?.name || downloadingModel}
         progress={downloadProgress}
-        styles={styles}
       />
     );
-  }, [downloadingModel, downloadProgress, styles]);
+  }, [downloadingModel, downloadProgress]);
 
   return (
     <div className={`${styles.container} ${className}`}>

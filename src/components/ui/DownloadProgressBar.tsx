@@ -1,17 +1,13 @@
 import { formatETA, type DownloadProgress } from "../../hooks/useModelDownload";
-import { type ModelPickerStyles } from "../../utils/modelPickerStyles";
-
 interface DownloadProgressBarProps {
   modelName: string;
   progress: DownloadProgress;
-  styles: ModelPickerStyles;
   isInstalling?: boolean;
 }
 
 export function DownloadProgressBar({
   modelName,
   progress,
-  styles,
   isInstalling,
 }: DownloadProgressBarProps) {
   const { percentage, speed, eta } = progress;
@@ -49,11 +45,20 @@ export function DownloadProgressBar({
         </div>
       </div>
 
-      {/* Progress bar with gradient fill */}
-      <div className="w-full h-1.5 rounded-full bg-muted dark:bg-[oklch(0.10_0.005_270)] overflow-hidden">
+      {/* Progress bar */}
+      <div
+        className="w-full rounded-full overflow-hidden"
+        style={{ height: 6, backgroundColor: "var(--color-muted)" }}
+      >
         <div
-          className={`h-full rounded-full transition-all duration-300 ease-out bg-linear-to-r from-primary via-primary to-primary/70 ${isInstalling ? "animate-pulse" : ""}`}
-          style={{ width: `${isInstalling ? 100 : Math.min(percentage, 100)}%` }}
+          className={isInstalling ? "animate-pulse" : ""}
+          style={{
+            height: "100%",
+            width: `${isInstalling ? 100 : Math.min(percentage, 100)}%`,
+            backgroundColor: "var(--color-primary)",
+            borderRadius: 9999,
+            transition: "width 300ms ease-out",
+          }}
         />
       </div>
     </div>

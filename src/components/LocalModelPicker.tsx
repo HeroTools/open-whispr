@@ -142,9 +142,9 @@ export default function LocalModelPicker({
     const modelName = models.find((m) => m.id === downloadingModel)?.name || downloadingModel;
 
     return (
-      <DownloadProgressBar modelName={modelName} progress={downloadProgress} styles={styles} />
+      <DownloadProgressBar modelName={modelName} progress={downloadProgress} />
     );
-  }, [downloadingModel, downloadProgress, models, styles]);
+  }, [downloadingModel, downloadProgress, models]);
 
   return (
     <div className={`${styles.container} ${className}`}>

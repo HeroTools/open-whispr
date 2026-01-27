@@ -2,10 +2,6 @@ export type ColorScheme = "purple" | "indigo" | "blue";
 
 export interface ModelPickerStyles {
   container: string;
-  progress: string;
-  progressText: string;
-  progressBar: string;
-  progressFill: string;
   header: string;
   modelCard: { selected: string; default: string };
   badges: { selected: string; downloaded: string; recommended: string };
@@ -15,14 +11,10 @@ export interface ModelPickerStyles {
 export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   purple: {
     container: "border border-border rounded-xl overflow-hidden dark:border-[oklch(0.22_0.005_270)] dark:bg-[oklch(0.13_0.006_270)]",
-    progress: "bg-primary/8 dark:bg-[oklch(0.12_0.008_270)] border-b border-primary/15",
-    progressText: "text-primary",
-    progressBar: "bg-primary/15 dark:bg-[oklch(0.10_0.005_270)] rounded-full",
-    progressFill: "bg-primary",
     header: "font-medium text-foreground tracking-tight",
     modelCard: {
       selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-      default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_250)] hover:border-muted-foreground/30",
+      default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
     },
     badges: {
       selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
@@ -38,14 +30,10 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   },
   indigo: {
     container: "border border-border rounded-xl overflow-hidden dark:border-[oklch(0.22_0.005_270)] dark:bg-[oklch(0.13_0.006_270)]",
-    progress: "bg-primary/8 dark:bg-[oklch(0.12_0.008_270)] border-b border-primary/15",
-    progressText: "text-primary",
-    progressBar: "bg-primary/15 dark:bg-[oklch(0.10_0.005_270)] rounded-full",
-    progressFill: "bg-primary",
     header: "font-medium text-foreground tracking-tight",
     modelCard: {
       selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-      default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_250)] hover:border-muted-foreground/30",
+      default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
     },
     badges: {
       selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
@@ -61,14 +49,10 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   },
   blue: {
     container: "bg-muted/30 rounded-xl overflow-hidden border border-border dark:border-[oklch(0.22_0.005_270)] dark:bg-[oklch(0.13_0.006_270)]",
-    progress: "bg-primary/8 dark:bg-[oklch(0.12_0.008_270)] border-b border-primary/15",
-    progressText: "text-primary",
-    progressBar: "bg-primary/15 dark:bg-[oklch(0.10_0.005_270)] rounded-full",
-    progressFill: "bg-primary",
     header: "font-medium text-foreground tracking-tight",
     modelCard: {
       selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
-      default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_250)] hover:border-muted-foreground/30",
+      default: "border-border bg-card dark:bg-[oklch(0.145_0.007_270)] dark:border-[oklch(0.22_0.005_270)] dark:hover:border-[oklch(0.30_0.012_260)] hover:border-muted-foreground/30",
     },
     badges: {
       selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
