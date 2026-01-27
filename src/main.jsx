@@ -6,6 +6,37 @@ import OnboardingFlow from "./components/OnboardingFlow.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
 import "./index.css";
 
+// OAuth callback handler: when the browser redirects back from Google/Neon Auth
+// with a session verifier, redirect to the openwhispr:// protocol so Electron
+// can capture it and complete authentication. This check runs before React
+// mounts — if we detect we're in the system browser with a verifier, we
+// redirect immediately and skip mounting the app entirely.
+function isOAuthBrowserRedirect() {
+  const params = new URLSearchParams(window.location.search);
+  const verifier = params.get("neon_auth_session_verifier");
+  const isInElectron = typeof window.electronAPI !== "undefined";
+
+  if (verifier && !isInElectron) {
+    // We're in the system browser after OAuth — redirect to Electron via deep link
+    window.location.href = `openwhispr://auth/callback?neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
+    // Show a message while the redirect happens
+    document.body.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:system-ui,sans-serif;color:#666">
+        <div style="text-align:center">
+          <p style="font-size:18px;margin-bottom:8px">Redirecting back to OpenWhispr...</p>
+          <p style="font-size:14px">You can close this tab.</p>
+        </div>
+      </div>
+    `;
+    return true;
+  }
+  return false;
+}
+
+if (!isOAuthBrowserRedirect()) {
+  mountApp();
+}
+
 function AppRouter() {
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -60,17 +91,12 @@ function AppRouter() {
   return isControlPanel ? <ControlPanel /> : <App />;
 }
 
-// Wrap the app with shared providers
-const AppWithProviders = () => {
-  return (
-    <ToastProvider>
-      <AppRouter />
-    </ToastProvider>
+function mountApp() {
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode>
+      <ToastProvider>
+        <AppRouter />
+      </ToastProvider>
+    </React.StrictMode>
   );
-};
-
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <AppWithProviders />
-  </React.StrictMode>
-);
+}

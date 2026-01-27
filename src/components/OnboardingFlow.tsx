@@ -466,11 +466,11 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       "accessibilityPermissionGranted",
       permissionsHook.accessibilityPermissionGranted.toString()
     );
-    localStorage.setItem("authenticationSkipped", skipAuth.toString());
-    localStorage.setItem("onboardingCompleted", "true");
     const trimmedApiKey = apiKey.trim();
-    const skipAuth = trimmedApiKey.length === 0;
-    localStorage.setItem("skipAuth", skipAuth.toString());
+    const skippedAuth = skipAuth || trimmedApiKey.length === 0;
+    localStorage.setItem("authenticationSkipped", skippedAuth.toString());
+    localStorage.setItem("onboardingCompleted", "true");
+    localStorage.setItem("skipAuth", skippedAuth.toString());
 
     if (!useLocalWhisper && trimmedApiKey) {
       await persistOpenAIKey(trimmedApiKey);

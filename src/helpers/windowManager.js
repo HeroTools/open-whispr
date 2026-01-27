@@ -196,27 +196,31 @@ class WindowManager {
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
     // Intercept navigation attempts to keep external URLs out of the Electron window
-    this.controlPanelWindow.webContents.on('will-navigate', (event, url) => {
+    this.controlPanelWindow.webContents.on("will-navigate", (event, url) => {
       const appUrl = DevServerManager.getAppUrl(true);
-      const controlPanelUrl = appUrl.startsWith('http') ? appUrl : `file://${appUrl}`;
+      const controlPanelUrl = appUrl.startsWith("http") ? appUrl : `file://${appUrl}`;
 
       // Allow navigation to our own app URLs
-      if (url.startsWith(controlPanelUrl) || url.startsWith('file://') || url.startsWith('devtools://')) {
+      if (
+        url.startsWith(controlPanelUrl) ||
+        url.startsWith("file://") ||
+        url.startsWith("devtools://")
+      ) {
         return;
       }
 
-      console.log('Intercepting external navigation:', url);
+      console.log("Intercepting external navigation:", url);
       event.preventDefault();
       shell.openExternal(url);
     });
 
     // Also intercept new window requests
     this.controlPanelWindow.webContents.setWindowOpenHandler(({ url }) => {
-      console.log('Intercepting window.open:', url);
+      console.log("Intercepting window.open:", url);
 
       // Open all external URLs in the system browser
       shell.openExternal(url);
-      return { action: 'deny' };
+      return { action: "deny" };
     });
 
     const visibilityTimer = setTimeout(() => {

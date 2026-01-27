@@ -1,9 +1,18 @@
 import React, { useState, useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Command, Mic, Shield, FolderOpen, LogOut, UserCircle } from "lucide-react";
+import {
+  RefreshCw,
+  Download,
+  Command,
+  Mic,
+  Shield,
+  FolderOpen,
+  LogOut,
+  UserCircle,
+} from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { authClient, NEON_AUTH_URL } from "../lib/neonAuth";
+import { NEON_AUTH_URL } from "../lib/neonAuth";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -254,11 +263,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [isSigningOut, setIsSigningOut] = useState(false);
 
   const handleSignOut = useCallback(async () => {
-    if (!authClient) return;
-
     setIsSigningOut(true);
     try {
-      await authClient.signOut();
+      // Clear session cookies via Electron's main process to avoid
+      // CSRF/Origin header issues with the server-side sign-out endpoint
+      await window.electronAPI?.authClearSession?.();
       // Clear onboarding to show auth screen again
       localStorage.removeItem("onboardingCompleted");
       localStorage.removeItem("onboardingCurrentStep");

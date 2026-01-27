@@ -6,7 +6,7 @@ export const authClient = NEON_AUTH_URL
   ? createAuthClient(NEON_AUTH_URL, { adapter: BetterAuthReactAdapter() })
   : null;
 
-export type SocialProvider = "google" | "github";
+export type SocialProvider = "google";
 
 export async function signInWithSocial(provider: SocialProvider): Promise<{ error?: Error }> {
   if (!authClient) {
@@ -14,13 +14,16 @@ export async function signInWithSocial(provider: SocialProvider): Promise<{ erro
   }
 
   try {
-    // For Electron/Vite dev, use the current origin (localhost)
-    // The callback URL is where the user returns after OAuth
-    const callbackURL = window.location.origin;
+    // Build an absolute callback URL. Neon Auth redirects here after OAuth.
+    // In the browser, this page detects it's outside Electron and redirects
+    // to the openwhispr:// protocol to hand the verifier back to the app.
+    const base = window.location.href.split("?")[0].split("#")[0];
+    const callbackURL = `${base}?panel=true`;
 
     await authClient.signIn.social({
       provider,
       callbackURL,
+      newUserCallbackURL: callbackURL,
     });
 
     return {};

@@ -630,6 +630,24 @@ class IPCHandlers {
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
 
+    // Auth: clear all session cookies for sign-out.
+    // This clears every cookie in the renderer session rather than targeting
+    // individual auth cookies, which is acceptable because the app only sets
+    // cookies for Neon Auth. Avoids CSRF/Origin header issues that occur when
+    // the renderer tries to call the server-side sign-out endpoint directly.
+    ipcMain.handle("auth-clear-session", async (event) => {
+      try {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win) {
+          await win.webContents.session.clearStorageData({ storages: ["cookies"] });
+        }
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to clear auth session:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
         const modelsDir = this.whisperManager.getModelsDir();
