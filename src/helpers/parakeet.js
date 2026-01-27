@@ -1,9 +1,9 @@
 const fs = require("fs");
 const fsPromises = require("fs").promises;
 const path = require("path");
-const https = require("https");
 const { spawn } = require("child_process");
 const debugLogger = require("./debugLogger");
+const { downloadFile, createDownloadSignal } = require("./downloadUtils");
 const ParakeetServerManager = require("./parakeetServer");
 const { getModelsDirForService } = require("./modelDirUtils");
 
@@ -253,7 +253,6 @@ class ParakeetManager {
     return { success: true, text };
   }
 
-  // Model management methods
   async downloadParakeetModel(modelName, progressCallback = null) {
     this.validateModelName(modelName);
     const modelConfig = getParakeetModelConfig(modelName);
@@ -261,176 +260,54 @@ class ParakeetManager {
     const modelPath = this.getModelPath(modelName);
     const modelsDir = this.getModelsDir();
 
-    // Create models directory
     await fsPromises.mkdir(modelsDir, { recursive: true });
 
-    // Check if already downloaded
     if (this.serverManager.isModelDownloaded(modelName)) {
-      return {
-        model: modelName,
-        downloaded: true,
-        path: modelPath,
-        success: true,
-      };
+      return { model: modelName, downloaded: true, path: modelPath, success: true };
     }
 
-    const tempPath = path.join(modelsDir, `${modelName}.tar.bz2.tmp`);
     const archivePath = path.join(modelsDir, `${modelName}.tar.bz2`);
+    const { signal, abort } = createDownloadSignal();
+    this.currentDownloadProcess = { abort };
 
-    let activeRequest = null;
-    let activeFile = null;
-    let isCancelled = false;
+    try {
+      await downloadFile(modelConfig.url, archivePath, {
+        timeout: 600000,
+        signal,
+        onProgress: (downloadedBytes, totalBytes) => {
+          if (progressCallback) {
+            progressCallback({
+              type: "progress",
+              model: modelName,
+              downloaded_bytes: downloadedBytes,
+              total_bytes: totalBytes,
+              percentage: totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0,
+            });
+          }
+        },
+      });
 
-    const cleanup = () => {
-      if (activeRequest) {
-        activeRequest.destroy();
-        activeRequest = null;
+      if (progressCallback) {
+        progressCallback({ type: "installing", model: modelName, percentage: 100 });
       }
-      if (activeFile) {
-        activeFile.close();
-        activeFile = null;
+
+      await this._extractModel(archivePath, modelName);
+      await fsPromises.unlink(archivePath).catch(() => {});
+
+      if (progressCallback) {
+        progressCallback({ type: "complete", model: modelName, percentage: 100 });
       }
-      try {
-        fs.unlinkSync(tempPath);
-      } catch {}
-      try {
-        fs.unlinkSync(archivePath);
-      } catch {}
-    };
 
-    this.currentDownloadProcess = {
-      abort: () => {
-        isCancelled = true;
-        cleanup();
-      },
-    };
-
-    return new Promise((resolve, reject) => {
-      const downloadWithRedirect = (url, redirectCount = 0) => {
-        if (isCancelled) {
-          reject(new Error("Download cancelled by user"));
-          return;
-        }
-
-        if (redirectCount > 5) {
-          cleanup();
-          reject(new Error("Too many redirects"));
-          return;
-        }
-
-        activeRequest = https.get(url, (response) => {
-          if (isCancelled) {
-            cleanup();
-            reject(new Error("Download cancelled by user"));
-            return;
-          }
-
-          if (response.statusCode === 302 || response.statusCode === 301) {
-            const redirectUrl = response.headers.location;
-            if (!redirectUrl) {
-              cleanup();
-              reject(new Error("Redirect without location header"));
-              return;
-            }
-            downloadWithRedirect(redirectUrl, redirectCount + 1);
-            return;
-          }
-
-          if (response.statusCode !== 200) {
-            cleanup();
-            reject(new Error(`Failed to download model: HTTP ${response.statusCode}`));
-            return;
-          }
-
-          const totalSize = parseInt(response.headers["content-length"], 10) || modelConfig.size;
-          let downloadedSize = 0;
-
-          activeFile = fs.createWriteStream(tempPath);
-
-          response.on("data", (chunk) => {
-            if (isCancelled) {
-              cleanup();
-              return;
-            }
-
-            downloadedSize += chunk.length;
-            const percentage = Math.round((downloadedSize / totalSize) * 100);
-
-            if (progressCallback) {
-              progressCallback({
-                type: "progress",
-                model: modelName,
-                downloaded_bytes: downloadedSize,
-                total_bytes: totalSize,
-                percentage,
-              });
-            }
-          });
-
-          response.pipe(activeFile);
-
-          activeFile.on("finish", async () => {
-            if (isCancelled) {
-              cleanup();
-              reject(new Error("Download cancelled by user"));
-              return;
-            }
-
-            activeFile.close();
-            activeFile = null;
-            this.currentDownloadProcess = null;
-
-            try {
-              await fsPromises.rename(tempPath, archivePath);
-
-              await this._extractModel(archivePath, modelName);
-
-              await fsPromises.unlink(archivePath);
-
-              if (progressCallback) {
-                progressCallback({
-                  type: "complete",
-                  model: modelName,
-                  percentage: 100,
-                });
-              }
-
-              resolve({
-                model: modelName,
-                downloaded: true,
-                path: modelPath,
-                success: true,
-              });
-            } catch (extractError) {
-              cleanup();
-              reject(new Error(`Failed to extract model: ${extractError.message}`));
-            }
-          });
-
-          activeFile.on("error", (err) => {
-            cleanup();
-            reject(err);
-          });
-
-          response.on("error", (err) => {
-            cleanup();
-            reject(err);
-          });
-        });
-
-        activeRequest.on("error", (err) => {
-          cleanup();
-          reject(err);
-        });
-
-        activeRequest.setTimeout(600000, () => {
-          cleanup();
-          reject(new Error("Download request timed out"));
-        });
-      };
-
-      downloadWithRedirect(modelConfig.url);
-    });
+      return { model: modelName, downloaded: true, path: modelPath, success: true };
+    } catch (error) {
+      await fsPromises.unlink(archivePath).catch(() => {});
+      if (error.isAbort) {
+        throw new Error("Download interrupted by user");
+      }
+      throw error;
+    } finally {
+      this.currentDownloadProcess = null;
+    }
   }
 
   async _extractModel(archivePath, modelName) {

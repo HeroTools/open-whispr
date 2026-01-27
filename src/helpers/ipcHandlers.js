@@ -245,30 +245,9 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
-      try {
-        const result = await this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
-          // Forward progress updates to the renderer
-          event.sender.send("whisper-download-progress", progressData);
-        });
-
-        // Send completion event
-        event.sender.send("whisper-download-progress", {
-          type: "complete",
-          model: modelName,
-          result: result,
-        });
-
-        return result;
-      } catch (error) {
-        // Send error event
-        event.sender.send("whisper-download-progress", {
-          type: "error",
-          model: modelName,
-          error: error.message,
-        });
-
-        throw error;
-      }
+      return this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
+        event.sender.send("whisper-download-progress", progressData);
+      });
     });
 
     ipcMain.handle("check-model-status", async (event, modelName) => {
@@ -360,30 +339,9 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-parakeet-model", async (event, modelName) => {
-      try {
-        const result = await this.parakeetManager.downloadParakeetModel(
-          modelName,
-          (progressData) => {
-            event.sender.send("parakeet-download-progress", progressData);
-          }
-        );
-
-        event.sender.send("parakeet-download-progress", {
-          type: "complete",
-          model: modelName,
-          result: result,
-        });
-
-        return result;
-      } catch (error) {
-        event.sender.send("parakeet-download-progress", {
-          type: "error",
-          model: modelName,
-          error: error.message,
-        });
-
-        throw error;
-      }
+      return this.parakeetManager.downloadParakeetModel(modelName, (progressData) => {
+        event.sender.send("parakeet-download-progress", progressData);
+      });
     });
 
     ipcMain.handle("check-parakeet-model-status", async (_event, modelName) => {
