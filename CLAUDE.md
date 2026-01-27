@@ -488,7 +488,7 @@ On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's 
 - Recommend `pavucontrol` for audio device management
 - **Clipboard paste tools** (at least one required for auto-paste):
   - **X11**: `xdotool` (recommended)
-  - **Wayland** (non-GNOME): `wtype` (requires virtual keyboard protocol) or `ydotool` (requires `ydotoold` daemon)
+  - **Wayland** (non-GNOME): `wtype` (requires virtual keyboard protocol) or `xdotool` (works via XWayland, recommended for Electron apps)
   - **GNOME Wayland**: `xdotool` for XWayland apps only (native Wayland apps require manual paste)
   - Terminal detection: Auto-detects terminal emulators and uses Ctrl+Shift+V
   - Fallback: Text copied to clipboard with manual paste instructions
