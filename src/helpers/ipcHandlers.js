@@ -412,11 +412,19 @@ class IPCHandlers {
 
     // Parakeet server handlers (for faster repeated transcriptions)
     ipcMain.handle("parakeet-server-start", async (event, modelName) => {
-      return this.parakeetManager.startServer(modelName);
+      const result = await this.parakeetManager.startServer(modelName);
+      process.env.LOCAL_TRANSCRIPTION_PROVIDER = "nvidia";
+      process.env.PARAKEET_MODEL = modelName;
+      this.environmentManager.saveAllKeysToEnvFile();
+      return result;
     });
 
     ipcMain.handle("parakeet-server-stop", async () => {
-      return this.parakeetManager.stopServer();
+      const result = await this.parakeetManager.stopServer();
+      delete process.env.LOCAL_TRANSCRIPTION_PROVIDER;
+      delete process.env.PARAKEET_MODEL;
+      this.environmentManager.saveAllKeysToEnvFile();
+      return result;
     });
 
     ipcMain.handle("parakeet-server-status", async () => {

@@ -185,7 +185,14 @@ async function startApp() {
   });
 
   // Initialize Parakeet manager at startup (don't await to avoid blocking)
-  parakeetManager.initializeAtStartup().catch((err) => {
+  // Settings can be provided via environment variables for server pre-warming:
+  // - LOCAL_TRANSCRIPTION_PROVIDER=nvidia to enable parakeet
+  // - PARAKEET_MODEL=parakeet-tdt-0.6b-v3 (model name)
+  const parakeetSettings = {
+    localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
+    parakeetModel: process.env.PARAKEET_MODEL || "parakeet-tdt-0.6b-v3",
+  };
+  parakeetManager.initializeAtStartup(parakeetSettings).catch((err) => {
     // Parakeet not being available at startup is not critical
     debugLogger.debug("Parakeet startup init error (non-fatal)", { error: err.message });
   });

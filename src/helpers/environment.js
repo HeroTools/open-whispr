@@ -132,6 +132,12 @@ OPENAI_API_KEY=${apiKey}
     if (process.env.CUSTOM_REASONING_API_KEY) {
       envContent += `CUSTOM_REASONING_API_KEY=${process.env.CUSTOM_REASONING_API_KEY}\n`;
     }
+    if (process.env.LOCAL_TRANSCRIPTION_PROVIDER) {
+      envContent += `LOCAL_TRANSCRIPTION_PROVIDER=${process.env.LOCAL_TRANSCRIPTION_PROVIDER}\n`;
+    }
+    if (process.env.PARAKEET_MODEL) {
+      envContent += `PARAKEET_MODEL=${process.env.PARAKEET_MODEL}\n`;
+    }
 
     fs.writeFileSync(envPath, envContent, "utf8");
 

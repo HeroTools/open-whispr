@@ -127,6 +127,8 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
   - Bundled binaries in `resources/bin/sherpa-onnx-{platform}-{arch}`
   - INT8 quantized models for efficient CPU inference
   - Models stored in `~/.cache/openwhispr/parakeet-models/`
+  - Server pre-warming on startup when `LOCAL_TRANSCRIPTION_PROVIDER=nvidia` is set
+  - Provider preference persisted to `.env` via `saveAllKeysToEnvFile()` on server start/stop
 
 - **Available Models**:
   - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
@@ -210,6 +212,10 @@ Settings stored in localStorage with these keys:
 - `hotkey`: Custom hotkey configuration
 - `hasCompletedOnboarding`: Onboarding completion flag
 - `customDictionary`: JSON array of words/phrases for improved transcription accuracy
+
+Environment variables persisted to `.env` (via `saveAllKeysToEnvFile()`):
+- `LOCAL_TRANSCRIPTION_PROVIDER`: Transcription engine (`nvidia` for Parakeet)
+- `PARAKEET_MODEL`: Selected Parakeet model name (e.g., `parakeet-tdt-0.6b-v3`)
 
 ### 6. Language Support
 
