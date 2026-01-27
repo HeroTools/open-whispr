@@ -12,19 +12,17 @@
 
 const fs = require("fs");
 const path = require("path");
-const { downloadFile, extractZip, setExecutable } = require("./lib/download-utils");
+const { downloadFile, extractZip, fetchLatestRelease, setExecutable } = require("./lib/download-utils");
 
-// Use the same repo - binaries are released separately
 const REPO = "HeroTools/open-whispr";
-const VERSION = "windows-key-listener-v1.0.0";
+const TAG_PREFIX = "windows-key-listener-v";
 const ZIP_NAME = "windows-key-listener-win32-x64.zip";
 const BINARY_NAME = "windows-key-listener.exe";
 
-const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
+// Version can be pinned via environment variable for reproducible builds
+const VERSION_OVERRIDE = process.env.WINDOWS_KEY_LISTENER_VERSION || null;
 
-function getDownloadUrl() {
-  return `https://github.com/${REPO}/releases/download/${VERSION}/${ZIP_NAME}`;
-}
+const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
 
 async function main() {
   // Only needed on Windows
@@ -38,23 +36,44 @@ async function main() {
 
   // Check if already exists
   if (fs.existsSync(outputPath) && !forceDownload) {
-    console.log("[windows-key-listener] Binary already exists, skipping download");
+    console.log("[windows-key-listener] Already exists (use --force to re-download)");
     console.log(`  ${outputPath}`);
     return;
   }
 
-  console.log(`\nDownloading Windows key listener (${VERSION})...\n`);
+  // Fetch release (pinned version or latest)
+  if (VERSION_OVERRIDE) {
+    console.log(`\n[windows-key-listener] Using pinned version: ${VERSION_OVERRIDE}`);
+  } else {
+    console.log("\n[windows-key-listener] Fetching latest release...");
+  }
+  const tagToFind = VERSION_OVERRIDE || TAG_PREFIX;
+  const release = await fetchLatestRelease(REPO, { tagPrefix: tagToFind });
+
+  if (!release) {
+    console.error("[windows-key-listener] Could not find a release matching prefix:", TAG_PREFIX);
+    console.log("[windows-key-listener] Push-to-Talk will use fallback mode (compile locally or tap mode)");
+    return;
+  }
+
+  // Find the zip asset
+  const zipAsset = release.assets.find((a) => a.name === ZIP_NAME);
+  if (!zipAsset) {
+    console.error(`[windows-key-listener] Release ${release.tag} does not contain ${ZIP_NAME}`);
+    console.log("[windows-key-listener] Available assets:", release.assets.map((a) => a.name).join(", "));
+    return;
+  }
+
+  console.log(`\nDownloading Windows key listener (${release.tag})...\n`);
 
   // Ensure bin directory exists
   fs.mkdirSync(BIN_DIR, { recursive: true });
 
-  const url = getDownloadUrl();
   const zipPath = path.join(BIN_DIR, ZIP_NAME);
-
-  console.log(`  Downloading from: ${url}`);
+  console.log(`  Downloading from: ${zipAsset.url}`);
 
   try {
-    await downloadFile(url, zipPath);
+    await downloadFile(zipAsset.url, zipPath);
 
     // Extract zip
     const extractDir = path.join(BIN_DIR, "temp-windows-key-listener");
@@ -80,7 +99,7 @@ async function main() {
     }
 
     const stats = fs.statSync(outputPath);
-    console.log(`\n[windows-key-listener] Successfully downloaded (${Math.round(stats.size / 1024)}KB)`);
+    console.log(`\n[windows-key-listener] Successfully downloaded ${release.tag} (${Math.round(stats.size / 1024)}KB)`);
   } catch (error) {
     console.error(`\n[windows-key-listener] Download failed: ${error.message}`);
 

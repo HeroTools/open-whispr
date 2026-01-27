@@ -3,6 +3,7 @@ const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
+const { DEV_SERVER_PORT } = DevServerManager;
 const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
 
 class WindowManager {
@@ -15,10 +16,15 @@ class WindowManager {
     this.isQuitting = false;
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
+    this.windowsPushToTalkAvailable = false;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
     });
+  }
+
+  setWindowsPushToTalkAvailable(available) {
+    this.windowsPushToTalkAvailable = available;
   }
 
   async createMainWindow() {
@@ -49,7 +55,7 @@ class WindowManager {
         if (
           process.env.NODE_ENV === "development" &&
           validatedURL &&
-          validatedURL.includes("localhost:5174")
+          validatedURL.includes(`localhost:${DEV_SERVER_PORT}`)
         ) {
           // Retry connection to dev server
           setTimeout(async () => {
@@ -128,13 +134,10 @@ class WindowManager {
         return;
       }
 
-      // On Windows in push mode, don't toggle - let windowsKeyManager handle key events
-      if (process.platform === "win32") {
+      // Windows push mode: defer to windowsKeyManager if available, else fall through to toggle
+      if (process.platform === "win32" && this.windowsPushToTalkAvailable) {
         const activationMode = await this.getActivationMode();
         if (activationMode === "push") {
-          console.log(
-            "[HotkeyCallback] Windows push mode - skipping toggle, windowsKeyManager handles this"
-          );
           return;
         }
       }

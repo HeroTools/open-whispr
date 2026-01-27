@@ -322,14 +322,29 @@ async function startApp() {
 
     windowsKeyManager.on("error", (error) => {
       debugLogger.warn("[Push-to-Talk] Windows key listener error", { error: error.message });
+      windowManager.setWindowsPushToTalkAvailable(false);
+      if (isLiveWindow(windowManager.mainWindow)) {
+        windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
+          reason: "error",
+          message: error.message,
+        });
+      }
     });
 
     windowsKeyManager.on("unavailable", () => {
-      debugLogger.debug("[Push-to-Talk] Windows key listener not available - using tap mode only");
+      debugLogger.debug("[Push-to-Talk] Windows key listener not available - falling back to toggle mode");
+      windowManager.setWindowsPushToTalkAvailable(false);
+      if (isLiveWindow(windowManager.mainWindow)) {
+        windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
+          reason: "binary_not_found",
+          message: "Push-to-Talk native listener not available",
+        });
+      }
     });
 
     windowsKeyManager.on("ready", () => {
       debugLogger.debug("[Push-to-Talk] WindowsKeyManager is ready and listening");
+      windowManager.setWindowsPushToTalkAvailable(true);
     });
 
     // Start the Windows key listener with the current hotkey

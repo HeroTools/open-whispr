@@ -79,6 +79,16 @@ async function tryDownload() {
   return false;
 }
 
+/**
+ * Quote a path for use in shell commands on Windows.
+ * @param {string} p - Path to quote
+ * @returns {string} - Quoted path safe for shell use
+ */
+function quotePath(p) {
+  // Use double quotes and escape any existing quotes
+  return `"${p.replace(/"/g, '\\"')}"`;
+}
+
 // Try to compile locally
 function tryCompile() {
   if (!fs.existsSync(cSource)) {
@@ -88,22 +98,30 @@ function tryCompile() {
 
   log("Attempting local compilation...");
 
+  // For MSVC, we need to use a command string because /Fe: doesn't work well with spawn args
+  // For GCC/Clang, we can use shell: false with proper args array
   const compilers = [
-    // MSVC (Visual Studio)
+    // MSVC (Visual Studio) - uses command string due to /Fe: syntax
     {
       name: "MSVC",
-      command: "cl",
-      args: ["/O2", "/nologo", cSource, `/Fe:${outputBinary}`, "user32.lib"],
+      check: { command: "cl", args: [] },
+      useShell: true,
+      getCommand: () =>
+        `cl /O2 /nologo ${quotePath(cSource)} /Fe:${quotePath(outputBinary)} user32.lib`,
     },
-    // MinGW-w64
+    // MinGW-w64 - can use shell: false
     {
       name: "MinGW-w64",
+      check: { command: "gcc", args: ["--version"] },
+      useShell: false,
       command: "gcc",
       args: ["-O2", "-mwindows", cSource, "-o", outputBinary, "-luser32"],
     },
-    // Clang (LLVM)
+    // Clang (LLVM) - can use shell: false
     {
       name: "Clang",
+      check: { command: "clang", args: ["--version"] },
+      useShell: false,
       command: "clang",
       args: ["-O2", cSource, "-o", outputBinary, "-luser32"],
     },
@@ -113,7 +131,7 @@ function tryCompile() {
     log(`Trying ${compiler.name}...`);
 
     // Check if compiler is available
-    const checkResult = spawnSync(compiler.command, ["--version"], {
+    const checkResult = spawnSync(compiler.check.command, compiler.check.args, {
       stdio: "pipe",
       shell: true,
     });
@@ -123,12 +141,23 @@ function tryCompile() {
       continue;
     }
 
-    log(`Compiling with: ${compiler.command} ${compiler.args.join(" ")}`);
-    const result = spawnSync(compiler.command, compiler.args, {
-      stdio: "inherit",
-      cwd: projectRoot,
-      shell: true,
-    });
+    let result;
+    if (compiler.useShell) {
+      const cmd = compiler.getCommand();
+      log(`Compiling with: ${cmd}`);
+      result = spawnSync(cmd, [], {
+        stdio: "inherit",
+        cwd: projectRoot,
+        shell: true,
+      });
+    } else {
+      log(`Compiling with: ${compiler.command} ${compiler.args.join(" ")}`);
+      result = spawnSync(compiler.command, compiler.args, {
+        stdio: "inherit",
+        cwd: projectRoot,
+        shell: false,
+      });
+    }
 
     if (result.status === 0 && fs.existsSync(outputBinary)) {
       log(`Successfully built with ${compiler.name}`);
