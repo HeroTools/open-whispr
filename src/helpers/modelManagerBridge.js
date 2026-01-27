@@ -1,9 +1,8 @@
 const path = require("path");
 const fs = require("fs");
 const { promises: fsPromises } = require("fs");
-const https = require("https");
-const { pipeline } = require("stream");
 const { app } = require("electron");
+const { downloadFile: sharedDownloadFile, createDownloadSignal } = require("./downloadUtils");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
 const LlamaServerManager = require("./llamaServer");
@@ -171,7 +170,6 @@ class ModelManager {
 
     const { model, provider } = modelInfo;
     const modelPath = path.join(this.modelsDir, model.fileName);
-    const tempPath = `${modelPath}.tmp`;
 
     if (await this.checkModelValid(modelPath)) {
       return modelPath;
@@ -184,30 +182,32 @@ class ModelManager {
     }
 
     this.activeDownloads.set(modelId, true);
+    const { signal, abort } = createDownloadSignal();
+    this.activeRequests.set(modelId, { abort });
 
     try {
       await this.ensureModelsDirExists();
       const downloadUrl = this.getDownloadUrl(provider, model);
 
-      await this.downloadFile(
-        downloadUrl,
-        tempPath,
-        (progress, downloadedSize, totalSize) => {
+      await sharedDownloadFile(downloadUrl, modelPath, {
+        signal,
+        onProgress: (downloadedBytes, totalBytes) => {
+          const progress = totalBytes > 0 ? (downloadedBytes / totalBytes) * 100 : 0;
           this.downloadProgress.set(modelId, {
             modelId,
             progress,
-            downloadedSize,
-            totalSize,
+            downloadedSize: downloadedBytes,
+            totalSize: totalBytes,
           });
           if (onProgress) {
-            onProgress(progress, downloadedSize, totalSize);
+            onProgress(progress, downloadedBytes, totalBytes);
           }
         },
-        modelId
-      );
+      });
 
-      const stats = await fsPromises.stat(tempPath);
+      const stats = await fsPromises.stat(modelPath);
       if (stats.size < MIN_FILE_SIZE) {
+        await fsPromises.unlink(modelPath).catch(() => {});
         throw new ModelError(
           "Downloaded file appears to be corrupted or incomplete",
           "DOWNLOAD_CORRUPTED",
@@ -215,25 +215,25 @@ class ModelManager {
         );
       }
 
-      // Atomic rename to final path (handles cross-device moves on Windows)
-      try {
-        await fsPromises.rename(tempPath, modelPath);
-      } catch (renameError) {
-        if (renameError.code === "EXDEV") {
-          await fsPromises.copyFile(tempPath, modelPath);
-          await fsPromises.unlink(tempPath).catch(() => {});
-        } else {
-          throw renameError;
-        }
-      }
-
       return modelPath;
     } catch (error) {
-      // Clean up partial download on failure
-      await fsPromises.unlink(tempPath).catch(() => {});
+      if (error.isAbort) {
+        throw new ModelError("Download cancelled by user", "DOWNLOAD_CANCELLED", { modelId });
+      }
+      if (error.isHttpError) {
+        throw new ModelError(`Download failed with status ${error.statusCode}`, "DOWNLOAD_FAILED", {
+          statusCode: error.statusCode,
+        });
+      }
+      if (!(error instanceof ModelError)) {
+        throw new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
+          error: error.message,
+        });
+      }
       throw error;
     } finally {
       this.activeDownloads.delete(modelId);
+      this.activeRequests.delete(modelId);
       this.downloadProgress.delete(modelId);
     }
   }
@@ -243,168 +243,13 @@ class ModelManager {
     return `${baseUrl}/${model.hfRepo}/resolve/main/${model.fileName}`;
   }
 
-  async downloadFile(url, destPath, onProgress, modelId) {
-    return new Promise((resolve, reject) => {
-      const file = fs.createWriteStream(destPath);
-      let downloadedSize = 0;
-      let totalSize = 0;
-      let lastProgressUpdate = 0;
-      const PROGRESS_THROTTLE_MS = 100; // Throttle progress updates to prevent UI flashing
-
-      const cleanup = (callback) => {
-        file.close(() => {
-          fsPromises
-            .unlink(destPath)
-            .catch(() => {})
-            .finally(callback);
-        });
-      };
-
-      const request = https
-        .get(
-          url,
-          {
-            headers: { "User-Agent": "OpenWhispr/1.0" },
-            timeout: 30000,
-          },
-          (response) => {
-            if (
-              response.statusCode === 301 ||
-              response.statusCode === 302 ||
-              response.statusCode === 303 ||
-              response.statusCode === 307 ||
-              response.statusCode === 308
-            ) {
-              const redirectUrl = response.headers.location;
-              if (!redirectUrl) {
-                cleanup(() => {
-                  reject(
-                    new ModelError("Redirect without location header", "DOWNLOAD_REDIRECT_ERROR")
-                  );
-                });
-                return;
-              }
-              cleanup(() => {
-                this.downloadFile(redirectUrl, destPath, onProgress, modelId)
-                  .then(resolve)
-                  .catch(reject);
-              });
-              return;
-            }
-
-            if (response.statusCode !== 200 && response.statusCode !== 206) {
-              cleanup(() => {
-                reject(
-                  new ModelError(
-                    `Download failed with status ${response.statusCode}`,
-                    "DOWNLOAD_FAILED",
-                    { statusCode: response.statusCode }
-                  )
-                );
-              });
-              return;
-            }
-
-            totalSize = parseInt(response.headers["content-length"], 10);
-
-            response.on("data", (chunk) => {
-              downloadedSize += chunk.length;
-
-              // Throttle progress updates to prevent UI flashing
-              const now = Date.now();
-              if (
-                onProgress &&
-                totalSize > 0 &&
-                (now - lastProgressUpdate >= PROGRESS_THROTTLE_MS || downloadedSize >= totalSize)
-              ) {
-                lastProgressUpdate = now;
-                const progress = (downloadedSize / totalSize) * 100;
-                onProgress(progress, downloadedSize, totalSize);
-              }
-            });
-
-            pipeline(response, file, (error) => {
-              // Clean up request tracking
-              if (modelId) {
-                this.activeRequests.delete(modelId);
-              }
-
-              if (error) {
-                // Check if this was a cancellation
-                if (
-                  error.code === "ERR_STREAM_PREMATURE_CLOSE" &&
-                  modelId &&
-                  !this.activeDownloads.has(modelId)
-                ) {
-                  cleanup(() => {
-                    reject(
-                      new ModelError("Download cancelled by user", "DOWNLOAD_CANCELLED", {
-                        modelId,
-                      })
-                    );
-                  });
-                  return;
-                }
-                cleanup(() => {
-                  reject(
-                    new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
-                      error: error.message,
-                    })
-                  );
-                });
-                return;
-              }
-              resolve(destPath);
-            });
-          }
-        )
-        .on("error", (error) => {
-          // Clean up request tracking
-          if (modelId) {
-            this.activeRequests.delete(modelId);
-          }
-
-          cleanup(() => {
-            // Check if this was a cancellation
-            if (error.code === "ECONNRESET" && modelId && !this.activeDownloads.has(modelId)) {
-              reject(
-                new ModelError("Download cancelled by user", "DOWNLOAD_CANCELLED", {
-                  modelId,
-                })
-              );
-              return;
-            }
-            reject(
-              new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
-                error: error.message,
-              })
-            );
-          });
-        });
-
-      // Store the request for potential cancellation
-      if (modelId) {
-        this.activeRequests.set(modelId, { request, file, destPath });
-      }
-    });
-  }
-
   cancelDownload(modelId) {
-    const activeRequest = this.activeRequests.get(modelId);
-    if (activeRequest) {
-      const { request, file, destPath } = activeRequest;
-
-      // Mark as no longer active before destroying
+    const entry = this.activeRequests.get(modelId);
+    if (entry) {
       this.activeDownloads.delete(modelId);
       this.activeRequests.delete(modelId);
       this.downloadProgress.delete(modelId);
-
-      // Destroy the request and close the file
-      request.destroy();
-      file.close(() => {
-        fsPromises.unlink(destPath).catch(() => {});
-      });
-
+      entry.abort();
       return true;
     }
     return false;

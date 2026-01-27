@@ -24,6 +24,8 @@ jobs:
 
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js --current
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Cache Electron
       uses: actions/cache@v4
@@ -63,9 +65,13 @@ jobs:
 
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js --current
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Download nircmd.exe
       run: node scripts/download-nircmd.js
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Cache Electron
       uses: actions/cache@v4
@@ -106,6 +112,8 @@ jobs:
 
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js --current --platform darwin --arch ${{ matrix.arch }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Cache Electron
       uses: actions/cache@v4

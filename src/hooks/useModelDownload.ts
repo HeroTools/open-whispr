@@ -14,7 +14,7 @@ export interface DownloadProgress {
   eta?: number;
 }
 
-export type ModelType = "whisper" | "llm";
+export type ModelType = "whisper" | "llm" | "parakeet";
 
 interface UseModelDownloadOptions {
   modelType: ModelType;
@@ -48,6 +48,7 @@ export function useModelDownload({
     totalBytes: 0,
   });
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isInstalling, setIsInstalling] = useState(false);
   const isCancellingRef = useRef(false);
   const lastProgressUpdateRef = useRef(0);
 
@@ -73,14 +74,21 @@ export function useModelDownload({
   const handleWhisperProgress = useCallback(
     (_event: unknown, data: WhisperDownloadProgressData) => {
       if (data.type === "progress") {
+        const now = Date.now();
+        if (now - lastProgressUpdateRef.current < PROGRESS_THROTTLE_MS) return;
+        lastProgressUpdateRef.current = now;
         setDownloadProgress({
           percentage: data.percentage || 0,
           downloadedBytes: data.downloaded_bytes || 0,
           totalBytes: data.total_bytes || 0,
         });
-      } else if (data.type === "complete" || data.type === "error") {
-        // Skip if cancellation is handling cleanup
+      } else if (data.type === "installing") {
+        setIsInstalling(true);
+      } else if (data.type === "complete") {
+        // Cleanup is handled by the finally block in downloadModel;
+        // this handles the IPC progress event for completion
         if (isCancellingRef.current) return;
+        setIsInstalling(false);
         setDownloadingModel(null);
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
         onDownloadCompleteRef.current?.();
@@ -109,10 +117,15 @@ export function useModelDownload({
   }, []);
 
   useEffect(() => {
-    const dispose =
-      modelType === "whisper"
-        ? window.electronAPI?.onWhisperDownloadProgress(handleWhisperProgress)
-        : window.electronAPI?.onModelDownloadProgress(handleLLMProgress);
+    let dispose: (() => void) | undefined;
+
+    if (modelType === "whisper") {
+      dispose = window.electronAPI?.onWhisperDownloadProgress(handleWhisperProgress);
+    } else if (modelType === "parakeet") {
+      dispose = window.electronAPI?.onParakeetDownloadProgress(handleWhisperProgress);
+    } else {
+      dispose = window.electronAPI?.onModelDownloadProgress(handleLLMProgress);
+    }
 
     return () => {
       dispose?.();
@@ -139,6 +152,16 @@ export function useModelDownload({
 
         if (modelType === "whisper") {
           const result = await window.electronAPI?.downloadWhisperModel(modelId);
+          if (!result?.success && !result?.error?.includes("interrupted by user")) {
+            showAlertDialog({
+              title: "Download Failed",
+              description: `Failed to download model: ${result?.error}`,
+            });
+          } else {
+            success = result?.success ?? false;
+          }
+        } else if (modelType === "parakeet") {
+          const result = await window.electronAPI?.downloadParakeetModel(modelId);
           if (!result?.success && !result?.error?.includes("interrupted by user")) {
             showAlertDialog({
               title: "Download Failed",
@@ -182,6 +205,7 @@ export function useModelDownload({
           });
         }
       } finally {
+        setIsInstalling(false);
         setDownloadingModel(null);
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
       }
@@ -194,6 +218,14 @@ export function useModelDownload({
       try {
         if (modelType === "whisper") {
           const result = await window.electronAPI?.deleteWhisperModel(modelId);
+          if (result?.success) {
+            toast({
+              title: "Model Deleted",
+              description: `Model deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
+            });
+          }
+        } else if (modelType === "parakeet") {
+          const result = await window.electronAPI?.deleteParakeetModel(modelId);
           if (result?.success) {
             toast({
               title: "Model Deleted",
@@ -227,6 +259,8 @@ export function useModelDownload({
     try {
       if (modelType === "whisper") {
         await window.electronAPI?.cancelWhisperDownload();
+      } else if (modelType === "parakeet") {
+        await window.electronAPI?.cancelParakeetDownload();
       } else {
         await window.electronAPI?.modelCancelDownload?.(downloadingModel);
       }
@@ -256,6 +290,7 @@ export function useModelDownload({
     downloadProgress,
     isDownloading,
     isDownloadingModel,
+    isInstalling,
     isCancelling,
     downloadModel,
     deleteModel,

@@ -13,7 +13,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **Desktop Framework**: Electron 36 with context isolation
 - **Database**: better-sqlite3 for local transcription history
 - **UI Components**: shadcn/ui with Radix primitives
-- **Speech Processing**: whisper.cpp (bundled native binary) + OpenAI API
+- **Speech Processing**: whisper.cpp + NVIDIA Parakeet (via sherpa-onnx) + OpenAI API
 - **Audio Processing**: FFmpeg (bundled via ffmpeg-static)
 
 ### Key Architectural Decisions
@@ -39,6 +39,12 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **main.js**: Application entry point, initializes all managers
 - **preload.js**: Exposes safe IPC methods to renderer via window.api
 
+### Native Resources (resources/)
+
+- **windows-key-listener.c**: C source for Windows low-level keyboard hook (Push-to-Talk)
+- **globe-listener.swift**: Swift source for macOS Globe/Fn key detection
+- **bin/**: Directory for compiled native binaries (whisper-cpp, nircmd, key listeners)
+
 ### Helper Modules (src/helpers/)
 
 - **audioManager.js**: Handles audio device management
@@ -62,9 +68,16 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
   - Converts Electron hotkey format to GNOME keysym format
   - Only active on Linux + Wayland + GNOME desktop
 - **ipcHandlers.js**: Centralized IPC handler registration
+- **windowsKeyManager.js**: Windows Push-to-Talk support with native key listener
+  - Spawns native `windows-key-listener.exe` binary for low-level keyboard hooks
+  - Supports compound hotkeys (e.g., `Ctrl+Shift+F11`, `CommandOrControl+Space`)
+  - Emits `key-down` and `key-up` events for push-to-talk functionality
+  - Graceful fallback if binary unavailable
 - **menuManager.js**: Application menu management
 - **tray.js**: System tray icon and menu
 - **whisper.js**: Local whisper.cpp integration and model management
+- **parakeet.js**: NVIDIA Parakeet model management via sherpa-onnx
+- **parakeetServer.js**: sherpa-onnx CLI wrapper for transcription
 - **windowConfig.js**: Centralized window configuration
 - **windowManager.js**: Window creation and lifecycle management
 
@@ -106,6 +119,38 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
   - Falls back to system installation (`brew install whisper-cpp`)
   - GGML model downloads from HuggingFace
   - Models stored in `~/.cache/openwhispr/whisper-models/`
+
+### NVIDIA Parakeet Integration (via sherpa-onnx)
+
+- **parakeet.js**: Model management for NVIDIA Parakeet ASR models
+  - Uses sherpa-onnx runtime for cross-platform ONNX inference
+  - Bundled binaries in `resources/bin/sherpa-onnx-{platform}-{arch}`
+  - INT8 quantized models for efficient CPU inference
+  - Models stored in `~/.cache/openwhispr/parakeet-models/`
+  - Server pre-warming on startup when `LOCAL_TRANSCRIPTION_PROVIDER=nvidia` is set
+  - Provider preference persisted to `.env` via `saveAllKeysToEnvFile()` on server start/stop
+
+- **Available Models**:
+  - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
+
+- **Download URLs**: Models from sherpa-onnx ASR models release on GitHub
+
+### Build Scripts (scripts/)
+
+- **download-whisper-cpp.js**: Downloads whisper.cpp binaries from GitHub releases
+- **download-llama-server.js**: Downloads llama.cpp server for local LLM inference
+- **download-nircmd.js**: Downloads nircmd.exe for Windows clipboard operations
+- **download-windows-key-listener.js**: Downloads prebuilt Windows key listener binary
+- **download-sherpa-onnx.js**: Downloads sherpa-onnx binaries for Parakeet support
+- **build-globe-listener.js**: Compiles macOS Globe key listener from Swift source
+- **build-windows-key-listener.js**: Compiles Windows key listener (for local development)
+- **run-electron.js**: Development script to launch Electron with proper environment
+- **lib/download-utils.js**: Shared utilities for downloading and extracting files
+  - `fetchLatestRelease(repo, options)`: Fetches latest release from GitHub API
+  - `downloadFile(url, dest)`: Downloads file with progress and retry logic
+  - `extractZip(zipPath, destDir)`: Cross-platform zip extraction
+  - `parseArgs()`: Parses CLI arguments for platform/arch targeting
+  - Supports `GITHUB_TOKEN` for authenticated requests (higher rate limits)
 
 ## Key Implementation Details
 
@@ -166,6 +211,11 @@ Settings stored in localStorage with these keys:
 - `reasoningProvider`: AI provider (openai/anthropic/gemini/local)
 - `hotkey`: Custom hotkey configuration
 - `hasCompletedOnboarding`: Onboarding completion flag
+- `customDictionary`: JSON array of words/phrases for improved transcription accuracy
+
+Environment variables persisted to `.env` (via `saveAllKeysToEnvFile()`):
+- `LOCAL_TRANSCRIPTION_PROVIDER`: Transcription engine (`nvidia` for Parakeet)
+- `PARAKEET_MODEL`: Selected Parakeet model name (e.g., `parakeet-tdt-0.6b-v3`)
 
 ### 6. Language Support
 
@@ -276,7 +326,52 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - Audio level analysis
 - Complete reasoning pipeline debugging with stage-by-stage logging
 
-### 12. GNOME Wayland Global Hotkeys
+### 12. Windows Push-to-Talk
+
+Native Windows support for true push-to-talk functionality using low-level keyboard hooks:
+
+**Architecture**:
+- `resources/windows-key-listener.c`: Native C program using Windows `SetWindowsHookEx` for keyboard hooks
+- `src/helpers/windowsKeyManager.js`: Node.js wrapper that spawns and manages the native binary
+- Binary outputs `KEY_DOWN` and `KEY_UP` to stdout when target key is pressed/released
+
+**Compound Hotkey Support**:
+- Parses hotkey strings like `CommandOrControl+Shift+F11`
+- Maps modifiers: `CommandOrControl`/`Ctrl` → VK_CONTROL, `Alt`/`Option` → VK_MENU, `Shift` → VK_SHIFT
+- Verifies all required modifiers are held before emitting key events
+
+**Binary Distribution**:
+- Prebuilt binary downloaded from GitHub releases (`windows-key-listener-v*` tags)
+- Download script: `scripts/download-windows-key-listener.js`
+- CI workflow: `.github/workflows/build-windows-key-listener.yml`
+- Fallback to tap mode if binary unavailable
+
+**IPC Events**:
+- `windows-key-listener:key-down`: Fired when hotkey pressed (start recording)
+- `windows-key-listener:key-up`: Fired when hotkey released (stop recording)
+
+### 13. Custom Dictionary
+
+Improve transcription accuracy for specific words, names, or technical terms:
+
+**How it works**:
+- User adds words/phrases through Settings → Custom Dictionary
+- Words stored as JSON array in localStorage (`customDictionary` key)
+- On transcription, words are joined and passed as `prompt` parameter to Whisper
+- Works with both local whisper.cpp and cloud OpenAI Whisper API
+
+**Implementation**:
+- `src/hooks/useSettings.ts`: Manages `customDictionary` state
+- `src/components/SettingsPage.tsx`: UI for adding/removing dictionary words
+- `src/helpers/audioManager.js`: Reads dictionary and adds to transcription options
+- `src/helpers/whisperServer.js`: Includes dictionary as `prompt` in API request
+
+**Whisper Prompt Parameter**:
+- Whisper uses the prompt as context/hints for transcription
+- Words in the prompt are more likely to be recognized correctly
+- Useful for: uncommon names, technical jargon, brand names, domain-specific terms
+
+### 14. GNOME Wayland Global Hotkeys
 
 On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's security model. OpenWhispr uses native GNOME shortcuts:
 
@@ -320,6 +415,8 @@ On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's 
 - [ ] Verify whisper.cpp binary detection
 - [ ] Test all Whisper models
 - [ ] Check agent naming functionality
+- [ ] Test custom dictionary with uncommon words
+- [ ] Verify Windows Push-to-Talk with compound hotkeys
 - [ ] Test GNOME Wayland hotkeys (if on GNOME + Wayland)
 - [ ] Verify activation mode selector is hidden on GNOME Wayland
 
@@ -348,9 +445,15 @@ On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's 
    - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
    - Signing requires Apple Developer account
    - ASAR unpacking needed for FFmpeg
-  - Run `npm run download:whisper-cpp` before packaging (current platform)
-  - Use `npm run download:whisper-cpp:all` for multi-platform packaging
+   - Run `npm run download:whisper-cpp` before packaging (current platform)
+   - Use `npm run download:whisper-cpp:all` for multi-platform packaging
    - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
+
+5. **Windows Push-to-Talk Binary**:
+   - Prebuilt binary downloaded automatically on Windows during build
+   - If download fails, push-to-talk falls back to tap mode
+   - To compile locally: install Visual Studio Build Tools or MinGW-w64
+   - CI workflow (`.github/workflows/build-windows-key-listener.yml`) auto-builds on push to main
 
 ### Platform-Specific Notes
 
@@ -369,6 +472,11 @@ On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's 
 - Sound settings at `ms-settings:sound`
 - NSIS installer for distribution
 - whisper.cpp bundled for x64
+- **Push-to-Talk**: Native key listener binary (`windows-key-listener.exe`) enables true push-to-talk
+  - Uses Windows Low-Level Keyboard Hook (`WH_KEYBOARD_LL`)
+  - Supports compound hotkeys (e.g., `Ctrl+Shift+F11`)
+  - Prebuilt binary auto-downloaded from GitHub releases
+  - Falls back to tap mode if unavailable
 
 **Linux**:
 - Multiple package manager support

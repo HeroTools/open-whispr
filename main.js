@@ -1,4 +1,4 @@
-const { app, globalShortcut, BrowserWindow, dialog } = require("electron");
+const { app, globalShortcut, BrowserWindow, dialog, ipcMain } = require("electron");
 
 // Enable native Wayland global shortcuts: https://github.com/electron/electron/pull/45171
 if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
@@ -44,10 +44,12 @@ const WindowManager = require("./src/helpers/windowManager");
 const DatabaseManager = require("./src/helpers/database");
 const ClipboardManager = require("./src/helpers/clipboard");
 const WhisperManager = require("./src/helpers/whisper");
+const ParakeetManager = require("./src/helpers/parakeet");
 const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
+const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -57,9 +59,11 @@ let hotkeyManager = null;
 let databaseManager = null;
 let clipboardManager = null;
 let whisperManager = null;
+let parakeetManager = null;
 let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
+let windowsKeyManager = null;
 let globeKeyAlertShown = false;
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
@@ -101,9 +105,11 @@ function initializeManagers() {
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();
   whisperManager = new WhisperManager();
+  parakeetManager = new ParakeetManager();
   trayManager = new TrayManager();
   updateManager = new UpdateManager();
   globeKeyManager = new GlobeKeyManager();
+  windowsKeyManager = new WindowsKeyManager();
 
   // Set up Globe key error handler on macOS
   if (process.platform === "darwin") {
@@ -141,8 +147,10 @@ function initializeManagers() {
     databaseManager,
     clipboardManager,
     whisperManager,
+    parakeetManager,
     windowManager,
     updateManager,
+    windowsKeyManager,
   });
 }
 
@@ -174,6 +182,19 @@ async function startApp() {
   whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
     // Whisper not being available at startup is not critical
     debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
+  });
+
+  // Initialize Parakeet manager at startup (don't await to avoid blocking)
+  // Settings can be provided via environment variables for server pre-warming:
+  // - LOCAL_TRANSCRIPTION_PROVIDER=nvidia to enable parakeet
+  // - PARAKEET_MODEL=parakeet-tdt-0.6b-v3 (model name)
+  const parakeetSettings = {
+    localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
+    parakeetModel: process.env.PARAKEET_MODEL || "parakeet-tdt-0.6b-v3",
+  };
+  parakeetManager.initializeAtStartup(parakeetSettings).catch((err) => {
+    // Parakeet not being available at startup is not critical
+    debugLogger.debug("Parakeet startup init error (non-fatal)", { error: err.message });
   });
 
   // Pre-warm llama-server if local reasoning is configured
@@ -261,6 +282,160 @@ async function startApp() {
     });
 
     globeKeyManager.start();
+  }
+
+  // Set up Windows Push-to-Talk handling
+  if (process.platform === "win32") {
+    debugLogger.debug("[Push-to-Talk] Windows Push-to-Talk setup starting");
+    let winKeyDownTime = 0;
+    let winKeyIsRecording = false;
+
+    // Minimum duration (ms) the key must be held before starting recording.
+    // This distinguishes a "tap" (ignored in push mode) from a "hold" (starts recording).
+    // 150ms is short enough to feel instant but long enough to detect intent.
+    const WIN_MIN_HOLD_DURATION_MS = 150;
+
+    // Helper to check if hotkey is valid for Windows key listener
+    // Supports compound hotkeys like "CommandOrControl+F11"
+    const isValidHotkey = (hotkey) => {
+      if (!hotkey) return false;
+      if (hotkey === "GLOBE") return false; // GLOBE is macOS only
+      return true;
+    };
+
+    windowsKeyManager.on("key-down", async (key) => {
+      debugLogger.debug("[Push-to-Talk] Key DOWN received", { key });
+      // Handle dictation if in push-to-talk mode
+      if (isLiveWindow(windowManager.mainWindow)) {
+        const activationMode = await windowManager.getActivationMode();
+        debugLogger.debug("[Push-to-Talk] Activation mode check", { activationMode });
+        if (activationMode === "push") {
+          debugLogger.debug("[Push-to-Talk] Starting recording sequence");
+          windowManager.showDictationPanel();
+          // Track when key was pressed for push-to-talk
+          winKeyDownTime = Date.now();
+          winKeyIsRecording = false;
+          // Start recording after a brief delay to distinguish tap from hold
+          setTimeout(async () => {
+            if (winKeyDownTime > 0 && !winKeyIsRecording) {
+              winKeyIsRecording = true;
+              debugLogger.debug("[Push-to-Talk] Sending start dictation command");
+              windowManager.sendStartDictation();
+            }
+          }, WIN_MIN_HOLD_DURATION_MS);
+        }
+      }
+    });
+
+    windowsKeyManager.on("key-up", async () => {
+      debugLogger.debug("[Push-to-Talk] Key UP received");
+      if (isLiveWindow(windowManager.mainWindow)) {
+        const activationMode = await windowManager.getActivationMode();
+        if (activationMode === "push") {
+          const wasRecording = winKeyIsRecording;
+          winKeyDownTime = 0;
+          winKeyIsRecording = false;
+          if (wasRecording) {
+            debugLogger.debug("[Push-to-Talk] Sending stop dictation command");
+            windowManager.sendStopDictation();
+          } else {
+            // Short tap (< hold threshold) - hide panel since recording never started
+            debugLogger.debug("[Push-to-Talk] Short tap detected, hiding panel");
+            windowManager.hideDictationPanel();
+          }
+        }
+      }
+    });
+
+    windowsKeyManager.on("error", (error) => {
+      debugLogger.warn("[Push-to-Talk] Windows key listener error", { error: error.message });
+      windowManager.setWindowsPushToTalkAvailable(false);
+      if (isLiveWindow(windowManager.mainWindow)) {
+        windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
+          reason: "error",
+          message: error.message,
+        });
+      }
+    });
+
+    windowsKeyManager.on("unavailable", () => {
+      debugLogger.debug("[Push-to-Talk] Windows key listener not available - falling back to toggle mode");
+      windowManager.setWindowsPushToTalkAvailable(false);
+      if (isLiveWindow(windowManager.mainWindow)) {
+        windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
+          reason: "binary_not_found",
+          message: "Push-to-Talk native listener not available",
+        });
+      }
+    });
+
+    windowsKeyManager.on("ready", () => {
+      debugLogger.debug("[Push-to-Talk] WindowsKeyManager is ready and listening");
+      windowManager.setWindowsPushToTalkAvailable(true);
+    });
+
+    // Start the Windows key listener with the current hotkey
+    const startWindowsKeyListener = async () => {
+      debugLogger.debug("[Push-to-Talk] Checking if should start Windows key listener");
+      if (!isLiveWindow(windowManager.mainWindow)) {
+        debugLogger.debug("[Push-to-Talk] Main window not live, skipping");
+        return;
+      }
+      const activationMode = await windowManager.getActivationMode();
+      const currentHotkey = hotkeyManager.getCurrentHotkey();
+      debugLogger.debug("[Push-to-Talk] Current state", { activationMode, currentHotkey });
+
+      if (activationMode === "push") {
+        if (isValidHotkey(currentHotkey)) {
+          debugLogger.debug("[Push-to-Talk] Starting Windows key listener", { hotkey: currentHotkey });
+          windowsKeyManager.start(currentHotkey);
+        } else {
+          debugLogger.debug("[Push-to-Talk] No valid hotkey to start listener");
+        }
+      } else {
+        debugLogger.debug("[Push-to-Talk] Not in push mode, skipping listener start");
+      }
+    };
+
+    // Delay (ms) before starting the Windows key listener after app startup.
+    // The hotkeyManager loads saved hotkey 1 second after did-finish-load event,
+    // so we wait 3 seconds to ensure settings are fully loaded before starting.
+    const STARTUP_DELAY_MS = 3000;
+    debugLogger.debug("[Push-to-Talk] Scheduling listener start", { delayMs: STARTUP_DELAY_MS });
+    setTimeout(startWindowsKeyListener, STARTUP_DELAY_MS);
+
+    // Listen for activation mode changes from renderer
+    ipcMain.on("activation-mode-changed", async (_event, mode) => {
+      debugLogger.debug("[Push-to-Talk] IPC: Activation mode changed", { mode });
+      if (mode === "push") {
+        const currentHotkey = hotkeyManager.getCurrentHotkey();
+        debugLogger.debug("[Push-to-Talk] Current hotkey", { hotkey: currentHotkey });
+        if (isValidHotkey(currentHotkey)) {
+          debugLogger.debug("[Push-to-Talk] Starting listener", { hotkey: currentHotkey });
+          windowsKeyManager.start(currentHotkey);
+        }
+      } else {
+        debugLogger.debug("[Push-to-Talk] Stopping listener (mode is tap)");
+        windowsKeyManager.stop();
+      }
+    });
+
+    // Listen for hotkey changes from renderer
+    ipcMain.on("hotkey-changed", async (_event, hotkey) => {
+      debugLogger.debug("[Push-to-Talk] IPC: Hotkey changed", { hotkey });
+      if (!isLiveWindow(windowManager.mainWindow)) {
+        return;
+      }
+      const activationMode = await windowManager.getActivationMode();
+      debugLogger.debug("[Push-to-Talk] Current activation mode", { activationMode });
+      if (activationMode === "push") {
+        windowsKeyManager.stop();
+        if (isValidHotkey(hotkey)) {
+          debugLogger.debug("[Push-to-Talk] Starting listener for new hotkey", { hotkey });
+          windowsKeyManager.start(hotkey);
+        }
+      }
+    });
   }
 }
 
@@ -358,12 +533,19 @@ if (gotSingleInstanceLock) {
     if (globeKeyManager) {
       globeKeyManager.stop();
     }
+    if (windowsKeyManager) {
+      windowsKeyManager.stop();
+    }
     if (updateManager) {
       updateManager.cleanup();
     }
     // Stop whisper server if running
     if (whisperManager) {
       whisperManager.stopServer().catch(() => {});
+    }
+    // Stop parakeet WS server if running
+    if (parakeetManager) {
+      parakeetManager.stopServer().catch(() => {});
     }
     // Stop llama-server if running
     const modelManager = require("./src/helpers/modelManagerBridge").default;

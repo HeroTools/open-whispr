@@ -501,7 +501,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                     <Copy className="w-4 h-4" />
                   </Button>
                 </div>
-                <div className="border rounded-lg p-4 text-sm max-h-60 overflow-y-auto bg-muted border-gray-200">
+                <div className="border rounded-lg p-4 text-sm max-h-60 overflow-y-auto bg-muted border-border">
                   <pre className="whitespace-pre-wrap">{testResult}</pre>
                 </div>
               </div>
@@ -523,7 +523,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       />
 
       {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 mb-6">
+      <div className="flex border-b border-border mb-6">
         {[
           { id: "current", label: "Current Prompt", icon: Eye },
           { id: "edit", label: "Customize", icon: Edit3 },

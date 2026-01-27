@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-01-26
+
+### Added
+- **NVIDIA Parakeet Support**: Fast local transcription via sherpa-onnx runtime with INT8 quantized models
+  - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
+- **Windows Push-to-Talk**: Native Windows key listener with low-level keyboard hook for true push-to-talk functionality
+  - Supports compound hotkeys like `Ctrl+Shift+F11` or `CommandOrControl+Space`
+  - Prebuilt binary automatically downloaded from GitHub releases
+  - Fallback to tap mode if binary unavailable
+- **Custom Dictionary**: Improve transcription accuracy for specific words, names, and technical terms
+  - Add custom words through Settings → Custom Dictionary
+  - Words are passed as hints to Whisper for better recognition
+  - Works with both local and cloud transcription
+- **GitHub Actions Workflow**: Automated CI workflow to build and release Windows key listener binary
+- **Shared Download Utilities**: New `scripts/lib/download-utils.js` module with reusable download, extraction, and GitHub release fetching functions
+
+### Changed
+- **Download Scripts Refactored**: All download scripts now use shared utilities for consistency
+- **GitHub API Authentication**: Download scripts support `GITHUB_TOKEN` to avoid API rate limits in CI
+- **Debug Logging Cleanup**: Extracted common window loading code and cleaned up debug logging
+
+### Fixed
+- **GNOME Wayland Hotkey Improvements**: Improved hotkey handling on GNOME Wayland
+- **Hotkey Persistence**: Fixed hotkey selection not persisting correctly
+- **Custom Endpoint API Keys**: Fixed custom endpoint API keys not persisting to `.env` file
+- **Custom Endpoint State**: Fixed custom endpoint using shared state instead of its own
+- **Linux Stale Hotkey Registrations**: Clear stale hotkey registrations on startup on Linux
+- **Wayland XWayland Paste**: Try xdotool on Wayland when XWayland is available
+- **llama-server Libraries**: Bundle llama-server shared libraries and search from extract root for varying archive structures
+- **STT/Reasoning Debug Logging**: Added missing debug logging for STT and reasoning pipelines
+
+## [1.2.16] - 2026-01-24
+
+### Fixed
+- **App Startup Hang**: Fixed app initialization timing issues with Electron 36+
+- **Manager Initialization**: Deferred manager initialization until after `app.whenReady()` to prevent hangs
+- **Debug Logger Initialization**: Deferred debugLogger file initialization until `app.whenReady()`
+- **Config Bundling**: Fixed missing config files in production builds
+- **whisper.cpp Binary Version**: Updated whisper.cpp release names and bumped binary version
+
 ## [1.2.15] - 2026-01-22
 
 ### Added

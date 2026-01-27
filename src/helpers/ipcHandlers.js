@@ -3,6 +3,7 @@ const path = require("path");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const { getSystemPrompt } = require("./prompts");
+const GnomeShortcutManager = require("./gnomeShortcut");
 
 class IPCHandlers {
   constructor(managers) {
@@ -10,9 +11,19 @@ class IPCHandlers {
     this.databaseManager = managers.databaseManager;
     this.clipboardManager = managers.clipboardManager;
     this.whisperManager = managers.whisperManager;
+    this.parakeetManager = managers.parakeetManager;
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
+    this.windowsKeyManager = managers.windowsKeyManager;
     this.setupHandlers();
+  }
+
+  _getDictionarySafe() {
+    try {
+      return this.databaseManager.getDictionary();
+    } catch {
+      return [];
+    }
   }
 
   setupHandlers() {
@@ -115,6 +126,18 @@ class IPCHandlers {
         });
       }
       return result;
+    });
+
+    // Dictionary handlers
+    ipcMain.handle("db-get-dictionary", async () => {
+      return this.databaseManager.getDictionary();
+    });
+
+    ipcMain.handle("db-set-dictionary", async (event, words) => {
+      if (!Array.isArray(words)) {
+        throw new Error("words must be an array");
+      }
+      return this.databaseManager.setDictionary(words);
     });
 
     // Clipboard handlers
@@ -222,30 +245,9 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
-      try {
-        const result = await this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
-          // Forward progress updates to the renderer
-          event.sender.send("whisper-download-progress", progressData);
-        });
-
-        // Send completion event
-        event.sender.send("whisper-download-progress", {
-          type: "complete",
-          model: modelName,
-          result: result,
-        });
-
-        return result;
-      } catch (error) {
-        // Send error event
-        event.sender.send("whisper-download-progress", {
-          type: "error",
-          model: modelName,
-          error: error.message,
-        });
-
-        throw error;
-      }
+      return this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
+        event.sender.send("whisper-download-progress", progressData);
+      });
     });
 
     ipcMain.handle("check-model-status", async (event, modelName) => {
@@ -285,6 +287,108 @@ class IPCHandlers {
       return this.whisperManager.checkFFmpegAvailability();
     });
 
+    // Parakeet (NVIDIA) handlers
+    ipcMain.handle("transcribe-local-parakeet", async (event, audioBlob, options = {}) => {
+      debugLogger.log("transcribe-local-parakeet called", {
+        audioBlobType: typeof audioBlob,
+        audioBlobSize: audioBlob?.byteLength || audioBlob?.length || 0,
+        options,
+      });
+
+      try {
+        const result = await this.parakeetManager.transcribeLocalParakeet(audioBlob, options);
+
+        debugLogger.log("Parakeet result", {
+          success: result.success,
+          hasText: !!result.text,
+          message: result.message,
+          error: result.error,
+        });
+
+        if (!result.success && result.message === "No audio detected") {
+          debugLogger.log("Sending no-audio-detected event to renderer");
+          event.sender.send("no-audio-detected");
+        }
+
+        return result;
+      } catch (error) {
+        debugLogger.error("Local Parakeet transcription error", error);
+        const errorMessage = error.message || "Unknown error";
+
+        if (errorMessage.includes("sherpa-onnx") && errorMessage.includes("not found")) {
+          return {
+            success: false,
+            error: "parakeet_not_found",
+            message: "Parakeet binary is missing. Please reinstall the app.",
+          };
+        }
+        if (errorMessage.includes("model") && errorMessage.includes("not downloaded")) {
+          return {
+            success: false,
+            error: "model_not_found",
+            message: errorMessage,
+          };
+        }
+
+        throw error;
+      }
+    });
+
+    ipcMain.handle("check-parakeet-installation", async () => {
+      return this.parakeetManager.checkInstallation();
+    });
+
+    ipcMain.handle("download-parakeet-model", async (event, modelName) => {
+      return this.parakeetManager.downloadParakeetModel(modelName, (progressData) => {
+        event.sender.send("parakeet-download-progress", progressData);
+      });
+    });
+
+    ipcMain.handle("check-parakeet-model-status", async (_event, modelName) => {
+      return this.parakeetManager.checkModelStatus(modelName);
+    });
+
+    ipcMain.handle("list-parakeet-models", async () => {
+      return this.parakeetManager.listParakeetModels();
+    });
+
+    ipcMain.handle("delete-parakeet-model", async (_event, modelName) => {
+      return this.parakeetManager.deleteParakeetModel(modelName);
+    });
+
+    ipcMain.handle("delete-all-parakeet-models", async () => {
+      return this.parakeetManager.deleteAllParakeetModels();
+    });
+
+    ipcMain.handle("cancel-parakeet-download", async () => {
+      return this.parakeetManager.cancelDownload();
+    });
+
+    ipcMain.handle("get-parakeet-diagnostics", async () => {
+      return this.parakeetManager.getDiagnostics();
+    });
+
+    // Parakeet server handlers (for faster repeated transcriptions)
+    ipcMain.handle("parakeet-server-start", async (event, modelName) => {
+      const result = await this.parakeetManager.startServer(modelName);
+      process.env.LOCAL_TRANSCRIPTION_PROVIDER = "nvidia";
+      process.env.PARAKEET_MODEL = modelName;
+      this.environmentManager.saveAllKeysToEnvFile();
+      return result;
+    });
+
+    ipcMain.handle("parakeet-server-stop", async () => {
+      const result = await this.parakeetManager.stopServer();
+      delete process.env.LOCAL_TRANSCRIPTION_PROVIDER;
+      delete process.env.PARAKEET_MODEL;
+      this.environmentManager.saveAllKeysToEnvFile();
+      return result;
+    });
+
+    ipcMain.handle("parakeet-server-status", async () => {
+      return this.parakeetManager.getServerStatus();
+    });
+
     // Utility handlers
     ipcMain.handle("cleanup-app", async (event) => {
       try {
@@ -299,8 +403,75 @@ class IPCHandlers {
       return await this.windowManager.updateHotkey(hotkey);
     });
 
-    ipcMain.handle("set-hotkey-listening-mode", async (event, enabled) => {
+    ipcMain.handle("set-hotkey-listening-mode", async (event, enabled, newHotkey = null) => {
       this.windowManager.setHotkeyListeningMode(enabled);
+      const hotkeyManager = this.windowManager.hotkeyManager;
+
+      // When exiting capture mode with a new hotkey, use that to avoid reading stale state
+      const effectiveHotkey = !enabled && newHotkey ? newHotkey : hotkeyManager.getCurrentHotkey();
+
+      if (enabled) {
+        // Entering capture mode - unregister globalShortcut so it doesn't consume key events
+        const currentHotkey = hotkeyManager.getCurrentHotkey();
+        if (currentHotkey && currentHotkey !== "GLOBE") {
+          debugLogger.log(
+            `[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`
+          );
+          const { globalShortcut } = require("electron");
+          globalShortcut.unregister(currentHotkey);
+        }
+
+        // On Windows, stop the Windows key listener
+        if (process.platform === "win32" && this.windowsKeyManager) {
+          debugLogger.log("[IPC] Stopping Windows key listener for hotkey capture mode");
+          this.windowsKeyManager.stop();
+        }
+
+        // On GNOME Wayland, unregister the keybinding during capture
+        if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager) {
+          debugLogger.log("[IPC] Unregistering GNOME keybinding for hotkey capture mode");
+          await hotkeyManager.gnomeManager.unregisterKeybinding().catch((err) => {
+            debugLogger.warn("[IPC] Failed to unregister GNOME keybinding:", err.message);
+          });
+        }
+      } else {
+        // Exiting capture mode - re-register globalShortcut if not already registered
+        if (effectiveHotkey && effectiveHotkey !== "GLOBE") {
+          const { globalShortcut } = require("electron");
+          if (!globalShortcut.isRegistered(effectiveHotkey)) {
+            debugLogger.log(
+              `[IPC] Re-registering globalShortcut "${effectiveHotkey}" after capture mode`
+            );
+            const callback = this.windowManager.createHotkeyCallback();
+            globalShortcut.register(effectiveHotkey, callback);
+          }
+        }
+
+        // On Windows, restart the listener if in push mode
+        if (process.platform === "win32" && this.windowsKeyManager) {
+          const activationMode = await this.windowManager.getActivationMode();
+          debugLogger.log(
+            `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${effectiveHotkey}"`
+          );
+          if (activationMode === "push" && effectiveHotkey && effectiveHotkey !== "GLOBE") {
+            debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${effectiveHotkey}`);
+            this.windowsKeyManager.start(effectiveHotkey);
+          }
+        }
+
+        // On GNOME Wayland, re-register the keybinding with the effective hotkey
+        if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager && effectiveHotkey) {
+          const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(effectiveHotkey);
+          debugLogger.log(
+            `[IPC] Re-registering GNOME keybinding "${gnomeHotkey}" after capture mode`
+          );
+          const success = await hotkeyManager.gnomeManager.registerKeybinding(gnomeHotkey);
+          if (success) {
+            hotkeyManager.currentHotkey = effectiveHotkey;
+          }
+        }
+      }
+
       return { success: true };
     });
 
@@ -324,6 +495,31 @@ class IPCHandlers {
         await shell.openExternal(url);
         return { success: true };
       } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // Auto-start handlers
+    ipcMain.handle("get-auto-start-enabled", async () => {
+      try {
+        const loginSettings = app.getLoginItemSettings();
+        return loginSettings.openAtLogin;
+      } catch (error) {
+        debugLogger.error("Error getting auto-start status:", error);
+        return false;
+      }
+    });
+
+    ipcMain.handle("set-auto-start-enabled", async (event, enabled) => {
+      try {
+        app.setLoginItemSettings({
+          openAtLogin: enabled,
+          openAsHidden: true, // Start minimized to tray
+        });
+        debugLogger.debug("Auto-start setting updated", { enabled });
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Error setting auto-start:", error);
         return { success: false, error: error.message };
       }
     });
@@ -478,7 +674,10 @@ class IPCHandlers {
     ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
       try {
         const LocalReasoningService = require("../services/localReasoningBridge").default;
-        const result = await LocalReasoningService.processText(text, modelId, agentName, config);
+        const result = await LocalReasoningService.processText(text, modelId, agentName, {
+          ...config,
+          customDictionary: this._getDictionarySafe(),
+        });
         return { success: true, text: result };
       } catch (error) {
         return { success: false, error: error.message };
@@ -496,8 +695,7 @@ class IPCHandlers {
             throw new Error("Anthropic API key not configured");
           }
 
-          // Use the unified system prompt - LLM handles agent detection
-          const systemPrompt = getSystemPrompt(agentName);
+          const systemPrompt = getSystemPrompt(agentName, this._getDictionarySafe());
           const userPrompt = text;
 
           if (!modelId) {

@@ -1,42 +1,28 @@
-const { app } = require("electron");
 const fs = require("fs");
 const fsPromises = require("fs").promises;
-const os = require("os");
 const path = require("path");
-const https = require("https");
 const debugLogger = require("./debugLogger");
+const { downloadFile, createDownloadSignal } = require("./downloadUtils");
 const WhisperServerManager = require("./whisperServer");
+const { getModelsDirForService } = require("./modelDirUtils");
 
-// Cache TTL for availability checks
+const modelRegistryData = require("../models/modelRegistryData.json");
+
 const CACHE_TTL_MS = 30000;
 
-// GGML model definitions with HuggingFace URLs
-const WHISPER_MODELS = {
-  tiny: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin",
-    size: 75_000_000,
-  },
-  base: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
-    size: 142_000_000,
-  },
-  small: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
-    size: 466_000_000,
-  },
-  medium: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin",
-    size: 1_500_000_000,
-  },
-  large: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
-    size: 3_000_000_000,
-  },
-  turbo: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
-    size: 1_600_000_000,
-  },
-};
+function getWhisperModelConfig(modelName) {
+  const modelInfo = modelRegistryData.whisperModels[modelName];
+  if (!modelInfo) return null;
+  return {
+    url: modelInfo.downloadUrl,
+    size: modelInfo.sizeMb * 1_000_000,
+    fileName: modelInfo.fileName,
+  };
+}
+
+function getValidModelNames() {
+  return Object.keys(modelRegistryData.whisperModels);
+}
 
 class WhisperManager {
   constructor() {
@@ -50,13 +36,12 @@ class WhisperManager {
   }
 
   getModelsDir() {
-    const homeDir = app?.getPath?.("home") || os.homedir();
-    return path.join(homeDir, ".cache", "openwhispr", "whisper-models");
+    return getModelsDirForService("whisper");
   }
 
   validateModelName(modelName) {
     // Only allow known model names to prevent path traversal attacks
-    const validModels = Object.keys(WHISPER_MODELS);
+    const validModels = getValidModelNames();
     if (!validModels.includes(modelName)) {
       throw new Error(`Invalid model name: ${modelName}. Valid models: ${validModels.join(", ")}`);
     }
@@ -65,7 +50,8 @@ class WhisperManager {
 
   getModelPath(modelName) {
     this.validateModelName(modelName);
-    return path.join(this.getModelsDir(), `ggml-${modelName}.bin`);
+    const config = getWhisperModelConfig(modelName);
+    return path.join(this.getModelsDir(), config.fileName);
   }
 
   async initializeAtStartup(settings = {}) {
@@ -157,7 +143,7 @@ class WhisperManager {
     }
 
     // Check downloaded models
-    for (const modelName of Object.keys(WHISPER_MODELS)) {
+    for (const modelName of getValidModelNames()) {
       const modelPath = this.getModelPath(modelName);
       if (fs.existsSync(modelPath)) {
         try {
@@ -253,6 +239,7 @@ class WhisperManager {
 
     const model = options.model || "base";
     const language = options.language || null;
+    const initialPrompt = options.initialPrompt || null;
     const modelPath = this.getModelPath(model);
 
     // Check if model exists
@@ -260,10 +247,10 @@ class WhisperManager {
       throw new Error(`Whisper model "${model}" not downloaded. Please download it from Settings.`);
     }
 
-    return await this.transcribeViaServer(audioBlob, model, language);
+    return await this.transcribeViaServer(audioBlob, model, language, initialPrompt);
   }
 
-  async transcribeViaServer(audioBlob, model, language) {
+  async transcribeViaServer(audioBlob, model, language, initialPrompt = null) {
     debugLogger.info("Transcription mode: SERVER", { model, language: language || "auto" });
     const modelPath = this.getModelPath(model);
 
@@ -276,14 +263,16 @@ class WhisperManager {
 
     // Convert audioBlob to Buffer if needed
     let audioBuffer;
-    if (audioBlob instanceof ArrayBuffer) {
-      audioBuffer = Buffer.from(audioBlob);
-    } else if (audioBlob instanceof Uint8Array) {
+    if (Buffer.isBuffer(audioBlob)) {
+      audioBuffer = audioBlob;
+    } else if (ArrayBuffer.isView(audioBlob)) {
+      audioBuffer = Buffer.from(audioBlob.buffer, audioBlob.byteOffset, audioBlob.byteLength);
+    } else if (audioBlob instanceof ArrayBuffer) {
       audioBuffer = Buffer.from(audioBlob);
     } else if (typeof audioBlob === "string") {
       audioBuffer = Buffer.from(audioBlob, "base64");
-    } else if (audioBlob && audioBlob.buffer) {
-      audioBuffer = Buffer.from(audioBlob.buffer);
+    } else if (audioBlob && audioBlob.buffer && typeof audioBlob.byteLength === "number") {
+      audioBuffer = Buffer.from(audioBlob.buffer, audioBlob.byteOffset || 0, audioBlob.byteLength);
     } else {
       throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
     }
@@ -300,7 +289,7 @@ class WhisperManager {
     });
 
     const startTime = Date.now();
-    const result = await this.serverManager.transcribe(audioBuffer, { language });
+    const result = await this.serverManager.transcribe(audioBuffer, { language, initialPrompt });
     const elapsed = Date.now() - startTime;
 
     debugLogger.logWhisperPipeline("transcribeViaServer - completed", {
@@ -367,18 +356,15 @@ class WhisperManager {
     return normalized === "[blank_audio]" || normalized === "[ blank_audio ]";
   }
 
-  // Model management methods
   async downloadWhisperModel(modelName, progressCallback = null) {
     this.validateModelName(modelName);
-    const modelConfig = WHISPER_MODELS[modelName];
+    const modelConfig = getWhisperModelConfig(modelName);
 
     const modelPath = this.getModelPath(modelName);
     const modelsDir = this.getModelsDir();
 
-    // Create models directory
     await fsPromises.mkdir(modelsDir, { recursive: true });
 
-    // Check if already downloaded
     if (fs.existsSync(modelPath)) {
       const stats = await fsPromises.stat(modelPath);
       return {
@@ -391,164 +377,48 @@ class WhisperManager {
       };
     }
 
-    const tempPath = `${modelPath}.tmp`;
+    const { signal, abort } = createDownloadSignal();
+    this.currentDownloadProcess = { abort };
 
-    // Track active download for cancellation
-    let activeRequest = null;
-    let activeFile = null;
-    let isCancelled = false;
-
-    const cleanup = () => {
-      if (activeRequest) {
-        activeRequest.destroy();
-        activeRequest = null;
-      }
-      if (activeFile) {
-        activeFile.close();
-        activeFile = null;
-      }
-      fs.unlink(tempPath, () => {});
-    };
-
-    // Store cancellation function
-    this.currentDownloadProcess = {
-      abort: () => {
-        isCancelled = true;
-        cleanup();
-      },
-    };
-
-    return new Promise((resolve, reject) => {
-      const downloadWithRedirect = (url, redirectCount = 0) => {
-        if (isCancelled) {
-          reject(new Error("Download cancelled by user"));
-          return;
-        }
-
-        // Prevent infinite redirects
-        if (redirectCount > 5) {
-          cleanup();
-          reject(new Error("Too many redirects"));
-          return;
-        }
-
-        activeRequest = https.get(url, (response) => {
-          if (isCancelled) {
-            cleanup();
-            reject(new Error("Download cancelled by user"));
-            return;
-          }
-
-          // Handle redirects
-          if (response.statusCode === 302 || response.statusCode === 301) {
-            const redirectUrl = response.headers.location;
-            if (!redirectUrl) {
-              cleanup();
-              reject(new Error("Redirect without location header"));
-              return;
-            }
-            downloadWithRedirect(redirectUrl, redirectCount + 1);
-            return;
-          }
-
-          if (response.statusCode !== 200) {
-            cleanup();
-            reject(new Error(`Failed to download model: HTTP ${response.statusCode}`));
-            return;
-          }
-
-          const totalSize = parseInt(response.headers["content-length"], 10) || modelConfig.size;
-          let downloadedSize = 0;
-
-          activeFile = fs.createWriteStream(tempPath);
-
-          response.on("data", (chunk) => {
-            if (isCancelled) {
-              cleanup();
-              return;
-            }
-
-            downloadedSize += chunk.length;
-            const percentage = Math.round((downloadedSize / totalSize) * 100);
-
-            if (progressCallback) {
-              progressCallback({
-                type: "progress",
-                model: modelName,
-                downloaded_bytes: downloadedSize,
-                total_bytes: totalSize,
-                percentage,
-              });
-            }
-          });
-
-          response.pipe(activeFile);
-
-          activeFile.on("finish", async () => {
-            if (isCancelled) {
-              cleanup();
-              reject(new Error("Download cancelled by user"));
-              return;
-            }
-
-            activeFile.close();
-            activeFile = null;
-            this.currentDownloadProcess = null;
-
-            // Rename temp to final
-            try {
-              await fsPromises.rename(tempPath, modelPath);
-            } catch {
-              // Cross-device move fallback
-              await fsPromises.copyFile(tempPath, modelPath);
-              await fsPromises.unlink(tempPath);
-            }
-
-            const stats = await fsPromises.stat(modelPath);
-
-            if (progressCallback) {
-              progressCallback({
-                type: "complete",
-                model: modelName,
-                percentage: 100,
-              });
-            }
-
-            resolve({
+    try {
+      await downloadFile(modelConfig.url, modelPath, {
+        timeout: 600000,
+        signal,
+        onProgress: (downloadedBytes, totalBytes) => {
+          if (progressCallback) {
+            progressCallback({
+              type: "progress",
               model: modelName,
-              downloaded: true,
-              path: modelPath,
-              size_bytes: stats.size,
-              size_mb: Math.round(stats.size / (1024 * 1024)),
-              success: true,
+              downloaded_bytes: downloadedBytes,
+              total_bytes: totalBytes,
+              percentage: totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0,
             });
-          });
+          }
+        },
+      });
 
-          activeFile.on("error", (err) => {
-            cleanup();
-            reject(err);
-          });
+      const stats = await fsPromises.stat(modelPath);
 
-          response.on("error", (err) => {
-            cleanup();
-            reject(err);
-          });
-        });
+      if (progressCallback) {
+        progressCallback({ type: "complete", model: modelName, percentage: 100 });
+      }
 
-        activeRequest.on("error", (err) => {
-          cleanup();
-          reject(err);
-        });
-
-        // Request timeout (10 minutes for large models)
-        activeRequest.setTimeout(600000, () => {
-          cleanup();
-          reject(new Error("Download request timed out"));
-        });
+      return {
+        model: modelName,
+        downloaded: true,
+        path: modelPath,
+        size_bytes: stats.size,
+        size_mb: Math.round(stats.size / (1024 * 1024)),
+        success: true,
       };
-
-      downloadWithRedirect(modelConfig.url);
-    });
+    } catch (error) {
+      if (error.isAbort) {
+        throw new Error("Download interrupted by user");
+      }
+      throw error;
+    } finally {
+      this.currentDownloadProcess = null;
+    }
   }
 
   async cancelDownload() {
@@ -579,7 +449,7 @@ class WhisperManager {
   }
 
   async listWhisperModels() {
-    const models = Object.keys(WHISPER_MODELS);
+    const models = getValidModelNames();
     const modelInfo = [];
 
     for (const model of models) {

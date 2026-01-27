@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -29,6 +29,7 @@ import { useTheme } from "../hooks/useTheme";
 export type SettingsSectionType =
   | "general"
   | "transcription"
+  | "dictionary"
   | "aiModels"
   | "agentConfig"
   | "prompts"
@@ -51,11 +52,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const {
     useLocalWhisper,
     whisperModel,
+    localTranscriptionProvider,
+    parakeetModel,
     allowOpenAIFallback,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
+    customDictionary,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -72,11 +76,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setSelectedMicDeviceId,
     setUseLocalWhisper,
     setWhisperModel,
+    setLocalTranscriptionProvider,
+    setParakeetModel,
     setAllowOpenAIFallback,
     setCloudTranscriptionProvider,
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
+    setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider,
@@ -118,7 +125,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const isUpdateAvailable =
     !updateStatus.isDevelopment && (updateStatus.updateAvailable || updateStatus.updateDownloaded);
 
-  const whisperHook = useWhisper(showAlertDialog);
+  const whisperHook = useWhisper();
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
@@ -139,6 +146,72 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
+
+  // Platform detection for conditional features
+  const platform = useMemo(() => {
+    if (typeof window !== "undefined" && window.electronAPI?.getPlatform) {
+      return window.electronAPI.getPlatform();
+    }
+    return "linux"; // Safe fallback
+  }, []);
+
+  // Custom dictionary state
+  const [newDictionaryWord, setNewDictionaryWord] = useState("");
+
+  const handleAddDictionaryWord = useCallback(() => {
+    const word = newDictionaryWord.trim();
+    if (word && !customDictionary.includes(word)) {
+      setCustomDictionary([...customDictionary, word]);
+      setNewDictionaryWord("");
+    }
+  }, [newDictionaryWord, customDictionary, setCustomDictionary]);
+
+  const handleRemoveDictionaryWord = useCallback(
+    (wordToRemove: string) => {
+      setCustomDictionary(customDictionary.filter((word) => word !== wordToRemove));
+    },
+    [customDictionary, setCustomDictionary]
+  );
+
+  // Auto-start state
+  const [autoStartEnabled, setAutoStartEnabled] = useState(false);
+  const [autoStartLoading, setAutoStartLoading] = useState(true);
+
+  // Load auto-start state on mount (not supported on Linux)
+  useEffect(() => {
+    if (platform === "linux") {
+      setAutoStartLoading(false);
+      return;
+    }
+    const loadAutoStart = async () => {
+      if (window.electronAPI?.getAutoStartEnabled) {
+        try {
+          const enabled = await window.electronAPI.getAutoStartEnabled();
+          setAutoStartEnabled(enabled);
+        } catch (error) {
+          console.error("Failed to get auto-start status:", error);
+        }
+      }
+      setAutoStartLoading(false);
+    };
+    loadAutoStart();
+  }, [platform]);
+
+  const handleAutoStartChange = async (enabled: boolean) => {
+    if (window.electronAPI?.setAutoStartEnabled) {
+      try {
+        setAutoStartLoading(true);
+        const result = await window.electronAPI.setAutoStartEnabled(enabled);
+        if (result.success) {
+          setAutoStartEnabled(enabled);
+        }
+      } catch (error) {
+        console.error("Failed to set auto-start:", error);
+      } finally {
+        setAutoStartLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -508,6 +581,39 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               )}
             </div>
 
+            {/* Auto-start is only supported on macOS and Windows */}
+            {platform !== "linux" && (
+              <div className="border-t border-border/40 pt-10">
+                <div>
+                  <h3 className="text-base font-semibold text-foreground mb-1.5">Startup</h3>
+                  <p className="text-sm text-muted-foreground mb-6">
+                    Control how OpenWhispr starts when you log in.
+                  </p>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-card rounded-xl border border-border">
+                  <div>
+                    <p className="font-medium text-foreground">Launch at Login</p>
+                    <p className="text-sm text-muted-foreground">
+                      Automatically start OpenWhispr when you log in to your computer
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleAutoStartChange(!autoStartEnabled)}
+                    disabled={autoStartLoading}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-background ${
+                      autoStartEnabled ? "bg-primary" : "bg-muted-foreground/25"
+                    } ${autoStartLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        autoStartEnabled ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="border-t border-border/40 pt-10">
               <div>
                 <h3 className="text-base font-semibold text-foreground mb-1.5">Permissions</h3>
@@ -694,8 +800,18 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               onCloudProviderSelect={setCloudTranscriptionProvider}
               selectedCloudModel={cloudTranscriptionModel}
               onCloudModelSelect={setCloudTranscriptionModel}
-              selectedLocalModel={whisperModel}
-              onLocalModelSelect={setWhisperModel}
+              selectedLocalModel={
+                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+              }
+              onLocalModelSelect={(modelId) => {
+                if (localTranscriptionProvider === "nvidia") {
+                  setParakeetModel(modelId);
+                } else {
+                  setWhisperModel(modelId);
+                }
+              }}
+              selectedLocalProvider={localTranscriptionProvider}
+              onLocalProviderSelect={setLocalTranscriptionProvider}
               useLocalWhisper={useLocalWhisper}
               onModeChange={(isLocal) => {
                 setUseLocalWhisper(isLocal);
@@ -711,6 +827,81 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
               variant="settings"
             />
+          </div>
+        );
+
+      case "dictionary":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-base font-semibold text-foreground mb-1.5">Custom Dictionary</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Add words, names, or technical terms that OpenWhispr should recognize during
+                transcription. These words are used as hints to improve accuracy.
+              </p>
+            </div>
+
+            <div className="space-y-4 p-4 bg-card border border-border rounded-xl">
+              <h4 className="font-medium text-foreground">Add Words</h4>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter a word or phrase..."
+                  value={newDictionaryWord}
+                  onChange={(e) => setNewDictionaryWord(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      handleAddDictionaryWord();
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button onClick={handleAddDictionaryWord} disabled={!newDictionaryWord.trim()}>
+                  Add
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Press Enter or click Add to add the word to your dictionary.
+              </p>
+            </div>
+
+            {customDictionary.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="font-medium text-foreground">
+                  Your Dictionary ({customDictionary.length} words)
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  {customDictionary.map((word) => (
+                    <span
+                      key={word}
+                      className="inline-flex items-center gap-1 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm"
+                    >
+                      {word}
+                      <button
+                        onClick={() => handleRemoveDictionaryWord(word)}
+                        className="ml-1 text-primary hover:text-primary/70 font-bold"
+                        title="Remove word"
+                      >
+                        ×
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 bg-muted/10 border border-dashed border-border rounded-xl">
+              <h4 className="font-medium text-foreground text-sm mb-2">How it works</h4>
+              <p className="text-sm text-muted-foreground mb-3">
+                Words in your custom dictionary are provided as context to the speech recognition
+                model. This helps improve accuracy for uncommon names, technical jargon, brand
+                names, or any words that are frequently misrecognized.
+              </p>
+              <p className="text-sm text-muted-foreground">
+                <strong>Tip:</strong> For difficult words, try adding context phrases like "The word
+                is Synty" alongside the word itself. Adding related terms (e.g., "Synty" and
+                "SyntyStudios") also helps the model understand the intended spelling.
+              </p>
+            </div>
           </div>
         );
 

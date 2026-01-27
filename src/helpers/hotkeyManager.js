@@ -92,10 +92,16 @@ class HotkeyManager {
     debugLogger.log(`[HotkeyManager] Platform: ${process.platform}, Arch: ${process.arch}`);
     debugLogger.log(`[HotkeyManager] Current hotkey: "${this.currentHotkey}"`);
 
-    // If we're already using this hotkey, just return success
-    if (hotkey === this.currentHotkey) {
+    // If we're already using this hotkey AND it's actually registered, return success
+    // Note: We need to check isRegistered because on first run, currentHotkey is set to "`"
+    // but it's not actually registered yet
+    if (
+      hotkey === this.currentHotkey &&
+      hotkey !== "GLOBE" &&
+      globalShortcut.isRegistered(hotkey)
+    ) {
       debugLogger.log(
-        `[HotkeyManager] Hotkey "${hotkey}" is already the current hotkey, no change needed`
+        `[HotkeyManager] Hotkey "${hotkey}" is already the current hotkey and registered, no change needed`
       );
       return { success: true, hotkey };
     }
@@ -222,13 +228,7 @@ class HotkeyManager {
           }
         };
 
-        if (mainWindow.webContents.isLoading()) {
-          mainWindow.webContents.once("did-finish-load", () =>
-            setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS)
-          );
-        } else {
-          setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS);
-        }
+        setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS);
         this.isInitialized = true;
         return;
       }
@@ -238,11 +238,9 @@ class HotkeyManager {
       globalShortcut.unregisterAll();
     }
 
-    mainWindow.webContents.once("did-finish-load", () => {
-      setTimeout(() => {
-        this.loadSavedHotkeyOrDefault(mainWindow, callback);
-      }, HOTKEY_REGISTRATION_DELAY_MS);
-    });
+    setTimeout(() => {
+      this.loadSavedHotkeyOrDefault(mainWindow, callback);
+    }, HOTKEY_REGISTRATION_DELAY_MS);
 
     this.isInitialized = true;
   }
@@ -252,7 +250,6 @@ class HotkeyManager {
       const savedHotkey = await mainWindow.webContents.executeJavaScript(`
         localStorage.getItem("dictationKey") || ""
       `);
-
       if (savedHotkey && savedHotkey.trim() !== "") {
         const result = this.setupShortcuts(savedHotkey, callback);
         if (result.success) {
@@ -288,7 +285,7 @@ class HotkeyManager {
         const fallbackResult = this.setupShortcuts(fallback, callback);
         if (fallbackResult.success) {
           debugLogger.log(`[HotkeyManager] Fallback hotkey "${fallback}" registered successfully`);
-          this.saveHotkeyToRenderer(fallback);
+          await this.saveHotkeyToRenderer(fallback);
           this.notifyHotkeyFallback(defaultHotkey, fallback);
           return;
         }
@@ -302,17 +299,24 @@ class HotkeyManager {
     }
   }
 
-  saveHotkeyToRenderer(hotkey) {
+  async saveHotkeyToRenderer(hotkey) {
+    // Escape the hotkey string to prevent injection issues
+    const escapedHotkey = hotkey.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      this.mainWindow.webContents
-        .executeJavaScript(
-          `
-        localStorage.setItem("dictationKey", "${hotkey}");
-      `
-        )
-        .catch((err) => {
-          debugLogger.error("[HotkeyManager] Failed to save hotkey to localStorage:", err.message);
-        });
+      try {
+        await this.mainWindow.webContents.executeJavaScript(
+          `localStorage.setItem("dictationKey", "${escapedHotkey}"); true;`
+        );
+        debugLogger.log(`[HotkeyManager] Saved hotkey "${hotkey}" to localStorage`);
+        return true;
+      } catch (err) {
+        debugLogger.error("[HotkeyManager] Failed to save hotkey to localStorage:", err.message);
+        return false;
+      }
+    } else {
+      debugLogger.warn("[HotkeyManager] Main window not available for saving hotkey");
+      return false;
     }
   }
 
@@ -353,7 +357,12 @@ class HotkeyManager {
           };
         }
         this.currentHotkey = hotkey;
-        this.saveHotkeyToRenderer(hotkey);
+        const saved = await this.saveHotkeyToRenderer(hotkey);
+        if (!saved) {
+          debugLogger.warn(
+            "[HotkeyManager] GNOME hotkey registered but failed to persist to localStorage"
+          );
+        }
         return {
           success: true,
           message: `Hotkey updated to: ${hotkey} (via GNOME native shortcut)`,
@@ -362,7 +371,12 @@ class HotkeyManager {
 
       const result = this.setupShortcuts(hotkey, callback);
       if (result.success) {
-        this.saveHotkeyToRenderer(hotkey);
+        const saved = await this.saveHotkeyToRenderer(hotkey);
+        if (!saved) {
+          debugLogger.warn(
+            "[HotkeyManager] Hotkey registered but failed to persist to localStorage"
+          );
+        }
         return { success: true, message: `Hotkey updated to: ${hotkey}` };
       } else {
         return {

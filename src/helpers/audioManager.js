@@ -37,6 +37,18 @@ class AudioManager {
     this.cachedReasoningPreference = null;
   }
 
+  getCustomDictionaryPrompt() {
+    try {
+      const raw = localStorage.getItem("customDictionary");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed.join(", ");
+    } catch {
+      // ignore parse errors
+    }
+    return null;
+  }
+
   setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
     this.onStateChange = onStateChange;
     this.onError = onError;
@@ -90,6 +102,22 @@ class AudioManager {
       const constraints = await this.getAudioConstraints();
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
+      // Log which microphone is actually being used
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        const settings = audioTrack.getSettings();
+        logger.info(
+          "Recording started with microphone",
+          {
+            label: audioTrack.label,
+            deviceId: settings.deviceId?.slice(0, 20) + "...",
+            sampleRate: settings.sampleRate,
+            channelCount: settings.channelCount,
+          },
+          "audio"
+        );
+      }
+
       this.mediaRecorder = new MediaRecorder(stream);
       this.audioChunks = [];
       this.recordingStartTime = Date.now();
@@ -105,6 +133,17 @@ class AudioManager {
         this.onStateChange?.({ isRecording: false, isProcessing: true });
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
+
+        // Debug: Log audio blob info
+        logger.info(
+          "Recording stopped",
+          {
+            blobSize: audioBlob.size,
+            blobType: audioBlob.type,
+            chunksCount: this.audioChunks.length,
+          },
+          "audio"
+        );
 
         const durationSeconds = this.recordingStartTime
           ? (Date.now() - this.recordingStartTime) / 1000
@@ -182,12 +221,22 @@ class AudioManager {
 
     try {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
+      const localProvider = localStorage.getItem("localTranscriptionProvider") || "whisper";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
+      const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
 
       let result;
+      let activeModel;
       if (useLocalWhisper) {
-        result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
+        if (localProvider === "nvidia") {
+          activeModel = parakeetModel;
+          result = await this.processWithLocalParakeet(audioBlob, parakeetModel, metadata);
+        } else {
+          activeModel = whisperModel;
+          result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
+        }
       } else {
+        activeModel = this.getTranscriptionModel();
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
 
@@ -196,8 +245,8 @@ class AudioManager {
       const roundTripDurationMs = Math.round(performance.now() - pipelineStart);
 
       const timingData = {
-        mode: useLocalWhisper ? "local" : "cloud",
-        model: useLocalWhisper ? whisperModel : this.getTranscriptionModel(),
+        mode: useLocalWhisper ? `local-${localProvider}` : "cloud",
+        model: activeModel,
         audioDurationMs: metadata.durationSeconds
           ? Math.round(metadata.durationSeconds * 1000)
           : null,
@@ -250,6 +299,12 @@ class AudioManager {
       const options = { model };
       if (language && language !== "auto") {
         options.language = language;
+      }
+
+      // Add custom dictionary as initial prompt to help Whisper recognize specific words
+      const dictionaryPrompt = this.getCustomDictionaryPrompt();
+      if (dictionaryPrompt) {
+        options.initialPrompt = dictionaryPrompt;
       }
 
       logger.debug(
@@ -310,6 +365,80 @@ class AudioManager {
         }
       } else {
         throw new Error(`Local Whisper failed: ${error.message}`);
+      }
+    }
+  }
+
+  async processWithLocalParakeet(audioBlob, model = "parakeet-tdt-0.6b-v3", metadata = {}) {
+    const timings = {};
+
+    try {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const language = localStorage.getItem("preferredLanguage");
+      const options = { model };
+      if (language && language !== "auto") {
+        options.language = language;
+      }
+
+      logger.debug(
+        "Parakeet transcription starting",
+        {
+          audioFormat: audioBlob.type,
+          audioSizeBytes: audioBlob.size,
+          model,
+        },
+        "performance"
+      );
+
+      const transcriptionStart = performance.now();
+      const result = await window.electronAPI.transcribeLocalParakeet(arrayBuffer, options);
+      timings.transcriptionProcessingDurationMs = Math.round(
+        performance.now() - transcriptionStart
+      );
+
+      logger.debug(
+        "Parakeet transcription complete",
+        {
+          transcriptionProcessingDurationMs: timings.transcriptionProcessingDurationMs,
+          success: result.success,
+        },
+        "performance"
+      );
+
+      if (result.success && result.text) {
+        const reasoningStart = performance.now();
+        const text = await this.processTranscription(result.text, "local-parakeet");
+        timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
+        if (text !== null && text !== undefined) {
+          return { success: true, text: text || result.text, source: "local-parakeet", timings };
+        } else {
+          throw new Error("No text transcribed");
+        }
+      } else if (result.success === false && result.message === "No audio detected") {
+        throw new Error("No audio detected");
+      } else {
+        throw new Error(result.message || result.error || "Parakeet transcription failed");
+      }
+    } catch (error) {
+      if (error.message === "No audio detected") {
+        throw error;
+      }
+
+      const allowOpenAIFallback = localStorage.getItem("allowOpenAIFallback") === "true";
+      const isLocalMode = localStorage.getItem("useLocalWhisper") === "true";
+
+      if (allowOpenAIFallback && isLocalMode) {
+        try {
+          const fallbackResult = await this.processWithOpenAIAPI(audioBlob, metadata);
+          return { ...fallbackResult, source: "openai-fallback" };
+        } catch (fallbackError) {
+          throw new Error(
+            `Parakeet failed: ${error.message}. OpenAI fallback also failed: ${fallbackError.message}`
+          );
+        }
+      } else {
+        throw new Error(`Parakeet failed: ${error.message}`);
       }
     }
   }
@@ -870,6 +999,12 @@ class AudioManager {
 
       if (language && language !== "auto") {
         formData.append("language", language);
+      }
+
+      // Add custom dictionary as prompt hint for cloud transcription
+      const dictionaryPrompt = this.getCustomDictionaryPrompt();
+      if (dictionaryPrompt) {
+        formData.append("prompt", dictionaryPrompt);
       }
 
       const shouldStream = this.shouldStreamTranscription(model, provider);
