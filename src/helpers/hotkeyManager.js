@@ -21,7 +21,6 @@ class HotkeyManager {
     this.currentHotkey = "`";
     this.isInitialized = false;
     this.isListeningMode = false;
-    // GNOME native shortcut support
     this.gnomeManager = null;
     this.useGnome = false;
     this.hotkeyCallback = null;
@@ -159,20 +158,15 @@ class HotkeyManager {
     }
   }
 
-  /**
-   * Try to initialize GNOME native shortcuts for Wayland
-   */
   async initializeGnomeShortcuts(callback) {
     if (process.platform !== "linux" || !GnomeShortcutManager.isWayland()) {
       return false;
     }
 
-    // Try GNOME native keyboard shortcuts (no special permissions needed)
     if (GnomeShortcutManager.isGnome()) {
       try {
         this.gnomeManager = new GnomeShortcutManager();
 
-        // Start D-Bus service to receive toggle commands
         const dbusOk = await this.gnomeManager.initDBusService(callback);
         if (dbusOk) {
           this.useGnome = true;
@@ -197,12 +191,10 @@ class HotkeyManager {
     this.mainWindow = mainWindow;
     this.hotkeyCallback = callback;
 
-    // On Linux Wayland + GNOME, try native shortcuts first
     if (process.platform === "linux" && GnomeShortcutManager.isWayland()) {
       const gnomeOk = await this.initializeGnomeShortcuts(callback);
 
       if (gnomeOk) {
-        // GNOME D-Bus service ready, register keybinding after window loads
         const registerGnomeHotkey = async () => {
           try {
             const savedHotkey = await mainWindow.webContents.executeJavaScript(`
@@ -296,9 +288,7 @@ class HotkeyManager {
         const fallbackResult = this.setupShortcuts(fallback, callback);
         if (fallbackResult.success) {
           debugLogger.log(`[HotkeyManager] Fallback hotkey "${fallback}" registered successfully`);
-          // Save the working fallback to localStorage
           this.saveHotkeyToRenderer(fallback);
-          // Notify renderer about the fallback
           this.notifyHotkeyFallback(defaultHotkey, fallback);
           return;
         }
@@ -352,7 +342,6 @@ class HotkeyManager {
     }
 
     try {
-      // If using GNOME, rebind via gsettings
       if (this.useGnome && this.gnomeManager) {
         debugLogger.log(`[HotkeyManager] Updating GNOME hotkey to "${hotkey}"`);
         const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(hotkey);
@@ -396,7 +385,6 @@ class HotkeyManager {
   }
 
   unregisterAll() {
-    // Close GNOME shortcut if active
     if (this.gnomeManager) {
       this.gnomeManager.unregisterKeybinding().catch((err) => {
         debugLogger.warn("[HotkeyManager] Error unregistering GNOME keybinding:", err.message);
@@ -408,9 +396,6 @@ class HotkeyManager {
     globalShortcut.unregisterAll();
   }
 
-  /**
-   * Check if using GNOME native shortcuts
-   */
   isUsingGnome() {
     return this.useGnome;
   }

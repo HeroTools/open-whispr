@@ -1,8 +1,6 @@
 const { app, globalShortcut, BrowserWindow, dialog } = require("electron");
 
-// Enable GlobalShortcutsPortal feature for native Wayland global shortcuts support
-// This allows global shortcuts to work in native Wayland apps (not just XWayland)
-// See: https://github.com/electron/electron/pull/45171
+// Enable native Wayland global shortcuts: https://github.com/electron/electron/pull/45171
 if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
   app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal");
 }
@@ -352,7 +350,6 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
-    // Use hotkeyManager to clean up both globalShortcut and GNOME keybindings
     if (hotkeyManager) {
       hotkeyManager.unregisterAll();
     } else {
