@@ -83,7 +83,7 @@ const VALID_CLOUD_PROVIDER_IDS = CLOUD_PROVIDER_TABS.map((p) => p.id);
 
 const LOCAL_PROVIDER_TABS = [
   { id: "whisper", name: "OpenAI Whisper" },
-  { id: "nvidia", name: "NVIDIA Parakeet", badge: "50x Faster" },
+  { id: "nvidia", name: "NVIDIA Parakeet" },
 ];
 
 export default function TranscriptionModelPicker({

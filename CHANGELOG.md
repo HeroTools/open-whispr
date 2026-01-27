@@ -8,8 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.16] - 2026-01-26
 
 ### Added
-- **NVIDIA Parakeet Support**: Ultra-fast local transcription via sherpa-onnx runtime with INT8 quantized models (~50x faster than Whisper)
-  - `parakeet-tdt-0.6b-v2`: English-only, ~670MB
+- **NVIDIA Parakeet Support**: Fast local transcription via sherpa-onnx runtime with INT8 quantized models
   - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
 
 ### Fixed

@@ -27,7 +27,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - 📱 **Control Panel**: Manage settings, view history, and configure API keys
 - 🗄️ **Transcription History**: SQLite database stores all your transcriptions locally
 - 🔧 **Model Management**: Download and manage local Whisper models (tiny, base, small, medium, large, turbo)
-- ⚡ **NVIDIA Parakeet**: Ultra-fast local transcription via sherpa-onnx (50x faster than Whisper, English + multilingual)
+- ⚡ **NVIDIA Parakeet**: Fast local transcription via sherpa-onnx (multilingual, 25 languages)
 - 🧹 **Model Cleanup**: One-click removal of cached Whisper models with uninstall hooks to keep disks tidy
 - 🌐 **Cross-Platform**: Works on macOS, Windows, and Linux
 - ⚡ **Automatic Pasting**: Transcribed text automatically pastes at your cursor location
@@ -477,19 +477,18 @@ For local processing, OpenWhispr uses OpenAI's Whisper model via whisper.cpp - a
 
 ### Local Parakeet Setup (Alternative)
 
-OpenWhispr also supports NVIDIA Parakeet models via sherpa-onnx - an ultra-fast alternative to Whisper:
+OpenWhispr also supports NVIDIA Parakeet models via sherpa-onnx - a fast alternative to Whisper:
 
 1. **Bundled Binary**: sherpa-onnx is bundled with the app for all platforms
-2. **INT8 Quantized Models**: Efficient CPU inference, ~50x faster than Whisper
+2. **INT8 Quantized Models**: Efficient CPU inference
 3. **Models stored in**: `~/.cache/openwhispr/parakeet-models/`
 
 **Available Models**:
-- `parakeet-tdt-0.6b-v2`: English-only, ~670MB, fastest
 - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
 
 **When to use Parakeet vs Whisper**:
-- **Parakeet**: Best for speed-critical use cases, English transcription, or lower-end hardware
-- **Whisper**: Best for quality-critical use cases, wider language support, or when you need specific model sizes
+- **Parakeet**: Best for speed-critical use cases or lower-end hardware
+- **Whisper**: Best for quality-critical use cases or when you need specific model sizes
 
 ### Customization
 
@@ -601,7 +600,7 @@ OpenWhispr is actively maintained and ready for production use. Current version:
 
 - **[OpenAI Whisper](https://github.com/openai/whisper)** - The speech recognition model that powers both local and cloud transcription
 - **[whisper.cpp](https://github.com/ggerganov/whisper.cpp)** - High-performance C++ implementation of Whisper for local processing
-- **[NVIDIA Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2)** - Ultra-fast ASR models for efficient local transcription
+- **[NVIDIA Parakeet](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3)** - Fast ASR model for efficient local transcription
 - **[sherpa-onnx](https://github.com/k2-fsa/sherpa-onnx)** - Cross-platform ONNX runtime for Parakeet model inference
 - **[Electron](https://www.electronjs.org/)** - Cross-platform desktop application framework
 - **[React](https://react.dev/)** - UI component library

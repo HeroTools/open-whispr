@@ -262,14 +262,16 @@ class WhisperManager {
 
     // Convert audioBlob to Buffer if needed
     let audioBuffer;
-    if (audioBlob instanceof ArrayBuffer) {
-      audioBuffer = Buffer.from(audioBlob);
-    } else if (audioBlob instanceof Uint8Array) {
+    if (Buffer.isBuffer(audioBlob)) {
+      audioBuffer = audioBlob;
+    } else if (ArrayBuffer.isView(audioBlob)) {
+      audioBuffer = Buffer.from(audioBlob.buffer, audioBlob.byteOffset, audioBlob.byteLength);
+    } else if (audioBlob instanceof ArrayBuffer) {
       audioBuffer = Buffer.from(audioBlob);
     } else if (typeof audioBlob === "string") {
       audioBuffer = Buffer.from(audioBlob, "base64");
-    } else if (audioBlob && audioBlob.buffer) {
-      audioBuffer = Buffer.from(audioBlob.buffer);
+    } else if (audioBlob && audioBlob.buffer && typeof audioBlob.byteLength === "number") {
+      audioBuffer = Buffer.from(audioBlob.buffer, audioBlob.byteOffset || 0, audioBlob.byteLength);
     } else {
       throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
     }

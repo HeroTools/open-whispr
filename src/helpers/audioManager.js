@@ -184,7 +184,7 @@ class AudioManager {
       const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
       const localProvider = localStorage.getItem("localTranscriptionProvider") || "whisper";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
-      const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v2";
+      const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
 
       let result;
       let activeModel;
@@ -324,7 +324,7 @@ class AudioManager {
     }
   }
 
-  async processWithLocalParakeet(audioBlob, model = "parakeet-tdt-0.6b-v2", metadata = {}) {
+  async processWithLocalParakeet(audioBlob, model = "parakeet-tdt-0.6b-v3", metadata = {}) {
     const timings = {};
 
     try {

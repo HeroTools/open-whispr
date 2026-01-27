@@ -114,11 +114,10 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **parakeet.js**: Model management for NVIDIA Parakeet ASR models
   - Uses sherpa-onnx runtime for cross-platform ONNX inference
   - Bundled binaries in `resources/bin/sherpa-onnx-{platform}-{arch}`
-  - INT8 quantized models for efficient CPU inference (50x faster than Whisper)
+  - INT8 quantized models for efficient CPU inference
   - Models stored in `~/.cache/openwhispr/parakeet-models/`
 
 - **Available Models**:
-  - `parakeet-tdt-0.6b-v2`: English-only, ~670MB, fastest
   - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
 
 - **Download URLs**: Models from sherpa-onnx ASR models release on GitHub

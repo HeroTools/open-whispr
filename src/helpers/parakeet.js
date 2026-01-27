@@ -136,7 +136,7 @@ class ParakeetManager {
       );
     }
 
-    const model = options.model || "parakeet-tdt-0.6b-v2";
+    const model = options.model || "parakeet-tdt-0.6b-v3";
 
     if (!this.serverManager.isModelDownloaded(model)) {
       throw new Error(
@@ -145,14 +145,16 @@ class ParakeetManager {
     }
 
     let audioBuffer;
-    if (audioBlob instanceof ArrayBuffer) {
-      audioBuffer = Buffer.from(audioBlob);
-    } else if (audioBlob instanceof Uint8Array) {
+    if (Buffer.isBuffer(audioBlob)) {
+      audioBuffer = audioBlob;
+    } else if (ArrayBuffer.isView(audioBlob)) {
+      audioBuffer = Buffer.from(audioBlob.buffer, audioBlob.byteOffset, audioBlob.byteLength);
+    } else if (audioBlob instanceof ArrayBuffer) {
       audioBuffer = Buffer.from(audioBlob);
     } else if (typeof audioBlob === "string") {
       audioBuffer = Buffer.from(audioBlob, "base64");
-    } else if (audioBlob && audioBlob.buffer) {
-      audioBuffer = Buffer.from(audioBlob.buffer);
+    } else if (audioBlob && audioBlob.buffer && typeof audioBlob.byteLength === "number") {
+      audioBuffer = Buffer.from(audioBlob.buffer, audioBlob.byteOffset || 0, audioBlob.byteLength);
     } else {
       throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
     }
@@ -180,6 +182,12 @@ class ParakeetManager {
   }
 
   parseParakeetResult(output) {
+    debugLogger.debug("parseParakeetResult", {
+      hasOutput: !!output,
+      hasText: !!output?.text,
+      textLength: output?.text?.length || 0,
+    });
+
     if (!output || !output.text) {
       return { success: false, message: "No audio detected" };
     }

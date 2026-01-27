@@ -4,13 +4,14 @@ const os = require("os");
 const path = require("path");
 const debugLogger = require("./debugLogger");
 const { getModelsDirForService } = require("./modelDirUtils");
+const { getFFmpegPath, isWavFormat, convertToWav } = require("./ffmpegUtils");
 
 const TRANSCRIPTION_TIMEOUT_MS = 300000; // 5 minutes
 
 /**
  * ParakeetServerManager handles NVIDIA Parakeet model transcription via sherpa-onnx-offline CLI.
  * Unlike whisper-server which runs as a persistent HTTP server, sherpa-onnx-offline is invoked
- * per-transcription. Parakeet's speed (50x faster than Whisper) makes this approach efficient.
+ * per-transcription. Parakeet's speed makes this approach efficient.
  */
 class ParakeetServerManager {
   constructor() {
@@ -86,14 +87,14 @@ class ParakeetServerManager {
 
   /**
    * Transcribe audio using sherpa-onnx-offline CLI
-   * @param {Buffer} audioBuffer - Audio data (WAV format preferred)
+   * @param {Buffer} audioBuffer - Audio data (WAV or other format - will be converted if needed)
    * @param {Object} options - Transcription options
-   * @param {string} options.modelName - Model name (default: parakeet-tdt-0.6b-v2)
+   * @param {string} options.modelName - Model name (default: parakeet-tdt-0.6b-v3)
    * @param {string} options.language - Language code for transcription (used for logging/validation)
    * @returns {Promise<{text: string, language?: string}>}
    */
   async transcribe(audioBuffer, options = {}) {
-    const { modelName = "parakeet-tdt-0.6b-v2", language = "auto" } = options;
+    const { modelName = "parakeet-tdt-0.6b-v3", language = "auto" } = options;
 
     const binaryPath = this.getBinaryPath();
     if (!binaryPath) {
@@ -105,32 +106,66 @@ class ParakeetServerManager {
       throw new Error(`Parakeet model "${modelName}" not downloaded`);
     }
 
+    const isWav = isWavFormat(audioBuffer);
     debugLogger.debug("Parakeet transcription request", {
       modelName,
       language,
       audioSize: audioBuffer?.length || 0,
+      isWavFormat: isWav,
     });
 
-    // Write audio to temporary file
     const tempDir = os.tmpdir();
-    const tempAudioPath = path.join(tempDir, `parakeet-${Date.now()}.wav`);
+    const timestamp = Date.now();
+    const tempInputPath = path.join(
+      tempDir,
+      `parakeet-input-${timestamp}${isWav ? ".wav" : ".webm"}`
+    );
+    const tempWavPath = path.join(tempDir, `parakeet-${timestamp}.wav`);
+    const filesToCleanup = [tempInputPath];
 
     try {
-      fs.writeFileSync(tempAudioPath, audioBuffer);
+      fs.writeFileSync(tempInputPath, audioBuffer);
 
-      const result = await this._runTranscription(binaryPath, modelDir, tempAudioPath, {
+      let audioPath = tempInputPath;
+
+      // Convert to WAV if not already in WAV format
+      if (!isWav) {
+        const ffmpegPath = getFFmpegPath();
+        if (!ffmpegPath) {
+          throw new Error(
+            "FFmpeg not found - required for audio conversion. Please ensure FFmpeg is installed."
+          );
+        }
+
+        const inputStats = fs.statSync(tempInputPath);
+        debugLogger.debug("Converting audio to WAV", { inputSize: inputStats.size });
+
+        await convertToWav(tempInputPath, tempWavPath, { sampleRate: 16000, channels: 1 });
+
+        const outputStats = fs.statSync(tempWavPath);
+        debugLogger.debug("FFmpeg conversion complete", { outputSize: outputStats.size });
+
+        audioPath = tempWavPath;
+        filesToCleanup.push(tempWavPath);
+      }
+
+      const result = await this._runTranscription(binaryPath, modelDir, audioPath, {
         language,
       });
-      // Include the requested language in the result for reference
       return { ...result, language };
     } finally {
-      // Cleanup temp file
-      try {
-        if (fs.existsSync(tempAudioPath)) {
-          fs.unlinkSync(tempAudioPath);
+      // Cleanup temp files
+      for (const filePath of filesToCleanup) {
+        try {
+          if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+          }
+        } catch (err) {
+          debugLogger.warn("Failed to cleanup temp audio file", {
+            path: filePath,
+            error: err.message,
+          });
         }
-      } catch (err) {
-        debugLogger.warn("Failed to cleanup temp audio file", { error: err.message });
       }
     }
   }
@@ -150,18 +185,14 @@ class ParakeetServerManager {
       const startTime = Date.now();
 
       // Build command arguments for sherpa-onnx-offline (transducer model)
-      // Note: Parakeet models auto-detect language, no explicit language parameter needed
+      // Note: sherpa-onnx requires --option=value format, not --option value
+      // Parakeet models auto-detect language, no explicit language parameter needed
       const args = [
-        "--tokens",
-        path.join(modelDir, "tokens.txt"),
-        "--encoder",
-        path.join(modelDir, "encoder.int8.onnx"),
-        "--decoder",
-        path.join(modelDir, "decoder.int8.onnx"),
-        "--joiner",
-        path.join(modelDir, "joiner.int8.onnx"),
-        "--num-threads",
-        String(Math.max(1, Math.floor(os.cpus().length * 0.75))),
+        `--tokens=${path.join(modelDir, "tokens.txt")}`,
+        `--encoder=${path.join(modelDir, "encoder.int8.onnx")}`,
+        `--decoder=${path.join(modelDir, "decoder.int8.onnx")}`,
+        `--joiner=${path.join(modelDir, "joiner.int8.onnx")}`,
+        `--num-threads=${Math.max(1, Math.floor(os.cpus().length * 0.75))}`,
         audioPath,
       ];
 
@@ -212,12 +243,15 @@ class ParakeetServerManager {
         });
 
         if (code !== 0) {
-          reject(new Error(`sherpa-onnx exited with code ${code}: ${stderr.slice(0, 500)}`));
+          const stderrPreview =
+            stderr.length > 1000 ? `${stderr.slice(0, 500)} ... ${stderr.slice(-500)}` : stderr;
+          reject(new Error(`sherpa-onnx exited with code ${code}: ${stderrPreview.trim()}`));
           return;
         }
 
-        // Parse the output - sherpa-onnx-offline outputs the transcription directly
-        const text = this._parseOutput(stdout);
+        // Parse the output - sherpa-onnx-offline may output to stderr in some builds
+        const text = this._parseOutput(stdout, stderr);
+        debugLogger.debug("sherpa-onnx parsed output", { text, textLength: text?.length || 0 });
 
         resolve({ text, elapsed });
       });
@@ -225,28 +259,40 @@ class ParakeetServerManager {
   }
 
   /**
-   * Parse sherpa-onnx-offline output to extract transcription text
+   * Parse sherpa-onnx-offline output to extract transcription text.
+   * Output format is JSON: {"lang": "", "emotion": "", "event": "", "text": "transcribed text", ...}
    */
-  _parseOutput(stdout) {
-    // sherpa-onnx-offline typically outputs the transcription on a single line
-    // Format may be: "filename.wav\nTranscription text here"
-    // or just the text directly
-    const lines = stdout.trim().split("\n");
+  _parseOutput(stdout, stderr = "") {
+    const output = [stdout, stderr].filter((value) => value && value.trim()).join("\n");
+    if (!output) return "";
 
-    // Find the line that contains the actual transcription
-    // Usually it's the last non-empty line that doesn't start with timestamps or metadata
+    const lines = output.trim().split("\n");
+
+    // Look for JSON output containing the transcription
     for (let i = lines.length - 1; i >= 0; i--) {
       const line = lines[i].trim();
-      if (line && !line.match(/^\d+\.\d+/) && !line.includes(".wav")) {
+      if (!line) continue;
+
+      // Try to parse as JSON (sherpa-onnx outputs JSON with text field)
+      if (line.startsWith("{") && line.includes('"text"')) {
+        try {
+          const parsed = JSON.parse(line);
+          if (typeof parsed.text === "string") return parsed.text.trim();
+        } catch {
+          // Not valid JSON, continue to fallback
+        }
+      }
+    }
+
+    // Fallback for non-JSON output: find last meaningful line
+    for (let i = lines.length - 1; i >= 0; i--) {
+      const line = lines[i].trim();
+      if (line && !line.match(/^\d+\.\d+/) && !line.includes(".wav") && !line.startsWith("{")) {
         return line;
       }
     }
 
-    // Fallback: return all non-empty lines joined
-    return lines
-      .filter((line) => line.trim() && !line.includes(".wav"))
-      .join(" ")
-      .trim();
+    return "";
   }
 
   getStatus() {
