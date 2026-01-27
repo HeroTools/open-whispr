@@ -3,6 +3,7 @@ const path = require("path");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const { getSystemPrompt } = require("./prompts");
+const GnomeShortcutManager = require("./gnomeShortcut");
 
 class IPCHandlers {
   constructor(managers) {
@@ -300,13 +301,16 @@ class IPCHandlers {
       return await this.windowManager.updateHotkey(hotkey);
     });
 
-    ipcMain.handle("set-hotkey-listening-mode", async (event, enabled) => {
+    ipcMain.handle("set-hotkey-listening-mode", async (event, enabled, newHotkey = null) => {
       this.windowManager.setHotkeyListeningMode(enabled);
       const hotkeyManager = this.windowManager.hotkeyManager;
-      const currentHotkey = hotkeyManager.getCurrentHotkey();
+
+      // When exiting capture mode with a new hotkey, use that to avoid reading stale state
+      const effectiveHotkey = !enabled && newHotkey ? newHotkey : hotkeyManager.getCurrentHotkey();
 
       if (enabled) {
         // Entering capture mode - unregister globalShortcut so it doesn't consume key events
+        const currentHotkey = hotkeyManager.getCurrentHotkey();
         if (currentHotkey && currentHotkey !== "GLOBE") {
           debugLogger.log(
             `[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`
@@ -315,22 +319,29 @@ class IPCHandlers {
           globalShortcut.unregister(currentHotkey);
         }
 
-        // On Windows, also stop the Windows key listener
+        // On Windows, stop the Windows key listener
         if (process.platform === "win32" && this.windowsKeyManager) {
           debugLogger.log("[IPC] Stopping Windows key listener for hotkey capture mode");
           this.windowsKeyManager.stop();
         }
+
+        // On GNOME Wayland, unregister the keybinding during capture
+        if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager) {
+          debugLogger.log("[IPC] Unregistering GNOME keybinding for hotkey capture mode");
+          await hotkeyManager.gnomeManager.unregisterKeybinding().catch((err) => {
+            debugLogger.warn("[IPC] Failed to unregister GNOME keybinding:", err.message);
+          });
+        }
       } else {
-        // Exiting capture mode - re-register the globalShortcut if not already registered
-        // (updateHotkey may have already registered a new hotkey)
-        if (currentHotkey && currentHotkey !== "GLOBE") {
+        // Exiting capture mode - re-register globalShortcut if not already registered
+        if (effectiveHotkey && effectiveHotkey !== "GLOBE") {
           const { globalShortcut } = require("electron");
-          if (!globalShortcut.isRegistered(currentHotkey)) {
+          if (!globalShortcut.isRegistered(effectiveHotkey)) {
             debugLogger.log(
-              `[IPC] Re-registering globalShortcut "${currentHotkey}" after capture mode`
+              `[IPC] Re-registering globalShortcut "${effectiveHotkey}" after capture mode`
             );
             const callback = this.windowManager.createHotkeyCallback();
-            globalShortcut.register(currentHotkey, callback);
+            globalShortcut.register(effectiveHotkey, callback);
           }
         }
 
@@ -338,11 +349,23 @@ class IPCHandlers {
         if (process.platform === "win32" && this.windowsKeyManager) {
           const activationMode = await this.windowManager.getActivationMode();
           debugLogger.log(
-            `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${currentHotkey}"`
+            `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${effectiveHotkey}"`
           );
-          if (activationMode === "push" && currentHotkey && currentHotkey !== "GLOBE") {
-            debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${currentHotkey}`);
-            this.windowsKeyManager.start(currentHotkey);
+          if (activationMode === "push" && effectiveHotkey && effectiveHotkey !== "GLOBE") {
+            debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${effectiveHotkey}`);
+            this.windowsKeyManager.start(effectiveHotkey);
+          }
+        }
+
+        // On GNOME Wayland, re-register the keybinding with the effective hotkey
+        if (hotkeyManager.isUsingGnome() && hotkeyManager.gnomeManager && effectiveHotkey) {
+          const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(effectiveHotkey);
+          debugLogger.log(
+            `[IPC] Re-registering GNOME keybinding "${gnomeHotkey}" after capture mode`
+          );
+          const success = await hotkeyManager.gnomeManager.registerKeybinding(gnomeHotkey);
+          if (success) {
+            hotkeyManager.currentHotkey = effectiveHotkey;
           }
         }
       }

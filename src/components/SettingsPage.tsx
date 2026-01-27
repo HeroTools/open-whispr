@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-react";
@@ -140,6 +140,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   });
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
+  // Platform detection for conditional features
+  const platform = useMemo(() => {
+    if (typeof window !== "undefined" && window.electronAPI?.getPlatform) {
+      return window.electronAPI.getPlatform();
+    }
+    return "linux"; // Safe fallback
+  }, []);
+
   // Custom dictionary state
   const [newDictionaryWord, setNewDictionaryWord] = useState("");
 
@@ -162,8 +170,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(true);
 
-  // Load auto-start state on mount
+  // Load auto-start state on mount (not supported on Linux)
   useEffect(() => {
+    if (platform === "linux") {
+      setAutoStartLoading(false);
+      return;
+    }
     const loadAutoStart = async () => {
       if (window.electronAPI?.getAutoStartEnabled) {
         try {
@@ -176,7 +188,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       setAutoStartLoading(false);
     };
     loadAutoStart();
-  }, []);
+  }, [platform]);
 
   const handleAutoStartChange = async (enabled: boolean) => {
     if (window.electronAPI?.setAutoStartEnabled) {
@@ -531,35 +543,38 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               )}
             </div>
 
-            <div className="border-t pt-8">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Startup</h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  Control how OpenWhispr starts when you log in.
-                </p>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+            {/* Auto-start is only supported on macOS and Windows */}
+            {platform !== "linux" && (
+              <div className="border-t pt-8">
                 <div>
-                  <p className="font-medium text-gray-900">Launch at Login</p>
-                  <p className="text-sm text-gray-600">
-                    Automatically start OpenWhispr when you log in to your computer
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Startup</h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Control how OpenWhispr starts when you log in.
                   </p>
                 </div>
-                <button
-                  onClick={() => handleAutoStartChange(!autoStartEnabled)}
-                  disabled={autoStartLoading}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                    autoStartEnabled ? "bg-indigo-600" : "bg-gray-200"
-                  } ${autoStartLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-                >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      autoStartEnabled ? "translate-x-6" : "translate-x-1"
-                    }`}
-                  />
-                </button>
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                  <div>
+                    <p className="font-medium text-gray-900">Launch at Login</p>
+                    <p className="text-sm text-gray-600">
+                      Automatically start OpenWhispr when you log in to your computer
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleAutoStartChange(!autoStartEnabled)}
+                    disabled={autoStartLoading}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                      autoStartEnabled ? "bg-indigo-600" : "bg-gray-200"
+                    } ${autoStartLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        autoStartEnabled ? "translate-x-6" : "translate-x-1"
+                      }`}
+                    />
+                  </button>
+                </div>
               </div>
-            </div>
+            )}
 
             <div className="border-t pt-8">
               <div>

@@ -315,11 +315,16 @@ async function startApp() {
       if (isLiveWindow(windowManager.mainWindow)) {
         const activationMode = await windowManager.getActivationMode();
         if (activationMode === "push") {
+          const wasRecording = winKeyIsRecording;
           winKeyDownTime = 0;
-          if (winKeyIsRecording) {
-            winKeyIsRecording = false;
+          winKeyIsRecording = false;
+          if (wasRecording) {
             debugLogger.debug("[Push-to-Talk] Sending stop dictation command");
             windowManager.sendStopDictation();
+          } else {
+            // Short tap (< hold threshold) - hide panel since recording never started
+            debugLogger.debug("[Push-to-Talk] Short tap detected, hiding panel");
+            windowManager.hideDictationPanel();
           }
         }
       }
