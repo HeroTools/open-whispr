@@ -74,6 +74,9 @@ export function useModelDownload({
   const handleWhisperProgress = useCallback(
     (_event: unknown, data: WhisperDownloadProgressData) => {
       if (data.type === "progress") {
+        const now = Date.now();
+        if (now - lastProgressUpdateRef.current < PROGRESS_THROTTLE_MS) return;
+        lastProgressUpdateRef.current = now;
         setDownloadProgress({
           percentage: data.percentage || 0,
           downloadedBytes: data.downloaded_bytes || 0,
