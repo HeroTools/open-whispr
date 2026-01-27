@@ -267,6 +267,8 @@ $RECYCLE.BIN/
 
 # Claude Code
 .claude/settings.local.json
+.claude/skills/
+.agents/
 
 # OS generated files
 .DS_Store
