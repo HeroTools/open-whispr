@@ -44,6 +44,7 @@ const WindowManager = require("./src/helpers/windowManager");
 const DatabaseManager = require("./src/helpers/database");
 const ClipboardManager = require("./src/helpers/clipboard");
 const WhisperManager = require("./src/helpers/whisper");
+const ParakeetManager = require("./src/helpers/parakeet");
 const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
@@ -58,6 +59,7 @@ let hotkeyManager = null;
 let databaseManager = null;
 let clipboardManager = null;
 let whisperManager = null;
+let parakeetManager = null;
 let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
@@ -103,6 +105,7 @@ function initializeManagers() {
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();
   whisperManager = new WhisperManager();
+  parakeetManager = new ParakeetManager();
   trayManager = new TrayManager();
   updateManager = new UpdateManager();
   globeKeyManager = new GlobeKeyManager();
@@ -144,6 +147,7 @@ function initializeManagers() {
     databaseManager,
     clipboardManager,
     whisperManager,
+    parakeetManager,
     windowManager,
     updateManager,
     windowsKeyManager,
@@ -178,6 +182,19 @@ async function startApp() {
   whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
     // Whisper not being available at startup is not critical
     debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
+  });
+
+  // Initialize Parakeet manager at startup (don't await to avoid blocking)
+  // Settings can be provided via environment variables for server pre-warming:
+  // - LOCAL_TRANSCRIPTION_PROVIDER=nvidia to enable parakeet
+  // - PARAKEET_MODEL=parakeet-tdt-0.6b-v3 (model name)
+  const parakeetSettings = {
+    localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
+    parakeetModel: process.env.PARAKEET_MODEL || "parakeet-tdt-0.6b-v3",
+  };
+  parakeetManager.initializeAtStartup(parakeetSettings).catch((err) => {
+    // Parakeet not being available at startup is not critical
+    debugLogger.debug("Parakeet startup init error (non-fatal)", { error: err.message });
   });
 
   // Pre-warm llama-server if local reasoning is configured
@@ -525,6 +542,10 @@ if (gotSingleInstanceLock) {
     // Stop whisper server if running
     if (whisperManager) {
       whisperManager.stopServer().catch(() => {});
+    }
+    // Stop parakeet WS server if running
+    if (parakeetManager) {
+      parakeetManager.stopServer().catch(() => {});
     }
     // Stop llama-server if running
     const modelManager = require("./src/helpers/modelManagerBridge").default;

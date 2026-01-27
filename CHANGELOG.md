@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.2.16] - 2026-01-26
 
 ### Added
+- **NVIDIA Parakeet Support**: Fast local transcription via sherpa-onnx runtime with INT8 quantized models
+  - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
 - **Windows Push-to-Talk**: Native Windows key listener with low-level keyboard hook for true push-to-talk functionality
   - Supports compound hotkeys like `Ctrl+Shift+F11` or `CommandOrControl+Space`
   - Prebuilt binary automatically downloaded from GitHub releases
@@ -25,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Dev Server Port Alignment**: Development server port configuration improved for consistency
 
 ### Fixed
+- **Whisper Model Path Resolution**: Fixed `large` and `turbo` model lookup failures by using registry-defined filenames (`ggml-large-v3.bin`, `ggml-large-v3-turbo.bin`) instead of hardcoded pattern
 - **Windows Production Build**: Fixed Windows production build issues with proper binary bundling
 - **Code Quality**: Various code quality improvements in download scripts and dev server management
 

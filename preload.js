@@ -104,6 +104,29 @@ contextBridge.exposeInMainWorld("electronAPI", {
   whisperServerStop: () => ipcRenderer.invoke("whisper-server-stop"),
   whisperServerStatus: () => ipcRenderer.invoke("whisper-server-status"),
 
+  // Local Parakeet (NVIDIA) functions
+  transcribeLocalParakeet: (audioBlob, options) =>
+    ipcRenderer.invoke("transcribe-local-parakeet", audioBlob, options),
+  checkParakeetInstallation: () =>
+    ipcRenderer.invoke("check-parakeet-installation"),
+  downloadParakeetModel: (modelName) =>
+    ipcRenderer.invoke("download-parakeet-model", modelName),
+  onParakeetDownloadProgress: registerListener("parakeet-download-progress"),
+  checkParakeetModelStatus: (modelName) =>
+    ipcRenderer.invoke("check-parakeet-model-status", modelName),
+  listParakeetModels: () => ipcRenderer.invoke("list-parakeet-models"),
+  deleteParakeetModel: (modelName) =>
+    ipcRenderer.invoke("delete-parakeet-model", modelName),
+  deleteAllParakeetModels: () => ipcRenderer.invoke("delete-all-parakeet-models"),
+  cancelParakeetDownload: () => ipcRenderer.invoke("cancel-parakeet-download"),
+  getParakeetDiagnostics: () => ipcRenderer.invoke("get-parakeet-diagnostics"),
+
+  // Parakeet server functions (faster repeated transcriptions)
+  parakeetServerStart: (modelName) =>
+    ipcRenderer.invoke("parakeet-server-start", modelName),
+  parakeetServerStop: () => ipcRenderer.invoke("parakeet-server-stop"),
+  parakeetServerStatus: () => ipcRenderer.invoke("parakeet-server-status"),
+
   // Window control functions
   windowMinimize: () => ipcRenderer.invoke("window-minimize"),
   windowMaximize: () => ipcRenderer.invoke("window-maximize"),

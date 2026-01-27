@@ -1,42 +1,28 @@
-const { app } = require("electron");
 const fs = require("fs");
 const fsPromises = require("fs").promises;
-const os = require("os");
 const path = require("path");
 const https = require("https");
 const debugLogger = require("./debugLogger");
 const WhisperServerManager = require("./whisperServer");
+const { getModelsDirForService } = require("./modelDirUtils");
 
-// Cache TTL for availability checks
+const modelRegistryData = require("../models/modelRegistryData.json");
+
 const CACHE_TTL_MS = 30000;
 
-// GGML model definitions with HuggingFace URLs
-const WHISPER_MODELS = {
-  tiny: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin",
-    size: 75_000_000,
-  },
-  base: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
-    size: 142_000_000,
-  },
-  small: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
-    size: 466_000_000,
-  },
-  medium: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin",
-    size: 1_500_000_000,
-  },
-  large: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
-    size: 3_000_000_000,
-  },
-  turbo: {
-    url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
-    size: 1_600_000_000,
-  },
-};
+function getWhisperModelConfig(modelName) {
+  const modelInfo = modelRegistryData.whisperModels[modelName];
+  if (!modelInfo) return null;
+  return {
+    url: modelInfo.downloadUrl,
+    size: modelInfo.sizeMb * 1_000_000,
+    fileName: modelInfo.fileName,
+  };
+}
+
+function getValidModelNames() {
+  return Object.keys(modelRegistryData.whisperModels);
+}
 
 class WhisperManager {
   constructor() {
@@ -50,13 +36,12 @@ class WhisperManager {
   }
 
   getModelsDir() {
-    const homeDir = app?.getPath?.("home") || os.homedir();
-    return path.join(homeDir, ".cache", "openwhispr", "whisper-models");
+    return getModelsDirForService("whisper");
   }
 
   validateModelName(modelName) {
     // Only allow known model names to prevent path traversal attacks
-    const validModels = Object.keys(WHISPER_MODELS);
+    const validModels = getValidModelNames();
     if (!validModels.includes(modelName)) {
       throw new Error(`Invalid model name: ${modelName}. Valid models: ${validModels.join(", ")}`);
     }
@@ -65,7 +50,8 @@ class WhisperManager {
 
   getModelPath(modelName) {
     this.validateModelName(modelName);
-    return path.join(this.getModelsDir(), `ggml-${modelName}.bin`);
+    const config = getWhisperModelConfig(modelName);
+    return path.join(this.getModelsDir(), config.fileName);
   }
 
   async initializeAtStartup(settings = {}) {
@@ -157,7 +143,7 @@ class WhisperManager {
     }
 
     // Check downloaded models
-    for (const modelName of Object.keys(WHISPER_MODELS)) {
+    for (const modelName of getValidModelNames()) {
       const modelPath = this.getModelPath(modelName);
       if (fs.existsSync(modelPath)) {
         try {
@@ -277,14 +263,16 @@ class WhisperManager {
 
     // Convert audioBlob to Buffer if needed
     let audioBuffer;
-    if (audioBlob instanceof ArrayBuffer) {
-      audioBuffer = Buffer.from(audioBlob);
-    } else if (audioBlob instanceof Uint8Array) {
+    if (Buffer.isBuffer(audioBlob)) {
+      audioBuffer = audioBlob;
+    } else if (ArrayBuffer.isView(audioBlob)) {
+      audioBuffer = Buffer.from(audioBlob.buffer, audioBlob.byteOffset, audioBlob.byteLength);
+    } else if (audioBlob instanceof ArrayBuffer) {
       audioBuffer = Buffer.from(audioBlob);
     } else if (typeof audioBlob === "string") {
       audioBuffer = Buffer.from(audioBlob, "base64");
-    } else if (audioBlob && audioBlob.buffer) {
-      audioBuffer = Buffer.from(audioBlob.buffer);
+    } else if (audioBlob && audioBlob.buffer && typeof audioBlob.byteLength === "number") {
+      audioBuffer = Buffer.from(audioBlob.buffer, audioBlob.byteOffset || 0, audioBlob.byteLength);
     } else {
       throw new Error(`Unsupported audio data type: ${typeof audioBlob}`);
     }
@@ -371,7 +359,7 @@ class WhisperManager {
   // Model management methods
   async downloadWhisperModel(modelName, progressCallback = null) {
     this.validateModelName(modelName);
-    const modelConfig = WHISPER_MODELS[modelName];
+    const modelConfig = getWhisperModelConfig(modelName);
 
     const modelPath = this.getModelPath(modelName);
     const modelsDir = this.getModelsDir();
@@ -394,7 +382,6 @@ class WhisperManager {
 
     const tempPath = `${modelPath}.tmp`;
 
-    // Track active download for cancellation
     let activeRequest = null;
     let activeFile = null;
     let isCancelled = false;
@@ -411,7 +398,6 @@ class WhisperManager {
       fs.unlink(tempPath, () => {});
     };
 
-    // Store cancellation function
     this.currentDownloadProcess = {
       abort: () => {
         isCancelled = true;
@@ -541,7 +527,6 @@ class WhisperManager {
           reject(err);
         });
 
-        // Request timeout (10 minutes for large models)
         activeRequest.setTimeout(600000, () => {
           cleanup();
           reject(new Error("Download request timed out"));
@@ -580,7 +565,7 @@ class WhisperManager {
   }
 
   async listWhisperModels() {
-    const models = Object.keys(WHISPER_MODELS);
+    const models = getValidModelNames();
     const modelInfo = [];
 
     for (const model of models) {
