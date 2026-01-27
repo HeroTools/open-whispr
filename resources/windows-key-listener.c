@@ -34,7 +34,7 @@ BOOL AreModifiersPressed(void) {
 
 // Map key name to virtual key code
 DWORD ParseKeyCode(const char* keyName) {
-    // Function keys
+    // Function keys (F1-F12)
     if (_stricmp(keyName, "F1") == 0) return VK_F1;
     if (_stricmp(keyName, "F2") == 0) return VK_F2;
     if (_stricmp(keyName, "F3") == 0) return VK_F3;
@@ -47,6 +47,20 @@ DWORD ParseKeyCode(const char* keyName) {
     if (_stricmp(keyName, "F10") == 0) return VK_F10;
     if (_stricmp(keyName, "F11") == 0) return VK_F11;
     if (_stricmp(keyName, "F12") == 0) return VK_F12;
+
+    // Extended function keys (F13-F24)
+    if (_stricmp(keyName, "F13") == 0) return VK_F13;
+    if (_stricmp(keyName, "F14") == 0) return VK_F14;
+    if (_stricmp(keyName, "F15") == 0) return VK_F15;
+    if (_stricmp(keyName, "F16") == 0) return VK_F16;
+    if (_stricmp(keyName, "F17") == 0) return VK_F17;
+    if (_stricmp(keyName, "F18") == 0) return VK_F18;
+    if (_stricmp(keyName, "F19") == 0) return VK_F19;
+    if (_stricmp(keyName, "F20") == 0) return VK_F20;
+    if (_stricmp(keyName, "F21") == 0) return VK_F21;
+    if (_stricmp(keyName, "F22") == 0) return VK_F22;
+    if (_stricmp(keyName, "F23") == 0) return VK_F23;
+    if (_stricmp(keyName, "F24") == 0) return VK_F24;
 
     // Special keys
     if (_stricmp(keyName, "Pause") == 0) return VK_PAUSE;
@@ -205,7 +219,8 @@ int main(int argc, char* argv[]) {
         fprintf(stderr, "Usage: %s <key>\n", argv[0]);
         fprintf(stderr, "Examples:\n");
         fprintf(stderr, "  %s `                        (backtick)\n", argv[0]);
-        fprintf(stderr, "  %s F8                       (function key)\n", argv[0]);
+        fprintf(stderr, "  %s F8                       (function key F1-F12)\n", argv[0]);
+        fprintf(stderr, "  %s F13                      (extended function key F13-F24)\n", argv[0]);
         fprintf(stderr, "  %s CommandOrControl+F11     (with modifier)\n", argv[0]);
         fprintf(stderr, "  %s Ctrl+Shift+Space         (multiple modifiers)\n", argv[0]);
         return 1;
