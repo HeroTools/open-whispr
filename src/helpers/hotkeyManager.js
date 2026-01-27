@@ -222,13 +222,7 @@ class HotkeyManager {
           }
         };
 
-        if (mainWindow.webContents.isLoading()) {
-          mainWindow.webContents.once("did-finish-load", () =>
-            setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS)
-          );
-        } else {
-          setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS);
-        }
+        setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS);
         this.isInitialized = true;
         return;
       }
@@ -238,17 +232,9 @@ class HotkeyManager {
       globalShortcut.unregisterAll();
     }
 
-    const loadHotkey = () => {
-      setTimeout(() => {
-        this.loadSavedHotkeyOrDefault(mainWindow, callback);
-      }, HOTKEY_REGISTRATION_DELAY_MS);
-    };
-
-    if (mainWindow.webContents.isLoading()) {
-      mainWindow.webContents.once("did-finish-load", loadHotkey);
-    } else {
-      loadHotkey();
-    }
+    setTimeout(() => {
+      this.loadSavedHotkeyOrDefault(mainWindow, callback);
+    }, HOTKEY_REGISTRATION_DELAY_MS);
 
     this.isInitialized = true;
   }
@@ -258,7 +244,6 @@ class HotkeyManager {
       const savedHotkey = await mainWindow.webContents.executeJavaScript(`
         localStorage.getItem("dictationKey") || ""
       `);
-
       if (savedHotkey && savedHotkey.trim() !== "") {
         const result = this.setupShortcuts(savedHotkey, callback);
         if (result.success) {
