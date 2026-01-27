@@ -3,7 +3,7 @@ const os = require("os");
 const path = require("path");
 const debugLogger = require("./debugLogger");
 const { getModelsDirForService } = require("./modelDirUtils");
-const { getFFmpegPath, isWavFormat, convertToWav } = require("./ffmpegUtils");
+const { getFFmpegPath, isWavFormat, convertToWav, wavToFloat32Samples } = require("./ffmpegUtils");
 const ParakeetWsServer = require("./parakeetWsServer");
 
 class ParakeetServerManager {
@@ -93,7 +93,8 @@ class ParakeetServerManager {
       if (!this.wsServer.ready || this.wsServer.modelName !== modelName) {
         await this.wsServer.start(modelName, modelDir);
       }
-      const result = await this.wsServer.transcribe(wavBuffer);
+      const samples = wavToFloat32Samples(wavBuffer);
+      const result = await this.wsServer.transcribe(samples, 16000);
       return { ...result, language };
     } finally {
       this._cleanupFiles(filesToCleanup);

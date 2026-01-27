@@ -13,9 +13,7 @@ const {
 const PORT_RANGE_START = 6006;
 const PORT_RANGE_END = 6029;
 const STARTUP_TIMEOUT_MS = 60000;
-const STARTUP_POLL_INTERVAL_MS = 200;
 const HEALTH_CHECK_INTERVAL_MS = 5000;
-const HEALTH_CHECK_TIMEOUT_MS = 2000;
 const TRANSCRIPTION_TIMEOUT_MS = 300000;
 
 class ParakeetWsServer {
@@ -27,6 +25,7 @@ class ParakeetWsServer {
     this.modelDir = null;
     this.startupPromise = null;
     this.healthCheckInterval = null;
+    this.transcribing = false;
     this.cachedWsBinaryPath = null;
   }
 
@@ -89,6 +88,10 @@ class ParakeetWsServer {
 
     let stderrBuffer = "";
     let exitCode = null;
+    let readyResolve = null;
+    const readyFromStderr = new Promise((resolve) => {
+      readyResolve = resolve;
+    });
 
     this.process.stdout.on("data", (data) => {
       debugLogger.debug("parakeet-ws stdout", { data: data.toString().trim() });
@@ -97,11 +100,15 @@ class ParakeetWsServer {
     this.process.stderr.on("data", (data) => {
       stderrBuffer += data.toString();
       debugLogger.debug("parakeet-ws stderr", { data: data.toString().trim() });
+      if (data.toString().includes("Listening on:")) {
+        readyResolve(true);
+      }
     });
 
     this.process.on("error", (error) => {
       debugLogger.error("parakeet-ws process error", { error: error.message });
       this.ready = false;
+      readyResolve(false);
     });
 
     this.process.on("close", (code) => {
@@ -110,9 +117,10 @@ class ParakeetWsServer {
       this.ready = false;
       this.process = null;
       this.stopHealthCheck();
+      readyResolve(false);
     });
 
-    await this._waitForReady(() => ({ stderr: stderrBuffer, exitCode }));
+    await this._waitForReady(readyFromStderr, () => ({ stderr: stderrBuffer, exitCode }));
     this._startHealthCheck();
 
     debugLogger.info("parakeet-ws server started successfully", {
@@ -121,76 +129,52 @@ class ParakeetWsServer {
     });
   }
 
-  async _waitForReady(getProcessInfo) {
+  async _waitForReady(readySignal, getProcessInfo) {
     const startTime = Date.now();
-    let pollCount = 0;
 
-    while (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
-      if (!this.process || this.process.killed) {
-        const info = getProcessInfo ? getProcessInfo() : {};
-        const stderr = info.stderr ? info.stderr.trim().slice(0, 200) : "";
-        const details = stderr || (info.exitCode !== null ? `exit code: ${info.exitCode}` : "");
-        throw new Error(`parakeet-ws process died during startup${details ? `: ${details}` : ""}`);
-      }
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(
+        () => reject(new Error(`parakeet-ws failed to start within ${STARTUP_TIMEOUT_MS}ms`)),
+        STARTUP_TIMEOUT_MS
+      );
+    });
 
-      pollCount++;
-      if (await this._checkHealth()) {
-        this.ready = true;
-        debugLogger.debug("parakeet-ws ready", {
-          startupTimeMs: Date.now() - startTime,
-          pollCount,
-        });
-        return;
-      }
+    const ready = await Promise.race([readySignal, timeoutPromise]);
 
-      await new Promise((resolve) => setTimeout(resolve, STARTUP_POLL_INTERVAL_MS));
+    if (!ready) {
+      const info = getProcessInfo ? getProcessInfo() : {};
+      const stderr = info.stderr ? info.stderr.trim().slice(0, 200) : "";
+      const details = stderr || (info.exitCode !== null ? `exit code: ${info.exitCode}` : "");
+      throw new Error(`parakeet-ws process died during startup${details ? `: ${details}` : ""}`);
     }
 
-    throw new Error(`parakeet-ws failed to start within ${STARTUP_TIMEOUT_MS}ms`);
+    this.ready = true;
+    debugLogger.debug("parakeet-ws ready", { startupTimeMs: Date.now() - startTime });
   }
 
-  _checkHealth() {
-    return new Promise((resolve) => {
-      let ws;
-      const timeout = setTimeout(() => {
-        if (ws) {
-          try { ws.close(); } catch {}
-        }
-        resolve(false);
-      }, HEALTH_CHECK_TIMEOUT_MS);
-
-      try {
-        ws = new WebSocket(`ws://127.0.0.1:${this.port}`);
-        ws.on("open", () => {
-          clearTimeout(timeout);
-          ws.close();
-          resolve(true);
-        });
-        ws.on("error", () => {
-          clearTimeout(timeout);
-          resolve(false);
-        });
-      } catch {
-        clearTimeout(timeout);
-        resolve(false);
-      }
-    });
+  _isProcessAlive() {
+    if (!this.process || this.process.killed) return false;
+    try {
+      process.kill(this.process.pid, 0);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   _startHealthCheck() {
     this.stopHealthCheck();
-    this.healthCheckInterval = setInterval(async () => {
+    this.healthCheckInterval = setInterval(() => {
       if (!this.process) {
         this.stopHealthCheck();
         return;
       }
-      const healthy = await this._checkHealth();
-      if (!healthy) {
-        debugLogger.warn("parakeet-ws health check failed");
+      if (this.transcribing) return;
+
+      if (!this._isProcessAlive()) {
+        debugLogger.warn("parakeet-ws health check failed: process not alive");
         this.ready = false;
-      } else if (!this.ready) {
-        debugLogger.info("parakeet-ws health check recovered");
-        this.ready = true;
+        this.stopHealthCheck();
       }
     }, HEALTH_CHECK_INTERVAL_MS);
   }
@@ -202,51 +186,80 @@ class ParakeetWsServer {
     }
   }
 
-  transcribe(wavBuffer) {
+  transcribe(samplesBuffer, sampleRate) {
     if (!this.ready || !this.process) {
       throw new Error("parakeet-ws server is not running");
     }
+
+    this.transcribing = true;
 
     return new Promise((resolve, reject) => {
       const startTime = Date.now();
       let result = "";
 
+      const done =
+        (fn) =>
+        (...args) => {
+          this.transcribing = false;
+          fn(...args);
+        };
+
       const timeout = setTimeout(() => {
-        try { ws.close(); } catch {}
-        reject(new Error("parakeet-ws transcription timed out"));
+        try {
+          ws.close();
+        } catch {}
+        done(reject)(new Error("parakeet-ws transcription timed out"));
       }, TRANSCRIPTION_TIMEOUT_MS);
 
       const ws = new WebSocket(`ws://127.0.0.1:${this.port}`);
 
       ws.on("open", () => {
-        ws.send(wavBuffer);
-        ws.send("Done");
+        // sherpa-onnx offline WS binary protocol:
+        // [int32LE sample_rate][int32LE num_audio_bytes][float32 samples...]
+        const message = Buffer.alloc(8 + samplesBuffer.length);
+        message.writeInt32LE(sampleRate, 0);
+        message.writeInt32LE(samplesBuffer.length, 4);
+        samplesBuffer.copy(message, 8);
+
+        debugLogger.debug("parakeet-ws sending audio", {
+          samplesBytes: samplesBuffer.length,
+          sampleRate,
+        });
+
+        ws.send(message, (err) => {
+          if (err) {
+            debugLogger.error("parakeet-ws send error", { error: err.message });
+          }
+        });
       });
 
       ws.on("message", (data) => {
         result += data.toString();
+        ws.send("Done");
       });
 
-      ws.on("close", () => {
+      ws.on("close", (code) => {
         clearTimeout(timeout);
         const elapsed = Date.now() - startTime;
 
         debugLogger.debug("parakeet-ws transcription completed", {
           elapsed,
+          code,
           resultLength: result.length,
+          resultPreview: result.slice(0, 200),
         });
 
         try {
           const parsed = JSON.parse(result);
-          resolve({ text: (parsed.text || "").trim(), elapsed });
+          done(resolve)({ text: (parsed.text || "").trim(), elapsed });
         } catch {
-          resolve({ text: result.trim(), elapsed });
+          done(resolve)({ text: result.trim(), elapsed });
         }
       });
 
       ws.on("error", (error) => {
         clearTimeout(timeout);
-        reject(new Error(`parakeet-ws transcription failed: ${error.message}`));
+        done(reject)(new Error(`parakeet-ws transcription failed: ${error.message}`));
       });
     });
   }
