@@ -36,6 +36,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - ⌨️ **Compound Hotkeys**: Support for multi-key combinations like `Cmd+Shift+K`
 - 🎙️ **Push-to-Talk (Windows)**: Native low-level keyboard hook for true push-to-talk with compound hotkey support
 - 📖 **Custom Dictionary**: Add words, names, and technical terms to improve transcription accuracy
+- 🐧 **GNOME Wayland Support**: Native global shortcuts via D-Bus for GNOME Wayland users
 
 ## Prerequisites
 
@@ -222,6 +223,18 @@ sudo pacman -S kdotool    # Arch
 > ℹ️ **Note**: OpenWhispr automatically tries paste tools in this order: `wtype` → `ydotool` → `xdotool` (for XWayland apps). If no paste tool is installed, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
 
 > ⚠️ **ydotool Requirements**: The `ydotoold` daemon must be running for ydotool to work. Start it manually with `sudo ydotoold &` or enable the systemd service as shown above.
+
+**GNOME Wayland Global Hotkeys**:
+
+On GNOME Wayland, Electron's standard global shortcuts don't work due to Wayland's security model. OpenWhispr automatically uses native GNOME keyboard shortcuts via D-Bus and gsettings:
+
+- Hotkeys are registered as GNOME custom shortcuts (visible in Settings → Keyboard → Shortcuts)
+- Default hotkey is `Alt+R` (backtick not supported on GNOME Wayland)
+- **Push-to-talk mode is not available** on GNOME Wayland (only tap-to-talk)
+- Falls back to X11/XWayland shortcuts if GNOME integration fails
+- No additional dependencies required - uses `dbus-next` npm package
+
+> ℹ️ **GNOME Wayland Limitation**: GNOME system shortcuts only fire a single toggle event (no key-up detection), so push-to-talk mode cannot work. The app automatically uses tap-to-talk mode on GNOME Wayland.
 
 > 🔒 **Flatpak Security**: The Flatpak package includes sandboxing with explicit permissions for microphone, clipboard, and file access. See [electron-builder.json](electron-builder.json) for the complete permission list.
 
@@ -530,6 +543,7 @@ OpenWhispr is designed with privacy and security in mind:
    - If bundled binary fails, install via `brew install whisper-cpp` (macOS)
    - Check available disk space for models
 5. **Global hotkey conflicts**: Change the hotkey in the Control Panel - any key can be used
+   - GNOME Wayland: Hotkeys are registered via gsettings; check Settings → Keyboard → Shortcuts for conflicts
 6. **Text not pasting**:
    - macOS: Check accessibility permissions (System Settings → Privacy & Security → Accessibility)
    - Linux X11: Install `xdotool`
