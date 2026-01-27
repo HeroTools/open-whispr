@@ -139,6 +139,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
+  const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -159,6 +160,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       clearTimeout(timer);
     };
   }, [whisperHook, getAppVersion]);
+
+  useEffect(() => {
+    const checkHotkeyMode = async () => {
+      try {
+        const info = await window.electronAPI?.getHotkeyModeInfo();
+        if (info?.isUsingGnome) {
+          setIsUsingGnomeHotkeys(true);
+          setActivationMode("tap");
+        }
+      } catch (error) {
+        console.error("Failed to check hotkey mode:", error);
+      }
+    };
+    checkHotkeyMode();
+  }, [setActivationMode]);
 
   // Show alert dialog on update errors
   useEffect(() => {
@@ -452,12 +468,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 disabled={isHotkeyRegistering}
               />
 
-              <div className="mt-6">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
-                  Activation Mode
-                </label>
-                <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
-              </div>
+              {!isUsingGnomeHotkeys && (
+                <div className="mt-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    Activation Mode
+                  </label>
+                  <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+                </div>
+              )}
             </div>
 
             <div className="border-t pt-8">

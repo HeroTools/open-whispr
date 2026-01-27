@@ -55,6 +55,12 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
   - Handles platform-specific defaults (GLOBE on macOS, backtick on Windows/Linux)
   - Auto-fallback to F8/F9 if default hotkey is unavailable
   - Notifies renderer via IPC when hotkey registration fails
+  - Integrates with GnomeShortcutManager for GNOME Wayland support
+- **gnomeShortcut.js**: GNOME Wayland global shortcut integration
+  - Uses D-Bus service to receive hotkey toggle commands
+  - Registers shortcuts via gsettings (visible in GNOME Settings → Keyboard → Shortcuts)
+  - Converts Electron hotkey format to GNOME keysym format
+  - Only active on Linux + Wayland + GNOME desktop
 - **ipcHandlers.js**: Centralized IPC handler registration
 - **menuManager.js**: Application menu management
 - **tray.js**: System tray icon and menu
@@ -286,6 +292,32 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - Audio level analysis
 - Complete reasoning pipeline debugging with stage-by-stage logging
 
+### 12. GNOME Wayland Global Hotkeys
+
+On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's security model. OpenWhispr uses native GNOME shortcuts:
+
+**Architecture**:
+1. `main.js` enables `GlobalShortcutsPortal` feature flag for Wayland
+2. `hotkeyManager.js` detects GNOME + Wayland and initializes `GnomeShortcutManager`
+3. `gnomeShortcut.js` creates D-Bus service at `com.openwhispr.App`
+4. Shortcuts registered via `gsettings` as custom GNOME keybindings
+5. GNOME triggers `dbus-send` command which calls the D-Bus `Toggle()` method
+
+**Key Constants**:
+- D-Bus service: `com.openwhispr.App`
+- D-Bus path: `/com/openwhispr/App`
+- gsettings path: `/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/openwhispr/`
+
+**IPC Integration**:
+- `get-hotkey-mode-info`: Returns `{ isUsingGnome: boolean }` to renderer
+- UI hides activation mode selector when `isUsingGnome` is true
+- Forces tap-to-talk mode (push-to-talk not supported)
+
+**Hotkey Format Conversion**:
+- Electron format: `Alt+R`, `CommandOrControl+Shift+Space`
+- GNOME format: `<Alt>r`, `<Control><Shift>space`
+- Backtick (`) → `grave` in GNOME keysym format
+
 ## Development Guidelines
 
 ### Adding New Features
@@ -304,6 +336,8 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - [ ] Verify whisper.cpp binary detection
 - [ ] Test all Whisper models
 - [ ] Check agent naming functionality
+- [ ] Test GNOME Wayland hotkeys (if on GNOME + Wayland)
+- [ ] Verify activation mode selector is hidden on GNOME Wayland
 
 ### Common Issues and Solutions
 
@@ -366,6 +400,13 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
   - **GNOME Wayland**: `xdotool` for XWayland apps only (native Wayland apps require manual paste)
   - Terminal detection: Auto-detects terminal emulators and uses Ctrl+Shift+V
   - Fallback: Text copied to clipboard with manual paste instructions
+- **GNOME Wayland global hotkeys**:
+  - Uses native GNOME shortcuts via D-Bus and gsettings (no special permissions needed)
+  - Hotkeys visible in GNOME Settings → Keyboard → Shortcuts → Custom
+  - Default hotkey: `Alt+R` (backtick not supported)
+  - Push-to-talk unavailable (GNOME shortcuts only fire single toggle event)
+  - Falls back to X11/globalShortcut if GNOME integration fails
+  - `dbus-next` npm package used for D-Bus communication
 
 ## Code Style and Conventions
 

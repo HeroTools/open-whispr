@@ -1,5 +1,10 @@
 const { app, globalShortcut, BrowserWindow, dialog } = require("electron");
 
+// Enable native Wayland global shortcuts: https://github.com/electron/electron/pull/45171
+if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
+  app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal");
+}
+
 // Group all windows under single taskbar entry on Windows
 if (process.platform === "win32") {
   app.setAppUserModelId("com.herotools.openwispr");
@@ -355,7 +360,11 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
-    globalShortcut.unregisterAll();
+    if (hotkeyManager) {
+      hotkeyManager.unregisterAll();
+    } else {
+      globalShortcut.unregisterAll();
+    }
     if (globeKeyManager) {
       globeKeyManager.stop();
     }
