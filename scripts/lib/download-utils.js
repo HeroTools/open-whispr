@@ -238,6 +238,18 @@ function extractZip(zipPath, destDir) {
   }
 }
 
+function extractTarGz(tarPath, destDir) {
+  execSync(`tar -xzf "${tarPath}" -C "${destDir}"`, { stdio: "inherit" });
+}
+
+function extractArchive(archivePath, destDir) {
+  if (archivePath.endsWith(".tar.gz") || archivePath.endsWith(".tgz")) {
+    extractTarGz(archivePath, destDir);
+  } else {
+    extractZip(archivePath, destDir);
+  }
+}
+
 function findBinaryInDir(dir, binaryName, maxDepth = 5, currentDepth = 0) {
   if (currentDepth >= maxDepth) return null;
 
@@ -304,6 +316,7 @@ function cleanupFiles(binDir, prefix, keepPrefix) {
 
 module.exports = {
   downloadFile,
+  extractArchive,
   extractZip,
   fetchLatestRelease,
   findBinaryInDir,

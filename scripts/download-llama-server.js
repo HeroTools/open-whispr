@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const {
   downloadFile,
-  extractZip,
+  extractArchive,
   fetchLatestRelease,
   findBinaryInDir,
   parseArgs,
@@ -19,25 +19,25 @@ const VERSION_OVERRIDE = process.env.LLAMA_CPP_VERSION || null;
 // Asset name patterns to match in the release (version-independent)
 const BINARIES = {
   "darwin-arm64": {
-    assetPattern: /^llama-.*-bin-macos-arm64\.zip$/,
+    assetPattern: /^llama-.*-bin-macos-arm64\.tar\.gz$/,
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-darwin-arm64",
     libPattern: "*.dylib",
   },
   "darwin-x64": {
-    assetPattern: /^llama-.*-bin-macos-x64\.zip$/,
+    assetPattern: /^llama-.*-bin-macos-x64\.tar\.gz$/,
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-darwin-x64",
     libPattern: "*.dylib",
   },
   "win32-x64": {
-    assetPattern: /^llama-.*-bin-win-avx2-x64\.zip$/,
+    assetPattern: /^llama-.*-bin-win-cpu-x64\.zip$/,
     binaryPath: "build/bin/llama-server.exe",
     outputName: "llama-server-win32-x64.exe",
     libPattern: "*.dll",
   },
   "linux-x64": {
-    assetPattern: /^llama-.*-bin-ubuntu-x64\.zip$/,
+    assetPattern: /^llama-.*-bin-ubuntu-x64\.tar\.gz$/,
     binaryPath: "build/bin/llama-server",
     outputName: "llama-server-linux-x64",
     libPattern: "*.so*",
@@ -124,7 +124,7 @@ async function downloadBinary(platformArch, config, release, isForce = false) {
 
     const extractDir = path.join(BIN_DIR, `temp-llama-${platformArch}`);
     fs.mkdirSync(extractDir, { recursive: true });
-    extractZip(zipPath, extractDir);
+    extractArchive(zipPath, extractDir);
 
     const binaryName = path.basename(config.binaryPath);
     let binaryPath = path.join(extractDir, config.binaryPath);
