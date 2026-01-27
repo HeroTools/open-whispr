@@ -193,12 +193,12 @@ export default function App() {
         };
       case "recording":
         return {
-          className: `${baseClasses} bg-blue-600 cursor-pointer`,
+          className: `${baseClasses} bg-primary cursor-pointer`,
           tooltip: "Recording...",
         };
       case "processing":
         return {
-          className: `${baseClasses} bg-purple-600 cursor-not-allowed`,
+          className: `${baseClasses} bg-accent cursor-not-allowed`,
           tooltip: "Processing...",
         };
       default:

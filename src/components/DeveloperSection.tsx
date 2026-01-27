@@ -129,7 +129,7 @@ export default function DeveloperSection() {
                 <div
                   className={`w-2 h-2 rounded-full ${
                     debugEnabled
-                      ? "bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50"
+                      ? "bg-success animate-pulse shadow-lg shadow-success/50"
                       : "bg-muted"
                   }`}
                 />
@@ -155,7 +155,7 @@ export default function DeveloperSection() {
             </label>
             <div className="flex gap-2">
               <div className="flex-1 p-3 bg-card/50 dark:bg-card rounded-lg border border-border overflow-hidden">
-                <code className="text-xs text-emerald-400 break-all leading-relaxed">
+                <code className="text-xs text-success break-all leading-relaxed">
                   {logPath}
                 </code>
               </div>
@@ -167,7 +167,7 @@ export default function DeveloperSection() {
                 title="Copy log path"
               >
                 {copiedPath ? (
-                  <Check className="h-4 w-4 text-emerald-600" />
+                  <Check className="h-4 w-4 text-success" />
                 ) : (
                   <Copy className="h-4 w-4 text-muted-foreground" />
                 )}

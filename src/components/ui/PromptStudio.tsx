@@ -476,8 +476,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                   <span
                     className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ml-4 ${
                       isAgentAddressed
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-green-100 text-green-700"
+                        ? "bg-primary/10 text-primary dark:bg-primary/15"
+                        : "bg-success/10 text-success dark:bg-success/15"
                     }`}
                   >
                     {isAgentAddressed ? "May trigger instruction mode" : "Cleanup mode"}
@@ -538,7 +538,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               onClick={() => setActiveTab(tab.id as any)}
               className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
                 activeTab === tab.id
-                  ? "border-indigo-600 text-primary"
+                  ? "border-primary text-primary"
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >

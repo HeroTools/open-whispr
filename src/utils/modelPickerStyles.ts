@@ -21,7 +21,7 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
     badges: {
       selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
       downloaded:
-        "text-xs text-green-700 dark:text-green-400 bg-green-500/10 dark:bg-green-500/12 px-2 py-0.5 rounded-full",
+        "text-xs text-success dark:text-success bg-success/10 dark:bg-success/12 px-2 py-0.5 rounded-full",
       recommended: "text-xs text-primary bg-primary/10 dark:bg-primary/12 px-2 py-0.5 rounded-full",
     },
     buttons: {
@@ -44,7 +44,7 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
     badges: {
       selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
       downloaded:
-        "text-xs text-green-700 dark:text-green-400 bg-green-500/10 dark:bg-green-500/12 px-2 py-0.5 rounded-full",
+        "text-xs text-success dark:text-success bg-success/10 dark:bg-success/12 px-2 py-0.5 rounded-full",
       recommended: "text-xs text-primary bg-primary/10 dark:bg-primary/12 px-2 py-0.5 rounded-full",
     },
     buttons: {
@@ -67,7 +67,7 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
     badges: {
       selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
       downloaded:
-        "text-xs text-green-700 dark:text-green-400 bg-green-500/10 dark:bg-green-500/12 px-2 py-0.5 rounded-full",
+        "text-xs text-success dark:text-success bg-success/10 dark:bg-success/12 px-2 py-0.5 rounded-full",
       recommended: "text-xs bg-primary/10 dark:bg-primary/12 text-primary px-2 py-0.5 rounded-full",
     },
     buttons: {
