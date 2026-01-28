@@ -29,8 +29,8 @@ class UpdateManager {
     // Configure auto-updater for GitHub releases
     autoUpdater.setFeedURL({
       provider: "github",
-      owner: "HeroTools",
-      repo: "open-whispr",
+      owner: "OpenWhispr",
+      repo: "openwhispr",
       private: false,
     });
 
