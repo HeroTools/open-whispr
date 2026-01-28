@@ -473,84 +473,54 @@ export default function ReasoningModelSelector({
     }
   };
 
+  const MODE_TABS = [
+    { id: "cloud", name: "Cloud" },
+    { id: "local", name: "Local" },
+  ];
+
+  const renderModeIcon = (id: string) => {
+    if (id === "cloud") return <Cloud className="w-4 h-4" />;
+    return <Lock className="w-4 h-4" />;
+  };
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between p-4 bg-success/10 dark:bg-success/20 border border-success/30 rounded-xl">
+      <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl">
         <div>
-          <label className="text-sm font-medium text-success dark:text-success">
-            Enable AI Text Enhancement
-          </label>
-          <p className="text-xs text-success dark:text-success">
+          <label className="text-sm font-medium text-foreground">Enable AI Text Enhancement</label>
+          <p className="text-xs text-muted-foreground">
             Use AI to automatically improve transcription quality
           </p>
         </div>
-        <label className="relative inline-flex items-center cursor-pointer">
-          <input
-            type="checkbox"
-            className="sr-only"
-            checked={useReasoningModel}
-            onChange={(e) => setUseReasoningModel(e.target.checked)}
-          />
-          <div
-            className={`w-11 h-6 bg-muted rounded-full transition-colors duration-200 ${
-              useReasoningModel ? "bg-success" : "bg-muted"
+        <button
+          onClick={() => setUseReasoningModel(!useReasoningModel)}
+          className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+            useReasoningModel ? "bg-primary" : "bg-muted-foreground/25"
+          }`}
+        >
+          <span
+            className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform duration-200 ${
+              useReasoningModel ? "translate-x-4.5" : "translate-x-0.75"
             }`}
-          >
-            <div
-              className={`absolute top-0.5 left-0.5 bg-card border border-border rounded-full h-5 w-5 transition-transform duration-200 ${
-                useReasoningModel ? "translate-x-5" : "translate-x-0"
-              }`}
-            />
-          </div>
-        </label>
+          />
+        </button>
       </div>
 
       {useReasoningModel && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <button
-              onClick={() => handleModeChange("cloud")}
-              className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-                selectedMode === "cloud"
-                  ? "border-primary bg-primary/10"
-                  : "border-border bg-card hover:border-border"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <Cloud className="w-6 h-6 text-primary" />
-                  <h4 className="font-medium text-foreground">Cloud AI</h4>
-                </div>
-                <span className="text-xs text-success bg-success/10 dark:bg-success/20 px-2 py-1 rounded-full">
-                  Powerful
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Advanced models via API. Fast and capable, requires internet.
-              </p>
-            </button>
-
-            <button
-              onClick={() => handleModeChange("local")}
-              className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-                selectedMode === "local"
-                  ? "border-primary bg-primary/10"
-                  : "border-border bg-card hover:border-border"
-              }`}
-            >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-3">
-                  <Lock className="w-6 h-6 text-primary" />
-                  <h4 className="font-medium text-foreground">Local AI</h4>
-                </div>
-                <span className="text-xs text-primary bg-primary/10 dark:bg-primary/20 px-2 py-1 rounded-full">
-                  Private
-                </span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Runs on your device. Complete privacy, works offline.
-              </p>
-            </button>
+          <div className="space-y-3">
+            <ProviderTabs
+              providers={MODE_TABS}
+              selectedId={selectedMode}
+              onSelect={(id) => handleModeChange(id as "cloud" | "local")}
+              renderIcon={renderModeIcon}
+              colorScheme="purple"
+            />
+            <p className="text-xs text-muted-foreground text-center">
+              {selectedMode === "local"
+                ? "Runs on your device. Complete privacy, works offline."
+                : "Advanced models via API. Fast and capable, requires internet."}
+            </p>
           </div>
 
           {selectedMode === "cloud" ? (

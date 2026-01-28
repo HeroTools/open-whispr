@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { Badge } from "./ui/badge";
 import { Download, Trash2, Check, Cloud, Lock, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
@@ -72,54 +71,58 @@ function LocalModelCard({
 }: LocalModelCardProps) {
   return (
     <div
-      className={`relative overflow-hidden rounded-xl border transition-all duration-200 group ${
+      className={`relative overflow-hidden rounded-lg border transition-all duration-200 group ${
         isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
       }`}
     >
       {/* Left accent bar for selected model */}
       {isSelected && (
-        <div className="absolute left-0 top-0 bottom-0 w-0.75 bg-primary rounded-l-xl" />
+        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary rounded-l-lg" />
       )}
-      <div className="flex items-center gap-3 p-3.5 pl-4">
+      <div className="flex items-center gap-2.5 p-3 pl-3.5">
         {/* Status dot */}
         <div className="shrink-0">
           {isDownloaded ? (
-            <div className={`w-2 h-2 rounded-full ${isSelected ? "bg-primary" : "bg-success"}`} />
+            <div
+              className={`w-1.5 h-1.5 rounded-full ${isSelected ? "bg-primary" : "bg-success"}`}
+            />
           ) : (
-            <div className="w-2 h-2 rounded-full bg-muted-foreground/25" />
+            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/20" />
           )}
         </div>
 
         {/* Model info */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <ProviderIcon provider={provider} className="w-4 h-4" />
+          <div className="flex items-center gap-1.5">
+            <ProviderIcon provider={provider} className="w-3.5 h-3.5" />
             <span className="font-medium text-sm text-foreground">{name}</span>
-            <span className="text-[11px] text-muted-foreground tabular-nums">
+            <span className="text-[11px] text-muted-foreground/70 tabular-nums">
               {actualSizeMb ? `${actualSizeMb}MB` : size}
             </span>
             {recommended && (
-              <span className="text-[10px] font-semibold text-primary bg-primary/8 px-1.5 py-0.5 rounded uppercase tracking-wider">
+              <span className="text-[10px] font-medium text-primary/70 bg-primary/6 px-1.5 py-px rounded">
                 Recommended
               </span>
             )}
             {languageLabel && (
-              <span className="text-[10px] text-primary/80 font-medium">{languageLabel}</span>
+              <span className="text-[10px] text-muted-foreground/60 font-medium">
+                {languageLabel}
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <p className="text-xs text-muted-foreground truncate">{description}</p>
+          <div className="flex items-center gap-2 mt-px">
+            <p className="text-xs text-muted-foreground/70 truncate">{description}</p>
             {isDownloaded && (
               <span className={cardStyles.badges.downloaded}>
-                <Check className="inline w-3 h-3 mr-1" />
-                Downloaded
+                <Check className="inline w-3 h-3 mr-0.5" />
+                Ready
               </span>
             )}
           </div>
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 shrink-0">
           {isDownloaded ? (
             <>
               {!isSelected && (
@@ -128,13 +131,13 @@ function LocalModelCard({
                 </Button>
               )}
               {isSelected && (
-                <span className="text-[11px] font-medium text-primary mr-1">Active</span>
+                <span className="text-[11px] font-medium text-primary mr-0.5">Active</span>
               )}
               <Button
                 onClick={onDelete}
                 size="sm"
                 variant="ghost"
-                className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                className="h-7 w-7 p-0 text-muted-foreground/50 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <Trash2 size={13} />
               </Button>
@@ -669,141 +672,33 @@ export default function TranscriptionModelPicker({
     );
   };
 
-  const renderLocalProviderTab = (
-    provider: (typeof LOCAL_PROVIDER_TABS)[0],
-    isSelected: boolean
-  ) => {
-    const isDisabled = provider.disabled;
+  const MODE_TABS = [
+    { id: "cloud", name: "Cloud" },
+    { id: "local", name: "Local" },
+  ];
 
-    return (
-      <button
-        key={provider.id}
-        onClick={() => !isDisabled && handleLocalProviderChange(provider.id)}
-        className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all duration-150 whitespace-nowrap ${
-          isDisabled
-            ? "text-muted-foreground cursor-default opacity-50"
-            : isSelected
-              ? "bg-card text-primary shadow-sm dark:bg-surface-3 dark:text-primary border border-primary/15 dark:border-primary/20"
-              : "text-muted-foreground hover:text-foreground border border-transparent"
-        }`}
-      >
-        <ProviderIcon provider={provider.id} className="w-4.5 h-4.5" />
-        <span>{provider.name}</span>
-        {provider.badge && (
-          <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-            {provider.badge}
-          </Badge>
-        )}
-      </button>
-    );
+  const renderModeIcon = (id: string) => {
+    if (id === "cloud") return <Cloud className="w-4 h-4" />;
+    return <Lock className="w-4 h-4" />;
   };
 
   return (
     <div className={`space-y-4 ${className}`}>
       {/* Only show mode selector in settings, not in onboarding (which has its own) */}
       {variant === "settings" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {/* Cloud Mode Card */}
-          <button
-            onClick={() => handleModeChange(false)}
-            className={`group relative overflow-hidden rounded-xl text-left transition-all duration-200 cursor-pointer border ${
-              !useLocalWhisper
-                ? "border-primary/40 bg-primary/[0.06] dark:bg-primary/[0.08] dark:border-primary/30"
-                : "border-border bg-card dark:bg-surface-1 dark:border-border hover:border-muted-foreground/30 dark:hover:border-border-hover"
-            }`}
-          >
-            {/* Top accent gradient — only when selected */}
-            {!useLocalWhisper && (
-              <div className="h-0.75 bg-linear-to-r from-primary via-primary/70 to-primary/20" />
-            )}
-            <div className="p-5">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                      !useLocalWhisper
-                        ? "bg-primary/15 dark:bg-primary/20"
-                        : "bg-muted dark:bg-surface-2"
-                    }`}
-                  >
-                    <Cloud
-                      className={`w-5 h-5 ${!useLocalWhisper ? "text-primary" : "text-muted-foreground"}`}
-                    />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-foreground text-[15px]">Cloud</h4>
-                    <span
-                      className={`text-[11px] font-semibold uppercase tracking-wider ${!useLocalWhisper ? "text-success" : "text-muted-foreground"}`}
-                    >
-                      Fast
-                    </span>
-                  </div>
-                </div>
-                {/* Radio indicator */}
-                <div
-                  className={`mt-1 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center transition-all ${
-                    !useLocalWhisper ? "border-primary bg-primary" : "border-muted-foreground/25"
-                  }`}
-                >
-                  {!useLocalWhisper && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                </div>
-              </div>
-              <p className="text-[13px] text-muted-foreground leading-relaxed">
-                Transcription via API. Fast and accurate, requires internet.
-              </p>
-            </div>
-          </button>
-
-          {/* Local Mode Card */}
-          <button
-            onClick={() => handleModeChange(true)}
-            className={`group relative overflow-hidden rounded-xl text-left transition-all duration-200 cursor-pointer border ${
-              useLocalWhisper
-                ? "border-primary/40 bg-primary/[0.06] dark:bg-primary/[0.08] dark:border-primary/30"
-                : "border-border bg-card dark:bg-surface-1 dark:border-border hover:border-muted-foreground/30 dark:hover:border-border-hover"
-            }`}
-          >
-            {/* Top accent gradient — only when selected */}
-            {useLocalWhisper && (
-              <div className="h-0.75 bg-linear-to-r from-primary via-primary/70 to-primary/20" />
-            )}
-            <div className="p-5">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                      useLocalWhisper
-                        ? "bg-primary/15 dark:bg-primary/20"
-                        : "bg-muted dark:bg-surface-2"
-                    }`}
-                  >
-                    <Lock
-                      className={`w-5 h-5 ${useLocalWhisper ? "text-primary" : "text-muted-foreground"}`}
-                    />
-                  </div>
-                  <div>
-                    <h4 className="font-semibold text-foreground text-[15px]">Local</h4>
-                    <span
-                      className={`text-[11px] font-semibold uppercase tracking-wider ${useLocalWhisper ? "text-primary" : "text-muted-foreground"}`}
-                    >
-                      Private
-                    </span>
-                  </div>
-                </div>
-                {/* Radio indicator */}
-                <div
-                  className={`mt-1 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center transition-all ${
-                    useLocalWhisper ? "border-primary bg-primary" : "border-muted-foreground/25"
-                  }`}
-                >
-                  {useLocalWhisper && <Check className="w-2.5 h-2.5 text-primary-foreground" />}
-                </div>
-              </div>
-              <p className="text-[13px] text-muted-foreground leading-relaxed">
-                Runs on your device. Complete privacy, works offline.
-              </p>
-            </div>
-          </button>
+        <div className="space-y-3">
+          <ProviderTabs
+            providers={MODE_TABS}
+            selectedId={useLocalWhisper ? "local" : "cloud"}
+            onSelect={(id) => handleModeChange(id === "local")}
+            renderIcon={renderModeIcon}
+            colorScheme="purple"
+          />
+          <p className="text-xs text-muted-foreground text-center">
+            {useLocalWhisper
+              ? "Runs on your device. Complete privacy, works offline."
+              : "Transcription via API. Fast and accurate, requires internet."}
+          </p>
         </div>
       )}
 
@@ -926,11 +821,12 @@ export default function TranscriptionModelPicker({
       ) : (
         <div className={styles.container}>
           <div className="p-3 pb-0">
-            <div className="flex p-0.5 rounded-lg bg-muted/40 dark:bg-background">
-              {LOCAL_PROVIDER_TABS.map((provider) =>
-                renderLocalProviderTab(provider, internalLocalProvider === provider.id)
-              )}
-            </div>
+            <ProviderTabs
+              providers={LOCAL_PROVIDER_TABS}
+              selectedId={internalLocalProvider}
+              onSelect={handleLocalProviderChange}
+              colorScheme={colorScheme === "purple" ? "purple" : "indigo"}
+            />
           </div>
 
           {progressDisplay}

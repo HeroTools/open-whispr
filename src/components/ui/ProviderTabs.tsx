@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useRef, useState, useEffect, useCallback } from "react";
 import { ProviderIcon } from "./ProviderIcon";
 import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyles";
 
@@ -27,24 +27,68 @@ export function ProviderTabs({
   colorScheme = "indigo",
   scrollable = false,
 }: ProviderTabsProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({
+    opacity: 0,
+  });
+
+  const updateIndicator = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const selectedIndex = providers.findIndex((p) => p.id === selectedId);
+    if (selectedIndex === -1) {
+      setIndicatorStyle({ opacity: 0 });
+      return;
+    }
+
+    const buttons = container.querySelectorAll<HTMLButtonElement>("[data-tab-button]");
+    const selectedButton = buttons[selectedIndex];
+    if (!selectedButton) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const buttonRect = selectedButton.getBoundingClientRect();
+
+    setIndicatorStyle({
+      width: buttonRect.width,
+      height: buttonRect.height,
+      transform: `translateX(${buttonRect.left - containerRect.left}px)`,
+      opacity: 1,
+    });
+  }, [providers, selectedId]);
+
+  useEffect(() => {
+    updateIndicator();
+  }, [updateIndicator]);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(() => updateIndicator());
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [updateIndicator]);
+
   return (
     <div
+      ref={containerRef}
       className={`relative flex p-0.5 rounded-lg bg-muted/40 dark:bg-background ${scrollable ? "overflow-x-auto" : ""}`}
     >
+      {/* Sliding indicator */}
+      <div
+        className="absolute top-0.5 left-0 rounded-md bg-card shadow-sm border border-primary/15 dark:bg-surface-3 dark:border-primary/20 transition-all duration-200 ease-out pointer-events-none"
+        style={indicatorStyle}
+      />
+
       {providers.map((provider) => {
         const isSelected = selectedId === provider.id;
 
         return (
           <button
             key={provider.id}
+            data-tab-button
             onClick={() => onSelect(provider.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md font-medium text-sm transition-all duration-150 ${
+            className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-sm transition-colors duration-150 ${
               scrollable ? "whitespace-nowrap" : ""
-            } ${
-              isSelected
-                ? "bg-card text-primary shadow-sm dark:bg-surface-3 dark:text-primary border border-primary/15 dark:border-primary/20"
-                : "text-muted-foreground hover:text-foreground border border-transparent"
-            }`}
+            } ${isSelected ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
           >
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
             <span>{provider.name}</span>
