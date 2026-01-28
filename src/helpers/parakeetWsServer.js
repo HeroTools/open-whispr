@@ -128,6 +128,22 @@ class ParakeetWsServer {
       port: this.port,
       model: modelName,
     });
+
+    await this._warmUp();
+  }
+
+  async _warmUp() {
+    try {
+      const sampleRate = 16000;
+      const numSamples = sampleRate;
+      const silentSamples = Buffer.alloc(numSamples * 4); 
+      await this.transcribe(silentSamples, sampleRate);
+      debugLogger.debug("parakeet-ws warm-up inference complete");
+    } catch (err) {
+      debugLogger.warn("parakeet-ws warm-up failed (non-fatal)", {
+        error: err.message,
+      });
+    }
   }
 
   async _waitForReady(readySignal, getProcessInfo) {
