@@ -1,11 +1,11 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
 const net = require("net");
-const os = require("os");
 const path = require("path");
 const http = require("http");
 const debugLogger = require("./debugLogger");
 const { killProcess } = require("../utils/process");
+const { getSafeTempDir } = require("./safeTempDir");
 
 const PORT_RANGE_START = 8200;
 const PORT_RANGE_END = 8220;
@@ -153,7 +153,7 @@ class LlamaServerManager {
     this.process = spawn(serverBinary, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
-      cwd: os.tmpdir(),
+      cwd: getSafeTempDir(),
       env,
     });
 
