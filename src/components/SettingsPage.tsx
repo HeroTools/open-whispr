@@ -94,6 +94,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     customReasoningApiKey,
     setCustomReasoningApiKey,
     setDictationKey,
+    autoLearnCorrections,
+    setAutoLearnCorrections,
     updateTranscriptionSettings,
     updateReasoningSettings,
   } = useSettings();
@@ -847,6 +849,30 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </div>
               </div>
             )}
+
+            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="font-medium text-gray-900">Auto-learn from corrections</h4>
+                  <p className="text-xs text-gray-500 mt-1">
+                    When you correct a transcription in the target app, the corrected word is
+                    automatically added to your dictionary.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setAutoLearnCorrections(!autoLearnCorrections)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
+                    autoLearnCorrections ? "bg-indigo-600" : "bg-gray-200"
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                      autoLearnCorrections ? "translate-x-6" : "translate-x-1"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
               <h4 className="font-medium text-blue-900 mb-2">How it works</h4>

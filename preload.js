@@ -50,6 +50,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Dictionary functions
   getDictionary: () => ipcRenderer.invoke("db-get-dictionary"),
   setDictionary: (words) => ipcRenderer.invoke("db-set-dictionary", words),
+  onDictionaryUpdated: (callback) => {
+    const listener = (_event, words) => callback?.(words);
+    ipcRenderer.on("dictionary-updated", listener);
+    return () => ipcRenderer.removeListener("dictionary-updated", listener);
+  },
+  setAutoLearnEnabled: (enabled) => ipcRenderer.send("auto-learn-changed", enabled),
+  onCorrectionsLearned: (callback) => {
+    const listener = (_event, words) => callback?.(words);
+    ipcRenderer.on("corrections-learned", listener);
+    return () => ipcRenderer.removeListener("corrections-learned", listener);
+  },
 
   onTranscriptionAdded: (callback) => {
     const listener = (_event, transcription) => callback?.(transcription);

@@ -7,7 +7,8 @@
   "scripts": {
     "compile:globe": "node scripts/build-globe-listener.js",
     "compile:winkeys": "node scripts/build-windows-key-listener.js",
-    "compile:native": "npm run compile:globe && npm run compile:winkeys",
+    "compile:text-monitor": "node scripts/build-text-monitor.js",
+    "compile:native": "npm run compile:globe && npm run compile:winkeys && npm run compile:text-monitor",
     "prestart": "npm run compile:native",
     "start": "electron .",
     "predev": "npm run compile:native",

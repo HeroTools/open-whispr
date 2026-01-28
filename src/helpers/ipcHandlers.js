@@ -15,6 +15,9 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.textEditMonitor = managers.textEditMonitor;
+    this._autoLearnEnabled = true; // Default on, synced from renderer
+    this._setupTextEditMonitor();
     this.setupHandlers();
   }
 
@@ -24,6 +27,34 @@ class IPCHandlers {
     } catch {
       return [];
     }
+  }
+
+  _setupTextEditMonitor() {
+    if (!this.textEditMonitor) return;
+
+    this.textEditMonitor.on("text-edited", ({ originalText, newFieldValue }) => {
+      debugLogger.debug("[AutoLearn] text-edited event", {
+        originalPreview: originalText?.substring(0, 80),
+        newValuePreview: newFieldValue?.substring(0, 80),
+      });
+      try {
+        const { extractCorrections } = require("../utils/correctionLearner");
+        const currentDict = this._getDictionarySafe();
+        const corrections = extractCorrections(originalText, newFieldValue, currentDict);
+        debugLogger.debug("[AutoLearn] Corrections result", { corrections, dictSize: currentDict.length });
+
+        if (corrections.length > 0) {
+          const updatedDict = [...currentDict, ...corrections];
+          this.databaseManager.setDictionary(updatedDict);
+
+          this.broadcastToWindows("dictionary-updated", updatedDict);
+          this.broadcastToWindows("corrections-learned", corrections);
+          debugLogger.debug("[AutoLearn] Saved corrections", { corrections });
+        }
+      } catch (error) {
+        debugLogger.debug("[AutoLearn] Error", { error: error.message });
+      }
+    });
   }
 
   setupHandlers() {
@@ -129,6 +160,11 @@ class IPCHandlers {
     });
 
     // Dictionary handlers
+    ipcMain.on("auto-learn-changed", (_event, enabled) => {
+      this._autoLearnEnabled = !!enabled;
+      debugLogger.debug("[AutoLearn] Setting changed", { enabled: this._autoLearnEnabled });
+    });
+
     ipcMain.handle("db-get-dictionary", async () => {
       return this.databaseManager.getDictionary();
     });
@@ -142,7 +178,20 @@ class IPCHandlers {
 
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text) => {
-      return this.clipboardManager.pasteText(text);
+      const result = await this.clipboardManager.pasteText(text);
+      const targetPid = this.textEditMonitor?.lastTargetPid || null;
+      debugLogger.debug("[AutoLearn] Paste completed", { autoLearnEnabled: this._autoLearnEnabled, hasMonitor: !!this.textEditMonitor, targetPid });
+      if (this.textEditMonitor && this._autoLearnEnabled) {
+        setTimeout(() => {
+          try {
+            debugLogger.debug("[AutoLearn] Starting monitoring", { textPreview: text.substring(0, 80) });
+            this.textEditMonitor.startMonitoring(text, 30000, { targetPid });
+          } catch (err) {
+            debugLogger.debug("[AutoLearn] Failed to start monitoring", { error: err.message });
+          }
+        }, 500);
+      }
+      return result;
     });
 
     ipcMain.handle("read-clipboard", async (event) => {

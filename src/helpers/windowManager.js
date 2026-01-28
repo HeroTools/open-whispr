@@ -148,6 +148,9 @@ class WindowManager {
       }
       lastToggleTime = now;
 
+      // Capture target app PID before the window might steal focus
+      if (this.textEditMonitor) this.textEditMonitor.captureTargetPid();
+
       if (!this.mainWindow.isVisible()) {
         this.mainWindow.show();
       }
