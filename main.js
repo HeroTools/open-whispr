@@ -50,6 +50,7 @@ const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
+const TextEditMonitor = require("./src/helpers/textEditMonitor");
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -64,6 +65,7 @@ let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
 let windowsKeyManager = null;
+let textEditMonitor = null;
 let globeKeyAlertShown = false;
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
@@ -110,6 +112,8 @@ function initializeManagers() {
   updateManager = new UpdateManager();
   globeKeyManager = new GlobeKeyManager();
   windowsKeyManager = new WindowsKeyManager();
+  textEditMonitor = new TextEditMonitor();
+  windowManager.textEditMonitor = textEditMonitor;
 
   // Set up Globe key error handler on macOS
   if (process.platform === "darwin") {
@@ -151,6 +155,7 @@ function initializeManagers() {
     windowManager,
     updateManager,
     windowsKeyManager,
+    textEditMonitor,
   });
 }
 
@@ -244,6 +249,8 @@ async function startApp() {
       // Handle dictation if Globe is the current hotkey
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (isLiveWindow(windowManager.mainWindow)) {
+          // Capture target app PID BEFORE showing the overlay
+          if (textEditMonitor) textEditMonitor.captureTargetPid();
           const activationMode = await windowManager.getActivationMode();
           windowManager.showDictationPanel();
           if (activationMode === "push") {
@@ -535,6 +542,9 @@ if (gotSingleInstanceLock) {
     }
     if (windowsKeyManager) {
       windowsKeyManager.stop();
+    }
+    if (textEditMonitor) {
+      textEditMonitor.stopMonitoring();
     }
     if (updateManager) {
       updateManager.cleanup();

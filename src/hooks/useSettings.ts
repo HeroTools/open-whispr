@@ -189,6 +189,41 @@ export function useSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Listen for dictionary updates from main process (auto-learn corrections)
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.electronAPI?.onDictionaryUpdated) return;
+    const unsubscribe = window.electronAPI.onDictionaryUpdated((words: string[]) => {
+      if (Array.isArray(words)) {
+        setCustomDictionaryRaw(words);
+      }
+    });
+    return unsubscribe;
+  }, [setCustomDictionaryRaw]);
+
+  // Auto-learn corrections from user edits in external apps
+  const [autoLearnCorrections, setAutoLearnCorrectionsRaw] = useLocalStorage(
+    "autoLearnCorrections",
+    true,
+    {
+      serialize: String,
+      deserialize: (value) => value !== "false",
+    }
+  );
+
+  const setAutoLearnCorrections = useCallback(
+    (enabled: boolean) => {
+      setAutoLearnCorrectionsRaw(enabled);
+      window.electronAPI?.setAutoLearnEnabled?.(enabled);
+    },
+    [setAutoLearnCorrectionsRaw]
+  );
+
+  // Sync auto-learn state to main process on mount
+  useEffect(() => {
+    window.electronAPI?.setAutoLearnEnabled?.(autoLearnCorrections);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Reasoning settings
   const [useReasoningModel, setUseReasoningModel] = useLocalStorage("useReasoningModel", true, {
     serialize: String,
@@ -522,6 +557,8 @@ export function useSettings() {
     selectedMicDeviceId,
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
+    autoLearnCorrections,
+    setAutoLearnCorrections,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,
