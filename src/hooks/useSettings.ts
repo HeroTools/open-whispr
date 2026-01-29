@@ -288,29 +288,6 @@ export function useSettings() {
     }
   }, 1000);
 
-  // Sync startup pre-warming preferences to main process
-  useEffect(() => {
-    if (typeof window === "undefined" || !window.electronAPI?.syncStartupPreferences) return;
-
-    const model = localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
-    window.electronAPI
-      .syncStartupPreferences({
-        useLocalWhisper,
-        localTranscriptionProvider,
-        model: model || undefined,
-        reasoningProvider,
-        reasoningModel: reasoningProvider === "local" ? reasoningModel : undefined,
-      })
-      .catch((err) => console.error("Failed to sync startup preferences:", err));
-  }, [
-    useLocalWhisper,
-    localTranscriptionProvider,
-    whisperModel,
-    parakeetModel,
-    reasoningProvider,
-    reasoningModel,
-  ]);
-
   // Wrapped setters that sync to Electron IPC and invalidate cache
   const setOpenaiApiKey = useCallback(
     (key: string) => {
@@ -423,6 +400,29 @@ export function useSettings() {
 
   // Computed values
   const reasoningProvider = getModelProvider(reasoningModel);
+
+  // Sync startup pre-warming preferences to main process
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.electronAPI?.syncStartupPreferences) return;
+
+    const model = localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
+    window.electronAPI
+      .syncStartupPreferences({
+        useLocalWhisper,
+        localTranscriptionProvider,
+        model: model || undefined,
+        reasoningProvider,
+        reasoningModel: reasoningProvider === "local" ? reasoningModel : undefined,
+      })
+      .catch((err) => console.error("Failed to sync startup preferences:", err));
+  }, [
+    useLocalWhisper,
+    localTranscriptionProvider,
+    whisperModel,
+    parakeetModel,
+    reasoningProvider,
+    reasoningModel,
+  ]);
 
   // Batch operations
   const updateTranscriptionSettings = useCallback(
