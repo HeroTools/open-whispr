@@ -1,5 +1,7 @@
 const { ipcMain, app, shell, BrowserWindow } = require("electron");
 const path = require("path");
+const http = require("http");
+const https = require("https");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const { getSystemPrompt } = require("./prompts");
@@ -920,12 +922,10 @@ class IPCHandlers {
         const cookieHeader = await getSessionCookies(event);
         if (!cookieHeader) throw new Error("No session cookies available");
 
-        // Build multipart form data
+        const audioData = Buffer.from(audioBuffer);
         const boundary = `----OpenWhispr${Date.now()}`;
         const parts = [];
 
-        // Audio file part
-        const audioData = Buffer.from(audioBuffer);
         parts.push(
           `--${boundary}\r\n` +
             `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n` +
@@ -934,7 +934,6 @@ class IPCHandlers {
         parts.push(audioData);
         parts.push("\r\n");
 
-        // Language field
         if (opts.language) {
           parts.push(
             `--${boundary}\r\n` +
@@ -943,7 +942,6 @@ class IPCHandlers {
           );
         }
 
-        // Prompt field (custom dictionary)
         if (opts.prompt) {
           parts.push(
             `--${boundary}\r\n` +
@@ -954,47 +952,73 @@ class IPCHandlers {
 
         parts.push(`--${boundary}--\r\n`);
 
-        // Combine text and binary parts into a single buffer
         const bodyParts = parts.map((p) => (typeof p === "string" ? Buffer.from(p) : p));
         const body = Buffer.concat(bodyParts);
 
-        const response = await fetch(`${apiUrl}/api/transcribe`, {
-          method: "POST",
-          headers: {
-            "Content-Type": `multipart/form-data; boundary=${boundary}`,
-            Cookie: cookieHeader,
-          },
-          body,
+        debugLogger.debug("Cloud transcribe request", { audioSize: audioData.length, bodySize: body.length }, "cloud-api");
+
+        const url = new URL(`${apiUrl}/api/transcribe`);
+        const httpModule = url.protocol === "https:" ? https : http;
+
+        const data = await new Promise((resolve, reject) => {
+          const req = httpModule.request(
+            {
+              hostname: url.hostname,
+              port: url.port || (url.protocol === "https:" ? 443 : 80),
+              path: url.pathname,
+              method: "POST",
+              headers: {
+                "Content-Type": `multipart/form-data; boundary=${boundary}`,
+                "Content-Length": body.length,
+                Cookie: cookieHeader,
+              },
+            },
+            (res) => {
+              let responseData = "";
+              res.on("data", (chunk) => (responseData += chunk));
+              res.on("end", () => {
+                try {
+                  const parsed = JSON.parse(responseData);
+                  resolve({ statusCode: res.statusCode, data: parsed });
+                } catch (e) {
+                  reject(new Error(`Invalid JSON response: ${responseData.slice(0, 200)}`));
+                }
+              });
+            }
+          );
+          req.on("error", reject);
+          req.write(body);
+          req.end();
         });
 
-        if (!response.ok) {
-          const errorData = await response.json().catch(() => ({}));
-          if (response.status === 401) {
-            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
-          }
-          if (response.status === 429) {
-            return {
-              success: false,
-              error: "Daily word limit reached",
-              code: "LIMIT_REACHED",
-              limitReached: true,
-              ...errorData,
-            };
-          }
-          throw new Error(errorData.error || `API error: ${response.status}`);
+        debugLogger.debug("Cloud transcribe response", { statusCode: data.statusCode }, "cloud-api");
+
+        if (data.statusCode === 401) {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        if (data.statusCode === 429) {
+          return {
+            success: false,
+            error: "Daily word limit reached",
+            code: "LIMIT_REACHED",
+            limitReached: true,
+            ...data.data,
+          };
+        }
+        if (data.statusCode !== 200) {
+          throw new Error(data.data?.error || `API error: ${data.statusCode}`);
         }
 
-        const data = await response.json();
         return {
           success: true,
-          text: data.text,
-          wordsUsed: data.wordsUsed,
-          wordsRemaining: data.wordsRemaining,
-          plan: data.plan,
-          limitReached: data.limitReached || false,
+          text: data.data.text,
+          wordsUsed: data.data.wordsUsed,
+          wordsRemaining: data.data.wordsRemaining,
+          plan: data.data.plan,
+          limitReached: data.data.limitReached || false,
         };
       } catch (error) {
-        debugLogger.error("Cloud transcription error:", error);
+        debugLogger.error("Cloud transcription error", { error: error.message }, "cloud-api");
         return { success: false, error: error.message };
       }
     });

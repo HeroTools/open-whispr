@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { authClient } from "../lib/neonAuth";
+import logger from "../utils/logger";
 
 const useStaticSession = () => ({
   data: null,
@@ -14,9 +15,9 @@ export function useAuth() {
   const user = session?.user ?? null;
   const isSignedIn = Boolean(user);
 
-  // Sync auth state to localStorage so vanilla JS modules (audioManager, etc.) can read it
   useEffect(() => {
     if (!isPending) {
+      logger.debug("Auth state sync", { isSignedIn }, "auth");
       localStorage.setItem("isSignedIn", String(isSignedIn));
     }
   }, [isSignedIn, isPending]);
