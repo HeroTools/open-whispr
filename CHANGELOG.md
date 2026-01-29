@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.3] - 2026-01-28
+
+### Added
+- **ONNX Warm-up Inference**: Parakeet server now runs warm-up inference on start to eliminate first-request latency from JIT compilation
+- **Startup Preferences Sync**: Renderer startup preferences are now synced to `.env` for server pre-warming on restart
+
+### Changed
+- **macOS Tray Behavior**: Hide to tray on macOS for consistent cross-platform behavior
+
+### Fixed
+- **macOS Launch Crash**: Added `disable-library-validation` entitlement to resolve macOS launch crash (#120)
+- **Reasoning Model Default**: Fixed `useReasoningModel` not correctly defaulting to enabled by persisting useLocalStorage defaults and aligning direct reads
+- **Windows Non-ASCII Usernames**: Resolved whisper-server crash on Windows with non-ASCII usernames by pre-converting audio to WAV and routing temp files through ASCII-safe directory
+- **Windows Paths with Spaces**: Fixed temp directory fallback to also detect paths with spaces on Windows
+
+## [1.3.2] - 2026-01-27
+
+### Changed
+- **Linux Paste Tools**: Prefer xdotool over ydotool for better compatibility
+
+### Fixed
+- **Windows Zip Extraction**: Use tar instead of PowerShell Expand-Archive for zip extraction on Windows to avoid issues with special characters
+
 ## [1.3.1] - 2026-01-27
 
 ### Changed
