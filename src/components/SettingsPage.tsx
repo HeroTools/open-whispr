@@ -139,9 +139,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showAlert: showAlertDialog,
   });
 
-  const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
+  const [localReasoningProvider, setLocalReasoningProviderState] = useState(() => {
     return localStorage.getItem("reasoningProvider") || reasoningProvider;
   });
+
+  // Wrap setter to persist to localStorage
+  const setLocalReasoningProvider = useCallback((provider: string) => {
+    setLocalReasoningProviderState(provider);
+    localStorage.setItem("reasoningProvider", provider);
+  }, []);
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
   // Platform detection for conditional features
