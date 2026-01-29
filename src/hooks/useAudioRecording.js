@@ -17,10 +17,21 @@ export const useAudioRecording = (toast, options = {}) => {
         setIsProcessing(isProcessing);
       },
       onError: (error) => {
+        // Provide specific titles for cloud error codes
+        const title =
+          error.code === "AUTH_EXPIRED"
+            ? "Session Expired"
+            : error.code === "OFFLINE"
+              ? "You're Offline"
+              : error.code === "LIMIT_REACHED"
+                ? "Daily Limit Reached"
+                : error.title;
+
         toast({
-          title: error.title,
+          title,
           description: error.description,
           variant: "destructive",
+          duration: error.code === "AUTH_EXPIRED" ? 8000 : undefined,
         });
       },
       onTranscriptionComplete: async (result) => {
@@ -36,6 +47,17 @@ export const useAudioRecording = (toast, options = {}) => {
               title: "Fallback Mode",
               description: "Local Whisper failed. Used OpenAI API instead.",
               variant: "default",
+            });
+          }
+
+          // Cloud usage: limit reached after this transcription
+          if (result.source === "openwhispr" && result.limitReached) {
+            toast({
+              title: "Daily Limit Reached",
+              description:
+                "You've used all your free words for today. Upgrade to Pro or switch to your own API key.",
+              variant: "destructive",
+              duration: 8000,
             });
           }
         }

@@ -8,6 +8,24 @@ export const authClient = NEON_AUTH_URL
 
 export type SocialProvider = "google";
 
+/**
+ * Attempts to refresh the current session by calling getSession().
+ * The Neon Auth SDK automatically refreshes expired tokens when this is called.
+ * Returns true if a valid session exists after refresh, false otherwise.
+ */
+export async function refreshSession(): Promise<boolean> {
+  if (!authClient) {
+    return false;
+  }
+
+  try {
+    const result = await authClient.getSession();
+    return Boolean(result.data?.session?.user);
+  } catch {
+    return false;
+  }
+}
+
 export async function signInWithSocial(provider: SocialProvider): Promise<{ error?: Error }> {
   if (!authClient) {
     return { error: new Error("Auth not configured") };

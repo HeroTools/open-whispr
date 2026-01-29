@@ -900,6 +900,170 @@ class IPCHandlers {
       }
     });
 
+    // --- OpenWhispr Cloud API handlers ---
+
+    const getApiUrl = () =>
+      process.env.OPENWHISPR_API_URL || process.env.VITE_OPENWHISPR_API_URL || "";
+
+    const getSessionCookies = async (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return "";
+      const cookies = await win.webContents.session.cookies.get({});
+      return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+    };
+
+    ipcMain.handle("cloud-transcribe", async (event, audioBuffer, opts = {}) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        // Build multipart form data
+        const boundary = `----OpenWhispr${Date.now()}`;
+        const parts = [];
+
+        // Audio file part
+        const audioData = Buffer.from(audioBuffer);
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n` +
+            `Content-Type: audio/webm\r\n\r\n`
+        );
+        parts.push(audioData);
+        parts.push("\r\n");
+
+        // Language field
+        if (opts.language) {
+          parts.push(
+            `--${boundary}\r\n` +
+              `Content-Disposition: form-data; name="language"\r\n\r\n` +
+              `${opts.language}\r\n`
+          );
+        }
+
+        // Prompt field (custom dictionary)
+        if (opts.prompt) {
+          parts.push(
+            `--${boundary}\r\n` +
+              `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
+              `${opts.prompt}\r\n`
+          );
+        }
+
+        parts.push(`--${boundary}--\r\n`);
+
+        // Combine text and binary parts into a single buffer
+        const bodyParts = parts.map((p) => (typeof p === "string" ? Buffer.from(p) : p));
+        const body = Buffer.concat(bodyParts);
+
+        const response = await fetch(`${apiUrl}/api/transcribe`, {
+          method: "POST",
+          headers: {
+            "Content-Type": `multipart/form-data; boundary=${boundary}`,
+            Cookie: cookieHeader,
+          },
+          body,
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          if (response.status === 429) {
+            return {
+              success: false,
+              error: "Daily word limit reached",
+              code: "LIMIT_REACHED",
+              limitReached: true,
+              ...errorData,
+            };
+          }
+          throw new Error(errorData.error || `API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+          success: true,
+          text: data.text,
+          wordsUsed: data.wordsUsed,
+          wordsRemaining: data.wordsRemaining,
+          plan: data.plan,
+          limitReached: data.limitReached || false,
+        };
+      } catch (error) {
+        debugLogger.error("Cloud transcription error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("cloud-reason", async (event, text, opts = {}) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}/api/reason`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: cookieHeader,
+          },
+          body: JSON.stringify({
+            text,
+            model: opts.model,
+            agentName: opts.agentName,
+            customDictionary: opts.customDictionary,
+          }),
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return { success: true, text: data.text, model: data.model, provider: data.provider };
+      } catch (error) {
+        debugLogger.error("Cloud reasoning error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("cloud-usage", async (event) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}/api/usage`, {
+          headers: { Cookie: cookieHeader },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return { success: true, ...data };
+      } catch (error) {
+        debugLogger.error("Cloud usage fetch error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
         const modelsDir = this.whisperManager.getModelsDir();

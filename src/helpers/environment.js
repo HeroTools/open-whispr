@@ -10,8 +10,8 @@ class EnvironmentManager {
   loadEnvironmentVariables() {
     // In production, try multiple locations for .env file
     const possibleEnvPaths = [
-      // Development path
-      path.join(__dirname, "..", ".env"),
+      // Development path (project root)
+      path.join(__dirname, "..", "..", ".env"),
       // Production packaged app paths
       path.join(process.resourcesPath, ".env"),
       path.join(process.resourcesPath, "app.asar.unpacked", ".env"),

@@ -3,6 +3,7 @@ import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constant
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
+import { refreshSession } from "../lib/neonAuth";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -225,6 +226,9 @@ class AudioManager {
       const whisperModel = localStorage.getItem("whisperModel") || "base";
       const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
 
+      const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+      const isSignedIn = localStorage.getItem("isSignedIn") === "true";
+
       let result;
       let activeModel;
       if (useLocalWhisper) {
@@ -235,6 +239,9 @@ class AudioManager {
           activeModel = whisperModel;
           result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
         }
+      } else if (cloudTranscriptionMode === "openwhispr" && isSignedIn) {
+        activeModel = "openwhispr-cloud";
+        result = await this.processWithOpenWhisprCloud(audioBlob, metadata);
       } else {
         activeModel = this.getTranscriptionModel();
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
@@ -280,6 +287,7 @@ class AudioManager {
         this.onError?.({
           title: "Transcription Error",
           description: `Transcription failed: ${error.message}`,
+          code: error.code,
         });
       }
     } finally {
@@ -916,6 +924,100 @@ class AudioManager {
     );
 
     return result;
+  }
+
+  async processWithOpenWhisprCloud(audioBlob, metadata = {}, isRetry = false) {
+    if (!navigator.onLine) {
+      const err = new Error("You're offline. Cloud transcription requires an internet connection.");
+      err.code = "OFFLINE";
+      throw err;
+    }
+
+    const timings = {};
+    const language = localStorage.getItem("preferredLanguage");
+
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const opts = {};
+    if (language && language !== "auto") opts.language = language;
+
+    const dictionaryPrompt = this.getCustomDictionaryPrompt();
+    if (dictionaryPrompt) opts.prompt = dictionaryPrompt;
+
+    const transcriptionStart = performance.now();
+    const result = await window.electronAPI.cloudTranscribe(arrayBuffer, opts);
+    timings.transcriptionProcessingDurationMs = Math.round(performance.now() - transcriptionStart);
+
+    if (!result.success) {
+      // On AUTH_EXPIRED, try refreshing the session and retry once
+      if (result.code === "AUTH_EXPIRED" && !isRetry) {
+        logger.debug("Session expired, attempting refresh", {}, "auth");
+        const refreshed = await refreshSession();
+        if (refreshed) {
+          logger.debug("Session refreshed, retrying transcription", {}, "auth");
+          return this.processWithOpenWhisprCloud(audioBlob, metadata, true);
+        }
+        // Refresh failed - update localStorage to reflect signed-out state
+        localStorage.setItem("isSignedIn", "false");
+      }
+      const err = new Error(result.error || "Cloud transcription failed");
+      err.code = result.code;
+      throw err;
+    }
+
+    // Process with reasoning if enabled
+    let processedText = result.text;
+    const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+    if (useReasoningModel && processedText) {
+      const reasoningStart = performance.now();
+      const cloudReasoningModel =
+        localStorage.getItem("cloudReasoningModel") || "llama-3.3-70b-versatile";
+      const agentName = localStorage.getItem("agentName") || "";
+      const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+
+      if (cloudTranscriptionMode === "openwhispr") {
+        let reasonResult = await window.electronAPI.cloudReason(processedText, {
+          model: cloudReasoningModel,
+          agentName,
+          customDictionary: this.getCustomDictionaryArray(),
+        });
+        // Retry reasoning once on AUTH_EXPIRED after refreshing session
+        if (!reasonResult.success && reasonResult.code === "AUTH_EXPIRED" && !isRetry) {
+          const refreshed = await refreshSession();
+          if (refreshed) {
+            reasonResult = await window.electronAPI.cloudReason(processedText, {
+              model: cloudReasoningModel,
+              agentName,
+              customDictionary: this.getCustomDictionaryArray(),
+            });
+          }
+        }
+        if (reasonResult.success) {
+          processedText = reasonResult.text;
+        }
+      }
+      timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+    }
+
+    return {
+      success: true,
+      text: processedText,
+      source: "openwhispr",
+      timings,
+      limitReached: result.limitReached,
+      wordsUsed: result.wordsUsed,
+      wordsRemaining: result.wordsRemaining,
+    };
+  }
+
+  getCustomDictionaryArray() {
+    try {
+      const raw = localStorage.getItem("customDictionary");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
   }
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {

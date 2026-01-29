@@ -34,6 +34,9 @@ import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import DeveloperSection from "./DeveloperSection";
+import UsageDisplay from "./UsageDisplay";
+import { useToast } from "./ui/Toast";
+import { Cloud, Key } from "lucide-react";
 
 export type SettingsSectionType =
   | "account"
@@ -108,7 +111,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
+    cloudTranscriptionMode,
+    setCloudTranscriptionMode,
+    cloudReasoningModel,
+    setCloudReasoningModel,
   } = useSettings();
+
+  const { toast } = useToast();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [isRemovingModels, setIsRemovingModels] = useState(false);
@@ -452,6 +461,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     </li>
                   </ul>
                 </div>
+
+                <UsageDisplay />
 
                 <Button
                   onClick={handleSignOut}
@@ -909,38 +920,102 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </p>
             </div>
 
-            <TranscriptionModelPicker
-              selectedCloudProvider={cloudTranscriptionProvider}
-              onCloudProviderSelect={setCloudTranscriptionProvider}
-              selectedCloudModel={cloudTranscriptionModel}
-              onCloudModelSelect={setCloudTranscriptionModel}
-              selectedLocalModel={
-                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
-              }
-              onLocalModelSelect={(modelId) => {
-                if (localTranscriptionProvider === "nvidia") {
-                  setParakeetModel(modelId);
-                } else {
-                  setWhisperModel(modelId);
+            {/* Cloud/BYOK mode toggle — only shown when signed in */}
+            {isSignedIn && !useLocalWhisper && (
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <button
+                  onClick={() => {
+                    if (cloudTranscriptionMode !== "openwhispr") {
+                      setCloudTranscriptionMode("openwhispr");
+                      toast({
+                        title: "Switched to OpenWhispr Cloud",
+                        description: "Transcription will use OpenWhispr's cloud service.",
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                    cloudTranscriptionMode === "openwhispr"
+                      ? "border-indigo-500 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500/20"
+                      : "border-neutral-200 bg-white hover:border-neutral-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Cloud className="w-4 h-4 text-indigo-600" />
+                    <span className="font-medium text-neutral-900">OpenWhispr Cloud</span>
+                  </div>
+                  <p className="text-xs text-neutral-500">Just works. No configuration needed.</p>
+                </button>
+                <button
+                  onClick={() => {
+                    if (cloudTranscriptionMode !== "byok") {
+                      setCloudTranscriptionMode("byok");
+                      toast({
+                        title: "Switched to Bring Your Own Key",
+                        description: "You'll need to provide your own API key for transcription.",
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
+                    cloudTranscriptionMode === "byok"
+                      ? "border-indigo-500 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500/20"
+                      : "border-neutral-200 bg-white hover:border-neutral-300"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <Key className="w-4 h-4 text-neutral-600" />
+                    <span className="font-medium text-neutral-900">Bring Your Own Key</span>
+                  </div>
+                  <p className="text-xs text-neutral-500">Use your own API key. No usage limits.</p>
+                </button>
+              </div>
+            )}
+
+            {/* When OpenWhispr Cloud mode is active, hide the full picker */}
+            {isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper ? (
+              <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
+                <p className="text-sm text-neutral-600">
+                  Transcription is handled by OpenWhispr's servers. Change your language in General
+                  settings.
+                </p>
+              </div>
+            ) : (
+              <TranscriptionModelPicker
+                selectedCloudProvider={cloudTranscriptionProvider}
+                onCloudProviderSelect={setCloudTranscriptionProvider}
+                selectedCloudModel={cloudTranscriptionModel}
+                onCloudModelSelect={setCloudTranscriptionModel}
+                selectedLocalModel={
+                  localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
                 }
-              }}
-              selectedLocalProvider={localTranscriptionProvider}
-              onLocalProviderSelect={setLocalTranscriptionProvider}
-              useLocalWhisper={useLocalWhisper}
-              onModeChange={(isLocal) => {
-                setUseLocalWhisper(isLocal);
-                updateTranscriptionSettings({ useLocalWhisper: isLocal });
-              }}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
-              customTranscriptionApiKey={customTranscriptionApiKey}
-              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
-              variant="settings"
-            />
+                onLocalModelSelect={(modelId) => {
+                  if (localTranscriptionProvider === "nvidia") {
+                    setParakeetModel(modelId);
+                  } else {
+                    setWhisperModel(modelId);
+                  }
+                }}
+                selectedLocalProvider={localTranscriptionProvider}
+                onLocalProviderSelect={setLocalTranscriptionProvider}
+                useLocalWhisper={useLocalWhisper}
+                onModeChange={(isLocal) => {
+                  setUseLocalWhisper(isLocal);
+                  updateTranscriptionSettings({ useLocalWhisper: isLocal });
+                }}
+                openaiApiKey={openaiApiKey}
+                setOpenaiApiKey={setOpenaiApiKey}
+                groqApiKey={groqApiKey}
+                setGroqApiKey={setGroqApiKey}
+                customTranscriptionApiKey={customTranscriptionApiKey}
+                setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+                cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+                setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+                variant="settings"
+              />
+            )}
           </div>
         );
 
@@ -1031,30 +1106,60 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </p>
             </div>
 
-            <ReasoningModelSelector
-              useReasoningModel={useReasoningModel}
-              setUseReasoningModel={(value) => {
-                setUseReasoningModel(value);
-                updateReasoningSettings({ useReasoningModel: value });
-              }}
-              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
-              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
-              reasoningModel={reasoningModel}
-              setReasoningModel={setReasoningModel}
-              localReasoningProvider={localReasoningProvider}
-              setLocalReasoningProvider={setLocalReasoningProvider}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              anthropicApiKey={anthropicApiKey}
-              setAnthropicApiKey={setAnthropicApiKey}
-              geminiApiKey={geminiApiKey}
-              setGeminiApiKey={setGeminiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
-              customReasoningApiKey={customReasoningApiKey}
-              setCustomReasoningApiKey={setCustomReasoningApiKey}
-              showAlertDialog={showAlertDialog}
-            />
+            {/* Simplified cloud model picker when in OpenWhispr cloud mode */}
+            {isSignedIn && cloudTranscriptionMode === "openwhispr" ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-neutral-700">AI Model</label>
+                </div>
+                <select
+                  value={cloudReasoningModel}
+                  onChange={(e) => setCloudReasoningModel(e.target.value)}
+                  className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <optgroup label="Fast (Groq)">
+                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B — Recommended</option>
+                    <option value="llama-3.1-8b-instant">Llama 3.1 8B — Fastest</option>
+                  </optgroup>
+                  <optgroup label="Balanced (OpenRouter)">
+                    <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+                    <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+                  </optgroup>
+                  <optgroup label="Quality (OpenRouter)">
+                    <option value="anthropic/claude-opus-4">Claude Opus 4</option>
+                    <option value="openai/gpt-4.1">GPT-4.1</option>
+                  </optgroup>
+                </select>
+                <p className="text-xs text-neutral-400">
+                  No API key needed. Powered by OpenWhispr.
+                </p>
+              </div>
+            ) : (
+              <ReasoningModelSelector
+                useReasoningModel={useReasoningModel}
+                setUseReasoningModel={(value) => {
+                  setUseReasoningModel(value);
+                  updateReasoningSettings({ useReasoningModel: value });
+                }}
+                setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+                cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+                reasoningModel={reasoningModel}
+                setReasoningModel={setReasoningModel}
+                localReasoningProvider={localReasoningProvider}
+                setLocalReasoningProvider={setLocalReasoningProvider}
+                openaiApiKey={openaiApiKey}
+                setOpenaiApiKey={setOpenaiApiKey}
+                anthropicApiKey={anthropicApiKey}
+                setAnthropicApiKey={setAnthropicApiKey}
+                geminiApiKey={geminiApiKey}
+                setGeminiApiKey={setGeminiApiKey}
+                groqApiKey={groqApiKey}
+                setGroqApiKey={setGroqApiKey}
+                customReasoningApiKey={customReasoningApiKey}
+                setCustomReasoningApiKey={setCustomReasoningApiKey}
+                showAlertDialog={showAlertDialog}
+              />
+            )}
           </div>
         );
 

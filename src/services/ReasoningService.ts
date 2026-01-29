@@ -440,6 +440,9 @@ class ReasoningService extends BaseReasoningService {
         case "groq":
           result = await this.processWithGroq(text, model, agentName, config);
           break;
+        case "openwhispr":
+          result = await this.processWithOpenWhispr(text, model, agentName, config);
+          break;
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
       }
@@ -1004,6 +1007,61 @@ class ReasoningService extends BaseReasoningService {
       throw error;
     } finally {
       this.isProcessing = false;
+    }
+  }
+
+  private async processWithOpenWhispr(
+    text: string,
+    model: string,
+    agentName: string | null = null,
+    config: ReasoningConfig = {}
+  ): Promise<string> {
+    logger.logReasoning("OPENWHISPR_START", { model, agentName });
+
+    if (this.isProcessing) {
+      throw new Error("Already processing a request");
+    }
+
+    this.isProcessing = true;
+
+    try {
+      const customDictionary = this.getCustomDictionary();
+      const result = await (window as any).electronAPI.cloudReason(text, {
+        model,
+        agentName,
+        customDictionary,
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || "OpenWhispr cloud reasoning failed");
+      }
+
+      logger.logReasoning("OPENWHISPR_SUCCESS", {
+        model: result.model,
+        provider: result.provider,
+        resultLength: result.text.length,
+      });
+
+      return result.text;
+    } catch (error) {
+      logger.logReasoning("OPENWHISPR_ERROR", {
+        model,
+        error: (error as Error).message,
+      });
+      throw error;
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  private getCustomDictionary(): string[] {
+    try {
+      const raw = localStorage.getItem("customDictionary");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
     }
   }
 

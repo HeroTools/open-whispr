@@ -61,7 +61,7 @@ export default function AuthenticationStep({
     let timeout: ReturnType<typeof setTimeout>;
 
     const handleFocus = () => {
-      // Small delay to allow the oauth-callback IPC to arrive first
+      // Small delay to allow the OAuth deep-link redirect to complete first
       timeout = setTimeout(() => {
         setIsSocialLoading(null);
       }, 1000);
@@ -362,15 +362,15 @@ export default function AuthenticationStep({
         <ul className="text-sm text-neutral-600 space-y-2">
           <li className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-            Sync settings across all your devices
+            Instant transcription — no API keys needed
           </li>
           <li className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-            Access your transcription history anywhere
+            2,000 words/day free, unlimited with Pro
           </li>
           <li className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-            Unlock advanced AI features
+            Cloud AI models for smarter dictation
           </li>
         </ul>
       </div>

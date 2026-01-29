@@ -80,6 +80,10 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setOpenaiApiKey,
     setGroqApiKey,
     updateTranscriptionSettings,
+    cloudTranscriptionMode,
+    setCloudTranscriptionMode,
+    cloudReasoningModel,
+    setCloudReasoningModel,
   } = useSettings();
 
   const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
@@ -309,6 +313,114 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         );
 
       case 1: // Setup - Choose Mode & Configure
+        // Simplified path for signed-in users (cloud-first)
+        if (isSignedIn && !skipAuth) {
+          return (
+            <div className="space-y-6">
+              <div className="text-center">
+                <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-7 h-7 text-emerald-600" />
+                </div>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">You're ready to go</h2>
+                <p className="text-neutral-600">
+                  OpenWhispr handles transcription and AI processing for you. No setup needed.
+                </p>
+              </div>
+
+              <div className="space-y-4 p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Language
+                  </label>
+                  <LanguageSelector
+                    value={preferredLanguage}
+                    onChange={(value) => {
+                      updateTranscriptionSettings({ preferredLanguage: value });
+                    }}
+                    className="w-full"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    AI Model
+                  </label>
+                  <select
+                    value={cloudReasoningModel}
+                    onChange={(e) => setCloudReasoningModel(e.target.value)}
+                    className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <optgroup label="Fast">
+                      <option value="llama-3.3-70b-versatile">Llama 3.3 70B — Recommended</option>
+                      <option value="llama-3.1-8b-instant">Llama 3.1 8B — Fastest</option>
+                    </optgroup>
+                    <optgroup label="Balanced">
+                      <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
+                      <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
+                    </optgroup>
+                    <optgroup label="Quality">
+                      <option value="anthropic/claude-opus-4">Claude Opus 4</option>
+                      <option value="openai/gpt-4.1">GPT-4.1</option>
+                    </optgroup>
+                  </select>
+                </div>
+              </div>
+
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
+                <p className="text-sm text-blue-800">
+                  <span className="font-medium">Included with your account:</span> 2,000 words/day
+                  free, AI processing, multiple AI models, custom dictionary
+                </p>
+              </div>
+
+              <details className="group">
+                <summary className="text-sm text-neutral-500 cursor-pointer hover:text-neutral-700 transition-colors">
+                  Advanced options
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <ProcessingModeSelector
+                    useLocalWhisper={useLocalWhisper}
+                    setUseLocalWhisper={(useLocal) => {
+                      updateTranscriptionSettings({ useLocalWhisper: useLocal });
+                      if (!useLocal) {
+                        setCloudTranscriptionMode("openwhispr");
+                      }
+                    }}
+                  />
+                  {(useLocalWhisper || cloudTranscriptionMode === "byok") && (
+                    <TranscriptionModelPicker
+                      selectedCloudProvider={cloudTranscriptionProvider}
+                      onCloudProviderSelect={(provider) =>
+                        updateTranscriptionSettings({ cloudTranscriptionProvider: provider })
+                      }
+                      selectedCloudModel={cloudTranscriptionModel}
+                      onCloudModelSelect={(model) =>
+                        updateTranscriptionSettings({ cloudTranscriptionModel: model })
+                      }
+                      selectedLocalModel={whisperModel}
+                      onLocalModelSelect={setWhisperModel}
+                      useLocalWhisper={useLocalWhisper}
+                      onModeChange={() => {}}
+                      openaiApiKey={openaiApiKey}
+                      setOpenaiApiKey={setOpenaiApiKey}
+                      groqApiKey={groqApiKey}
+                      setGroqApiKey={setGroqApiKey}
+                      customTranscriptionApiKey={customTranscriptionApiKey}
+                      setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+                      cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+                      setCloudTranscriptionBaseUrl={(url) =>
+                        updateTranscriptionSettings({ cloudTranscriptionBaseUrl: url })
+                      }
+                      variant="onboarding"
+                    />
+                  )}
+                </div>
+              </details>
+            </div>
+          );
+        }
+
+        // Not signed in — full setup (unchanged)
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -357,7 +469,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             {/* Language Selection - shown for both modes */}
             <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900 mb-3">🌍 Preferred Language</h4>
+              <h4 className="font-medium text-gray-900 mb-3">Preferred Language</h4>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Which language do you primarily speak?
               </label>
@@ -550,6 +662,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 0:
         return isSignedIn || skipAuth; // Authentication step
       case 1:
+        // Signed-in users using cloud mode can always proceed
+        if (
+          isSignedIn &&
+          !skipAuth &&
+          cloudTranscriptionMode === "openwhispr" &&
+          !useLocalWhisper
+        ) {
+          return true;
+        }
         // Setup - check if configuration is complete
         if (useLocalWhisper) {
           return whisperModel !== "" && isModelDownloaded;
@@ -621,7 +742,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         description={alertDialog.description}
         onOk={() => {}}
       />
-
 
       {/* Title Bar */}
       <div className="flex-shrink-0 z-10">
