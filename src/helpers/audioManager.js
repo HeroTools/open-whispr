@@ -230,7 +230,11 @@ class AudioManager {
       const isSignedIn = localStorage.getItem("isSignedIn") === "true";
 
       const useCloud = !useLocalWhisper && cloudTranscriptionMode === "openwhispr" && isSignedIn;
-      logger.debug("Transcription routing", { useLocalWhisper, useCloud, isSignedIn }, "transcription");
+      logger.debug(
+        "Transcription routing",
+        { useLocalWhisper, useCloud, isSignedIn },
+        "transcription"
+      );
 
       let result;
       let activeModel;

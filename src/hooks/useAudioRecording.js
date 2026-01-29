@@ -52,12 +52,13 @@ export const useAudioRecording = (toast, options = {}) => {
 
           // Cloud usage: limit reached after this transcription
           if (result.source === "openwhispr" && result.limitReached) {
-            toast({
-              title: "Daily Limit Reached",
-              description:
-                "You've used all your free words for today. Upgrade to Pro or switch to your own API key.",
-              variant: "destructive",
-              duration: 8000,
+            // Notify control panel to show UpgradePrompt dialog
+            window.electronAPI?.notifyLimitReached?.({
+              wordsUsed: result.wordsUsed,
+              limit:
+                result.wordsRemaining !== undefined
+                  ? result.wordsUsed + result.wordsRemaining
+                  : 2000,
             });
           }
         }

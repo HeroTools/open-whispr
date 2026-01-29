@@ -955,7 +955,11 @@ class IPCHandlers {
         const bodyParts = parts.map((p) => (typeof p === "string" ? Buffer.from(p) : p));
         const body = Buffer.concat(bodyParts);
 
-        debugLogger.debug("Cloud transcribe request", { audioSize: audioData.length, bodySize: body.length }, "cloud-api");
+        debugLogger.debug(
+          "Cloud transcribe request",
+          { audioSize: audioData.length, bodySize: body.length },
+          "cloud-api"
+        );
 
         const url = new URL(`${apiUrl}/api/transcribe`);
         const httpModule = url.protocol === "https:" ? https : http;
@@ -991,7 +995,11 @@ class IPCHandlers {
           req.end();
         });
 
-        debugLogger.debug("Cloud transcribe response", { statusCode: data.statusCode }, "cloud-api");
+        debugLogger.debug(
+          "Cloud transcribe response",
+          { statusCode: data.statusCode },
+          "cloud-api"
+        );
 
         if (data.statusCode === 401) {
           return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };

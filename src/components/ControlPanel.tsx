@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/button";
 import { Trash2, Settings, FileText, Mic, Download, RefreshCw, Loader2 } from "lucide-react";
@@ -6,6 +6,7 @@ import SettingsModal from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
 import TranscriptionItem from "./ui/TranscriptionItem";
+import UpgradePrompt from "./UpgradePrompt";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useHotkey } from "../hooks/useHotkey";
@@ -22,6 +23,9 @@ export default function ControlPanel() {
   const history = useTranscriptions();
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [limitData, setLimitData] = useState<{ wordsUsed: number; limit: number } | null>(null);
+  const hasShownUpgradePrompt = useRef(false);
   const { hotkey } = useHotkey();
   const { toast } = useToast();
 
@@ -70,6 +74,30 @@ export default function ControlPanel() {
       });
     }
   }, [updateError, toast]);
+
+  // Listen for limit-reached events from the dictation overlay
+  useEffect(() => {
+    const dispose = window.electronAPI?.onLimitReached?.(
+      (data: { wordsUsed: number; limit: number }) => {
+        // Show dialog only once per session, then show toast for subsequent hits
+        if (!hasShownUpgradePrompt.current) {
+          hasShownUpgradePrompt.current = true;
+          setLimitData(data);
+          setShowUpgradePrompt(true);
+        } else {
+          toast({
+            title: "Daily Limit Reached",
+            description: "Resets at midnight UTC. Upgrade to Pro or use your own API key.",
+            duration: 5000,
+          });
+        }
+      }
+    );
+
+    return () => {
+      dispose?.();
+    };
+  }, [toast]);
 
   const loadTranscriptions = async () => {
     try {
@@ -239,6 +267,13 @@ export default function ControlPanel() {
         title={alertDialog.title}
         description={alertDialog.description}
         onOk={() => {}}
+      />
+
+      <UpgradePrompt
+        open={showUpgradePrompt}
+        onOpenChange={setShowUpgradePrompt}
+        wordsUsed={limitData?.wordsUsed}
+        limit={limitData?.limit}
       />
 
       <TitleBar

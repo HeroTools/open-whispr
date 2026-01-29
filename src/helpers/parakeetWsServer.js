@@ -136,7 +136,7 @@ class ParakeetWsServer {
     try {
       const sampleRate = 16000;
       const numSamples = sampleRate;
-      const silentSamples = Buffer.alloc(numSamples * 4); 
+      const silentSamples = Buffer.alloc(numSamples * 4);
       await this.transcribe(silentSamples, sampleRate);
       debugLogger.debug("parakeet-ws warm-up inference complete");
     } catch (err) {
