@@ -6,7 +6,7 @@ const http = require("http");
 const debugLogger = require("./debugLogger");
 const { killProcess } = require("../utils/process");
 const { getSafeTempDir } = require("./safeTempDir");
-const { isWavFormat, convertToWav } = require("./ffmpegUtils");
+const { convertToWav } = require("./ffmpegUtils");
 
 const PORT_RANGE_START = 8178;
 const PORT_RANGE_END = 8199;
@@ -223,14 +223,13 @@ class WhisperServerManager {
 
     const args = ["--model", modelPath, "--host", "127.0.0.1", "--port", String(this.port)];
 
-    // Only add --convert flag if FFmpeg is available
+    // FFmpeg is required for pre-converting audio to 16kHz mono WAV
     this.canConvert = !!ffmpegPath;
     if (ffmpegPath) {
-      args.push("--convert");
       const ffmpegDir = path.dirname(ffmpegPath);
       spawnEnv.PATH = ffmpegDir + pathSep + spawnEnv.PATH;
     } else {
-      debugLogger.warn("FFmpeg not found - whisper-server will only accept WAV format");
+      debugLogger.warn("FFmpeg not found - whisper-server will only accept 16kHz mono WAV");
     }
 
     if (options.threads) args.push("--threads", String(options.threads));
@@ -385,15 +384,12 @@ class WhisperServerManager {
 
     const { language, initialPrompt } = options;
 
-    // Pre-convert to WAV so whisper-server doesn't create temp files internally
+    // Always convert to 16kHz mono WAV - whisper.cpp requires this exact format
     let finalBuffer = audioBuffer;
-    const isWav = isWavFormat(audioBuffer);
-    if (!isWav) {
-      if (!this.canConvert) {
-        throw new Error("FFmpeg not found - whisper-server requires WAV input");
-      }
-      finalBuffer = await this._convertToWav(audioBuffer);
+    if (!this.canConvert) {
+      throw new Error("FFmpeg not found - required for audio conversion");
     }
+    finalBuffer = await this._convertToWav(audioBuffer);
 
     const boundary = `----WhisperBoundary${Date.now()}`;
     const parts = [];
