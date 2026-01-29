@@ -164,10 +164,9 @@ async function startApp() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
-  // Ensure dock is visible on macOS and stays visible
-  if (process.platform === "darwin" && app.dock) {
-    app.dock.show();
-    // Prevent dock from hiding when windows use setVisibleOnAllWorkspaces
+  // On macOS, set activation policy to allow dock icon to be shown/hidden dynamically
+  // The dock icon visibility is managed by WindowManager based on control panel state
+  if (process.platform === "darwin") {
     app.setActivationPolicy("regular");
   }
 
@@ -507,6 +506,10 @@ if (gotSingleInstanceLock) {
     } else {
       // Show control panel when dock icon is clicked (most common user action)
       if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
+        // Ensure dock icon is visible when control panel opens
+        if (process.platform === "darwin" && app.dock) {
+          app.dock.show();
+        }
         if (windowManager.controlPanelWindow.isMinimized()) {
           windowManager.controlPanelWindow.restore();
         }

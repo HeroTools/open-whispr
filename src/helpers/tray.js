@@ -45,9 +45,6 @@ class TrayManager {
     this.attachedControlPanels.add(window);
 
     window.on("show", () => {
-      if (process.platform === "win32") {
-        window.setSkipTaskbar(false);
-      }
       this.updateTrayMenu?.();
     });
 
@@ -69,8 +66,12 @@ class TrayManager {
       this.attachControlPanelListeners(this.controlPanelWindow);
 
       if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
-        if (process.platform === "win32") {
-          this.controlPanelWindow.setSkipTaskbar(false);
+        // Show dock icon on macOS when control panel opens
+        if (process.platform === "darwin" && app.dock) {
+          app.dock.show();
+        }
+        if (this.controlPanelWindow.isMinimized()) {
+          this.controlPanelWindow.restore();
         }
         if (!this.controlPanelWindow.isVisible()) {
           this.controlPanelWindow.show();
@@ -88,9 +89,6 @@ class TrayManager {
         this.attachControlPanelListeners(this.controlPanelWindow);
 
         if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
-          if (process.platform === "win32") {
-            this.controlPanelWindow.setSkipTaskbar(false);
-          }
           this.controlPanelWindow.show();
           this.controlPanelWindow.focus();
         }
