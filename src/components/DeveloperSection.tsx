@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { Button } from "./ui/button";
-import { FolderOpen, Info, Wrench, Copy, Check, AlertCircle, FileText } from "lucide-react";
+import { FolderOpen, Copy, Check } from "lucide-react";
 import { useToast } from "./ui/Toast";
+import { Toggle } from "./ui/toggle";
 
 export default function DeveloperSection() {
   const [debugEnabled, setDebugEnabled] = useState(false);
@@ -46,8 +47,6 @@ export default function DeveloperSection() {
       }
 
       setDebugEnabled(newState);
-
-      // Reload the state to get updated log path
       await loadDebugState();
 
       toast({
@@ -106,193 +105,151 @@ export default function DeveloperSection() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Troubleshooting</h3>
-        <p className="text-sm text-gray-600">
-          Enable debug logging to diagnose issues and share logs for support
+    <div className="space-y-8">
+      <div className="mb-5">
+        <h3 className="text-[15px] font-semibold text-foreground tracking-tight">Debug Logging</h3>
+        <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">
+          Capture detailed logs to help diagnose issues
         </p>
       </div>
 
-      {/* Main Debug Logging Card */}
-      <div className="space-y-4 p-6 bg-linear-to-br from-slate-50 via-slate-50 to-slate-100 border border-slate-200 rounded-xl shadow-sm">
-        {/* Header with status */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-800 rounded-lg">
-              <Wrench className="w-5 h-5 text-slate-100" />
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900">Debug Logging</h4>
-              <div className="flex items-center gap-2 mt-1">
+      {/* Debug Toggle */}
+      <div className="rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2 divide-y divide-border/40 dark:divide-border-subtle">
+        <div className="px-5 py-4">
+          <div className="flex items-center justify-between gap-6">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-[13px] font-medium text-foreground">Debug mode</p>
                 <div
-                  className={`w-2 h-2 rounded-full ${
-                    debugEnabled
-                      ? "bg-emerald-500 animate-pulse shadow-lg shadow-emerald-500/50"
-                      : "bg-slate-300"
+                  className={`h-1.5 w-1.5 rounded-full transition-colors ${
+                    debugEnabled ? "bg-success" : "bg-muted-foreground/30"
                   }`}
                 />
-                <span className="text-xs font-medium text-slate-600">
-                  {isLoading ? "Loading..." : debugEnabled ? "Active" : "Inactive"}
-                </span>
               </div>
+              <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">
+                {debugEnabled
+                  ? "Logging audio processing, API requests, and system operations"
+                  : "Enable to capture detailed diagnostic information"}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <Toggle
+                checked={debugEnabled}
+                onChange={handleToggleDebug}
+                disabled={isLoading || isToggling}
+              />
             </div>
           </div>
         </div>
 
-        {/* Description */}
-        <p className="text-sm text-slate-600 leading-relaxed">
-          Captures detailed logs of audio processing, transcription, and system operations. Enable
-          this when experiencing issues to help diagnose problems.
-        </p>
-
-        {/* Log Path Display - Only when active */}
+        {/* Log Path — only when active */}
         {debugEnabled && logPath && (
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-slate-600 uppercase tracking-wide">
-              Current Log File
-            </label>
-            <div className="flex gap-2">
-              <div className="flex-1 p-3 bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
-                <code className="text-xs text-emerald-400 break-all leading-relaxed">
-                  {logPath}
-                </code>
-              </div>
+          <div className="px-5 py-4">
+            <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider mb-2">
+              Current log file
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-muted/30 dark:bg-surface-raised/30 px-3 py-2 rounded-lg border border-border/30">
+                {logPath}
+              </code>
               <Button
                 onClick={handleCopyPath}
-                variant="outline"
-                size="icon"
-                className="h-12 w-12 border-slate-300 hover:bg-slate-100"
-                title="Copy log path"
+                variant="ghost"
+                size="sm"
+                className="shrink-0 h-8 w-8 p-0"
               >
                 {copiedPath ? (
-                  <Check className="h-4 w-4 text-emerald-600" />
+                  <Check className="h-3.5 w-3.5 text-success" />
                 ) : (
-                  <Copy className="h-4 w-4 text-slate-600" />
+                  <Copy className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
               </Button>
             </div>
           </div>
         )}
 
-        {/* Action Buttons */}
-        <div className="flex gap-3 pt-2">
-          <Button
-            onClick={handleToggleDebug}
-            disabled={isLoading || isToggling}
-            className={`flex-1 font-medium ${
-              debugEnabled
-                ? "bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20"
-                : "bg-slate-800 hover:bg-slate-900 text-white shadow-md shadow-slate-800/20"
-            }`}
-          >
-            {isToggling ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2" />
-                {debugEnabled ? "Disabling..." : "Enabling..."}
-              </>
-            ) : (
-              <>{debugEnabled ? "Disable Debug Mode" : "Enable Debug Mode"}</>
-            )}
-          </Button>
+        {/* Actions */}
+        {debugEnabled && (
+          <div className="px-5 py-4">
+            <Button onClick={handleOpenLogsFolder} variant="outline" size="sm" className="w-full">
+              <FolderOpen className="mr-2 h-3.5 w-3.5" />
+              Open Logs Folder
+            </Button>
+          </div>
+        )}
+      </div>
 
-          <Button
-            onClick={handleOpenLogsFolder}
-            variant="outline"
-            disabled={!debugEnabled || isLoading}
-            className={`flex-1 font-medium ${
-              debugEnabled
-                ? "border-slate-300 hover:bg-slate-100 hover:border-slate-400"
-                : "opacity-50 cursor-not-allowed"
-            }`}
-          >
-            <FolderOpen className="mr-2 h-4 w-4" />
-            Open Logs Folder
-          </Button>
+      {/* What gets logged */}
+      <div>
+        <div className="mb-5">
+          <h3 className="text-[15px] font-semibold text-foreground tracking-tight">
+            What gets logged
+          </h3>
+        </div>
+        <div className="rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2">
+          <div className="px-5 py-4">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+              {[
+                "Audio processing",
+                "API requests",
+                "FFmpeg operations",
+                "System diagnostics",
+                "Transcription pipeline",
+                "Error details",
+              ].map((item) => (
+                <div key={item} className="flex items-center gap-2">
+                  <div className="h-1 w-1 rounded-full bg-muted-foreground/30 shrink-0" />
+                  <span className="text-[12px] text-muted-foreground">{item}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Sharing Instructions - Only when enabled */}
+      {/* Performance note — conditional */}
       {debugEnabled && (
-        <div className="p-5 bg-linear-to-br from-indigo-50 to-blue-50 border border-indigo-200 rounded-xl">
-          <div className="flex items-start gap-3">
-            <div className="p-2 bg-indigo-600 rounded-lg mt-0.5">
-              <FileText className="w-4 h-4 text-white" />
-            </div>
-            <div className="flex-1">
-              <h4 className="font-semibold text-indigo-900 mb-2">How to Share Logs for Support</h4>
-              <div className="text-sm text-indigo-800 space-y-2">
-                <p>To help us diagnose your issue:</p>
-                <ol className="space-y-1 ml-4 list-decimal">
-                  <li>Reproduce the issue while debug mode is enabled</li>
-                  <li>Click "Open Logs Folder" above</li>
-                  <li>Find the most recent log file (sorted by date)</li>
-                  <li>Attach the log file to your bug report or support email</li>
-                </ol>
-                <p className="text-xs text-indigo-700 mt-3 pt-3 border-t border-indigo-200">
-                  Your logs don't contain API keys or sensitive data
-                </p>
-              </div>
-            </div>
+        <div className="rounded-xl border border-warning/20 bg-warning/5 dark:bg-warning/10">
+          <div className="px-5 py-4">
+            <p className="text-[12px] text-muted-foreground leading-relaxed">
+              <span className="font-medium text-warning">Note</span> — Debug logging writes to disk
+              continuously and may slightly affect performance. Disable when not troubleshooting.
+            </p>
           </div>
         </div>
       )}
 
-      {/* Information Cards */}
-      <div className="grid grid-cols-1 gap-4">
-        {/* What Gets Logged */}
-        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <div className="flex items-start gap-3">
-            <Info className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-            <div className="flex-1 min-w-0">
-              <h4 className="font-medium text-blue-900 mb-2">What Gets Logged</h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-blue-800">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
-                  <span>Audio processing</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
-                  <span>API requests</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
-                  <span>FFmpeg operations</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
-                  <span>System diagnostics</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
-                  <span>Transcription pipeline</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-1 rounded-full bg-blue-600" />
-                  <span>Error details</span>
-                </div>
+      {/* Sharing instructions — conditional */}
+      {debugEnabled && (
+        <div>
+          <div className="mb-5">
+            <h3 className="text-[15px] font-semibold text-foreground tracking-tight">
+              Sharing logs for support
+            </h3>
+          </div>
+          <div className="rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2">
+            <div className="px-5 py-4">
+              <div className="space-y-2">
+                {[
+                  "Reproduce the issue while debug mode is enabled",
+                  'Click "Open Logs Folder" above',
+                  "Attach the most recent log file to your bug report",
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <span className="shrink-0 text-[11px] font-mono text-muted-foreground/40 mt-0.5 w-4 text-right">
+                      {i + 1}
+                    </span>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed">{step}</p>
+                  </div>
+                ))}
               </div>
+              <p className="text-[11px] text-muted-foreground/40 mt-4 pt-3 border-t border-border/20">
+                Logs do not contain API keys or sensitive data
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Performance Note */}
-        {debugEnabled && (
-          <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-              <div className="flex-1">
-                <h4 className="font-medium text-amber-900 mb-1">Performance Note</h4>
-                <p className="text-sm text-amber-800">
-                  Debug logging writes detailed information to disk and may have a minor impact on
-                  app performance. Disable it when not troubleshooting.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

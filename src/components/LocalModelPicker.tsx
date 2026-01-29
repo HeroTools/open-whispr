@@ -141,10 +141,8 @@ export default function LocalModelPicker({
 
     const modelName = models.find((m) => m.id === downloadingModel)?.name || downloadingModel;
 
-    return (
-      <DownloadProgressBar modelName={modelName} progress={downloadProgress} styles={styles} />
-    );
-  }, [downloadingModel, downloadProgress, models, styles]);
+    return <DownloadProgressBar modelName={modelName} progress={downloadProgress} />;
+  }, [downloadingModel, downloadProgress, models]);
 
   return (
     <div className={`${styles.container} ${className}`}>
@@ -163,7 +161,7 @@ export default function LocalModelPicker({
 
         <div className="space-y-2">
           {models.length === 0 ? (
-            <p className="text-sm text-gray-500">No models available for this provider</p>
+            <p className="text-sm text-muted-foreground">No models available for this provider</p>
           ) : (
             models.map((model) => {
               const isSelected = model.id === selectedModel;
@@ -182,15 +180,15 @@ export default function LocalModelPicker({
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <ProviderIcon provider={selectedProvider} className="w-4 h-4" />
-                        <span className="font-medium text-gray-900">{model.name}</span>
+                        <span className="font-medium text-foreground">{model.name}</span>
                         {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
                         {model.recommended && (
                           <span className={styles.badges.recommended}>Recommended</span>
                         )}
                       </div>
-                      <div className="text-xs text-gray-600 mt-1">{model.description}</div>
+                      <div className="text-xs text-muted-foreground mt-1">{model.description}</div>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">Size: {model.size}</span>
+                        <span className="text-xs text-muted-foreground">Size: {model.size}</span>
                         {isDownloaded && (
                           <span className={styles.badges.downloaded}>
                             <Check className="inline w-3 h-3 mr-1" />
@@ -229,7 +227,7 @@ export default function LocalModelPicker({
                           disabled={isCancelling}
                           size="sm"
                           variant="outline"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
+                          className="text-destructive border-destructive/30 hover:bg-destructive/10"
                         >
                           <X size={14} />
                           <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>

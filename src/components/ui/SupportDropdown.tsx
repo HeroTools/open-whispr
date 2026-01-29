@@ -48,17 +48,17 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
           <HelpCircle size={16} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-lg">
+      <DropdownMenuContent align="end" className="bg-popover border border-border shadow-lg">
         <DropdownMenuItem
           onClick={handleContactSupport}
-          className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
+          className="cursor-pointer hover:bg-muted focus:bg-muted"
         >
           <Mail className="mr-2 h-4 w-4" />
           Contact Support
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={handleSubmitBug}
-          className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
+          className="cursor-pointer hover:bg-muted focus:bg-muted"
         >
           <Bug className="mr-2 h-4 w-4" />
           Submit Bug

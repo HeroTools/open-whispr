@@ -1,4 +1,4 @@
-import { Globe } from "lucide-react";
+import { Globe, Check } from "lucide-react";
 import type { ColorScheme } from "../../utils/modelPickerStyles";
 
 export interface ModelCardOption {
@@ -21,23 +21,22 @@ const COLOR_CONFIG: Record<
   {
     selected: string;
     default: string;
-    badge: string;
   }
 > = {
   indigo: {
-    selected: "border-indigo-500 bg-indigo-50",
-    default: "border-gray-200 bg-white hover:border-gray-300",
-    badge: "text-xs text-indigo-600 bg-indigo-100 px-2 py-1 rounded-full font-medium",
+    selected: "border-primary/30 bg-primary/10 dark:bg-primary/6 dark:border-primary/25",
+    default:
+      "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
   },
   purple: {
-    selected: "border-purple-500 bg-purple-50",
-    default: "border-gray-200 bg-white hover:border-gray-300",
-    badge: "text-xs text-purple-600 bg-purple-100 px-2 py-1 rounded-full font-medium",
+    selected: "border-primary/30 bg-primary/10 dark:bg-primary/6 dark:border-primary/25",
+    default:
+      "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
   },
   blue: {
-    selected: "border-blue-500 bg-blue-50",
-    default: "border-gray-200 bg-white hover:border-gray-300",
-    badge: "text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full font-medium",
+    selected: "border-primary/30 bg-primary/10 dark:bg-primary/6 dark:border-primary/25",
+    default:
+      "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
   },
 };
 
@@ -59,25 +58,35 @@ export default function ModelCardList({
           <button
             key={model.value}
             onClick={() => onModelSelect(model.value)}
-            className={`w-full p-3 rounded-lg border-2 text-left transition-all ${
+            className={`w-full p-4 rounded-xl border text-left transition-all duration-200 group ${
               isSelected ? styles.selected : styles.default
             }`}
           >
             <div className="flex items-center justify-between">
-              <div>
-                <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                    isSelected ? "bg-primary/15" : "bg-muted dark:bg-surface-1"
+                  }`}
+                >
                   {model.icon ? (
                     <img src={model.icon} alt="" className="w-4 h-4" aria-hidden="true" />
                   ) : (
-                    <Globe className="w-4 h-4 text-gray-400" aria-hidden="true" />
+                    <Globe className="w-4 h-4 text-muted-foreground" aria-hidden="true" />
                   )}
-                  <span className="font-medium text-gray-900">{model.label}</span>
                 </div>
-                {model.description && (
-                  <div className="text-xs text-gray-600 mt-1">{model.description}</div>
-                )}
+                <div>
+                  <span className="font-medium text-foreground">{model.label}</span>
+                  {model.description && (
+                    <div className="text-xs text-muted-foreground mt-0.5">{model.description}</div>
+                  )}
+                </div>
               </div>
-              {isSelected && <span className={styles.badge}>✓ Selected</span>}
+              {isSelected && (
+                <div className="w-5 h-5 rounded-full bg-primary flex items-center justify-center">
+                  <Check className="w-3 h-3 text-primary-foreground" />
+                </div>
+              )}
             </div>
           </button>
         );

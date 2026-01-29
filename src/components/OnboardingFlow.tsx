@@ -3,6 +3,7 @@ import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
+import { InfoBox } from "./ui/InfoBox";
 import {
   ChevronRight,
   ChevronLeft,
@@ -290,24 +291,24 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 0: // Welcome
         return (
           <div className="text-center space-y-6">
-            <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 mx-auto bg-primary/10 rounded-full flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-primary" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">Welcome to OpenWhispr</h2>
-              <p className="text-stone-600">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to OpenWhispr</h2>
+              <p className="text-muted-foreground">
                 Let's set up your voice dictation in just a few simple steps.
               </p>
             </div>
-            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200/60">
-              <p className="text-sm text-blue-800">
+            <InfoBox>
+              <p className="text-sm text-foreground">
                 🎤 Turn your voice into text instantly
                 <br />
                 ⚡ Works anywhere on your computer
                 <br />
                 🔒 Your privacy is protected
               </p>
-            </div>
+            </InfoBox>
           </div>
         );
 
@@ -315,8 +316,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Setup Your Transcription</h2>
-              <p className="text-gray-600">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Setup Your Transcription</h2>
+              <p className="text-muted-foreground">
                 Choose between local (private) or cloud (faster) processing
               </p>
             </div>
@@ -359,9 +360,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             />
 
             {/* Language Selection - shown for both modes */}
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900 mb-3">🌍 Preferred Language</h4>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+            <div className="space-y-4 p-4 bg-muted border border-border rounded-xl">
+              <h4 className="font-medium text-foreground mb-3">🌍 Preferred Language</h4>
+              <label className="block text-sm font-medium text-foreground mb-2">
                 Which language do you primarily speak?
               </label>
               <LanguageSelector
@@ -371,7 +372,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 }}
                 className="w-full"
               />
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-muted-foreground mt-1">
                 {useLocalWhisper
                   ? "Helps Whisper better understand your speech"
                   : "Improves transcription speed and accuracy. AI text enhancement is enabled by default."}
@@ -387,8 +388,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Grant Permissions</h2>
-              <p className="text-gray-600">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Grant Permissions</h2>
+              <p className="text-muted-foreground">
                 {isMacOS
                   ? "OpenWhispr needs a couple of permissions to work properly"
                   : "OpenWhispr needs microphone access to record your voice"}
@@ -437,15 +438,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 )}
             </div>
 
-            <div className="bg-amber-50 p-4 rounded-lg">
-              <h4 className="font-medium text-amber-900 mb-2">🔒 Privacy Note</h4>
-              <p className="text-sm text-amber-800">
+            <InfoBox variant="warning">
+              <h4 className="font-medium text-warning dark:text-warning mb-2">🔒 Privacy Note</h4>
+              <p className="text-sm text-warning/90 dark:text-warning">
                 OpenWhispr only uses these permissions for dictation.
                 {useLocalWhisper
                   ? " With local processing, your voice never leaves your device."
                   : " Your voice is sent to OpenAI's servers for transcription."}
               </p>
-            </div>
+            </InfoBox>
           </div>
         );
 
@@ -453,8 +454,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Set Your Hotkey & Test</h2>
-              <p className="text-gray-600">Choose your hotkey and activation style</p>
+              <h2 className="text-2xl font-bold text-foreground mb-2">Set Your Hotkey & Test</h2>
+              <p className="text-muted-foreground">Choose your hotkey and activation style</p>
             </div>
 
             <HotkeyInput
@@ -470,20 +471,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             {!isUsingGnomeHotkeys && (
               <div className="pt-2">
-                <label className="block text-sm font-medium text-gray-700 mb-3">
+                <label className="block text-sm font-medium text-foreground mb-3">
                   Activation Mode
                 </label>
                 <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
               </div>
             )}
 
-            <div className="bg-blue-50/50 p-5 rounded-lg border border-blue-200/60">
-              <h3 className="font-semibold text-blue-900 mb-3">Try It Now</h3>
-              <p className="text-sm text-blue-800 mb-3">
+            <InfoBox className="p-5">
+              <h3 className="font-semibold text-foreground mb-3">Try It Now</h3>
+              <p className="text-sm text-muted-foreground mb-3">
                 {activationMode === "tap" || isUsingGnomeHotkeys ? (
                   <>
                     Click in the text area, press{" "}
-                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                    <kbd className="bg-muted px-2 py-1 rounded text-xs font-mono border border-border">
                       {readableHotkey}
                     </kbd>{" "}
                     to start recording, speak, then press it again to stop.
@@ -491,7 +492,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 ) : (
                   <>
                     Click in the text area, hold{" "}
-                    <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
+                    <kbd className="bg-muted px-2 py-1 rounded text-xs font-mono border border-border">
                       {readableHotkey}
                     </kbd>{" "}
                     while speaking, then release to process.
@@ -500,12 +501,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               </p>
 
               <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
+                <label className="block text-sm font-medium text-foreground mb-2">
                   Test your dictation:
                 </label>
                 <Textarea rows={3} placeholder="Click here, then use your hotkey to dictate..." />
               </div>
-            </div>
+            </InfoBox>
           </div>
         );
 
@@ -513,32 +514,34 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return (
           <div className="space-y-6">
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">Name Your Agent</h2>
-              <p className="text-stone-600">
+              <h2 className="text-2xl font-bold text-foreground mb-2">Name Your Agent</h2>
+              <p className="text-muted-foreground">
                 Give your agent a name so you can address it specifically when giving instructions.
               </p>
             </div>
 
-            <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">How this helps:</h4>
-              <ul className="text-sm text-purple-800 space-y-1">
+            <InfoBox className="space-y-4 rounded-xl">
+              <h4 className="font-medium text-foreground mb-3">How this helps:</h4>
+              <ul className="text-sm text-muted-foreground space-y-1">
                 <li>
                   • Say "Hey {agentName || "Agent"}, write a formal email" for specific instructions
                 </li>
                 <li>• Use the name to distinguish between dictation and commands</li>
                 <li>• Makes interactions feel more natural and personal</li>
               </ul>
-            </div>
+            </InfoBox>
 
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Agent Name</label>
+              <label className="block text-sm font-medium text-foreground mb-2">Agent Name</label>
               <Input
                 placeholder="e.g., Assistant, Jarvis, Alex..."
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
                 className="text-center text-lg font-mono"
               />
-              <p className="text-xs text-gray-500 mt-2">You can change this anytime in settings</p>
+              <p className="text-xs text-muted-foreground mt-2">
+                You can change this anytime in settings
+              </p>
             </div>
           </div>
         );
@@ -602,7 +605,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   return (
     <div
-      className="h-screen flex flex-col bg-gradient-to-br from-stone-50 via-white to-blue-50/30"
+      className="h-screen flex flex-col bg-background"
       style={{
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
@@ -629,21 +632,21 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       <div className="flex-shrink-0 z-10">
         <TitleBar
           showTitle={true}
-          className="bg-white/95 backdrop-blur-xl border-b border-stone-200/60 shadow-sm"
+          className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
         ></TitleBar>
       </div>
 
       {/* Progress Bar */}
-      <div className="flex-shrink-0 bg-white/90 backdrop-blur-xl border-b border-stone-200/60 p-6 md:px-16 z-10">
+      <div className="flex-shrink-0 bg-background backdrop-blur-xl border-b border-border p-6 md:px-16 z-10">
         <div className="max-w-4xl mx-auto">
           <StepProgress steps={steps} currentStep={currentStep} />
         </div>
       </div>
 
       {/* Content - This will grow to fill available space */}
-      <div className="flex-1 px-6 md:pl-16 md:pr-6 py-12 overflow-y-auto">
+      <div className="flex-1 px-6 md:px-16 py-12 overflow-y-auto">
         <div className="max-w-4xl mx-auto">
-          <Card className="bg-white/95 backdrop-blur-xl border border-stone-200/60 shadow-lg rounded-2xl overflow-hidden">
+          <Card className="bg-card backdrop-blur-xl border border-border shadow-lg rounded-2xl overflow-hidden">
             <CardContent className="p-12 md:p-16">
               <div className="space-y-8">{renderStep()}</div>
             </CardContent>
@@ -652,7 +655,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </div>
 
       {/* Footer - This will stick to the bottom */}
-      <div className="flex-shrink-0 bg-white/95 backdrop-blur-xl border-t border-stone-200/60 px-6 md:pl-16 md:pr-6 py-8 z-10 shadow-sm">
+      <div className="flex-shrink-0 bg-background backdrop-blur-xl border-t border-border px-6 md:px-16 py-8 z-10 shadow-sm">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
           <Button
             onClick={prevStep}
@@ -669,7 +672,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <Button
                 onClick={finishOnboarding}
                 disabled={!canProceed()}
-                className="bg-green-600 hover:bg-green-700 px-8 py-3 h-12 text-sm font-medium"
+                className="bg-success hover:bg-success/90 dark:bg-success dark:hover:bg-success/80 px-8 py-3 h-12 text-sm font-medium"
               >
                 <Check className="w-4 h-4 mr-2" />
                 Complete Setup

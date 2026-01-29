@@ -88,7 +88,7 @@ export default function WindowControls() {
         variant="ghost"
         size="icon"
         onClick={handleClose}
-        className="h-8 w-8 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+        className="h-8 w-8 hover:text-destructive hover:bg-destructive/10"
         title="Close"
       >
         <X size={14} />

@@ -47,6 +47,10 @@ export interface ApiKeySettings {
   customReasoningApiKey: string;
 }
 
+export interface ThemeSettings {
+  theme: "light" | "dark" | "auto";
+}
+
 export function useSettings() {
   const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
     serialize: String,
@@ -217,6 +221,15 @@ export function useSettings() {
   const [groqApiKey, setGroqApiKeyLocal] = useLocalStorage("groqApiKey", "", {
     serialize: String,
     deserialize: String,
+  });
+
+  // Theme setting
+  const [theme, setTheme] = useLocalStorage<"light" | "dark" | "auto">("theme", "auto", {
+    serialize: String,
+    deserialize: (value) => {
+      if (["light", "dark", "auto"].includes(value)) return value as "light" | "dark" | "auto";
+      return "auto";
+    },
   });
 
   // Custom endpoint API keys - synced to .env like other keys
@@ -508,6 +521,7 @@ export function useSettings() {
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    theme,
     setUseLocalWhisper,
     setWhisperModel,
     setLocalTranscriptionProvider,
@@ -537,6 +551,7 @@ export function useSettings() {
     customReasoningApiKey,
     setCustomReasoningApiKey,
     setDictationKey,
+    setTheme,
     activationMode,
     setActivationMode,
     preferBuiltInMic,

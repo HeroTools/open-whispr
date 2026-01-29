@@ -2,6 +2,7 @@ import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cn } from "../lib/utils";
+import { Button } from "./button";
 
 const Dialog = DialogPrimitive.Root;
 
@@ -18,7 +19,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/60 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      "fixed inset-0 z-50 bg-black/60 backdrop-blur-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
       className
     )}
     {...props}
@@ -35,14 +36,17 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border border-[#DDD4C7] bg-white p-6 shadow-[0_8px_32px_rgba(43,31,20,0.12),0_2px_0_rgba(255,255,255,0.8)_inset] duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] rounded-xl",
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border p-6 shadow-2xl duration-200 rounded-2xl",
+        "bg-card border-border/60",
+        "dark:bg-surface-2 dark:border-border dark:shadow-modal",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className
       )}
       {...props}
     >
       {children}
-      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-lg opacity-70 ring-offset-background transition-all hover:opacity-100 hover:bg-[#F5F5F5] focus:outline-none focus:ring-2 focus:ring-[#4f46e5] focus:ring-offset-2 disabled:pointer-events-none p-1">
-        <X className="h-4 w-4 text-[#737373]" />
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-full opacity-50 ring-offset-background transition-all hover:opacity-100 hover:bg-muted/50 dark:hover:bg-surface-raised focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none p-1.5">
+        <X className="h-4 w-4 text-muted-foreground" />
         <span className="sr-only">Close</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
@@ -70,7 +74,7 @@ const DialogTitle = React.forwardRef<
   <DialogPrimitive.Title
     ref={ref}
     className={cn(
-      "text-lg font-semibold leading-none tracking-tight text-[#2B1F14] brand-heading",
+      "text-lg font-semibold leading-none tracking-tight text-foreground brand-heading",
       className
     )}
     {...props}
@@ -84,7 +88,7 @@ const DialogDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DialogPrimitive.Description
     ref={ref}
-    className={cn("text-sm text-[#737373] brand-body", className)}
+    className={cn("text-sm text-muted-foreground brand-body", className)}
     {...props}
   />
 ));
@@ -132,22 +136,15 @@ const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <DialogFooter>
-          <button
-            onClick={handleCancel}
-            className="inline-flex items-center justify-center rounded-lg text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f46e5] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-[#DDD4C7] bg-white text-[#2B1F14] hover:bg-[#F5F5F5] hover:text-[#4B2E2B] h-10 px-4 py-2 brand-body"
-          >
+          <Button variant="outline" onClick={handleCancel}>
             {cancelText}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant={variant === "destructive" ? "destructive" : "default"}
             onClick={handleConfirm}
-            className={`inline-flex items-center justify-center rounded-lg text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f46e5] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-10 px-4 py-2 brand-body ${
-              variant === "destructive"
-                ? "bg-[#dc2626] text-white hover:bg-[#b91c1c] shadow-[0_2px_8px_rgba(220,38,38,0.3)]"
-                : "bg-[#4f46e5] text-white hover:bg-[#4338ca] shadow-[0_2px_8px_rgba(79,70,229,0.3)]"
-            }`}
           >
             {confirmText}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -185,12 +182,9 @@ const AlertDialog: React.FC<AlertDialogProps> = ({
           {description && <DialogDescription>{description}</DialogDescription>}
         </DialogHeader>
         <DialogFooter>
-          <button
-            onClick={handleOk}
-            className="inline-flex items-center justify-center rounded-lg text-sm font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#4f46e5] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-[#4f46e5] text-white hover:bg-[#4338ca] shadow-[0_2px_8px_rgba(79,70,229,0.3)] h-10 px-4 py-2 brand-body"
-          >
+          <Button variant="default" onClick={handleOk}>
             {okText}
-          </button>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
