@@ -1,9 +1,9 @@
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 const debugLogger = require("./debugLogger");
 const { getModelsDirForService } = require("./modelDirUtils");
 const { getFFmpegPath, isWavFormat, convertToWav, wavToFloat32Samples } = require("./ffmpegUtils");
+const { getSafeTempDir } = require("./safeTempDir");
 const ParakeetWsServer = require("./parakeetWsServer");
 
 class ParakeetServerManager {
@@ -54,7 +54,7 @@ class ParakeetServerManager {
       );
     }
 
-    const tempDir = os.tmpdir();
+    const tempDir = getSafeTempDir();
     const timestamp = Date.now();
     const tempInputPath = path.join(tempDir, `parakeet-input-${timestamp}.webm`);
     const tempWavPath = path.join(tempDir, `parakeet-${timestamp}.wav`);

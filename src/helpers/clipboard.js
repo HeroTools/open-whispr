@@ -586,8 +586,8 @@ class ClipboardManager {
               : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
           ]
         : []),
-      ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
       ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
+      ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
     ];
 
     // Filter to only available tools (this.commandExists is already cached)
@@ -777,32 +777,22 @@ class ClipboardManager {
           errorMsg =
             "Clipboard copied, but paste simulation failed via XWayland. Please paste manually with Ctrl+V.";
         }
-      } else if (!wtypeExists && !ydotoolExists) {
+      } else if (!wtypeExists && !xdotoolExists) {
         if (!xwaylandAvailable) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires wtype or ydotool. Please install one or paste manually with Ctrl+V.";
-        } else if (!xdotoolExists) {
-          errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires wtype/ydotool (Wayland apps) or xdotool (XWayland apps). Please install one or paste manually with Ctrl+V.";
-        } else if (!xdotoolWindowClass) {
-          errorMsg =
-            "Clipboard copied, but the active app isn't running under XWayland. Please install wtype or ydotool for Wayland apps or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on Wayland requires wtype or xdotool. Please install one or paste manually with Ctrl+V.";
         } else {
           errorMsg =
-            "Clipboard copied, but paste simulation failed via XWayland. Please paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on Wayland requires xdotool (recommended for Electron/XWayland apps) or wtype. Please install one or paste manually with Ctrl+V.";
         }
       } else {
-        const xwaylandNote =
-          xwaylandAvailable && xdotoolExists
-            ? " If this is an XWayland app, xdotool can also be used."
+        const xdotoolNote =
+          xwaylandAvailable && !xdotoolExists
+            ? " Consider installing xdotool, which works well with Electron apps running under XWayland."
             : "";
-        const installNote = !ydotoolExists
-          ? " Consider installing ydotool as an alternative (requires ydotoold daemon)."
-          : " If using ydotool, ensure the ydotoold daemon is running.";
         errorMsg =
           "Clipboard copied, but paste simulation failed on Wayland. Your compositor may not support the virtual keyboard protocol." +
-          installNote +
-          xwaylandNote +
+          xdotoolNote +
           " Alternatively, paste manually with Ctrl+V.";
       }
     } else {
@@ -1031,11 +1021,11 @@ Would you like to open System Settings now?`;
     if (canUseWtype && this.commandExists("wtype")) {
       tools.push("wtype");
     }
-    if (canUseYdotool && this.commandExists("ydotool")) {
-      tools.push("ydotool");
-    }
     if (canUseXdotool && this.commandExists("xdotool")) {
       tools.push("xdotool");
+    }
+    if (canUseYdotool && this.commandExists("ydotool")) {
+      tools.push("ydotool");
     }
 
     const available = tools.length > 0;
@@ -1046,7 +1036,7 @@ Would you like to open System Settings now?`;
       } else if (isGnome) {
         recommendedInstall = xwaylandAvailable ? "xdotool" : undefined;
       } else {
-        recommendedInstall = "wtype or ydotool";
+        recommendedInstall = xwaylandAvailable ? "xdotool" : "wtype or xdotool";
       }
     }
 

@@ -182,8 +182,8 @@
   },
   "publish": {
     "provider": "github",
-    "owner": "HeroTools",
-    "repo": "open-whispr",
+    "owner": "OpenWhispr",
+    "repo": "openwhispr",
     "private": false,
     "releaseType": "draft"
   }

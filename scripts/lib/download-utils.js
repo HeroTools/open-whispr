@@ -229,10 +229,7 @@ function downloadFile(url, dest, retryCount = 0) {
 
 function extractZip(zipPath, destDir) {
   if (process.platform === "win32") {
-    execSync(
-      `powershell -command "Expand-Archive -Path '${zipPath}' -DestinationPath '${destDir}' -Force"`,
-      { stdio: "inherit" }
-    );
+    execSync(`tar -xf "${zipPath}" -C "${destDir}"`, { stdio: "inherit" });
   } else {
     execSync(`unzip -o "${zipPath}" -d "${destDir}"`, { stdio: "inherit" });
   }

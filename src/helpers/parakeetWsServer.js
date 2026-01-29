@@ -1,14 +1,15 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
-const os = require("os");
 const path = require("path");
 const WebSocket = require("ws");
 const debugLogger = require("./debugLogger");
+const os = require("os");
 const {
   findAvailablePort,
   resolveBinaryPath,
   gracefulStopProcess,
 } = require("../utils/serverUtils");
+const { getSafeTempDir } = require("./safeTempDir");
 
 const PORT_RANGE_START = 6006;
 const PORT_RANGE_END = 6029;
@@ -83,7 +84,7 @@ class ParakeetWsServer {
     this.process = spawn(wsBinary, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
-      cwd: os.tmpdir(),
+      cwd: getSafeTempDir(),
     });
 
     let stderrBuffer = "";
@@ -127,6 +128,22 @@ class ParakeetWsServer {
       port: this.port,
       model: modelName,
     });
+
+    await this._warmUp();
+  }
+
+  async _warmUp() {
+    try {
+      const sampleRate = 16000;
+      const numSamples = sampleRate;
+      const silentSamples = Buffer.alloc(numSamples * 4); 
+      await this.transcribe(silentSamples, sampleRate);
+      debugLogger.debug("parakeet-ws warm-up inference complete");
+    } catch (err) {
+      debugLogger.warn("parakeet-ws warm-up failed (non-fatal)", {
+        error: err.message,
+      });
+    }
   }
 
   async _waitForReady(readySignal, getProcessInfo) {
