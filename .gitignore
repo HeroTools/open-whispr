@@ -267,6 +267,9 @@ $RECYCLE.BIN/
 
 # Claude Code
 .claude/settings.local.json
+.claude/skills/
+.agent/
+.agents/
 
 # AI agent skills (keep local)
 .agents/

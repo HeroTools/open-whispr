@@ -298,6 +298,15 @@ class ParakeetManager {
         progressCallback({ type: "complete", model: modelName, percentage: 100 });
       }
 
+      if (this.serverManager.isAvailable()) {
+        this.serverManager.startServer(modelName).catch((err) => {
+          debugLogger.warn("Post-download server pre-warm failed (non-fatal)", {
+            error: err.message,
+            model: modelName,
+          });
+        });
+      }
+
       return { model: modelName, downloaded: true, path: modelPath, success: true };
     } catch (error) {
       await fsPromises.unlink(archivePath).catch(() => {});

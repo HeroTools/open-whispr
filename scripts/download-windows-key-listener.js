@@ -14,7 +14,7 @@ const fs = require("fs");
 const path = require("path");
 const { downloadFile, extractZip, fetchLatestRelease, setExecutable } = require("./lib/download-utils");
 
-const REPO = "HeroTools/open-whispr";
+const REPO = "OpenWhispr/openwhispr";
 const TAG_PREFIX = "windows-key-listener-v";
 const ZIP_NAME = "windows-key-listener-win32-x64.zip";
 const BINARY_NAME = "windows-key-listener.exe";

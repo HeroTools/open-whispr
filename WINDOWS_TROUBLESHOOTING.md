@@ -85,7 +85,7 @@ Then reinstall.
 
 ## Getting Help
 
-Report issues at https://github.com/HeroTools/open-whispr/issues with:
+Report issues at https://github.com/OpenWhispr/openwhispr/issues with:
 - Windows version (`winver`)
 - OpenWhispr version
 - Debug log contents

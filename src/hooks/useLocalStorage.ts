@@ -14,7 +14,12 @@ export function useLocalStorage<T>(
   const [state, setState] = useState<T>(() => {
     try {
       const item = localStorage.getItem(key);
-      if (item === null) return defaultValue;
+      if (item === null) {
+        // Persist the default so direct localStorage.getItem() reads
+        // (e.g. in audioManager, PromptStudio) see the intended value.
+        localStorage.setItem(key, serialize(defaultValue));
+        return defaultValue;
+      }
       return deserialize(item);
     } catch {
       return defaultValue;
@@ -23,13 +28,16 @@ export function useLocalStorage<T>(
 
   const setValue = useCallback(
     (value: T | ((prevState: T) => T)) => {
-      try {
-        const valueToStore = value instanceof Function ? value(state) : value;
-        setState(valueToStore);
-        localStorage.setItem(key, serialize(valueToStore));
-      } catch (error) {
-        console.error(`Error setting localStorage key "${key}":`, error);
-      }
+      setState((currentState) => {
+        try {
+          const valueToStore = value instanceof Function ? value(currentState) : value;
+          localStorage.setItem(key, serialize(valueToStore));
+          return valueToStore;
+        } catch (error) {
+          console.error(`Error setting localStorage key "${key}":`, error);
+          return currentState;
+        }
+      });
     },
     [key, serialize]
   );
