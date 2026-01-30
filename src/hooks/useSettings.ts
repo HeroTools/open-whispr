@@ -20,6 +20,7 @@ export interface TranscriptionSettings {
   cloudTranscriptionMode: string;
   cloudReasoningModel: string;
   customDictionary: string[];
+  assemblyAiStreaming: boolean;
 }
 
 export interface ReasoningSettings {
@@ -171,6 +172,16 @@ export function useSettings() {
           return [];
         }
       },
+    }
+  );
+
+  // Assembly AI real-time streaming (enabled by default for signed-in users)
+  const [assemblyAiStreaming, setAssemblyAiStreaming] = useLocalStorage(
+    "assemblyAiStreaming",
+    true,
+    {
+      serialize: String,
+      deserialize: (value) => value !== "false", // Default to true unless explicitly disabled
     }
   );
 
@@ -503,6 +514,8 @@ export function useSettings() {
     cloudTranscriptionMode,
     cloudReasoningModel,
     customDictionary,
+    assemblyAiStreaming,
+    setAssemblyAiStreaming,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,

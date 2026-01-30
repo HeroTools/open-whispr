@@ -2,10 +2,12 @@ const { ipcMain, app, shell, BrowserWindow } = require("electron");
 const path = require("path");
 const http = require("http");
 const https = require("https");
+const crypto = require("crypto");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const { getSystemPrompt } = require("./prompts");
 const GnomeShortcutManager = require("./gnomeShortcut");
+const AssemblyAiStreaming = require("./assemblyAiStreaming");
 
 class IPCHandlers {
   constructor(managers) {
@@ -17,6 +19,8 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.sessionId = crypto.randomUUID();
+    this.assemblyAiStreaming = null;
     this.setupHandlers();
   }
 
@@ -950,6 +954,25 @@ class IPCHandlers {
           );
         }
 
+        // Add client metadata for logging
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="clientType"\r\n\r\n` +
+            `desktop\r\n`
+        );
+
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="appVersion"\r\n\r\n` +
+            `${app.getVersion()}\r\n`
+        );
+
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="sessionId"\r\n\r\n` +
+            `${this.sessionId}\r\n`
+        );
+
         parts.push(`--${boundary}--\r\n`);
 
         const bodyParts = parts.map((p) => (typeof p === "string" ? Buffer.from(p) : p));
@@ -1212,6 +1235,185 @@ class IPCHandlers {
 
     ipcMain.handle("get-update-info", async () => {
       return this.updateManager.getUpdateInfo();
+    });
+
+    // --- Assembly AI Streaming handlers ---
+
+    // Helper to fetch streaming token
+    const fetchStreamingToken = async (event) => {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) {
+        throw new Error("OpenWhispr API URL not configured");
+      }
+
+      const cookieHeader = await getSessionCookies(event);
+      if (!cookieHeader) {
+        throw new Error("No session cookies available");
+      }
+
+      const tokenResponse = await fetch(`${apiUrl}/api/streaming-token`, {
+        method: "POST",
+        headers: {
+          Cookie: cookieHeader,
+        },
+      });
+
+      if (!tokenResponse.ok) {
+        if (tokenResponse.status === 401) {
+          const err = new Error("Session expired");
+          err.code = "AUTH_EXPIRED";
+          throw err;
+        }
+        const errorData = await tokenResponse.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to get streaming token: ${tokenResponse.status}`
+        );
+      }
+
+      const { token } = await tokenResponse.json();
+      if (!token) {
+        throw new Error("No token received from API");
+      }
+
+      return token;
+    };
+
+    // Pre-warm the WebSocket connection for instant start
+    ipcMain.handle("assemblyai-streaming-warmup", async (event, options = {}) => {
+      try {
+        // Create persistent instance if needed
+        if (!this.assemblyAiStreaming) {
+          this.assemblyAiStreaming = new AssemblyAiStreaming();
+        }
+
+        // Check if already warmed up
+        if (this.assemblyAiStreaming.hasWarmConnection()) {
+          debugLogger.debug("AssemblyAI connection already warm", {}, "streaming");
+          return { success: true, alreadyWarm: true };
+        }
+
+        // Check if we have a valid cached token
+        let token = this.assemblyAiStreaming.getCachedToken();
+        if (!token) {
+          debugLogger.debug("Fetching new streaming token for warmup", {}, "streaming");
+          token = await fetchStreamingToken(event);
+        }
+
+        await this.assemblyAiStreaming.warmup({ ...options, token });
+        debugLogger.debug("AssemblyAI connection warmed up", {}, "streaming");
+
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("AssemblyAI warmup error", { error: error.message });
+        if (error.code === "AUTH_EXPIRED") {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("assemblyai-streaming-start", async (event, options = {}) => {
+      try {
+        const win = BrowserWindow.fromWebContents(event.sender);
+
+        // Reuse existing instance if available (may have warm connection)
+        if (!this.assemblyAiStreaming) {
+          this.assemblyAiStreaming = new AssemblyAiStreaming();
+        }
+
+        // Clean up any active connection (but preserve warm connection)
+        if (this.assemblyAiStreaming.isConnected) {
+          await this.assemblyAiStreaming.disconnect(false);
+        }
+
+        // Check if we have a valid cached token or need a new one
+        let token = this.assemblyAiStreaming.getCachedToken();
+        if (!token) {
+          debugLogger.debug("Fetching streaming token from API", {}, "streaming");
+          token = await fetchStreamingToken(event);
+          this.assemblyAiStreaming.cacheToken(token);
+        } else {
+          debugLogger.debug("Using cached streaming token", {}, "streaming");
+        }
+
+        // Set up callbacks to forward events to renderer
+        this.assemblyAiStreaming.onPartialTranscript = (text) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("assemblyai-partial-transcript", text);
+          }
+        };
+
+        this.assemblyAiStreaming.onFinalTranscript = (text) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("assemblyai-final-transcript", text);
+          }
+        };
+
+        this.assemblyAiStreaming.onError = (error) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("assemblyai-error", error.message);
+          }
+        };
+
+        this.assemblyAiStreaming.onSessionEnd = (data) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("assemblyai-session-end", data);
+          }
+        };
+
+        await this.assemblyAiStreaming.connect({ ...options, token });
+        debugLogger.debug("AssemblyAI streaming started", {}, "streaming");
+
+        return {
+          success: true,
+          usedWarmConnection: this.assemblyAiStreaming.hasWarmConnection() === false,
+        };
+      } catch (error) {
+        debugLogger.error("AssemblyAI streaming start error", { error: error.message });
+        if (error.code === "AUTH_EXPIRED") {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("assemblyai-streaming-send", async (event, audioBuffer) => {
+      try {
+        if (!this.assemblyAiStreaming) {
+          return { success: false, error: "Streaming not started" };
+        }
+
+        const buffer = Buffer.from(audioBuffer);
+        const sent = this.assemblyAiStreaming.sendAudio(buffer);
+
+        return { success: sent };
+      } catch (error) {
+        debugLogger.error("AssemblyAI streaming send error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("assemblyai-streaming-stop", async () => {
+      try {
+        let result = { text: "" };
+        if (this.assemblyAiStreaming) {
+          // disconnect() now returns the final text from Termination event
+          result = await this.assemblyAiStreaming.disconnect(true);
+          this.assemblyAiStreaming = null;
+        }
+
+        return { success: true, text: result?.text || "" };
+      } catch (error) {
+        debugLogger.error("AssemblyAI streaming stop error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("assemblyai-streaming-status", async () => {
+      if (!this.assemblyAiStreaming) {
+        return { isConnected: false, sessionId: null };
+      }
+      return this.assemblyAiStreaming.getStatus();
     });
   }
 
