@@ -17,31 +17,65 @@ const LLAMA_CPP_REPO = "ggerganov/llama.cpp";
 const VERSION_OVERRIDE = process.env.LLAMA_CPP_VERSION || null;
 
 // Asset name patterns to match in the release (version-independent)
+// Windows and Linux support multiple variants (CUDA/Vulkan for GPU, CPU for fallback)
 const BINARIES = {
-  "darwin-arm64": {
-    assetPattern: /^llama-.*-bin-macos-arm64\.tar\.gz$/,
-    binaryPath: "build/bin/llama-server",
-    outputName: "llama-server-darwin-arm64",
-    libPattern: "*.dylib",
-  },
-  "darwin-x64": {
-    assetPattern: /^llama-.*-bin-macos-x64\.tar\.gz$/,
-    binaryPath: "build/bin/llama-server",
-    outputName: "llama-server-darwin-x64",
-    libPattern: "*.dylib",
-  },
-  "win32-x64": {
-    assetPattern: /^llama-.*-bin-win-cpu-x64\.zip$/,
-    binaryPath: "build/bin/llama-server.exe",
-    outputName: "llama-server-win32-x64.exe",
-    libPattern: "*.dll",
-  },
-  "linux-x64": {
-    assetPattern: /^llama-.*-bin-ubuntu-x64\.tar\.gz$/,
-    binaryPath: "build/bin/llama-server",
-    outputName: "llama-server-linux-x64",
-    libPattern: "*.so*",
-  },
+  "darwin-arm64": [
+    {
+      variant: "default",
+      assetPattern: /^llama-.*-bin-macos-arm64\.tar\.gz$/,
+      binaryPath: "build/bin/llama-server",
+      outputName: "llama-server-darwin-arm64",
+      libPattern: "*.dylib",
+    },
+  ],
+  "darwin-x64": [
+    {
+      variant: "default",
+      assetPattern: /^llama-.*-bin-macos-x64\.tar\.gz$/,
+      binaryPath: "build/bin/llama-server",
+      outputName: "llama-server-darwin-x64",
+      libPattern: "*.dylib",
+    },
+  ],
+  "win32-x64": [
+    {
+      variant: "cuda-12.4",
+      assetPattern: /^llama-.*-bin-win-cuda-12\.4-x64\.zip$/,
+      binaryPath: "build/bin/llama-server.exe",
+      outputName: "llama-server-win32-x64-cuda.exe",
+      libPattern: "*.dll",
+    },
+    {
+      variant: "cuda-13.1",
+      assetPattern: /^llama-.*-bin-win-cuda-13\.1-x64\.zip$/,
+      binaryPath: "build/bin/llama-server.exe",
+      outputName: "llama-server-win32-x64-cuda13.exe",
+      libPattern: "*.dll",
+    },
+    {
+      variant: "cpu",
+      assetPattern: /^llama-.*-bin-win-cpu-x64\.zip$/,
+      binaryPath: "build/bin/llama-server.exe",
+      outputName: "llama-server-win32-x64-cpu.exe",
+      libPattern: "*.dll",
+    },
+  ],
+  "linux-x64": [
+    {
+      variant: "vulkan",
+      assetPattern: /^llama-.*-bin-ubuntu-vulkan-x64\.tar\.gz$/,
+      binaryPath: "build/bin/llama-server",
+      outputName: "llama-server-linux-x64-vulkan",
+      libPattern: "*.so*",
+    },
+    {
+      variant: "cpu",
+      assetPattern: /^llama-.*-bin-ubuntu-x64\.tar\.gz$/,
+      binaryPath: "build/bin/llama-server",
+      outputName: "llama-server-linux-x64-cpu",
+      libPattern: "*.so*",
+    },
+  ],
 };
 
 const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
@@ -198,11 +232,19 @@ async function main() {
     }
 
     console.log(`Downloading for target platform (${args.platformArch}):`);
-    const ok = await downloadBinary(args.platformArch, BINARIES[args.platformArch], release, args.isForce);
-    if (!ok) {
-      console.error(`Failed to download binaries for ${args.platformArch}`);
-      process.exitCode = 1;
-      return;
+    const configs = Array.isArray(BINARIES[args.platformArch])
+      ? BINARIES[args.platformArch]
+      : [BINARIES[args.platformArch]];
+
+    for (const config of configs) {
+      const variantLabel = config.variant === "default" ? "" : `-${config.variant}`;
+      const ok = await downloadBinary(`${args.platformArch}${variantLabel}`, config, release, args.isForce);
+      if (!ok && config.variant !== "cuda-12.4" && config.variant !== "cuda-13.1" && config.variant !== "vulkan") {
+        // Only fail if CPU binary fails, GPU variants are optional
+        console.error(`Failed to download binaries for ${args.platformArch}`);
+        process.exitCode = 1;
+        return;
+      }
     }
 
     if (args.shouldCleanup) {
@@ -211,7 +253,13 @@ async function main() {
   } else {
     console.log("Downloading binaries for all platforms:");
     for (const platformArch of Object.keys(BINARIES)) {
-      await downloadBinary(platformArch, BINARIES[platformArch], release, args.isForce);
+      const configs = Array.isArray(BINARIES[platformArch])
+        ? BINARIES[platformArch]
+        : [BINARIES[platformArch]];
+      for (const config of configs) {
+        const variantLabel = config.variant === "default" ? "" : `-${config.variant}`;
+        await downloadBinary(`${platformArch}${variantLabel}`, config, release, args.isForce);
+      }
     }
   }
 

@@ -16,26 +16,50 @@ const WHISPER_CPP_REPO = "OpenWhispr/whisper.cpp";
 const VERSION_OVERRIDE = process.env.WHISPER_CPP_VERSION || null;
 
 const BINARIES = {
-  "darwin-arm64": {
-    zipName: "whisper-server-darwin-arm64.zip",
-    binaryName: "whisper-server-darwin-arm64",
-    outputName: "whisper-server-darwin-arm64",
-  },
-  "darwin-x64": {
-    zipName: "whisper-server-darwin-x64.zip",
-    binaryName: "whisper-server-darwin-x64",
-    outputName: "whisper-server-darwin-x64",
-  },
-  "win32-x64": {
-    zipName: "whisper-server-win32-x64-cpu.zip",
-    binaryName: "whisper-server-win32-x64-cpu.exe",
-    outputName: "whisper-server-win32-x64.exe",
-  },
-  "linux-x64": {
-    zipName: "whisper-server-linux-x64-cpu.zip",
-    binaryName: "whisper-server-linux-x64-cpu",
-    outputName: "whisper-server-linux-x64",
-  },
+  "darwin-arm64": [
+    {
+      variant: "default",
+      zipName: "whisper-server-darwin-arm64.zip",
+      binaryName: "whisper-server-darwin-arm64",
+      outputName: "whisper-server-darwin-arm64",
+    },
+  ],
+  "darwin-x64": [
+    {
+      variant: "default",
+      zipName: "whisper-server-darwin-x64.zip",
+      binaryName: "whisper-server-darwin-x64",
+      outputName: "whisper-server-darwin-x64",
+    },
+  ],
+  "win32-x64": [
+    {
+      variant: "cuda",
+      zipName: "whisper-server-win32-x64-cuda.zip",
+      binaryName: "whisper-server-win32-x64-cuda.exe",
+      outputName: "whisper-server-win32-x64-cuda.exe",
+    },
+    {
+      variant: "cpu",
+      zipName: "whisper-server-win32-x64-cpu.zip",
+      binaryName: "whisper-server-win32-x64-cpu.exe",
+      outputName: "whisper-server-win32-x64-cpu.exe",
+    },
+  ],
+  "linux-x64": [
+    {
+      variant: "cuda",
+      zipName: "whisper-server-linux-x64-cuda.zip",
+      binaryName: "whisper-server-linux-x64-cuda",
+      outputName: "whisper-server-linux-x64-cuda",
+    },
+    {
+      variant: "cpu",
+      zipName: "whisper-server-linux-x64-cpu.zip",
+      binaryName: "whisper-server-linux-x64-cpu",
+      outputName: "whisper-server-linux-x64-cpu",
+    },
+  ],
 };
 
 const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
@@ -137,11 +161,17 @@ async function main() {
     }
 
     console.log(`Downloading for target platform (${args.platformArch}):`);
-    const ok = await downloadBinary(args.platformArch, BINARIES[args.platformArch], release, args.isForce);
-    if (!ok) {
-      console.error(`Failed to download binaries for ${args.platformArch}`);
-      process.exitCode = 1;
-      return;
+    const configs = BINARIES[args.platformArch];
+
+    for (const config of configs) {
+      const variantLabel = config.variant === "default" ? "" : `-${config.variant}`;
+      const ok = await downloadBinary(`${args.platformArch}${variantLabel}`, config, release, args.isForce);
+      if (!ok && config.variant !== "cuda") {
+        // Only fail if CPU binary fails, CUDA is optional
+        console.error(`Failed to download binaries for ${args.platformArch}`);
+        process.exitCode = 1;
+        return;
+      }
     }
 
     if (args.shouldCleanup) {
@@ -150,7 +180,11 @@ async function main() {
   } else {
     console.log("Downloading binaries for all platforms:");
     for (const platformArch of Object.keys(BINARIES)) {
-      await downloadBinary(platformArch, BINARIES[platformArch], release, args.isForce);
+      const configs = BINARIES[platformArch];
+      for (const config of configs) {
+        const variantLabel = config.variant === "default" ? "" : `-${config.variant}`;
+        await downloadBinary(`${platformArch}${variantLabel}`, config, release, args.isForce);
+      }
     }
   }
 

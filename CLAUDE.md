@@ -51,7 +51,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **clipboard.js**: Cross-platform clipboard operations
   - macOS: AppleScript-based paste with accessibility permission check
   - Windows: PowerShell SendKeys with nircmd.exe fallback
-  - Linux: Multi-tool support (wtype, ydotool, xdotool) for X11/Wayland compatibility
+  - Linux: Multi-tool support (ydotool, wtype, xdotool) for X11/Wayland compatibility (ydotool preferred on Wayland)
 - **database.js**: SQLite operations for transcription history
 - **debugLogger.js**: Debug logging system with file output
 - **devServerManager.js**: Vite dev server integration
@@ -436,9 +436,10 @@ On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's 
 3. **Clipboard Not Working**:
    - macOS: Check accessibility permissions (required for AppleScript paste)
    - Linux X11: Install `xdotool` for paste simulation
-   - Linux Wayland: Install `wtype` or `ydotool` (requires `ydotoold` daemon)
+   - Linux Wayland: Install `ydotool` (recommended, requires `ydotoold` daemon) or `wtype`
+     - Priority 1: `ydotool` (works on all Wayland compositors)
+     - Priority 2: `wtype` (requires virtual keyboard protocol support)
      - GNOME Wayland: Use `xdotool` for XWayland apps only
-     - Other Wayland compositors: `wtype` (if compositor supports virtual keyboard) or `ydotool`
    - Windows: PowerShell SendKeys (built-in) or nircmd.exe (bundled)
 
 4. **Build Issues**:
@@ -488,7 +489,9 @@ On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's 
 - Recommend `pavucontrol` for audio device management
 - **Clipboard paste tools** (at least one required for auto-paste):
   - **X11**: `xdotool` (recommended)
-  - **Wayland** (non-GNOME): `wtype` (requires virtual keyboard protocol) or `xdotool` (works via XWayland, recommended for Electron apps)
+  - **Wayland**: `ydotool` (recommended, requires ydotoold daemon) or `wtype` (requires virtual keyboard protocol)
+    - Priority 1: `ydotool` - works on all Wayland compositors
+    - Priority 2: `wtype` - requires compositor support for virtual keyboard protocol
   - **GNOME Wayland**: `xdotool` for XWayland apps only (native Wayland apps require manual paste)
   - Terminal detection: Auto-detects terminal emulators and uses Ctrl+Shift+V
   - Fallback: Text copied to clipboard with manual paste instructions

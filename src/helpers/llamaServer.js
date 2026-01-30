@@ -9,7 +9,7 @@ const { getSafeTempDir } = require("./safeTempDir");
 
 const PORT_RANGE_START = 8200;
 const PORT_RANGE_END = 8220;
-const STARTUP_TIMEOUT_MS = 60000;
+const STARTUP_TIMEOUT_MS = 120000; // 2 minutes for GPU initialization (Vulkan/CUDA)
 const HEALTH_CHECK_INTERVAL_MS = 5000;
 const HEALTH_CHECK_TIMEOUT_MS = 2000;
 const STARTUP_POLL_INTERVAL_MS = 500;
@@ -25,29 +25,149 @@ class LlamaServerManager {
     this.healthCheckInterval = null;
     this.healthCheckFailures = 0;
     this.cachedServerBinaryPath = null;
+    this.gpuPreference = "auto"; // User preference: "auto", "force-cpu", or "force-gpu"
+    this.lastGpuPreference = null;
+    this.gpuDetectionCache = null; // Cache GPU detection result
+    this.gpuDetectionTimestamp = 0;
+    this.GPU_DETECTION_CACHE_TTL = 60000; // Cache for 60 seconds
+    this.lastLoggedBinaryPath = null; // Track last logged binary to avoid spam
+    this.hasLoggedMissingBinary = false; // Track if we already logged missing binary warning
+  }
+
+  setGpuPreference(preference) {
+    if (this.gpuPreference !== preference) {
+      debugLogger.info("GPU preference changed", { from: this.gpuPreference, to: preference });
+      this.gpuPreference = preference;
+      // Clear cached path to force re-detection
+      this.cachedServerBinaryPath = null;
+    }
+  }
+
+  getGpuStatus() {
+    const binaryPath = this.getServerBinaryPath();
+    const gpuDetected = this.detectGPU("auto"); // Check actual GPU without user preference
+    const usingGpu = binaryPath ? (binaryPath.includes("-vulkan") || binaryPath.includes("-cuda")) : false;
+
+    return {
+      preference: this.gpuPreference || "auto",
+      gpuAvailable: gpuDetected !== null,
+      usingGpu,
+      binaryPath: binaryPath || null,
+      binaryType: binaryPath?.includes("-vulkan") ? "Vulkan" : binaryPath?.includes("-cuda") ? "CUDA" : "CPU",
+    };
+  }
+
+  detectGPU(preference = "auto") {
+    // Respect user preference
+    if (preference === "force-cpu") {
+      return null;
+    }
+
+    if (preference === "force-gpu") {
+      return "vulkan"; // or "cuda" depending on platform
+    }
+
+    // Auto-detect: Only check for GPU on Windows and Linux (macOS uses Metal, not needed)
+    if (process.platform !== "win32" && process.platform !== "linux") {
+      return null;
+    }
+
+    // Use cached result if still valid
+    const now = Date.now();
+    if (this.gpuDetectionCache !== null && now - this.gpuDetectionTimestamp < this.GPU_DETECTION_CACHE_TTL) {
+      return this.gpuDetectionCache;
+    }
+
+    try {
+      const { execSync } = require("child_process");
+      // Check if nvidia-smi is available (indicates NVIDIA GPU with drivers)
+      execSync("nvidia-smi", { stdio: "ignore", timeout: 3000 });
+      // Linux uses Vulkan, Windows can use CUDA
+      this.gpuDetectionCache = process.platform === "linux" ? "vulkan" : "cuda";
+      this.gpuDetectionTimestamp = now;
+      debugLogger.info(`NVIDIA GPU detected via nvidia-smi (using ${this.gpuDetectionCache})`);
+      return this.gpuDetectionCache;
+    } catch {
+      this.gpuDetectionCache = null;
+      this.gpuDetectionTimestamp = now;
+      debugLogger.debug("No NVIDIA GPU detected (nvidia-smi not found or failed)");
+      return null;
+    }
   }
 
   getServerBinaryPath() {
+    const gpuPreference = this.gpuPreference || "auto";
+
+    // Clear cache if preference changed
+    if (this.cachedServerBinaryPath && this.lastGpuPreference !== gpuPreference) {
+      this.cachedServerBinaryPath = null;
+    }
+    this.lastGpuPreference = gpuPreference;
+
     if (this.cachedServerBinaryPath) return this.cachedServerBinaryPath;
 
     const platform = process.platform;
     const arch = process.arch;
     const platformArch = `${platform}-${arch}`;
-    const binaryName =
-      platform === "win32" ? `llama-server-${platformArch}.exe` : `llama-server-${platformArch}`;
-    const genericName = platform === "win32" ? "llama-server.exe" : "llama-server";
+
+    // Detect GPU and prefer GPU binary if available
+    const gpuVariant = this.detectGPU(gpuPreference);
 
     const candidates = [];
 
-    // Production: check resourcesPath
+    // Build binary name candidates in priority order
     if (process.resourcesPath) {
+      // Production paths
+      if (gpuVariant === "vulkan") {
+        // Try Vulkan binary first (Linux)
+        const vulkanBinaryName = `llama-server-${platformArch}-vulkan`;
+        candidates.push(path.join(process.resourcesPath, "bin", vulkanBinaryName));
+      } else if (gpuVariant === "cuda") {
+        // Try CUDA binaries first (Windows)
+        const cudaBinaryName = platform === "win32"
+          ? `llama-server-${platformArch}-cuda.exe`
+          : `llama-server-${platformArch}-cuda`;
+        candidates.push(path.join(process.resourcesPath, "bin", cudaBinaryName));
+      }
+
+      // Fallback to CPU binary
+      const cpuBinaryName = platform === "win32"
+        ? `llama-server-${platformArch}-cpu.exe`
+        : `llama-server-${platformArch}-cpu`;
+      candidates.push(path.join(process.resourcesPath, "bin", cpuBinaryName));
+
+      // Legacy names (for backwards compatibility)
+      const binaryName = platform === "win32"
+        ? `llama-server-${platformArch}.exe`
+        : `llama-server-${platformArch}`;
+      const genericName = platform === "win32" ? "llama-server.exe" : "llama-server";
       candidates.push(
         path.join(process.resourcesPath, "bin", binaryName),
         path.join(process.resourcesPath, "bin", genericName)
       );
     }
 
-    // Development: check relative to this file
+    // Development paths
+    if (gpuVariant === "vulkan") {
+      const vulkanBinaryName = `llama-server-${platformArch}-vulkan`;
+      candidates.push(path.join(__dirname, "..", "..", "resources", "bin", vulkanBinaryName));
+    } else if (gpuVariant === "cuda") {
+      const cudaBinaryName = platform === "win32"
+        ? `llama-server-${platformArch}-cuda.exe`
+        : `llama-server-${platformArch}-cuda`;
+      candidates.push(path.join(__dirname, "..", "..", "resources", "bin", cudaBinaryName));
+    }
+
+    const cpuBinaryName = platform === "win32"
+      ? `llama-server-${platformArch}-cpu.exe`
+      : `llama-server-${platformArch}-cpu`;
+    candidates.push(path.join(__dirname, "..", "..", "resources", "bin", cpuBinaryName));
+
+    // Legacy names
+    const binaryName = platform === "win32"
+      ? `llama-server-${platformArch}.exe`
+      : `llama-server-${platformArch}`;
+    const genericName = platform === "win32" ? "llama-server.exe" : "llama-server";
     candidates.push(
       path.join(__dirname, "..", "..", "resources", "bin", binaryName),
       path.join(__dirname, "..", "..", "resources", "bin", genericName)
@@ -58,6 +178,12 @@ class LlamaServerManager {
         try {
           fs.statSync(candidate);
           this.cachedServerBinaryPath = candidate;
+          const variant = candidate.includes("-vulkan") ? "Vulkan" : candidate.includes("-cuda") ? "CUDA" : "CPU";
+          // Only log once when binary is first found, not on every cache hit
+          if (!this.lastLoggedBinaryPath || this.lastLoggedBinaryPath !== candidate) {
+            debugLogger.info(`Using llama-server binary: ${variant}`, { path: candidate });
+            this.lastLoggedBinaryPath = candidate;
+          }
           return candidate;
         } catch {
           // Can't access binary
@@ -65,6 +191,11 @@ class LlamaServerManager {
       }
     }
 
+    // Only log warning once
+    if (!this.hasLoggedMissingBinary) {
+      debugLogger.warn("No llama-server binary found", { checkedPaths: candidates });
+      this.hasLoggedMissingBinary = true;
+    }
     return null;
   }
 
@@ -131,9 +262,16 @@ class LlamaServerManager {
       String(options.threads || 4),
     ];
 
-    // Add GPU layers if specified
-    if (options.gpuLayers) {
-      args.push("--n-gpu-layers", String(options.gpuLayers));
+    // Add GPU layers if using GPU binary (auto-detect or user-specified)
+    const isGpuBinary = serverBinary.includes("-vulkan") || serverBinary.includes("-cuda");
+    if (isGpuBinary) {
+      // If user didn't specify gpuLayers, use all layers (99 means all)
+      const gpuLayers = options.gpuLayers !== undefined ? options.gpuLayers : 99;
+      args.push("--n-gpu-layers", String(gpuLayers));
+      debugLogger.info("Using GPU acceleration", {
+        binaryType: serverBinary.includes("-vulkan") ? "Vulkan" : "CUDA",
+        gpuLayers,
+      });
     }
 
     debugLogger.debug("Starting llama-server", { port: this.port, modelPath, args });
@@ -196,11 +334,15 @@ class LlamaServerManager {
     let pollCount = 0;
 
     while (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
+      // Only throw error if process actually exited (not just starting up)
       if (!this.process || this.process.killed) {
         const info = getProcessInfo ? getProcessInfo() : {};
-        const stderr = info.stderr ? info.stderr.trim().slice(0, 500) : "";
-        const details = stderr || (info.exitCode !== null ? `exit code: ${info.exitCode}` : "");
-        throw new Error(`llama-server process died during startup${details ? `: ${details}` : ""}`);
+        // Only error if we have an exit code (process actually died)
+        if (info.exitCode !== null && info.exitCode !== undefined) {
+          const stderr = info.stderr ? info.stderr.trim().slice(0, 1000) : "";
+          throw new Error(`llama-server process died during startup (exit code: ${info.exitCode})${stderr ? `: ${stderr}` : ""}`);
+        }
+        // Otherwise process might just be initializing, continue waiting
       }
 
       pollCount++;

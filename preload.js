@@ -97,6 +97,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   checkFFmpegAvailability: () =>
     ipcRenderer.invoke("check-ffmpeg-availability"),
   getAudioDiagnostics: () => ipcRenderer.invoke("get-audio-diagnostics"),
+  setGpuPreference: (preference) => ipcRenderer.invoke("set-gpu-preference", preference),
+  getGpuStatus: () => ipcRenderer.invoke("get-gpu-status"),
+  getLlamaGpuStatus: () => ipcRenderer.invoke("get-llama-gpu-status"),
 
   // Whisper server functions (faster repeated transcriptions)
   whisperServerStart: (modelName) =>
