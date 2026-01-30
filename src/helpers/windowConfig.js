@@ -22,7 +22,8 @@ const MAIN_WINDOW_CONFIG = {
   fullScreenable: false,
   hasShadow: false, // Remove shadow for cleaner look
   acceptsFirstMouse: true, // Accept clicks even when not focused
-  type: process.platform === "darwin" ? "panel" : "normal", // Panel on macOS preserves floating behavior
+  type:
+    process.platform === "darwin" ? "panel" : process.platform === "linux" ? "utility" : "normal", // Panel on macOS, Utility on Linux
 };
 
 // Control panel window configuration

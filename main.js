@@ -1,8 +1,13 @@
 const { app, globalShortcut, BrowserWindow, dialog, ipcMain } = require("electron");
 
 // Enable native Wayland global shortcuts: https://github.com/electron/electron/pull/45171
-if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
-  app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal");
+if (process.platform === "linux") {
+  if (process.env.XDG_SESSION_TYPE === "wayland") {
+    app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal");
+  }
+  // Allow Electron to automatically choose the best platform (Wayland/X11)
+  // This enables native Wayland support if available
+  app.commandLine.appendSwitch("ozone-platform-hint", "auto");
 }
 
 // Group all windows under single taskbar entry on Windows
@@ -358,7 +363,9 @@ async function startApp() {
     });
 
     windowsKeyManager.on("unavailable", () => {
-      debugLogger.debug("[Push-to-Talk] Windows key listener not available - falling back to toggle mode");
+      debugLogger.debug(
+        "[Push-to-Talk] Windows key listener not available - falling back to toggle mode"
+      );
       windowManager.setWindowsPushToTalkAvailable(false);
       if (isLiveWindow(windowManager.mainWindow)) {
         windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
@@ -386,7 +393,9 @@ async function startApp() {
 
       if (activationMode === "push") {
         if (isValidHotkey(currentHotkey)) {
-          debugLogger.debug("[Push-to-Talk] Starting Windows key listener", { hotkey: currentHotkey });
+          debugLogger.debug("[Push-to-Talk] Starting Windows key listener", {
+            hotkey: currentHotkey,
+          });
           windowsKeyManager.start(currentHotkey);
         } else {
           debugLogger.debug("[Push-to-Talk] No valid hotkey to start listener");
