@@ -8,6 +8,9 @@ if (process.platform === "linux") {
   // Allow Electron to automatically choose the best platform (Wayland/X11)
   // This enables native Wayland support if available
   app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+  // Force GTK 3 to avoid "GTK 2/3 and GTK 4 in the same process" error
+  // This is required for Electron 36+ on Linux: https://github.com/electron/electron/issues/46538
+  app.commandLine.appendSwitch("gtk-version", "3");
 }
 
 // Group all windows under single taskbar entry on Windows
