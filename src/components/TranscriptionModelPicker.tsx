@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
+import { Toggle } from "./ui/toggle";
 import { Download, Trash2, Check, Cloud, Lock, X } from "lucide-react";
 import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
@@ -214,6 +215,65 @@ export default function TranscriptionModelPicker({
   const ensureValidCloudSelectionRef = useRef<(() => void) | null>(null);
   const selectedLocalModelRef = useRef(selectedLocalModel);
   const onLocalModelSelectRef = useRef(onLocalModelSelect);
+
+  const [isGpuEnabled, setIsGpuEnabled] = useState(false);
+  const [isDownloadingGpu, setIsDownloadingGpu] = useState(false);
+  const [gpuDownloadProgress, setGpuDownloadProgress] = useState(0);
+
+  useEffect(() => {
+    const checkGpuStatus = async () => {
+      const diagnostics = await window.electronAPI.getAudioDiagnostics();
+      setIsGpuEnabled(diagnostics.whisperServer.type === "custom (userData)");
+    };
+    if (useLocalWhisper && internalLocalProvider === "whisper") {
+      checkGpuStatus();
+    }
+  }, [useLocalWhisper, internalLocalProvider]);
+
+  useEffect(() => {
+    return window.electronAPI.onWhisperBinaryDownloadProgress?.((_, data) => {
+      if (data.percentage) setGpuDownloadProgress(data.percentage);
+    });
+  }, []);
+
+  const handleGpuToggle = async (enabled: boolean) => {
+    if (enabled) {
+      setIsDownloadingGpu(true);
+      try {
+        const result = await window.electronAPI.downloadWhisperBinaryGpu();
+        if (result.success) {
+          setIsGpuEnabled(true);
+          showConfirmDialog({
+            title: "GPU Support Enabled",
+            description:
+              "NVIDIA GPU support has been enabled. The Whisper server will restart automatically on next use.",
+            confirmText: "OK",
+            onConfirm: () => {},
+            variant: "default", // Changed from "info" to "default" as "info" might not exist
+          });
+        } else {
+          showConfirmDialog({
+            title: "Download Failed",
+            description: `Failed to download GPU binary: ${result.error}`,
+            confirmText: "OK",
+            variant: "destructive",
+          });
+        }
+      } catch (e: any) {
+        showConfirmDialog({
+          title: "Error",
+          description: e.message,
+          variant: "destructive",
+        });
+      } finally {
+        setIsDownloadingGpu(false);
+        setGpuDownloadProgress(0);
+      }
+    } else {
+      await window.electronAPI.removeWhisperBinaryGpu();
+      setIsGpuEnabled(false);
+    }
+  };
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
@@ -872,7 +932,36 @@ export default function TranscriptionModelPicker({
           <div className="p-4">
             <h5 className={`${styles.header} mb-3`}>Available Models</h5>
 
-            {internalLocalProvider === "whisper" && renderLocalModels()}
+            {internalLocalProvider === "whisper" && (
+              <>
+                {(window.electronAPI.getPlatform() === "linux" ||
+                  window.electronAPI.getPlatform() === "win32") && (
+                  <div className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg mb-4">
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-900">NVIDIA GPU Acceleration</h4>
+                      <p className="text-xs text-gray-500">
+                        Requires CUDA 12+ (Downloads ~5MB binary)
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {isDownloadingGpu && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-blue-600 font-medium">
+                            Downloading... {Math.round(gpuDownloadProgress)}%
+                          </span>
+                        </div>
+                      )}
+                      <Toggle
+                        checked={isGpuEnabled}
+                        onChange={handleGpuToggle}
+                        disabled={isDownloadingGpu}
+                      />
+                    </div>
+                  </div>
+                )}
+                {renderLocalModels()}
+              </>
+            )}
             {internalLocalProvider === "nvidia" && renderParakeetModels()}
           </div>
         </div>
