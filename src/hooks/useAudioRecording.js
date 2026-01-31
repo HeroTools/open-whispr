@@ -29,7 +29,7 @@ export const useAudioRecording = (toast, options = {}) => {
 
           await audioManagerRef.current.safePaste(result.text);
 
-          audioManagerRef.current.saveTranscription(result.text);
+          audioManagerRef.current.saveTranscription(result.text, result.durationSeconds || null);
 
           if (result.source === "openai" && localStorage.getItem("useLocalWhisper") === "true") {
             toast({

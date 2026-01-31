@@ -240,6 +240,11 @@ class AudioManager {
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
 
+      // Add recording duration to result for WPM calculation
+      if (result && metadata.durationSeconds) {
+        result.durationSeconds = metadata.durationSeconds;
+      }
+
       this.onTranscriptionComplete?.(result);
 
       const roundTripDurationMs = Math.round(performance.now() - pipelineStart);
@@ -1400,9 +1405,9 @@ class AudioManager {
     }
   }
 
-  async saveTranscription(text) {
+  async saveTranscription(text, durationSeconds = null) {
     try {
-      await window.electronAPI.saveTranscription(text);
+      await window.electronAPI.saveTranscription(text, durationSeconds);
       return true;
     } catch (error) {
       return false;

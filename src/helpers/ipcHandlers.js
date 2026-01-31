@@ -115,8 +115,8 @@ class IPCHandlers {
       return this.environmentManager.createProductionEnvFile(apiKey);
     });
 
-    ipcMain.handle("db-save-transcription", async (event, text) => {
-      const result = this.databaseManager.saveTranscription(text);
+    ipcMain.handle("db-save-transcription", async (event, text, durationSeconds = null) => {
+      const result = this.databaseManager.saveTranscription(text, durationSeconds);
       if (result?.success && result?.transcription) {
         setImmediate(() => {
           this.broadcastToWindows("transcription-added", result.transcription);
@@ -127,6 +127,14 @@ class IPCHandlers {
 
     ipcMain.handle("db-get-transcriptions", async (event, limit = 50) => {
       return this.databaseManager.getTranscriptions(limit);
+    });
+
+    ipcMain.handle("db-get-dashboard-stats", async () => {
+      return this.databaseManager.getDashboardStats();
+    });
+
+    ipcMain.handle("db-get-transcriptions-grouped", async (event, limit = 100) => {
+      return this.databaseManager.getTranscriptionsGrouped(limit);
     });
 
     ipcMain.handle("db-clear-transcriptions", async (event) => {

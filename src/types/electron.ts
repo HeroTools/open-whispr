@@ -7,6 +7,17 @@ export interface TranscriptionItem {
   created_at: string;
 }
 
+export interface TranscriptionItemGrouped extends TranscriptionItem {
+  day: string;
+}
+
+export interface DashboardStats {
+  totalWords: number;
+  totalTranscriptions: number;
+  averageWpm: number;
+  streak: number;
+}
+
 export interface WhisperCheckResult {
   installed: boolean;
   working: boolean;
@@ -174,8 +185,10 @@ declare global {
       onStopDictation?: (callback: () => void) => (() => void) | void;
 
       // Database operations
-      saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
+      saveTranscription: (text: string, durationSeconds?: number | null) => Promise<{ id: number; success: boolean }>;
       getTranscriptions: (limit?: number) => Promise<TranscriptionItem[]>;
+      getDashboardStats: () => Promise<DashboardStats>;
+      getTranscriptionsGrouped: (limit?: number) => Promise<TranscriptionItemGrouped[]>;
       clearTranscriptions: () => Promise<{ cleared: number; success: boolean }>;
       deleteTranscription: (id: number) => Promise<{ success: boolean }>;
 
