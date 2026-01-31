@@ -15,6 +15,9 @@ const WHISPER_CPP_REPO = "OpenWhispr/whisper.cpp";
 // Version can be pinned via environment variable for reproducible builds
 const VERSION_OVERRIDE = process.env.WHISPER_CPP_VERSION || null;
 
+// Check for GPU request via environment variable
+const USE_GPU = process.env.WHISPER_CPP_GPU === "true" || process.env.WHISPER_CPP_GPU === "1";
+
 const BINARIES = {
   "darwin-arm64": {
     zipName: "whisper-server-darwin-arm64.zip",
@@ -27,13 +30,13 @@ const BINARIES = {
     outputName: "whisper-server-darwin-x64",
   },
   "win32-x64": {
-    zipName: "whisper-server-win32-x64-cpu.zip",
-    binaryName: "whisper-server-win32-x64-cpu.exe",
+    zipName: USE_GPU ? "whisper-server-win32-x64-cuda.zip" : "whisper-server-win32-x64-cpu.zip",
+    binaryName: USE_GPU ? "whisper-server-win32-x64-cuda.exe" : "whisper-server-win32-x64-cpu.exe",
     outputName: "whisper-server-win32-x64.exe",
   },
   "linux-x64": {
-    zipName: "whisper-server-linux-x64-cpu.zip",
-    binaryName: "whisper-server-linux-x64-cpu",
+    zipName: USE_GPU ? "whisper-server-linux-x64-cuda.zip" : "whisper-server-linux-x64-cpu.zip",
+    binaryName: USE_GPU ? "whisper-server-linux-x64-cuda" : "whisper-server-linux-x64-cpu",
     outputName: "whisper-server-linux-x64",
   },
 };
@@ -114,6 +117,11 @@ async function main() {
   } else {
     console.log("\n[whisper-server] Fetching latest release...");
   }
+
+  if (USE_GPU) {
+    console.log("[whisper-server] GPU support enabled (WHISPER_CPP_GPU is set)");
+  }
+
   const release = await getRelease();
 
   if (!release) {
@@ -137,7 +145,12 @@ async function main() {
     }
 
     console.log(`Downloading for target platform (${args.platformArch}):`);
-    const ok = await downloadBinary(args.platformArch, BINARIES[args.platformArch], release, args.isForce);
+    const ok = await downloadBinary(
+      args.platformArch,
+      BINARIES[args.platformArch],
+      release,
+      args.isForce
+    );
     if (!ok) {
       console.error(`Failed to download binaries for ${args.platformArch}`);
       process.exitCode = 1;
