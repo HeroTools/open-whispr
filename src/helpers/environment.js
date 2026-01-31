@@ -91,6 +91,16 @@ class EnvironmentManager {
     return this._saveKey("CUSTOM_REASONING_API_KEY", key);
   }
 
+  getGpuPreference() {
+    return this._getKey("GPU_ACCELERATION") || "auto";
+  }
+
+  saveGpuPreference(preference) {
+    const result = this._saveKey("GPU_ACCELERATION", preference);
+    this.saveAllKeysToEnvFile();
+    return result;
+  }
+
   createProductionEnvFile(apiKey) {
     const envPath = path.join(app.getPath("userData"), ".env");
 
@@ -146,6 +156,9 @@ OPENAI_API_KEY=${apiKey}
     }
     if (process.env.LOCAL_REASONING_MODEL) {
       envContent += `LOCAL_REASONING_MODEL=${process.env.LOCAL_REASONING_MODEL}\n`;
+    }
+    if (process.env.GPU_ACCELERATION) {
+      envContent += `GPU_ACCELERATION=${process.env.GPU_ACCELERATION}\n`;
     }
 
     fs.writeFileSync(envPath, envContent, "utf8");

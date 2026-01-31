@@ -32,14 +32,21 @@ class WhisperServerManager {
     this.GPU_DETECTION_CACHE_TTL = 60000; // Cache for 60 seconds
     this.lastLoggedBinaryPath = null; // Track last logged binary to avoid spam
     this.hasLoggedMissingBinary = false; // Track if we already logged missing binary warning
+    this.needsRestart = false; // Flag to trigger restart when GPU preference changes
   }
 
   setGpuPreference(preference) {
     if (this.gpuPreference !== preference) {
       debugLogger.info("GPU preference changed", { from: this.gpuPreference, to: preference });
+      const wasRunning = this.ready;
       this.gpuPreference = preference;
       // Clear cached path to force re-detection
       this.cachedServerBinaryPath = null;
+      // If server was running, mark it for restart on next transcription
+      if (wasRunning) {
+        debugLogger.info("Server needs restart for new GPU preference");
+        this.needsRestart = true;
+      }
     }
   }
 
@@ -489,6 +496,15 @@ class WhisperServerManager {
   }
 
   async transcribe(audioBuffer, options = {}) {
+    // Check if restart is needed due to GPU preference change
+    if (this.needsRestart) {
+      debugLogger.info("Restarting whisper-server for GPU preference change");
+      await this.stop();
+      this.needsRestart = false;
+      // Server will be restarted by the caller (whisper.js transcribeViaServer)
+      throw new Error("whisper-server restarting for GPU preference change");
+    }
+
     if (!this.ready || !this.process) {
       throw new Error("whisper-server is not running");
     }
@@ -500,8 +516,8 @@ class WhisperServerManager {
       firstBytes:
         audioBuffer?.length >= 16
           ? Array.from(audioBuffer.slice(0, 16))
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join(" ")
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join(" ")
           : "too short",
     });
 
@@ -521,8 +537,8 @@ class WhisperServerManager {
 
     parts.push(
       `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
-        `Content-Type: ${contentType}\r\n\r\n`
+      `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+      `Content-Type: ${contentType}\r\n\r\n`
     );
     parts.push(finalBuffer);
     parts.push("\r\n");
@@ -530,8 +546,8 @@ class WhisperServerManager {
     if (language && language !== "auto") {
       parts.push(
         `--${boundary}\r\n` +
-          `Content-Disposition: form-data; name="language"\r\n\r\n` +
-          `${language}\r\n`
+        `Content-Disposition: form-data; name="language"\r\n\r\n` +
+        `${language}\r\n`
       );
     }
 
@@ -539,16 +555,16 @@ class WhisperServerManager {
     if (initialPrompt) {
       parts.push(
         `--${boundary}\r\n` +
-          `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
-          `${initialPrompt}\r\n`
+        `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
+        `${initialPrompt}\r\n`
       );
       debugLogger.info("Using custom dictionary prompt", { prompt: initialPrompt });
     }
 
     parts.push(
       `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="response_format"\r\n\r\n` +
-        `json\r\n`
+      `Content-Disposition: form-data; name="response_format"\r\n\r\n` +
+      `json\r\n`
     );
     parts.push(`--${boundary}--\r\n`);
 

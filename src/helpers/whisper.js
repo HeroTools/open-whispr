@@ -61,7 +61,13 @@ class WhisperManager {
       this.isInitialized = true;
 
       // Pre-warm whisper-server if local mode enabled (eliminates 2-5s cold-start delay)
-      const { localTranscriptionProvider, whisperModel } = settings;
+      const { localTranscriptionProvider, whisperModel, gpuPreference } = settings;
+
+      // Apply GPU preference before starting server
+      if (gpuPreference && this.serverManager.setGpuPreference) {
+        this.serverManager.setGpuPreference(gpuPreference);
+        debugLogger.info("Applied GPU preference at startup", { gpuPreference });
+      }
 
       if (
         localTranscriptionProvider === "whisper" &&
@@ -255,7 +261,7 @@ class WhisperManager {
     return await this.transcribeViaServer(audioBlob, model, language, initialPrompt);
   }
 
-  async transcribeViaServer(audioBlob, model, language, initialPrompt = null) {
+  async transcribeViaServer(audioBlob, model, language, initialPrompt = null, retryCount = 0) {
     debugLogger.info("Transcription mode: SERVER", { model, language: language || "auto" });
     const modelPath = this.getModelPath(model);
 
@@ -293,16 +299,25 @@ class WhisperManager {
       port: this.serverManager.port,
     });
 
-    const startTime = Date.now();
-    const result = await this.serverManager.transcribe(audioBuffer, { language, initialPrompt });
-    const elapsed = Date.now() - startTime;
+    try {
+      const startTime = Date.now();
+      const result = await this.serverManager.transcribe(audioBuffer, { language, initialPrompt });
+      const elapsed = Date.now() - startTime;
 
-    debugLogger.logWhisperPipeline("transcribeViaServer - completed", {
-      elapsed,
-      resultKeys: Object.keys(result),
-    });
+      debugLogger.logWhisperPipeline("transcribeViaServer - completed", {
+        elapsed,
+        resultKeys: Object.keys(result),
+      });
 
-    return this.parseWhisperResult(result);
+      return this.parseWhisperResult(result);
+    } catch (error) {
+      // Handle GPU preference change restart - retry once
+      if (error.message.includes("GPU preference change") && retryCount < 1) {
+        debugLogger.info("Retrying transcription after GPU preference restart");
+        return this.transcribeViaServer(audioBlob, model, language, initialPrompt, retryCount + 1);
+      }
+      throw error;
+    }
   }
 
   // Normalize whitespace: replace newlines with spaces and collapse multiple spaces

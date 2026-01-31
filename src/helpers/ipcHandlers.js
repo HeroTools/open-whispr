@@ -270,7 +270,9 @@ class IPCHandlers {
     ipcMain.handle("set-gpu-preference", async (event, preference) => {
       if (this.whisperManager?.serverManager) {
         this.whisperManager.serverManager.setGpuPreference(preference);
-        debugLogger.info("GPU preference updated", { preference });
+        // Also save to env file for next startup
+        this.environmentManager.saveGpuPreference(preference);
+        debugLogger.info("GPU preference updated and saved", { preference });
         return { success: true };
       }
       return { success: false, error: "Whisper manager not initialized" };
@@ -821,8 +823,8 @@ class IPCHandlers {
             }
             throw new Error(
               errorData.error?.message ||
-                errorData.error ||
-                `Anthropic API error: ${response.status}`
+              errorData.error ||
+              `Anthropic API error: ${response.status}`
             );
           }
 
