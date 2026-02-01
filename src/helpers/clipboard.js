@@ -497,8 +497,8 @@ class ClipboardManager {
     // Detect if the focused window is a terminal emulator
     // Terminals use Ctrl+Shift+V for paste (since Ctrl+V/C are used for process control)
     const isTerminal = () => {
-      // Common terminal emulator class names
-      const terminalClasses = [
+      // Common terminal emulator class names and title patterns
+      const terminalPatterns = [
         "konsole",
         "gnome-terminal",
         "terminal",
@@ -514,14 +514,55 @@ class ClipboardManager {
         "foot",
         "st",
         "yakuake",
+        "tabby",
+        "hyper",
+        "iterm",
+        "term",
       ];
 
+      // Check window class if available
       if (xdotoolWindowClass) {
-        const isTerminalWindow = terminalClasses.some((term) => xdotoolWindowClass.includes(term));
+        const isTerminalWindow = terminalPatterns.some((term) => xdotoolWindowClass.includes(term));
         if (isTerminalWindow) {
-          this.safeLog(`🖥️ Terminal detected via xdotool: ${xdotoolWindowClass}`);
+          this.safeLog(`🖥️ Terminal detected via xdotool class: ${xdotoolWindowClass}`);
         }
         return isTerminalWindow;
+      }
+
+      // Fallback 1: Try to get window title on Wayland (often contains terminal name)
+      if (isWayland && xdotoolExists && targetWindowId) {
+        try {
+          const titleResult = spawnSync("xdotool", ["getwindowname", targetWindowId]);
+          if (titleResult.status === 0) {
+            const windowTitle = titleResult.stdout.toString().toLowerCase().trim();
+            const isTerminalWindow = terminalPatterns.some((term) => windowTitle.includes(term));
+            if (isTerminalWindow) {
+              this.safeLog(`🖥️ Terminal detected via window title: ${windowTitle}`);
+              return true;
+            }
+          }
+        } catch {
+          // Continue to other detection methods
+        }
+
+        // Fallback 2: Check process name of window (most reliable on Wayland)
+        try {
+          const pidResult = spawnSync("xdotool", ["getwindowpid", targetWindowId]);
+          if (pidResult.status === 0) {
+            const pid = pidResult.stdout.toString().trim();
+            const psResult = spawnSync("ps", ["-p", pid, "-o", "comm="]);
+            if (psResult.status === 0) {
+              const processName = psResult.stdout.toString().toLowerCase().trim();
+              const isTerminalProcess = terminalPatterns.some((term) => processName.includes(term));
+              if (isTerminalProcess) {
+                this.safeLog(`🖥️ Terminal detected via process name: ${processName}`);
+                return true;
+              }
+            }
+          }
+        } catch {
+          // Continue to other detection methods
+        }
       }
 
       try {
@@ -535,7 +576,7 @@ class ClipboardManager {
             const classResult = spawnSync("kdotool", ["getwindowclassname", windowId]);
             if (classResult.status === 0) {
               const className = classResult.stdout.toString().toLowerCase().trim();
-              const isTerminalWindow = terminalClasses.some((term) => className.includes(term));
+              const isTerminalWindow = terminalPatterns.some((term) => className.includes(term));
               if (isTerminalWindow) {
                 this.safeLog(`🖥️ Terminal detected via kdotool: ${className}`);
               }
@@ -569,11 +610,16 @@ class ClipboardManager {
       );
     }
 
-    // ydotool uses key codes: 29=LeftCtrl, 42=LeftShift, 47=V
-    // Format: keycode:1 (press), keycode:0 (release)
+    // ydotool 0.1.x uses key names like "ctrl+v"
+    // ydotool 1.x uses scan codes like "29:1 47:1 47:0 29:0"
+    // Use the 0.1.x compatible syntax (works on both versions)
     const ydotoolArgs = inTerminal
-      ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] // Ctrl+Shift+V
-      : ["key", "29:1", "47:1", "47:0", "29:0"]; // Ctrl+V
+      ? ["key", "ctrl+shift+v"] // Ctrl+Shift+V for terminals
+      : ["key", "ctrl+v"]; // Ctrl+V
+
+    // On Wayland without a target window ID, prefer ydotool over xdotool
+    // because xdotool reports success but can't reliably paste without window targeting
+    const preferYdotoolOverXdotool = isWayland && !targetWindowId && ydotoolExists;
 
     const candidates = [
       ...(canUseWtype
@@ -586,8 +632,16 @@ class ClipboardManager {
               : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
           ]
         : []),
-      ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
-      ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
+      // Conditionally order ydotool vs xdotool based on Wayland + window targeting
+      ...(preferYdotoolOverXdotool
+        ? [
+            ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
+            ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
+          ]
+        : [
+            ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
+            ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
+          ]),
     ];
 
     // Filter to only available tools (this.commandExists is already cached)
