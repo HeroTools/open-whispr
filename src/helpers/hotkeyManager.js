@@ -247,9 +247,22 @@ class HotkeyManager {
 
   async loadSavedHotkeyOrDefault(mainWindow, callback) {
     try {
-      const savedHotkey = await mainWindow.webContents.executeJavaScript(`
-        localStorage.getItem("dictationKey") || ""
-      `);
+      // First check file-based storage (environment variable) - more reliable
+      let savedHotkey = process.env.DICTATION_KEY || "";
+
+      // Fall back to localStorage if env var is empty
+      if (!savedHotkey) {
+        savedHotkey = await mainWindow.webContents.executeJavaScript(`
+          localStorage.getItem("dictationKey") || ""
+        `);
+
+        // If we found a hotkey in localStorage but not in env, migrate it
+        if (savedHotkey && savedHotkey.trim() !== "") {
+          process.env.DICTATION_KEY = savedHotkey;
+          debugLogger.log(`[HotkeyManager] Migrated hotkey "${savedHotkey}" from localStorage to env`);
+        }
+      }
+
       if (savedHotkey && savedHotkey.trim() !== "") {
         const result = this.setupShortcuts(savedHotkey, callback);
         if (result.success) {
@@ -303,6 +316,21 @@ class HotkeyManager {
     // Escape the hotkey string to prevent injection issues
     const escapedHotkey = hotkey.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
+    // Save to environment variable for file-based persistence (more reliable)
+    process.env.DICTATION_KEY = hotkey;
+
+    // Persist to .env file for reliable startup
+    try {
+      // Lazy require to avoid circular dependencies
+      const EnvironmentManager = require("./environment");
+      const envManager = new EnvironmentManager();
+      envManager.saveAllKeysToEnvFile();
+      debugLogger.log(`[HotkeyManager] Saved hotkey "${hotkey}" to .env file`);
+    } catch (err) {
+      debugLogger.warn("[HotkeyManager] Failed to persist hotkey to .env file:", err.message);
+    }
+
+    // Also save to localStorage for backwards compatibility
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       try {
         await this.mainWindow.webContents.executeJavaScript(
@@ -315,7 +343,7 @@ class HotkeyManager {
         return false;
       }
     } else {
-      debugLogger.warn("[HotkeyManager] Main window not available for saving hotkey");
+      debugLogger.warn("[HotkeyManager] Main window not available for saving hotkey to localStorage");
       return false;
     }
   }
