@@ -1592,7 +1592,6 @@ class AudioManager {
     }
 
     try {
-      // Pre-cache mic device ID and warm WebSocket in parallel
       const [, wsResult] = await Promise.all([
         this.cacheMicrophoneDeviceId(),
         (async () => {
@@ -1611,6 +1610,9 @@ class AudioManager {
           "streaming"
         );
         return true;
+      } else if (wsResult.code === "NO_API") {
+        logger.debug("Streaming warmup skipped - API not configured", {}, "streaming");
+        return false;
       } else {
         logger.warn("AssemblyAI warmup failed", { error: wsResult.error }, "streaming");
         return false;
@@ -1653,6 +1655,10 @@ class AudioManager {
 
       if (!result.success) {
         stream.getTracks().forEach((track) => track.stop());
+        if (result.code === "NO_API") {
+          logger.debug("Streaming API not configured, falling back to regular recording", {}, "streaming");
+          return this.startRecording();
+        }
         throw new Error(result.error || "Failed to start streaming session");
       }
 

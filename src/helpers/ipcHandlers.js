@@ -1278,21 +1278,22 @@ class IPCHandlers {
       return token;
     };
 
-    // Pre-warm the WebSocket connection for instant start
     ipcMain.handle("assemblyai-streaming-warmup", async (event, options = {}) => {
       try {
-        // Create persistent instance if needed
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          return { success: false, error: "API not configured", code: "NO_API" };
+        }
+
         if (!this.assemblyAiStreaming) {
           this.assemblyAiStreaming = new AssemblyAiStreaming();
         }
 
-        // Check if already warmed up
         if (this.assemblyAiStreaming.hasWarmConnection()) {
           debugLogger.debug("AssemblyAI connection already warm", {}, "streaming");
           return { success: true, alreadyWarm: true };
         }
 
-        // Check if we have a valid cached token
         let token = this.assemblyAiStreaming.getCachedToken();
         if (!token) {
           debugLogger.debug("Fetching new streaming token for warmup", {}, "streaming");
@@ -1314,19 +1315,21 @@ class IPCHandlers {
 
     ipcMain.handle("assemblyai-streaming-start", async (event, options = {}) => {
       try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          return { success: false, error: "API not configured", code: "NO_API" };
+        }
+
         const win = BrowserWindow.fromWebContents(event.sender);
 
-        // Reuse existing instance if available (may have warm connection)
         if (!this.assemblyAiStreaming) {
           this.assemblyAiStreaming = new AssemblyAiStreaming();
         }
 
-        // Clean up any active connection (but preserve warm connection)
         if (this.assemblyAiStreaming.isConnected) {
           await this.assemblyAiStreaming.disconnect(false);
         }
 
-        // Check if we have a valid cached token or need a new one
         let token = this.assemblyAiStreaming.getCachedToken();
         if (!token) {
           debugLogger.debug("Fetching streaming token from API", {}, "streaming");
