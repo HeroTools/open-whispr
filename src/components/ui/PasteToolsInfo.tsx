@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Check, Terminal, Info } from "lucide-react";
 import { Button } from "./button";
 import type { PasteToolsResult } from "../../types/electron";
@@ -13,6 +14,25 @@ export default function PasteToolsInfo({
   isChecking,
   onCheck,
 }: PasteToolsInfoProps) {
+  const [isStartingYdotoold, setIsStartingYdotoold] = useState(false);
+  const [ydotooldError, setYdotooldError] = useState<string | null>(null);
+
+  const startYdotoold = async () => {
+    if (!window.electronAPI?.startYdotoold) return;
+    setIsStartingYdotoold(true);
+    setYdotooldError(null);
+    try {
+      const result = await window.electronAPI.startYdotoold();
+      if (!result?.success) {
+        setYdotooldError(result?.error || "Failed to start ydotoold.");
+      }
+    } catch (error) {
+      setYdotooldError(error instanceof Error ? error.message : "Failed to start ydotoold.");
+    } finally {
+      setIsStartingYdotoold(false);
+      onCheck();
+    }
+  };
   if (!pasteToolsInfo) {
     return (
       <div className="border rounded-lg p-4">
@@ -87,6 +107,10 @@ export default function PasteToolsInfo({
     const xwaylandAvailable = pasteToolsInfo.xwaylandAvailable;
     const recommendedTool = pasteToolsInfo.recommendedInstall;
     const showInstall = !!recommendedTool;
+    const showYdotooldStart =
+      pasteToolsInfo.ydotoolInstalled && pasteToolsInfo.ydotooldRunning === false;
+    const ydotoolSocketPath = pasteToolsInfo.ydotoolSocketPath;
+    const isYdotoolRecommendation = recommendedTool?.includes("ydotool");
 
     return (
       <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 space-y-3">
@@ -96,6 +120,38 @@ export default function PasteToolsInfo({
             <h3 className="font-semibold text-amber-900">
               {showInstall ? "Optional: Enable Automatic Pasting" : "Clipboard Mode on Wayland"}
             </h3>
+
+            {showYdotooldStart && (
+              <div className="mt-3 space-y-2 text-sm text-amber-800">
+                <p>
+                  <strong>ydotool</strong> is installed, but the <code>ydotoold</code> daemon is not
+                  running. OpenWhispr can start it for your session.
+                </p>
+                {ydotoolSocketPath && (
+                  <p>
+                    Socket path:{" "}
+                    <code className="bg-amber-100 px-1 rounded">{ydotoolSocketPath}</code>
+                  </p>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={startYdotoold}
+                    disabled={isStartingYdotoold}
+                  >
+                    {isStartingYdotoold ? "Starting ydotoold..." : "Start ydotoold"}
+                  </Button>
+                </div>
+                {ydotooldError && <p className="text-red-700">{ydotooldError}</p>}
+                <p className="text-amber-700">
+                  If starting fails, you may need permissions for <code>/dev/uinput</code>. Try:
+                </p>
+                <div className="bg-gray-900 text-gray-100 p-3 rounded-md font-mono text-xs overflow-x-auto">
+                  <div>sudo systemctl enable --now ydotoold</div>
+                </div>
+              </div>
+            )}
 
             {showInstall ? (
               <>
@@ -113,6 +169,18 @@ export default function PasteToolsInfo({
                       <div>sudo apt install wtype</div>
                       <div className="text-gray-400 mt-2"># Arch Linux</div>
                       <div>sudo pacman -S wtype</div>
+                    </>
+                  ) : isYdotoolRecommendation ? (
+                    <>
+                      <div className="text-gray-400"># Debian / Ubuntu</div>
+                      <div>sudo apt install ydotool</div>
+                      <div>sudo systemctl enable --now ydotoold</div>
+                      <div className="text-gray-400 mt-2"># Fedora / RHEL</div>
+                      <div>sudo dnf install ydotool</div>
+                      <div>sudo systemctl enable --now ydotoold</div>
+                      <div className="text-gray-400 mt-2"># Arch Linux</div>
+                      <div>sudo pacman -S ydotool</div>
+                      <div>sudo systemctl enable --now ydotoold</div>
                     </>
                   ) : (
                     <>

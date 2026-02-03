@@ -163,6 +163,9 @@ export interface PasteToolsResult {
   isWayland?: boolean;
   xwaylandAvailable?: boolean;
   tools?: string[];
+  ydotoolInstalled?: boolean;
+  ydotooldRunning?: boolean;
+  ydotoolSocketPath?: string;
   recommendedInstall?: string;
 }
 
@@ -213,6 +216,7 @@ declare global {
       readClipboard: () => Promise<string>;
       writeClipboard: (text: string) => Promise<{ success: boolean }>;
       checkPasteTools: () => Promise<PasteToolsResult>;
+      startYdotoold?: () => Promise<{ success: boolean; error?: string; socketPath?: string }>;
 
       // Audio
       onNoAudioDetected: (callback: (event: any, data?: any) => void) => (() => void) | void;

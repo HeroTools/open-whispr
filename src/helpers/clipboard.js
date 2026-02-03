@@ -54,6 +54,13 @@ class ClipboardManager {
     this.commandAvailabilityCache = new Map();
     this.nircmdPath = null;
     this.nircmdChecked = false;
+    this.ydotooldProcess = null;
+    this.ydotooldStartedByApp = false;
+    this.ydotooldStartPromise = null;
+
+    process.on("exit", () => {
+      this.stopYdotoold();
+    });
   }
 
   // Get path to nircmd.exe (Windows only)
@@ -160,6 +167,10 @@ class ClipboardManager {
       // Copy text to clipboard first - this always works
       clipboard.writeText(text);
       this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
+
+      if (platform === "linux") {
+        this.syncLinuxClipboardSelections(text);
+      }
 
       if (platform === "darwin") {
         method = "applescript";
@@ -437,6 +448,8 @@ class ClipboardManager {
     const wtypeExists = this.commandExists("wtype");
     const ydotoolExists = this.commandExists("ydotool");
     const dotoolExists = this.commandExists("dotool");
+    const ydotoolSocketPath = this.getYdotoolSocketPath();
+    let ydotooldStartError;
 
     debugLogger.debug(
       "Linux paste environment",
@@ -448,6 +461,7 @@ class ClipboardManager {
         wtypeExists,
         ydotoolExists,
         dotoolExists,
+        ydotoolSocketPath,
         display: process.env.DISPLAY,
         waylandDisplay: process.env.WAYLAND_DISPLAY,
         xdgSessionType: process.env.XDG_SESSION_TYPE,
@@ -552,19 +566,14 @@ class ClipboardManager {
     };
 
     const inTerminal = isTerminal();
-    const pasteKeys = inTerminal ? "ctrl+shift+v" : "ctrl+v";
+    const preferTerminalPaste = isWayland && !inTerminal && !xdotoolWindowClass;
 
     const canUseWtype = isWayland;
-    const canUseYdotool = isWayland;
-    const canUseDotool = isWayland;
-    const canUseXdotool = isWayland ? xwaylandAvailable && xdotoolExists : xdotoolExists;
-
-    // Define paste tools in preference order based on display server
-    // For X11, use windowactivate to ensure correct window receives the keystroke
-    // This is critical because OpenWhispr's window may briefly take focus during transcription
-    const xdotoolArgs = targetWindowId
-      ? ["windowactivate", "--sync", targetWindowId, "key", pasteKeys]
-      : ["key", pasteKeys];
+    let canUseYdotool = isWayland && ydotoolExists;
+    const canUseDotool = isWayland && dotoolExists;
+    const canUseXdotool = isWayland
+      ? xwaylandAvailable && xdotoolExists && !!xdotoolWindowClass
+      : xdotoolExists;
 
     if (targetWindowId) {
       this.safeLog(
@@ -572,33 +581,68 @@ class ClipboardManager {
       );
     }
 
-    // ydotool uses key codes: 29=LeftCtrl, 42=LeftShift, 47=V
-    // Format: keycode:1 (press), keycode:0 (release)
-    const ydotoolArgs = inTerminal
-      ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] // Ctrl+Shift+V
-      : ["key", "29:1", "47:1", "47:0", "29:0"]; // Ctrl+V
+    if (canUseYdotool) {
+      const ydotoolStatus = await this.ensureYdotooldRunning(ydotoolSocketPath);
+      if (!ydotoolStatus?.success) {
+        canUseYdotool = false;
+        ydotooldStartError = ydotoolStatus?.error;
+        debugLogger.warn(
+          "ydotoold not running",
+          { error: ydotoolStatus?.error, socketPath: ydotoolSocketPath },
+          "clipboard"
+        );
+      }
+    }
 
-    // dotool accepts key names or codes.
-    // We use a shell-piped command for dotool since it typically reads from stdin
-    const dotoolCommand = inTerminal
-      ? "echo 'key ctrl+shift+v' | dotool"
-      : "echo 'key ctrl+v' | dotool";
+    const buildCandidates = (pasteKeys, useTerminalKeys) => {
+      // Define paste tools in preference order based on display server
+      // For X11, use windowactivate to ensure correct window receives the keystroke
+      // This is critical because OpenWhispr's window may briefly take focus during transcription
+      const xdotoolArgs = targetWindowId
+        ? ["windowactivate", "--sync", targetWindowId, "key", pasteKeys]
+        : ["key", pasteKeys];
 
-    const candidates = [
-      ...(canUseWtype
-        ? [
-            inTerminal
-              ? {
-                  cmd: "wtype",
-                  args: ["-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"],
-                }
-              : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
-          ]
-        : []),
-      ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
-      ...(canUseDotool ? [{ cmd: "sh", args: ["-c", dotoolCommand], name: "dotool" }] : []),
-      ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
-    ];
+      // ydotool uses key codes: 29=LeftCtrl, 42=LeftShift, 47=V
+      // Format: keycode:1 (press), keycode:0 (release)
+      const ydotoolArgs = useTerminalKeys
+        ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] // Ctrl+Shift+V
+        : ["key", "29:1", "47:1", "47:0", "29:0"]; // Ctrl+V
+
+      // dotool accepts key names or codes.
+      // We use a shell-piped command for dotool since it typically reads from stdin
+      const dotoolCommand = useTerminalKeys
+        ? "echo 'key ctrl+shift+v' | dotool"
+        : "echo 'key ctrl+v' | dotool";
+
+      return [
+        ...(canUseWtype
+          ? [
+              useTerminalKeys
+                ? {
+                    cmd: "wtype",
+                    args: ["-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"],
+                  }
+                : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
+            ]
+          : []),
+        ...(canUseDotool ? [{ cmd: "sh", args: ["-c", dotoolCommand], name: "dotool" }] : []),
+        ...(canUseYdotool
+          ? [
+              {
+                cmd: "ydotool",
+                args: ydotoolArgs,
+                env: ydotoolSocketPath
+                  ? { ...process.env, YDOTOOL_SOCKET: ydotoolSocketPath }
+                  : undefined,
+              },
+            ]
+          : []),
+        ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
+      ];
+    };
+
+    const pasteKeys = preferTerminalPaste || inTerminal ? "ctrl+shift+v" : "ctrl+v";
+    const candidates = buildCandidates(pasteKeys, pasteKeys === "ctrl+shift+v");
 
     // Filter to only available tools (this.commandExists is already cached)
     const available = candidates.filter((c) => this.commandExists(c.cmd));
@@ -637,7 +681,7 @@ class ClipboardManager {
             "clipboard"
           );
 
-          const proc = spawn(tool.cmd, tool.args);
+          const proc = spawn(tool.cmd, tool.args, tool.env ? { env: tool.env } : undefined);
           let stderr = "";
           let stdout = "";
 
@@ -715,19 +759,48 @@ class ClipboardManager {
     for (const tool of available) {
       try {
         await pasteWith(tool);
-        this.safeLog(`✅ Paste successful using ${tool.cmd}`);
-        debugLogger.info("Paste successful", { tool: tool.cmd }, "clipboard");
+        const toolName = tool.name || tool.cmd;
+        this.safeLog(`✅ Paste successful using ${toolName}`);
+        debugLogger.info("Paste successful", { tool: toolName }, "clipboard");
         return; // Success!
       } catch (error) {
         const failureInfo = {
-          tool: tool.cmd,
+          tool: tool.name || tool.cmd,
           args: tool.args,
           error: error?.message || String(error),
         };
         failedAttempts.push(failureInfo);
-        this.safeLog(`⚠️ Paste with ${tool.cmd} failed:`, error?.message || error);
+        this.safeLog(`⚠️ Paste with ${tool.name || tool.cmd} failed:`, error?.message || error);
         debugLogger.warn("Paste tool failed, trying next", failureInfo, "clipboard");
         // Continue to next tool
+      }
+    }
+
+    // Wayland terminals often require Ctrl+Shift+V but class detection can fail.
+    // If we didn't detect a terminal, try again with terminal paste keys.
+    if (isWayland && !inTerminal && pasteKeys !== "ctrl+shift+v") {
+      const fallbackCandidates = buildCandidates("ctrl+shift+v", true);
+      const fallbackAvailable = fallbackCandidates.filter((c) => this.commandExists(c.cmd));
+      for (const tool of fallbackAvailable) {
+        try {
+          await pasteWith(tool);
+          const toolName = tool.name || tool.cmd;
+          this.safeLog(`✅ Paste successful using ${toolName} (terminal fallback)`);
+          debugLogger.info("Paste successful (terminal fallback)", { tool: toolName }, "clipboard");
+          return;
+        } catch (error) {
+          const failureInfo = {
+            tool: tool.name || tool.cmd,
+            args: tool.args,
+            error: error?.message || String(error),
+          };
+          failedAttempts.push(failureInfo);
+          this.safeLog(
+            `⚠️ Paste with ${tool.name || tool.cmd} (terminal fallback) failed:`,
+            error?.message || error
+          );
+          debugLogger.warn("Paste tool failed (terminal fallback)", failureInfo, "clipboard");
+        }
       }
     }
 
@@ -774,29 +847,31 @@ class ClipboardManager {
         ? `\n\nAttempted tools: ${failedAttempts.map((f) => `${f.tool} (${f.error})`).join(", ")}`
         : "";
 
+    const ydotooldSummary = ydotooldStartError ? `\n\nydotoold: ${ydotooldStartError}` : "";
+
     let errorMsg;
     if (isWayland) {
       if (isGnome) {
         if (!wtypeExists && !xwaylandAvailable) {
           errorMsg =
             "Clipboard copied, but GNOME Wayland needs wtype (Wayland-native) to paste automatically. Please install wtype or paste manually with Ctrl+V.";
-        } else if (!wtypeExists && !xdotoolExists) {
+        } else if (!wtypeExists && !xdotoolExists && !ydotoolExists && !dotoolExists) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on GNOME Wayland requires wtype or xdotool (for XWayland apps). Please install one or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on GNOME Wayland requires wtype or a virtual input tool like dotool/ydotool. For XWayland apps, xdotool also works. Please install one or paste manually with Ctrl+V.";
         } else if (!xdotoolWindowClass && !wtypeExists) {
           errorMsg =
-            "Clipboard copied, but the active app isn't running under XWayland. Please paste manually with Ctrl+V or install wtype for Wayland apps.";
+            "Clipboard copied, but the active app isn't running under XWayland. Please paste manually with Ctrl+V or install wtype/dotool/ydotool for Wayland apps.";
         } else {
           errorMsg =
             "Clipboard copied, but paste simulation failed on GNOME Wayland. Please paste manually with Ctrl+V.";
         }
-      } else if (!wtypeExists && !xdotoolExists) {
+      } else if (!wtypeExists && !xdotoolExists && !ydotoolExists && !dotoolExists) {
         if (!xwaylandAvailable) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires wtype or xdotool. Please install one or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on Wayland requires wtype or a virtual input tool like dotool/ydotool. Please install one or paste manually with Ctrl+V.";
         } else {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires xdotool (recommended for Electron/XWayland apps) or wtype. Please install one or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting on Wayland requires xdotool (recommended for XWayland apps), wtype, or a virtual input tool like dotool/ydotool. Please install one or paste manually with Ctrl+V.";
         }
       } else {
         const xdotoolNote =
@@ -813,7 +888,7 @@ class ClipboardManager {
         "Clipboard copied, but paste simulation failed on X11. Please install xdotool or paste manually with Ctrl+V.";
     }
 
-    const err = new Error(errorMsg + failureSummary);
+    const err = new Error(errorMsg + failureSummary + ydotooldSummary);
     err.code = "PASTE_SIMULATION_FAILED";
     err.failedAttempts = failedAttempts;
     debugLogger.error(
@@ -987,9 +1062,174 @@ Would you like to open System Settings now?`;
   async writeClipboard(text) {
     try {
       clipboard.writeText(text);
+      if (process.platform === "linux") {
+        this.syncLinuxClipboardSelections(text);
+      }
       return { success: true };
     } catch (error) {
       throw error;
+    }
+  }
+
+  getYdotoolSocketPath() {
+    if (process.env.YDOTOOL_SOCKET) {
+      return process.env.YDOTOOL_SOCKET;
+    }
+
+    const runtimeDir = process.env.XDG_RUNTIME_DIR;
+    if (runtimeDir) {
+      return path.join(runtimeDir, ".ydotool_socket");
+    }
+
+    try {
+      const uid = process.getuid?.();
+      if (typeof uid === "number") {
+        return `/run/user/${uid}/.ydotool_socket`;
+      }
+    } catch {
+      // ignore
+    }
+
+    return null;
+  }
+
+  isYdotooldRunning(socketPath) {
+    if (!socketPath) return false;
+    try {
+      return fs.existsSync(socketPath);
+    } catch {
+      return false;
+    }
+  }
+
+  async startYdotoold(socketPath) {
+    if (!socketPath) {
+      return { success: false, error: "Unable to determine ydotool socket path." };
+    }
+
+    if (!this.commandExists("ydotoold")) {
+      return { success: false, error: "ydotoold is not installed." };
+    }
+
+    if (this.ydotooldStartPromise) {
+      return this.ydotooldStartPromise;
+    }
+
+    this.ydotooldStartPromise = new Promise((resolve) => {
+      let stderr = "";
+      let stdout = "";
+
+      const ydotoold = spawn("ydotoold", ["--socket-path", socketPath, "--socket-perm", "0600"], {
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+
+      this.ydotooldProcess = ydotoold;
+      this.ydotooldStartedByApp = true;
+
+      ydotoold.stdout?.on("data", (data) => {
+        stdout += data.toString();
+      });
+
+      ydotoold.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      ydotoold.on("error", (error) => {
+        this.ydotooldProcess = null;
+        this.ydotooldStartedByApp = false;
+        this.ydotooldStartPromise = null;
+        resolve({ success: false, error: error.message });
+      });
+
+      ydotoold.on("exit", () => {
+        if (this.ydotooldProcess === ydotoold) {
+          this.ydotooldProcess = null;
+          this.ydotooldStartedByApp = false;
+        }
+      });
+
+      const maxAttempts = 15;
+      let attempt = 0;
+
+      const checkSocket = () => {
+        attempt += 1;
+        if (this.isYdotooldRunning(socketPath)) {
+          this.ydotooldStartPromise = null;
+          resolve({ success: true, socketPath });
+          return;
+        }
+
+        if (attempt >= maxAttempts) {
+          this.ydotooldStartPromise = null;
+          resolve({
+            success: false,
+            error: stderr || stdout || "ydotoold did not create a socket in time.",
+          });
+          return;
+        }
+
+        setTimeout(checkSocket, 100);
+      };
+
+      setTimeout(checkSocket, 100);
+    });
+
+    return this.ydotooldStartPromise;
+  }
+
+  async ensureYdotooldRunning(socketPath) {
+    if (this.isYdotooldRunning(socketPath)) {
+      return { success: true, socketPath };
+    }
+
+    const result = await this.startYdotoold(socketPath);
+    return result;
+  }
+
+  stopYdotoold() {
+    if (this.ydotooldProcess && this.ydotooldStartedByApp) {
+      killProcess(this.ydotooldProcess, "SIGTERM");
+      this.ydotooldProcess = null;
+      this.ydotooldStartedByApp = false;
+    }
+  }
+
+  syncLinuxClipboardSelections(text) {
+    if (process.platform !== "linux") return;
+
+    const { isWayland } = getLinuxSessionInfo();
+
+    const runCommand = (cmd, args) => {
+      const result = spawnSync(cmd, args, {
+        input: text,
+        stdio: ["pipe", "ignore", "ignore"],
+      });
+      return result.status === 0;
+    };
+
+    try {
+      if (isWayland && this.commandExists("wl-copy")) {
+        runCommand("wl-copy", []);
+        runCommand("wl-copy", ["--primary"]);
+        return;
+      }
+
+      if (this.commandExists("xclip")) {
+        runCommand("xclip", ["-selection", "clipboard"]);
+        runCommand("xclip", ["-selection", "primary"]);
+        return;
+      }
+
+      if (this.commandExists("xsel")) {
+        runCommand("xsel", ["--clipboard", "--input"]);
+        runCommand("xsel", ["--primary", "--input"]);
+      }
+    } catch (error) {
+      debugLogger.warn(
+        "Failed to sync Linux clipboard selections",
+        { error: error.message },
+        "clipboard"
+      );
     }
   }
 
@@ -1027,44 +1267,62 @@ Would you like to open System Settings now?`;
 
     // Check which tools are available
     const tools = [];
+    const readyTools = [];
     const canUseWtype = isWayland;
     const canUseYdotool = isWayland;
     const canUseDotool = isWayland;
     const canUseXdotool = !isWayland || xwaylandAvailable;
 
+    const ydotoolSocketPath = this.getYdotoolSocketPath();
+    const ydotoolInstalled = this.commandExists("ydotool");
+    const ydotooldRunning = this.isYdotooldRunning(ydotoolSocketPath);
+
     if (canUseWtype && this.commandExists("wtype")) {
       tools.push("wtype");
+      readyTools.push("wtype");
     }
     if (canUseXdotool && this.commandExists("xdotool")) {
       tools.push("xdotool");
+      readyTools.push("xdotool");
     }
     if (canUseDotool && this.commandExists("dotool")) {
       tools.push("dotool");
+      readyTools.push("dotool");
     }
-    if (canUseYdotool && this.commandExists("ydotool")) {
+    if (canUseYdotool && ydotoolInstalled) {
       tools.push("ydotool");
+      if (ydotooldRunning) {
+        readyTools.push("ydotool");
+      }
     }
 
-    const available = tools.length > 0;
+    const available = readyTools.length > 0;
     let recommendedInstall;
     if (!available) {
       if (!isWayland) {
         recommendedInstall = "xdotool";
       } else if (isGnome) {
-        recommendedInstall = xwaylandAvailable ? "wtype or xdotool" : "wtype";
+        recommendedInstall = xwaylandAvailable
+          ? "wtype or dotool/ydotool"
+          : "wtype or dotool/ydotool";
       } else {
-        recommendedInstall = xwaylandAvailable ? "xdotool" : "wtype or xdotool";
+        recommendedInstall = xwaylandAvailable
+          ? "xdotool or wtype/dotool/ydotool"
+          : "wtype or dotool/ydotool";
       }
     }
 
     return {
       platform: "linux",
       available,
-      method: available ? tools[0] : null,
+      method: available ? readyTools[0] : null,
       requiresPermission: false,
       isWayland,
       xwaylandAvailable,
       tools,
+      ydotoolInstalled,
+      ydotooldRunning,
+      ydotoolSocketPath: ydotoolSocketPath || undefined,
       recommendedInstall,
     };
   }

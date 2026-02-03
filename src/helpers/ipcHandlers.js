@@ -180,6 +180,11 @@ class IPCHandlers {
       return this.clipboardManager.checkPasteTools();
     });
 
+    ipcMain.handle("start-ydotoold", async () => {
+      const socketPath = this.clipboardManager.getYdotoolSocketPath();
+      return this.clipboardManager.startYdotoold(socketPath);
+    });
+
     // Whisper handlers
     ipcMain.handle("transcribe-local-whisper", async (event, audioBlob, options = {}) => {
       debugLogger.log("transcribe-local-whisper called", {
