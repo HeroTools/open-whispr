@@ -75,7 +75,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     dictationKey,
     activationMode,
     setActivationMode,
-    setWhisperModel,
     setDictationKey,
     setOpenaiApiKey,
     setGroqApiKey,
@@ -343,10 +342,24 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               onCloudModelSelect={(model) =>
                 updateTranscriptionSettings({ cloudTranscriptionModel: model })
               }
-              selectedLocalModel={whisperModel}
-              onLocalModelSelect={setWhisperModel}
+              selectedLocalModel={
+                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+              }
+              onLocalModelSelect={(modelId) => {
+                if (localTranscriptionProvider === "nvidia") {
+                  updateTranscriptionSettings({ parakeetModel: modelId });
+                } else {
+                  updateTranscriptionSettings({ whisperModel: modelId });
+                }
+              }}
+              selectedLocalProvider={localTranscriptionProvider}
+              onLocalProviderSelect={(provider) =>
+                updateTranscriptionSettings({
+                  localTranscriptionProvider: provider as "whisper" | "nvidia",
+                })
+              }
               useLocalWhisper={useLocalWhisper}
-              onModeChange={() => {}}
+              onModeChange={(isLocal) => updateTranscriptionSettings({ useLocalWhisper: isLocal })}
               openaiApiKey={openaiApiKey}
               setOpenaiApiKey={setOpenaiApiKey}
               groqApiKey={groqApiKey}
@@ -445,7 +458,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 OpenWhispr only uses these permissions for dictation.
                 {useLocalWhisper
                   ? " With local processing, your voice never leaves your device."
-                  : " Your voice is sent to OpenAI's servers for transcription."}
+                  : " Your voice is sent to your configured cloud provider for transcription."}
               </p>
             </InfoBox>
           </div>
@@ -535,6 +548,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <div className="space-y-4">
               <label className="block text-sm font-medium text-foreground mb-2">Agent Name</label>
               <Input
+                ref={practiceTextareaRef}
                 placeholder="e.g., Assistant, Jarvis, Alex..."
                 value={agentName}
                 onChange={(e) => setAgentName(e.target.value)}
@@ -559,7 +573,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       case 1:
         // Setup - check if configuration is complete
         if (useLocalWhisper) {
-          return whisperModel !== "" && isModelDownloaded;
+          const modelToCheck =
+            localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
+          return modelToCheck !== "" && isModelDownloaded;
         } else {
           // For cloud mode, check if appropriate API key is set
           if (cloudTranscriptionProvider === "openai") {
