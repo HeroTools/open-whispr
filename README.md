@@ -4,7 +4,7 @@ An open source desktop dictation application that converts speech to text using 
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=HeroTools/open-whispr&type=date&legend=top-left)](https://www.star-history.com/#HeroTools/open-whispr&type=date&legend=top-left)
+[![Star History Chart](https://api.star-history.com/svg?repos=OpenWhispr/openwhispr&type=date&legend=top-left)](https://www.star-history.com/#OpenWhispr/openwhispr&type=date&legend=top-left)
 
 ## License
 
@@ -51,8 +51,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 1. **Clone the repository**:
    ```bash
-   git clone https://github.com/HeroTools/open-whispr.git
-   cd open-whispr
+   git clone https://github.com/OpenWhispr/openwhispr.git
+   cd openwhispr
    ```
 
 2. **Install dependencies**:
@@ -579,7 +579,7 @@ OpenWhispr is designed with privacy and security in mind:
 
 ### Getting Help
 
-- Check the [Issues](https://github.com/your-repo/open-whispr/issues) page
+- Check the [Issues](https://github.com/OpenWhispr/openwhispr/issues) page
 - Review the console logs for debugging information
 - For local processing: Ensure whisper.cpp is accessible and models are downloaded
 - For cloud processing: Verify your OpenAI API key and billing status
@@ -614,7 +614,7 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.3.1
+OpenWhispr is actively maintained and ready for production use. Current version: 1.3.3
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support (macOS, Windows, Linux)

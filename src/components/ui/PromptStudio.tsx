@@ -125,7 +125,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     setTestResult("");
 
     try {
-      const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+      const useReasoningModel = localStorage.getItem("useReasoningModel") !== "false";
       const reasoningModel = localStorage.getItem("reasoningModel") || "";
       const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
       const customBaseUrl = localStorage.getItem("cloudReasoningBaseUrl") || "";
@@ -398,7 +398,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   );
 
   const renderTestPlayground = () => {
-    const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+    const useReasoningModel = localStorage.getItem("useReasoningModel") !== "false";
     const reasoningModel = localStorage.getItem("reasoningModel") || "";
     const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
     const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {

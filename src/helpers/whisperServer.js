@@ -1,11 +1,12 @@
 const { spawn } = require("child_process");
 const fs = require("fs");
 const net = require("net");
-const os = require("os");
 const path = require("path");
 const http = require("http");
 const debugLogger = require("./debugLogger");
 const { killProcess } = require("../utils/process");
+const { getSafeTempDir } = require("./safeTempDir");
+const { convertToWav } = require("./ffmpegUtils");
 
 const PORT_RANGE_START = 8178;
 const PORT_RANGE_END = 8199;
@@ -210,20 +211,25 @@ class WhisperServerManager {
     const spawnEnv = { ...process.env };
     const pathSep = process.platform === "win32" ? ";" : ":";
 
+    if (process.platform === "win32") {
+      const safeTmp = getSafeTempDir();
+      spawnEnv.TEMP = safeTmp;
+      spawnEnv.TMP = safeTmp;
+    }
+
     // Add the whisper-server directory to PATH so any companion DLLs are found
     const serverBinaryDir = path.dirname(serverBinary);
     spawnEnv.PATH = serverBinaryDir + pathSep + (process.env.PATH || "");
 
     const args = ["--model", modelPath, "--host", "127.0.0.1", "--port", String(this.port)];
 
-    // Only add --convert flag if FFmpeg is available
+    // FFmpeg is required for pre-converting audio to 16kHz mono WAV
     this.canConvert = !!ffmpegPath;
     if (ffmpegPath) {
-      args.push("--convert");
       const ffmpegDir = path.dirname(ffmpegPath);
       spawnEnv.PATH = ffmpegDir + pathSep + spawnEnv.PATH;
     } else {
-      debugLogger.warn("FFmpeg not found - whisper-server will only accept WAV format");
+      debugLogger.warn("FFmpeg not found - whisper-server will only accept 16kHz mono WAV");
     }
 
     if (options.threads) args.push("--threads", String(options.threads));
@@ -377,32 +383,25 @@ class WhisperServerManager {
     });
 
     const { language, initialPrompt } = options;
+
+    // Always convert to 16kHz mono WAV - whisper.cpp requires this exact format
+    let finalBuffer = audioBuffer;
+    if (!this.canConvert) {
+      throw new Error("FFmpeg not found - required for audio conversion");
+    }
+    finalBuffer = await this._convertToWav(audioBuffer);
+
     const boundary = `----WhisperBoundary${Date.now()}`;
     const parts = [];
-
-    const isWav =
-      audioBuffer &&
-      audioBuffer.length >= 12 &&
-      audioBuffer[0] === 0x52 &&
-      audioBuffer[1] === 0x49 &&
-      audioBuffer[2] === 0x46 &&
-      audioBuffer[3] === 0x46 &&
-      audioBuffer[8] === 0x57 &&
-      audioBuffer[9] === 0x41 &&
-      audioBuffer[10] === 0x56 &&
-      audioBuffer[11] === 0x45;
-    if (!isWav && !this.canConvert) {
-      throw new Error("FFmpeg not found - whisper-server requires WAV input");
-    }
-    const fileName = isWav ? "audio.wav" : "audio.webm";
-    const contentType = isWav ? "audio/wav" : "audio/webm";
+    const fileName = "audio.wav";
+    const contentType = "audio/wav";
 
     parts.push(
       `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
         `Content-Type: ${contentType}\r\n\r\n`
     );
-    parts.push(audioBuffer);
+    parts.push(finalBuffer);
     parts.push("\r\n");
 
     if (language && language !== "auto") {
@@ -486,6 +485,27 @@ class WhisperServerManager {
       req.write(body);
       req.end();
     });
+  }
+
+  async _convertToWav(audioBuffer) {
+    const tempDir = getSafeTempDir();
+    const timestamp = Date.now();
+    const tempInputPath = path.join(tempDir, `whisper-input-${timestamp}.webm`);
+    const tempWavPath = path.join(tempDir, `whisper-output-${timestamp}.wav`);
+
+    try {
+      fs.writeFileSync(tempInputPath, audioBuffer);
+      await convertToWav(tempInputPath, tempWavPath, { sampleRate: 16000, channels: 1 });
+      return fs.readFileSync(tempWavPath);
+    } finally {
+      for (const f of [tempInputPath, tempWavPath]) {
+        try {
+          if (fs.existsSync(f)) fs.unlinkSync(f);
+        } catch {
+          // ignore cleanup errors
+        }
+      }
+    }
   }
 
   async stop() {

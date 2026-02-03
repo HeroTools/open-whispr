@@ -36,11 +36,10 @@ class WindowManager {
       ...position,
     });
 
-    if (process.platform === "darwin") {
-      this.mainWindow.setSkipTaskbar(false);
-    } else {
-      this.mainWindow.setSkipTaskbar(true);
-    }
+    // Main window (dictation overlay) should never appear in dock/taskbar
+    // On macOS, users access the app via the menu bar tray icon
+    // On Windows/Linux, the control panel stays in the taskbar when minimized
+    this.mainWindow.setSkipTaskbar(true);
 
     this.setMainWindowInteractivity(false);
     this.registerMainWindowEvents();
@@ -248,23 +247,22 @@ class WindowManager {
 
     this.controlPanelWindow.once("ready-to-show", () => {
       clearVisibilityTimer();
-      if (process.platform === "win32") {
-        this.controlPanelWindow.setSkipTaskbar(false);
+      // Show dock icon on macOS when control panel opens
+      if (process.platform === "darwin" && app.dock) {
+        app.dock.show();
       }
       this.controlPanelWindow.show();
       this.controlPanelWindow.focus();
     });
 
-    this.controlPanelWindow.on("show", () => {
-      if (process.platform === "win32") {
-        this.controlPanelWindow.setSkipTaskbar(false);
-      }
-    });
-
     this.controlPanelWindow.on("close", (event) => {
       if (!this.isQuitting) {
         event.preventDefault();
-        this.hideControlPanelToTray();
+        if (process.platform === "darwin") {
+          this.hideControlPanelToTray();
+        } else {
+          this.controlPanelWindow.minimize();
+        }
       }
     });
 
@@ -327,11 +325,12 @@ class WindowManager {
       return;
     }
 
-    if (process.platform === "win32") {
-      this.controlPanelWindow.setSkipTaskbar(true);
-    }
-
     this.controlPanelWindow.hide();
+
+    // Hide dock icon on macOS when control panel is hidden
+    if (process.platform === "darwin" && app.dock) {
+      app.dock.hide();
+    }
   }
 
   hideDictationPanel() {

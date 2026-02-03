@@ -93,7 +93,7 @@ class MenuManager {
               label: "Learn More",
               click: async () => {
                 const { shell } = require("electron");
-                await shell.openExternal("https://github.com/HeroTools/open-whispr");
+                await shell.openExternal("https://github.com/OpenWhispr/openwhispr");
               },
             },
           ],

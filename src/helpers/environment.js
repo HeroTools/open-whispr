@@ -138,6 +138,15 @@ OPENAI_API_KEY=${apiKey}
     if (process.env.PARAKEET_MODEL) {
       envContent += `PARAKEET_MODEL=${process.env.PARAKEET_MODEL}\n`;
     }
+    if (process.env.LOCAL_WHISPER_MODEL) {
+      envContent += `LOCAL_WHISPER_MODEL=${process.env.LOCAL_WHISPER_MODEL}\n`;
+    }
+    if (process.env.REASONING_PROVIDER) {
+      envContent += `REASONING_PROVIDER=${process.env.REASONING_PROVIDER}\n`;
+    }
+    if (process.env.LOCAL_REASONING_MODEL) {
+      envContent += `LOCAL_REASONING_MODEL=${process.env.LOCAL_REASONING_MODEL}\n`;
+    }
 
     fs.writeFileSync(envPath, envContent, "utf8");
 

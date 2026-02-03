@@ -169,20 +169,19 @@ async function startApp() {
     await new Promise((resolve) => setTimeout(resolve, 2000));
   }
 
-  // Ensure dock is visible on macOS and stays visible
-  if (process.platform === "darwin" && app.dock) {
-    app.dock.show();
-    // Prevent dock from hiding when windows use setVisibleOnAllWorkspaces
+  // On macOS, set activation policy to allow dock icon to be shown/hidden dynamically
+  // The dock icon visibility is managed by WindowManager based on control panel state
+  if (process.platform === "darwin") {
     app.setActivationPolicy("regular");
   }
 
   // Initialize Whisper manager at startup (don't await to avoid blocking)
   // Settings can be provided via environment variables for server pre-warming:
-  // - USE_LOCAL_WHISPER=true to enable local whisper mode
+  // - LOCAL_TRANSCRIPTION_PROVIDER=whisper to enable local whisper mode
   // - LOCAL_WHISPER_MODEL=base (or tiny, small, medium, large, turbo)
   const whisperSettings = {
-    useLocalWhisper: process.env.USE_LOCAL_WHISPER === "true",
-    whisperModel: process.env.LOCAL_WHISPER_MODEL || "base",
+    localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
+    whisperModel: process.env.LOCAL_WHISPER_MODEL,
   };
   whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
     // Whisper not being available at startup is not critical
@@ -195,7 +194,7 @@ async function startApp() {
   // - PARAKEET_MODEL=parakeet-tdt-0.6b-v3 (model name)
   const parakeetSettings = {
     localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
-    parakeetModel: process.env.PARAKEET_MODEL || "parakeet-tdt-0.6b-v3",
+    parakeetModel: process.env.PARAKEET_MODEL,
   };
   parakeetManager.initializeAtStartup(parakeetSettings).catch((err) => {
     // Parakeet not being available at startup is not critical
@@ -514,6 +513,10 @@ if (gotSingleInstanceLock) {
     } else {
       // Show control panel when dock icon is clicked (most common user action)
       if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
+        // Ensure dock icon is visible when control panel opens
+        if (process.platform === "darwin" && app.dock) {
+          app.dock.show();
+        }
         if (windowManager.controlPanelWindow.isMinimized()) {
           windowManager.controlPanelWindow.restore();
         }

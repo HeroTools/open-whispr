@@ -1,3 +1,5 @@
+export type LocalTranscriptionProvider = "whisper" | "nvidia";
+
 export interface TranscriptionItem {
   id: number;
   text: string;
@@ -198,6 +200,13 @@ declare global {
       getAnthropicKey: () => Promise<string | null>;
       saveAnthropicKey: (key: string) => Promise<void>;
       saveAllKeysToEnv: () => Promise<{ success: boolean; path: string }>;
+      syncStartupPreferences: (prefs: {
+        useLocalWhisper: boolean;
+        localTranscriptionProvider: LocalTranscriptionProvider;
+        model?: string;
+        reasoningProvider: string;
+        reasoningModel?: string;
+      }) => Promise<void>;
 
       // Clipboard operations
       readClipboard: () => Promise<string>;

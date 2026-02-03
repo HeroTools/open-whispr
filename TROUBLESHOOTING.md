@@ -97,7 +97,7 @@ For detailed diagnostics, see [DEBUG.md](DEBUG.md).
 
 1. Enable debug mode and reproduce the issue
 2. Collect diagnostic output from commands above
-3. Open an issue at https://github.com/HeroTools/open-whispr/issues with:
+3. Open an issue at https://github.com/OpenWhispr/openwhispr/issues with:
    - OS version
    - OpenWhispr version
    - Relevant log sections

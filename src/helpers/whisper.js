@@ -61,9 +61,13 @@ class WhisperManager {
       this.isInitialized = true;
 
       // Pre-warm whisper-server if local mode enabled (eliminates 2-5s cold-start delay)
-      const { useLocalWhisper, whisperModel } = settings;
+      const { localTranscriptionProvider, whisperModel } = settings;
 
-      if (useLocalWhisper && whisperModel && this.serverManager.isAvailable()) {
+      if (
+        localTranscriptionProvider === "whisper" &&
+        whisperModel &&
+        this.serverManager.isAvailable()
+      ) {
         const modelPath = this.getModelPath(whisperModel);
 
         if (fs.existsSync(modelPath)) {
@@ -97,11 +101,12 @@ class WhisperManager {
         }
       } else {
         debugLogger.debug("Skipping server pre-warm", {
-          reason: !useLocalWhisper
-            ? "local mode disabled"
-            : !whisperModel
-              ? "no model selected"
-              : "server binary not available",
+          reason:
+            localTranscriptionProvider !== "whisper"
+              ? "provider not whisper"
+              : !whisperModel
+                ? "no model selected"
+                : "server binary not available",
         });
       }
     } catch (error) {
