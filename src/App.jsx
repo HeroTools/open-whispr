@@ -138,9 +138,10 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, toggleListening, cancelRecording } = useAudioRecording(toast, {
-    onToggle: handleDictationToggle,
-  });
+  const { isRecording, isProcessing, toggleListening, cancelRecording, cancelProcessing } =
+    useAudioRecording(toast, {
+      onToggle: handleDictationToggle,
+    });
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
@@ -240,19 +241,17 @@ export default function App() {
             }
           }}
         >
-          {isRecording && isHovered && (
-            <Tooltip content="Cancel recording">
-              <button
-                aria-label="Cancel recording"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  cancelRecording();
-                }}
-                className="w-7 h-7 rounded-full bg-card/90 hover:bg-destructive border border-border hover:border-destructive flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
-              >
-                <X size={12} strokeWidth={2.5} color="white" />
-              </button>
-            </Tooltip>
+          {(isRecording || isProcessing) && isHovered && (
+            <button
+              aria-label={isRecording ? "Cancel recording" : "Cancel processing"}
+              onClick={(e) => {
+                e.stopPropagation();
+                isRecording ? cancelRecording() : cancelProcessing();
+              }}
+              className="w-5 h-5 rounded-full bg-card/90 hover:bg-destructive border border-border hover:border-destructive flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
+            >
+              <X size={10} strokeWidth={2.5} color="white" />
+            </button>
           )}
           <Tooltip content={micProps.tooltip}>
             <button
