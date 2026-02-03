@@ -53,6 +53,22 @@ export interface AudioDiagnosticsResult {
   models: string[];
 }
 
+export interface GpuStatusResult {
+  preference: "auto" | "force-cpu" | "force-cuda";
+  gpuAvailable: boolean;
+  usingCuda: boolean;
+  binaryPath: string | null;
+  binaryType: "CUDA" | "CPU" | "Unknown";
+}
+
+export interface LlamaGpuStatusResult {
+  preference: "auto" | "force-cpu" | "force-gpu";
+  gpuAvailable: boolean;
+  usingGpu: boolean;
+  binaryPath: string | null;
+  binaryType: "Vulkan" | "CUDA" | "CPU" | "Unknown";
+}
+
 export interface UpdateCheckResult {
   updateAvailable: boolean;
   version?: string;
@@ -381,6 +397,9 @@ declare global {
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<FFmpegAvailabilityResult>;
       getAudioDiagnostics: () => Promise<AudioDiagnosticsResult>;
+      setGpuPreference: (preference: "auto" | "force-cpu" | "force-cuda") => Promise<{ success: boolean; error?: string }>;
+      getGpuStatus: () => Promise<GpuStatusResult>;
+      getLlamaGpuStatus: () => Promise<LlamaGpuStatusResult>;
 
       // System settings helpers
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;

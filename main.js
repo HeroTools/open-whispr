@@ -174,10 +174,18 @@ async function startApp() {
   // Settings can be provided via environment variables for server pre-warming:
   // - LOCAL_TRANSCRIPTION_PROVIDER=whisper to enable local whisper mode
   // - LOCAL_WHISPER_MODEL=base (or tiny, small, medium, large, turbo)
+  // - GPU_ACCELERATION=auto|force-cpu|force-cuda
+  const savedGpuPreference = environmentManager.getGpuPreference();
   const whisperSettings = {
     localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
     whisperModel: process.env.LOCAL_WHISPER_MODEL,
+    gpuPreference: savedGpuPreference,
   };
+  debugLogger.info("Whisper startup settings", {
+    gpuPreference: savedGpuPreference,
+    provider: whisperSettings.localTranscriptionProvider,
+    model: whisperSettings.whisperModel,
+  });
   whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
     // Whisper not being available at startup is not critical
     debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
@@ -544,14 +552,14 @@ if (gotSingleInstanceLock) {
     }
     // Stop whisper server if running
     if (whisperManager) {
-      whisperManager.stopServer().catch(() => {});
+      whisperManager.stopServer().catch(() => { });
     }
     // Stop parakeet WS server if running
     if (parakeetManager) {
-      parakeetManager.stopServer().catch(() => {});
+      parakeetManager.stopServer().catch(() => { });
     }
     // Stop llama-server if running
     const modelManager = require("./src/helpers/modelManagerBridge").default;
-    modelManager.stopServer().catch(() => {});
+    modelManager.stopServer().catch(() => { });
   });
 }

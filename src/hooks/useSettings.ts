@@ -18,6 +18,7 @@ export interface TranscriptionSettings {
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
   customDictionary: string[];
+  gpuAcceleration: "auto" | "force-cpu" | "force-cuda";
 }
 
 export interface ReasoningSettings {
@@ -189,6 +190,27 @@ export function useSettings() {
     syncDictionary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const [gpuAcceleration, setGpuAcceleration] = useLocalStorage<"auto" | "force-cpu" | "force-cuda">(
+    "gpuAcceleration",
+    "auto",
+    {
+      serialize: String,
+      deserialize: (value) => {
+        if (value === "force-cpu" || value === "force-cuda") return value;
+        return "auto";
+      },
+    }
+  );
+
+  // Sync GPU preference to main process when it changes
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.electronAPI?.setGpuPreference) {
+      window.electronAPI.setGpuPreference(gpuAcceleration).catch((err) => {
+        console.error("Failed to sync GPU preference:", err);
+      });
+    }
+  }, [gpuAcceleration]);
 
   // Reasoning settings
   const [useReasoningModel, setUseReasoningModel] = useLocalStorage("useReasoningModel", true, {
@@ -515,6 +537,7 @@ export function useSettings() {
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     customDictionary,
+    gpuAcceleration,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -537,6 +560,7 @@ export function useSettings() {
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setCustomDictionary,
+    setGpuAcceleration,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider,

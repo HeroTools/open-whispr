@@ -271,6 +271,44 @@ class IPCHandlers {
       return this.whisperManager.getDiagnostics();
     });
 
+    ipcMain.handle("set-gpu-preference", async (event, preference) => {
+      if (this.whisperManager?.serverManager) {
+        this.whisperManager.serverManager.setGpuPreference(preference);
+        // Also save to env file for next startup
+        this.environmentManager.saveGpuPreference(preference);
+        debugLogger.info("GPU preference updated and saved", { preference });
+        return { success: true };
+      }
+      return { success: false, error: "Whisper manager not initialized" };
+    });
+
+    ipcMain.handle("get-gpu-status", async () => {
+      if (this.whisperManager?.serverManager) {
+        return this.whisperManager.serverManager.getGpuStatus();
+      }
+      return {
+        preference: "auto",
+        gpuAvailable: false,
+        usingCuda: false,
+        binaryPath: null,
+        binaryType: "Unknown"
+      };
+    });
+
+    // Get llama-server GPU status
+    ipcMain.handle("get-llama-gpu-status", async () => {
+      if (this.modelManager?.serverManager) {
+        return this.modelManager.serverManager.getGpuStatus();
+      }
+      return {
+        preference: "auto",
+        gpuAvailable: false,
+        usingGpu: false,
+        binaryPath: null,
+        binaryType: "Unknown"
+      };
+    });
+
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
       return this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
         event.sender.send("whisper-download-progress", progressData);
@@ -789,8 +827,8 @@ class IPCHandlers {
             }
             throw new Error(
               errorData.error?.message ||
-                errorData.error ||
-                `Anthropic API error: ${response.status}`
+              errorData.error ||
+              `Anthropic API error: ${response.status}`
             );
           }
 

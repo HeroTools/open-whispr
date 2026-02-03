@@ -25,6 +25,43 @@ class WhisperServerManager {
     this.cachedServerBinaryPath = null;
     this.cachedFFmpegPath = null;
     this.canConvert = false;
+    this.gpuPreference = "auto"; // User preference: "auto", "force-cpu", or "force-cuda"
+    this.lastGpuPreference = null;
+    this.gpuDetectionCache = null; // Cache GPU detection result
+    this.gpuDetectionTimestamp = 0;
+    this.GPU_DETECTION_CACHE_TTL = 60000; // Cache for 60 seconds
+    this.lastLoggedBinaryPath = null; // Track last logged binary to avoid spam
+    this.hasLoggedMissingBinary = false; // Track if we already logged missing binary warning
+    this.needsRestart = false; // Flag to trigger restart when GPU preference changes
+  }
+
+  setGpuPreference(preference) {
+    if (this.gpuPreference !== preference) {
+      debugLogger.info("GPU preference changed", { from: this.gpuPreference, to: preference });
+      const wasRunning = this.ready;
+      this.gpuPreference = preference;
+      // Clear cached path to force re-detection
+      this.cachedServerBinaryPath = null;
+      // If server was running, mark it for restart on next transcription
+      if (wasRunning) {
+        debugLogger.info("Server needs restart for new GPU preference");
+        this.needsRestart = true;
+      }
+    }
+  }
+
+  getGpuStatus() {
+    const binaryPath = this.getServerBinaryPath();
+    const gpuDetected = this.detectGPU("auto"); // Check actual GPU without user preference
+    const usingCuda = binaryPath ? binaryPath.includes("-cuda") : false;
+
+    return {
+      preference: this.gpuPreference || "auto",
+      gpuAvailable: gpuDetected === "cuda",
+      usingCuda,
+      binaryPath: binaryPath || null,
+      binaryType: usingCuda ? "CUDA" : "CPU",
+    };
   }
 
   getFFmpegPath() {
@@ -117,27 +154,109 @@ class WhisperServerManager {
     return null;
   }
 
+  detectGPU(preference = "auto") {
+    // Respect user preference
+    if (preference === "force-cpu") {
+      return null;
+    }
+
+    if (preference === "force-cuda") {
+      return "cuda";
+    }
+
+    // Auto-detect: Only check for CUDA on Windows and Linux (macOS uses Metal, not bundled)
+    if (process.platform !== "win32" && process.platform !== "linux") {
+      return null;
+    }
+
+    // Use cached result if still valid
+    const now = Date.now();
+    if (this.gpuDetectionCache !== null && now - this.gpuDetectionTimestamp < this.GPU_DETECTION_CACHE_TTL) {
+      return this.gpuDetectionCache;
+    }
+
+    try {
+      const { execSync } = require("child_process");
+      // Check if nvidia-smi is available (indicates NVIDIA GPU with drivers)
+      execSync("nvidia-smi", { stdio: "ignore", timeout: 3000 });
+      this.gpuDetectionCache = "cuda";
+      this.gpuDetectionTimestamp = now;
+      debugLogger.info("NVIDIA GPU detected via nvidia-smi");
+      return "cuda";
+    } catch {
+      this.gpuDetectionCache = null;
+      this.gpuDetectionTimestamp = now;
+      debugLogger.debug("No NVIDIA GPU detected (nvidia-smi not found or failed)");
+      return null;
+    }
+  }
+
   getServerBinaryPath() {
+    const gpuPreference = this.gpuPreference || "auto";
+
+    // Clear cache if preference changed
+    if (this.cachedServerBinaryPath && this.lastGpuPreference !== gpuPreference) {
+      this.cachedServerBinaryPath = null;
+    }
+    this.lastGpuPreference = gpuPreference;
+
     if (this.cachedServerBinaryPath) return this.cachedServerBinaryPath;
 
     const platform = process.platform;
     const arch = process.arch;
     const platformArch = `${platform}-${arch}`;
-    const binaryName =
-      platform === "win32"
-        ? `whisper-server-${platformArch}.exe`
-        : `whisper-server-${platformArch}`;
-    const genericName = platform === "win32" ? "whisper-server.exe" : "whisper-server";
+
+    // Detect GPU and prefer CUDA binary if available
+    const gpuVariant = this.detectGPU(gpuPreference);
 
     const candidates = [];
 
+    // Build binary name candidates in priority order
     if (process.resourcesPath) {
+      // Production paths
+      if (gpuVariant === "cuda") {
+        // Try CUDA binary first
+        const cudaBinaryName = platform === "win32"
+          ? `whisper-server-${platformArch}-cuda.exe`
+          : `whisper-server-${platformArch}-cuda`;
+        candidates.push(path.join(process.resourcesPath, "bin", cudaBinaryName));
+      }
+
+      // Fallback to CPU binary
+      const cpuBinaryName = platform === "win32"
+        ? `whisper-server-${platformArch}-cpu.exe`
+        : `whisper-server-${platformArch}-cpu`;
+      candidates.push(path.join(process.resourcesPath, "bin", cpuBinaryName));
+
+      // Legacy names (for backwards compatibility)
+      const binaryName = platform === "win32"
+        ? `whisper-server-${platformArch}.exe`
+        : `whisper-server-${platformArch}`;
+      const genericName = platform === "win32" ? "whisper-server.exe" : "whisper-server";
       candidates.push(
         path.join(process.resourcesPath, "bin", binaryName),
         path.join(process.resourcesPath, "bin", genericName)
       );
     }
 
+    // Development paths
+    if (gpuVariant === "cuda") {
+      const cudaBinaryName = platform === "win32"
+        ? `whisper-server-${platformArch}-cuda.exe`
+        : `whisper-server-${platformArch}-cuda`;
+      candidates.push(path.join(__dirname, "..", "..", "resources", "bin", cudaBinaryName));
+    }
+
+    const cpuBinaryName = platform === "win32"
+      ? `whisper-server-${platformArch}-cpu.exe`
+      : `whisper-server-${platformArch}-cpu`;
+    candidates.push(path.join(__dirname, "..", "..", "resources", "bin", cpuBinaryName));
+
+    // Legacy names
+    const binaryName = platform === "win32"
+      ? `whisper-server-${platformArch}.exe`
+      : `whisper-server-${platformArch}`;
+    const genericName = platform === "win32" ? "whisper-server.exe" : "whisper-server";
     candidates.push(
       path.join(__dirname, "..", "..", "resources", "bin", binaryName),
       path.join(__dirname, "..", "..", "resources", "bin", genericName)
@@ -148,6 +267,12 @@ class WhisperServerManager {
         try {
           fs.statSync(candidate);
           this.cachedServerBinaryPath = candidate;
+          const variant = candidate.includes("-cuda") ? "CUDA" : "CPU";
+          // Only log once when binary is first found, not on every cache hit
+          if (!this.lastLoggedBinaryPath || this.lastLoggedBinaryPath !== candidate) {
+            debugLogger.info(`Using whisper-server binary: ${variant}`, { path: candidate });
+            this.lastLoggedBinaryPath = candidate;
+          }
           return candidate;
         } catch {
           // Can't access binary
@@ -155,6 +280,11 @@ class WhisperServerManager {
       }
     }
 
+    // Only log warning once
+    if (!this.hasLoggedMissingBinary) {
+      debugLogger.warn("No whisper-server binary found", { checkedPaths: candidates });
+      this.hasLoggedMissingBinary = true;
+    }
     return null;
   }
 
@@ -366,6 +496,15 @@ class WhisperServerManager {
   }
 
   async transcribe(audioBuffer, options = {}) {
+    // Check if restart is needed due to GPU preference change
+    if (this.needsRestart) {
+      debugLogger.info("Restarting whisper-server for GPU preference change");
+      await this.stop();
+      this.needsRestart = false;
+      // Server will be restarted by the caller (whisper.js transcribeViaServer)
+      throw new Error("whisper-server restarting for GPU preference change");
+    }
+
     if (!this.ready || !this.process) {
       throw new Error("whisper-server is not running");
     }
@@ -377,8 +516,8 @@ class WhisperServerManager {
       firstBytes:
         audioBuffer?.length >= 16
           ? Array.from(audioBuffer.slice(0, 16))
-              .map((b) => b.toString(16).padStart(2, "0"))
-              .join(" ")
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join(" ")
           : "too short",
     });
 
@@ -398,8 +537,8 @@ class WhisperServerManager {
 
     parts.push(
       `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
-        `Content-Type: ${contentType}\r\n\r\n`
+      `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+      `Content-Type: ${contentType}\r\n\r\n`
     );
     parts.push(finalBuffer);
     parts.push("\r\n");
@@ -407,8 +546,8 @@ class WhisperServerManager {
     if (language && language !== "auto") {
       parts.push(
         `--${boundary}\r\n` +
-          `Content-Disposition: form-data; name="language"\r\n\r\n` +
-          `${language}\r\n`
+        `Content-Disposition: form-data; name="language"\r\n\r\n` +
+        `${language}\r\n`
       );
     }
 
@@ -416,16 +555,16 @@ class WhisperServerManager {
     if (initialPrompt) {
       parts.push(
         `--${boundary}\r\n` +
-          `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
-          `${initialPrompt}\r\n`
+        `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
+        `${initialPrompt}\r\n`
       );
       debugLogger.info("Using custom dictionary prompt", { prompt: initialPrompt });
     }
 
     parts.push(
       `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="response_format"\r\n\r\n` +
-        `json\r\n`
+      `Content-Disposition: form-data; name="response_format"\r\n\r\n` +
+      `json\r\n`
     );
     parts.push(`--${boundary}--\r\n`);
 
