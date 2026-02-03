@@ -104,9 +104,22 @@ export default function App() {
       });
     });
 
+    const unsubscribeCorrections = window.electronAPI?.onCorrectionsLearned?.((words) => {
+      if (words && words.length > 0) {
+        const wordList = words.map((w) => `"${w}"`).join(", ");
+        toast({
+          title: "Dictionary Updated",
+          description: `Saved ${wordList} to dictionary`,
+          variant: "success",
+          duration: 4000,
+        });
+      }
+    });
+
     return () => {
       unsubscribeFallback?.();
       unsubscribeFailed?.();
+      unsubscribeCorrections?.();
     };
   }, [toast]);
 
