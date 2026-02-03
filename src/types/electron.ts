@@ -48,11 +48,7 @@ export interface AudioDiagnosticsResult {
   isPackaged: boolean;
   ffmpeg: { available: boolean; path: string | null; error: string | null };
   whisperBinary: { available: boolean; path: string | null; error: string | null };
-  whisperServer: {
-    available: boolean;
-    path: string | null;
-    type?: "bundled" | "custom (userData)";
-  };
+  whisperServer: { available: boolean; path: string | null };
   modelsDir: string;
   models: string[];
 }
@@ -389,15 +385,6 @@ declare global {
       // FFmpeg availability
       checkFFmpegAvailability: () => Promise<FFmpegAvailabilityResult>;
       getAudioDiagnostics: () => Promise<AudioDiagnosticsResult>;
-      downloadWhisperBinaryGpu: () => Promise<{ success: boolean; path?: string; error?: string }>;
-      removeWhisperBinaryGpu: () => Promise<{
-        success: boolean;
-        deleted?: boolean;
-        error?: string;
-      }>;
-      onWhisperBinaryDownloadProgress: (
-        callback: (event: any, data: { type: string; percentage: number }) => void
-      ) => (() => void) | void;
 
       // System settings helpers
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;

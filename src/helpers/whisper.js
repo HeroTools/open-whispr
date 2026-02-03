@@ -1,21 +1,14 @@
 const fs = require("fs");
 const fsPromises = require("fs").promises;
 const path = require("path");
-const { app } = require("electron");
 const debugLogger = require("./debugLogger");
-const {
-  downloadFile,
-  createDownloadSignal,
-  fetchLatestRelease,
-  extractArchive,
-} = require("./downloadUtils");
+const { downloadFile, createDownloadSignal } = require("./downloadUtils");
 const WhisperServerManager = require("./whisperServer");
 const { getModelsDirForService } = require("./modelDirUtils");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
 
 const CACHE_TTL_MS = 30000;
-const WHISPER_CPP_REPO = "OpenWhispr/whisper.cpp";
 
 function getWhisperModelConfig(modelName) {
   const modelInfo = modelRegistryData.whisperModels[modelName];
@@ -639,7 +632,7 @@ class WhisperManager {
       resourcesPath: process.resourcesPath || null,
       isPackaged: !!process.resourcesPath && !process.resourcesPath.includes("node_modules"),
       ffmpeg: { available: false, path: null, error: null },
-      whisperServer: { available: false, path: null, type: "bundled" },
+      whisperServer: { available: false, path: null },
       modelsDir: this.getModelsDir(),
       models: [],
     };
@@ -660,13 +653,9 @@ class WhisperManager {
     // Check whisper server
     if (this.serverManager) {
       const serverPath = this.serverManager.getServerBinaryPath?.();
-      const userDataPath = app.getPath("userData");
-      const isCustom = serverPath && serverPath.startsWith(userDataPath);
-
       diagnostics.whisperServer = {
         available: this.serverManager.isAvailable(),
         path: serverPath || null,
-        type: isCustom ? "custom (userData)" : "bundled",
       };
     }
 
@@ -684,171 +673,6 @@ class WhisperManager {
     }
 
     return diagnostics;
-  }
-
-  async downloadWhisperBinary(useGpu = false, progressCallback = null) {
-    debugLogger.info("Starting whisper binary download", { useGpu });
-
-    // Stop server if running
-    await this.stopServer();
-    this.serverManager.cachedServerBinaryPath = null; // Clear cache
-
-    const platform = process.platform;
-    const arch = process.arch;
-    const key = `${platform}-${arch}`;
-
-    // Config for binaries
-    const BINARIES = {
-      "darwin-arm64": {
-        zipName: "whisper-server-darwin-arm64.zip",
-        binaryName: "whisper-server-darwin-arm64",
-      },
-      "darwin-x64": {
-        zipName: "whisper-server-darwin-x64.zip",
-        binaryName: "whisper-server-darwin-x64",
-      },
-      "win32-x64": {
-        cpu: {
-          zipName: "whisper-server-win32-x64-cpu.zip",
-          binaryName: "whisper-server-win32-x64-cpu.exe",
-        },
-        gpu: {
-          zipName: "whisper-server-win32-x64-cuda.zip",
-          binaryName: "whisper-server-win32-x64-cuda.exe",
-        },
-      },
-      "linux-x64": {
-        cpu: {
-          zipName: "whisper-server-linux-x64-cpu.zip",
-          binaryName: "whisper-server-linux-x64-cpu",
-        },
-        gpu: {
-          zipName: "whisper-server-linux-x64-cuda.zip",
-          binaryName: "whisper-server-linux-x64-cuda",
-        },
-      },
-    };
-
-    let config = BINARIES[key];
-    if (!config) {
-      throw new Error(`Unsupported platform: ${key}`);
-    }
-
-    // Select CPU/GPU variant if applicable
-    if (config.cpu && config.gpu) {
-      config = useGpu ? config.gpu : config.cpu;
-    }
-
-    // Only Linux and Windows support GPU selection for now
-    if (useGpu && !["win32", "linux"].includes(platform)) {
-      throw new Error("GPU acceleration is only supported on Linux and Windows");
-    }
-
-    const userDataPath = app.getPath("userData");
-    const binDir = path.join(userDataPath, "bin");
-    await fsPromises.mkdir(binDir, { recursive: true });
-
-    // Target filename (normalized)
-    const targetBinaryName =
-      platform === "win32" ? `whisper-server-${key}.exe` : `whisper-server-${key}`;
-    const targetPath = path.join(binDir, targetBinaryName);
-
-    try {
-      if (progressCallback) progressCallback({ type: "fetching_release", percentage: 0 });
-
-      const release = await fetchLatestRelease(WHISPER_CPP_REPO);
-      if (!release) throw new Error("Could not fetch release info");
-
-      const asset = release.assets.find((a) => a.name === config.zipName);
-      if (!asset) throw new Error(`Asset ${config.zipName} not found in release ${release.tag}`);
-
-      const zipPath = path.join(binDir, config.zipName);
-      const { signal, abort } = createDownloadSignal();
-      this.currentDownloadProcess = { abort };
-
-      await downloadFile(asset.url, zipPath, {
-        signal,
-        onProgress: (downloaded, total) => {
-          if (progressCallback) {
-            progressCallback({
-              type: "downloading",
-              downloaded_bytes: downloaded,
-              total_bytes: total,
-              percentage: total > 0 ? Math.round((downloaded / total) * 100) : 0,
-            });
-          }
-        },
-      });
-
-      if (progressCallback) progressCallback({ type: "extracting", percentage: 100 });
-
-      const extractDir = path.join(binDir, "temp_extract");
-      await extractArchive(zipPath, extractDir);
-
-      // Find extracted binary and move to target
-      const extractedBinaryPath = path.join(extractDir, config.binaryName);
-      if (fs.existsSync(extractedBinaryPath)) {
-        // Rename/Move to target path (overwriting if exists)
-        if (fs.existsSync(targetPath)) await fsPromises.unlink(targetPath);
-        await fsPromises.rename(extractedBinaryPath, targetPath);
-
-        // Set executable
-        if (platform !== "win32") {
-          await fsPromises.chmod(targetPath, 0o755);
-        }
-      } else {
-        throw new Error(`Binary ${config.binaryName} not found in archive`);
-      }
-
-      // Cleanup
-      await fsPromises.rm(extractDir, { recursive: true, force: true });
-      await fsPromises.unlink(zipPath).catch(() => {});
-
-      if (progressCallback) progressCallback({ type: "complete", percentage: 100 });
-
-      return { success: true, path: targetPath };
-    } catch (error) {
-      if (error.isAbort) {
-        throw new Error("Download cancelled");
-      }
-      throw error;
-    } finally {
-      this.currentDownloadProcess = null;
-    }
-  }
-
-  async removeCustomWhisperBinary() {
-    await this.stopServer();
-    this.serverManager.cachedServerBinaryPath = null;
-
-    const platform = process.platform;
-    const arch = process.arch;
-    const key = `${platform}-${arch}`;
-
-    const userDataPath = app.getPath("userData");
-    const binDir = path.join(userDataPath, "bin");
-
-    const targetBinaryName =
-      platform === "win32" ? `whisper-server-${key}.exe` : `whisper-server-${key}`;
-    const targetPath = path.join(binDir, targetBinaryName);
-    const genericPath = path.join(
-      binDir,
-      platform === "win32" ? "whisper-server.exe" : "whisper-server"
-    );
-
-    let deleted = false;
-
-    if (fs.existsSync(targetPath)) {
-      await fsPromises.unlink(targetPath);
-      deleted = true;
-    }
-
-    if (fs.existsSync(genericPath)) {
-      await fsPromises.unlink(genericPath);
-      deleted = true;
-    }
-
-    return { success: true, deleted };
   }
 }
 

@@ -311,24 +311,6 @@ class IPCHandlers {
       return this.whisperManager.getServerStatus();
     });
 
-    ipcMain.handle("download-whisper-binary-gpu", async (event) => {
-      try {
-        return await this.whisperManager.downloadWhisperBinary(true, (progressData) => {
-          event.sender.send("whisper-binary-download-progress", progressData);
-        });
-      } catch (error) {
-        return { success: false, error: error.message };
-      }
-    });
-
-    ipcMain.handle("remove-whisper-binary-gpu", async () => {
-      try {
-        return await this.whisperManager.removeCustomWhisperBinary();
-      } catch (error) {
-        return { success: false, error: error.message };
-      }
-    });
-
     ipcMain.handle("check-ffmpeg-availability", async (event) => {
       return this.whisperManager.checkFFmpegAvailability();
     });

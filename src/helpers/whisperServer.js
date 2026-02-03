@@ -3,7 +3,6 @@ const fs = require("fs");
 const net = require("net");
 const path = require("path");
 const http = require("http");
-const { app } = require("electron");
 const debugLogger = require("./debugLogger");
 const { killProcess } = require("../utils/process");
 const { getSafeTempDir } = require("./safeTempDir");
@@ -131,19 +130,6 @@ class WhisperServerManager {
     const genericName = platform === "win32" ? "whisper-server.exe" : "whisper-server";
 
     const candidates = [];
-
-    // 1. Check userData (overrides bundled)
-    try {
-      if (app) {
-        const userDataPath = app.getPath("userData");
-        candidates.push(
-          path.join(userDataPath, "bin", binaryName),
-          path.join(userDataPath, "bin", genericName)
-        );
-      }
-    } catch (e) {
-      // app might not be ready or available
-    }
 
     if (process.resourcesPath) {
       candidates.push(
