@@ -356,6 +356,16 @@ declare global {
       getGroqKey: () => Promise<string | null>;
       saveGroqKey: (key: string) => Promise<void>;
 
+      // Custom endpoint API keys
+      getCustomTranscriptionKey?: () => Promise<string | null>;
+      saveCustomTranscriptionKey?: (key: string) => Promise<void>;
+      getCustomReasoningKey?: () => Promise<string | null>;
+      saveCustomReasoningKey?: (key: string) => Promise<void>;
+
+      // Dictation key persistence (file-based for reliable startup)
+      getDictationKey?: () => Promise<string | null>;
+      saveDictationKey?: (key: string) => Promise<void>;
+
       // Debug logging
       getLogLevel?: () => Promise<string>;
       log?: (entry: {

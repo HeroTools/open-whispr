@@ -7,7 +7,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const registerListener = (channel, handlerFactory) => {
   return (callback) => {
     if (typeof callback !== "function") {
-      return () => {};
+      return () => { };
     }
 
     const listener =
@@ -168,7 +168,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // External link opener
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
-  
+
   // Model management functions
   modelGetAll: () => ipcRenderer.invoke("model-get-all"),
   modelCheck: (modelId) => ipcRenderer.invoke("model-check", modelId),
@@ -178,7 +178,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   modelCheckRuntime: () => ipcRenderer.invoke("model-check-runtime"),
   modelCancelDownload: (modelId) => ipcRenderer.invoke("model-cancel-download", modelId),
   onModelDownloadProgress: registerListener("model-download-progress"),
-  
+
   // Anthropic API
   getAnthropicKey: () => ipcRenderer.invoke("get-anthropic-key"),
   saveAnthropicKey: (key) => ipcRenderer.invoke("save-anthropic-key", key),
@@ -197,19 +197,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getCustomReasoningKey: () => ipcRenderer.invoke("get-custom-reasoning-key"),
   saveCustomReasoningKey: (key) => ipcRenderer.invoke("save-custom-reasoning-key", key),
 
+  // Dictation key persistence (file-based for reliable startup)
+  getDictationKey: () => ipcRenderer.invoke("get-dictation-key"),
+  saveDictationKey: (key) => ipcRenderer.invoke("save-dictation-key", key),
+
   saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
   syncStartupPreferences: (prefs) => ipcRenderer.invoke("sync-startup-preferences", prefs),
 
   // Local reasoning
-  processLocalReasoning: (text, modelId, agentName, config) => 
+  processLocalReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),
-  checkLocalReasoningAvailable: () => 
+  checkLocalReasoningAvailable: () =>
     ipcRenderer.invoke("check-local-reasoning-available"),
-  
+
   // Anthropic reasoning
   processAnthropicReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
-  
+
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
