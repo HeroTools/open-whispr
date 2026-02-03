@@ -80,6 +80,11 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **parakeetServer.js**: sherpa-onnx CLI wrapper for transcription
 - **windowConfig.js**: Centralized window configuration
 - **windowManager.js**: Window creation and lifecycle management
+- **kdeIntegration.js**: KDE Plasma Wayland integration
+  - Configures overlay window via KWin scripting D-Bus API
+  - Sets `onAllDesktops`, `skipSwitcher`, `skipTaskbar`, `skipPager`
+  - Required because Electron's `setVisibleOnAllWorkspaces()` doesn't work on KDE Wayland
+  - Auto-detects KDE environment and applies configuration after window creation
 
 ### React Components (src/components/)
 
@@ -499,6 +504,12 @@ On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's 
   - Push-to-talk unavailable (GNOME shortcuts only fire single toggle event)
   - Falls back to X11/globalShortcut if GNOME integration fails
   - `dbus-next` npm package used for D-Bus communication
+- **KDE Plasma Wayland overlay window**:
+  - Electron's `setVisibleOnAllWorkspaces()` doesn't work on KDE Wayland
+  - Uses KWin scripting via D-Bus to configure the overlay window at runtime
+  - Sets `onAllDesktops`, `skipSwitcher`, `skipTaskbar`, `skipPager` via KWin script
+  - Window type set to `toolbar` to hide from Alt+Tab on most Linux compositors
+  - Auto-detects KDE environment; no user action required
 
 ## Code Style and Conventions
 
