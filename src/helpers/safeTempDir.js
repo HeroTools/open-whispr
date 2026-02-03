@@ -4,14 +4,18 @@ const path = require("path");
 
 let cachedSafeTempDir = null;
 
-// Returns an ASCII-safe temp directory for native binaries on Windows.
-// Falls back to ProgramData when TEMP contains non-ASCII characters.
+// Returns a safe temp directory for native binaries on Windows.
+// Falls back to ProgramData when TEMP contains spaces or non-ASCII characters,
+// as many native binaries (whisper-server, ffmpeg) don't handle these paths correctly.
 function getSafeTempDir() {
   if (cachedSafeTempDir) return cachedSafeTempDir;
 
   const systemTemp = os.tmpdir();
 
-  if (process.platform !== "win32" || /^[\x00-\x7F]*$/.test(systemTemp)) {
+  // On non-Windows platforms, use system temp directly
+  // On Windows, check for problematic characters: non-ASCII or spaces
+  const hasProblematicChars = !/^[\x21-\x7E]*$/.test(systemTemp);
+  if (process.platform !== "win32" || !hasProblematicChars) {
     cachedSafeTempDir = systemTemp;
     return systemTemp;
   }
