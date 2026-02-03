@@ -582,15 +582,11 @@ class ClipboardManager {
     }
 
     if (canUseYdotool) {
-      const ydotoolStatus = await this.ensureYdotooldRunning(ydotoolSocketPath);
-      if (!ydotoolStatus?.success) {
+      const ydotoolRunning = this.isYdotooldRunning(ydotoolSocketPath);
+      if (!ydotoolRunning) {
         canUseYdotool = false;
-        ydotooldStartError = ydotoolStatus?.error;
-        debugLogger.warn(
-          "ydotoold not running",
-          { error: ydotoolStatus?.error, socketPath: ydotoolSocketPath },
-          "clipboard"
-        );
+        ydotooldStartError = "ydotoold is not running";
+        debugLogger.warn("ydotoold not running", { socketPath: ydotoolSocketPath }, "clipboard");
       }
     }
 
@@ -847,7 +843,9 @@ class ClipboardManager {
         ? `\n\nAttempted tools: ${failedAttempts.map((f) => `${f.tool} (${f.error})`).join(", ")}`
         : "";
 
-    const ydotooldSummary = ydotooldStartError ? `\n\nydotoold: ${ydotooldStartError}` : "";
+    const ydotooldSummary = ydotooldStartError
+      ? `\n\nydotoold: ${ydotooldStartError}. Start it from Settings → Automatic Pasting.`
+      : "";
 
     let errorMsg;
     if (isWayland) {
