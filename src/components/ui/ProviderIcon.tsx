@@ -6,6 +6,8 @@ interface ProviderIconProps {
   className?: string;
 }
 
+const MONOCHROME_PROVIDERS = ["openai", "whisper", "anthropic", "openai-oss"];
+
 export function ProviderIcon({ provider, className = "w-5 h-5" }: ProviderIconProps) {
   if (provider === "custom") {
     return <Wrench className={className} />;
@@ -21,5 +23,13 @@ export function ProviderIcon({ provider, className = "w-5 h-5" }: ProviderIconPr
     return <Brain className={className} />;
   }
 
-  return <img src={iconUrl} alt={`${provider} icon`} className={className} />;
+  const isMonochrome = MONOCHROME_PROVIDERS.includes(provider);
+
+  return (
+    <img
+      src={iconUrl}
+      alt={`${provider} icon`}
+      className={`${className} ${isMonochrome ? "dark:invert" : ""}`}
+    />
+  );
 }
