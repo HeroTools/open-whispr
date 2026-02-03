@@ -271,6 +271,37 @@ $RECYCLE.BIN/
 .agent/
 .agents/
 
+# AI agent skills (keep local)
+.agents/
+.agent/
+.claude/skills/
+.cline/
+.codebuddy/
+.codex/
+.commandcode/
+.continue/
+.crush/
+.cursor/
+.factory/
+.gemini/
+.github/skills/
+.goose/
+.kilocode/
+.kiro/
+.mcpjam/
+.mux/
+.neovate/
+.opencode/
+.openhands/
+.pi/
+.qoder/
+.qwen/
+.roo/
+.trae/
+.windsurf/
+.zencoder/
+skills/
+
 # OS generated files
 .DS_Store
 .DS_Store?

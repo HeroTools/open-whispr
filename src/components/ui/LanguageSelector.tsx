@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, Search, X } from "lucide-react";
+import { ChevronDown, Search, X, Check } from "lucide-react";
 import { LANGUAGE_OPTIONS, getLanguageLabel } from "../../utils/languages";
 
 interface LanguageSelectorProps {
@@ -96,62 +96,68 @@ export default function LanguageSelector({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`w-full flex items-center justify-between px-3 py-2 border border-gray-300 rounded-md bg-white text-left hover:border-gray-400 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none transition-colors ${
-          isOpen ? "border-blue-500 ring-1 ring-blue-500" : ""
+        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg bg-white/5 dark:bg-white/3 text-left transition-all duration-200 ${
+          isOpen
+            ? "border-primary/50 ring-1 ring-primary/20 bg-white/8"
+            : "border-white/10 dark:border-white/5 hover:border-white/20 hover:bg-white/8"
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className="truncate">{getLanguageLabel(value)}</span>
+        <span className="truncate text-sm text-foreground">{getLanguageLabel(value)}</span>
         <ChevronDown
-          className={`w-4 h-4 text-gray-400 transition-transform duration-200 ${
+          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${
             isOpen ? "rotate-180" : ""
           }`}
         />
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-hidden">
-          <div className="p-2 border-b border-gray-200">
+        <div className="absolute z-50 w-full mt-1.5 bg-popover/95 backdrop-blur-xl border border-white/10 dark:border-white/5 rounded-xl shadow-xl max-h-60 overflow-hidden">
+          <div className="p-2 border-b border-white/5">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Search languages..."
-                className="w-full pl-9 pr-8 py-2 text-sm border border-gray-300 rounded-md focus:border-blue-500 focus:ring-1 focus:ring-blue-500 focus:outline-none"
+                placeholder="Search..."
+                className="w-full pl-8 pr-7 py-1.5 text-sm bg-white/5 dark:bg-white/3 text-foreground border border-white/10 rounded-lg focus:border-primary/50 focus:ring-1 focus:ring-primary/20 focus:outline-none placeholder:text-muted-foreground/50"
               />
               {searchQuery && (
                 <button
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
           </div>
-          <div className="max-h-48 overflow-y-auto">
+          <div className="max-h-44 overflow-y-auto">
             {filteredLanguages.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-gray-500">No languages found</div>
+              <div className="px-3 py-2 text-sm text-muted-foreground">No languages found</div>
             ) : (
-              <div role="listbox">
+              <div role="listbox" className="p-1">
                 {filteredLanguages.map((language, index) => (
                   <button
                     key={language.value}
                     type="button"
                     onClick={() => handleSelect(language.value)}
-                    className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-100 focus:bg-gray-100 focus:outline-none ${
-                      language.value === value ? "bg-blue-50 text-blue-700" : ""
-                    } ${index === highlightedIndex ? "bg-gray-100" : ""}`}
+                    className={`w-full px-2.5 py-1.5 text-left text-sm rounded-md transition-colors ${
+                      language.value === value
+                        ? "bg-primary/15 text-primary font-medium"
+                        : "text-foreground hover:bg-white/5"
+                    } ${index === highlightedIndex && language.value !== value ? "bg-white/5" : ""}`}
                     role="option"
                     aria-selected={language.value === value}
                   >
-                    {language.label}
-                    {language.value === value && <span className="ml-2 text-blue-500">✓</span>}
+                    <span className="flex items-center justify-between">
+                      {language.label}
+                      {language.value === value && <Check className="w-3.5 h-3.5" />}
+                    </span>
                   </button>
                 ))}
               </div>

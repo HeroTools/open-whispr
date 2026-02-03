@@ -13,47 +13,36 @@ export default function ProcessingModeSelector({
   className = "",
 }: ProcessingModeSelectorProps) {
   return (
-    <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${className}`}>
+    <div
+      className={`relative flex p-0.5 rounded-lg bg-white/5 dark:bg-white/3 border border-white/10 dark:border-white/5 ${className}`}
+    >
+      {/* Sliding indicator */}
+      <div
+        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-white/10 dark:bg-white/8 border border-white/10 transition-transform duration-200 ease-out ${
+          useLocalWhisper ? "translate-x-[calc(100%+4px)]" : "translate-x-0"
+        }`}
+      />
+
       <button
         onClick={() => setUseLocalWhisper(false)}
-        className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-          !useLocalWhisper
-            ? "border-indigo-500 bg-indigo-50"
-            : "border-neutral-200 bg-white hover:border-neutral-300"
+        className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md transition-colors duration-150 ${
+          !useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <Cloud className="w-6 h-6 text-blue-600" />
-            <h4 className="font-medium text-neutral-900">Cloud Processing</h4>
-          </div>
-          <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
-            Fastest
-          </span>
-        </div>
-        <p className="text-sm text-neutral-600">
-          Audio sent to OpenAI servers. Faster processing, requires API key.
-        </p>
+        <Cloud className="w-4 h-4" />
+        <span className="text-sm font-medium">Cloud</span>
+        {!useLocalWhisper && <span className="text-[10px] text-emerald-500 font-medium">Fast</span>}
       </button>
 
       <button
         onClick={() => setUseLocalWhisper(true)}
-        className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-          useLocalWhisper
-            ? "border-indigo-500 bg-indigo-50"
-            : "border-neutral-200 bg-white hover:border-neutral-300"
+        className={`relative z-10 flex-1 flex items-center justify-center gap-2 py-2.5 rounded-md transition-colors duration-150 ${
+          useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
         }`}
       >
-        <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-3">
-            <Lock className="w-6 h-6 text-blue-600" />
-            <h4 className="font-medium text-neutral-900">Local Processing</h4>
-          </div>
-          <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded-full">Private</span>
-        </div>
-        <p className="text-sm text-neutral-600">
-          Audio stays on your device. Complete privacy, works offline.
-        </p>
+        <Lock className="w-4 h-4" />
+        <span className="text-sm font-medium">Local</span>
+        {useLocalWhisper && <span className="text-[10px] text-primary font-medium">Private</span>}
       </button>
     </div>
   );

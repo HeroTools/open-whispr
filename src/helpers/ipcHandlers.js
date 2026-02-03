@@ -102,6 +102,10 @@ class IPCHandlers {
       return { success: true };
     });
 
+    ipcMain.handle("resize-main-window", (event, sizeKey) => {
+      return this.windowManager.resizeMainWindow(sizeKey);
+    });
+
     // Environment handlers
     ipcMain.handle("get-openai-key", async (event) => {
       return this.environmentManager.getOpenAIKey();
