@@ -603,13 +603,17 @@ OpenWhispr is designed with privacy and security in mind:
    - All platforms: Text is always copied to clipboard - use Ctrl+V (Cmd+V on macOS) to paste manually
 7. **Panel position**: If the panel appears off-screen, restart the app to reset position
 8. **Linux GPU Support (NVIDIA)**:
-   - To enable CUDA acceleration for local Whisper, run the download script with the GPU flag:
+   - To enable CUDA acceleration for local Whisper/Parakeet, run the download scripts with GPU flags:
 
      ```bash
+     # For Whisper (whisper.cpp)
      WHISPER_CPP_GPU=1 npm run download:whisper-cpp -- --force
+
+     # For Parakeet (sherpa-onnx)
+     SHERPA_ONNX_GPU=1 npm run download:sherpa-onnx -- --force
      ```
 
-   - This replaces the default CPU binary with a CUDA-enabled version.
+   - This replaces the default CPU binaries with CUDA-enabled versions.
 
 ### Getting Help
 
