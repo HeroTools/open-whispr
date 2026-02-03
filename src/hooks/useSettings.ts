@@ -3,11 +3,12 @@ import { useLocalStorage } from "./useLocalStorage";
 import { useDebouncedCallback } from "./useDebouncedCallback";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
+import type { LocalTranscriptionProvider } from "../types/electron";
 
 export interface TranscriptionSettings {
   useLocalWhisper: boolean;
   whisperModel: string;
-  localTranscriptionProvider: string;
+  localTranscriptionProvider: LocalTranscriptionProvider;
   parakeetModel: string;
   allowOpenAIFallback: boolean;
   allowLocalFallback: boolean;
@@ -48,6 +49,10 @@ export interface ApiKeySettings {
   customReasoningApiKey: string;
 }
 
+export interface ThemeSettings {
+  theme: "light" | "dark" | "auto";
+}
+
 export function useSettings() {
   const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
     serialize: String,
@@ -59,14 +64,11 @@ export function useSettings() {
     deserialize: String,
   });
 
-  const [localTranscriptionProvider, setLocalTranscriptionProvider] = useLocalStorage(
-    "localTranscriptionProvider",
-    "whisper",
-    {
+  const [localTranscriptionProvider, setLocalTranscriptionProvider] =
+    useLocalStorage<LocalTranscriptionProvider>("localTranscriptionProvider", "whisper", {
       serialize: String,
-      deserialize: String,
-    }
-  );
+      deserialize: (value) => (value === "nvidia" ? "nvidia" : "whisper"),
+    });
 
   const [parakeetModel, setParakeetModel] = useLocalStorage("parakeetModel", "", {
     serialize: String,
@@ -258,6 +260,15 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Theme setting
+  const [theme, setTheme] = useLocalStorage<"light" | "dark" | "auto">("theme", "auto", {
+    serialize: String,
+    deserialize: (value) => {
+      if (["light", "dark", "auto"].includes(value)) return value as "light" | "dark" | "auto";
+      return "auto";
+    },
+  });
+
   // Custom endpoint API keys - synced to .env like other keys
   const [customTranscriptionApiKey, setCustomTranscriptionApiKeyLocal] = useLocalStorage(
     "customTranscriptionApiKey",
@@ -437,6 +448,29 @@ export function useSettings() {
     deserialize: String,
   });
 
+  // Sync startup pre-warming preferences to main process
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.electronAPI?.syncStartupPreferences) return;
+
+    const model = localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
+    window.electronAPI
+      .syncStartupPreferences({
+        useLocalWhisper,
+        localTranscriptionProvider,
+        model: model || undefined,
+        reasoningProvider,
+        reasoningModel: reasoningProvider === "local" ? reasoningModel : undefined,
+      })
+      .catch((err) => console.error("Failed to sync startup preferences:", err));
+  }, [
+    useLocalWhisper,
+    localTranscriptionProvider,
+    whisperModel,
+    parakeetModel,
+    reasoningProvider,
+    reasoningModel,
+  ]);
+
   // Batch operations
   const updateTranscriptionSettings = useCallback(
     (settings: Partial<TranscriptionSettings>) => {
@@ -482,12 +516,12 @@ export function useSettings() {
       if (settings.useReasoningModel !== undefined)
         setUseReasoningModel(settings.useReasoningModel);
       if (settings.reasoningModel !== undefined) setReasoningModel(settings.reasoningModel);
-      if (settings.cloudReasoningBaseUrl !== undefined)
-        setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
       if (settings.reasoningProvider !== undefined)
         setReasoningProvider(settings.reasoningProvider);
+      if (settings.cloudReasoningBaseUrl !== undefined)
+        setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
     },
-    [setUseReasoningModel, setReasoningModel, setCloudReasoningBaseUrl, setReasoningProvider]
+    [setUseReasoningModel, setReasoningModel, setReasoningProvider, setCloudReasoningBaseUrl]
   );
 
   const updateApiKeys = useCallback(
@@ -526,6 +560,7 @@ export function useSettings() {
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    theme,
     setUseLocalWhisper,
     setWhisperModel,
     setLocalTranscriptionProvider,
@@ -553,6 +588,7 @@ export function useSettings() {
     customReasoningApiKey,
     setCustomReasoningApiKey,
     setDictationKey,
+    setTheme,
     activationMode,
     setActivationMode,
     preferBuiltInMic,

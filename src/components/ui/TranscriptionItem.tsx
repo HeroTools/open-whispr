@@ -1,7 +1,8 @@
-import React from "react";
+import { useState } from "react";
 import { Button } from "./button";
-import { Copy, Trash2 } from "lucide-react";
+import { Copy, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import type { TranscriptionItem as TranscriptionItemType } from "../../types/electron";
+import { cn } from "../lib/utils";
 
 interface TranscriptionItemProps {
   item: TranscriptionItemType;
@@ -11,6 +12,8 @@ interface TranscriptionItemProps {
   onDelete: (id: number) => void;
 }
 
+const TEXT_PREVIEW_LENGTH = 120;
+
 export default function TranscriptionItem({
   item,
   index,
@@ -18,6 +21,9 @@ export default function TranscriptionItem({
   onCopy,
   onDelete,
 }: TranscriptionItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+
   const timestampSource = item.timestamp.endsWith("Z") ? item.timestamp : `${item.timestamp}Z`;
   const timestampDate = new Date(timestampSource);
   const formattedTimestamp = Number.isNaN(timestampDate.getTime())
@@ -29,51 +35,85 @@ export default function TranscriptionItem({
         minute: "2-digit",
       });
 
+  const isLongText = item.text.length > TEXT_PREVIEW_LENGTH;
+  const displayText =
+    isExpanded || !isLongText ? item.text : `${item.text.slice(0, TEXT_PREVIEW_LENGTH)}…`;
+
   return (
-    <div className="relative bg-gradient-to-b from-blue-50/30 to-white rounded-xl shadow-sm hover:shadow-md transition-shadow">
-      <div className="p-6 pl-16" style={{ paddingTop: "8px" }}>
-        <div className="flex items-start justify-between">
-          <div className="flex-1 mr-3">
-            <div
-              className="flex items-center gap-2 mb-1"
-              style={{ marginTop: "2px", lineHeight: "24px" }}
-            >
-              <span className="text-indigo-600 text-xs font-medium">#{total - index}</span>
-              <div className="w-px h-3 bg-neutral-300" />
-              <span className="text-xs text-neutral-500">{formattedTimestamp}</span>
-            </div>
-            <p
-              className="text-neutral-800 text-sm"
-              style={{
-                fontFamily:
-                  'Noto Sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
-                lineHeight: "24px",
-                textAlign: "left",
-                marginTop: "2px",
-                paddingBottom: "2px",
-              }}
-            >
-              {item.text}
-            </p>
+    <div
+      className="group relative px-3 py-2.5 transition-colors duration-150 hover:bg-muted/30 dark:hover:bg-white/2"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div className="flex items-start gap-3">
+        {/* Number badge - compact pill */}
+        <div className="flex-shrink-0 mt-0.5">
+          <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-1.5 rounded-sm bg-primary/10 dark:bg-primary/15 text-primary text-[10px] font-semibold tabular-nums">
+            {total - index}
+          </span>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          {/* Text */}
+          <p
+            className={cn(
+              "text-foreground text-[13px] leading-[1.5] break-words",
+              !isExpanded && isLongText && "line-clamp-2"
+            )}
+          >
+            {displayText}
+          </p>
+
+          {/* Metadata row */}
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {formattedTimestamp}
+            </span>
+            {isLongText && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="inline-flex items-center gap-0.5 text-[11px] text-primary/80 hover:text-primary transition-colors"
+              >
+                {isExpanded ? (
+                  <>
+                    <span>Less</span>
+                    <ChevronUp size={12} />
+                  </>
+                ) : (
+                  <>
+                    <span>More</span>
+                    <ChevronDown size={12} />
+                  </>
+                )}
+              </button>
+            )}
           </div>
-          <div className="flex gap-1 flex-shrink-0" style={{ marginTop: "2px" }}>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => onCopy(item.text)}
-              className="h-7 w-7"
-            >
-              <Copy size={12} />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => onDelete(item.id)}
-              className="h-7 w-7 text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <Trash2 size={12} />
-            </Button>
-          </div>
+        </div>
+
+        {/* Actions - fade in on hover */}
+        <div
+          className={cn(
+            "flex items-center gap-0.5 flex-shrink-0 transition-opacity duration-150",
+            isHovered ? "opacity-100" : "opacity-0"
+          )}
+        >
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onCopy(item.text)}
+            className="h-6 w-6 rounded-sm text-muted-foreground hover:text-foreground hover:bg-foreground/10"
+          >
+            <Copy size={12} />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            onClick={() => onDelete(item.id)}
+            className="h-6 w-6 rounded-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          >
+            <Trash2 size={12} />
+          </Button>
         </div>
       </div>
     </div>

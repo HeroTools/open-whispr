@@ -4,7 +4,12 @@ const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
 const { DEV_SERVER_PORT } = DevServerManager;
-const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
+const {
+  MAIN_WINDOW_CONFIG,
+  CONTROL_PANEL_CONFIG,
+  WINDOW_SIZES,
+  WindowPositionUtil,
+} = require("./windowConfig");
 
 class WindowManager {
   constructor() {
@@ -36,11 +41,10 @@ class WindowManager {
       ...position,
     });
 
-    if (process.platform === "darwin") {
-      this.mainWindow.setSkipTaskbar(false);
-    } else {
-      this.mainWindow.setSkipTaskbar(true);
-    }
+    // Main window (dictation overlay) should never appear in dock/taskbar
+    // On macOS, users access the app via the menu bar tray icon
+    // On Windows/Linux, the control panel stays in the taskbar when minimized
+    this.mainWindow.setSkipTaskbar(true);
 
     this.setMainWindowInteractivity(false);
     this.registerMainWindowEvents();
@@ -93,6 +97,36 @@ class WindowManager {
       this.mainWindow.setIgnoreMouseEvents(true, { forward: true });
     }
     this.isMainWindowInteractive = shouldCapture;
+  }
+
+  resizeMainWindow(sizeKey) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return { success: false, message: "Window not available" };
+    }
+
+    const newSize = WINDOW_SIZES[sizeKey] || WINDOW_SIZES.BASE;
+    const currentBounds = this.mainWindow.getBounds();
+
+    const bottomRightX = currentBounds.x + currentBounds.width;
+    const bottomRightY = currentBounds.y + currentBounds.height;
+
+    const display = screen.getDisplayNearestPoint({ x: bottomRightX, y: bottomRightY });
+    const workArea = display.workArea || display.bounds;
+
+    let newX = bottomRightX - newSize.width;
+    let newY = bottomRightY - newSize.height;
+
+    newX = Math.max(workArea.x, Math.min(newX, workArea.x + workArea.width - newSize.width));
+    newY = Math.max(workArea.y, Math.min(newY, workArea.y + workArea.height - newSize.height));
+
+    this.mainWindow.setBounds({
+      x: newX,
+      y: newY,
+      width: newSize.width,
+      height: newSize.height,
+    });
+
+    return { success: true, bounds: { x: newX, y: newY, ...newSize } };
   }
 
   /**
@@ -273,23 +307,22 @@ class WindowManager {
 
     this.controlPanelWindow.once("ready-to-show", () => {
       clearVisibilityTimer();
-      if (process.platform === "win32") {
-        this.controlPanelWindow.setSkipTaskbar(false);
+      // Show dock icon on macOS when control panel opens
+      if (process.platform === "darwin" && app.dock) {
+        app.dock.show();
       }
       this.controlPanelWindow.show();
       this.controlPanelWindow.focus();
     });
 
-    this.controlPanelWindow.on("show", () => {
-      if (process.platform === "win32") {
-        this.controlPanelWindow.setSkipTaskbar(false);
-      }
-    });
-
     this.controlPanelWindow.on("close", (event) => {
       if (!this.isQuitting) {
         event.preventDefault();
-        this.hideControlPanelToTray();
+        if (process.platform === "darwin") {
+          this.hideControlPanelToTray();
+        } else {
+          this.controlPanelWindow.minimize();
+        }
       }
     });
 
@@ -352,11 +385,12 @@ class WindowManager {
       return;
     }
 
-    if (process.platform === "win32") {
-      this.controlPanelWindow.setSkipTaskbar(true);
-    }
-
     this.controlPanelWindow.hide();
+
+    // Hide dock icon on macOS when control panel is hidden
+    if (process.platform === "darwin" && app.dock) {
+      app.dock.hide();
+    }
   }
 
   hideDictationPanel() {

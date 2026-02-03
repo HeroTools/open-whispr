@@ -1,5 +1,7 @@
 import { useMemo } from "react";
 import { Button } from "./button";
+import { AlertCircle } from "lucide-react";
+import { cn } from "../lib/utils";
 
 interface MicPermissionWarningProps {
   error: string | null;
@@ -28,25 +30,22 @@ const PLATFORM_CONFIG: Record<
   { message: string; soundLabel: string; privacyLabel: string; showPrivacyButton: boolean }
 > = {
   darwin: {
-    message:
-      "If the microphone prompt doesn't appear, open Sound settings to select your input device, then try again.",
-    soundLabel: "Open Sound Input",
-    privacyLabel: "Open Microphone Privacy",
-    showPrivacyButton: true, // macOS has separate privacy settings
+    message: "Check Sound settings to select your input device",
+    soundLabel: "Sound",
+    privacyLabel: "Privacy",
+    showPrivacyButton: true,
   },
   win32: {
-    message:
-      "If the microphone prompt doesn't appear, open Windows Settings to select your input device, then try again.",
-    soundLabel: "Open Sound Settings",
-    privacyLabel: "Open Privacy Settings",
-    showPrivacyButton: true, // Windows has privacy settings for microphone
+    message: "Check Windows Settings to select your input device",
+    soundLabel: "Sound",
+    privacyLabel: "Privacy",
+    showPrivacyButton: true,
   },
   linux: {
-    message:
-      "If the microphone prompt doesn't appear, open your system sound settings to select your input device, then try again.",
-    soundLabel: "Open Sound Settings",
+    message: "Check system sound settings to select your input device",
+    soundLabel: "Sound",
     privacyLabel: "",
-    showPrivacyButton: false, // Linux typically doesn't have app-level mic privacy settings
+    showPrivacyButton: false,
   },
 };
 
@@ -58,17 +57,39 @@ export default function MicPermissionWarning({
   const config = useMemo(() => PLATFORM_CONFIG[getPlatform()], []);
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 space-y-3">
-      <p className="text-sm text-amber-900">{error || config.message}</p>
-      <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" onClick={onOpenSoundSettings}>
-          {config.soundLabel}
-        </Button>
-        {config.showPrivacyButton && (
-          <Button variant="outline" size="sm" onClick={onOpenPrivacySettings}>
-            {config.privacyLabel}
+    <div
+      className={cn(
+        "rounded-md p-2.5 border",
+        "bg-warning/8 border-warning/20 dark:bg-warning/10 dark:border-warning/20"
+      )}
+    >
+      <div className="flex items-center gap-2.5">
+        <div className="w-6 h-6 rounded-md bg-warning/15 flex items-center justify-center shrink-0">
+          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-warning" />
+        </div>
+        <p className="flex-1 text-[11px] text-amber-700 dark:text-warning/90 leading-snug">
+          {error || config.message}
+        </p>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenSoundSettings}
+            className="h-6 px-2 text-[10px] text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-warning dark:hover:text-warning dark:hover:bg-warning/10"
+          >
+            {config.soundLabel}
           </Button>
-        )}
+          {config.showPrivacyButton && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onOpenPrivacySettings}
+              className="h-6 px-2 text-[10px] text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-warning dark:hover:text-warning dark:hover:bg-warning/10"
+            >
+              {config.privacyLabel}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   );

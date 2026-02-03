@@ -32,6 +32,29 @@ class IPCHandlers {
     }
   }
 
+  _syncStartupEnv(setVars, clearVars = []) {
+    let changed = false;
+    for (const [key, value] of Object.entries(setVars)) {
+      if (process.env[key] !== value) {
+        process.env[key] = value;
+        changed = true;
+      }
+    }
+    for (const key of clearVars) {
+      if (process.env[key]) {
+        delete process.env[key];
+        changed = true;
+      }
+    }
+    if (changed) {
+      debugLogger.debug("Synced startup env vars", {
+        set: Object.keys(setVars),
+        cleared: clearVars.filter((k) => !process.env[k]),
+      });
+      this.environmentManager.saveAllKeysToEnvFile();
+    }
+  }
+
   setupHandlers() {
     // Window control handlers
     ipcMain.handle("window-minimize", () => {
@@ -83,6 +106,10 @@ class IPCHandlers {
     ipcMain.handle("set-main-window-interactivity", (event, shouldCapture) => {
       this.windowManager.setMainWindowInteractivity(Boolean(shouldCapture));
       return { success: true };
+    });
+
+    ipcMain.handle("resize-main-window", (event, sizeKey) => {
+      return this.windowManager.resizeMainWindow(sizeKey);
     });
 
     // Environment handlers
@@ -674,6 +701,38 @@ class IPCHandlers {
 
     ipcMain.handle("save-all-keys-to-env", async () => {
       return this.environmentManager.saveAllKeysToEnvFile();
+    });
+
+    ipcMain.handle("sync-startup-preferences", async (event, prefs) => {
+      const setVars = {};
+      const clearVars = [];
+
+      if (prefs.useLocalWhisper && prefs.model) {
+        // Local mode with model selected - set provider and model for pre-warming
+        setVars.LOCAL_TRANSCRIPTION_PROVIDER = prefs.localTranscriptionProvider;
+        if (prefs.localTranscriptionProvider === "nvidia") {
+          setVars.PARAKEET_MODEL = prefs.model;
+          clearVars.push("LOCAL_WHISPER_MODEL");
+        } else {
+          setVars.LOCAL_WHISPER_MODEL = prefs.model;
+          clearVars.push("PARAKEET_MODEL");
+        }
+      } else if (prefs.useLocalWhisper) {
+        // Local mode enabled but no model selected - clear pre-warming vars
+        clearVars.push("LOCAL_TRANSCRIPTION_PROVIDER", "PARAKEET_MODEL", "LOCAL_WHISPER_MODEL");
+      } else {
+        // Cloud mode - clear all local transcription vars
+        clearVars.push("LOCAL_TRANSCRIPTION_PROVIDER", "PARAKEET_MODEL", "LOCAL_WHISPER_MODEL");
+      }
+
+      if (prefs.reasoningProvider === "local" && prefs.reasoningModel) {
+        setVars.REASONING_PROVIDER = "local";
+        setVars.LOCAL_REASONING_MODEL = prefs.reasoningModel;
+      } else if (prefs.reasoningProvider && prefs.reasoningProvider !== "local") {
+        clearVars.push("REASONING_PROVIDER", "LOCAL_REASONING_MODEL");
+      }
+
+      this._syncStartupEnv(setVars, clearVars);
     });
 
     // Local reasoning handler

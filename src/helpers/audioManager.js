@@ -260,6 +260,15 @@ class AudioManager {
     return false;
   }
 
+  cancelProcessing() {
+    if (this.isProcessing) {
+      this.isProcessing = false;
+      this.onStateChange?.({ isRecording: false, isProcessing: false });
+      return true;
+    }
+    return false;
+  }
+
   async processAudio(audioBlob, metadata = {}) {
     const pipelineStart = performance.now();
 
@@ -295,6 +304,10 @@ class AudioManager {
       } else {
         activeModel = this.getTranscriptionModel();
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
+      }
+
+      if (!this.isProcessing) {
+        return;
       }
 
       this.onTranscriptionComplete?.(result);
@@ -341,8 +354,10 @@ class AudioManager {
         });
       }
     } finally {
-      this.isProcessing = false;
-      this.onStateChange?.({ isRecording: false, isProcessing: false });
+      if (this.isProcessing) {
+        this.isProcessing = false;
+        this.onStateChange?.({ isRecording: false, isProcessing: false });
+      }
     }
   }
 

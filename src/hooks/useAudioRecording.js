@@ -187,6 +187,13 @@ export const useAudioRecording = (toast, options = {}) => {
     return false;
   };
 
+  const cancelProcessing = () => {
+    if (audioManagerRef.current) {
+      return audioManagerRef.current.cancelProcessing();
+    }
+    return false;
+  };
+
   const toggleListening = async () => {
     if (!isRecording && !isProcessing) {
       await startRecording();
@@ -204,6 +211,7 @@ export const useAudioRecording = (toast, options = {}) => {
     startRecording,
     stopRecording,
     cancelRecording,
+    cancelProcessing,
     toggleListening,
   };
 };
