@@ -88,6 +88,20 @@ public
 # Temporary folders
 tmp/
 temp/
+.tmp/
+
+# Local dev artifacts
+.opencode/
+cuda_test
+cuda_test.cu
+dummy.wav
+models/
+output.txt
+v0.0.4.zip
+v0.0.4/
+v0.0.5/
+v0.0.6-cuda.zip
+v0.0.6/
 
 # Logs
 logs
