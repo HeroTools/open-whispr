@@ -7,8 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Cancel Processing Button**: Added ability to cancel ongoing transcription processing
+- **Dark Mode Icon Inversion**: Monochrome provider icons now automatically invert in dark mode for better visibility
+- **Dynamic Window Resizing**: Window automatically resizes based on command menu and toast visibility
+
 ### Changed
-- **Design Tokens**: Refactored button component to use design tokens (`text-foreground`, `bg-muted`, `border-border`) instead of hardcoded hex values for improved maintainability and theme consistency
+- **Design System Overhaul**: Complete refactor of styling to use design tokens throughout the codebase
+  - Button component now uses `text-foreground`, `bg-muted`, `border-border` instead of hardcoded hex values
+  - Removed hardcoded classes and inline styles across components
+  - Improved button and badge consistency
+- **Settings UI Redesign**: Overhauled all settings pages with unified panel system, redesigned sidebar, and extracted permissions section
+- **Dark Mode Polish**: Premium button styling, glass morphism toasts, and streamlined visuals
+- **Onboarding Improvements**:
+  - Streamlined to 4-step flow
+  - Extended to support multiple local transcription providers (Whisper and NVIDIA Parakeet)
+  - Improved contrast and design system usage
 
 ### Fixed
 - **Light Mode UI Visibility**: Fixed multiple UI elements that were invisible or hard to see in light mode:
@@ -17,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Reset button in developer settings now correctly shows destructive color
   - Settings and Help icons in the toolbar are now properly visible
   - Check for Updates button now renders correctly in light mode
+- **Provider Tab Flashing**: Resolved TranscriptionModelPicker tab flashing by extracting ModeToggle component and syncing internal state with props
+- **Local Reasoning Model Persistence**: Fixed local reasoning model selection not persisting correctly
+- **Parakeet Model Status**: Added dedicated IPC channel for Parakeet model status checks
+- **Groq Qwen3 Models**: Removed thinking tokens from Qwen3 models on Groq provider
 
 ## [1.3.3] - 2026-01-28
 
