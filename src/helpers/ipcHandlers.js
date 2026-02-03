@@ -695,6 +695,15 @@ class IPCHandlers {
       return this.environmentManager.saveCustomReasoningKey(key);
     });
 
+    // Dictation key handlers for reliable persistence across restarts
+    ipcMain.handle("get-dictation-key", async () => {
+      return this.environmentManager.getDictationKey();
+    });
+
+    ipcMain.handle("save-dictation-key", async (event, key) => {
+      return this.environmentManager.saveDictationKey(key);
+    });
+
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
     });
@@ -795,8 +804,8 @@ class IPCHandlers {
             }
             throw new Error(
               errorData.error?.message ||
-                errorData.error ||
-                `Anthropic API error: ${response.status}`
+              errorData.error ||
+              `Anthropic API error: ${response.status}`
             );
           }
 

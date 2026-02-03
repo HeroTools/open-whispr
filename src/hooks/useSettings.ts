@@ -405,12 +405,17 @@ export function useSettings() {
   });
 
   // Wrap setDictationKey to notify main process (for Windows Push-to-Talk)
+  // and persist to file-based storage for reliable startup
   const setDictationKey = useCallback(
     (key: string) => {
       setDictationKeyLocal(key);
       // Notify main process so Windows key listener can restart with new key
       if (typeof window !== "undefined" && window.electronAPI?.notifyHotkeyChanged) {
         window.electronAPI.notifyHotkeyChanged(key);
+      }
+      // Also save to file-based storage for reliable persistence across restarts
+      if (typeof window !== "undefined" && window.electronAPI?.saveDictationKey) {
+        window.electronAPI.saveDictationKey(key);
       }
     },
     [setDictationKeyLocal]

@@ -91,6 +91,18 @@ class EnvironmentManager {
     return this._saveKey("CUSTOM_REASONING_API_KEY", key);
   }
 
+  // Hotkey persistence for reliable startup
+  getDictationKey() {
+    return this._getKey("DICTATION_KEY");
+  }
+
+  saveDictationKey(key) {
+    const result = this._saveKey("DICTATION_KEY", key);
+    // Persist to .env file immediately for reliable startup
+    this.saveAllKeysToEnvFile();
+    return result;
+  }
+
   createProductionEnvFile(apiKey) {
     const envPath = path.join(app.getPath("userData"), ".env");
 
@@ -146,6 +158,9 @@ OPENAI_API_KEY=${apiKey}
     }
     if (process.env.LOCAL_REASONING_MODEL) {
       envContent += `LOCAL_REASONING_MODEL=${process.env.LOCAL_REASONING_MODEL}\n`;
+    }
+    if (process.env.DICTATION_KEY) {
+      envContent += `DICTATION_KEY=${process.env.DICTATION_KEY}\n`;
     }
 
     fs.writeFileSync(envPath, envContent, "utf8");
