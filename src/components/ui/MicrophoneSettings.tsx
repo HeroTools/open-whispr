@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Toggle } from "./toggle";
+import { SettingsRow } from "./SettingsSection";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./select";
 import { Button } from "./button";
 import { RefreshCw, Mic } from "lucide-react";
@@ -87,15 +88,12 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-foreground">Prefer Built-in Microphone</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            External microphones may cause latency or reduced transcription quality
-          </p>
-        </div>
+      <SettingsRow
+        label="Prefer Built-in Microphone"
+        description="External microphones may cause latency or reduced transcription quality"
+      >
         <Toggle checked={preferBuiltInMic} onChange={onPreferBuiltInChange} />
-      </div>
+      </SettingsRow>
 
       {preferBuiltInMic && builtInDevice && (
         <div className="p-3 bg-success/10 dark:bg-success/20 border border-success/30 rounded-lg">

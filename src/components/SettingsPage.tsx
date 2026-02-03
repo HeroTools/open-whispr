@@ -6,6 +6,8 @@ import { RefreshCw, Download, Mic, Shield, FolderOpen, Sun, Moon, Monitor } from
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
+import PermissionCard from "./ui/PermissionCard";
+import PasteToolsInfo from "./ui/PasteToolsInfo";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
@@ -25,6 +27,7 @@ import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
 import { useTheme } from "../hooks/useTheme";
+import { SettingsRow } from "./ui/SettingsSection";
 
 export type SettingsSectionType =
   | "general"
@@ -42,30 +45,6 @@ interface SettingsPageProps {
 
 // ── Reusable layout primitives ──────────────────────────────────────
 
-function SettingsRow({
-  label,
-  description,
-  children,
-  className = "",
-}: {
-  label: string;
-  description?: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`flex items-center justify-between gap-6 ${className}`}>
-      <div className="min-w-0 flex-1">
-        <p className="text-[13px] font-medium text-foreground">{label}</p>
-        {description && (
-          <p className="text-[12px] text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
-        )}
-      </div>
-      <div className="shrink-0">{children}</div>
-    </div>
-  );
-}
-
 function SettingsPanel({
   children,
   className = "",
@@ -75,7 +54,7 @@ function SettingsPanel({
 }) {
   return (
     <div
-      className={`rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2 divide-y divide-border/40 dark:divide-border-subtle ${className}`}
+      className={`rounded-lg border border-border/50 dark:border-border-subtle/70 bg-card/50 dark:bg-surface-2/50 backdrop-blur-sm divide-y divide-border/30 dark:divide-border-subtle/50 ${className}`}
     >
       {children}
     </div>
@@ -89,15 +68,15 @@ function SettingsPanelRow({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={`px-5 py-4 ${className}`}>{children}</div>;
+  return <div className={`px-4 py-3 ${className}`}>{children}</div>;
 }
 
 function SectionHeader({ title, description }: { title: string; description?: string }) {
   return (
-    <div className="mb-5">
-      <h3 className="text-[15px] font-semibold text-foreground tracking-tight">{title}</h3>
+    <div className="mb-3">
+      <h3 className="text-[13px] font-semibold text-foreground tracking-tight">{title}</h3>
       {description && (
-        <p className="text-[12px] text-muted-foreground mt-1 leading-relaxed">{description}</p>
+        <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
       )}
     </div>
   );
@@ -403,7 +382,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "general":
         return (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {/* Updates */}
             <div>
               <SectionHeader title="Updates" />
@@ -435,7 +414,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </SettingsPanelRow>
 
                 <SettingsPanelRow>
-                  <div className="space-y-3">
+                  <div className="space-y-2.5">
                     <Button
                       onClick={async () => {
                         try {
@@ -464,8 +443,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       size="sm"
                     >
                       <RefreshCw
-                        size={14}
-                        className={`mr-2 ${checkingForUpdates ? "animate-spin" : ""}`}
+                        size={13}
+                        className={`mr-1.5 ${checkingForUpdates ? "animate-spin" : ""}`}
                       />
                       {checkingForUpdates ? "Checking..." : "Check for Updates"}
                     </Button>
@@ -484,12 +463,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             }
                           }}
                           disabled={downloadingUpdate}
-                          className="w-full bg-success hover:bg-success/90 dark:bg-success dark:hover:bg-success/80"
+                          variant="success"
+                          className="w-full"
                           size="sm"
                         >
                           <Download
-                            size={14}
-                            className={`mr-2 ${downloadingUpdate ? "animate-pulse" : ""}`}
+                            size={13}
+                            className={`mr-1.5 ${downloadingUpdate ? "animate-pulse" : ""}`}
                           />
                           {downloadingUpdate
                             ? `Downloading... ${Math.round(updateDownloadProgress)}%`
@@ -497,7 +477,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         </Button>
 
                         {downloadingUpdate && (
-                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                          <div className="h-1 w-full overflow-hidden rounded-full bg-muted/50">
                             <div
                               className="h-full bg-success transition-all duration-200 rounded-full"
                               style={{
@@ -561,7 +541,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               <SettingsPanel>
                 <SettingsPanelRow>
                   <SettingsRow label="Theme" description="Choose light, dark, or match your system">
-                    <div className="inline-flex items-center gap-0.5 p-0.5 bg-muted/40 dark:bg-surface-raised/50 rounded-lg border border-border/30">
+                    <div className="inline-flex items-center gap-px p-0.5 bg-muted/60 dark:bg-surface-2 rounded-md">
                       {(
                         [
                           { value: "light", icon: Sun, label: "Light" },
@@ -570,21 +550,22 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         ] as const
                       ).map((option) => {
                         const Icon = option.icon;
+                        const isSelected = theme === option.value;
                         return (
                           <button
                             key={option.value}
                             onClick={() => setTheme(option.value)}
                             className={`
-                              flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[12px] font-medium
-                              transition-all duration-150
+                              flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-[11px] font-medium
+                              transition-all duration-100
                               ${
-                                theme === option.value
-                                  ? "bg-background dark:bg-card text-foreground shadow-sm border border-border/50 dark:border-border-subtle"
+                                isSelected
+                                  ? "bg-background dark:bg-surface-raised text-foreground shadow-sm"
                                   : "text-muted-foreground hover:text-foreground"
                               }
                             `}
                           >
-                            <Icon className="w-3.5 h-3.5" />
+                            <Icon className={`w-3 h-3 ${isSelected ? "text-primary" : ""}`} />
                             {option.label}
                           </button>
                         );
@@ -614,7 +595,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
                 {!isUsingGnomeHotkeys && (
                   <SettingsPanelRow>
-                    <p className="text-[12px] font-medium text-muted-foreground mb-3">
+                    <p className="text-[11px] font-medium text-muted-foreground/80 mb-2">
                       Activation Mode
                     </p>
                     <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
@@ -669,7 +650,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "transcription":
         return (
-          <div className="space-y-8">
+          <div className="space-y-5">
             <SectionHeader
               title="Speech to Text"
               description="Choose a cloud provider for fast transcription or use local Whisper models for complete privacy"
@@ -715,51 +696,50 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "dictionary":
         return (
-          <div className="space-y-8">
+          <div className="space-y-5">
             <SectionHeader
               title="Custom Dictionary"
               description="Add words, names, or technical terms to improve transcription accuracy"
             />
 
             {/* Add Words */}
-            <div>
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <div className="space-y-3">
-                    <p className="text-[13px] font-medium text-foreground">Add a word or phrase</p>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="e.g. OpenWhispr, Kubernetes, Dr. Martinez..."
-                        value={newDictionaryWord}
-                        onChange={(e) => setNewDictionaryWord(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleAddDictionaryWord();
-                          }
-                        }}
-                        className="flex-1"
-                      />
-                      <Button
-                        onClick={handleAddDictionaryWord}
-                        disabled={!newDictionaryWord.trim()}
-                        size="sm"
-                      >
-                        Add
-                      </Button>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground/60">Press Enter to add</p>
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <div className="space-y-2">
+                  <p className="text-[12px] font-medium text-foreground">Add a word or phrase</p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. OpenWhispr, Kubernetes, Dr. Martinez..."
+                      value={newDictionaryWord}
+                      onChange={(e) => setNewDictionaryWord(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddDictionaryWord();
+                        }
+                      }}
+                      className="flex-1 h-8 text-[12px]"
+                    />
+                    <Button
+                      onClick={handleAddDictionaryWord}
+                      disabled={!newDictionaryWord.trim()}
+                      size="sm"
+                      className="h-8"
+                    >
+                      Add
+                    </Button>
                   </div>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
+                  <p className="text-[10px] text-muted-foreground/50">Press Enter to add</p>
+                </div>
+              </SettingsPanelRow>
+            </SettingsPanel>
 
             {/* Word List */}
             <div>
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-[13px] font-medium text-foreground">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[12px] font-medium text-foreground">
                   Your words
                   {customDictionary.length > 0 && (
-                    <span className="ml-1.5 text-muted-foreground/50 font-normal">
+                    <span className="ml-1.5 text-muted-foreground/50 font-normal text-[11px]">
                       {customDictionary.length}
                     </span>
                   )}
@@ -776,7 +756,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         onConfirm: () => setCustomDictionary([]),
                       });
                     }}
-                    className="text-[11px] text-muted-foreground/40 hover:text-destructive transition-colors"
+                    className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
                   >
                     Clear all
                   </button>
@@ -786,21 +766,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               {customDictionary.length > 0 ? (
                 <SettingsPanel>
                   <SettingsPanelRow>
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1">
                       {customDictionary.map((word) => (
                         <span
                           key={word}
-                          className="group inline-flex items-center gap-1 pl-2.5 pr-1.5 py-1 bg-primary/6 dark:bg-primary/8 text-foreground rounded-md text-[12px] border border-border/30 dark:border-border-subtle transition-all hover:border-destructive/30 hover:bg-destructive/4"
+                          className="group inline-flex items-center gap-0.5 pl-2 pr-1 py-0.5 bg-primary/5 dark:bg-primary/10 text-foreground rounded-[5px] text-[11px] border border-border/30 dark:border-border-subtle transition-all hover:border-destructive/40 hover:bg-destructive/5"
                         >
                           {word}
                           <button
                             onClick={() => handleRemoveDictionaryWord(word)}
-                            className="ml-0.5 p-0.5 rounded text-muted-foreground/40 hover:text-destructive transition-colors"
+                            className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
                             title="Remove word"
                           >
                             <svg
-                              width="10"
-                              height="10"
+                              width="9"
+                              height="9"
                               viewBox="0 0 24 24"
                               fill="none"
                               stroke="currentColor"
@@ -816,10 +796,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </SettingsPanelRow>
                 </SettingsPanel>
               ) : (
-                <div className="rounded-xl border border-dashed border-border/40 dark:border-border-subtle py-10 flex flex-col items-center justify-center text-center">
-                  <p className="text-[12px] text-muted-foreground/40">No words added yet</p>
-                  <p className="text-[11px] text-muted-foreground/30 mt-1">
-                    Words you add will appear here as tags
+                <div className="rounded-lg border border-dashed border-border/40 dark:border-border-subtle py-6 flex flex-col items-center justify-center text-center">
+                  <p className="text-[11px] text-muted-foreground/50">No words added yet</p>
+                  <p className="text-[10px] text-muted-foreground/40 mt-0.5">
+                    Words you add will appear here
                   </p>
                 </div>
               )}
@@ -854,7 +834,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "aiModels":
         return (
-          <div className="space-y-8">
+          <div className="space-y-5">
             <SectionHeader
               title="AI Text Enhancement"
               description='Configure how AI models clean up and format your transcriptions. Handles commands like "scratch that", creates proper lists, and fixes errors while preserving your natural tone.'
@@ -892,7 +872,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "agentConfig":
         return (
-          <div className="space-y-8">
+          <div className="space-y-5">
             <SectionHeader
               title="Voice Agent"
               description="Name your AI assistant so you can address it directly during dictation"
@@ -996,7 +976,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "prompts":
         return (
-          <div className="space-y-8">
+          <div className="space-y-5">
             <SectionHeader
               title="Prompt Studio"
               description="View, customize, and test the unified system prompt that powers text cleanup and instruction detection"
@@ -1011,69 +991,66 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "permissions":
         return (
-          <div className="space-y-8">
+          <div className="space-y-5">
             <SectionHeader
               title="Permissions"
               description="Test and manage system permissions required for OpenWhispr to function correctly"
             />
 
-            {/* Microphone */}
-            <div>
-              <p className="text-[13px] font-medium text-foreground mb-3">Microphone Access</p>
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label="Microphone permission"
-                    description="Required for voice recording and dictation"
-                  >
-                    <Button
-                      onClick={permissionsHook.requestMicPermission}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Mic className="mr-2 h-3.5 w-3.5" />
-                      Test
-                    </Button>
-                  </SettingsRow>
-                </SettingsPanelRow>
-              </SettingsPanel>
+            {/* Permission Cards - matching onboarding style */}
+            <div className="space-y-3">
+              <PermissionCard
+                icon={Mic}
+                title="Microphone"
+                description="Required for voice recording and dictation"
+                granted={permissionsHook.micPermissionGranted}
+                onRequest={permissionsHook.requestMicPermission}
+                buttonText="Test"
+                onOpenSettings={permissionsHook.openMicPrivacySettings}
+              />
 
-              {!permissionsHook.micPermissionGranted && (
-                <div className="mt-3">
-                  <MicPermissionWarning
-                    error={permissionsHook.micPermissionError}
-                    onOpenSoundSettings={permissionsHook.openSoundInputSettings}
-                    onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
-                  />
-                </div>
+              {platform === "darwin" && (
+                <PermissionCard
+                  icon={Shield}
+                  title="Accessibility"
+                  description="Required for auto-paste to work after transcription"
+                  granted={permissionsHook.accessibilityPermissionGranted}
+                  onRequest={permissionsHook.testAccessibilityPermission}
+                  buttonText="Test & Grant"
+                  onOpenSettings={permissionsHook.openAccessibilitySettings}
+                />
               )}
             </div>
 
-            {/* Accessibility */}
-            <div>
-              <p className="text-[13px] font-medium text-foreground mb-3">Accessibility</p>
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label="Accessibility permission"
-                    description="Required for auto-paste to work after transcription"
-                  >
-                    <Button
-                      onClick={permissionsHook.testAccessibilityPermission}
-                      variant="outline"
-                      size="sm"
-                    >
-                      <Shield className="mr-2 h-3.5 w-3.5" />
-                      Test
-                    </Button>
-                  </SettingsRow>
-                </SettingsPanelRow>
+            {/* Error state for microphone */}
+            {!permissionsHook.micPermissionGranted && permissionsHook.micPermissionError && (
+              <MicPermissionWarning
+                error={permissionsHook.micPermissionError}
+                onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+              />
+            )}
 
-                {platform === "darwin" && (
+            {/* Linux paste tools info */}
+            {platform === "linux" &&
+              permissionsHook.pasteToolsInfo &&
+              !permissionsHook.pasteToolsInfo.available && (
+                <PasteToolsInfo
+                  pasteToolsInfo={permissionsHook.pasteToolsInfo}
+                  isChecking={permissionsHook.isCheckingPasteTools}
+                  onCheck={permissionsHook.checkPasteToolsAvailability}
+                />
+              )}
+
+            {/* Troubleshooting section for macOS */}
+            {platform === "darwin" && (
+              <div>
+                <p className="text-[13px] font-medium text-foreground mb-3">Troubleshooting</p>
+                <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Reset accessibility"
-                      description="Fix issues after reinstalling or rebuilding the app"
+                      label="Reset accessibility permissions"
+                      description="Fix issues after reinstalling or rebuilding the app by removing and re-adding OpenWhispr in System Settings"
                     >
                       <Button
                         onClick={resetAccessibilityPermissions}
@@ -1085,9 +1062,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       </Button>
                     </SettingsRow>
                   </SettingsPanelRow>
-                )}
-              </SettingsPanel>
-            </div>
+                </SettingsPanel>
+              </div>
+            )}
           </div>
         );
 
@@ -1096,7 +1073,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "developer":
         return (
-          <div className="space-y-10">
+          <div className="space-y-6">
             <DeveloperSection />
 
             {/* Data Management — moved from General */}

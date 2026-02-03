@@ -349,3 +349,23 @@ a:hover {
   pointer-events: none;
   z-index: 1;
 }
+
+/* Monochrome icon theming - explicit light/dark handling */
+.icon-monochrome {
+  filter: none;
+  transition: filter 150ms ease;
+}
+
+.dark .icon-monochrome {
+  filter: invert(1);
+}
+
+/* Toast progress bar animation */
+@keyframes toast-progress {
+  from {
+    width: 100%;
+  }
+  to {
+    width: 0%;
+  }
+}

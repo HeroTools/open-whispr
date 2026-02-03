@@ -1,14 +1,17 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Settings, Mic, Brain, User, Sparkles, Wrench, BookOpen, ShieldCheck } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
 
+export type { SettingsSectionType };
+
 interface SettingsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialSection?: SettingsSectionType;
 }
 
-export default function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
+export default function SettingsModal({ open, onOpenChange, initialSection }: SettingsModalProps) {
   const sidebarItems: SidebarItem<SettingsSectionType>[] = [
     {
       id: "general",
@@ -69,6 +72,13 @@ export default function SettingsModal({ open, onOpenChange }: SettingsModalProps
   ];
 
   const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("general");
+
+  // Navigate to initial section when modal opens
+  useEffect(() => {
+    if (open && initialSection) {
+      setActiveSection(initialSection);
+    }
+  }, [open, initialSection]);
 
   return (
     <SidebarModal<SettingsSectionType>

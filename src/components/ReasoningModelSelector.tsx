@@ -9,7 +9,7 @@ import { ProviderTabs } from "./ui/ProviderTabs";
 import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import { REASONING_PROVIDERS } from "../models/ModelRegistry";
 import { modelRegistry } from "../models/ModelRegistry";
-import { getProviderIcon } from "../utils/providerIcons";
+import { getProviderIcon, isMonochromeProvider } from "../utils/providerIcons";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { createExternalLinkHandler } from "../utils/externalLinks";
 
@@ -19,6 +19,7 @@ type CloudModelOption = {
   description?: string;
   icon?: string;
   ownedBy?: string;
+  invertInDark?: boolean;
 };
 
 const OWNED_BY_ICON_RULES: Array<{ match: RegExp; provider: string }> = [
@@ -32,14 +33,17 @@ const OWNED_BY_ICON_RULES: Array<{ match: RegExp; provider: string }> = [
   { match: /(openrouter|oss)/, provider: "openai-oss" },
 ];
 
-const resolveOwnedByIcon = (ownedBy?: string): string | undefined => {
-  if (!ownedBy) return undefined;
+const resolveOwnedByIcon = (ownedBy?: string): { icon?: string; invertInDark: boolean } => {
+  if (!ownedBy) return { icon: undefined, invertInDark: false };
   const normalized = ownedBy.toLowerCase();
   const rule = OWNED_BY_ICON_RULES.find(({ match }) => match.test(normalized));
   if (rule) {
-    return getProviderIcon(rule.provider);
+    return {
+      icon: getProviderIcon(rule.provider),
+      invertInDark: isMonochromeProvider(rule.provider),
+    };
   }
-  return undefined;
+  return { icon: undefined, invertInDark: false };
 };
 
 interface ReasoningModelSelectorProps {
@@ -201,7 +205,7 @@ export default function ReasoningModelSelector({
             const value = (item?.id || item?.name) as string | undefined;
             if (!value) return null;
             const ownedBy = typeof item?.owned_by === "string" ? item.owned_by : undefined;
-            const icon = resolveOwnedByIcon(ownedBy);
+            const { icon, invertInDark } = resolveOwnedByIcon(ownedBy);
             return {
               value,
               label: (item?.id || item?.name || value) as string,
@@ -209,6 +213,7 @@ export default function ReasoningModelSelector({
                 (item?.description as string) || (ownedBy ? `Owner: ${ownedBy}` : undefined),
               icon,
               ownedBy,
+              invertInDark,
             } as CloudModelOption;
           })
           .filter(Boolean) as CloudModelOption[];
@@ -288,6 +293,7 @@ export default function ReasoningModelSelector({
     return REASONING_PROVIDERS.openai.models.map((model) => ({
       ...model,
       icon: iconUrl,
+      invertInDark: true,
     }));
   }, []);
 
@@ -299,9 +305,11 @@ export default function ReasoningModelSelector({
     if (!provider?.models) return [];
 
     const iconUrl = getProviderIcon(selectedCloudProvider);
+    const invertInDark = isMonochromeProvider(selectedCloudProvider);
     return provider.models.map((model) => ({
       ...model,
       icon: iconUrl,
+      invertInDark,
     }));
   }, [selectedCloudProvider, openaiModelOptions, displayedCustomModels]);
 

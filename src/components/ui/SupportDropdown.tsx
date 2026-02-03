@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
+import { cn } from "../lib/utils";
 
 interface SupportDropdownProps {
   className?: string;
@@ -44,7 +45,14 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className={className}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "text-muted-foreground hover:text-foreground hover:bg-foreground/10",
+            className
+          )}
+        >
           <HelpCircle size={16} />
         </Button>
       </DropdownMenuTrigger>

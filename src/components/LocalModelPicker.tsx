@@ -1,13 +1,12 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Button } from "./ui/button";
-import { Download, Trash2, Check, X } from "lucide-react";
-import { ProviderIcon } from "./ui/ProviderIcon";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import { ConfirmDialog } from "./ui/dialog";
+import ModelCardList, { type ModelCardOption } from "./ui/ModelCardList";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload, type ModelType } from "../hooks/useModelDownload";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
+import { getProviderIcon, isMonochromeProvider } from "../utils/providerIcons";
 
 export interface LocalModel {
   id: string;
@@ -159,96 +158,28 @@ export default function LocalModelPicker({
       <div className="p-4">
         <h5 className={`${styles.header} mb-3`}>Available Models</h5>
 
-        <div className="space-y-2">
-          {models.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No models available for this provider</p>
-          ) : (
-            models.map((model) => {
-              const isSelected = model.id === selectedModel;
-              const isDownloading = isDownloadingModel(model.id);
-              const isDownloaded =
-                downloadedModels.has(model.id) || model.isDownloaded || model.downloaded;
-
-              return (
-                <div
-                  key={model.id}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    isSelected ? styles.modelCard.selected : styles.modelCard.default
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <ProviderIcon provider={selectedProvider} className="w-4 h-4" />
-                        <span className="font-medium text-foreground">{model.name}</span>
-                        {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
-                        {model.recommended && (
-                          <span className={styles.badges.recommended}>Recommended</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-1">{model.description}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">Size: {model.size}</span>
-                        {isDownloaded && (
-                          <span className={styles.badges.downloaded}>
-                            <Check className="inline w-3 h-3 mr-1" />
-                            Downloaded
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {isDownloaded ? (
-                        <>
-                          {!isSelected && (
-                            <Button
-                              onClick={() => onModelSelect(model.id)}
-                              size="sm"
-                              variant="outline"
-                              className={styles.buttons.select}
-                            >
-                              Select
-                            </Button>
-                          )}
-                          <Button
-                            onClick={() => handleDelete(model.id)}
-                            size="sm"
-                            variant="outline"
-                            className={styles.buttons.delete}
-                          >
-                            <Trash2 size={14} />
-                            <span className="ml-1">Delete</span>
-                          </Button>
-                        </>
-                      ) : isDownloading ? (
-                        <Button
-                          onClick={cancelDownload}
-                          disabled={isCancelling}
-                          size="sm"
-                          variant="outline"
-                          className="text-destructive border-destructive/30 hover:bg-destructive/10"
-                        >
-                          <X size={14} />
-                          <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => handleDownload(model.id)}
-                          size="sm"
-                          className={styles.buttons.download}
-                        >
-                          <Download size={14} />
-                          <span className="ml-1">Download</span>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
+        <ModelCardList
+          models={models.map(
+            (model): ModelCardOption => ({
+              value: model.id,
+              label: model.name,
+              description: model.size,
+              icon: getProviderIcon(selectedProvider),
+              invertInDark: isMonochromeProvider(selectedProvider),
+              recommended: model.recommended,
+              isDownloaded:
+                downloadedModels.has(model.id) || model.isDownloaded || model.downloaded,
+              isDownloading: isDownloadingModel(model.id),
             })
           )}
-        </div>
+          selectedModel={selectedModel}
+          onModelSelect={onModelSelect}
+          onDownload={handleDownload}
+          onDelete={handleDelete}
+          onCancelDownload={cancelDownload}
+          isCancelling={isCancelling}
+          colorScheme={colorScheme}
+        />
       </div>
 
       <ConfirmDialog

@@ -11,21 +11,24 @@ export interface ModelPickerStyles {
 export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   purple: {
     container:
-      "border border-border rounded-xl overflow-hidden dark:border-border dark:bg-surface-1",
+      "bg-card border border-border rounded-xl overflow-hidden dark:bg-surface-1 shadow-sm",
     header: "font-medium text-foreground tracking-tight",
     modelCard: {
-      selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
+      selected:
+        "border-primary/30 bg-primary/8 dark:bg-primary/6 dark:border-primary/20 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.12),0_0_10px_-3px_oklch(0.62_0.22_260/0.18)]",
       default:
-        "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
+        "border-border bg-surface-1 hover:border-border-hover hover:bg-muted dark:bg-card dark:border-border dark:hover:border-border-hover dark:hover:bg-surface-raised",
     },
     badges: {
-      selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
+      selected:
+        "text-[10px] text-primary-foreground bg-primary px-1.5 py-0.5 rounded-sm font-medium",
       downloaded:
-        "text-xs text-success dark:text-success bg-success/10 dark:bg-success/12 px-2 py-0.5 rounded-full",
-      recommended: "text-xs text-primary bg-primary/10 dark:bg-primary/12 px-2 py-0.5 rounded-full",
+        "text-[10px] text-success dark:text-success bg-success/10 dark:bg-success/12 px-1.5 py-0.5 rounded-sm",
+      recommended:
+        "text-[10px] text-primary bg-primary/10 dark:bg-primary/12 px-1.5 py-0.5 rounded-sm font-medium",
     },
     buttons: {
-      download: "bg-primary hover:bg-primary/85 text-primary-foreground",
+      download: "",
       select: "border-primary/25 text-primary hover:bg-primary/8",
       delete:
         "text-destructive hover:text-destructive/90 hover:bg-destructive/8 border-destructive/25",
@@ -34,21 +37,24 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   },
   indigo: {
     container:
-      "border border-border rounded-xl overflow-hidden dark:border-border dark:bg-surface-1",
+      "bg-card border border-border rounded-xl overflow-hidden dark:bg-surface-1 shadow-sm",
     header: "font-medium text-foreground tracking-tight",
     modelCard: {
-      selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
+      selected:
+        "border-primary/30 bg-primary/8 dark:bg-primary/6 dark:border-primary/20 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.12),0_0_10px_-3px_oklch(0.62_0.22_260/0.18)]",
       default:
-        "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
+        "border-border bg-surface-1 hover:border-border-hover hover:bg-muted dark:bg-card dark:border-border dark:hover:border-border-hover dark:hover:bg-surface-raised",
     },
     badges: {
-      selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
+      selected:
+        "text-[10px] text-primary-foreground bg-primary px-1.5 py-0.5 rounded-sm font-medium",
       downloaded:
-        "text-xs text-success dark:text-success bg-success/10 dark:bg-success/12 px-2 py-0.5 rounded-full",
-      recommended: "text-xs text-primary bg-primary/10 dark:bg-primary/12 px-2 py-0.5 rounded-full",
+        "text-[10px] text-success dark:text-success bg-success/10 dark:bg-success/12 px-1.5 py-0.5 rounded-sm",
+      recommended:
+        "text-[10px] text-primary bg-primary/10 dark:bg-primary/12 px-1.5 py-0.5 rounded-sm font-medium",
     },
     buttons: {
-      download: "bg-primary hover:bg-primary/85 text-primary-foreground",
+      download: "",
       select: "border-primary/25 text-primary hover:bg-primary/8",
       delete:
         "text-destructive hover:text-destructive/90 hover:bg-destructive/8 border-destructive/25",
@@ -57,25 +63,28 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   },
   blue: {
     container:
-      "bg-muted/30 rounded-xl overflow-hidden border border-border dark:border-border dark:bg-surface-1",
-    header: "font-medium text-foreground tracking-tight",
+      "bg-surface-1 dark:bg-white/3 rounded-xl overflow-hidden border border-border dark:border-white/5 backdrop-blur-md shadow-sm",
+    header: "text-sm font-medium text-foreground tracking-tight",
     modelCard: {
-      selected: "border-primary/30 bg-primary/5 dark:bg-primary/6 dark:border-primary/25",
+      selected:
+        "border-primary/30 bg-primary/10 dark:bg-primary/6 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.15),0_0_12px_-3px_oklch(0.62_0.22_260/0.2)]",
       default:
-        "border-border bg-card dark:bg-card dark:border-border dark:hover:border-border-hover hover:border-muted-foreground/30",
+        "border-border bg-surface-1 hover:border-border-hover hover:bg-surface-raised dark:border-white/5 dark:bg-white/3 dark:hover:border-white/20 dark:hover:bg-white/8",
     },
     badges: {
-      selected: "text-xs text-primary-foreground bg-primary px-2 py-0.5 rounded-full font-medium",
-      downloaded:
-        "text-xs text-success dark:text-success bg-success/10 dark:bg-success/12 px-2 py-0.5 rounded-full",
-      recommended: "text-xs bg-primary/10 dark:bg-primary/12 text-primary px-2 py-0.5 rounded-full",
+      selected:
+        "text-[10px] text-primary-foreground bg-primary px-1.5 py-0.5 rounded-sm font-medium",
+      downloaded: "text-[10px] text-success bg-success/10 px-1.5 py-0.5 rounded-sm font-medium",
+      recommended: "text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-sm font-medium",
     },
     buttons: {
-      download: "bg-primary hover:bg-primary/85 text-primary-foreground",
-      select: "border-border text-foreground hover:bg-muted dark:hover:bg-surface-raised",
+      download: "",
+      select:
+        "border-border text-foreground hover:bg-surface-raised dark:border-white/10 dark:hover:bg-white/8",
       delete:
         "text-destructive hover:text-destructive/90 hover:bg-destructive/8 border-destructive/25",
-      refresh: "border-border text-foreground hover:bg-muted",
+      refresh:
+        "border-border text-foreground hover:bg-surface-raised dark:border-white/10 dark:hover:bg-white/8",
     },
   },
 };

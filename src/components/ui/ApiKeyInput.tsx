@@ -1,7 +1,6 @@
 import React from "react";
-import { Button } from "./button";
+import { Check } from "lucide-react";
 import { Input } from "./input";
-import { useClipboard } from "../../hooks/useClipboard";
 
 interface ApiKeyInputProps {
   apiKey: string;
@@ -22,33 +21,27 @@ export default function ApiKeyInput({
   helpText = "Get your API key from platform.openai.com",
   variant = "default",
 }: ApiKeyInputProps) {
-  const { pasteFromClipboardWithFallback } = useClipboard();
-
+  const hasKey = apiKey.length > 0;
   const variantClasses = variant === "purple" ? "border-primary focus:border-primary" : "";
-
-  const buttonVariantClasses =
-    variant === "purple" ? "border-primary text-primary hover:bg-primary/10" : "";
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-foreground mb-2">{label}</label>
-      <div className="flex gap-3">
+      {label && <label className="block text-xs font-medium text-foreground mb-1">{label}</label>}
+      <div className="relative">
         <Input
           type="password"
           placeholder={placeholder}
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
-          className={`flex-1 ${variantClasses}`}
+          className={`h-8 text-sm ${hasKey ? "pr-8" : ""} ${variantClasses}`}
         />
-        <Button
-          variant="outline"
-          onClick={() => pasteFromClipboardWithFallback(setApiKey)}
-          className={buttonVariantClasses}
-        >
-          Paste
-        </Button>
+        {hasKey && (
+          <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+            <Check className="w-3.5 h-3.5 text-success" />
+          </div>
+        )}
       </div>
-      {helpText && <p className="text-xs text-muted-foreground mt-2">{helpText}</p>}
+      {helpText && <p className="text-[11px] text-muted-foreground/70 mt-1">{helpText}</p>}
     </div>
   );
 }

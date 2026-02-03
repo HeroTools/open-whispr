@@ -14,44 +14,58 @@ interface StepProgressProps {
 
 export default function StepProgress({ steps, currentStep, className = "" }: StepProgressProps) {
   return (
-    <div className={`flex items-center justify-between ${className}`}>
+    <div className={`flex items-center justify-center gap-1 ${className}`}>
       {steps.map((step, index) => {
         const Icon = step.icon;
         const isActive = index === currentStep;
         const isCompleted = index < currentStep;
 
         return (
-          <div key={index} className="flex">
+          <React.Fragment key={index}>
             <div
-              className={`flex items-center gap-2 ${
+              className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all duration-200 ${
                 isActive
-                  ? "text-primary"
+                  ? "bg-primary/15 text-primary"
                   : isCompleted
-                    ? "text-success dark:text-success"
-                    : "text-muted-foreground"
+                    ? "text-success"
+                    : "text-muted-foreground/50"
               }`}
             >
               <div
-                className={`w-6 h-6 rounded-full flex items-center justify-center border-2 flex-shrink-0 transition-all duration-200 ${
+                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
                   isActive
-                    ? "border-primary bg-primary/10 dark:bg-primary/20 shadow-sm"
+                    ? "bg-primary text-white shadow-sm"
                     : isCompleted
-                      ? "border-success dark:border-success bg-success/10 dark:bg-success/20 shadow-sm"
-                      : "border-border bg-card"
+                      ? "bg-success/20 text-success"
+                      : "bg-white/5 text-muted-foreground/50"
                 }`}
               >
-                {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                {isCompleted ? (
+                  <Check className="w-3 h-3" strokeWidth={2.5} />
+                ) : (
+                  <Icon className="w-3 h-3" />
+                )}
               </div>
-              <span className="text-xs font-medium hidden md:block truncate">{step.title}</span>
+              <span
+                className={`text-[11px] font-medium hidden md:block ${
+                  isActive
+                    ? "text-primary"
+                    : isCompleted
+                      ? "text-success"
+                      : "text-muted-foreground/50"
+                }`}
+              >
+                {step.title}
+              </span>
             </div>
             {index < steps.length - 1 && (
               <div
-                className={`flex-1 h-0.5 mx-3 rounded-full transition-colors duration-200 ${
-                  isCompleted ? "bg-success dark:bg-success" : "bg-border"
+                className={`w-4 h-px transition-colors duration-200 ${
+                  isCompleted ? "bg-success/50" : "bg-white/10"
                 }`}
               />
             )}
-          </div>
+          </React.Fragment>
         );
       })}
     </div>

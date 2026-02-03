@@ -2,14 +2,14 @@ import React from "react";
 import { cn } from "../lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
 
-const infoBoxVariants = cva("rounded-lg border p-4 transition-colors", {
+const infoBoxVariants = cva("rounded-md border p-4 transition-colors", {
   variants: {
     variant: {
-      default: "bg-primary/10 border-primary/25 dark:bg-primary/5 dark:border-primary/20",
-      success: "bg-success/15 border-success/30 dark:bg-success/20 dark:border-success/30",
-      warning: "bg-warning/15 border-warning/30 dark:bg-warning/20 dark:border-warning/30",
-      info: "bg-info/15 border-info/30 dark:bg-info/20 dark:border-info/30",
-      muted: "bg-muted/50 border-border dark:bg-muted/30",
+      default: "bg-primary/8 border-primary/20 dark:bg-primary/10 dark:border-primary/20",
+      success: "bg-success/8 border-success/20 dark:bg-success/10 dark:border-success/20",
+      warning: "bg-warning/8 border-warning/20 dark:bg-warning/10 dark:border-warning/20",
+      info: "bg-info/8 border-info/20 dark:bg-info/10 dark:border-info/20",
+      muted: "bg-surface-1 border-border-subtle",
     },
   },
   defaultVariants: {

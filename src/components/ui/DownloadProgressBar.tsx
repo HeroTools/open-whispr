@@ -16,31 +16,33 @@ export function DownloadProgressBar({
   const etaText = eta ? formatETA(eta) : "";
 
   return (
-    <div className="p-4 border-b border-border/50 dark:border-border-subtle">
-      <div className="flex items-center gap-3 mb-3">
-        {/* Animated pulse indicator */}
-        <div className="relative flex items-center justify-center w-8 h-8">
+    <div className="px-2.5 py-2 border-b border-white/5 dark:border-border-subtle">
+      <div className="flex items-center gap-2 mb-2">
+        {/* Compact percentage with LED glow */}
+        <div className="relative flex items-center justify-center w-6 h-6">
           <div
-            className={`absolute inset-0 rounded-lg bg-primary/15 ${isInstalling ? "animate-pulse" : "animate-pulse"}`}
+            className={`absolute inset-0 rounded-md bg-primary/15 ${isInstalling ? "animate-pulse" : ""}`}
           />
-          <span className="relative text-xs font-bold text-primary tabular-nums">
+          <span className="relative text-[10px] font-bold text-primary tabular-nums">
             {isInstalling ? "..." : `${pct}%`}
           </span>
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground truncate">
+          <p className="text-xs font-medium text-foreground truncate">
             {isInstalling ? `Installing ${modelName}` : `Downloading ${modelName}`}
           </p>
-          {!isInstalling && (
-            <div className="flex items-center gap-2 mt-0.5">
+          {!isInstalling && (speedText || etaText) && (
+            <div className="flex items-center gap-1.5 mt-0.5">
               {speedText && (
-                <span className="text-xs text-muted-foreground tabular-nums">{speedText}</span>
+                <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                  {speedText}
+                </span>
               )}
               {etaText && (
                 <>
-                  <span className="text-xs text-muted-foreground/40">·</span>
-                  <span className="text-xs text-muted-foreground tabular-nums">
-                    {etaText} remaining
+                  <span className="text-[10px] text-muted-foreground/30">·</span>
+                  <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                    {etaText}
                   </span>
                 </>
               )}
@@ -49,17 +51,16 @@ export function DownloadProgressBar({
         </div>
       </div>
 
-      {/* Progress bar */}
+      {/* Progress bar - thinner, premium */}
       <div
-        className="w-full rounded-full overflow-hidden"
-        style={{ height: 6, backgroundColor: "var(--color-muted)" }}
+        className="w-full rounded-full overflow-hidden bg-white/5 dark:bg-white/3"
+        style={{ height: 4 }}
       >
         <div
-          className={isInstalling ? "animate-pulse" : ""}
+          className={`${isInstalling ? "animate-pulse" : ""} bg-primary shadow-[0_0_8px_oklch(0.62_0.22_260/0.4)]`}
           style={{
             height: "100%",
             width: `${isInstalling ? 100 : Math.min(percentage, 100)}%`,
-            backgroundColor: "var(--color-primary)",
             borderRadius: 9999,
             transition: "width 300ms ease-out",
           }}

@@ -5,6 +5,7 @@ import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyl
 export interface ProviderTabItem {
   id: string;
   name: string;
+  recommended?: boolean;
 }
 
 type ColorScheme = Exclude<BaseColorScheme, "blue"> | "dynamic";
@@ -70,11 +71,11 @@ export function ProviderTabs({
   return (
     <div
       ref={containerRef}
-      className={`relative flex p-0.5 rounded-lg bg-muted/40 dark:bg-background ${scrollable ? "overflow-x-auto" : ""}`}
+      className={`relative flex p-0.5 rounded-md bg-surface-raised dark:bg-white/3 ${scrollable ? "overflow-x-auto" : ""}`}
     >
-      {/* Sliding indicator */}
+      {/* Sliding indicator - frosted glass treatment */}
       <div
-        className="absolute top-0.5 left-0 rounded-md bg-card shadow-sm border border-primary/15 dark:bg-surface-3 dark:border-primary/20 transition-all duration-200 ease-out pointer-events-none"
+        className="absolute top-0.5 left-0 rounded-md bg-white dark:bg-surface-3 border border-border dark:border-border-subtle shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-200 ease-out pointer-events-none"
         style={indicatorStyle}
       />
 
@@ -86,12 +87,15 @@ export function ProviderTabs({
             key={provider.id}
             data-tab-button
             onClick={() => onSelect(provider.id)}
-            className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-sm transition-colors duration-150 ${
+            className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md font-medium text-xs transition-colors duration-150 ${
               scrollable ? "whitespace-nowrap" : ""
-            } ${isSelected ? "text-primary" : "text-muted-foreground hover:text-foreground"}`}
+            } ${isSelected ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
             <span>{provider.name}</span>
+            {provider.recommended && (
+              <span className="text-[9px] text-primary/70 font-medium">Recommended</span>
+            )}
           </button>
         );
       })}

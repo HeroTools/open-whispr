@@ -29,7 +29,7 @@ export function ProviderIcon({ provider, className = "w-5 h-5" }: ProviderIconPr
     <img
       src={iconUrl}
       alt={`${provider} icon`}
-      className={`${className} ${isMonochrome ? "dark:invert" : ""}`}
+      className={`${className} ${isMonochrome ? "icon-monochrome" : ""}`}
     />
   );
 }
