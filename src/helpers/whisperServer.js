@@ -235,6 +235,18 @@ class WhisperServerManager {
     const serverBinaryDir = path.dirname(serverBinary);
     spawnEnv.PATH = serverBinaryDir + pathSep + (process.env.PATH || "");
 
+    // On Linux, also set LD_LIBRARY_PATH to ensure companion libraries are found
+    if (process.platform === "linux") {
+      const existingLdPath = process.env.LD_LIBRARY_PATH
+        ? pathSep + process.env.LD_LIBRARY_PATH
+        : "";
+      spawnEnv.LD_LIBRARY_PATH =
+        serverBinaryDir +
+        ":/usr/lib/x86_64-linux-gnu/nvidia/current" +
+        ":/usr/lib/x86_64-linux-gnu" +
+        existingLdPath;
+    }
+
     const args = ["--model", modelPath, "--host", "127.0.0.1", "--port", String(this.port)];
 
     // FFmpeg is required for pre-converting audio to 16kHz mono WAV

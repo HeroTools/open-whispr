@@ -57,6 +57,9 @@ typings/
 # Output of 'npm pack'
 *.tgz
 
+# npm lockfile (ignored for this repo)
+package-lock.json
+
 # Yarn Integrity file
 .yarn-integrity
 

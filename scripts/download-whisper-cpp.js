@@ -159,6 +159,9 @@ async function main() {
 
     if (args.shouldCleanup) {
       cleanupFiles(BIN_DIR, "whisper-server", `whisper-server-${args.platformArch}`);
+      // Also cleanup old separate library files if they exist (now monolithic)
+      cleanupFiles(BIN_DIR, "libggml", "nonexistent");
+      cleanupFiles(BIN_DIR, "libwhisper", "nonexistent");
     }
   } else {
     console.log("Downloading binaries for all platforms:");

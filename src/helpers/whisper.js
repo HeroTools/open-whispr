@@ -804,6 +804,23 @@ class WhisperManager {
       await fsPromises.rm(extractDir, { recursive: true, force: true });
       await fsPromises.unlink(zipPath).catch(() => {});
 
+      // Cleanup any old companion libraries (now using monolithic binaries)
+      const oldLibs = [
+        "libggml-cuda.so",
+        "libggml-base.so",
+        "libggml-cpu.so",
+        "libggml.so",
+        "libwhisper.so",
+        "libwhisper.so.1",
+        "libwhisper.so.1.8.2",
+      ];
+      for (const lib of oldLibs) {
+        const libPath = path.join(binDir, lib);
+        if (fs.existsSync(libPath)) {
+          await fsPromises.unlink(libPath).catch(() => {});
+        }
+      }
+
       if (progressCallback) progressCallback({ type: "complete", percentage: 100 });
 
       return { success: true, path: targetPath };
