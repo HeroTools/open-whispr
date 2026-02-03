@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+- **Design Tokens**: Refactored button component to use design tokens (`text-foreground`, `bg-muted`, `border-border`) instead of hardcoded hex values for improved maintainability and theme consistency
+
+### Fixed
+- **Light Mode UI Visibility**: Fixed multiple UI elements that were invisible or hard to see in light mode:
+  - Settings gear icon in permission cards now uses `text-foreground`
+  - Troubleshoot button uses proper foreground color
+  - Reset button in developer settings now correctly shows destructive color
+  - Settings and Help icons in the toolbar are now properly visible
+  - Check for Updates button now renders correctly in light mode
+
 ## [1.3.3] - 2026-01-28
 
 ### Added

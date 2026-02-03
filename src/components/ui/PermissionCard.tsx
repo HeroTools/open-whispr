@@ -67,7 +67,7 @@ export default function PermissionCard({
             </Button>
             {onOpenSettings && (
               <Button onClick={onOpenSettings} size="sm" variant="outline" className="h-6 w-6 p-0">
-                <Settings className="w-3 h-3" />
+                <Settings className="w-3 h-3 text-foreground" />
               </Button>
             )}
           </div>

@@ -483,7 +483,8 @@ export function useSettings() {
       if (settings.useReasoningModel !== undefined)
         setUseReasoningModel(settings.useReasoningModel);
       if (settings.reasoningModel !== undefined) setReasoningModel(settings.reasoningModel);
-      if (settings.reasoningProvider !== undefined) setReasoningProvider(settings.reasoningProvider);
+      if (settings.reasoningProvider !== undefined)
+        setReasoningProvider(settings.reasoningProvider);
       if (settings.cloudReasoningBaseUrl !== undefined)
         setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
     },

@@ -4,24 +4,6 @@ import { cva, type VariantProps } from "class-variance-authority";
 
 import { cn } from "../lib/utils";
 
-/**
- * Premium button component with refined metallic/glass styling.
- *
- * Design principles:
- * - Tight, consistent 6px radii across all sizes
- * - Subtle single inset highlight (no heavy overlays)
- * - Micro-interactions: scale transform on press
- * - Unified metallic treatment with restrained gradients
- *
- * Variants:
- * - default: Primary CTA (refined blue metallic)
- * - success: Positive actions (emerald metallic)
- * - destructive: Dangerous actions (red metallic)
- * - outline: Secondary actions (frosted glass)
- * - secondary: Subtle filled background
- * - ghost: Minimal, text only
- * - link: Inline text link
- */
 const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
@@ -70,57 +52,53 @@ const buttonVariants = cva(
           "active:shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.15)]",
         ].join(" "),
 
-        // Outline — explicit colors for reliability
+        // Outline — uses design tokens
         outline: [
           "relative font-medium",
-          // Light mode: dark text on light gray bg
-          "text-[#171717] bg-[#f5f5f5]/80",
-          "border border-[#e5e5e5]",
+          "text-foreground bg-muted/80",
+          "border border-border",
           "shadow-sm backdrop-blur-sm",
-          "hover:bg-[#e5e5e5]",
+          "hover:bg-muted",
           "active:scale-[0.98]",
           // Dark mode overrides
-          "dark:text-white dark:bg-surface-3",
+          "dark:bg-surface-3",
           "dark:border-border-subtle",
           "dark:hover:bg-surface-raised",
         ].join(" "),
 
-        // Secondary — explicit colors for reliability
+        // Secondary — uses design tokens
         secondary: [
           "relative font-medium",
-          // Light mode: dark text on light gray bg
-          "text-[#171717] bg-[#f5f5f5]",
-          "border border-[#e5e5e5]/50",
-          "hover:bg-[#e5e5e5]",
+          "text-foreground bg-secondary",
+          "border border-border/50",
+          "hover:bg-muted",
           "active:scale-[0.98]",
           // Dark mode overrides
-          "dark:text-white/90 dark:bg-white/8",
+          "dark:text-foreground/90 dark:bg-white/8",
           "dark:border-white/5",
           "dark:hover:bg-white/12",
         ].join(" "),
 
-        // Ghost — explicit colors for reliability
+        // Ghost — uses design tokens
         ghost: [
           "font-medium",
-          // Light mode: dark text, transparent bg
-          "text-[#171717]",
-          "hover:bg-[#f5f5f5]",
+          "text-foreground",
+          "hover:bg-muted",
           "active:scale-[0.98]",
           // Dark mode overrides
-          "dark:text-white/90",
+          "dark:text-foreground/90",
           "dark:hover:bg-white/8",
         ].join(" "),
 
-        // Link — explicit colors for reliability
+        // Link — uses design tokens
         link: [
           "font-medium",
-          // Light mode: blue text
-          "text-[#2563eb]",
-          "hover:text-[#1d4ed8] hover:underline",
+          "text-primary",
+          "hover:text-primary/80 hover:underline",
           "underline-offset-4",
           // Dark mode overrides
-          "dark:text-blue-400",
-          "dark:hover:text-blue-300",
+          "dark:text-primary",
+          "dark:hover:text-primary/80",
         ].join(" "),
       },
       size: {

@@ -1054,7 +1054,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         onClick={resetAccessibilityPermissions}
                         variant="ghost"
                         size="sm"
-                        className="text-muted-foreground hover:text-foreground"
+                        className="text-foreground/70 hover:text-foreground"
                       >
                         Troubleshoot
                       </Button>

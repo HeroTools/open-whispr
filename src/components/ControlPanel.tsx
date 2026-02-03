@@ -215,7 +215,7 @@ export default function ControlPanel() {
       return (
         <>
           <Loader2 size={14} className="animate-spin" />
-          <span>{downloadProgress}%</span>
+          <span>{Math.round(downloadProgress)}%</span>
         </>
       );
     }
@@ -284,7 +284,7 @@ export default function ControlPanel() {
                 setSettingsSection(undefined);
                 setShowSettings(true);
               }}
-              className="text-muted-foreground hover:text-foreground hover:bg-foreground/10"
+              className="text-foreground/70 hover:text-foreground hover:bg-foreground/10"
             >
               <Settings size={16} />
             </Button>

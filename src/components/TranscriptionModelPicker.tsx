@@ -47,9 +47,6 @@ interface LocalModelCardProps {
   styles: ReturnType<(typeof MODEL_PICKER_COLORS)[keyof typeof MODEL_PICKER_COLORS]>;
 }
 
-// Backwards compatibility alias
-type WhisperModel = LocalModel;
-
 function LocalModelCard({
   modelId,
   name,
@@ -270,8 +267,8 @@ export default function TranscriptionModelPicker({
   className = "",
   variant = "settings",
 }: TranscriptionModelPickerProps) {
-  const [localModels, setLocalModels] = useState<WhisperModel[]>([]);
-  const [parakeetModels, setParakeetModels] = useState<WhisperModel[]>([]);
+  const [localModels, setLocalModels] = useState<LocalModel[]>([]);
+  const [parakeetModels, setParakeetModels] = useState<LocalModel[]>([]);
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
   const hasLoadedRef = useRef(false);
   const hasLoadedParakeetRef = useRef(false);
@@ -302,7 +299,7 @@ export default function TranscriptionModelPicker({
     onLocalModelSelectRef.current = onLocalModelSelect;
   }, [onLocalModelSelect]);
 
-  const validateAndSelectModel = useCallback((loadedModels: WhisperModel[]) => {
+  const validateAndSelectModel = useCallback((loadedModels: LocalModel[]) => {
     const current = selectedLocalModelRef.current;
     if (!current) return;
 

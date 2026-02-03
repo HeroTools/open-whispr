@@ -49,7 +49,7 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
           variant="ghost"
           size="icon"
           className={cn(
-            "text-muted-foreground hover:text-foreground hover:bg-foreground/10",
+            "text-foreground/70 hover:text-foreground hover:bg-foreground/10",
             className
           )}
         >
