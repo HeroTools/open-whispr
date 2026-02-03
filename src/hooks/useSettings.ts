@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 import { useDebouncedCallback } from "./useDebouncedCallback";
-import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
 import type { LocalTranscriptionProvider } from "../types/electron";
@@ -198,6 +197,11 @@ export function useSettings() {
   });
 
   const [reasoningModel, setReasoningModel] = useLocalStorage("reasoningModel", "", {
+    serialize: String,
+    deserialize: String,
+  });
+
+  const [reasoningProvider, setReasoningProvider] = useLocalStorage("reasoningProvider", "openai", {
     serialize: String,
     deserialize: String,
   });
@@ -411,9 +415,6 @@ export function useSettings() {
     deserialize: String,
   });
 
-  // Computed values
-  const reasoningProvider = getModelProvider(reasoningModel);
-
   // Sync startup pre-warming preferences to main process
   useEffect(() => {
     if (typeof window === "undefined" || !window.electronAPI?.syncStartupPreferences) return;
@@ -482,11 +483,11 @@ export function useSettings() {
       if (settings.useReasoningModel !== undefined)
         setUseReasoningModel(settings.useReasoningModel);
       if (settings.reasoningModel !== undefined) setReasoningModel(settings.reasoningModel);
+      if (settings.reasoningProvider !== undefined) setReasoningProvider(settings.reasoningProvider);
       if (settings.cloudReasoningBaseUrl !== undefined)
         setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
-      // reasoningProvider is computed from reasoningModel, not stored separately
     },
-    [setUseReasoningModel, setReasoningModel, setCloudReasoningBaseUrl]
+    [setUseReasoningModel, setReasoningModel, setReasoningProvider, setCloudReasoningBaseUrl]
   );
 
   const updateApiKeys = useCallback(
@@ -537,11 +538,7 @@ export function useSettings() {
     setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
-    setReasoningProvider: (provider: string) => {
-      if (provider !== "custom") {
-        setReasoningModel("");
-      }
-    },
+    setReasoningProvider,
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,

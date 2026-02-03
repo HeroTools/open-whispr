@@ -129,6 +129,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
+    setReasoningProvider,
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,
@@ -182,9 +183,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showAlert: showAlertDialog,
   });
 
-  const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
-    return localStorage.getItem("reasoningProvider") || reasoningProvider;
-  });
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
   const platform = useMemo(() => {
@@ -850,8 +848,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               cloudReasoningBaseUrl={cloudReasoningBaseUrl}
               reasoningModel={reasoningModel}
               setReasoningModel={setReasoningModel}
-              localReasoningProvider={localReasoningProvider}
-              setLocalReasoningProvider={setLocalReasoningProvider}
+              localReasoningProvider={reasoningProvider}
+              setLocalReasoningProvider={setReasoningProvider}
               openaiApiKey={openaiApiKey}
               setOpenaiApiKey={setOpenaiApiKey}
               anthropicApiKey={anthropicApiKey}
