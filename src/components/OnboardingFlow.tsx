@@ -62,6 +62,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const {
     useLocalWhisper,
     whisperModel,
+    localTranscriptionProvider,
+    parakeetModel,
     preferredLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
@@ -89,11 +91,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     useDialogs();
   const practiceTextareaRef = useRef<HTMLInputElement>(null);
 
-  // Ref to prevent React.StrictMode double-invocation of auto-registration
   const autoRegisterInFlightRef = useRef(false);
   const hotkeyStepInitializedRef = useRef(false);
 
-  // Shared hotkey registration hook
   const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
     onSuccess: (registeredHotkey) => {
       setHotkey(registeredHotkey);
@@ -129,16 +129,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     checkHotkeyMode();
   }, [setActivationMode]);
 
-  // Check if selected whisper model is downloaded
   useEffect(() => {
-    if (!useLocalWhisper || !whisperModel) {
+    const modelToCheck = localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
+    if (!useLocalWhisper || !modelToCheck) {
       setIsModelDownloaded(false);
       return;
     }
 
-    const checkModelStatus = async () => {
+    const checkStatus = async () => {
       try {
-        const result = await window.electronAPI?.checkModelStatus(whisperModel);
+        const result =
+          localTranscriptionProvider === "nvidia"
+            ? await window.electronAPI?.checkParakeetModelStatus(modelToCheck)
+            : await window.electronAPI?.checkModelStatus(modelToCheck);
         setIsModelDownloaded(result?.downloaded ?? false);
       } catch (error) {
         console.error("Failed to check model status:", error);
@@ -146,8 +149,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
     };
 
-    checkModelStatus();
-  }, [useLocalWhisper, whisperModel]);
+    checkStatus();
+  }, [useLocalWhisper, whisperModel, parakeetModel, localTranscriptionProvider]);
 
   useEffect(() => {
     if (currentStep === 4) {
@@ -261,7 +264,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const newStep = currentStep + 1;
     setCurrentStep(newStep);
 
-    // Show dictation panel when moving from permissions step (2) to hotkey & test step (3)
     if (currentStep === 2 && newStep === 3) {
       if (window.electronAPI?.showDictationPanel) {
         window.electronAPI.showDictationPanel();
@@ -281,7 +283,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     if (!saved) {
       return;
     }
-    // Clear the onboarding step since we're done
     removeCurrentStep();
     onComplete();
   }, [saveSettings, removeCurrentStep, onComplete]);
