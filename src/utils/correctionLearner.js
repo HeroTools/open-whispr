@@ -161,7 +161,8 @@ function extractCorrections(originalText, fieldValue, existingDictionary) {
   const subs = findSubstitutions(origWords, editedWords);
   if (subs.length > origWords.length * 0.5) return [];
 
-  const dictSet = new Set(existingDictionary.map((w) => w.toLowerCase()));
+  const safeDict = Array.isArray(existingDictionary) ? existingDictionary : [];
+  const dictSet = new Set(safeDict.map((w) => w.toLowerCase()));
   const results = [];
 
   for (const [origWord, correctedWord] of subs) {

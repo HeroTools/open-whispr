@@ -30,7 +30,7 @@
 #include <uiautomation.h>
 
 #define TIMEOUT_MS 30000
-#define POLL_INTERVAL_MS 2000
+#define POLL_INTERVAL_MS 500
 #define MAX_OUTPUT_CHARS 10240
 
 static volatile int running = 1;

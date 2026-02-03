@@ -66,6 +66,7 @@ let updateManager = null;
 let globeKeyManager = null;
 let windowsKeyManager = null;
 let textEditMonitor = null;
+let ipcHandlers = null;
 let globeKeyAlertShown = false;
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
@@ -146,7 +147,7 @@ function initializeManagers() {
   }
 
   // Initialize IPC handlers with all managers
-  const _ipcHandlers = new IPCHandlers({
+  ipcHandlers = new IPCHandlers({
     environmentManager,
     databaseManager,
     clipboardManager,
@@ -545,6 +546,9 @@ if (gotSingleInstanceLock) {
     }
     if (windowsKeyManager) {
       windowsKeyManager.stop();
+    }
+    if (ipcHandlers) {
+      ipcHandlers._cleanupTextEditMonitor();
     }
     if (textEditMonitor) {
       textEditMonitor.stopMonitoring();

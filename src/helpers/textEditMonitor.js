@@ -4,7 +4,7 @@ const EventEmitter = require("events");
 const fs = require("fs");
 const debugLogger = require("./debugLogger");
 
-const POLL_INTERVAL_MS = 2000;
+const POLL_INTERVAL_MS = 500;
 const INITIAL_QUERY_DELAY_MS = 500; // Wait for paste to settle in target app
 const INITIAL_QUERY_RETRIES = 4; // Retry if AXValue is empty (paste not yet processed)
 const INITIAL_QUERY_RETRY_DELAY_MS = 300;

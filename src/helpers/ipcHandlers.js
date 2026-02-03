@@ -5,6 +5,9 @@ const debugLogger = require("./debugLogger");
 const { getSystemPrompt } = require("./prompts");
 const GnomeShortcutManager = require("./gnomeShortcut");
 
+// Debounce delay: wait for user to stop typing before processing corrections
+const AUTO_LEARN_DEBOUNCE_MS = 1500;
+
 class IPCHandlers {
   constructor(managers) {
     this.environmentManager = managers.environmentManager;
@@ -17,6 +20,9 @@ class IPCHandlers {
     this.windowsKeyManager = managers.windowsKeyManager;
     this.textEditMonitor = managers.textEditMonitor;
     this._autoLearnEnabled = true; // Default on, synced from renderer
+    this._autoLearnDebounceTimer = null;
+    this._autoLearnLatestData = null;
+    this._textEditHandler = null;
     this._setupTextEditMonitor();
     this.setupHandlers();
   }
@@ -29,32 +35,89 @@ class IPCHandlers {
     }
   }
 
-_setupTextEditMonitor() {
+  _cleanupTextEditMonitor() {
+    if (this._autoLearnDebounceTimer) {
+      clearTimeout(this._autoLearnDebounceTimer);
+      this._autoLearnDebounceTimer = null;
+    }
+    if (this.textEditMonitor && this._textEditHandler) {
+      this.textEditMonitor.removeListener("text-edited", this._textEditHandler);
+      this._textEditHandler = null;
+    }
+  }
+
+  _setupTextEditMonitor() {
     if (!this.textEditMonitor) return;
 
-    this.textEditMonitor.on("text-edited", ({ originalText, newFieldValue }) => {
-      debugLogger.debug("[AutoLearn] text-edited event", {
-        originalPreview: originalText?.substring(0, 80),
-        newValuePreview: newFieldValue?.substring(0, 80),
-      });
-      try {
-        const { extractCorrections } = require("../utils/correctionLearner");
-        const currentDict = this._getDictionarySafe();
-        const corrections = extractCorrections(originalText, newFieldValue, currentDict);
-        debugLogger.debug("[AutoLearn] Corrections result", { corrections, dictSize: currentDict.length });
+    this._textEditHandler = (data) => {
+      // Validate payload
+      if (!data || typeof data.originalText !== "string" || typeof data.newFieldValue !== "string") {
+        debugLogger.debug("[AutoLearn] Invalid event payload, skipping");
+        return;
+      }
 
-        if (corrections.length > 0) {
-          const updatedDict = [...currentDict, ...corrections];
-          this.databaseManager.setDictionary(updatedDict);
+      const { originalText, newFieldValue } = data;
+
+      debugLogger.debug("[AutoLearn] text-edited event", {
+        originalPreview: originalText.substring(0, 80),
+        newValuePreview: newFieldValue.substring(0, 80),
+      });
+
+      // Store latest data and reset debounce timer
+      this._autoLearnLatestData = { originalText, newFieldValue };
+
+      if (this._autoLearnDebounceTimer) {
+        clearTimeout(this._autoLearnDebounceTimer);
+      }
+
+      this._autoLearnDebounceTimer = setTimeout(() => {
+        this._processCorrections();
+      }, AUTO_LEARN_DEBOUNCE_MS);
+    };
+
+    this.textEditMonitor.on("text-edited", this._textEditHandler);
+  }
+
+  _processCorrections() {
+    if (!this._autoLearnLatestData) return;
+    if (!this._autoLearnEnabled) {
+      debugLogger.debug("[AutoLearn] Disabled, skipping correction processing");
+      return;
+    }
+
+    const { originalText, newFieldValue } = this._autoLearnLatestData;
+    this._autoLearnLatestData = null;
+
+    try {
+      const { extractCorrections } = require("../utils/correctionLearner");
+      const currentDict = this._getDictionarySafe();
+      const corrections = extractCorrections(originalText, newFieldValue, currentDict);
+      debugLogger.debug("[AutoLearn] Corrections result", { corrections, dictSize: currentDict.length });
+
+      if (corrections.length > 0) {
+        // Deduplicate: merge with existing dictionary using Set
+        const dictSet = new Set(currentDict.map((w) => w.toLowerCase()));
+        const newCorrections = corrections.filter((c) => !dictSet.has(c.toLowerCase()));
+
+        if (newCorrections.length > 0) {
+          const updatedDict = [...currentDict, ...newCorrections];
+          const saveResult = this.databaseManager.setDictionary(updatedDict);
+
+          if (saveResult?.success === false) {
+            debugLogger.debug("[AutoLearn] Failed to save dictionary", { error: saveResult.error });
+            return;
+          }
 
           this.broadcastToWindows("dictionary-updated", updatedDict);
-          this.broadcastToWindows("corrections-learned", corrections);
-          debugLogger.debug("[AutoLearn] Saved corrections", { corrections });
+          this.broadcastToWindows("corrections-learned", newCorrections);
+          debugLogger.debug("[AutoLearn] Saved corrections", { corrections: newCorrections });
+        } else {
+          debugLogger.debug("[AutoLearn] All corrections already in dictionary");
         }
-      } catch (error) {
-        debugLogger.debug("[AutoLearn] Error", { error: error.message });
       }
-    });
+    } catch (error) {
+      debugLogger.debug("[AutoLearn] Error processing corrections", { error: error.message });
+    }
   }
 
   _syncStartupEnv(setVars, clearVars = []) {
