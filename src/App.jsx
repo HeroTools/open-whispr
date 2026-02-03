@@ -56,7 +56,7 @@ const Tooltip = ({ children, content, emoji }) => {
       {isVisible && (
         <div
           className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-1 py-1 text-popover-foreground bg-popover border border-border rounded-md whitespace-nowrap z-10 transition-opacity duration-150 shadow-lg"
-          style={{ fontSize: "9.7px" }}
+          style={{ fontSize: "9.7px", maxWidth: "96px" }}
         >
           {emoji && <span className="mr-1">{emoji}</span>}
           {content}
@@ -72,7 +72,7 @@ export default function App() {
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
   const commandMenuRef = useRef(null);
   const buttonRef = useRef(null);
-  const { toast } = useToast();
+  const { toast, toastCount } = useToast();
   const { hotkey } = useHotkey();
   const { isDragging, handleMouseDown, handleMouseUp } = useWindowDrag();
   const [dragStartPos, setDragStartPos] = useState(null);
@@ -111,12 +111,27 @@ export default function App() {
   }, [toast]);
 
   useEffect(() => {
-    if (isCommandMenuOpen) {
+    if (isCommandMenuOpen || toastCount > 0) {
       setWindowInteractivity(true);
     } else if (!isHovered) {
       setWindowInteractivity(false);
     }
-  }, [isCommandMenuOpen, isHovered, setWindowInteractivity]);
+  }, [isCommandMenuOpen, isHovered, toastCount, setWindowInteractivity]);
+
+  useEffect(() => {
+    const resizeWindow = () => {
+      if (isCommandMenuOpen && toastCount > 0) {
+        window.electronAPI?.resizeMainWindow?.("EXPANDED");
+      } else if (isCommandMenuOpen) {
+        window.electronAPI?.resizeMainWindow?.("WITH_MENU");
+      } else if (toastCount > 0) {
+        window.electronAPI?.resizeMainWindow?.("WITH_TOAST");
+      } else {
+        window.electronAPI?.resizeMainWindow?.("BASE");
+      }
+    };
+    resizeWindow();
+  }, [isCommandMenuOpen, toastCount]);
 
   const handleDictationToggle = React.useCallback(() => {
     setIsCommandMenuOpen(false);
@@ -182,14 +197,10 @@ export default function App() {
 
     switch (micState) {
       case "idle":
-        return {
-          className: `${baseClasses} bg-black/50 cursor-pointer`,
-          tooltip: `Press [${hotkey}] to speak`,
-        };
       case "hover":
         return {
           className: `${baseClasses} bg-black/50 cursor-pointer`,
-          tooltip: `Press [${hotkey}] to speak`,
+          tooltip: `[${hotkey}] to speak`,
         };
       case "recording":
         return {
@@ -214,7 +225,7 @@ export default function App() {
 
   return (
     <div className="dictation-window">
-      {/* Fixed bottom-right voice button */}
+      {/* Bottom-right voice button - window expands upward/leftward */}
       <div className="fixed bottom-6 right-6 z-50">
         <div
           className="relative flex items-center gap-2"

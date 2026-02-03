@@ -145,6 +145,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
     ipcRenderer.invoke("set-main-window-interactivity", interactive),
+  resizeMainWindow: (sizeKey) =>
+    ipcRenderer.invoke("resize-main-window", sizeKey),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
