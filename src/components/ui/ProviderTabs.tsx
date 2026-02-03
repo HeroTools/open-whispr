@@ -71,11 +71,11 @@ export function ProviderTabs({
   return (
     <div
       ref={containerRef}
-      className={`relative flex p-0.5 rounded-md bg-surface-raised dark:bg-white/3 ${scrollable ? "overflow-x-auto" : ""}`}
+      className={`relative flex p-0.5 rounded-md bg-surface-raised dark:bg-surface-1 ${scrollable ? "overflow-x-auto" : ""}`}
     >
       {/* Sliding indicator - frosted glass treatment */}
       <div
-        className="absolute top-0.5 left-0 rounded-md bg-white dark:bg-surface-3 border border-border dark:border-border-subtle shadow-[0_1px_2px_rgba(0,0,0,0.08)] dark:shadow-[0_1px_3px_rgba(0,0,0,0.3)] transition-all duration-200 ease-out pointer-events-none"
+        className="absolute top-0.5 left-0 rounded-md bg-card border border-border dark:border-border-subtle shadow-sm dark:shadow-(--shadow-card) transition-all duration-200 ease-out pointer-events-none"
         style={indicatorStyle}
       />
 

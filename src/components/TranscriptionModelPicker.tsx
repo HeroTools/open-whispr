@@ -216,10 +216,10 @@ interface ModeToggleProps {
 
 function ModeToggle({ useLocalWhisper, onModeChange }: ModeToggleProps) {
   return (
-    <div className="relative flex p-0.5 rounded-lg bg-surface-raised dark:bg-white/3 border border-border dark:border-white/5">
+    <div className="relative flex p-0.5 rounded-lg bg-surface-raised dark:bg-surface-1 border border-border dark:border-border-subtle">
       {/* Sliding indicator */}
       <div
-        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-white dark:bg-white/10 border border-border-hover dark:border-white/15 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-transform duration-200 ease-out ${
+        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-card border border-border dark:border-border-subtle shadow-sm dark:shadow-(--shadow-card) transition-transform duration-200 ease-out ${
           useLocalWhisper ? "translate-x-[calc(100%+4px)]" : "translate-x-0"
         }`}
       />
