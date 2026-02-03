@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 import { useDebouncedCallback } from "./useDebouncedCallback";
-import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
 
@@ -233,6 +232,11 @@ export function useSettings() {
     deserialize: String,
   });
 
+  const [reasoningProvider, setReasoningProvider] = useLocalStorage("reasoningProvider", "openai", {
+    serialize: String,
+    deserialize: String,
+  });
+
   // API keys - localStorage for UI, synced to Electron IPC for persistence
   const [openaiApiKey, setOpenaiApiKeyLocal] = useLocalStorage("openaiApiKey", "", {
     serialize: String,
@@ -433,9 +437,6 @@ export function useSettings() {
     deserialize: String,
   });
 
-  // Computed values
-  const reasoningProvider = getModelProvider(reasoningModel);
-
   // Batch operations
   const updateTranscriptionSettings = useCallback(
     (settings: Partial<TranscriptionSettings>) => {
@@ -483,9 +484,10 @@ export function useSettings() {
       if (settings.reasoningModel !== undefined) setReasoningModel(settings.reasoningModel);
       if (settings.cloudReasoningBaseUrl !== undefined)
         setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
-      // reasoningProvider is computed from reasoningModel, not stored separately
+      if (settings.reasoningProvider !== undefined)
+        setReasoningProvider(settings.reasoningProvider);
     },
-    [setUseReasoningModel, setReasoningModel, setCloudReasoningBaseUrl]
+    [setUseReasoningModel, setReasoningModel, setCloudReasoningBaseUrl, setReasoningProvider]
   );
 
   const updateApiKeys = useCallback(
@@ -541,11 +543,7 @@ export function useSettings() {
     setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
-    setReasoningProvider: (provider: string) => {
-      if (provider !== "custom") {
-        setReasoningModel("");
-      }
-    },
+    setReasoningProvider,
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,

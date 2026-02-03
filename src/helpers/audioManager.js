@@ -1656,7 +1656,11 @@ class AudioManager {
       if (!result.success) {
         stream.getTracks().forEach((track) => track.stop());
         if (result.code === "NO_API") {
-          logger.debug("Streaming API not configured, falling back to regular recording", {}, "streaming");
+          logger.debug(
+            "Streaming API not configured, falling back to regular recording",
+            {},
+            "streaming"
+          );
           return this.startRecording();
         }
         throw new Error(result.error || "Failed to start streaming session");

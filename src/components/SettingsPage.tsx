@@ -160,20 +160,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showAlert: showAlertDialog,
   });
 
-  const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
-    return localStorage.getItem("reasoningProvider") || reasoningProvider;
-  });
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
-  // Platform detection for conditional features
   const platform = useMemo(() => {
     if (typeof window !== "undefined" && window.electronAPI?.getPlatform) {
       return window.electronAPI.getPlatform();
     }
-    return "linux"; // Safe fallback
+    return "linux"; 
   }, []);
 
-  // Custom dictionary state
   const [newDictionaryWord, setNewDictionaryWord] = useState("");
 
   const handleAddDictionaryWord = useCallback(() => {
@@ -191,7 +186,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     [customDictionary, setCustomDictionary]
   );
 
-  // Auto-start state
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(true);
 
@@ -1145,8 +1139,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 cloudReasoningBaseUrl={cloudReasoningBaseUrl}
                 reasoningModel={reasoningModel}
                 setReasoningModel={setReasoningModel}
-                localReasoningProvider={localReasoningProvider}
-                setLocalReasoningProvider={setLocalReasoningProvider}
+                localReasoningProvider={reasoningProvider}
+                setLocalReasoningProvider={setReasoningProvider}
                 openaiApiKey={openaiApiKey}
                 setOpenaiApiKey={setOpenaiApiKey}
                 anthropicApiKey={anthropicApiKey}
