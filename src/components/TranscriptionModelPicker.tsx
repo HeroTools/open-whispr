@@ -211,6 +211,43 @@ const LOCAL_PROVIDER_TABS = [
   { id: "nvidia", name: "NVIDIA Parakeet" },
 ];
 
+// Mode toggle component - defined outside to prevent recreation on every render
+interface ModeToggleProps {
+  useLocalWhisper: boolean;
+  onModeChange: (useLocal: boolean) => void;
+}
+
+function ModeToggle({ useLocalWhisper, onModeChange }: ModeToggleProps) {
+  return (
+    <div className="relative flex p-0.5 rounded-lg bg-surface-raised dark:bg-white/3 border border-border dark:border-white/5">
+      {/* Sliding indicator */}
+      <div
+        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-white dark:bg-white/10 border border-border-hover dark:border-white/15 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-transform duration-200 ease-out ${
+          useLocalWhisper ? "translate-x-[calc(100%+4px)]" : "translate-x-0"
+        }`}
+      />
+      <button
+        onClick={() => onModeChange(false)}
+        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${
+          !useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Cloud className="w-3.5 h-3.5" />
+        <span className="text-xs font-medium">Cloud</span>
+      </button>
+      <button
+        onClick={() => onModeChange(true)}
+        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${
+          useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+        }`}
+      >
+        <Lock className="w-3.5 h-3.5" />
+        <span className="text-xs font-medium">Local</span>
+      </button>
+    </div>
+  );
+}
+
 export default function TranscriptionModelPicker({
   selectedCloudProvider,
   onCloudProviderSelect,
@@ -238,6 +275,13 @@ export default function TranscriptionModelPicker({
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
   const hasLoadedRef = useRef(false);
   const hasLoadedParakeetRef = useRef(false);
+
+  // Sync internal state with prop when it changes externally
+  useEffect(() => {
+    if (selectedLocalProvider !== internalLocalProvider) {
+      setInternalLocalProvider(selectedLocalProvider);
+    }
+  }, [selectedLocalProvider]);
   const isLoadingRef = useRef(false);
   const isLoadingParakeetRef = useRef(false);
   const loadLocalModelsRef = useRef<(() => Promise<void>) | null>(null);
@@ -355,21 +399,28 @@ export default function TranscriptionModelPicker({
     ensureValidCloudSelectionRef.current = ensureValidCloudSelection;
   }, [ensureValidCloudSelection]);
 
+  // Handle local model loading when in local mode
   useEffect(() => {
-    if (useLocalWhisper) {
-      if (internalLocalProvider === "whisper" && !hasLoadedRef.current) {
-        hasLoadedRef.current = true;
-        loadLocalModelsRef.current?.();
-      } else if (internalLocalProvider === "nvidia" && !hasLoadedParakeetRef.current) {
-        hasLoadedParakeetRef.current = true;
-        loadParakeetModelsRef.current?.();
-      }
-    } else {
-      hasLoadedRef.current = false;
-      hasLoadedParakeetRef.current = false;
-      ensureValidCloudSelectionRef.current?.();
+    if (!useLocalWhisper) return;
+
+    if (internalLocalProvider === "whisper" && !hasLoadedRef.current) {
+      hasLoadedRef.current = true;
+      loadLocalModelsRef.current?.();
+    } else if (internalLocalProvider === "nvidia" && !hasLoadedParakeetRef.current) {
+      hasLoadedParakeetRef.current = true;
+      loadParakeetModelsRef.current?.();
     }
   }, [useLocalWhisper, internalLocalProvider]);
+
+  // Handle cloud mode initialization - only when switching to cloud mode
+  useEffect(() => {
+    if (useLocalWhisper) return;
+
+    // Reset local model load flags when switching to cloud
+    hasLoadedRef.current = false;
+    hasLoadedParakeetRef.current = false;
+    ensureValidCloudSelectionRef.current?.();
+  }, [useLocalWhisper]);
 
   useEffect(() => {
     const handleModelsCleared = () => loadLocalModels();
@@ -694,40 +745,10 @@ export default function TranscriptionModelPicker({
     );
   };
 
-  // Integrated mode toggle component
-  const ModeToggle = () => (
-    <div className="relative flex p-0.5 rounded-lg bg-surface-raised dark:bg-white/3 border border-border dark:border-white/5">
-      {/* Sliding indicator */}
-      <div
-        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-white dark:bg-white/10 border border-border-hover dark:border-white/15 shadow-[0_1px_2px_rgba(0,0,0,0.06)] dark:shadow-[0_1px_2px_rgba(0,0,0,0.1)] transition-transform duration-200 ease-out ${
-          useLocalWhisper ? "translate-x-[calc(100%+4px)]" : "translate-x-0"
-        }`}
-      />
-      <button
-        onClick={() => handleModeChange(false)}
-        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${
-          !useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        <Cloud className="w-3.5 h-3.5" />
-        <span className="text-xs font-medium">Cloud</span>
-      </button>
-      <button
-        onClick={() => handleModeChange(true)}
-        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${
-          useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-        }`}
-      >
-        <Lock className="w-3.5 h-3.5" />
-        <span className="text-xs font-medium">Local</span>
-      </button>
-    </div>
-  );
-
   return (
     <div className={`space-y-3 ${className}`}>
       {/* Integrated mode toggle - always visible */}
-      <ModeToggle />
+      <ModeToggle useLocalWhisper={useLocalWhisper} onModeChange={handleModeChange} />
 
       {!useLocalWhisper ? (
         <div className={styles.container}>
