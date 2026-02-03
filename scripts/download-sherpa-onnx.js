@@ -13,9 +13,6 @@ const {
 const SHERPA_ONNX_VERSION = "1.12.23";
 const GITHUB_RELEASE_URL = `https://github.com/k2-fsa/sherpa-onnx/releases/download/v${SHERPA_ONNX_VERSION}`;
 
-// Check for GPU request via environment variable
-const USE_GPU = process.env.SHERPA_ONNX_GPU === "true" || process.env.SHERPA_ONNX_GPU === "1";
-
 // Binary configurations for each platform
 // Note: macOS uses universal2 builds that work on both arm64 and x64
 const BINARIES = {
@@ -32,17 +29,13 @@ const BINARIES = {
     libPattern: "*.dylib",
   },
   "win32-x64": {
-    archiveName: USE_GPU
-      ? `sherpa-onnx-v${SHERPA_ONNX_VERSION}-win-x64-gpu.tar.bz2`
-      : `sherpa-onnx-v${SHERPA_ONNX_VERSION}-win-x64-shared.tar.bz2`,
+    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-win-x64-shared.tar.bz2`,
     binaryPath: "sherpa-onnx-offline-websocket-server.exe",
     outputName: "sherpa-onnx-ws-win32-x64.exe",
     libPattern: "*.dll",
   },
   "linux-x64": {
-    archiveName: USE_GPU
-      ? `sherpa-onnx-v${SHERPA_ONNX_VERSION}-linux-x64-gpu.tar.bz2`
-      : `sherpa-onnx-v${SHERPA_ONNX_VERSION}-linux-x64-shared.tar.bz2`,
+    archiveName: `sherpa-onnx-v${SHERPA_ONNX_VERSION}-linux-x64-shared.tar.bz2`,
     binaryPath: "sherpa-onnx-offline-websocket-server",
     outputName: "sherpa-onnx-ws-linux-x64",
     libPattern: "*.so*",
@@ -95,7 +88,7 @@ function matchesPattern(filename, pattern) {
   return false;
 }
 
-async function downloadBinary(platformArch, config, isForce = false) {
+async function downloadBinary(platformArch, config) {
   if (!config) {
     console.log(`  ${platformArch}: Not supported`);
     return false;
@@ -103,7 +96,7 @@ async function downloadBinary(platformArch, config, isForce = false) {
 
   const outputPath = path.join(BIN_DIR, config.outputName);
 
-  if (fs.existsSync(outputPath) && !isForce) {
+  if (fs.existsSync(outputPath)) {
     console.log(`  ${platformArch}: Already exists, skipping`);
     return true;
   }
@@ -163,10 +156,6 @@ async function downloadBinary(platformArch, config, isForce = false) {
 async function main() {
   console.log(`\nDownloading sherpa-onnx binaries (v${SHERPA_ONNX_VERSION})...\n`);
 
-  if (USE_GPU) {
-    console.log("[sherpa-onnx] GPU support enabled (SHERPA_ONNX_GPU is set)");
-  }
-
   fs.mkdirSync(BIN_DIR, { recursive: true });
 
   const args = parseArgs();
@@ -179,7 +168,7 @@ async function main() {
     }
 
     console.log(`Downloading for target platform (${args.platformArch}):`);
-    const ok = await downloadBinary(args.platformArch, BINARIES[args.platformArch], args.isForce);
+    const ok = await downloadBinary(args.platformArch, BINARIES[args.platformArch]);
     if (!ok) {
       console.error(`Failed to download binaries for ${args.platformArch}`);
       process.exitCode = 1;
@@ -187,9 +176,10 @@ async function main() {
     }
 
     // Remove old CLI-style binaries replaced by WS server binaries
-    const oldBinaryName = args.platformArch.startsWith("win32")
-      ? `sherpa-onnx-${args.platformArch}.exe`
-      : `sherpa-onnx-${args.platformArch}`;
+    const oldBinaryName =
+      args.platformArch.startsWith("win32")
+        ? `sherpa-onnx-${args.platformArch}.exe`
+        : `sherpa-onnx-${args.platformArch}`;
     const oldBinaryPath = path.join(BIN_DIR, oldBinaryName);
     if (fs.existsSync(oldBinaryPath)) {
       console.log(`  Removing old CLI binary: ${oldBinaryName}`);
@@ -202,7 +192,7 @@ async function main() {
   } else {
     console.log("Downloading binaries for all platforms:");
     for (const platformArch of Object.keys(BINARIES)) {
-      await downloadBinary(platformArch, BINARIES[platformArch], args.isForce);
+      await downloadBinary(platformArch, BINARIES[platformArch]);
     }
   }
 
@@ -217,9 +207,7 @@ async function main() {
     });
   } else {
     console.log("No binaries downloaded yet.");
-    console.log(
-      `\nCheck: https://github.com/k2-fsa/sherpa-onnx/releases/tag/v${SHERPA_ONNX_VERSION}`
-    );
+    console.log(`\nCheck: https://github.com/k2-fsa/sherpa-onnx/releases/tag/v${SHERPA_ONNX_VERSION}`);
   }
 }
 
