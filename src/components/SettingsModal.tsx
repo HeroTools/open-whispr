@@ -1,5 +1,15 @@
 import React, { useEffect } from "react";
-import { Settings, Mic, Brain, User, Sparkles, UserCircle, Wrench, BookOpen, ShieldCheck } from "lucide-react";
+import {
+  Settings,
+  Mic,
+  Brain,
+  User,
+  Sparkles,
+  UserCircle,
+  Wrench,
+  BookOpen,
+  ShieldCheck,
+} from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
 

@@ -259,7 +259,9 @@ class HotkeyManager {
         // If we found a hotkey in localStorage but not in env, migrate it
         if (savedHotkey && savedHotkey.trim() !== "") {
           process.env.DICTATION_KEY = savedHotkey;
-          debugLogger.log(`[HotkeyManager] Migrated hotkey "${savedHotkey}" from localStorage to env`);
+          debugLogger.log(
+            `[HotkeyManager] Migrated hotkey "${savedHotkey}" from localStorage to env`
+          );
         }
       }
 
@@ -343,7 +345,9 @@ class HotkeyManager {
         return false;
       }
     } else {
-      debugLogger.warn("[HotkeyManager] Main window not available for saving hotkey to localStorage");
+      debugLogger.warn(
+        "[HotkeyManager] Main window not available for saving hotkey to localStorage"
+      );
       return false;
     }
   }

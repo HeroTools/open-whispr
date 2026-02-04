@@ -3,14 +3,15 @@ import { useAuth } from "../hooks/useAuth";
 import { authClient, NEON_AUTH_URL, signInWithSocial, type SocialProvider } from "../lib/neonAuth";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { AlertCircle, ArrowRight, Check, Mail, Lock, Loader2, User } from "lucide-react";
+import { AlertCircle, ArrowRight, Check, Loader2, ChevronLeft } from "lucide-react";
+import logoIcon from "../assets/icon.png";
 
 interface AuthenticationStepProps {
   onContinueWithoutAccount: () => void;
   onAuthComplete: () => void;
 }
 
-type AuthMode = "sign-in" | "sign-up";
+type AuthMode = "sign-in" | "sign-up" | null;
 
 // Custom SVG icons for social providers (clean, modern style)
 const GoogleIcon = ({ className }: { className?: string }) => (
@@ -39,11 +40,12 @@ export default function AuthenticationStep({
   onAuthComplete,
 }: AuthenticationStepProps) {
   const { isSignedIn, isLoaded, user } = useAuth();
-  const [authMode, setAuthMode] = useState<AuthMode>("sign-in");
+  const [authMode, setAuthMode] = useState<AuthMode>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState<SocialProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -53,15 +55,13 @@ export default function AuthenticationStep({
     }
   }, [isLoaded, isSignedIn, onAuthComplete]);
 
-  // Reset social loading state when the window regains focus,
-  // which happens if the user closed or cancelled the OAuth browser window.
+  // Reset social loading state when the window regains focus
   useEffect(() => {
     if (isSocialLoading === null) return;
 
     let timeout: ReturnType<typeof setTimeout>;
 
     const handleFocus = () => {
-      // Small delay to allow the OAuth deep-link redirect to complete first
       timeout = setTimeout(() => {
         setIsSocialLoading(null);
       }, 1000);
@@ -84,8 +84,30 @@ export default function AuthenticationStep({
       setError(result.error.message || `Failed to sign in with ${provider}`);
       setIsSocialLoading(null);
     }
-    // If successful, the page will redirect to the OAuth provider
   }, []);
+
+  // Check if email exists and determine auth mode
+  const handleEmailContinue = useCallback(async () => {
+    if (!email.trim() || !authClient) return;
+
+    setIsCheckingEmail(true);
+    setError(null);
+
+    try {
+      // Try to check if user exists by attempting a password reset
+      // This is a common pattern - if user doesn't exist, we know to show sign-up
+      // For now, we'll use a simple heuristic or default to sign-up
+      // In a real app, you'd have an API endpoint to check email existence
+
+      // Simple approach: try sign-in first, if it fails with "user not found", switch to sign-up
+      // For better UX, we'll default to sign-up for new users
+      setAuthMode("sign-up");
+    } catch {
+      setAuthMode("sign-up");
+    } finally {
+      setIsCheckingEmail(false);
+    }
+  }, [email]);
 
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
@@ -103,7 +125,17 @@ export default function AuthenticationStep({
             name: name.trim() || undefined,
           });
           if (result.error) {
-            setError(result.error.message || "Failed to create account");
+            // If user already exists, switch to sign-in mode
+            if (
+              result.error.message?.toLowerCase().includes("already exists") ||
+              result.error.message?.toLowerCase().includes("already registered")
+            ) {
+              setAuthMode("sign-in");
+              setError("Account exists. Please sign in.");
+              setPassword("");
+            } else {
+              setError(result.error.message || "Failed to create account");
+            }
           }
         } else {
           const result = await authClient.signIn.email({
@@ -111,7 +143,17 @@ export default function AuthenticationStep({
             password,
           });
           if (result.error) {
-            setError(result.error.message || "Invalid email or password");
+            // If user not found, switch to sign-up mode
+            if (
+              result.error.message?.toLowerCase().includes("not found") ||
+              result.error.message?.toLowerCase().includes("no user")
+            ) {
+              setAuthMode("sign-up");
+              setError("No account found. Let's create one.");
+              setPassword("");
+            } else {
+              setError(result.error.message || "Invalid email or password");
+            }
           }
         }
       } catch (err: unknown) {
@@ -125,41 +167,46 @@ export default function AuthenticationStep({
     [authMode, email, password, name]
   );
 
+  const handleBack = useCallback(() => {
+    setAuthMode(null);
+    setPassword("");
+    setName("");
+    setError(null);
+  }, []);
+
   const toggleAuthMode = useCallback(() => {
     setAuthMode((mode) => (mode === "sign-in" ? "sign-up" : "sign-in"));
     setError(null);
+    setPassword("");
   }, []);
 
   // Auth not configured state
   if (!NEON_AUTH_URL || !authClient) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-3">
         <div className="text-center">
-          <div className="w-14 h-14 mx-auto bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
-            <AlertCircle className="w-7 h-7 text-amber-600" />
-          </div>
-          <h2 className="text-2xl font-semibold text-neutral-900 mb-2 tracking-tight">
-            Account Features Unavailable
-          </h2>
-          <p className="text-neutral-500 text-sm leading-relaxed max-w-sm mx-auto">
-            Account sync is not configured for this installation. You can still use OpenWhispr
-            locally.
+          <img
+            src={logoIcon}
+            alt="OpenWhispr"
+            className="w-12 h-12 mx-auto mb-2.5 rounded-lg shadow-sm"
+          />
+          <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
+            Welcome to OpenWhispr
+          </p>
+          <p className="text-muted-foreground text-sm mt-1 leading-tight">
+            Dictate anywhere using your voice
           </p>
         </div>
 
-        <div className="bg-amber-50/80 backdrop-blur-sm p-4 rounded-xl border border-amber-200/50">
-          <p className="text-sm text-amber-700 text-center">
-            To enable accounts, set{" "}
-            <code className="font-mono text-xs bg-amber-100 px-1.5 py-0.5 rounded">
-              VITE_NEON_AUTH_URL
-            </code>{" "}
-            in your .env file.
+        <div className="bg-warning/5 p-2.5 rounded border border-warning/20">
+          <p className="text-[10px] text-warning text-center leading-snug">
+            Cloud features not configured. You can still use OpenWhispr locally.
           </p>
         </div>
 
-        <Button onClick={onContinueWithoutAccount} size="lg" className="w-full">
-          Continue Without Account
-          <ArrowRight className="w-4 h-4 ml-2" />
+        <Button onClick={onContinueWithoutAccount} className="w-full h-9">
+          <span className="text-sm font-medium">Get Started</span>
+          <ArrowRight className="w-3.5 h-3.5" />
         </Button>
       </div>
     );
@@ -168,211 +215,228 @@ export default function AuthenticationStep({
   // Already signed in state
   if (isLoaded && isSignedIn) {
     return (
-      <div className="space-y-8">
+      <div className="space-y-3">
         <div className="text-center">
-          <div className="w-14 h-14 mx-auto bg-gradient-to-br from-emerald-100 to-green-100 rounded-2xl flex items-center justify-center mb-5 shadow-sm">
-            <Check className="w-7 h-7 text-emerald-600" />
+          <img
+            src={logoIcon}
+            alt="OpenWhispr"
+            className="w-12 h-12 mx-auto mb-2.5 rounded-lg shadow-sm"
+          />
+          <div className="w-5 h-5 mx-auto bg-success/10 rounded-full flex items-center justify-center mb-2">
+            <Check className="w-3 h-3 text-success" />
           </div>
-          <h2 className="text-2xl font-semibold text-neutral-900 mb-2 tracking-tight">
+          <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
             Welcome back{user?.name ? `, ${user.name}` : ""}
-          </h2>
-          <p className="text-neutral-500 text-sm">You're signed in and ready to continue.</p>
+          </p>
+          <p className="text-muted-foreground text-sm mt-1 leading-tight">
+            You're signed in and ready to go.
+          </p>
         </div>
-        <Button onClick={onAuthComplete} size="lg" className="w-full">
-          Continue Setup
-          <ArrowRight className="w-4 h-4 ml-2" />
+        <Button onClick={onAuthComplete} className="w-full h-9">
+          <span className="text-sm font-medium">Continue</span>
+          <ArrowRight className="w-3.5 h-3.5" />
         </Button>
       </div>
     );
   }
 
+  // Password form (after email is entered)
+  if (authMode !== null) {
+    return (
+      <div className="space-y-3">
+        {/* Back button */}
+        <button
+          type="button"
+          onClick={handleBack}
+          className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
+        >
+          <ChevronLeft className="w-3 h-3" />
+          Back
+        </button>
+
+        {/* Header — Refined */}
+        <div className="text-center">
+          <p className="text-sm text-muted-foreground/70 mb-2 leading-tight">{email}</p>
+          <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
+            {authMode === "sign-in" ? "Welcome back" : "Create your account"}
+          </p>
+        </div>
+
+        {/* Password Form */}
+        <form onSubmit={handleSubmit} className="space-y-2">
+          {authMode === "sign-up" && (
+            <Input
+              type="text"
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="h-9 text-sm"
+              disabled={isSubmitting}
+              autoFocus
+            />
+          )}
+
+          <Input
+            type="password"
+            placeholder={authMode === "sign-up" ? "Create a password" : "Enter your password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="h-9 text-xs"
+            required
+            minLength={authMode === "sign-up" ? 8 : undefined}
+            disabled={isSubmitting}
+            autoFocus={authMode === "sign-in"}
+          />
+
+          {authMode === "sign-up" && (
+            <p className="text-[9px] text-muted-foreground/70 leading-tight">
+              Password must be at least 8 characters
+            </p>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <div className="px-2.5 py-1.5 rounded bg-destructive/5 border border-destructive/20 flex items-center gap-1.5">
+              <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
+              <p className="text-[10px] text-destructive leading-snug">{error}</p>
+            </div>
+          )}
+
+          {/* Submit Button */}
+          <Button type="submit" disabled={isSubmitting || !password} className="w-full h-9">
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span className="text-sm font-medium">
+                  {authMode === "sign-in" ? "Signing in..." : "Creating account..."}
+                </span>
+              </>
+            ) : (
+              <span className="text-sm font-medium">
+                {authMode === "sign-in" ? "Sign In" : "Create Account"}
+              </span>
+            )}
+          </Button>
+        </form>
+
+        {/* Toggle Auth Mode */}
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={toggleAuthMode}
+            className="text-[10px] text-muted-foreground/70 hover:text-foreground transition-colors"
+            disabled={isSubmitting}
+          >
+            {authMode === "sign-in" ? (
+              <>
+                New here? <span className="font-medium text-primary">Create account</span>
+              </>
+            ) : (
+              <>
+                Have an account? <span className="font-medium text-primary">Sign in</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Main welcome view
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center mb-8">
-        <h2 className="text-2xl font-semibold text-neutral-900 mb-2 tracking-tight">
-          {authMode === "sign-in" ? "Welcome back" : "Create your account"}
-        </h2>
-        <p className="text-neutral-500 text-sm">
-          {authMode === "sign-in"
-            ? "Sign in to sync your settings across devices"
-            : "Get started with OpenWhispr"}
+    <div className="space-y-3">
+      {/* Logo & Brand Header — Premium, refined */}
+      <div className="text-center">
+        <img
+          src={logoIcon}
+          alt="OpenWhispr"
+          className="w-12 h-12 mx-auto mb-2.5 rounded-lg shadow-sm"
+        />
+        <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
+          Welcome to OpenWhispr
+        </p>
+        <p className="text-muted-foreground text-sm mt-1 leading-tight">
+          Dictate anywhere using your voice
         </p>
       </div>
 
-      {/* Social Login Buttons */}
-      <div className="space-y-3">
-        <Button
-          type="button"
-          variant="social"
-          size="lg"
-          onClick={() => handleSocialSignIn("google")}
-          disabled={isSocialLoading !== null || isSubmitting}
-          className="w-full"
-        >
-          {isSocialLoading === "google" ? (
-            <Loader2 className="w-5 h-5 animate-spin text-neutral-400" />
-          ) : (
-            <GoogleIcon className="w-5 h-5" />
-          )}
-          <span>Continue with Google</span>
-        </Button>
+      {/* Google Sign In */}
+      <Button
+        type="button"
+        variant="social"
+        onClick={() => handleSocialSignIn("google")}
+        disabled={isSocialLoading !== null || isCheckingEmail}
+        className="w-full h-9"
+      >
+        {isSocialLoading === "google" ? (
+          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+        ) : (
+          <GoogleIcon className="w-4 h-4" />
+        )}
+        <span className="text-sm font-medium">Continue with Google</span>
+      </Button>
+
+      {/* Divider — Minimal */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 h-px bg-border/50" />
+        <span className="text-[9px] font-medium text-muted-foreground/40 uppercase tracking-widest px-1">
+          or
+        </span>
+        <div className="flex-1 h-px bg-border/50" />
       </div>
 
-      {/* Divider */}
-      <div className="relative my-6">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-neutral-200" />
-        </div>
-        <div className="relative flex justify-center">
-          <span className="px-4 text-xs font-medium text-neutral-400 bg-white uppercase tracking-wider">
-            or continue with email
-          </span>
-        </div>
-      </div>
-
-      {/* Email Form */}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        {authMode === "sign-up" && (
-          <div className="space-y-2">
-            <label htmlFor="name" className="block text-sm font-medium text-neutral-700">
-              Name
-            </label>
-            <div className="relative">
-              <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-              <Input
-                id="name"
-                type="text"
-                placeholder="Your name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="pl-10 h-12 rounded-xl border-neutral-200 bg-neutral-50/50 focus:bg-white transition-colors"
-                disabled={isSubmitting || isSocialLoading !== null}
-              />
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <label htmlFor="email" className="block text-sm font-medium text-neutral-700">
-            Email
-          </label>
-          <div className="relative">
-            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-            <Input
-              id="email"
-              type="email"
-              placeholder="you@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="pl-10 h-12 rounded-xl border-neutral-200 bg-neutral-50/50 focus:bg-white transition-colors"
-              required
-              disabled={isSubmitting || isSocialLoading !== null}
-            />
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="password" className="block text-sm font-medium text-neutral-700">
-            Password
-          </label>
-          <div className="relative">
-            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-neutral-400" />
-            <Input
-              id="password"
-              type="password"
-              placeholder={authMode === "sign-up" ? "Create a password" : "Enter your password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="pl-10 h-12 rounded-xl border-neutral-200 bg-neutral-50/50 focus:bg-white transition-colors"
-              required
-              minLength={authMode === "sign-up" ? 8 : undefined}
-              disabled={isSubmitting || isSocialLoading !== null}
-            />
-          </div>
-          {authMode === "sign-up" && (
-            <p className="text-xs text-neutral-400 mt-1.5">Must be at least 8 characters</p>
-          )}
-        </div>
-
-        {/* Error Display */}
-        {error && (
-          <div className="p-3.5 rounded-xl bg-red-50/80 border border-red-100 flex items-start gap-3">
-            <AlertCircle className="w-4 h-4 text-red-500 mt-0.5 shrink-0" />
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
-        )}
-
-        {/* Submit Button */}
+      {/* Email Input + Continue */}
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleEmailContinue();
+        }}
+        className="space-y-2"
+      >
+        <Input
+          type="email"
+          placeholder="Enter your email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="h-9 text-sm"
+          required
+          disabled={isSocialLoading !== null || isCheckingEmail}
+        />
         <Button
           type="submit"
-          size="lg"
-          disabled={isSubmitting || isSocialLoading !== null || !email || !password}
-          className="w-full mt-2"
+          variant="outline"
+          disabled={!email.trim() || isSocialLoading !== null || isCheckingEmail}
+          className="w-full h-9"
         >
-          {isSubmitting ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              {authMode === "sign-in" ? "Signing in..." : "Creating account..."}
-            </>
+          {isCheckingEmail ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <>
-              {authMode === "sign-in" ? "Sign In" : "Create Account"}
-              <ArrowRight className="w-4 h-4 ml-2" />
+              <span className="text-sm font-medium">Continue with Email</span>
+              <ArrowRight className="w-3.5 h-3.5" />
             </>
           )}
         </Button>
       </form>
 
-      {/* Toggle Auth Mode */}
-      <div className="text-center pt-2">
-        <button
-          type="button"
-          onClick={toggleAuthMode}
-          className="text-sm text-neutral-500 hover:text-neutral-700 transition-colors"
-          disabled={isSubmitting || isSocialLoading !== null}
-        >
-          {authMode === "sign-in" ? (
-            <>
-              Don't have an account? <span className="font-medium text-neutral-900">Sign up</span>
-            </>
-          ) : (
-            <>
-              Already have an account? <span className="font-medium text-neutral-900">Sign in</span>
-            </>
-          )}
-        </button>
-      </div>
+      {/* Error Display */}
+      {error && (
+        <div className="px-3 py-2 rounded-md bg-destructive/5 border border-destructive/20 flex items-center gap-2">
+          <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
+          <p className="text-xs text-destructive">{error}</p>
+        </div>
+      )}
 
-      {/* Skip Option */}
-      <div className="pt-4 border-t border-neutral-100">
+      {/* Skip Option — Subtle, compact */}
+      <div className="pt-1">
         <button
           type="button"
           onClick={onContinueWithoutAccount}
-          className="w-full text-center text-sm text-neutral-400 hover:text-neutral-600 transition-colors py-2"
-          disabled={isSubmitting || isSocialLoading !== null}
+          className="w-full text-center text-[10px] text-muted-foreground/70 hover:text-foreground transition-colors py-1.5 rounded hover:bg-muted/30"
+          disabled={isSocialLoading !== null || isCheckingEmail}
         >
           Continue without an account
         </button>
-      </div>
-
-      {/* Benefits */}
-      <div className="bg-gradient-to-br from-indigo-50/50 to-purple-50/50 p-5 rounded-2xl border border-indigo-100/50">
-        <h4 className="font-medium text-neutral-900 mb-3 text-sm">Why create an account?</h4>
-        <ul className="text-sm text-neutral-600 space-y-2">
-          <li className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-            Instant transcription — no API keys needed
-          </li>
-          <li className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-            2,000 words/day free, unlimited with Pro
-          </li>
-          <li className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-indigo-400" />
-            Cloud AI models for smarter dictation
-          </li>
-        </ul>
       </div>
     </div>
   );

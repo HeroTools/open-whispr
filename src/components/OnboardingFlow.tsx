@@ -33,6 +33,7 @@ import { useAuth } from "../hooks/useAuth";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
+import ProcessingModeSelector from "./ui/ProcessingModeSelector";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -61,6 +62,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const {
     useLocalWhisper,
     whisperModel,
+    setWhisperModel,
     localTranscriptionProvider,
     parakeetModel,
     cloudTranscriptionProvider,
@@ -81,6 +83,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setCloudTranscriptionMode,
     cloudReasoningModel,
     setCloudReasoningModel,
+    preferredLanguage,
   } = useSettings();
 
   const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
@@ -109,11 +112,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   useClipboard(showAlertDialog); // Initialize clipboard hook for permission checks
 
   const steps = [
-    { title: "Account", icon: UserCircle },
+    { title: "Welcome", icon: UserCircle },
     { title: "Setup", icon: Settings },
     { title: "Permissions", icon: Shield },
     { title: "Activation", icon: Command },
   ];
+
+  // Only show progress for signed-up users after account creation step
+  const showProgress = currentStep > 0;
 
   useEffect(() => {
     const checkHotkeyMode = async () => {
@@ -705,68 +711,74 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       />
 
       {/* Title Bar */}
-      <div className="flex-shrink-0 z-10">
+      <div className="shrink-0 z-10">
         <TitleBar
           showTitle={true}
           className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
         ></TitleBar>
       </div>
 
-      {/* Progress Bar */}
-      <div className="flex-shrink-0 bg-background/80 backdrop-blur-2xl border-b border-white/5 px-6 md:px-12 py-4 z-10">
-        <div className="max-w-3xl mx-auto">
-          <StepProgress steps={steps} currentStep={currentStep} />
+      {/* Progress Bar - hidden on welcome/auth step */}
+      {showProgress && (
+        <div className="shrink-0 bg-background/80 backdrop-blur-2xl border-b border-white/5 px-6 md:px-12 py-3 z-10">
+          <div className="max-w-3xl mx-auto">
+            <StepProgress steps={steps.slice(1)} currentStep={currentStep - 1} />
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Content - This will grow to fill available space */}
-      <div className="flex-1 px-6 md:px-12 py-6 overflow-y-auto">
-        <div className="max-w-3xl mx-auto">
-          <Card className="bg-card/80 backdrop-blur-2xl border border-white/10 dark:border-white/5 shadow-xl rounded-2xl overflow-hidden">
-            <CardContent className="p-8 md:p-10">
-              <div className="space-y-6">{renderStep()}</div>
+      <div
+        className={`flex-1 px-6 md:px-12 overflow-y-auto ${currentStep === 0 ? "flex items-center" : "py-6"}`}
+      >
+        <div className={`w-full ${currentStep === 0 ? "max-w-sm" : "max-w-3xl"} mx-auto`}>
+          <Card className="bg-card/90 backdrop-blur-2xl border border-border/50 dark:border-white/5 shadow-lg rounded-xl overflow-hidden">
+            <CardContent className={currentStep === 0 ? "p-6" : "p-6 md:p-8"}>
+              {renderStep()}
             </CardContent>
           </Card>
         </div>
       </div>
 
-      {/* Footer - This will stick to the bottom */}
-      <div className="flex-shrink-0 bg-background/80 backdrop-blur-2xl border-t border-white/5 px-6 md:px-12 py-3 z-10">
-        <div className="max-w-3xl mx-auto flex items-center justify-between">
-          <Button
-            onClick={prevStep}
-            variant="outline"
-            disabled={currentStep === 0}
-            className="h-8 px-5 rounded-full text-xs"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            Back
-          </Button>
+      {/* Footer Navigation - hidden on welcome/auth step */}
+      {showProgress && (
+        <div className="shrink-0 bg-background/80 backdrop-blur-2xl border-t border-white/5 px-6 md:px-12 py-3 z-10">
+          <div className="max-w-3xl mx-auto flex items-center justify-between">
+            <Button
+              onClick={prevStep}
+              variant="outline"
+              disabled={currentStep === 1}
+              className="h-8 px-5 rounded-full text-xs"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              Back
+            </Button>
 
-          <div className="flex items-center gap-2">
-            {currentStep === steps.length - 1 ? (
-              <Button
-                onClick={finishOnboarding}
-                disabled={!canProceed()}
-                variant="success"
-                className="h-8 px-6 rounded-full text-xs"
-              >
-                <Check className="w-3.5 h-3.5" />
-                Complete
-              </Button>
-            ) : (
-              <Button
-                onClick={nextStep}
-                disabled={!canProceed()}
-                className="h-8 px-6 rounded-full text-xs"
-              >
-                Next
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            )}
+            <div className="flex items-center gap-2">
+              {currentStep === steps.length - 1 ? (
+                <Button
+                  onClick={finishOnboarding}
+                  disabled={!canProceed()}
+                  variant="success"
+                  className="h-8 px-6 rounded-full text-xs"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Complete
+                </Button>
+              ) : (
+                <Button
+                  onClick={nextStep}
+                  disabled={!canProceed()}
+                  className="h-8 px-6 rounded-full text-xs"
+                >
+                  Next
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Button>
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

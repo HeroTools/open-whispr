@@ -804,8 +804,8 @@ class IPCHandlers {
             }
             throw new Error(
               errorData.error?.message ||
-              errorData.error ||
-              `Anthropic API error: ${response.status}`
+                errorData.error ||
+                `Anthropic API error: ${response.status}`
             );
           }
 

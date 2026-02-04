@@ -274,15 +274,15 @@ export function HotkeyInput({
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={`
-          relative group flex flex-col items-center justify-center py-5 px-6
-          rounded-lg border cursor-pointer select-none outline-none
-          transition-all duration-200
+          relative group flex flex-col items-center justify-center py-4 px-5
+          rounded-md border cursor-pointer select-none outline-none
+          transition-all duration-150
           ${
             disabled
               ? "bg-muted/30 border-border cursor-not-allowed opacity-50"
               : isCapturing
-                ? "bg-primary/5 border-primary/40"
-                : "bg-surface-1 border-border-subtle hover:border-border-hover hover:bg-surface-2"
+                ? "bg-primary/5 border-primary/30 shadow-[0_0_0_2px_rgba(37,99,212,0.1)]"
+                : "bg-surface-1 border-border hover:border-border-hover hover:bg-surface-2"
           }
         `}
       >
@@ -298,7 +298,7 @@ export function HotkeyInput({
                 {Array.from(activeModifiers).map((mod) => (
                   <kbd
                     key={mod}
-                    className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded text-sm font-semibold text-primary"
+                    className="px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-sm text-xs font-semibold text-primary"
                   >
                     {mod}
                   </kbd>
@@ -321,17 +321,17 @@ export function HotkeyInput({
                     {i > 0 && (
                       <span className="text-muted-foreground/40 text-lg font-light">+</span>
                     )}
-                    <kbd className="px-3.5 py-2 bg-surface-raised border border-border-subtle rounded text-base font-semibold text-foreground shadow-sm">
+                    <kbd className="px-3 py-1.5 bg-surface-raised border border-border rounded-sm text-sm font-semibold text-foreground shadow-sm">
                       {part}
                     </kbd>
                   </React.Fragment>
                 ))
               ) : isGlobe ? (
-                <kbd className="px-4 py-2 bg-surface-raised border border-border-subtle rounded text-xl shadow-sm">
+                <kbd className="px-3 py-1.5 bg-surface-raised border border-border rounded-sm text-lg shadow-sm">
                   🌐
                 </kbd>
               ) : (
-                <kbd className="px-4 py-2 bg-surface-raised border border-border-subtle rounded text-base font-bold text-foreground shadow-sm">
+                <kbd className="px-3 py-1.5 bg-surface-raised border border-border rounded-sm text-sm font-semibold text-foreground shadow-sm">
                   {displayValue}
                 </kbd>
               )}
@@ -362,14 +362,14 @@ export function HotkeyInput({
       onFocus={handleFocus}
       onBlur={handleBlur}
       className={`
-        relative overflow-hidden rounded-lg border
-        transition-all duration-200 cursor-pointer select-none focus:outline-none
+        relative overflow-hidden rounded-md border
+        transition-all duration-150 cursor-pointer select-none focus:outline-none
         ${
           disabled
             ? "bg-muted/30 border-border cursor-not-allowed opacity-50"
             : isCapturing
-              ? "bg-primary/8 border-primary/50 shadow-[0_0_0_2px_rgba(37,99,212,0.15)]"
-              : "bg-surface-1 border-border-subtle hover:border-border-hover hover:bg-surface-2"
+              ? "bg-primary/5 border-primary/30 shadow-[0_0_0_2px_rgba(37,99,212,0.1)]"
+              : "bg-surface-1 border-border hover:border-border-hover hover:bg-surface-2"
         }
       `}
     >
@@ -389,29 +389,29 @@ export function HotkeyInput({
                 {Array.from(activeModifiers).map((mod) => (
                   <kbd
                     key={mod}
-                    className="px-2 py-1 bg-primary/15 border border-primary/30 rounded text-xs font-semibold text-primary"
+                    className="px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-sm text-[11px] font-semibold text-primary"
                   >
                     {mod}
                   </kbd>
                 ))}
-                <span className="text-primary/40 text-xs">+ key</span>
+                <span className="text-primary/40 text-[11px]">+ key</span>
               </div>
             ) : (
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[11px] text-muted-foreground">
                 {isMac ? "Try ⌘⇧K" : "Try Ctrl+Shift+K"}
               </span>
             )}
           </div>
         ) : value ? (
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Hotkey</span>
+            <span className="text-[11px] font-medium text-muted-foreground">Hotkey</span>
             <div className="flex items-center gap-2">
               {hotkeyParts.length > 0 ? (
                 <div className="flex items-center gap-1">
                   {hotkeyParts.map((part, i) => (
                     <React.Fragment key={part}>
-                      {i > 0 && <span className="text-muted-foreground/30 text-xs">+</span>}
-                      <kbd className="px-2 py-1 bg-surface-raised border border-border-subtle rounded text-sm font-semibold text-foreground">
+                      {i > 0 && <span className="text-muted-foreground/30 text-[10px]">+</span>}
+                      <kbd className="px-2 py-0.5 bg-surface-raised border border-border rounded-sm text-xs font-semibold text-foreground">
                         {part}
                       </kbd>
                     </React.Fragment>
@@ -419,17 +419,17 @@ export function HotkeyInput({
                 </div>
               ) : isGlobe ? (
                 <div className="flex items-center gap-1.5">
-                  <kbd className="px-2 py-1 bg-surface-raised border border-border-subtle rounded text-lg">
+                  <kbd className="px-2 py-0.5 bg-surface-raised border border-border rounded-sm text-base">
                     🌐
                   </kbd>
-                  <span className="text-xs text-muted-foreground">Globe</span>
+                  <span className="text-[11px] text-muted-foreground">Globe</span>
                 </div>
               ) : (
-                <kbd className="px-3 py-1.5 bg-surface-raised border border-border-subtle rounded text-sm font-bold text-foreground">
+                <kbd className="px-2.5 py-1 bg-surface-raised border border-border rounded-sm text-xs font-semibold text-foreground">
                   {displayValue}
                 </kbd>
               )}
-              <span className="text-[10px] text-muted-foreground/60">click to change</span>
+              <span className="text-[10px] text-muted-foreground/50">click to change</span>
             </div>
           </div>
         ) : (

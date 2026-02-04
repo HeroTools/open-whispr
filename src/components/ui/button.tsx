@@ -7,23 +7,24 @@ import { cn } from "../lib/utils";
 const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-lg text-sm font-medium cursor-pointer select-none",
-    "transition-all duration-150 ease-out",
-    "outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-    "disabled:pointer-events-none disabled:opacity-40",
+    "rounded text-sm font-medium cursor-pointer select-none",
+    "transition-all duration-200 ease-out",
+    "outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+    "disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed",
     "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 shrink-0",
   ].join(" "),
   {
     variants: {
       variant: {
-        // Primary CTA — uses design tokens
+        // Primary CTA — ultra-premium with subtle depth
         default: [
-          "relative text-primary-foreground font-semibold tracking-[0.01em]",
+          "relative text-primary-foreground font-semibold tracking-[0.005em]",
           "bg-primary",
-          "border border-primary/70",
+          "border border-primary/60",
           "shadow-sm",
-          "hover:bg-primary/90",
-          "active:bg-primary/80 active:scale-[0.98]",
+          "hover:bg-primary/95 hover:shadow",
+          "active:bg-primary/85 active:scale-[0.985]",
+          "transition-all duration-200 ease-out",
         ].join(" "),
 
         // Success — uses design tokens
@@ -46,15 +47,16 @@ const buttonVariants = cva(
           "active:bg-destructive/80 active:scale-[0.98]",
         ].join(" "),
 
-        // Outline — uses design tokens
+        // Outline — refined with subtle glassmorphism
         outline: [
           "relative font-medium",
-          "text-foreground bg-muted/80",
-          "border border-border",
-          "shadow-sm backdrop-blur-sm",
-          "hover:bg-muted",
-          "active:scale-[0.98]",
-          "dark:bg-surface-3 dark:border-border-subtle dark:hover:bg-surface-raised",
+          "text-foreground bg-muted/70 backdrop-blur-sm",
+          "border border-border/70",
+          "shadow-sm",
+          "hover:bg-muted hover:border-border-hover",
+          "active:scale-[0.985]",
+          "dark:bg-surface-3/60 dark:border-border-subtle/50 dark:hover:bg-surface-raised/70",
+          "transition-all duration-200 ease-out",
         ].join(" "),
 
         // Secondary — uses design tokens
@@ -84,14 +86,16 @@ const buttonVariants = cva(
           "underline-offset-4",
         ].join(" "),
 
-        // Social button for auth flows
+        // Social button for auth flows - ultra-premium glassmorphism
         social: [
           "relative font-medium",
-          "text-foreground bg-card",
-          "border border-border",
-          "shadow-sm gap-3",
-          "hover:bg-muted hover:border-border-hover",
-          "active:scale-[0.98]",
+          "text-foreground bg-surface-1/80 backdrop-blur-xl",
+          "border border-border/60",
+          "shadow-sm gap-2",
+          "hover:bg-surface-2/90 hover:border-border-hover hover:shadow",
+          "active:scale-[0.985] active:shadow-sm",
+          "dark:bg-surface-2/60 dark:hover:bg-surface-3/70 dark:border-border-subtle/40",
+          "transition-all duration-200 ease-out",
         ].join(" "),
       },
       size: {
