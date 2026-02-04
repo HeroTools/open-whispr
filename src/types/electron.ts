@@ -440,7 +440,22 @@ declare global {
         limit?: number;
         plan?: string;
         isSubscribed?: boolean;
+        isTrial?: boolean;
+        trialDaysLeft?: number | null;
+        currentPeriodEnd?: string | null;
         resetAt?: string;
+        error?: string;
+        code?: string;
+      }>;
+      cloudCheckout?: () => Promise<{
+        success: boolean;
+        url?: string;
+        error?: string;
+        code?: string;
+      }>;
+      cloudBillingPortal?: () => Promise<{
+        success: boolean;
+        url?: string;
         error?: string;
         code?: string;
       }>;

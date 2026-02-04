@@ -19,6 +19,7 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    host: '127.0.0.1', // Use IP address instead of localhost for Neon Auth CORS
   },
   build: {
     outDir: 'dist',

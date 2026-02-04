@@ -243,6 +243,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cloudTranscribe: (audioBuffer, opts) => ipcRenderer.invoke("cloud-transcribe", audioBuffer, opts),
   cloudReason: (text, opts) => ipcRenderer.invoke("cloud-reason", text, opts),
   cloudUsage: () => ipcRenderer.invoke("cloud-usage"),
+  cloudCheckout: () => ipcRenderer.invoke("cloud-checkout"),
+  cloudBillingPortal: () => ipcRenderer.invoke("cloud-billing-portal"),
 
   // Assembly AI Streaming
   assemblyAiStreamingWarmup: (options) => ipcRenderer.invoke("assemblyai-streaming-warmup", options),

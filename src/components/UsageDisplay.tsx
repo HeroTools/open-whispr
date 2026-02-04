@@ -15,8 +15,8 @@ export default function UsageDisplay() {
     if (usage?.isApproachingLimit && !hasShownApproachingToast.current) {
       hasShownApproachingToast.current = true;
       toast({
-        title: "Approaching Daily Limit",
-        description: `You've used ${usage.wordsUsed.toLocaleString()} of ${usage.limit.toLocaleString()} free words today.`,
+        title: "Approaching Weekly Limit",
+        description: `You've used ${usage.wordsUsed.toLocaleString()} of ${usage.limit.toLocaleString()} free words this week.`,
         duration: 6000,
       });
     }
@@ -24,24 +24,30 @@ export default function UsageDisplay() {
 
   if (!usage) return null;
 
-  // Pro plan — minimal display
+  // Pro plan or trial — minimal display
   if (usage.isSubscribed) {
     return (
       <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium text-neutral-700">Your Plan</span>
-          <Badge variant="success">Pro</Badge>
+          {usage.isTrial ? (
+            <Badge variant="outline" className="text-indigo-600 border-indigo-300">
+              Trial ({usage.trialDaysLeft} {usage.trialDaysLeft === 1 ? "day" : "days"} left)
+            </Badge>
+          ) : (
+            <Badge variant="success">Pro</Badge>
+          )}
         </div>
-        <p className="text-sm text-neutral-600">Unlimited transcriptions</p>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            // Stripe portal will be wired in Phase 5
-          }}
-        >
-          Manage Subscription
-        </Button>
+        <p className="text-sm text-neutral-600">
+          {usage.isTrial
+            ? "Unlimited transcriptions during your trial"
+            : "Unlimited transcriptions"}
+        </p>
+        {!usage.isTrial && (
+          <Button variant="outline" size="sm" onClick={() => usage.openBillingPortal()}>
+            Manage Subscription
+          </Button>
+        )}
       </div>
     );
   }
@@ -58,7 +64,7 @@ export default function UsageDisplay() {
   return (
     <div className="bg-white border border-neutral-200 rounded-xl p-4 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-neutral-700">Today's Usage</span>
+        <span className="text-sm font-medium text-neutral-700">Weekly Usage</span>
         {usage.isOverLimit ? (
           <Badge variant="warning">Limit reached</Badge>
         ) : (
@@ -81,14 +87,18 @@ export default function UsageDisplay() {
             </span>
           )}
           {!usage.isApproachingLimit && !usage.isOverLimit && (
-            <span className="text-xs text-neutral-400">Resets at midnight UTC</span>
+            <span className="text-xs text-neutral-400">Rolling weekly limit</span>
           )}
         </div>
       </div>
 
       {usage.isOverLimit ? (
         <div className="flex gap-2">
-          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+          <Button
+            size="sm"
+            className="bg-indigo-600 hover:bg-indigo-700"
+            onClick={() => usage.openCheckout()}
+          >
             Upgrade to Pro
           </Button>
           <Button
@@ -103,7 +113,11 @@ export default function UsageDisplay() {
           </Button>
         </div>
       ) : usage.isApproachingLimit ? (
-        <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700">
+        <Button
+          size="sm"
+          className="bg-indigo-600 hover:bg-indigo-700"
+          onClick={() => usage.openCheckout()}
+        >
           Upgrade to Pro
         </Button>
       ) : (
@@ -112,7 +126,7 @@ export default function UsageDisplay() {
           className="text-indigo-600 hover:text-indigo-700 text-sm inline-block"
           onClick={(e) => {
             e.preventDefault();
-            // Stripe checkout will be wired in Phase 5
+            usage.openCheckout();
           }}
         >
           Upgrade to Pro — unlimited transcriptions

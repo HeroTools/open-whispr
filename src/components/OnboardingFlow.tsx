@@ -747,7 +747,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <Button
               onClick={prevStep}
               variant="outline"
-              disabled={currentStep === 1}
+              disabled={currentStep === 0}
               className="h-8 px-5 rounded-full text-xs"
             >
               <ChevronLeft className="w-3.5 h-3.5" />

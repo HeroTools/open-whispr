@@ -9,6 +9,9 @@ interface UsageData {
   limit: number;
   plan: string;
   isSubscribed: boolean;
+  isTrial: boolean;
+  trialDaysLeft: number | null;
+  currentPeriodEnd: string | null;
   resetAt: string;
 }
 
@@ -18,12 +21,17 @@ interface UseUsageResult {
   wordsRemaining: number;
   limit: number;
   isSubscribed: boolean;
+  isTrial: boolean;
+  trialDaysLeft: number | null;
+  currentPeriodEnd: string | null;
   isOverLimit: boolean;
   isApproachingLimit: boolean;
   resetAt: string | null;
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  openCheckout: () => Promise<void>;
+  openBillingPortal: () => Promise<void>;
 }
 
 const USAGE_CACHE_TTL = CACHE_CONFIG.API_KEY_TTL; // 1 hour
@@ -45,12 +53,15 @@ export function useUsage(): UseUsageResult | null {
       const result = await window.electronAPI.cloudUsage();
       if (result.success) {
         setData({
-          wordsUsed: result.wordsUsed,
-          wordsRemaining: result.wordsRemaining,
-          limit: result.limit,
-          plan: result.plan,
-          isSubscribed: result.isSubscribed,
-          resetAt: result.resetAt,
+          wordsUsed: result.wordsUsed ?? 0,
+          wordsRemaining: result.wordsRemaining ?? 0,
+          limit: result.limit ?? 2000,
+          plan: result.plan ?? "free",
+          isSubscribed: result.isSubscribed ?? false,
+          isTrial: result.isTrial ?? false,
+          trialDaysLeft: result.trialDaysLeft ?? null,
+          currentPeriodEnd: result.currentPeriodEnd ?? null,
+          resetAt: result.resetAt ?? "rolling",
         });
         lastFetchRef.current = Date.now();
       } else if (result.code === "AUTH_EXPIRED" && !isRetry) {
@@ -81,6 +92,22 @@ export function useUsage(): UseUsageResult | null {
     }
   }, [isLoaded, isSignedIn, fetchUsage]);
 
+  const openCheckout = useCallback(async () => {
+    if (!window.electronAPI?.cloudCheckout || !window.electronAPI?.openExternal) return;
+    const result = await window.electronAPI.cloudCheckout();
+    if (result.success && result.url) {
+      await window.electronAPI.openExternal(result.url);
+    }
+  }, []);
+
+  const openBillingPortal = useCallback(async () => {
+    if (!window.electronAPI?.cloudBillingPortal || !window.electronAPI?.openExternal) return;
+    const result = await window.electronAPI.cloudBillingPortal();
+    if (result.success && result.url) {
+      await window.electronAPI.openExternal(result.url);
+    }
+  }, []);
+
   // Return null when not signed in
   if (!isSignedIn) return null;
 
@@ -96,11 +123,16 @@ export function useUsage(): UseUsageResult | null {
     wordsRemaining: data?.wordsRemaining ?? (limit > 0 ? limit - wordsUsed : -1),
     limit,
     isSubscribed,
+    isTrial: data?.isTrial ?? false,
+    trialDaysLeft: data?.trialDaysLeft ?? null,
+    currentPeriodEnd: data?.currentPeriodEnd ?? null,
     isOverLimit,
     isApproachingLimit,
     resetAt: data?.resetAt ?? null,
     isLoading,
     error,
     refetch: fetchUsage,
+    openCheckout,
+    openBillingPortal,
   };
 }

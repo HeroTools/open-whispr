@@ -498,6 +498,57 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
                 <UsageDisplay />
 
+                {/* Billing Section */}
+                {usage && (
+                  <div className="p-4 bg-muted border border-border rounded-xl">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-medium text-foreground">Billing</h4>
+                      {usage.isTrial ? (
+                        <Badge variant="outline" className="text-indigo-600 border-indigo-300">
+                          Trial ({usage.trialDaysLeft} {usage.trialDaysLeft === 1 ? "day" : "days"}{" "}
+                          left)
+                        </Badge>
+                      ) : usage.isSubscribed ? (
+                        <Badge variant="default" className="bg-indigo-600">
+                          Pro
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Free</Badge>
+                      )}
+                    </div>
+
+                    <div className="text-sm text-muted-foreground mb-4">
+                      {usage.isTrial ? (
+                        <p>
+                          Enjoying unlimited transcriptions during your trial. Upgrade anytime to
+                          continue after your trial ends.
+                        </p>
+                      ) : usage.isSubscribed ? (
+                        <p>
+                          {usage.currentPeriodEnd
+                            ? `Next billing date: ${new Date(usage.currentPeriodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
+                            : "You have unlimited transcriptions"}
+                        </p>
+                      ) : (
+                        <p>Upgrade to Pro for unlimited transcriptions</p>
+                      )}
+                    </div>
+
+                    {!usage.isTrial && (
+                      <Button
+                        onClick={() =>
+                          usage.isSubscribed ? usage.openBillingPortal() : usage.openCheckout()
+                        }
+                        variant="outline"
+                        size="sm"
+                        className="w-full"
+                      >
+                        {usage.isSubscribed ? "Manage Billing" : "Upgrade to Pro"}
+                      </Button>
+                    )}
+                  </div>
+                )}
+
                 <Button
                   onClick={handleSignOut}
                   variant="outline"

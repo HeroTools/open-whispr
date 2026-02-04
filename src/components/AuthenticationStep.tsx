@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { authClient, NEON_AUTH_URL, signInWithSocial, type SocialProvider } from "../lib/neonAuth";
+import { OPENWHISPR_API_URL } from "../config/constants";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { AlertCircle, ArrowRight, Check, Loader2, ChevronLeft } from "lucide-react";
@@ -43,7 +44,6 @@ export default function AuthenticationStep({
   const [authMode, setAuthMode] = useState<AuthMode>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState<SocialProvider | null>(null);
@@ -94,15 +94,32 @@ export default function AuthenticationStep({
     setError(null);
 
     try {
-      // Try to check if user exists by attempting a password reset
-      // This is a common pattern - if user doesn't exist, we know to show sign-up
-      // For now, we'll use a simple heuristic or default to sign-up
-      // In a real app, you'd have an API endpoint to check email existence
+      // Check if user exists via API
+      if (!OPENWHISPR_API_URL) {
+        // If API URL is not configured, default to sign-up
+        setAuthMode("sign-up");
+        return;
+      }
 
-      // Simple approach: try sign-in first, if it fails with "user not found", switch to sign-up
-      // For better UX, we'll default to sign-up for new users
-      setAuthMode("sign-up");
-    } catch {
+      const response = await fetch(`${OPENWHISPR_API_URL}/api/check-user`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to check user existence");
+      }
+
+      const data = await response.json();
+
+      // Route user to sign-in if they exist, sign-up if they don't
+      setAuthMode(data.exists ? "sign-in" : "sign-up");
+    } catch (err) {
+      console.error("Error checking user existence:", err);
+      // On error, default to sign-up and let the backend handle it
       setAuthMode("sign-up");
     } finally {
       setIsCheckingEmail(false);
@@ -122,7 +139,6 @@ export default function AuthenticationStep({
           const result = await authClient.signUp.email({
             email: email.trim(),
             password,
-            name: name.trim() || undefined,
           });
           if (result.error) {
             // If user already exists, switch to sign-in mode
@@ -164,13 +180,12 @@ export default function AuthenticationStep({
         setIsSubmitting(false);
       }
     },
-    [authMode, email, password, name]
+    [authMode, email, password]
   );
 
   const handleBack = useCallback(() => {
     setAuthMode(null);
     setPassword("");
-    setName("");
     setError(null);
   }, []);
 
@@ -184,7 +199,7 @@ export default function AuthenticationStep({
   if (!NEON_AUTH_URL || !authClient) {
     return (
       <div className="space-y-3">
-        <div className="text-center">
+        <div className="text-center mb-4">
           <img
             src={logoIcon}
             alt="OpenWhispr"
@@ -216,7 +231,7 @@ export default function AuthenticationStep({
   if (isLoaded && isSignedIn) {
     return (
       <div className="space-y-3">
-        <div className="text-center">
+        <div className="text-center mb-4">
           <img
             src={logoIcon}
             alt="OpenWhispr"
@@ -255,7 +270,7 @@ export default function AuthenticationStep({
         </button>
 
         {/* Header — Refined */}
-        <div className="text-center">
+        <div className="text-center mb-4">
           <p className="text-sm text-muted-foreground/70 mb-2 leading-tight">{email}</p>
           <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
             {authMode === "sign-in" ? "Welcome back" : "Create your account"}
@@ -264,18 +279,6 @@ export default function AuthenticationStep({
 
         {/* Password Form */}
         <form onSubmit={handleSubmit} className="space-y-2">
-          {authMode === "sign-up" && (
-            <Input
-              type="text"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="h-9 text-sm"
-              disabled={isSubmitting}
-              autoFocus
-            />
-          )}
-
           <Input
             type="password"
             placeholder={authMode === "sign-up" ? "Create a password" : "Enter your password"}
@@ -285,7 +288,7 @@ export default function AuthenticationStep({
             required
             minLength={authMode === "sign-up" ? 8 : undefined}
             disabled={isSubmitting}
-            autoFocus={authMode === "sign-in"}
+            autoFocus
           />
 
           {authMode === "sign-up" && (
@@ -317,6 +320,31 @@ export default function AuthenticationStep({
               </span>
             )}
           </Button>
+
+          {/* Terms and Privacy Policy — Only show for sign-up */}
+          {authMode === "sign-up" && (
+            <p className="text-[10px] text-muted-foreground/60 leading-tight text-center">
+              By creating an account, you agree to our{" "}
+              <a
+                href="https://openwhispr.com/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Terms of Service
+              </a>{" "}
+              and{" "}
+              <a
+                href="https://openwhispr.com/privacy"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline"
+              >
+                Privacy Policy
+              </a>
+              .
+            </p>
+          )}
         </form>
 
         {/* Toggle Auth Mode */}
@@ -346,7 +374,7 @@ export default function AuthenticationStep({
   return (
     <div className="space-y-3">
       {/* Logo & Brand Header — Premium, refined */}
-      <div className="text-center">
+      <div className="text-center mb-4">
         <img
           src={logoIcon}
           alt="OpenWhispr"
@@ -432,7 +460,7 @@ export default function AuthenticationStep({
         <button
           type="button"
           onClick={onContinueWithoutAccount}
-          className="w-full text-center text-[10px] text-muted-foreground/70 hover:text-foreground transition-colors py-1.5 rounded hover:bg-muted/30"
+          className="w-full text-center text-xs text-muted-foreground/70 hover:text-foreground transition-colors py-1.5 rounded hover:bg-muted/30"
           disabled={isSocialLoading !== null || isCheckingEmail}
         >
           Continue without an account

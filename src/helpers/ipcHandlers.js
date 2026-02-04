@@ -1187,6 +1187,43 @@ class IPCHandlers {
       }
     });
 
+    const fetchStripeUrl = async (event, endpoint, errorPrefix) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: "POST",
+          headers: { Cookie: cookieHeader },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return { success: true, url: data.url };
+      } catch (error) {
+        debugLogger.error(`${errorPrefix}:`, error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    ipcMain.handle("cloud-checkout", (event) =>
+      fetchStripeUrl(event, "/api/stripe/checkout", "Cloud checkout error")
+    );
+
+    ipcMain.handle("cloud-billing-portal", (event) =>
+      fetchStripeUrl(event, "/api/stripe/portal", "Cloud billing portal error")
+    );
+
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
         const modelsDir = this.whisperManager.getModelsDir();

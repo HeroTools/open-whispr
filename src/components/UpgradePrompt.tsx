@@ -1,5 +1,6 @@
 import { Dialog, DialogContent } from "./ui/dialog";
 import { ChevronRight } from "lucide-react";
+import { useUsage } from "../hooks/useUsage";
 
 interface UpgradePromptProps {
   open: boolean;
@@ -14,11 +15,15 @@ export default function UpgradePrompt({
   wordsUsed = 2000,
   limit = 2000,
 }: UpgradePromptProps) {
+  const usage = useUsage();
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <div className="text-center space-y-2 pt-2">
-          <h2 className="text-xl font-semibold text-neutral-900">You've reached today's limit</h2>
+          <h2 className="text-xl font-semibold text-neutral-900">
+            You've reached your weekly limit
+          </h2>
           <p className="text-sm text-neutral-500">
             {wordsUsed.toLocaleString()} of {limit.toLocaleString()} words used.
             <br />
@@ -29,9 +34,9 @@ export default function UpgradePrompt({
         <div className="space-y-2 pt-2">
           <OptionCard
             title="Upgrade to Pro"
-            description="Unlimited transcriptions. $X/month."
+            description="Unlimited transcriptions. $9/month."
             onClick={() => {
-              // Stripe checkout will be wired in Phase 5
+              usage?.openCheckout();
             }}
             highlighted
           />
@@ -53,7 +58,7 @@ export default function UpgradePrompt({
           />
         </div>
 
-        <p className="text-xs text-neutral-400 text-center">Resets at midnight UTC</p>
+        <p className="text-xs text-neutral-400 text-center">Rolling weekly limit</p>
       </DialogContent>
     </Dialog>
   );
