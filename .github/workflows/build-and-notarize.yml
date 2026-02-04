@@ -23,7 +23,9 @@ jobs:
       run: npm ci
 
     - name: Download whisper.cpp binaries
-      run: node scripts/download-whisper-cpp.js
+      run: node scripts/download-whisper-cpp.js --current
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Cache Electron
       uses: actions/cache@v4
@@ -62,10 +64,14 @@ jobs:
       run: npm ci
 
     - name: Download whisper.cpp binaries
-      run: node scripts/download-whisper-cpp.js
+      run: node scripts/download-whisper-cpp.js --current
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Download nircmd.exe
       run: node scripts/download-nircmd.js
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Cache Electron
       uses: actions/cache@v4
@@ -105,7 +111,9 @@ jobs:
       run: npm ci
 
     - name: Download whisper.cpp binaries
-      run: node scripts/download-whisper-cpp.js
+      run: node scripts/download-whisper-cpp.js --current --platform darwin --arch ${{ matrix.arch }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
     - name: Cache Electron
       uses: actions/cache@v4
@@ -144,6 +152,7 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         CSC_IDENTITY_AUTO_DISCOVERY: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
+        CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
         APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}

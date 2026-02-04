@@ -67,7 +67,7 @@ class GlobeKeyManager extends EventEmitter {
 
     this.process.on("exit", (code, signal) => {
       this.process = null;
-      if (code !== 0) {
+      if (code !== 0 && signal !== "SIGINT" && signal !== "SIGTERM") {
         const error = new Error(
           `Globe key listener exited with code ${code ?? "null"} signal ${signal ?? "null"}`
         );

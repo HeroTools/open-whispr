@@ -14,6 +14,7 @@ export interface UsePermissionsReturn {
   checkPasteToolsAvailability: () => Promise<PasteToolsResult | null>;
   openMicPrivacySettings: () => Promise<void>;
   openSoundInputSettings: () => Promise<void>;
+  openAccessibilitySettings: () => Promise<void>;
   setMicPermissionGranted: (granted: boolean) => void;
   setAccessibilityPermissionGranted: (granted: boolean) => void;
 }
@@ -104,21 +105,46 @@ export const usePermissions = (
   const [pasteToolsInfo, setPasteToolsInfo] = useState<PasteToolsResult | null>(null);
   const [isCheckingPasteTools, setIsCheckingPasteTools] = useState(false);
 
-  const openMicPrivacySettings = useCallback(async () => {
-    try {
-      await window.electronAPI?.openMicrophoneSettings?.();
-    } catch (error) {
-      console.error("Failed to open microphone privacy settings:", error);
-    }
-  }, []);
+  const openSystemSettings = useCallback(
+    async (
+      settingType: "microphone" | "sound" | "accessibility",
+      apiMethod: () => Promise<{ success: boolean; error?: string } | undefined> | undefined
+    ) => {
+      const titles = {
+        microphone: "Microphone Settings",
+        sound: "Sound Settings",
+        accessibility: "Accessibility Settings",
+      };
+      try {
+        const result = await apiMethod?.();
+        if (result && !result.success && result.error) {
+          showAlertDialog?.({ title: titles[settingType], description: result.error });
+        }
+      } catch (error) {
+        console.error(`Failed to open ${settingType} settings:`, error);
+        showAlertDialog?.({
+          title: titles[settingType],
+          description: `Unable to open ${settingType} settings. Please open your system settings manually.`,
+        });
+      }
+    },
+    [showAlertDialog]
+  );
 
-  const openSoundInputSettings = useCallback(async () => {
-    try {
-      await window.electronAPI?.openSoundInputSettings?.();
-    } catch (error) {
-      console.error("Failed to open sound input settings:", error);
-    }
-  }, []);
+  const openMicPrivacySettings = useCallback(
+    () => openSystemSettings("microphone", window.electronAPI?.openMicrophoneSettings),
+    [openSystemSettings]
+  );
+
+  const openSoundInputSettings = useCallback(
+    () => openSystemSettings("sound", window.electronAPI?.openSoundInputSettings),
+    [openSystemSettings]
+  );
+
+  const openAccessibilitySettings = useCallback(
+    () => openSystemSettings("accessibility", window.electronAPI?.openAccessibilitySettings),
+    [openSystemSettings]
+  );
 
   const requestMicPermission = useCallback(async () => {
     if (!navigator?.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
@@ -195,17 +221,6 @@ export const usePermissions = (
       try {
         await window.electronAPI.pasteText("OpenWhispr accessibility test");
         setAccessibilityPermissionGranted(true);
-        if (showAlertDialog) {
-          showAlertDialog({
-            title: "Accessibility Test Successful",
-            description:
-              "Accessibility permissions working! Check if the test text appeared in another app.",
-          });
-        } else {
-          alert(
-            "Accessibility permissions working! Check if the test text appeared in another app."
-          );
-        }
       } catch (err) {
         console.error("Accessibility permission test failed:", err);
         if (showAlertDialog) {
@@ -241,24 +256,42 @@ export const usePermissions = (
       if (result?.available) {
         setAccessibilityPermissionGranted(true);
         if (showAlertDialog) {
+          const method = result.method || "xdotool";
+          const methodLabel =
+            result.isWayland && method === "xdotool" ? `${method} (XWayland apps)` : method;
           showAlertDialog({
             title: "Ready to Go!",
-            description: `Automatic pasting is available using ${result.method}. You're all set!`,
+            description: `Automatic pasting is available using ${methodLabel}. You're all set!`,
           });
         }
       } else {
         // Don't block, but inform the user
         const isWayland = result?.isWayland;
-        const recommendedTool = isWayland ? "wtype" : "xdotool";
-        const installCmd = isWayland
-          ? "sudo dnf install wtype  # Fedora\nsudo apt install wtype  # Debian/Ubuntu"
-          : "sudo apt install xdotool  # Debian/Ubuntu/Mint\nsudo dnf install xdotool  # Fedora";
+        const xwaylandAvailable = result?.xwaylandAvailable;
+        const recommendedTool = result?.recommendedInstall;
+        const installCmd =
+          recommendedTool === "wtype"
+            ? "sudo dnf install wtype  # Fedora\nsudo apt install wtype  # Debian/Ubuntu"
+            : "sudo apt install xdotool  # Debian/Ubuntu/Mint\nsudo dnf install xdotool  # Fedora";
 
         if (showAlertDialog) {
-          showAlertDialog({
-            title: "Optional: Install Paste Tool",
-            description: `For automatic pasting, install ${recommendedTool}:\n\n${installCmd}\n\nWithout this, you can still use OpenWhispr - text will be copied to your clipboard and you can paste with Ctrl+V.`,
-          });
+          if (isWayland && !xwaylandAvailable && !recommendedTool) {
+            showAlertDialog({
+              title: "Clipboard Mode on Wayland",
+              description:
+                "Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text to your clipboard and you can paste with Ctrl+V.",
+            });
+          } else {
+            const waylandNote = isWayland
+              ? recommendedTool === "wtype"
+                ? "\n\nNote: For XWayland apps, xdotool also works."
+                : "\n\nNote: Automatic pasting works for XWayland apps only."
+              : "";
+            showAlertDialog({
+              title: "Optional: Install Paste Tool",
+              description: `For automatic pasting, install ${recommendedTool || "xdotool"}:\n\n${installCmd}${waylandNote}\n\nWithout this, you can still use OpenWhispr - text will be copied to your clipboard and you can paste with Ctrl+V.`,
+            });
+          }
         }
         // Still allow proceeding - this is optional
         setAccessibilityPermissionGranted(true);
@@ -277,6 +310,7 @@ export const usePermissions = (
     checkPasteToolsAvailability,
     openMicPrivacySettings,
     openSoundInputSettings,
+    openAccessibilitySettings,
     setMicPermissionGranted,
     setAccessibilityPermissionGranted,
   };

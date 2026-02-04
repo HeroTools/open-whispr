@@ -39,14 +39,22 @@ class DebugLogger {
     this.logFile = null;
     this.logStream = null;
     this.fileLoggingEnabled = false;
+    this.fileLoggingPending = this.debugMode; // Track if we need to initialize file logging later
 
-    if (this.debugMode) {
-      this.initializeFileLogging();
-    }
+    // IMPORTANT: Do NOT call initializeFileLogging() here!
+    // It uses app.getPath() which is unsafe before app.whenReady().
+    // File logging will be initialized on first log write or via ensureFileLogging().
   }
 
   initializeFileLogging() {
     if (this.fileLoggingEnabled) return;
+
+    // Check if app is ready before accessing app.getPath()
+    // This is critical because app.getPath() can hang or fail before app.whenReady()
+    if (!app.isReady()) {
+      // App not ready yet, will try again later via ensureFileLogging() or write()
+      return;
+    }
 
     try {
       const logsDir = path.join(app.getPath("userData"), "logs");
@@ -59,6 +67,7 @@ class DebugLogger {
 
       this.logStream = fs.createWriteStream(this.logFile, { flags: "a" });
       this.fileLoggingEnabled = true;
+      this.fileLoggingPending = false;
 
       this.debug("Debug logging enabled", { logFile: this.logFile });
       this.info("System Info", {
@@ -72,7 +81,18 @@ class DebugLogger {
       });
     } catch (error) {
       this.fileLoggingEnabled = false;
+      this.fileLoggingPending = false;
       console.error("Failed to initialize debug logging:", error);
+    }
+  }
+
+  /**
+   * Ensures file logging is initialized if debug mode is enabled.
+   * This should be called after app.whenReady() to safely initialize file logging.
+   */
+  ensureFileLogging() {
+    if (this.fileLoggingPending && !this.fileLoggingEnabled) {
+      this.initializeFileLogging();
     }
   }
 
@@ -144,6 +164,11 @@ class DebugLogger {
   write(level, message, meta, scope, source) {
     const normalized = normalizeLevel(level) || "info";
     if (!this.shouldLog(normalized)) return;
+
+    // Try to initialize file logging if pending and app is ready
+    if (this.fileLoggingPending && !this.fileLoggingEnabled) {
+      this.initializeFileLogging();
+    }
 
     const timestamp = new Date().toISOString();
     const scopeTag = scope ? `[${scope}]` : "";
@@ -356,6 +381,11 @@ class DebugLogger {
   logWhisperPipeline(stage, details) {
     if (!this.isDebugEnabled()) return;
     this.debug(`Whisper Pipeline - ${stage}`, details, "whisper");
+  }
+
+  logSTTPipeline(stage, details) {
+    if (!this.isDebugEnabled()) return;
+    this.debug(`STT Pipeline - ${stage}`, details, "stt");
   }
 
   getLogPath() {

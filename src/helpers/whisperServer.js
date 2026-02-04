@@ -5,6 +5,8 @@ const path = require("path");
 const http = require("http");
 const debugLogger = require("./debugLogger");
 const { killProcess } = require("../utils/process");
+const { getSafeTempDir } = require("./safeTempDir");
+const { convertToWav } = require("./ffmpegUtils");
 
 const PORT_RANGE_START = 8178;
 const PORT_RANGE_END = 8199;
@@ -22,6 +24,7 @@ class WhisperServerManager {
     this.healthCheckInterval = null;
     this.cachedServerBinaryPath = null;
     this.cachedFFmpegPath = null;
+    this.canConvert = false;
   }
 
   getFFmpegPath() {
@@ -35,19 +38,44 @@ class WhisperServerManager {
         ffmpegPath += ".exe";
       }
 
-      // Try unpacked ASAR path first (production builds)
-      const unpackedPath = ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1");
-      if (fs.existsSync(unpackedPath)) {
+      // Try unpacked ASAR path first (production builds unpack ffmpeg-static)
+      const unpackedPath = ffmpegPath.includes("app.asar")
+        ? ffmpegPath.replace(/app\.asar([/\\])/, "app.asar.unpacked$1")
+        : null;
+
+      if (unpackedPath && fs.existsSync(unpackedPath)) {
+        // Ensure executable permissions on non-Windows
+        if (process.platform !== "win32") {
+          try {
+            fs.accessSync(unpackedPath, fs.constants.X_OK);
+          } catch {
+            try {
+              fs.chmodSync(unpackedPath, 0o755);
+            } catch (chmodErr) {
+              debugLogger.warn("Failed to chmod FFmpeg", { error: chmodErr.message });
+            }
+          }
+        }
         this.cachedFFmpegPath = unpackedPath;
         return unpackedPath;
       }
 
+      // Try original path (development or if not in ASAR)
       if (fs.existsSync(ffmpegPath)) {
+        if (process.platform !== "win32") {
+          try {
+            fs.accessSync(ffmpegPath, fs.constants.X_OK);
+          } catch {
+            // Not executable, fall through to system candidates
+            debugLogger.debug("FFmpeg exists but not executable", { ffmpegPath });
+            throw new Error("Not executable");
+          }
+        }
         this.cachedFFmpegPath = ffmpegPath;
         return ffmpegPath;
       }
-    } catch {
-      // Bundled FFmpeg not available
+    } catch (err) {
+      debugLogger.debug("Bundled FFmpeg not available", { error: err.message });
     }
 
     // Try system FFmpeg locations
@@ -65,6 +93,27 @@ class WhisperServerManager {
       }
     }
 
+    const pathEnv = process.env.PATH || "";
+    const pathSep = process.platform === "win32" ? ";" : ":";
+    const pathDirs = pathEnv.split(pathSep).map((entry) => entry.replace(/^"|"$/g, ""));
+    const pathBinary = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+
+    for (const dir of pathDirs) {
+      if (!dir) continue;
+      const candidate = path.join(dir, pathBinary);
+      if (!fs.existsSync(candidate)) continue;
+      if (process.platform !== "win32") {
+        try {
+          fs.accessSync(candidate, fs.constants.X_OK);
+        } catch {
+          continue;
+        }
+      }
+      this.cachedFFmpegPath = candidate;
+      return candidate;
+    }
+
+    debugLogger.debug("FFmpeg not found");
     return null;
   }
 
@@ -157,36 +206,49 @@ class WhisperServerManager {
     this.port = await this.findAvailablePort();
     this.modelPath = modelPath;
 
-    const args = [
-      "--model",
-      modelPath,
-      "--host",
-      "127.0.0.1",
-      "--port",
-      String(this.port),
-      "--convert",
-    ];
+    // Check for FFmpeg first - only use --convert flag if FFmpeg is available
+    const ffmpegPath = this.getFFmpegPath();
+    const spawnEnv = { ...process.env };
+    const pathSep = process.platform === "win32" ? ";" : ":";
+
+    if (process.platform === "win32") {
+      const safeTmp = getSafeTempDir();
+      spawnEnv.TEMP = safeTmp;
+      spawnEnv.TMP = safeTmp;
+    }
+
+    // Add the whisper-server directory to PATH so any companion DLLs are found
+    const serverBinaryDir = path.dirname(serverBinary);
+    spawnEnv.PATH = serverBinaryDir + pathSep + (process.env.PATH || "");
+
+    const args = ["--model", modelPath, "--host", "127.0.0.1", "--port", String(this.port)];
+
+    // FFmpeg is required for pre-converting audio to 16kHz mono WAV
+    this.canConvert = !!ffmpegPath;
+    if (ffmpegPath) {
+      const ffmpegDir = path.dirname(ffmpegPath);
+      spawnEnv.PATH = ffmpegDir + pathSep + spawnEnv.PATH;
+    } else {
+      debugLogger.warn("FFmpeg not found - whisper-server will only accept 16kHz mono WAV");
+    }
 
     if (options.threads) args.push("--threads", String(options.threads));
     if (options.language && options.language !== "auto") {
       args.push("--language", options.language);
     }
 
-    // Add FFmpeg to PATH for --convert flag
-    const ffmpegPath = this.getFFmpegPath();
-    const spawnEnv = { ...process.env };
-    if (ffmpegPath) {
-      const ffmpegDir = path.dirname(ffmpegPath);
-      const pathSep = process.platform === "win32" ? ";" : ":";
-      spawnEnv.PATH = ffmpegDir + pathSep + (process.env.PATH || "");
-    }
-
-    debugLogger.debug("Starting whisper-server", { port: this.port, modelPath });
+    debugLogger.debug("Starting whisper-server", {
+      port: this.port,
+      modelPath,
+      args,
+      cwd: serverBinaryDir,
+    });
 
     this.process = spawn(serverBinary, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
       env: spawnEnv,
+      cwd: serverBinaryDir,
     });
 
     let stderrBuffer = "";
@@ -308,16 +370,38 @@ class WhisperServerManager {
       throw new Error("whisper-server is not running");
     }
 
-    const { language } = options;
+    // Debug: Log audio buffer info
+    debugLogger.debug("whisper-server transcribe called", {
+      bufferLength: audioBuffer?.length || 0,
+      bufferType: audioBuffer?.constructor?.name,
+      firstBytes:
+        audioBuffer?.length >= 16
+          ? Array.from(audioBuffer.slice(0, 16))
+              .map((b) => b.toString(16).padStart(2, "0"))
+              .join(" ")
+          : "too short",
+    });
+
+    const { language, initialPrompt } = options;
+
+    // Always convert to 16kHz mono WAV - whisper.cpp requires this exact format
+    let finalBuffer = audioBuffer;
+    if (!this.canConvert) {
+      throw new Error("FFmpeg not found - required for audio conversion");
+    }
+    finalBuffer = await this._convertToWav(audioBuffer);
+
     const boundary = `----WhisperBoundary${Date.now()}`;
     const parts = [];
+    const fileName = "audio.wav";
+    const contentType = "audio/wav";
 
     parts.push(
       `--${boundary}\r\n` +
-        `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n` +
-        `Content-Type: audio/webm\r\n\r\n`
+        `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+        `Content-Type: ${contentType}\r\n\r\n`
     );
-    parts.push(audioBuffer);
+    parts.push(finalBuffer);
     parts.push("\r\n");
 
     if (language && language !== "auto") {
@@ -326,6 +410,16 @@ class WhisperServerManager {
           `Content-Disposition: form-data; name="language"\r\n\r\n` +
           `${language}\r\n`
       );
+    }
+
+    // Add initial prompt for custom dictionary words
+    if (initialPrompt) {
+      parts.push(
+        `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
+          `${initialPrompt}\r\n`
+      );
+      debugLogger.info("Using custom dictionary prompt", { prompt: initialPrompt });
     }
 
     parts.push(
@@ -362,6 +456,8 @@ class WhisperServerManager {
             debugLogger.debug("whisper-server transcription completed", {
               statusCode: res.statusCode,
               elapsed: Date.now() - startTime,
+              responseLength: data.length,
+              responsePreview: data.slice(0, 500),
             });
 
             if (res.statusCode !== 200) {
@@ -389,6 +485,27 @@ class WhisperServerManager {
       req.write(body);
       req.end();
     });
+  }
+
+  async _convertToWav(audioBuffer) {
+    const tempDir = getSafeTempDir();
+    const timestamp = Date.now();
+    const tempInputPath = path.join(tempDir, `whisper-input-${timestamp}.webm`);
+    const tempWavPath = path.join(tempDir, `whisper-output-${timestamp}.wav`);
+
+    try {
+      fs.writeFileSync(tempInputPath, audioBuffer);
+      await convertToWav(tempInputPath, tempWavPath, { sampleRate: 16000, channels: 1 });
+      return fs.readFileSync(tempWavPath);
+    } finally {
+      for (const f of [tempInputPath, tempWavPath]) {
+        try {
+          if (fs.existsSync(f)) fs.unlinkSync(f);
+        } catch {
+          // ignore cleanup errors
+        }
+      }
+    }
   }
 
   async stop() {

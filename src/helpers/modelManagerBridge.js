@@ -1,11 +1,12 @@
 const path = require("path");
-const { spawn } = require("child_process");
 const fs = require("fs");
 const { promises: fsPromises } = require("fs");
-const https = require("https");
 const { app } = require("electron");
+const { downloadFile: sharedDownloadFile, createDownloadSignal } = require("./downloadUtils");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
+const LlamaServerManager = require("./llamaServer");
+const debugLogger = require("./debugLogger");
 
 const MIN_FILE_SIZE = 1_000_000; // 1MB minimum for valid model files
 
@@ -30,27 +31,70 @@ class ModelNotFoundError extends ModelError {
 
 class ModelManager {
   constructor() {
-    this.modelsDir = this.getModelsDir();
+    this.modelsDir = null;
     this.downloadProgress = new Map();
     this.activeDownloads = new Map();
-    this.llamaCppPath = null;
+    this.activeRequests = new Map(); // Track HTTP requests for cancellation
+    this.serverManager = new LlamaServerManager();
+    this.currentServerModelId = null;
+    this._initialized = false;
+
+    // IMPORTANT: Do NOT call app.getPath() here!
+    // It can hang or fail before app.whenReady() in Electron 36+.
+    // Initialization will happen on first use via ensureInitialized().
+  }
+
+  /**
+   * Ensures the manager is initialized. Safe to call multiple times.
+   * This must be called before any operation that requires modelsDir.
+   */
+  ensureInitialized() {
+    if (this._initialized) return;
+
+    // Check if app is ready before accessing app.getPath()
+    if (!app.isReady()) {
+      throw new Error(
+        "ModelManager cannot be initialized before app.whenReady(). " +
+          "This is a programming error - ensure ModelManager methods are only called after app is ready."
+      );
+    }
+
+    this.modelsDir = this.getModelsDir();
+    this._initialized = true;
+    // Don't await - let this run in background
     this.ensureModelsDirExists();
   }
 
   getModelsDir() {
-    const homeDir = app.getPath("home");
+    const os = require("os");
+    // Use os.homedir() as fallback if app.getPath fails
+    const homeDir = app.isReady() ? app.getPath("home") : os.homedir();
     return path.join(homeDir, ".cache", "openwhispr", "models");
   }
 
   async ensureModelsDirExists() {
     try {
+      if (!this.modelsDir) {
+        this.ensureInitialized();
+      }
       await fsPromises.mkdir(this.modelsDir, { recursive: true });
     } catch (error) {
       console.error("Failed to create models directory:", error);
     }
   }
 
+  async ensureLlamaCpp() {
+    if (!this.serverManager.isAvailable()) {
+      throw new ModelError(
+        "llama-server binary not found. Please ensure the app is installed correctly.",
+        "LLAMASERVER_NOT_FOUND"
+      );
+    }
+    return true;
+  }
+
   async getAllModels() {
+    this.ensureInitialized();
     try {
       const models = [];
 
@@ -81,6 +125,7 @@ class ModelManager {
   }
 
   async isModelDownloaded(modelId) {
+    this.ensureInitialized();
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) return false;
 
@@ -117,6 +162,7 @@ class ModelManager {
   }
 
   async downloadModel(modelId, onProgress) {
+    this.ensureInitialized();
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) {
       throw new ModelNotFoundError(modelId);
@@ -124,7 +170,6 @@ class ModelManager {
 
     const { model, provider } = modelInfo;
     const modelPath = path.join(this.modelsDir, model.fileName);
-    const tempPath = `${modelPath}.tmp`;
 
     if (await this.checkModelValid(modelPath)) {
       return modelPath;
@@ -137,25 +182,32 @@ class ModelManager {
     }
 
     this.activeDownloads.set(modelId, true);
+    const { signal, abort } = createDownloadSignal();
+    this.activeRequests.set(modelId, { abort });
 
     try {
       await this.ensureModelsDirExists();
       const downloadUrl = this.getDownloadUrl(provider, model);
 
-      await this.downloadFile(downloadUrl, tempPath, (progress, downloadedSize, totalSize) => {
-        this.downloadProgress.set(modelId, {
-          modelId,
-          progress,
-          downloadedSize,
-          totalSize,
-        });
-        if (onProgress) {
-          onProgress(progress, downloadedSize, totalSize);
-        }
+      await sharedDownloadFile(downloadUrl, modelPath, {
+        signal,
+        onProgress: (downloadedBytes, totalBytes) => {
+          const progress = totalBytes > 0 ? (downloadedBytes / totalBytes) * 100 : 0;
+          this.downloadProgress.set(modelId, {
+            modelId,
+            progress,
+            downloadedSize: downloadedBytes,
+            totalSize: totalBytes,
+          });
+          if (onProgress) {
+            onProgress(progress, downloadedBytes, totalBytes);
+          }
+        },
       });
 
-      const stats = await fsPromises.stat(tempPath);
+      const stats = await fsPromises.stat(modelPath);
       if (stats.size < MIN_FILE_SIZE) {
+        await fsPromises.unlink(modelPath).catch(() => {});
         throw new ModelError(
           "Downloaded file appears to be corrupted or incomplete",
           "DOWNLOAD_CORRUPTED",
@@ -163,25 +215,25 @@ class ModelManager {
         );
       }
 
-      // Atomic rename to final path (handles cross-device moves on Windows)
-      try {
-        await fsPromises.rename(tempPath, modelPath);
-      } catch (renameError) {
-        if (renameError.code === "EXDEV") {
-          await fsPromises.copyFile(tempPath, modelPath);
-          await fsPromises.unlink(tempPath).catch(() => {});
-        } else {
-          throw renameError;
-        }
-      }
-
       return modelPath;
     } catch (error) {
-      // Clean up partial download on failure
-      await fsPromises.unlink(tempPath).catch(() => {});
+      if (error.isAbort) {
+        throw new ModelError("Download cancelled by user", "DOWNLOAD_CANCELLED", { modelId });
+      }
+      if (error.isHttpError) {
+        throw new ModelError(`Download failed with status ${error.statusCode}`, "DOWNLOAD_FAILED", {
+          statusCode: error.statusCode,
+        });
+      }
+      if (!(error instanceof ModelError)) {
+        throw new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
+          error: error.message,
+        });
+      }
       throw error;
     } finally {
       this.activeDownloads.delete(modelId);
+      this.activeRequests.delete(modelId);
       this.downloadProgress.delete(modelId);
     }
   }
@@ -191,91 +243,20 @@ class ModelManager {
     return `${baseUrl}/${model.hfRepo}/resolve/main/${model.fileName}`;
   }
 
-  async downloadFile(url, destPath, onProgress) {
-    return new Promise((resolve, reject) => {
-      const file = fs.createWriteStream(destPath);
-      let downloadedSize = 0;
-      let totalSize = 0;
-
-      const cleanup = (callback) => {
-        file.close(() => {
-          fsPromises
-            .unlink(destPath)
-            .catch(() => {})
-            .finally(callback);
-        });
-      };
-
-      https
-        .get(
-          url,
-          {
-            headers: { "User-Agent": "OpenWhispr/1.0" },
-            timeout: 30000,
-          },
-          (response) => {
-            if (response.statusCode === 302 || response.statusCode === 301) {
-              cleanup(() => {
-                this.downloadFile(response.headers.location, destPath, onProgress)
-                  .then(resolve)
-                  .catch(reject);
-              });
-              return;
-            }
-
-            if (response.statusCode !== 200) {
-              cleanup(() => {
-                reject(
-                  new ModelError(
-                    `Download failed with status ${response.statusCode}`,
-                    "DOWNLOAD_FAILED",
-                    { statusCode: response.statusCode }
-                  )
-                );
-              });
-              return;
-            }
-
-            totalSize = parseInt(response.headers["content-length"], 10);
-
-            response.on("data", (chunk) => {
-              downloadedSize += chunk.length;
-              file.write(chunk);
-
-              if (onProgress && totalSize > 0) {
-                const progress = (downloadedSize / totalSize) * 100;
-                onProgress(progress, downloadedSize, totalSize);
-              }
-            });
-
-            response.on("end", () => {
-              file.end(() => resolve(destPath));
-            });
-
-            response.on("error", (error) => {
-              cleanup(() => {
-                reject(
-                  new ModelError(`Download error: ${error.message}`, "DOWNLOAD_ERROR", {
-                    error: error.message,
-                  })
-                );
-              });
-            });
-          }
-        )
-        .on("error", (error) => {
-          cleanup(() => {
-            reject(
-              new ModelError(`Network error: ${error.message}`, "NETWORK_ERROR", {
-                error: error.message,
-              })
-            );
-          });
-        });
-    });
+  cancelDownload(modelId) {
+    const entry = this.activeRequests.get(modelId);
+    if (entry) {
+      this.activeDownloads.delete(modelId);
+      this.activeRequests.delete(modelId);
+      this.downloadProgress.delete(modelId);
+      entry.abort();
+      return true;
+    }
+    return false;
   }
 
   async deleteModel(modelId) {
+    this.ensureInitialized();
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) {
       throw new ModelNotFoundError(modelId);
@@ -289,6 +270,7 @@ class ModelManager {
   }
 
   async deleteAllModels() {
+    this.ensureInitialized();
     try {
       if (fsPromises.rm) {
         await fsPromises.rm(this.modelsDir, { recursive: true, force: true });
@@ -316,105 +298,137 @@ class ModelManager {
     }
   }
 
-  async ensureLlamaCpp() {
-    const llamaCppInstaller = require("./llamaCppInstaller").default;
-
-    if (!(await llamaCppInstaller.isInstalled())) {
-      throw new ModelError("llama.cpp is not installed", "LLAMACPP_NOT_INSTALLED");
-    }
-
-    this.llamaCppPath = await llamaCppInstaller.getBinaryPath();
-    return true;
-  }
-
   async runInference(modelId, prompt, options = {}) {
-    await this.ensureLlamaCpp();
+    this.ensureInitialized();
+    const startTime = Date.now();
+    debugLogger.logReasoning("INFERENCE_START", {
+      modelId,
+      promptLength: prompt.length,
+      options: { ...options, systemPrompt: options.systemPrompt ? "[set]" : "[not set]" },
+    });
+
+    // Ensure server is available
+    if (!this.serverManager.isAvailable()) {
+      debugLogger.logReasoning("INFERENCE_SERVER_NOT_AVAILABLE", {});
+      throw new ModelError(
+        "llama-server binary not found. Please ensure the app is installed correctly.",
+        "LLAMASERVER_NOT_FOUND"
+      );
+    }
 
     const modelInfo = this.findModelById(modelId);
     if (!modelInfo) {
+      debugLogger.logReasoning("INFERENCE_MODEL_NOT_FOUND", { modelId });
       throw new ModelNotFoundError(modelId);
     }
 
     const modelPath = path.join(this.modelsDir, modelInfo.model.fileName);
+    debugLogger.logReasoning("INFERENCE_MODEL_PATH", {
+      modelPath,
+      modelName: modelInfo.model.name,
+      providerId: modelInfo.provider.id,
+    });
+
     if (!(await this.checkModelValid(modelPath))) {
+      debugLogger.logReasoning("INFERENCE_MODEL_INVALID", { modelId, modelPath });
       throw new ModelError(
         `Model ${modelId} is not downloaded or is corrupted`,
         "MODEL_NOT_DOWNLOADED",
-        {
-          modelId,
-        }
+        { modelId }
       );
     }
 
-    const formattedPrompt = this.formatPrompt(
-      modelInfo.provider,
-      prompt,
-      options.systemPrompt || ""
-    );
-
-    return new Promise((resolve, reject) => {
-      const args = [
-        "-m",
-        modelPath,
-        "-p",
-        formattedPrompt,
-        "-n",
-        String(options.maxTokens || 512),
-        "--temp",
-        String(options.temperature || 0.7),
-        "--top-k",
-        String(options.topK || 40),
-        "--top-p",
-        String(options.topP || 0.9),
-        "--repeat-penalty",
-        String(options.repeatPenalty || 1.1),
-        "-c",
-        String(options.contextSize || modelInfo.model.contextLength),
-        "-t",
-        String(options.threads || 4),
-        "--no-display-prompt",
-      ];
-
-      const process = spawn(this.llamaCppPath, args);
-      let output = "";
-      let error = "";
-
-      process.stdout.on("data", (data) => {
-        output += data.toString();
+    // Start/restart server if needed or if model changed
+    if (!this.serverManager.ready || this.currentServerModelId !== modelId) {
+      debugLogger.logReasoning("INFERENCE_STARTING_SERVER", {
+        currentModel: this.currentServerModelId,
+        requestedModel: modelId,
+        serverReady: this.serverManager.ready,
       });
 
-      process.stderr.on("data", (data) => {
-        error += data.toString();
+      await this.serverManager.start(modelPath, {
+        contextSize: options.contextSize || modelInfo.model.contextLength || 4096,
+        threads: options.threads || 4,
       });
+      this.currentServerModelId = modelId;
 
-      process.on("close", (code) => {
-        if (code !== 0) {
-          reject(
-            new ModelError(`Inference failed with code ${code}: ${error}`, "INFERENCE_FAILED", {
-              code,
-              error,
-            })
-          );
-        } else {
-          resolve(output.trim());
-        }
+      debugLogger.logReasoning("INFERENCE_SERVER_STARTED", {
+        port: this.serverManager.port,
+        model: modelId,
       });
+    }
 
-      process.on("error", (err) => {
-        reject(
-          new ModelError(`Failed to start inference: ${err.message}`, "INFERENCE_START_FAILED", {
-            error: err.message,
-          })
-        );
-      });
+    // Build messages for chat completion
+    const messages = [
+      { role: "system", content: options.systemPrompt || "" },
+      { role: "user", content: prompt },
+    ];
+
+    debugLogger.logReasoning("INFERENCE_SENDING_REQUEST", {
+      messageCount: messages.length,
+      systemPromptLength: (options.systemPrompt || "").length,
+      userPromptLength: prompt.length,
     });
+
+    try {
+      const result = await this.serverManager.inference(messages, {
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens ?? 512,
+      });
+
+      const totalTime = Date.now() - startTime;
+      debugLogger.logReasoning("INFERENCE_SUCCESS", {
+        totalTimeMs: totalTime,
+        resultLength: result.length,
+        resultPreview: result.substring(0, 200) + (result.length > 200 ? "..." : ""),
+      });
+
+      return result;
+    } catch (error) {
+      const totalTime = Date.now() - startTime;
+      debugLogger.logReasoning("INFERENCE_FAILED", {
+        totalTimeMs: totalTime,
+        error: error.message,
+      });
+      throw new ModelError(`Inference failed: ${error.message}`, "INFERENCE_FAILED", {
+        error: error.message,
+      });
+    }
   }
 
-  formatPrompt(provider, text, systemPrompt) {
-    if (provider.promptTemplate) {
-      return provider.promptTemplate.replace("{system}", systemPrompt).replace("{user}", text);
+  async stopServer() {
+    await this.serverManager.stop();
+    this.currentServerModelId = null;
+  }
+
+  getServerStatus() {
+    return this.serverManager.getStatus();
+  }
+
+  async prewarmServer(modelId) {
+    if (!modelId) return false;
+    this.ensureInitialized();
+
+    const modelInfo = this.findModelById(modelId);
+    if (!modelInfo) return false;
+
+    const modelPath = path.join(this.modelsDir, modelInfo.model.fileName);
+    if (!(await this.checkModelValid(modelPath))) return false;
+
+    if (!this.serverManager.isAvailable()) return false;
+
+    try {
+      await this.serverManager.start(modelPath, {
+        contextSize: modelInfo.model.contextLength || 4096,
+        threads: 4,
+      });
+      this.currentServerModelId = modelId;
+      debugLogger.info("llama-server pre-warmed", { modelId });
+      return true;
+    } catch (error) {
+      debugLogger.warn("Failed to pre-warm llama-server", { error: error.message });
+      return false;
     }
-    return `${systemPrompt}\n\n${text}`;
   }
 }
 

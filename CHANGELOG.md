@@ -5,6 +5,188 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Cancel Processing Button**: Added ability to cancel ongoing transcription processing
+- **Dark Mode Icon Inversion**: Monochrome provider icons now automatically invert in dark mode for better visibility
+- **Dynamic Window Resizing**: Window automatically resizes based on command menu and toast visibility
+
+### Changed
+- **Design System Overhaul**: Complete refactor of styling to use design tokens throughout the codebase
+  - Button component now uses `text-foreground`, `bg-muted`, `border-border` instead of hardcoded hex values
+  - Removed hardcoded classes and inline styles across components
+  - Improved button and badge consistency
+- **Settings UI Redesign**: Overhauled all settings pages with unified panel system, redesigned sidebar, and extracted permissions section
+- **Dark Mode Polish**: Premium button styling, glass morphism toasts, and streamlined visuals
+- **Onboarding Improvements**:
+  - Streamlined to 4-step flow
+  - Extended to support multiple local transcription providers (Whisper and NVIDIA Parakeet)
+  - Improved contrast and design system usage
+
+### Fixed
+- **Light Mode UI Visibility**: Fixed multiple UI elements that were invisible or hard to see in light mode:
+  - Settings gear icon in permission cards now uses `text-foreground`
+  - Troubleshoot button uses proper foreground color
+  - Reset button in developer settings now correctly shows destructive color
+  - Settings and Help icons in the toolbar are now properly visible
+  - Check for Updates button now renders correctly in light mode
+- **Provider Tab Flashing**: Resolved TranscriptionModelPicker tab flashing by extracting ModeToggle component and syncing internal state with props
+- **Local Reasoning Model Persistence**: Fixed local reasoning model selection not persisting correctly
+- **Parakeet Model Status**: Added dedicated IPC channel for Parakeet model status checks
+- **Groq Qwen3 Models**: Removed thinking tokens from Qwen3 models on Groq provider
+
+## [1.3.3] - 2026-01-28
+
+### Added
+- **ONNX Warm-up Inference**: Parakeet server now runs warm-up inference on start to eliminate first-request latency from JIT compilation
+- **Startup Preferences Sync**: Renderer startup preferences are now synced to `.env` for server pre-warming on restart
+
+### Changed
+- **macOS Tray Behavior**: Hide to tray on macOS for consistent cross-platform behavior
+
+### Fixed
+- **macOS Launch Crash**: Added `disable-library-validation` entitlement to resolve macOS launch crash (#120)
+- **Reasoning Model Default**: Fixed `useReasoningModel` not correctly defaulting to enabled by persisting useLocalStorage defaults and aligning direct reads
+- **Windows Non-ASCII Usernames**: Resolved whisper-server crash on Windows with non-ASCII usernames by pre-converting audio to WAV and routing temp files through ASCII-safe directory
+- **Windows Paths with Spaces**: Fixed temp directory fallback to also detect paths with spaces on Windows
+
+## [1.3.2] - 2026-01-27
+
+### Changed
+- **Linux Paste Tools**: Prefer xdotool over ydotool for better compatibility
+
+### Fixed
+- **Windows Zip Extraction**: Use tar instead of PowerShell Expand-Archive for zip extraction on Windows to avoid issues with special characters
+
+## [1.3.1] - 2026-01-27
+
+### Changed
+- **Download System Refactor**: Consolidated model download logic into shared utilities with resume support, retry logic, abort signals, and improved installing state UI
+- **Throttled Progress Display**: Whisper model download progress updates are now throttled for smoother UI
+
+## [1.3.0] - 2026-01-26
+
+### Added
+- **NVIDIA Parakeet Support**: Fast local transcription via sherpa-onnx runtime with INT8 quantized models
+  - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
+- **Windows Push-to-Talk**: Native Windows key listener with low-level keyboard hook for true push-to-talk functionality
+  - Supports compound hotkeys like `Ctrl+Shift+F11` or `CommandOrControl+Space`
+  - Prebuilt binary automatically downloaded from GitHub releases
+  - Fallback to tap mode if binary unavailable
+- **Custom Dictionary**: Improve transcription accuracy for specific words, names, and technical terms
+  - Add custom words through Settings → Custom Dictionary
+  - Words are passed as hints to Whisper for better recognition
+  - Works with both local and cloud transcription
+- **GitHub Actions Workflow**: Automated CI workflow to build and release Windows key listener binary
+- **Shared Download Utilities**: New `scripts/lib/download-utils.js` module with reusable download, extraction, and GitHub release fetching functions
+
+### Changed
+- **Download Scripts Refactored**: All download scripts now use shared utilities for consistency
+- **GitHub API Authentication**: Download scripts support `GITHUB_TOKEN` to avoid API rate limits in CI
+- **Debug Logging Cleanup**: Extracted common window loading code and cleaned up debug logging
+
+### Fixed
+- **GNOME Wayland Hotkey Improvements**: Improved hotkey handling on GNOME Wayland
+- **Hotkey Persistence**: Fixed hotkey selection not persisting correctly
+- **Custom Endpoint API Keys**: Fixed custom endpoint API keys not persisting to `.env` file
+- **Custom Endpoint State**: Fixed custom endpoint using shared state instead of its own
+- **Linux Stale Hotkey Registrations**: Clear stale hotkey registrations on startup on Linux
+- **Wayland XWayland Paste**: Try xdotool on Wayland when XWayland is available
+- **llama-server Libraries**: Bundle llama-server shared libraries and search from extract root for varying archive structures
+- **STT/Reasoning Debug Logging**: Added missing debug logging for STT and reasoning pipelines
+
+## [1.2.16] - 2026-01-24
+
+### Fixed
+- **App Startup Hang**: Fixed app initialization timing issues with Electron 36+
+- **Manager Initialization**: Deferred manager initialization until after `app.whenReady()` to prevent hangs
+- **Debug Logger Initialization**: Deferred debugLogger file initialization until `app.whenReady()`
+- **Config Bundling**: Fixed missing config files in production builds
+- **whisper.cpp Binary Version**: Updated whisper.cpp release names and bumped binary version
+
+## [1.2.15] - 2026-01-22
+
+### Added
+- **ydotool Fallback for Linux**: Added ydotool as additional fallback option for clipboard paste operations on Linux systems
+
+### Changed
+- **Unified Prompt System**: Refactored to single intelligent prompt system for improved consistency and maintainability
+- **whisper.cpp Remote**: Refactored remote whisper.cpp integration for better reliability
+
+## [1.2.14] - 2026-01-22
+
+### Added
+- **Troubleshooting Mode**: New debug logging section in settings with toggle for detailed diagnostic logs, log file path display, and direct folder access for easier support
+- **Custom Transcription Endpoint**: Support for custom OpenAI-compatible transcription endpoints with configurable base URLs
+- **Enhanced Clipboard Debugging**: Detailed clipboard operation logging for diagnosing paste issues across platforms
+
+### Changed
+- **API Key Management**: Consolidated and refactored API key persistence with improved .env file handling and recovery mechanisms
+- **Local Network Detection**: Refactored URL detection into reusable utility for better code organization
+- **Electron Builder**: Updated to latest version for improved build performance
+
+### Fixed
+- **Windows/Linux Taskbar**: Prevented dual taskbar entries on Windows and Linux by properly configuring window behavior
+- **Single Instance Lock**: Enforced single instance lock with cleaner window state checks
+- **Model Provider Consistency**: Removed redundant fallbacks and ensured consistent use of getModelProvider()
+- **Cross-env Support**: Fixed Windows compatibility in pack script using cross-env
+- **Linux X11 Paste**: Improved paste reliability by capturing target window ID upfront with windowactivate --sync, added xdotool type fallback for terminals
+- **Tray Minimize**: Fixed minimize to tray functionality
+
+## [1.2.12] - 2026-01-20
+
+### Added
+- **LLM Download Cancellation**: Added ability to cancel in-progress local LLM model downloads with throttled progress updates to prevent UI flashing
+
+### Changed
+- **Gemini Model Updates**: Updated Gemini models to latest versions
+- **Linux Wayland Improvements**: Improved Wayland paste detection with GNOME-specific handling and XWayland fallback support
+- **whisper.cpp CUDA Support**: Updated whisper.cpp download script to include CUDA-enabled binaries
+
+### Fixed
+- **Windows Paste Delay**: Adjusted paste delay timing on Windows for more reliable text insertion
+- **Blank Audio Prevention**: Fixed issue where blank/silent audio recordings would paste empty text
+- **Newline Handling**: Fixed newline formatting issues in transcribed text
+
+## [1.2.11] - 2026-01-18
+
+### Fixed
+- **ASAR Path Resolution**: Fixed path resolution issues for bundled resources in packaged builds
+- **Update Checker**: Fixed auto-update checker initialization
+- **Build Includes**: Ensured services and models are properly included in production builds
+- **OS Module Import**: Fixed OS module import ordering
+
+## [1.2.10] - 2026-01-17
+
+### Fixed
+- **Streaming Backpressure**: Fixed proper streaming backpressure handling in audio processing
+- **Quit and Install**: Fixed update installation on app quit
+
+## [1.2.9] - 2026-01-17
+
+### Fixed
+- **Path Resolution**: Improved path resolution for better cross-platform compatibility
+
+## [1.2.8] - 2026-01-16
+
+### Added
+- **Microphone Input Selection**: Choose your preferred microphone input device in settings, with built-in mic preference to prevent Bluetooth audio interruptions
+- **Push to Talk Mode**: New recording mode option alongside the existing toggle mode
+- **Hotkey Listening Mode**: Prevents conflicts when capturing new hotkeys by temporarily disabling the global hotkey
+- **Hotkey Fallback System**: Automatic fallback with user notifications when preferred hotkey is unavailable
+- **Cross-Platform Accessibility Settings**: Quick access to system accessibility settings on macOS
+
+### Changed
+- **Streamlined Onboarding**: Removed redundant "How it Works" section, success dialogs, and manual save buttons for a smoother setup experience
+- **Improved Select Styling**: Enhanced dropdown select component appearance
+
+### Fixed
+- **FFmpeg Availability Types**: Corrected type definitions and optimized whisper-cpp download process
+- **Whisper Models Path**: Fixed model storage path resolution
+- **Better Path Resolution**: Improved error handling for file paths
+- **Open Mic Settings**: Fixed system settings link for microphone configuration
+
 ## [1.2.7] - 2026-01-13
 
 ### Added

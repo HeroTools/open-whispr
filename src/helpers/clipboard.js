@@ -3,25 +3,45 @@ const { spawn, spawnSync } = require("child_process");
 const { killProcess } = require("../utils/process");
 const path = require("path");
 const fs = require("fs");
+const debugLogger = require("./debugLogger");
 
 // Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
 const CACHE_TTL_MS = 30000;
+
+const getLinuxDesktopEnv = () =>
+  [process.env.XDG_CURRENT_DESKTOP, process.env.XDG_SESSION_DESKTOP, process.env.DESKTOP_SESSION]
+    .filter(Boolean)
+    .join(":")
+    .toLowerCase();
+
+const isGnomeDesktop = (desktopEnv) => desktopEnv.includes("gnome");
+
+const getLinuxSessionInfo = () => {
+  const isWayland =
+    (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
+    !!process.env.WAYLAND_DISPLAY;
+  const xwaylandAvailable = isWayland && !!process.env.DISPLAY;
+  const desktopEnv = getLinuxDesktopEnv();
+  const isGnome = isWayland && isGnomeDesktop(desktopEnv);
+
+  return { isWayland, xwaylandAvailable, desktopEnv, isGnome };
+};
 
 // Platform-specific paste delays (ms before simulating keystroke)
 // Each platform has different timing requirements based on their paste mechanism
 const PASTE_DELAYS = {
   darwin: 50, // macOS: AppleScript keystroke is async, needs time for clipboard to settle
-  win32_nircmd: 2, // Windows nircmd: lightweight binary, near-instant (was 5ms)
-  win32_pwsh: 10, // Windows PowerShell: startup time dominates, delay doesn't help much
-  linux: 0, // Linux: xdotool sends X11 events directly, no delay needed
+  win32_nircmd: 30, // Windows nircmd: give clipboard time to sync
+  win32_pwsh: 40, // Windows PowerShell: give clipboard time to sync
+  linux: 50, // Linux: Allow time for focus to return to target window on X11
 };
 
 // Platform-specific clipboard restoration delays (ms after paste completes)
 // Ensures paste is fully processed before restoring original clipboard content
 const RESTORE_DELAYS = {
   darwin: 100, // macOS: AppleScript needs time to complete keystroke
-  win32_nircmd: 5, // Windows nircmd: fast, minimal delay needed (was 10ms)
-  win32_pwsh: 10, // Windows PowerShell: keep as-is
+  win32_nircmd: 80, // Windows nircmd: allow time for paste processing
+  win32_pwsh: 80, // Windows PowerShell: allow time for paste processing
   linux: 200, // Linux: X11 event queue processing takes longer
 };
 
@@ -95,6 +115,32 @@ class ClipboardManager {
           process.stderr.write(`Log error: ${error.message}\n`);
         }
       }
+    }
+  }
+
+  // Check if a command exists on the system (cached)
+  commandExists(cmd) {
+    const now = Date.now();
+    const cached = this.commandAvailabilityCache.get(cmd);
+    if (cached && now < cached.expiresAt) {
+      return cached.exists;
+    }
+    try {
+      const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
+        stdio: "ignore",
+      });
+      const exists = res.status === 0;
+      this.commandAvailabilityCache.set(cmd, {
+        exists,
+        expiresAt: now + CACHE_TTL_MS,
+      });
+      return exists;
+    } catch {
+      this.commandAvailabilityCache.set(cmd, {
+        exists: false,
+        expiresAt: now + CACHE_TTL_MS,
+      });
+      return false;
     }
   }
 
@@ -386,31 +432,67 @@ class ClipboardManager {
   }
 
   async pasteLinux(originalClipboard) {
-    // Helper to check if a command exists
-    const commandExists = (cmd) => {
-      const now = Date.now();
-      const cached = this.commandAvailabilityCache.get(cmd);
-      if (cached && now < cached.expiresAt) {
-        return cached.exists;
+    const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
+    const xdotoolExists = this.commandExists("xdotool");
+    const wtypeExists = this.commandExists("wtype");
+    const ydotoolExists = this.commandExists("ydotool");
+
+    debugLogger.debug(
+      "Linux paste environment",
+      {
+        isWayland,
+        xwaylandAvailable,
+        isGnome,
+        xdotoolExists,
+        wtypeExists,
+        ydotoolExists,
+        display: process.env.DISPLAY,
+        waylandDisplay: process.env.WAYLAND_DISPLAY,
+        xdgSessionType: process.env.XDG_SESSION_TYPE,
+        xdgCurrentDesktop: process.env.XDG_CURRENT_DESKTOP,
+      },
+      "clipboard"
+    );
+
+    // Get the active window ID before any focus changes
+    // This is critical for X11 where our window might briefly take focus
+    const getXdotoolActiveWindow = () => {
+      if (!xdotoolExists || (isWayland && !xwaylandAvailable)) {
+        return null;
       }
       try {
-        const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
-          stdio: "ignore",
-        });
-        const exists = res.status === 0;
-        this.commandAvailabilityCache.set(cmd, {
-          exists,
-          expiresAt: now + CACHE_TTL_MS,
-        });
-        return exists;
+        const result = spawnSync("xdotool", ["getactivewindow"]);
+        if (result.status !== 0) {
+          return null;
+        }
+        return result.stdout.toString().trim() || null;
       } catch {
-        this.commandAvailabilityCache.set(cmd, {
-          exists: false,
-          expiresAt: now + CACHE_TTL_MS,
-        });
-        return false;
+        return null;
       }
     };
+
+    const getXdotoolWindowClass = (windowId) => {
+      if (!xdotoolExists || (isWayland && !xwaylandAvailable)) {
+        return null;
+      }
+      try {
+        const args = windowId
+          ? ["getwindowclassname", windowId]
+          : ["getactivewindow", "getwindowclassname"];
+        const result = spawnSync("xdotool", args);
+        if (result.status !== 0) {
+          return null;
+        }
+        const className = result.stdout.toString().toLowerCase().trim();
+        return className || null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Capture the target window ID before we potentially lose focus
+    const targetWindowId = getXdotoolActiveWindow();
+    const xdotoolWindowClass = getXdotoolWindowClass(targetWindowId);
 
     // Detect if the focused window is a terminal emulator
     // Terminals use Ctrl+Shift+V for paste (since Ctrl+V/C are used for process control)
@@ -434,22 +516,17 @@ class ClipboardManager {
         "yakuake",
       ];
 
-      try {
-        // Try xdotool (works on X11 and XWayland)
-        if (commandExists("xdotool")) {
-          const result = spawnSync("xdotool", ["getactivewindow", "getwindowclassname"]);
-          if (result.status === 0) {
-            const className = result.stdout.toString().toLowerCase().trim();
-            const isTerminalWindow = terminalClasses.some((term) => className.includes(term));
-            if (isTerminalWindow) {
-              this.safeLog(`🖥️ Terminal detected via xdotool: ${className}`);
-            }
-            return isTerminalWindow;
-          }
+      if (xdotoolWindowClass) {
+        const isTerminalWindow = terminalClasses.some((term) => xdotoolWindowClass.includes(term));
+        if (isTerminalWindow) {
+          this.safeLog(`🖥️ Terminal detected via xdotool: ${xdotoolWindowClass}`);
         }
+        return isTerminalWindow;
+      }
 
+      try {
         // Try kdotool for KDE Wayland (if available)
-        if (commandExists("kdotool")) {
+        if (this.commandExists("kdotool")) {
           // First get the active window ID
           const windowIdResult = spawnSync("kdotool", ["getactivewindow"]);
           if (windowIdResult.status === 0) {
@@ -472,88 +549,270 @@ class ClipboardManager {
       return false;
     };
 
-    // Detect if running on Wayland or X11
-    const isWayland =
-      (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
-      !!process.env.WAYLAND_DISPLAY;
-
     const inTerminal = isTerminal();
     const pasteKeys = inTerminal ? "ctrl+shift+v" : "ctrl+v";
 
-    // Define paste tools in preference order based on display server
-    const candidates = isWayland
-      ? [
-          // Wayland tools
-          inTerminal
-            ? {
-                cmd: "wtype",
-                args: ["-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"],
-              }
-            : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
-          // ydotool requires uinput permissions but included as fallback
-          inTerminal
-            ? { cmd: "ydotool", args: ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] }
-            : { cmd: "ydotool", args: ["key", "29:1", "47:1", "47:0", "29:0"] },
-          // X11 fallback for XWayland
-          { cmd: "xdotool", args: ["key", pasteKeys] },
-        ]
-      : [
-          // X11 tools
-          { cmd: "xdotool", args: ["key", pasteKeys] },
-        ];
+    const canUseWtype = isWayland && !isGnome;
+    const canUseYdotool = isWayland;
+    const canUseXdotool = isWayland ? xwaylandAvailable && xdotoolExists : xdotoolExists;
 
-    // Filter to only available tools (commandExists is already cached)
-    const available = candidates.filter((c) => commandExists(c.cmd));
+    // Define paste tools in preference order based on display server
+    // For X11, use windowactivate to ensure correct window receives the keystroke
+    // This is critical because OpenWhispr's window may briefly take focus during transcription
+    const xdotoolArgs = targetWindowId
+      ? ["windowactivate", "--sync", targetWindowId, "key", pasteKeys]
+      : ["key", pasteKeys];
+
+    if (targetWindowId) {
+      this.safeLog(
+        `🎯 Targeting window ID ${targetWindowId} for paste (class: ${xdotoolWindowClass})`
+      );
+    }
+
+    // ydotool uses key codes: 29=LeftCtrl, 42=LeftShift, 47=V
+    // Format: keycode:1 (press), keycode:0 (release)
+    const ydotoolArgs = inTerminal
+      ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] // Ctrl+Shift+V
+      : ["key", "29:1", "47:1", "47:0", "29:0"]; // Ctrl+V
+
+    const candidates = [
+      ...(canUseWtype
+        ? [
+            inTerminal
+              ? {
+                  cmd: "wtype",
+                  args: ["-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"],
+                }
+              : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
+          ]
+        : []),
+      ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
+      ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
+    ];
+
+    // Filter to only available tools (this.commandExists is already cached)
+    const available = candidates.filter((c) => this.commandExists(c.cmd));
+
+    debugLogger.debug(
+      "Available paste tools",
+      {
+        candidateTools: candidates.map((c) => c.cmd),
+        availableTools: available.map((c) => c.cmd),
+        targetWindowId,
+        xdotoolWindowClass,
+        inTerminal,
+        pasteKeys,
+      },
+      "clipboard"
+    );
 
     // Attempt paste with a specific tool
     const pasteWith = (tool) =>
       new Promise((resolve, reject) => {
-        const proc = spawn(tool.cmd, tool.args);
+        // Add small delay on X11 to allow focus to settle
+        const delay = isWayland ? 0 : PASTE_DELAYS.linux;
 
-        let timedOut = false;
-        const timeoutId = setTimeout(() => {
-          timedOut = true;
-          killProcess(proc, "SIGKILL");
-        }, 1000);
+        setTimeout(() => {
+          debugLogger.debug(
+            "Attempting paste",
+            {
+              cmd: tool.cmd,
+              args: tool.args,
+              delay,
+              isWayland,
+            },
+            "clipboard"
+          );
 
-        proc.on("close", (code) => {
-          if (timedOut) return reject(new Error(`Paste with ${tool.cmd} timed out after 1 second`));
-          clearTimeout(timeoutId);
+          const proc = spawn(tool.cmd, tool.args);
+          let stderr = "";
+          let stdout = "";
 
-          if (code === 0) {
-            // Restore original clipboard after successful paste
-            // Delay allows time for X11 to process paste event before clipboard is overwritten
-            setTimeout(() => clipboard.writeText(originalClipboard), 200);
-            resolve();
-          } else {
-            reject(new Error(`${tool.cmd} exited with code ${code}`));
-          }
-        });
+          proc.stderr?.on("data", (data) => {
+            stderr += data.toString();
+          });
 
-        proc.on("error", (error) => {
-          if (timedOut) return;
-          clearTimeout(timeoutId);
-          reject(error);
-        });
+          proc.stdout?.on("data", (data) => {
+            stdout += data.toString();
+          });
+
+          let timedOut = false;
+          const timeoutId = setTimeout(() => {
+            timedOut = true;
+            killProcess(proc, "SIGKILL");
+            debugLogger.warn(
+              "Paste tool timed out",
+              {
+                cmd: tool.cmd,
+                timeoutMs: 2000,
+              },
+              "clipboard"
+            );
+          }, 2000); // Increased timeout to 2s for windowactivate --sync
+
+          proc.on("close", (code) => {
+            if (timedOut) return reject(new Error(`Paste with ${tool.cmd} timed out`));
+            clearTimeout(timeoutId);
+
+            if (code === 0) {
+              debugLogger.debug("Paste successful", { cmd: tool.cmd }, "clipboard");
+              // Restore original clipboard after successful paste
+              // Delay allows time for X11 to process paste event before clipboard is overwritten
+              setTimeout(() => clipboard.writeText(originalClipboard), RESTORE_DELAYS.linux);
+              resolve();
+            } else {
+              debugLogger.error(
+                "Paste command failed",
+                {
+                  cmd: tool.cmd,
+                  args: tool.args,
+                  exitCode: code,
+                  stderr: stderr.trim(),
+                  stdout: stdout.trim(),
+                },
+                "clipboard"
+              );
+              reject(
+                new Error(
+                  `${tool.cmd} exited with code ${code}${stderr ? `: ${stderr.trim()}` : ""}`
+                )
+              );
+            }
+          });
+
+          proc.on("error", (error) => {
+            if (timedOut) return;
+            clearTimeout(timeoutId);
+            debugLogger.error(
+              "Paste command spawn error",
+              {
+                cmd: tool.cmd,
+                error: error.message,
+                code: error.code,
+              },
+              "clipboard"
+            );
+            reject(error);
+          });
+        }, delay);
       });
 
     // Try each available tool in order
+    const failedAttempts = [];
     for (const tool of available) {
       try {
         await pasteWith(tool);
         this.safeLog(`✅ Paste successful using ${tool.cmd}`);
+        debugLogger.info("Paste successful", { tool: tool.cmd }, "clipboard");
         return; // Success!
       } catch (error) {
+        const failureInfo = {
+          tool: tool.cmd,
+          args: tool.args,
+          error: error?.message || String(error),
+        };
+        failedAttempts.push(failureInfo);
         this.safeLog(`⚠️ Paste with ${tool.cmd} failed:`, error?.message || error);
+        debugLogger.warn("Paste tool failed, trying next", failureInfo, "clipboard");
         // Continue to next tool
       }
     }
 
+    debugLogger.error("All paste tools failed", { failedAttempts }, "clipboard");
+
+    // Fallback for terminals: use xdotool type to directly input text
+    // This bypasses clipboard paste entirely and is more reliable for terminal emulators
+    // that may have issues with Ctrl+Shift+V keystroke simulation
+    if (inTerminal && xdotoolExists && !isWayland) {
+      debugLogger.debug(
+        "Trying xdotool type fallback for terminal",
+        {
+          textLength: clipboard.readText().length,
+          targetWindowId,
+        },
+        "clipboard"
+      );
+      this.safeLog("🔄 Trying xdotool type fallback for terminal...");
+      const textToType = clipboard.readText(); // Read what we put in clipboard
+      const typeArgs = targetWindowId
+        ? ["windowactivate", "--sync", targetWindowId, "type", "--clearmodifiers", "--", textToType]
+        : ["type", "--clearmodifiers", "--", textToType];
+
+      try {
+        await pasteWith({ cmd: "xdotool", args: typeArgs });
+        this.safeLog("✅ Paste successful using xdotool type fallback");
+        debugLogger.info("Terminal paste successful via xdotool type", {}, "clipboard");
+        return;
+      } catch (error) {
+        const fallbackFailure = {
+          tool: "xdotool type",
+          args: typeArgs,
+          error: error?.message || String(error),
+        };
+        failedAttempts.push(fallbackFailure);
+        this.safeLog(`⚠️ xdotool type fallback failed:`, error?.message || error);
+        debugLogger.warn("xdotool type fallback failed", fallbackFailure, "clipboard");
+      }
+    }
+
     // All tools failed - create specific error for renderer to handle
-    const sessionInfo = isWayland ? "Wayland" : "X11";
-    const errorMsg = `Clipboard copied, but paste simulation failed on ${sessionInfo}. Please install ${isWayland ? "wtype or ydotool" : "xdotool"} for automatic pasting, or paste manually with Ctrl+V.`;
-    const err = new Error(errorMsg);
+    const failureSummary =
+      failedAttempts.length > 0
+        ? `\n\nAttempted tools: ${failedAttempts.map((f) => `${f.tool} (${f.error})`).join(", ")}`
+        : "";
+
+    let errorMsg;
+    if (isWayland) {
+      if (isGnome) {
+        if (!xwaylandAvailable) {
+          errorMsg =
+            "Clipboard copied, but GNOME Wayland blocks automatic pasting. Please paste manually with Ctrl+V.";
+        } else if (!xdotoolExists) {
+          errorMsg =
+            "Clipboard copied, but automatic pasting on GNOME Wayland requires xdotool for XWayland apps. Please install xdotool or paste manually with Ctrl+V.";
+        } else if (!xdotoolWindowClass) {
+          errorMsg =
+            "Clipboard copied, but the active app isn't running under XWayland. Please paste manually with Ctrl+V.";
+        } else {
+          errorMsg =
+            "Clipboard copied, but paste simulation failed via XWayland. Please paste manually with Ctrl+V.";
+        }
+      } else if (!wtypeExists && !xdotoolExists) {
+        if (!xwaylandAvailable) {
+          errorMsg =
+            "Clipboard copied, but automatic pasting on Wayland requires wtype or xdotool. Please install one or paste manually with Ctrl+V.";
+        } else {
+          errorMsg =
+            "Clipboard copied, but automatic pasting on Wayland requires xdotool (recommended for Electron/XWayland apps) or wtype. Please install one or paste manually with Ctrl+V.";
+        }
+      } else {
+        const xdotoolNote =
+          xwaylandAvailable && !xdotoolExists
+            ? " Consider installing xdotool, which works well with Electron apps running under XWayland."
+            : "";
+        errorMsg =
+          "Clipboard copied, but paste simulation failed on Wayland. Your compositor may not support the virtual keyboard protocol." +
+          xdotoolNote +
+          " Alternatively, paste manually with Ctrl+V.";
+      }
+    } else {
+      errorMsg =
+        "Clipboard copied, but paste simulation failed on X11. Please install xdotool or paste manually with Ctrl+V.";
+    }
+
+    const err = new Error(errorMsg + failureSummary);
     err.code = "PASTE_SIMULATION_FAILED";
+    err.failedAttempts = failedAttempts;
+    debugLogger.error(
+      "Throwing paste simulation failed error",
+      {
+        errorMsg,
+        failedAttempts,
+        isWayland,
+        isGnome,
+      },
+      "clipboard"
+    );
     throw err;
   }
 
@@ -751,41 +1010,45 @@ Would you like to open System Settings now?`;
     }
 
     // Linux - check for available paste tools
-    const isWayland =
-      (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
-      !!process.env.WAYLAND_DISPLAY;
-
-    const commandExists = (cmd) => {
-      try {
-        const res = spawnSync("sh", ["-c", `command -v ${cmd}`], {
-          stdio: "ignore",
-        });
-        return res.status === 0;
-      } catch {
-        return false;
-      }
-    };
+    const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
 
     // Check which tools are available
     const tools = [];
-    const toolsToCheck = isWayland
-      ? ["wtype", "ydotool", "xdotool"] // xdotool as fallback for XWayland
-      : ["xdotool"];
+    const canUseWtype = isWayland && !isGnome;
+    const canUseYdotool = isWayland;
+    const canUseXdotool = !isWayland || xwaylandAvailable;
 
-    for (const tool of toolsToCheck) {
-      if (commandExists(tool)) {
-        tools.push(tool);
+    if (canUseWtype && this.commandExists("wtype")) {
+      tools.push("wtype");
+    }
+    if (canUseXdotool && this.commandExists("xdotool")) {
+      tools.push("xdotool");
+    }
+    if (canUseYdotool && this.commandExists("ydotool")) {
+      tools.push("ydotool");
+    }
+
+    const available = tools.length > 0;
+    let recommendedInstall;
+    if (!available) {
+      if (!isWayland) {
+        recommendedInstall = "xdotool";
+      } else if (isGnome) {
+        recommendedInstall = xwaylandAvailable ? "xdotool" : undefined;
+      } else {
+        recommendedInstall = xwaylandAvailable ? "xdotool" : "wtype or xdotool";
       }
     }
 
     return {
       platform: "linux",
-      available: tools.length > 0,
-      method: tools.length > 0 ? tools[0] : null,
+      available,
+      method: available ? tools[0] : null,
       requiresPermission: false,
       isWayland,
+      xwaylandAvailable,
       tools,
-      recommendedInstall: isWayland ? "wtype" : "xdotool",
+      recommendedInstall,
     };
   }
 }

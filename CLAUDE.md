@@ -13,7 +13,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **Desktop Framework**: Electron 36 with context isolation
 - **Database**: better-sqlite3 for local transcription history
 - **UI Components**: shadcn/ui with Radix primitives
-- **Speech Processing**: whisper.cpp (bundled native binary) + OpenAI API
+- **Speech Processing**: whisper.cpp + NVIDIA Parakeet (via sherpa-onnx) + OpenAI API
 - **Audio Processing**: FFmpeg (bundled via ffmpeg-static)
 
 ### Key Architectural Decisions
@@ -39,20 +39,45 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **main.js**: Application entry point, initializes all managers
 - **preload.js**: Exposes safe IPC methods to renderer via window.api
 
+### Native Resources (resources/)
+
+- **windows-key-listener.c**: C source for Windows low-level keyboard hook (Push-to-Talk)
+- **globe-listener.swift**: Swift source for macOS Globe/Fn key detection
+- **bin/**: Directory for compiled native binaries (whisper-cpp, nircmd, key listeners)
+
 ### Helper Modules (src/helpers/)
 
 - **audioManager.js**: Handles audio device management
-- **clipboard.js**: Cross-platform clipboard operations with AppleScript fallback
+- **clipboard.js**: Cross-platform clipboard operations
+  - macOS: AppleScript-based paste with accessibility permission check
+  - Windows: PowerShell SendKeys with nircmd.exe fallback
+  - Linux: Multi-tool support (wtype, ydotool, xdotool) for X11/Wayland compatibility
 - **database.js**: SQLite operations for transcription history
 - **debugLogger.js**: Debug logging system with file output
 - **devServerManager.js**: Vite dev server integration
 - **dragManager.js**: Window dragging functionality
 - **environment.js**: Environment variable and OpenAI API management
 - **hotkeyManager.js**: Global hotkey registration and management
+  - Handles platform-specific defaults (GLOBE on macOS, backtick on Windows/Linux)
+  - Auto-fallback to F8/F9 if default hotkey is unavailable
+  - Notifies renderer via IPC when hotkey registration fails
+  - Integrates with GnomeShortcutManager for GNOME Wayland support
+- **gnomeShortcut.js**: GNOME Wayland global shortcut integration
+  - Uses D-Bus service to receive hotkey toggle commands
+  - Registers shortcuts via gsettings (visible in GNOME Settings → Keyboard → Shortcuts)
+  - Converts Electron hotkey format to GNOME keysym format
+  - Only active on Linux + Wayland + GNOME desktop
 - **ipcHandlers.js**: Centralized IPC handler registration
+- **windowsKeyManager.js**: Windows Push-to-Talk support with native key listener
+  - Spawns native `windows-key-listener.exe` binary for low-level keyboard hooks
+  - Supports compound hotkeys (e.g., `Ctrl+Shift+F11`, `CommandOrControl+Space`)
+  - Emits `key-down` and `key-up` events for push-to-talk functionality
+  - Graceful fallback if binary unavailable
 - **menuManager.js**: Application menu management
 - **tray.js**: System tray icon and menu
 - **whisper.js**: Local whisper.cpp integration and model management
+- **parakeet.js**: NVIDIA Parakeet model management via sherpa-onnx
+- **parakeetServer.js**: sherpa-onnx CLI wrapper for transcription
 - **windowConfig.js**: Centralized window configuration
 - **windowManager.js**: Window creation and lifecycle management
 
@@ -72,7 +97,10 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **useDialogs.ts**: Electron dialog integration
 - **useHotkey.js**: Hotkey state management
 - **useLocalStorage.ts**: Type-safe localStorage wrapper
-- **usePermissions.ts**: System permission checks
+- **usePermissions.ts**: System permission checks and settings access
+  - `openMicPrivacySettings()`: Opens OS microphone privacy settings
+  - `openSoundInputSettings()`: Opens OS sound input device settings
+  - `openAccessibilitySettings()`: Opens OS accessibility settings (macOS only)
 - **useSettings.ts**: Application settings management
 - **useWhisper.ts**: Whisper binary availability check
 
@@ -91,6 +119,38 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
   - Falls back to system installation (`brew install whisper-cpp`)
   - GGML model downloads from HuggingFace
   - Models stored in `~/.cache/openwhispr/whisper-models/`
+
+### NVIDIA Parakeet Integration (via sherpa-onnx)
+
+- **parakeet.js**: Model management for NVIDIA Parakeet ASR models
+  - Uses sherpa-onnx runtime for cross-platform ONNX inference
+  - Bundled binaries in `resources/bin/sherpa-onnx-{platform}-{arch}`
+  - INT8 quantized models for efficient CPU inference
+  - Models stored in `~/.cache/openwhispr/parakeet-models/`
+  - Server pre-warming on startup when `LOCAL_TRANSCRIPTION_PROVIDER=nvidia` is set
+  - Provider preference persisted to `.env` via `saveAllKeysToEnvFile()` on server start/stop
+
+- **Available Models**:
+  - `parakeet-tdt-0.6b-v3`: Multilingual (25 languages), ~680MB
+
+- **Download URLs**: Models from sherpa-onnx ASR models release on GitHub
+
+### Build Scripts (scripts/)
+
+- **download-whisper-cpp.js**: Downloads whisper.cpp binaries from GitHub releases
+- **download-llama-server.js**: Downloads llama.cpp server for local LLM inference
+- **download-nircmd.js**: Downloads nircmd.exe for Windows clipboard operations
+- **download-windows-key-listener.js**: Downloads prebuilt Windows key listener binary
+- **download-sherpa-onnx.js**: Downloads sherpa-onnx binaries for Parakeet support
+- **build-globe-listener.js**: Compiles macOS Globe key listener from Swift source
+- **build-windows-key-listener.js**: Compiles Windows key listener (for local development)
+- **run-electron.js**: Development script to launch Electron with proper environment
+- **lib/download-utils.js**: Shared utilities for downloading and extracting files
+  - `fetchLatestRelease(repo, options)`: Fetches latest release from GitHub API
+  - `downloadFile(url, dest)`: Downloads file with progress and retry logic
+  - `extractZip(zipPath, destDir)`: Cross-platform zip extraction
+  - `parseArgs()`: Parses CLI arguments for platform/arch targeting
+  - Supports `GITHUB_TOKEN` for authenticated requests (higher rate limits)
 
 ## Key Implementation Details
 
@@ -151,6 +211,11 @@ Settings stored in localStorage with these keys:
 - `reasoningProvider`: AI provider (openai/anthropic/gemini/local)
 - `hotkey`: Custom hotkey configuration
 - `hasCompletedOnboarding`: Onboarding completion flag
+- `customDictionary`: JSON array of words/phrases for improved transcription accuracy
+
+Environment variables persisted to `.env` (via `saveAllKeysToEnvFile()`):
+- `LOCAL_TRANSCRIPTION_PROVIDER`: Transcription engine (`nvidia` for Parakeet)
+- `PARAKEET_MODEL`: Selected Parakeet model name (e.g., `parakeet-tdt-0.6b-v3`)
 
 ### 6. Language Support
 
@@ -231,7 +296,28 @@ All AI model definitions are centralized in `src/models/modelRegistryData.json` 
 - Keys stored in environment variables and reloaded on app start
 - Centralized `saveAllKeysToEnvFile()` method ensures consistency
 
-### 10. Debug Mode
+### 10. System Settings Integration
+
+The app can open OS-level settings for microphone permissions, sound input selection, and accessibility:
+
+**IPC Handlers** (in `ipcHandlers.js`):
+- `open-microphone-settings`: Opens microphone privacy settings
+- `open-sound-input-settings`: Opens sound/audio input device settings
+- `open-accessibility-settings`: Opens accessibility privacy settings (macOS only)
+
+**Platform-specific URLs**:
+| Platform | Microphone Privacy | Sound Input | Accessibility |
+|----------|-------------------|-------------|---------------|
+| macOS | `x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone` | `x-apple.systempreferences:com.apple.preference.sound?input` | `x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility` |
+| Windows | `ms-settings:privacy-microphone` | `ms-settings:sound` | N/A |
+| Linux | Manual (no URL scheme) | Manual (e.g., pavucontrol) | N/A |
+
+**UI Component** (`MicPermissionWarning.tsx`):
+- Shows platform-appropriate buttons and messages
+- Linux only shows "Open Sound Settings" (no separate privacy settings)
+- macOS/Windows show both sound and privacy buttons
+
+### 11. Debug Mode
 
 Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `.env`):
 - Logs saved to platform-specific app data directory
@@ -239,6 +325,77 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - FFmpeg path resolution details
 - Audio level analysis
 - Complete reasoning pipeline debugging with stage-by-stage logging
+
+### 12. Windows Push-to-Talk
+
+Native Windows support for true push-to-talk functionality using low-level keyboard hooks:
+
+**Architecture**:
+- `resources/windows-key-listener.c`: Native C program using Windows `SetWindowsHookEx` for keyboard hooks
+- `src/helpers/windowsKeyManager.js`: Node.js wrapper that spawns and manages the native binary
+- Binary outputs `KEY_DOWN` and `KEY_UP` to stdout when target key is pressed/released
+
+**Compound Hotkey Support**:
+- Parses hotkey strings like `CommandOrControl+Shift+F11`
+- Maps modifiers: `CommandOrControl`/`Ctrl` → VK_CONTROL, `Alt`/`Option` → VK_MENU, `Shift` → VK_SHIFT
+- Verifies all required modifiers are held before emitting key events
+
+**Binary Distribution**:
+- Prebuilt binary downloaded from GitHub releases (`windows-key-listener-v*` tags)
+- Download script: `scripts/download-windows-key-listener.js`
+- CI workflow: `.github/workflows/build-windows-key-listener.yml`
+- Fallback to tap mode if binary unavailable
+
+**IPC Events**:
+- `windows-key-listener:key-down`: Fired when hotkey pressed (start recording)
+- `windows-key-listener:key-up`: Fired when hotkey released (stop recording)
+
+### 13. Custom Dictionary
+
+Improve transcription accuracy for specific words, names, or technical terms:
+
+**How it works**:
+- User adds words/phrases through Settings → Custom Dictionary
+- Words stored as JSON array in localStorage (`customDictionary` key)
+- On transcription, words are joined and passed as `prompt` parameter to Whisper
+- Works with both local whisper.cpp and cloud OpenAI Whisper API
+
+**Implementation**:
+- `src/hooks/useSettings.ts`: Manages `customDictionary` state
+- `src/components/SettingsPage.tsx`: UI for adding/removing dictionary words
+- `src/helpers/audioManager.js`: Reads dictionary and adds to transcription options
+- `src/helpers/whisperServer.js`: Includes dictionary as `prompt` in API request
+
+**Whisper Prompt Parameter**:
+- Whisper uses the prompt as context/hints for transcription
+- Words in the prompt are more likely to be recognized correctly
+- Useful for: uncommon names, technical jargon, brand names, domain-specific terms
+
+### 14. GNOME Wayland Global Hotkeys
+
+On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's security model. OpenWhispr uses native GNOME shortcuts:
+
+**Architecture**:
+1. `main.js` enables `GlobalShortcutsPortal` feature flag for Wayland
+2. `hotkeyManager.js` detects GNOME + Wayland and initializes `GnomeShortcutManager`
+3. `gnomeShortcut.js` creates D-Bus service at `com.openwhispr.App`
+4. Shortcuts registered via `gsettings` as custom GNOME keybindings
+5. GNOME triggers `dbus-send` command which calls the D-Bus `Toggle()` method
+
+**Key Constants**:
+- D-Bus service: `com.openwhispr.App`
+- D-Bus path: `/com/openwhispr/App`
+- gsettings path: `/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/openwhispr/`
+
+**IPC Integration**:
+- `get-hotkey-mode-info`: Returns `{ isUsingGnome: boolean }` to renderer
+- UI hides activation mode selector when `isUsingGnome` is true
+- Forces tap-to-talk mode (push-to-talk not supported)
+
+**Hotkey Format Conversion**:
+- Electron format: `Alt+R`, `CommandOrControl+Shift+Space`
+- GNOME format: `<Alt>r`, `<Control><Shift>space`
+- Backtick (`) → `grave` in GNOME keysym format
 
 ## Development Guidelines
 
@@ -258,6 +415,10 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
 - [ ] Verify whisper.cpp binary detection
 - [ ] Test all Whisper models
 - [ ] Check agent naming functionality
+- [ ] Test custom dictionary with uncommon words
+- [ ] Verify Windows Push-to-Talk with compound hotkeys
+- [ ] Test GNOME Wayland hotkeys (if on GNOME + Wayland)
+- [ ] Verify activation mode selector is hidden on GNOME Wayland
 
 ### Common Issues and Solutions
 
@@ -273,35 +434,71 @@ Enable with `--log-level=debug` or `OPENWHISPR_LOG_LEVEL=debug` (can be set in `
    - Verify FFmpeg is executable
 
 3. **Clipboard Not Working**:
-   - macOS: Check accessibility permissions
-   - Use AppleScript fallback on macOS
+   - macOS: Check accessibility permissions (required for AppleScript paste)
+   - Linux X11: Install `xdotool` for paste simulation
+   - Linux Wayland: Install `wtype` or `ydotool` (requires `ydotoold` daemon)
+     - GNOME Wayland: Use `xdotool` for XWayland apps only
+     - Other Wayland compositors: `wtype` (if compositor supports virtual keyboard) or `ydotool`
+   - Windows: PowerShell SendKeys (built-in) or nircmd.exe (bundled)
 
 4. **Build Issues**:
    - Use `npm run pack` for unsigned builds (CSC_IDENTITY_AUTO_DISCOVERY=false)
    - Signing requires Apple Developer account
    - ASAR unpacking needed for FFmpeg
-   - Run `npm run download:whisper-cpp` before packaging
+   - Run `npm run download:whisper-cpp` before packaging (current platform)
+   - Use `npm run download:whisper-cpp:all` for multi-platform packaging
    - afterSign.js automatically skips signing when CSC_IDENTITY_AUTO_DISCOVERY=false
+
+5. **Windows Push-to-Talk Binary**:
+   - Prebuilt binary downloaded automatically on Windows during build
+   - If download fails, push-to-talk falls back to tap mode
+   - To compile locally: install Visual Studio Build Tools or MinGW-w64
+   - CI workflow (`.github/workflows/build-windows-key-listener.yml`) auto-builds on push to main
 
 ### Platform-Specific Notes
 
 **macOS**:
-- Requires accessibility permissions for clipboard
+- Requires accessibility permissions for clipboard (auto-paste)
+- Requires microphone permission (prompted by system)
 - Uses AppleScript for reliable pasting
 - Notarization needed for distribution
 - Shows in dock with indicator dot when running (LSUIElement: false)
 - whisper.cpp bundled for both arm64 and x64
+- System settings accessible via `x-apple.systempreferences:` URL scheme
 
 **Windows**:
-- No special permissions needed
+- No special accessibility permissions needed
+- Microphone privacy settings at `ms-settings:privacy-microphone`
+- Sound settings at `ms-settings:sound`
 - NSIS installer for distribution
 - whisper.cpp bundled for x64
+- **Push-to-Talk**: Native key listener binary (`windows-key-listener.exe`) enables true push-to-talk
+  - Uses Windows Low-Level Keyboard Hook (`WH_KEYBOARD_LL`)
+  - Supports compound hotkeys (e.g., `Ctrl+Shift+F11`)
+  - Prebuilt binary auto-downloaded from GitHub releases
+  - Falls back to tap mode if unavailable
 
 **Linux**:
 - Multiple package manager support
 - Standard XDG directories
 - AppImage for distribution
 - whisper.cpp bundled for x64
+- No standardized URL scheme for system settings (user must open manually)
+- Privacy settings button hidden in UI (not applicable on Linux)
+- Recommend `pavucontrol` for audio device management
+- **Clipboard paste tools** (at least one required for auto-paste):
+  - **X11**: `xdotool` (recommended)
+  - **Wayland** (non-GNOME): `wtype` (requires virtual keyboard protocol) or `xdotool` (works via XWayland, recommended for Electron apps)
+  - **GNOME Wayland**: `xdotool` for XWayland apps only (native Wayland apps require manual paste)
+  - Terminal detection: Auto-detects terminal emulators and uses Ctrl+Shift+V
+  - Fallback: Text copied to clipboard with manual paste instructions
+- **GNOME Wayland global hotkeys**:
+  - Uses native GNOME shortcuts via D-Bus and gsettings (no special permissions needed)
+  - Hotkeys visible in GNOME Settings → Keyboard → Shortcuts → Custom
+  - Default hotkey: `Alt+R` (backtick not supported)
+  - Push-to-talk unavailable (GNOME shortcuts only fire single toggle event)
+  - Falls back to X11/globalShortcut if GNOME integration fails
+  - `dbus-next` npm package used for D-Bus communication
 
 ## Code Style and Conventions
 

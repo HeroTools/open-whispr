@@ -1,15 +1,21 @@
 const path = require("path");
 
+const WINDOW_SIZES = {
+  BASE: { width: 96, height: 96 },
+  WITH_MENU: { width: 240, height: 280 },
+  WITH_TOAST: { width: 400, height: 500 },
+  EXPANDED: { width: 400, height: 500 },
+};
+
 // Main dictation window configuration
 const MAIN_WINDOW_CONFIG = {
-  width: 240,
-  height: 240,
+  width: WINDOW_SIZES.BASE.width,
+  height: WINDOW_SIZES.BASE.height,
   title: "Voice Recorder",
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,
     contextIsolation: true,
-    enableRemoteModule: false,
     sandbox: true,
   },
   frame: false,
@@ -34,7 +40,6 @@ const CONTROL_PANEL_CONFIG = {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,
     contextIsolation: true,
-    enableRemoteModule: false,
     sandbox: false,
     webSecurity: false,
     spellcheck: false,
@@ -48,7 +53,6 @@ const CONTROL_PANEL_CONFIG = {
     trafficLightPosition: { x: 20, y: 20 },
   }),
   transparent: false,
-  backgroundColor: "#ffffff",
   minimizable: true,
   maximizable: true,
   closable: true,
@@ -61,11 +65,11 @@ const CONTROL_PANEL_CONFIG = {
 
 // Window positioning utilities
 class WindowPositionUtil {
-  static getMainWindowPosition(display) {
-    const { width, height } = MAIN_WINDOW_CONFIG;
-    const MARGIN = 20;
-    const x = Math.max(0, display.bounds.x + display.workArea.width - width - MARGIN);
+  static getMainWindowPosition(display, customSize = null) {
+    const { width, height } = customSize || WINDOW_SIZES.BASE;
+    const MARGIN = 24;
     const workArea = display.workArea || display.bounds;
+    const x = Math.max(0, workArea.x + workArea.width - width - MARGIN);
     const y = Math.max(0, workArea.y + workArea.height - height - MARGIN);
     return { x, y, width, height };
   }
@@ -108,5 +112,6 @@ class WindowPositionUtil {
 module.exports = {
   MAIN_WINDOW_CONFIG,
   CONTROL_PANEL_CONFIG,
+  WINDOW_SIZES,
   WindowPositionUtil,
 };

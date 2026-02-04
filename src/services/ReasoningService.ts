@@ -3,12 +3,15 @@ import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
+import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../config/prompts";
 import logger from "../utils/logger";
+import { isSecureEndpoint } from "../utils/urlUtils";
 
-export const DEFAULT_PROMPTS = {
-  agent: `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`,
-  regular: `Process and improve the following text:\n\n{{text}}\n\nImproved text:`,
-};
+/**
+ * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
+ * Kept for backwards compatibility with PromptStudio UI
+ */
+export const DEFAULT_PROMPTS = LEGACY_PROMPTS;
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
@@ -28,18 +31,42 @@ class ReasoningService extends BaseReasoningService {
     }
 
     try {
+      const provider = window.localStorage.getItem("reasoningProvider") || "";
+      const isCustomProvider = provider === "custom";
+
+      if (!isCustomProvider) {
+        logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+          hasCustomUrl: false,
+          provider,
+          reason: "Provider is not 'custom', using default OpenAI endpoint",
+          defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+        });
+        return API_ENDPOINTS.OPENAI_BASE;
+      }
+
       const stored = window.localStorage.getItem("cloudReasoningBaseUrl") || "";
       const trimmed = stored.trim();
 
-      // If no custom URL is stored, use the default
       if (!trimmed) {
+        logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+          hasCustomUrl: false,
+          provider,
+          usingDefault: true,
+          defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+        });
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
       const normalized = normalizeBaseUrl(trimmed) || API_ENDPOINTS.OPENAI_BASE;
 
-      // Don't use the custom URL if it's a known non-OpenAI provider URL
-      // These should be handled by their dedicated provider methods
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
+        hasCustomUrl: true,
+        provider,
+        rawUrl: trimmed,
+        normalizedUrl: normalized,
+        defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
+      });
+
       const knownNonOpenAIUrls = [
         "api.groq.com",
         "api.anthropic.com",
@@ -55,19 +82,26 @@ class ReasoningService extends BaseReasoningService {
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
-      // Security: Only allow HTTPS endpoints (except localhost for development)
-      const isLocalhost =
-        normalized.includes("://localhost") || normalized.includes("://127.0.0.1");
-      if (!normalized.startsWith("https://") && !isLocalhost) {
+      if (!isSecureEndpoint(normalized)) {
         logger.logReasoning("OPENAI_BASE_REJECTED", {
-          reason: "Non-HTTPS endpoint rejected for security",
+          reason: "HTTPS required (HTTP allowed for local network only)",
           attempted: normalized,
         });
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_RESOLVED", {
+        customEndpoint: normalized,
+        isCustom: true,
+        provider,
+      });
+
       return normalized;
-    } catch {
+    } catch (error) {
+      logger.logReasoning("CUSTOM_REASONING_ENDPOINT_ERROR", {
+        error: (error as Error).message,
+        fallbackTo: API_ENDPOINTS.OPENAI_BASE,
+      });
       return API_ENDPOINTS.OPENAI_BASE;
     }
   }
@@ -141,12 +175,34 @@ class ReasoningService extends BaseReasoningService {
         ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY,
         JSON.stringify(data)
       );
-    } catch {
-      // Ignore storage errors
-    }
+    } catch {}
   }
 
-  private async getApiKey(provider: "openai" | "anthropic" | "gemini" | "groq"): Promise<string> {
+  private async getApiKey(
+    provider: "openai" | "anthropic" | "gemini" | "groq" | "custom"
+  ): Promise<string> {
+    if (provider === "custom") {
+      let customKey = "";
+      try {
+        customKey = (await window.electronAPI?.getCustomReasoningKey?.()) || "";
+      } catch (err) {
+        logger.logReasoning("CUSTOM_KEY_IPC_FALLBACK", { error: (err as Error)?.message });
+      }
+      if (!customKey || !customKey.trim()) {
+        customKey = window.localStorage?.getItem("customReasoningApiKey") || "";
+      }
+      const trimmedKey = customKey.trim();
+
+      logger.logReasoning("CUSTOM_KEY_RETRIEVAL", {
+        provider,
+        hasKey: !!trimmedKey,
+        keyLength: trimmedKey.length,
+        keyPreview: trimmedKey ? `${trimmedKey.substring(0, 8)}...` : "none",
+      });
+
+      return trimmedKey;
+    }
+
     let apiKey = this.apiKeyCache.get(provider);
 
     logger.logReasoning(`${provider.toUpperCase()}_KEY_RETRIEVAL`, {
@@ -196,10 +252,6 @@ class ReasoningService extends BaseReasoningService {
     return apiKey;
   }
 
-  /**
-   * Shared helper for OpenAI-compatible Chat Completions API calls.
-   * Used by Groq and as fallback for OpenAI.
-   */
   private async callChatCompletionsApi(
     endpoint: string,
     apiKey: string,
@@ -209,9 +261,8 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt =
-      "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-    const userPrompt = this.getReasoningPrompt(text, agentName, config);
+    const systemPrompt = this.getSystemPrompt(agentName);
+    const userPrompt = text;
 
     const messages = [
       { role: "system", content: systemPrompt },
@@ -235,11 +286,10 @@ class ReasoningService extends BaseReasoningService {
         ),
     };
 
-    // Check model registry for provider-specific options
+    // Disable thinking for Groq Qwen models
     const modelDef = getCloudModel(model);
-    if (modelDef?.disableThinking) {
-      requestBody.chat_template_kwargs = { enable_thinking: false };
-      logger.logReasoning("THINKING_DISABLED", { model, provider: providerName });
+    if (modelDef?.disableThinking && providerName.toLowerCase() === "groq") {
+      requestBody.reasoning_effort = "none";
     }
 
     logger.logReasoning(`${providerName.toUpperCase()}_REQUEST`, {
@@ -298,7 +348,6 @@ class ReasoningService extends BaseReasoningService {
       return jsonResponse;
     }, createApiRetryStrategy());
 
-    // Extract text from Chat Completions format
     if (!response.choices || !response.choices[0]) {
       logger.logReasoning(`${providerName.toUpperCase()}_RESPONSE_ERROR`, {
         model,
@@ -400,7 +449,6 @@ class ReasoningService extends BaseReasoningService {
         error: (error as Error).message,
         stack: (error as Error).stack,
       });
-      // Re-throw error with provider context
       throw error;
     }
   }
@@ -411,9 +459,13 @@ class ReasoningService extends BaseReasoningService {
     agentName: string | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
+    const reasoningProvider = window.localStorage?.getItem("reasoningProvider") || "";
+    const isCustomProvider = reasoningProvider === "custom";
+
     logger.logReasoning("OPENAI_START", {
       model,
       agentName,
+      isCustomProvider,
       hasApiKey: false, // Will update after fetching
     });
 
@@ -421,7 +473,7 @@ class ReasoningService extends BaseReasoningService {
       throw new Error("Already processing a request");
     }
 
-    const apiKey = await this.getApiKey("openai");
+    const apiKey = await this.getApiKey(isCustomProvider ? "custom" : "openai");
 
     logger.logReasoning("OPENAI_API_KEY", {
       hasApiKey: !!apiKey,
@@ -431,42 +483,48 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt =
-        "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
+      const systemPrompt = this.getSystemPrompt(agentName);
+      const userPrompt = text;
 
-      // Build messages array (used by both APIs)
       const messages = [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ];
 
-      // Add temperature for older models (GPT-4 and earlier)
       const isOlderModel = model && (model.startsWith("gpt-4") || model.startsWith("gpt-3"));
 
       const openAiBase = this.getConfiguredOpenAIBase();
       const endpointCandidates = this.getOpenAIEndpointCandidates(openAiBase);
+      const isCustomEndpoint = openAiBase !== API_ENDPOINTS.OPENAI_BASE;
 
       logger.logReasoning("OPENAI_ENDPOINTS", {
         base: openAiBase,
+        isCustomEndpoint,
         candidates: endpointCandidates.map((candidate) => candidate.url),
         preference: this.getStoredOpenAiPreference(openAiBase) || null,
       });
+
+      if (isCustomEndpoint) {
+        logger.logReasoning("CUSTOM_TEXT_CLEANUP_REQUEST", {
+          customBase: openAiBase,
+          model,
+          textLength: text.length,
+          hasApiKey: !!apiKey,
+          apiKeyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "(none)",
+        });
+      }
 
       const response = await withRetry(async () => {
         let lastError: Error | null = null;
 
         for (const { url: endpoint, type } of endpointCandidates) {
           try {
-            // Build request body based on endpoint type
             const requestBody: any = { model };
 
             if (type === "responses") {
-              // Responses API uses 'input' parameter
               requestBody.input = messages;
               requestBody.store = false;
             } else {
-              // Chat Completions API uses 'messages' parameter
               requestBody.messages = messages;
               if (isOlderModel) {
                 requestBody.temperature = config.temperature || 0.3;
@@ -521,11 +579,9 @@ class ReasoningService extends BaseReasoningService {
         throw lastError || new Error("No OpenAI endpoint responded");
       }, createApiRetryStrategy());
 
-      // Detect the API response format (Responses API vs Chat Completions)
       const isResponsesApi = Array.isArray(response?.output);
       const isChatCompletions = Array.isArray(response?.choices);
 
-      // Log the raw response for debugging
       logger.logReasoning("OPENAI_RAW_RESPONSE", {
         model,
         format: isResponsesApi ? "responses" : isChatCompletions ? "chat_completions" : "unknown",
@@ -537,7 +593,6 @@ class ReasoningService extends BaseReasoningService {
         usage: response.usage,
       });
 
-      // Extract text from the Responses API or Chat Completions formats
       let responseText = "";
 
       if (isResponsesApi) {
@@ -594,14 +649,13 @@ class ReasoningService extends BaseReasoningService {
         isEmpty: responseText.length === 0,
       });
 
-      // If we got an empty response, return the original text as fallback
       if (!responseText) {
         logger.logReasoning("OPENAI_EMPTY_RESPONSE_FALLBACK", {
           model,
           originalTextLength: text.length,
           reason: "Empty response from API",
         });
-        return text; // Return original text if API returns nothing
+        return text;
       }
 
       return responseText;
@@ -629,7 +683,6 @@ class ReasoningService extends BaseReasoningService {
       environment: typeof window !== "undefined" ? "browser" : "node",
     });
 
-    // Use IPC to communicate with main process for Anthropic API
     if (typeof window !== "undefined" && window.electronAPI) {
       const startTime = Date.now();
 
@@ -682,8 +735,6 @@ class ReasoningService extends BaseReasoningService {
       environment: typeof window !== "undefined" ? "browser" : "node",
     });
 
-    // Instead of importing directly, we'll use IPC to communicate with main process
-    // For local models, we need to use IPC to communicate with the main process
     if (typeof window !== "undefined" && window.electronAPI) {
       const startTime = Date.now();
 
@@ -745,9 +796,8 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt =
-        "You are a dictation assistant. Clean up text by fixing grammar and punctuation. Output ONLY the cleaned text without any explanations, options, or commentary.";
-      const userPrompt = this.getReasoningPrompt(text, agentName, config);
+      const systemPrompt = this.getSystemPrompt(agentName);
+      const userPrompt = text;
 
       const requestBody = {
         contents: [
@@ -764,7 +814,7 @@ class ReasoningService extends BaseReasoningService {
           maxOutputTokens:
             config.maxTokens ||
             Math.max(
-              2000, // Gemini 2.5 Pro needs more tokens for its thinking process
+              2000,
               this.calculateMaxTokens(
                 text.length,
                 TOKEN_LIMITS.MIN_TOKENS_GEMINI,
@@ -840,7 +890,6 @@ class ReasoningService extends BaseReasoningService {
         throw fetchError;
       }
 
-      // Check if response has the expected structure
       if (!response.candidates || !response.candidates[0]) {
         logger.logReasoning("GEMINI_RESPONSE_ERROR", {
           model,
@@ -851,7 +900,6 @@ class ReasoningService extends BaseReasoningService {
         throw new Error("Invalid response structure from Gemini API");
       }
 
-      // Check if the response has actual content
       const candidate = response.candidates[0];
       if (!candidate.content?.parts?.[0]?.text) {
         logger.logReasoning("GEMINI_EMPTY_RESPONSE", {
@@ -862,7 +910,6 @@ class ReasoningService extends BaseReasoningService {
           response: JSON.stringify(candidate).substring(0, 500),
         });
 
-        // If finish reason is MAX_TOKENS, the model hit its limit
         if (candidate.finishReason === "MAX_TOKENS") {
           throw new Error(
             "Gemini reached token limit before generating response. Try a shorter input or increase max tokens."
@@ -933,7 +980,6 @@ class ReasoningService extends BaseReasoningService {
 
   async isAvailable(): Promise<boolean> {
     try {
-      // Check if we have at least one configured API key or local model available
       const openaiKey = await window.electronAPI?.getOpenAIKey?.();
       const anthropicKey = await window.electronAPI?.getAnthropicKey?.();
       const geminiKey = await window.electronAPI?.getGeminiKey?.();
@@ -956,6 +1002,18 @@ class ReasoningService extends BaseReasoningService {
         name: (error as Error).name,
       });
       return false;
+    }
+  }
+
+  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq" | "custom"): void {
+    if (provider) {
+      if (provider !== "custom") {
+        this.apiKeyCache.delete(provider);
+      }
+      logger.logReasoning("API_KEY_CACHE_CLEARED", { provider });
+    } else {
+      this.apiKeyCache.clear();
+      logger.logReasoning("API_KEY_CACHE_CLEARED", { provider: "all" });
     }
   }
 

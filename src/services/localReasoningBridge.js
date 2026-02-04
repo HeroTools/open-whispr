@@ -1,5 +1,6 @@
 const modelManager = require("../helpers/modelManagerBridge").default;
 const debugLogger = require("../helpers/debugLogger");
+const { getSystemPrompt } = require("../helpers/prompts");
 
 class LocalReasoningService {
   constructor() {
@@ -35,16 +36,9 @@ class LocalReasoningService {
     const startTime = Date.now();
 
     try {
-      // Get custom prompts from the request context
-      const customPrompts = config.customPrompts || null;
-
-      // Build the reasoning prompt
-      const reasoningPrompt = this.getReasoningPrompt(text, agentName, customPrompts);
-
       debugLogger.logReasoning("LOCAL_BRIDGE_PROMPT", {
-        promptLength: reasoningPrompt.length,
+        promptLength: text.length,
         hasAgentName: !!agentName,
-        hasCustomPrompts: !!customPrompts,
       });
 
       const inferenceConfig = {
@@ -55,7 +49,7 @@ class LocalReasoningService {
         repeatPenalty: config.repeatPenalty || 1.1,
         contextSize: config.contextSize || 4096,
         threads: config.threads || 4,
-        systemPrompt: "You are a helpful AI assistant that processes and improves text.",
+        systemPrompt: getSystemPrompt(agentName, config.customDictionary),
       };
 
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
@@ -64,7 +58,7 @@ class LocalReasoningService {
       });
 
       // Run inference
-      const result = await modelManager.runInference(modelId, reasoningPrompt, inferenceConfig);
+      const result = await modelManager.runInference(modelId, text, inferenceConfig);
 
       const processingTime = Date.now() - startTime;
 
@@ -90,33 +84,6 @@ class LocalReasoningService {
     } finally {
       this.isProcessing = false;
     }
-  }
-
-  getCustomPrompts() {
-    // In main process, we can't access localStorage directly
-    // This should be passed from the renderer process
-    return null;
-  }
-
-  getReasoningPrompt(text, agentName, customPrompts) {
-    // Default prompts
-    const DEFAULT_AGENT_PROMPT = `You are {{agentName}}, a helpful AI assistant. Process and improve the following text, removing any reference to your name from the output:\n\n{{text}}\n\nImproved text:`;
-    const DEFAULT_REGULAR_PROMPT = `Process and improve the following text:\n\n{{text}}\n\nImproved text:`;
-
-    let agentPrompt = DEFAULT_AGENT_PROMPT;
-    let regularPrompt = DEFAULT_REGULAR_PROMPT;
-
-    if (customPrompts) {
-      agentPrompt = customPrompts.agent || DEFAULT_AGENT_PROMPT;
-      regularPrompt = customPrompts.regular || DEFAULT_REGULAR_PROMPT;
-    }
-
-    // Check if agent name is mentioned
-    if (agentName && text.toLowerCase().includes(agentName.toLowerCase())) {
-      return agentPrompt.replace(/\{\{agentName\}\}/g, agentName).replace(/\{\{text\}\}/g, text);
-    }
-
-    return regularPrompt.replace(/\{\{text\}\}/g, text);
   }
 
   calculateMaxTokens(textLength, minTokens = 100, maxTokens = 2048, multiplier = 2) {

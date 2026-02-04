@@ -7,6 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "./dropdown-menu";
+import { cn } from "../lib/utils";
 
 interface SupportDropdownProps {
   className?: string;
@@ -31,7 +32,7 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
   const handleSubmitBug = async () => {
     try {
       const result = await window.electronAPI?.openExternal(
-        "https://github.com/HeroTools/open-whispr/issues"
+        "https://github.com/OpenWhispr/openwhispr/issues"
       );
       if (!result?.success) {
         console.error("Failed to open GitHub issues:", result?.error);
@@ -44,21 +45,28 @@ export default function SupportDropdown({ className }: SupportDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" className={className}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "text-foreground/70 hover:text-foreground hover:bg-foreground/10",
+            className
+          )}
+        >
           <HelpCircle size={16} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="bg-white border border-gray-200 shadow-lg">
+      <DropdownMenuContent align="end" className="bg-popover border border-border shadow-lg">
         <DropdownMenuItem
           onClick={handleContactSupport}
-          className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
+          className="cursor-pointer hover:bg-muted focus:bg-muted"
         >
           <Mail className="mr-2 h-4 w-4" />
           Contact Support
         </DropdownMenuItem>
         <DropdownMenuItem
           onClick={handleSubmitBug}
-          className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
+          className="cursor-pointer hover:bg-muted focus:bg-muted"
         >
           <Bug className="mr-2 h-4 w-4" />
           Submit Bug

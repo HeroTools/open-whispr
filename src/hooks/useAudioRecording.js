@@ -73,7 +73,7 @@ export const useAudioRecording = (toast, options = {}) => {
       },
     });
 
-    // Set up hotkey listener
+    // Set up hotkey listener for tap-to-talk mode
     const handleToggle = () => {
       const currentState = audioManagerRef.current.getState();
 
@@ -84,8 +84,34 @@ export const useAudioRecording = (toast, options = {}) => {
       }
     };
 
+    // Set up listener for push-to-talk start
+    const handleStart = () => {
+      const currentState = audioManagerRef.current.getState();
+      if (!currentState.isRecording && !currentState.isProcessing) {
+        audioManagerRef.current.startRecording();
+      }
+    };
+
+    // Set up listener for push-to-talk stop
+    const handleStop = () => {
+      const currentState = audioManagerRef.current.getState();
+      if (currentState.isRecording) {
+        audioManagerRef.current.stopRecording();
+      }
+    };
+
     const disposeToggle = window.electronAPI.onToggleDictation(() => {
       handleToggle();
+      onToggle?.();
+    });
+
+    const disposeStart = window.electronAPI.onStartDictation?.(() => {
+      handleStart();
+      onToggle?.();
+    });
+
+    const disposeStop = window.electronAPI.onStopDictation?.(() => {
+      handleStop();
       onToggle?.();
     });
 
@@ -102,6 +128,8 @@ export const useAudioRecording = (toast, options = {}) => {
     // Cleanup
     return () => {
       disposeToggle?.();
+      disposeStart?.();
+      disposeStop?.();
       disposeNoAudio?.();
       if (audioManagerRef.current) {
         audioManagerRef.current.cleanup();
@@ -134,6 +162,13 @@ export const useAudioRecording = (toast, options = {}) => {
     return false;
   };
 
+  const cancelProcessing = () => {
+    if (audioManagerRef.current) {
+      return audioManagerRef.current.cancelProcessing();
+    }
+    return false;
+  };
+
   const toggleListening = () => {
     if (!isRecording && !isProcessing) {
       startRecording();
@@ -150,6 +185,7 @@ export const useAudioRecording = (toast, options = {}) => {
     startRecording,
     stopRecording,
     cancelRecording,
+    cancelProcessing,
     toggleListening,
   };
 };

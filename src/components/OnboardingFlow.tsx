@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "./ui/card";
 import { Button } from "./ui/button";
-import { Input } from "./ui/input";
 import { Textarea } from "./ui/textarea";
 import {
   ChevronRight,
@@ -9,17 +8,12 @@ import {
   Check,
   Settings,
   Mic,
-  Key,
   Shield,
   Command,
   Sparkles,
-  Lock,
-  User,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
-import LocalWhisperPicker from "./LocalWhisperPicker";
-import ProcessingModeSelector from "./ui/ProcessingModeSelector";
-import ApiKeyInput from "./ui/ApiKeyInput";
+import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import PermissionCard from "./ui/PermissionCard";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import PasteToolsInfo from "./ui/PasteToolsInfo";
@@ -30,30 +24,19 @@ import { useDialogs } from "../hooks/useDialogs";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
-import { getLanguageLabel } from "../utils/languages";
-import { REASONING_PROVIDERS } from "../models/ModelRegistry";
-import LanguageSelector from "./ui/LanguageSelector";
-import ModelCardList from "./ui/ModelCardList";
-import { setAgentName as saveAgentName } from "../utils/agentName";
+import { setAgentNameIfEmpty as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
-import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
-type ReasoningModelOption = {
-  value: string;
-  label: string;
-  description?: string;
-  icon?: string;
-};
-
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  // Max valid step index for the current onboarding flow (6 steps, index 0-5)
-  const MAX_STEP = 5;
+  // Max valid step index for the current onboarding flow (4 steps, index 0-3)
+  const MAX_STEP = 3;
 
   const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
     "onboardingCurrentStep",
@@ -74,46 +57,35 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const {
     useLocalWhisper,
     whisperModel,
-    preferredLanguage,
+    localTranscriptionProvider,
+    parakeetModel,
+    cloudTranscriptionProvider,
+    cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
-    cloudReasoningBaseUrl,
-    useReasoningModel,
-    reasoningModel,
     openaiApiKey,
+    groqApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
     dictationKey,
-    setUseLocalWhisper,
-    setWhisperModel,
-    setPreferredLanguage,
-    setCloudTranscriptionBaseUrl,
-    setCloudReasoningBaseUrl,
+    activationMode,
+    setActivationMode,
     setDictationKey,
+    setOpenaiApiKey,
+    setGroqApiKey,
     updateTranscriptionSettings,
-    updateReasoningSettings,
-    updateApiKeys,
   } = useSettings();
 
-  const [apiKey, setApiKey] = useState(openaiApiKey);
-  const [hotkey, setHotkey] = useState(dictationKey || "`");
-  const [transcriptionBaseUrl, setTranscriptionBaseUrl] = useState(cloudTranscriptionBaseUrl);
-  const [reasoningBaseUrl, setReasoningBaseUrl] = useState(cloudReasoningBaseUrl);
-  const [agentName, setAgentName] = useState("Agent");
+  const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
+  const agentName = "OpenWhispr"; // Default agent name, editable in settings
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
+  const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
-  const {
-    alertDialog,
-    confirmDialog,
-    showAlertDialog,
-    showConfirmDialog,
-    hideAlertDialog,
-    hideConfirmDialog,
-  } = useDialogs();
-  const practiceTextareaRef = useRef<HTMLInputElement>(null);
+  const { alertDialog, confirmDialog, showAlertDialog, hideAlertDialog, hideConfirmDialog } =
+    useDialogs();
 
-  // Ref to prevent React.StrictMode double-invocation of auto-registration
   const autoRegisterInFlightRef = useRef(false);
   const hotkeyStepInitializedRef = useRef(false);
 
-  // Shared hotkey registration hook
   const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
     onSuccess: (registeredHotkey) => {
       setHotkey(registeredHotkey);
@@ -123,229 +95,44 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     showErrorToast: false,
   });
 
-  const trimmedReasoningBase = (reasoningBaseUrl || "").trim();
-  const normalizedReasoningBaseUrl = useMemo(
-    () => normalizeBaseUrl(trimmedReasoningBase),
-    [trimmedReasoningBase]
-  );
-  const hasEnteredReasoningBase = trimmedReasoningBase.length > 0;
-  const isValidReasoningBase = Boolean(
-    normalizedReasoningBaseUrl && normalizedReasoningBaseUrl.includes("://")
-  );
-  const usingCustomReasoningBase = hasEnteredReasoningBase && isValidReasoningBase;
-
-  const [customReasoningModels, setCustomReasoningModels] = useState<ReasoningModelOption[]>([]);
-  const [customModelsLoading, setCustomModelsLoading] = useState(false);
-  const [customModelsError, setCustomModelsError] = useState<string | null>(null);
-
-  const defaultReasoningModels = useMemo<ReasoningModelOption[]>(() => {
-    const provider = REASONING_PROVIDERS.openai;
-    return (
-      provider?.models?.map((model) => ({
-        value: model.value,
-        label: model.label,
-        description: model.description,
-      })) ?? []
-    );
-  }, []);
-
-  const displayedReasoningModels = usingCustomReasoningBase
-    ? customReasoningModels
-    : defaultReasoningModels;
-
-  const reasoningModelsEndpoint = useMemo(() => {
-    const base =
-      usingCustomReasoningBase && normalizedReasoningBaseUrl
-        ? normalizedReasoningBaseUrl
-        : API_ENDPOINTS.OPENAI_BASE;
-    return buildApiUrl(base, "/models");
-  }, [usingCustomReasoningBase, normalizedReasoningBaseUrl]);
-
-  const persistOpenAIKey = useCallback(
-    async (nextKey: string) => {
-      const trimmedKey = nextKey.trim();
-      if (useLocalWhisper || !trimmedKey) {
-        return false;
-      }
-      if (trimmedKey === openaiApiKey.trim()) {
-        return true;
-      }
-
-      try {
-        if (window.electronAPI?.saveOpenAIKey) {
-          await window.electronAPI.saveOpenAIKey(trimmedKey);
-        }
-        updateApiKeys({ openaiApiKey: trimmedKey });
-        return true;
-      } catch (error) {
-        console.error("Failed to save OpenAI key", error);
-        return false;
-      }
-    },
-    [useLocalWhisper, updateApiKeys, openaiApiKey]
-  );
-
-  const reasoningModelRef = useRef(reasoningModel);
-  useEffect(() => {
-    reasoningModelRef.current = reasoningModel;
-  }, [reasoningModel]);
-
-  useEffect(() => {
-    if (!usingCustomReasoningBase) {
-      setCustomModelsLoading(false);
-      setCustomReasoningModels([]);
-      setCustomModelsError(null);
-      return;
-    }
-
-    if (!normalizedReasoningBaseUrl) {
-      return;
-    }
-
-    let isCancelled = false;
-    const controller = new AbortController();
-
-    const loadModels = async () => {
-      setCustomModelsLoading(true);
-      setCustomModelsError(null);
-      try {
-        // Security: Only allow HTTPS endpoints (except localhost for development)
-        const isLocalhost =
-          normalizedReasoningBaseUrl.includes("://localhost") ||
-          normalizedReasoningBaseUrl.includes("://127.0.0.1");
-        if (!normalizedReasoningBaseUrl.startsWith("https://") && !isLocalhost) {
-          throw new Error("Only HTTPS endpoints are allowed (except localhost for testing).");
-        }
-
-        const headers: Record<string, string> = {};
-        const trimmedKey = apiKey.trim();
-        if (trimmedKey) {
-          headers.Authorization = `Bearer ${trimmedKey}`;
-        }
-
-        const response = await fetch(buildApiUrl(normalizedReasoningBaseUrl, "/models"), {
-          method: "GET",
-          headers,
-          signal: controller.signal,
-        });
-
-        if (!response.ok) {
-          const errorText = await response.text().catch(() => "");
-          throw new Error(
-            errorText
-              ? `${response.status} ${errorText.slice(0, 200)}`
-              : `${response.status} ${response.statusText}`
-          );
-        }
-
-        const payload = await response.json().catch(() => ({}));
-        const rawModels = Array.isArray(payload?.data)
-          ? payload.data
-          : Array.isArray(payload?.models)
-            ? payload.models
-            : [];
-
-        const mappedModels = (rawModels as Array<any>)
-          .map((item) => {
-            const value = item?.id || item?.name;
-            if (!value) {
-              return null;
-            }
-
-            const description =
-              typeof item?.description === "string" && item.description.trim()
-                ? item.description.trim()
-                : undefined;
-            const ownedBy = typeof item?.owned_by === "string" ? item.owned_by : undefined;
-
-            return {
-              value,
-              label: item?.id || item?.name || value,
-              description: description || (ownedBy ? `Owner: ${ownedBy}` : undefined),
-            } as ReasoningModelOption;
-          })
-          .filter(Boolean) as ReasoningModelOption[];
-
-        if (isCancelled) {
-          return;
-        }
-
-        setCustomReasoningModels(mappedModels);
-
-        if (mappedModels.length === 0) {
-          setCustomModelsError("No models returned by this endpoint.");
-        } else if (
-          reasoningModelRef.current &&
-          !mappedModels.some((model) => model.value === reasoningModelRef.current)
-        ) {
-          updateReasoningSettings({ reasoningModel: "" });
-        }
-      } catch (error) {
-        if (isCancelled) {
-          return;
-        }
-        if ((error as Error).name === "AbortError") {
-          return;
-        }
-        setCustomModelsError((error as Error).message || "Unable to load models from endpoint.");
-        setCustomReasoningModels([]);
-      } finally {
-        if (!isCancelled) {
-          setCustomModelsLoading(false);
-        }
-      }
-    };
-
-    loadModels();
-
-    return () => {
-      isCancelled = true;
-      controller.abort();
-    };
-  }, [usingCustomReasoningBase, normalizedReasoningBaseUrl, apiKey, updateReasoningSettings]);
-
-  useEffect(() => {
-    if (!usingCustomReasoningBase && defaultReasoningModels.length > 0) {
-      if (
-        reasoningModel &&
-        !defaultReasoningModels.some((model) => model.value === reasoningModel)
-      ) {
-        updateReasoningSettings({ reasoningModel: "" });
-      }
-    }
-  }, [usingCustomReasoningBase, defaultReasoningModels, reasoningModel, updateReasoningSettings]);
-
-  const activeReasoningModelLabel = useMemo(() => {
-    const match = displayedReasoningModels.find((model) => model.value === reasoningModel);
-    return match?.label || reasoningModel;
-  }, [displayedReasoningModels, reasoningModel]);
-
   const permissionsHook = usePermissions(showAlertDialog);
-  const { pasteFromClipboard } = useClipboard(showAlertDialog);
+  useClipboard(showAlertDialog); // Initialize clipboard hook for permission checks
 
   const steps = [
     { title: "Welcome", icon: Sparkles },
-    { title: "Privacy", icon: Lock },
     { title: "Setup", icon: Settings },
     { title: "Permissions", icon: Shield },
-    { title: "Hotkey & Test", icon: Command },
-    { title: "Agent Name", icon: User },
+    { title: "Activation", icon: Command },
   ];
 
-  const updateProcessingMode = (useLocal: boolean) => {
-    updateTranscriptionSettings({ useLocalWhisper: useLocal });
-  };
-
-  // Check if selected whisper model is downloaded
   useEffect(() => {
-    if (!useLocalWhisper || !whisperModel) {
+    const checkHotkeyMode = async () => {
+      try {
+        const info = await window.electronAPI?.getHotkeyModeInfo();
+        if (info?.isUsingGnome) {
+          setIsUsingGnomeHotkeys(true);
+          setActivationMode("tap");
+        }
+      } catch (error) {
+        console.error("Failed to check hotkey mode:", error);
+      }
+    };
+    checkHotkeyMode();
+  }, [setActivationMode]);
+
+  useEffect(() => {
+    const modelToCheck = localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
+    if (!useLocalWhisper || !modelToCheck) {
       setIsModelDownloaded(false);
       return;
     }
 
-    const checkModelStatus = async () => {
+    const checkStatus = async () => {
       try {
-        const result = await window.electronAPI?.checkModelStatus(whisperModel);
+        const result =
+          localTranscriptionProvider === "nvidia"
+            ? await window.electronAPI?.checkParakeetModelStatus(modelToCheck)
+            : await window.electronAPI?.checkModelStatus(modelToCheck);
         setIsModelDownloaded(result?.downloaded ?? false);
       } catch (error) {
         console.error("Failed to check model status:", error);
@@ -353,21 +140,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
     };
 
-    checkModelStatus();
-  }, [useLocalWhisper, whisperModel]);
+    checkStatus();
+  }, [useLocalWhisper, whisperModel, parakeetModel, localTranscriptionProvider]);
 
+  // Auto-register default hotkey when entering the hotkey step (step 3)
   useEffect(() => {
-    if (currentStep === 4) {
-      if (practiceTextareaRef.current) {
-        practiceTextareaRef.current.focus();
-      }
-    }
-  }, [currentStep]);
-
-  // Auto-register default hotkey when entering the hotkey step (step 4)
-  useEffect(() => {
-    if (currentStep !== 4) {
-      // Reset initialization flag when leaving step 4
+    if (currentStep !== 3) {
+      // Reset initialization flag when leaving step 3
       hotkeyStepInitializedRef.current = false;
       return;
     }
@@ -430,22 +209,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   }, [hotkey, showAlertDialog]);
 
   const saveSettings = useCallback(async () => {
-    const normalizedTranscriptionBase = (transcriptionBaseUrl || "").trim();
-    const normalizedReasoningBaseValue = (reasoningBaseUrl || "").trim();
-
-    setCloudTranscriptionBaseUrl(normalizedTranscriptionBase);
-    setCloudReasoningBaseUrl(normalizedReasoningBaseValue);
-
-    updateTranscriptionSettings({
-      whisperModel,
-      preferredLanguage,
-      cloudTranscriptionBaseUrl: normalizedTranscriptionBase,
-    });
-    updateReasoningSettings({
-      useReasoningModel,
-      reasoningModel,
-      cloudReasoningBaseUrl: normalizedReasoningBaseValue,
-    });
     const hotkeyRegistered = await ensureHotkeyRegistered();
     if (!hotkeyRegistered) {
       return false;
@@ -459,30 +222,19 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       permissionsHook.accessibilityPermissionGranted.toString()
     );
     localStorage.setItem("onboardingCompleted", "true");
-    const trimmedApiKey = apiKey.trim();
-    const skipAuth = trimmedApiKey.length === 0;
-    localStorage.setItem("skipAuth", skipAuth.toString());
 
-    if (!useLocalWhisper && trimmedApiKey) {
-      await persistOpenAIKey(trimmedApiKey);
+    try {
+      await window.electronAPI?.saveAllKeysToEnv?.();
+    } catch (error) {
+      console.error("Failed to persist API keys:", error);
     }
+
     return true;
   }, [
-    whisperModel,
     hotkey,
-    preferredLanguage,
     agentName,
     permissionsHook.micPermissionGranted,
     permissionsHook.accessibilityPermissionGranted,
-    useLocalWhisper,
-    apiKey,
-    transcriptionBaseUrl,
-    reasoningBaseUrl,
-    updateTranscriptionSettings,
-    updateReasoningSettings,
-    persistOpenAIKey,
-    setCloudTranscriptionBaseUrl,
-    setCloudReasoningBaseUrl,
     setDictationKey,
     ensureHotkeyRegistered,
   ]);
@@ -493,20 +245,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     const newStep = currentStep + 1;
-
-    if (currentStep === 2 && !useLocalWhisper) {
-      await persistOpenAIKey(apiKey);
-    }
-
     setCurrentStep(newStep);
 
-    // Show dictation panel when moving from permissions step (3) to hotkey & test step (4)
-    if (currentStep === 3 && newStep === 4) {
+    if (currentStep === 2 && newStep === 3) {
       if (window.electronAPI?.showDictationPanel) {
         window.electronAPI.showDictationPanel();
       }
     }
-  }, [currentStep, setCurrentStep, steps.length, useLocalWhisper, persistOpenAIKey, apiKey]);
+  }, [currentStep, setCurrentStep, steps.length]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -520,7 +266,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     if (!saved) {
       return;
     }
-    // Clear the onboarding step since we're done
     removeCurrentStep();
     onComplete();
   }, [saveSettings, removeCurrentStep, onComplete]);
@@ -529,379 +274,237 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     switch (currentStep) {
       case 0: // Welcome
         return (
-          <div className="text-center space-y-6">
-            <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center">
-              <Sparkles className="w-8 h-8 text-blue-600" />
+          <div className="text-center space-y-5">
+            {/* App logo */}
+            <div className="relative w-16 h-16 mx-auto">
+              <div className="absolute inset-0 bg-primary/30 rounded-2xl blur-xl" />
+              <img
+                src="./assets/icon.png"
+                alt="OpenWhispr"
+                className="relative w-16 h-16 rounded-2xl shadow-lg"
+              />
             </div>
-            <div>
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">Welcome to OpenWhispr</h2>
-              <p className="text-stone-600">
-                Let's set up your voice dictation in just a few simple steps.
+
+            {/* Title */}
+            <div className="space-y-1">
+              <h2 className="text-xl font-semibold text-foreground tracking-tight">
+                Welcome to OpenWhispr
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Professional voice-to-text for your computer
               </p>
             </div>
-            <div className="bg-blue-50/50 p-4 rounded-lg border border-blue-200/60">
-              <p className="text-sm text-blue-800">
-                🎤 Turn your voice into text instantly
-                <br />
-                ⚡ Works anywhere on your computer
-                <br />
-                🔒 Your privacy is protected
-              </p>
+
+            {/* Feature grid - compact and refined */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 dark:bg-white/3 border border-white/10 dark:border-white/5">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <Mic className="w-4 h-4 text-primary" />
+                </div>
+                <span className="text-xs font-medium text-foreground">Voice to Text</span>
+                <span className="text-[10px] text-muted-foreground">Instant</span>
+              </div>
+              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 dark:bg-white/3 border border-white/10 dark:border-white/5">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <Command className="w-4 h-4 text-primary" />
+                </div>
+                <span className="text-xs font-medium text-foreground">Works Anywhere</span>
+                <span className="text-[10px] text-muted-foreground">Any app</span>
+              </div>
+              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 dark:bg-white/3 border border-white/10 dark:border-white/5">
+                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+                  <Shield className="w-4 h-4 text-primary" />
+                </div>
+                <span className="text-xs font-medium text-foreground">Private</span>
+                <span className="text-[10px] text-muted-foreground">Your choice</span>
+              </div>
             </div>
           </div>
         );
 
-      case 1: // Choose Mode
+      case 1: // Setup - Choose Mode & Configure
         return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">
-                Choose Your Processing Mode
+          <div className="space-y-3">
+            <div className="text-center space-y-0.5">
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">
+                Transcription Setup
               </h2>
-              <p className="text-stone-600">How would you like to convert your speech to text?</p>
+              <p className="text-xs text-muted-foreground">Choose your mode and provider</p>
             </div>
 
-            <ProcessingModeSelector
+            {/* Unified configuration with integrated mode toggle */}
+            <TranscriptionModelPicker
+              selectedCloudProvider={cloudTranscriptionProvider}
+              onCloudProviderSelect={(provider) =>
+                updateTranscriptionSettings({ cloudTranscriptionProvider: provider })
+              }
+              selectedCloudModel={cloudTranscriptionModel}
+              onCloudModelSelect={(model) =>
+                updateTranscriptionSettings({ cloudTranscriptionModel: model })
+              }
+              selectedLocalModel={
+                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+              }
+              onLocalModelSelect={(modelId) => {
+                if (localTranscriptionProvider === "nvidia") {
+                  updateTranscriptionSettings({ parakeetModel: modelId });
+                } else {
+                  updateTranscriptionSettings({ whisperModel: modelId });
+                }
+              }}
+              selectedLocalProvider={localTranscriptionProvider}
+              onLocalProviderSelect={(provider) =>
+                updateTranscriptionSettings({
+                  localTranscriptionProvider: provider as "whisper" | "nvidia",
+                })
+              }
               useLocalWhisper={useLocalWhisper}
-              setUseLocalWhisper={updateProcessingMode}
+              onModeChange={(isLocal) => updateTranscriptionSettings({ useLocalWhisper: isLocal })}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              customTranscriptionApiKey={customTranscriptionApiKey}
+              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+              setCloudTranscriptionBaseUrl={(url) =>
+                updateTranscriptionSettings({ cloudTranscriptionBaseUrl: url })
+              }
+              variant="onboarding"
             />
           </div>
         );
 
-      case 2: // Setup Processing
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                {useLocalWhisper ? "Local Processing Setup" : "Cloud Processing Setup"}
-              </h2>
-              <p className="text-gray-600">
-                {useLocalWhisper
-                  ? "Let's install and configure Whisper on your device"
-                  : "Enter your OpenAI API key to get started"}
-              </p>
-            </div>
-
-            {useLocalWhisper ? (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Mic className="w-8 h-8 text-blue-600" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">Choose Your Model</h3>
-                  <p className="text-sm text-gray-600">
-                    Select a transcription model based on your needs.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Model quality
-                  </label>
-                  <p className="text-xs text-gray-500">
-                    Larger models are more accurate but slower. Base is recommended for most users.
-                  </p>
-                </div>
-
-                <LocalWhisperPicker
-                  selectedModel={whisperModel}
-                  onModelSelect={setWhisperModel}
-                  onModelDownloaded={(modelId) => {
-                    setIsModelDownloaded(true);
-                    setWhisperModel(modelId);
-                  }}
-                  variant="onboarding"
-                />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="text-center">
-                  <div className="w-16 h-16 mx-auto bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                    <Key className="w-8 h-8 text-blue-600" />
-                  </div>
-                </div>
-
-                <ApiKeyInput
-                  apiKey={apiKey}
-                  setApiKey={setApiKey}
-                  label="OpenAI API Key"
-                  helpText={
-                    <>
-                      Need an API key?{" "}
-                      <a
-                        href="https://platform.openai.com"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 underline"
-                      >
-                        platform.openai.com
-                      </a>
-                    </>
-                  }
-                />
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">
-                    Custom transcription base URL (optional)
-                  </label>
-                  <Input
-                    value={transcriptionBaseUrl}
-                    onChange={(event) => setTranscriptionBaseUrl(event.target.value)}
-                    placeholder="https://api.openai.com/v1"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-blue-800">
-                    Cloud transcription requests default to{" "}
-                    <code>{API_ENDPOINTS.TRANSCRIPTION_BASE}</code>. Enter an OpenAI-compatible base
-                    URL to override.
-                  </p>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-blue-900">
-                    Custom reasoning base URL (optional)
-                  </label>
-                  <Input
-                    value={reasoningBaseUrl}
-                    onChange={(event) => setReasoningBaseUrl(event.target.value)}
-                    placeholder="https://api.openai.com/v1"
-                    className="text-sm"
-                  />
-                  <p className="text-xs text-blue-800">
-                    We'll load AI models from this endpoint's /v1/models route during setup. Leave
-                    empty to use the default OpenAI endpoint.
-                  </p>
-                </div>
-
-                <div className="space-y-3 pt-4 border-t border-blue-100">
-                  <h4 className="font-medium text-blue-900">Reasoning Model</h4>
-                  {hasEnteredReasoningBase ? (
-                    <>
-                      {isValidReasoningBase ? (
-                        <p className="text-xs text-blue-800 break-all">
-                          Models load from <code>{reasoningModelsEndpoint}</code>.
-                        </p>
-                      ) : (
-                        <p className="text-xs text-amber-600">
-                          Enter a full base URL including protocol (e.g. https://server/v1).
-                        </p>
-                      )}
-                      {isValidReasoningBase && customModelsLoading && (
-                        <p className="text-xs text-blue-600">Fetching models...</p>
-                      )}
-                      {isValidReasoningBase && customModelsError && (
-                        <p className="text-xs text-red-600">{customModelsError}</p>
-                      )}
-                      {isValidReasoningBase &&
-                        !customModelsLoading &&
-                        !customModelsError &&
-                        displayedReasoningModels.length === 0 && (
-                          <p className="text-xs text-amber-600">
-                            No models returned by this endpoint.
-                          </p>
-                        )}
-                    </>
-                  ) : (
-                    <p className="text-xs text-blue-800">
-                      Using OpenAI defaults from <code>{reasoningModelsEndpoint}</code>.
-                    </p>
-                  )}
-                  <ModelCardList
-                    models={displayedReasoningModels}
-                    selectedModel={reasoningModel}
-                    onModelSelect={(modelId) =>
-                      updateReasoningSettings({ reasoningModel: modelId })
-                    }
-                  />
-                </div>
-
-                <div className="bg-blue-50 p-4 rounded-lg">
-                  <h4 className="font-medium text-blue-900 mb-2">How to get your API key:</h4>
-                  <ol className="text-sm text-blue-800 space-y-1">
-                    <li>1. Go to platform.openai.com</li>
-                    <li>2. Sign in to your account</li>
-                    <li>3. Navigate to API Keys</li>
-                    <li>4. Create a new secret key</li>
-                    <li>5. Copy and paste it here</li>
-                  </ol>
-                </div>
-              </div>
-            )}
-
-            {/* Language Selection - shown for both modes */}
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900 mb-3">🌍 Preferred Language</h4>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Which language do you primarily speak?
-              </label>
-              <LanguageSelector
-                value={preferredLanguage}
-                onChange={(value) => {
-                  updateTranscriptionSettings({ preferredLanguage: value });
-                }}
-                className="w-full"
-              />
-              <p className="text-xs text-gray-600 mt-1">
-                {useLocalWhisper
-                  ? "Helps Whisper better understand your speech"
-                  : "Improves OpenAI transcription speed and accuracy. AI text enhancement is enabled by default."}
-              </p>
-            </div>
-          </div>
-        );
-
-      case 3: // Permissions
+      case 2: // Permissions
         const platform = permissionsHook.pasteToolsInfo?.platform;
         const isMacOS = platform === "darwin";
 
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
+            {/* Header - compact */}
             <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Grant Permissions</h2>
-              <p className="text-gray-600">
-                {isMacOS
-                  ? "OpenWhispr needs a couple of permissions to work properly"
-                  : "OpenWhispr needs microphone access to record your voice"}
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">Permissions</h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {isMacOS ? "Required for OpenWhispr to work" : "Microphone access required"}
               </p>
             </div>
 
-            <div className="space-y-4">
+            {/* Permission cards - tight stack */}
+            <div className="space-y-1.5">
               <PermissionCard
                 icon={Mic}
-                title="Microphone Access"
-                description="Required to record your voice"
+                title="Microphone"
+                description="To capture your voice"
                 granted={permissionsHook.micPermissionGranted}
                 onRequest={permissionsHook.requestMicPermission}
-                buttonText="Grant Access"
+                buttonText="Grant"
               />
-
-              {!permissionsHook.micPermissionGranted && (
-                <MicPermissionWarning
-                  error={permissionsHook.micPermissionError}
-                  onOpenSoundSettings={permissionsHook.openSoundInputSettings}
-                  onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
-                />
-              )}
 
               {isMacOS && (
                 <PermissionCard
                   icon={Shield}
-                  title="Accessibility Permission"
-                  description="Required to paste text automatically"
+                  title="Accessibility"
+                  description="To paste text into apps"
                   granted={permissionsHook.accessibilityPermissionGranted}
                   onRequest={permissionsHook.testAccessibilityPermission}
                   buttonText="Test & Grant"
+                  onOpenSettings={permissionsHook.openAccessibilitySettings}
                 />
               )}
-
-              {/* Only show PasteToolsInfo on Linux when tools are NOT available (to show install instructions) */}
-              {platform === "linux" &&
-                permissionsHook.pasteToolsInfo &&
-                !permissionsHook.pasteToolsInfo.available && (
-                  <PasteToolsInfo
-                    pasteToolsInfo={permissionsHook.pasteToolsInfo}
-                    isChecking={permissionsHook.isCheckingPasteTools}
-                    onCheck={permissionsHook.checkPasteToolsAvailability}
-                  />
-                )}
             </div>
 
-            <div className="bg-amber-50 p-4 rounded-lg">
-              <h4 className="font-medium text-amber-900 mb-2">🔒 Privacy Note</h4>
-              <p className="text-sm text-amber-800">
-                OpenWhispr only uses these permissions for dictation.
-                {useLocalWhisper
-                  ? " With local processing, your voice never leaves your device."
-                  : " Your voice is sent to OpenAI's servers for transcription."}
-              </p>
-            </div>
-          </div>
-        );
-
-      case 4: // Hotkey & Test (combined)
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Set Your Hotkey & Test</h2>
-              <p className="text-gray-600">Choose your hotkey and try it out</p>
-            </div>
-
-            <HotkeyInput
-              value={hotkey}
-              onChange={async (newHotkey) => {
-                const success = await registerHotkey(newHotkey);
-                if (success) {
-                  setHotkey(newHotkey);
-                }
-              }}
-              disabled={isHotkeyRegistering}
-            />
-
-            <div className="bg-blue-50/50 p-5 rounded-lg border border-blue-200/60">
-              <h3 className="font-semibold text-blue-900 mb-3">Try It Now</h3>
-              <p className="text-sm text-blue-800 mb-3">
-                Click in the text area, press{" "}
-                <kbd className="bg-white px-2 py-1 rounded text-xs font-mono border border-blue-200">
-                  {readableHotkey}
-                </kbd>{" "}
-                to start recording, speak, then press it again to stop.
-              </p>
-
-              <div>
-                <label className="block text-sm font-medium text-stone-700 mb-2">
-                  Test your dictation:
-                </label>
-                <Textarea rows={3} placeholder="Click here, then use your hotkey to dictate..." />
-              </div>
-            </div>
-
-            <div className="bg-green-50/50 p-4 rounded-lg border border-green-200/60">
-              <h4 className="font-medium text-green-900 mb-2">How it works:</h4>
-              <ol className="text-sm text-green-800 space-y-1">
-                <li>1. Click in any text field</li>
-                <li>
-                  2. Press{" "}
-                  <kbd className="bg-white px-1 py-0.5 rounded text-xs font-mono border border-green-200">
-                    {readableHotkey}
-                  </kbd>{" "}
-                  to start, speak, press again to stop
-                </li>
-                <li>3. Your text appears automatically!</li>
-              </ol>
-            </div>
-          </div>
-        );
-
-      case 5: // Agent Name (final step)
-        return (
-          <div className="space-y-6">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-stone-900 mb-2">Name Your Agent</h2>
-              <p className="text-stone-600">
-                Give your agent a name so you can address it specifically when giving instructions.
-              </p>
-            </div>
-
-            <div className="space-y-4 p-4 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">How this helps:</h4>
-              <ul className="text-sm text-purple-800 space-y-1">
-                <li>
-                  • Say "Hey {agentName || "Agent"}, write a formal email" for specific instructions
-                </li>
-                <li>• Use the name to distinguish between dictation and commands</li>
-                <li>• Makes interactions feel more natural and personal</li>
-              </ul>
-            </div>
-
-            <div className="space-y-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Agent Name</label>
-              <Input
-                placeholder="e.g., Assistant, Jarvis, Alex..."
-                value={agentName}
-                onChange={(e) => setAgentName(e.target.value)}
-                className="text-center text-lg font-mono"
+            {/* Error state - only show when there's actually an issue */}
+            {!permissionsHook.micPermissionGranted && permissionsHook.micPermissionError && (
+              <MicPermissionWarning
+                error={permissionsHook.micPermissionError}
+                onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
               />
-              <p className="text-xs text-gray-500 mt-2">You can change this anytime in settings</p>
+            )}
+
+            {/* Linux paste tools - only when needed */}
+            {platform === "linux" &&
+              permissionsHook.pasteToolsInfo &&
+              !permissionsHook.pasteToolsInfo.available && (
+                <PasteToolsInfo
+                  pasteToolsInfo={permissionsHook.pasteToolsInfo}
+                  isChecking={permissionsHook.isCheckingPasteTools}
+                  onCheck={permissionsHook.checkPasteToolsAvailability}
+                />
+              )}
+          </div>
+        );
+
+      case 3: // Hotkey & Activation Mode
+        return (
+          <div className="space-y-4">
+            {/* Header */}
+            <div className="text-center space-y-0.5">
+              <h2 className="text-lg font-semibold text-foreground tracking-tight">
+                Activation Setup
+              </h2>
+              <p className="text-xs text-muted-foreground">Configure how you trigger dictation</p>
+            </div>
+
+            {/* Unified control surface */}
+            <div className="rounded-lg border border-border-subtle bg-surface-1 overflow-hidden">
+              {/* Hotkey section */}
+              <div className="p-4 border-b border-border-subtle">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                    Hotkey
+                  </span>
+                </div>
+                <HotkeyInput
+                  value={hotkey}
+                  onChange={async (newHotkey) => {
+                    const success = await registerHotkey(newHotkey);
+                    if (success) {
+                      setHotkey(newHotkey);
+                    }
+                  }}
+                  disabled={isHotkeyRegistering}
+                  variant="hero"
+                />
+              </div>
+
+              {/* Mode section - inline with hotkey */}
+              {!isUsingGnomeHotkeys && (
+                <div className="p-4 flex items-center justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      Mode
+                    </span>
+                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                      {activationMode === "tap" ? "Press to start/stop" : "Hold while speaking"}
+                    </p>
+                  </div>
+                  <ActivationModeSelector
+                    value={activationMode}
+                    onChange={setActivationMode}
+                    variant="compact"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Test area - minimal chrome */}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Test
+                </span>
+                <span className="text-[10px] text-muted-foreground/60">
+                  {activationMode === "tap" || isUsingGnomeHotkeys
+                    ? `${readableHotkey} to start/stop`
+                    : `Hold ${readableHotkey}`}
+                </span>
+              </div>
+              <Textarea
+                rows={2}
+                placeholder="Click here and use your hotkey to dictate..."
+                className="text-sm resize-none"
+              />
             </div>
           </div>
         );
@@ -914,26 +517,27 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const canProceed = () => {
     switch (currentStep) {
       case 0:
-        return true;
+        return true; // Welcome
       case 1:
-        return true; // Mode selection
-      case 2:
+        // Setup - check if configuration is complete
         if (useLocalWhisper) {
-          return whisperModel !== "" && isModelDownloaded;
+          const modelToCheck =
+            localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
+          return modelToCheck !== "" && isModelDownloaded;
         } else {
-          const trimmedKey = apiKey.trim();
-          if (!trimmedKey) {
-            return false;
-          }
-          if (!hasEnteredReasoningBase) {
+          // For cloud mode, check if appropriate API key is set
+          if (cloudTranscriptionProvider === "openai") {
+            return openaiApiKey.trim().length > 0;
+          } else if (cloudTranscriptionProvider === "groq") {
+            return groqApiKey.trim().length > 0;
+          } else if (cloudTranscriptionProvider === "custom") {
+            // Custom can work without API key for local endpoints
             return true;
           }
-          if (!isValidReasoningBase) {
-            return false;
-          }
-          return customReasoningModels.length > 0 && !customModelsLoading && !customModelsError;
+          return openaiApiKey.trim().length > 0; // Default to OpenAI
         }
-      case 3: {
+      case 2: {
+        // Permissions
         if (!permissionsHook.micPermissionGranted) {
           return false;
         }
@@ -943,10 +547,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         }
         return true;
       }
-      case 4:
-        return hotkey.trim() !== ""; // Hotkey & Test step
-      case 5:
-        return agentName.trim() !== ""; // Agent name step (final)
+      case 3:
+        return hotkey.trim() !== ""; // Activation step (final)
       default:
         return false;
     }
@@ -966,14 +568,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   return (
     <div
-      className="h-screen flex flex-col bg-gradient-to-br from-stone-50 via-white to-blue-50/30"
+      className="h-screen flex flex-col bg-background"
       style={{
-        backgroundImage: `repeating-linear-gradient(
-          transparent,
-          transparent 24px,
-          #e7e5e4 24px,
-          #e7e5e4 25px
-        )`,
         paddingTop: "env(safe-area-inset-top, 0px)",
       }}
     >
@@ -994,66 +590,65 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         description={alertDialog.description}
         onOk={() => {}}
       />
-      {/* Left margin line for entire page */}
-      <div className="fixed left-6 md:left-12 top-0 bottom-0 w-px bg-red-300/40 z-0"></div>
 
       {/* Title Bar */}
       <div className="flex-shrink-0 z-10">
         <TitleBar
           showTitle={true}
-          className="bg-white/95 backdrop-blur-xl border-b border-stone-200/60 shadow-sm"
+          className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
         ></TitleBar>
       </div>
 
       {/* Progress Bar */}
-      <div className="flex-shrink-0 bg-white/90 backdrop-blur-xl border-b border-stone-200/60 p-6 md:px-16 z-10">
-        <div className="max-w-4xl mx-auto">
+      <div className="flex-shrink-0 bg-background/80 backdrop-blur-2xl border-b border-white/5 px-6 md:px-12 py-4 z-10">
+        <div className="max-w-3xl mx-auto">
           <StepProgress steps={steps} currentStep={currentStep} />
         </div>
       </div>
 
       {/* Content - This will grow to fill available space */}
-      <div className="flex-1 px-6 md:pl-16 md:pr-6 py-12 overflow-y-auto">
-        <div className="max-w-4xl mx-auto">
-          <Card className="bg-white/95 backdrop-blur-xl border border-stone-200/60 shadow-lg rounded-2xl overflow-hidden">
-            <CardContent className="p-12 md:p-16">
-              <div className="space-y-8">{renderStep()}</div>
+      <div className="flex-1 px-6 md:px-12 py-6 overflow-y-auto">
+        <div className="max-w-3xl mx-auto">
+          <Card className="bg-card/80 backdrop-blur-2xl border border-white/10 dark:border-white/5 shadow-xl rounded-2xl overflow-hidden">
+            <CardContent className="p-8 md:p-10">
+              <div className="space-y-6">{renderStep()}</div>
             </CardContent>
           </Card>
         </div>
       </div>
 
       {/* Footer - This will stick to the bottom */}
-      <div className="flex-shrink-0 bg-white/95 backdrop-blur-xl border-t border-stone-200/60 px-6 md:pl-16 md:pr-6 py-8 z-10 shadow-sm">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
+      <div className="flex-shrink-0 bg-background/80 backdrop-blur-2xl border-t border-white/5 px-6 md:px-12 py-3 z-10">
+        <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Button
             onClick={prevStep}
             variant="outline"
             disabled={currentStep === 0}
-            className="px-8 py-3 h-12 text-sm font-medium"
+            className="h-8 px-5 rounded-full text-xs"
           >
-            <ChevronLeft className="w-4 h-4 mr-2" />
-            Previous
+            <ChevronLeft className="w-3.5 h-3.5" />
+            Back
           </Button>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {currentStep === steps.length - 1 ? (
               <Button
                 onClick={finishOnboarding}
                 disabled={!canProceed()}
-                className="bg-green-600 hover:bg-green-700 px-8 py-3 h-12 text-sm font-medium"
+                variant="success"
+                className="h-8 px-6 rounded-full text-xs"
               >
-                <Check className="w-4 h-4 mr-2" />
-                Complete Setup
+                <Check className="w-3.5 h-3.5" />
+                Complete
               </Button>
             ) : (
               <Button
                 onClick={nextStep}
                 disabled={!canProceed()}
-                className="px-8 py-3 h-12 text-sm font-medium"
+                className="h-8 px-6 rounded-full text-xs"
               >
                 Next
-                <ChevronRight className="w-4 h-4 ml-2" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>

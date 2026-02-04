@@ -26,9 +26,10 @@
 
 **Solutions:**
 1. whisper.cpp is bundled with the app - try reinstalling
-2. Check antivirus isn't blocking the whisper-cpp executable
-3. Clear model cache: delete `%USERPROFILE%\.cache\openwhispr\whisper-models`
-4. Try cloud mode as fallback
+2. If running from source, run `npm run download:whisper-cpp` and confirm `resources\\bin\\whisper-cpp-win32-x64.exe` exists
+3. Check antivirus isn't blocking the whisper-cpp executable
+4. Clear model cache: delete `%USERPROFILE%\.cache\openwhispr\whisper-models`
+5. Try cloud mode as fallback
 
 ### FFmpeg Issues
 
@@ -84,7 +85,7 @@ Then reinstall.
 
 ## Getting Help
 
-Report issues at https://github.com/HeroTools/open-whispr/issues with:
+Report issues at https://github.com/OpenWhispr/openwhispr/issues with:
 - Windows version (`winver`)
 - OpenWhispr version
 - Debug log contents
