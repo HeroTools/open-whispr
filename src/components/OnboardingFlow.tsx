@@ -10,11 +10,9 @@ import {
   Mic,
   Shield,
   Command,
-  Sparkles,
   UserCircle,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
-import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import PermissionCard from "./ui/PermissionCard";
 import SupportDropdown from "./ui/SupportDropdown";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
@@ -34,15 +32,19 @@ import { useAuth } from "../hooks/useAuth";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
-import ProcessingModeSelector from "./ui/ProcessingModeSelector";
+import TranscriptionModelPicker from "./TranscriptionModelPicker";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
 }
 
 export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  // Max valid step index for the current onboarding flow (4 steps, index 0-3)
-  const MAX_STEP = 3;
+  const { isSignedIn } = useAuth();
+
+  // Max valid step index dynamically determined based on auth state
+  // Signed-in users: 3 steps (Welcome, Setup, Activation) - index 0-2
+  // Non-signed-in users: 4 steps (Welcome, Setup, Permissions, Activation) - index 0-3
+  const getMaxStep = () => (isSignedIn ? 2 : 3);
 
   const [currentStep, setCurrentStep, removeCurrentStep] = useLocalStorage(
     "onboardingCurrentStep",
@@ -54,7 +56,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         // Clamp to valid range to handle users upgrading from older versions
         // with different step counts
         if (isNaN(parsed) || parsed < 0) return 0;
-        if (parsed > MAX_STEP) return MAX_STEP;
+        const maxStep = getMaxStep();
+        if (parsed > maxStep) return maxStep;
         return parsed;
       },
     }
@@ -63,7 +66,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const {
     useLocalWhisper,
     whisperModel,
-    setWhisperModel,
     localTranscriptionProvider,
     parakeetModel,
     cloudTranscriptionProvider,
@@ -80,10 +82,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setOpenaiApiKey,
     setGroqApiKey,
     updateTranscriptionSettings,
-    cloudTranscriptionMode,
-    setCloudTranscriptionMode,
-    cloudReasoningModel,
-    setCloudReasoningModel,
     preferredLanguage,
   } = useSettings();
 
@@ -93,7 +91,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
-  const { isSignedIn } = useAuth();
   const { alertDialog, confirmDialog, showAlertDialog, hideAlertDialog, hideConfirmDialog } =
     useDialogs();
 
@@ -112,12 +109,20 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog); // Initialize clipboard hook for permission checks
 
-  const steps = [
-    { title: "Welcome", icon: UserCircle },
-    { title: "Setup", icon: Settings },
-    { title: "Permissions", icon: Shield },
-    { title: "Activation", icon: Command },
-  ];
+  // For signed-in users, merge setup and permissions into one step
+  const steps =
+    isSignedIn && !skipAuth
+      ? [
+          { title: "Welcome", icon: UserCircle },
+          { title: "Setup", icon: Settings },
+          { title: "Activation", icon: Command },
+        ]
+      : [
+          { title: "Welcome", icon: UserCircle },
+          { title: "Setup", icon: Settings },
+          { title: "Permissions", icon: Shield },
+          { title: "Activation", icon: Command },
+        ];
 
   // Only show progress for signed-up users after account creation step
   const showProgress = currentStep > 0;
@@ -160,10 +165,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     checkStatus();
   }, [useLocalWhisper, whisperModel, parakeetModel, localTranscriptionProvider]);
 
-  // Auto-register default hotkey when entering the hotkey step (step 3)
+  // Auto-register default hotkey when entering the activation step
+  // (step 3 for non-signed-in, step 2 for signed-in users)
+  const activationStepIndex = isSignedIn && !skipAuth ? 2 : 3;
+
   useEffect(() => {
-    if (currentStep !== 3) {
-      // Reset initialization flag when leaving step 3
+    if (currentStep !== activationStepIndex) {
+      // Reset initialization flag when leaving activation step
       hotkeyStepInitializedRef.current = false;
       return;
     }
@@ -197,7 +205,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     };
 
     void autoRegisterDefaultHotkey();
-  }, [currentStep, hotkey, registerHotkey]);
+  }, [currentStep, hotkey, registerHotkey, activationStepIndex]);
 
   const ensureHotkeyRegistered = useCallback(async () => {
     if (!window.electronAPI?.updateHotkey) {
@@ -233,11 +241,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setDictationKey(hotkey);
     saveAgentName(agentName);
 
-    localStorage.setItem("micPermissionGranted", permissionsHook.micPermissionGranted.toString());
-    localStorage.setItem(
-      "accessibilityPermissionGranted",
-      permissionsHook.accessibilityPermissionGranted.toString()
-    );
     const skippedAuth = skipAuth;
     localStorage.setItem("authenticationSkipped", skippedAuth.toString());
     localStorage.setItem("onboardingCompleted", "true");
@@ -250,14 +253,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     return true;
-  }, [
-    hotkey,
-    agentName,
-    permissionsHook.micPermissionGranted,
-    permissionsHook.accessibilityPermissionGranted,
-    setDictationKey,
-    ensureHotkeyRegistered,
-  ]);
+  }, [hotkey, agentName, setDictationKey, ensureHotkeyRegistered]);
 
   const nextStep = useCallback(async () => {
     if (currentStep >= steps.length - 1) {
@@ -267,12 +263,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     const newStep = currentStep + 1;
     setCurrentStep(newStep);
 
-    if (currentStep === 2 && newStep === 3) {
+    // Show dictation panel when entering activation step
+    if (newStep === activationStepIndex) {
       if (window.electronAPI?.showDictationPanel) {
         window.electronAPI.showDictationPanel();
       }
     }
-  }, [currentStep, setCurrentStep, steps.length]);
+  }, [currentStep, setCurrentStep, steps.length, activationStepIndex]);
 
   const prevStep = useCallback(() => {
     if (currentStep > 0) {
@@ -305,21 +302,23 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           />
         );
 
-      case 1: // Setup - Choose Mode & Configure
-        // Simplified path for signed-in users (cloud-first)
+      case 1: // Setup - Choose Mode & Configure (merged with permissions for signed-in users)
+        // Simplified path for signed-in users (cloud-first) with permissions
         if (isSignedIn && !skipAuth) {
+          const platform = permissionsHook.pasteToolsInfo?.platform;
+          const isMacOS = platform === "darwin";
+
           return (
             <div className="space-y-6">
               <div className="text-center">
                 <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Check className="w-7 h-7 text-emerald-600" />
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">You're ready to go</h2>
-                <p className="text-neutral-600">
-                  OpenWhispr handles transcription and AI processing for you. No setup needed.
-                </p>
+                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Setup</h2>
+                <p className="text-neutral-600">Choose your language and grant permissions</p>
               </div>
 
+              {/* Language Selector */}
               <div className="space-y-2.5 p-3 bg-muted/50 border border-border/60 rounded">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-muted-foreground">
@@ -333,82 +332,54 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     className="w-full"
                   />
                 </div>
+              </div>
 
+              {/* Permissions */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium text-foreground">Permissions</h3>
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-muted-foreground">
-                    AI Model
-                  </label>
-                  <select
-                    value={cloudReasoningModel}
-                    onChange={(e) => setCloudReasoningModel(e.target.value)}
-                    className="w-full h-9 px-3 text-sm font-medium bg-surface-1/80 backdrop-blur-sm border border-border/70 rounded shadow-sm transition-all duration-200 hover:border-border-hover hover:bg-surface-2/70 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:ring-offset-1 focus:border-border-active"
-                  >
-                    <optgroup label="Fast">
-                      <option value="llama-3.3-70b-versatile">Llama 3.3 70B — Recommended</option>
-                      <option value="llama-3.1-8b-instant">Llama 3.1 8B — Fastest</option>
-                    </optgroup>
-                    <optgroup label="Balanced">
-                      <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
-                      <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
-                    </optgroup>
-                    <optgroup label="Quality">
-                      <option value="anthropic/claude-opus-4">Claude Opus 4</option>
-                      <option value="openai/gpt-4.1">GPT-4.1</option>
-                    </optgroup>
-                  </select>
-                </div>
-              </div>
-
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-                <p className="text-sm text-blue-800">
-                  <span className="font-medium">Included with your account:</span> 2,000 words/day
-                  free, AI processing, multiple AI models, custom dictionary
-                </p>
-              </div>
-
-              <details className="group">
-                <summary className="text-sm text-neutral-500 cursor-pointer hover:text-neutral-700 transition-colors">
-                  Advanced options
-                </summary>
-                <div className="mt-4 space-y-4">
-                  <ProcessingModeSelector
-                    useLocalWhisper={useLocalWhisper}
-                    setUseLocalWhisper={(useLocal) => {
-                      updateTranscriptionSettings({ useLocalWhisper: useLocal });
-                      if (!useLocal) {
-                        setCloudTranscriptionMode("openwhispr");
-                      }
-                    }}
+                  <PermissionCard
+                    icon={Mic}
+                    title="Microphone"
+                    description="To capture your voice"
+                    granted={permissionsHook.micPermissionGranted}
+                    onRequest={permissionsHook.requestMicPermission}
+                    buttonText="Grant"
                   />
-                  {(useLocalWhisper || cloudTranscriptionMode === "byok") && (
-                    <TranscriptionModelPicker
-                      selectedCloudProvider={cloudTranscriptionProvider}
-                      onCloudProviderSelect={(provider) =>
-                        updateTranscriptionSettings({ cloudTranscriptionProvider: provider })
-                      }
-                      selectedCloudModel={cloudTranscriptionModel}
-                      onCloudModelSelect={(model) =>
-                        updateTranscriptionSettings({ cloudTranscriptionModel: model })
-                      }
-                      selectedLocalModel={whisperModel}
-                      onLocalModelSelect={setWhisperModel}
-                      useLocalWhisper={useLocalWhisper}
-                      onModeChange={() => {}}
-                      openaiApiKey={openaiApiKey}
-                      setOpenaiApiKey={setOpenaiApiKey}
-                      groqApiKey={groqApiKey}
-                      setGroqApiKey={setGroqApiKey}
-                      customTranscriptionApiKey={customTranscriptionApiKey}
-                      setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-                      cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-                      setCloudTranscriptionBaseUrl={(url) =>
-                        updateTranscriptionSettings({ cloudTranscriptionBaseUrl: url })
-                      }
-                      variant="onboarding"
+
+                  {isMacOS && (
+                    <PermissionCard
+                      icon={Shield}
+                      title="Accessibility"
+                      description="To paste text into apps"
+                      granted={permissionsHook.accessibilityPermissionGranted}
+                      onRequest={permissionsHook.testAccessibilityPermission}
+                      buttonText="Test & Grant"
+                      onOpenSettings={permissionsHook.openAccessibilitySettings}
                     />
                   )}
                 </div>
-              </details>
+
+                {/* Error state - only show when there's actually an issue */}
+                {!permissionsHook.micPermissionGranted && permissionsHook.micPermissionError && (
+                  <MicPermissionWarning
+                    error={permissionsHook.micPermissionError}
+                    onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                    onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                  />
+                )}
+
+                {/* Linux paste tools - only when needed */}
+                {platform === "linux" &&
+                  permissionsHook.pasteToolsInfo &&
+                  !permissionsHook.pasteToolsInfo.available && (
+                    <PasteToolsInfo
+                      pasteToolsInfo={permissionsHook.pasteToolsInfo}
+                      isChecking={permissionsHook.isCheckingPasteTools}
+                      onCheck={permissionsHook.checkPasteToolsAvailability}
+                    />
+                  )}
+              </div>
             </div>
           );
         }
@@ -480,7 +451,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 2: // Permissions
+      case 2: // Permissions (only for non-signed-in users) or Activation (for signed-in users)
+        // For signed-in users, this is the activation step
+        if (isSignedIn && !skipAuth) {
+          return renderActivationStep();
+        }
+
+        // For non-signed-in users, this is the permissions step
         const platform = permissionsHook.pasteToolsInfo?.platform;
         const isMacOS = platform === "darwin";
 
@@ -540,100 +517,104 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 3: // Hotkey & Activation Mode
-        return (
-          <div className="space-y-4">
-            {/* Header */}
-            <div className="text-center space-y-0.5">
-              <h2 className="text-lg font-semibold text-foreground tracking-tight">
-                Activation Setup
-              </h2>
-              <p className="text-xs text-muted-foreground">Configure how you trigger dictation</p>
-            </div>
-
-            {/* Unified control surface */}
-            <div className="rounded-lg border border-border-subtle bg-surface-1 overflow-hidden">
-              {/* Hotkey section */}
-              <div className="p-4 border-b border-border-subtle">
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Hotkey
-                  </span>
-                </div>
-                <HotkeyInput
-                  value={hotkey}
-                  onChange={async (newHotkey) => {
-                    const success = await registerHotkey(newHotkey);
-                    if (success) {
-                      setHotkey(newHotkey);
-                    }
-                  }}
-                  disabled={isHotkeyRegistering}
-                  variant="hero"
-                />
-              </div>
-
-              {/* Mode section - inline with hotkey */}
-              {!isUsingGnomeHotkeys && (
-                <div className="p-4 flex items-center justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                      Mode
-                    </span>
-                    <p className="text-[11px] text-muted-foreground/70 mt-0.5">
-                      {activationMode === "tap" ? "Press to start/stop" : "Hold while speaking"}
-                    </p>
-                  </div>
-                  <ActivationModeSelector
-                    value={activationMode}
-                    onChange={setActivationMode}
-                    variant="compact"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Test area - minimal chrome */}
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Test
-                </span>
-                <span className="text-[10px] text-muted-foreground/60">
-                  {activationMode === "tap" || isUsingGnomeHotkeys
-                    ? `${readableHotkey} to start/stop`
-                    : `Hold ${readableHotkey}`}
-                </span>
-              </div>
-              <Textarea
-                rows={2}
-                placeholder="Click here and use your hotkey to dictate..."
-                className="text-sm resize-none"
-              />
-            </div>
-          </div>
-        );
+      case 3: // Activation (only for non-signed-in users)
+        return renderActivationStep();
 
       default:
         return null;
     }
   };
 
+  const renderActivationStep = () => (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="text-center space-y-0.5">
+        <h2 className="text-lg font-semibold text-foreground tracking-tight">Activation Setup</h2>
+        <p className="text-xs text-muted-foreground">Configure how you trigger dictation</p>
+      </div>
+
+      {/* Unified control surface */}
+      <div className="rounded-lg border border-border-subtle bg-surface-1 overflow-hidden">
+        {/* Hotkey section */}
+        <div className="p-4 border-b border-border-subtle">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Hotkey
+            </span>
+          </div>
+          <HotkeyInput
+            value={hotkey}
+            onChange={async (newHotkey) => {
+              const success = await registerHotkey(newHotkey);
+              if (success) {
+                setHotkey(newHotkey);
+              }
+            }}
+            disabled={isHotkeyRegistering}
+            variant="hero"
+          />
+        </div>
+
+        {/* Mode section - inline with hotkey */}
+        {!isUsingGnomeHotkeys && (
+          <div className="p-4 flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Mode
+              </span>
+              <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+                {activationMode === "tap" ? "Press to start/stop" : "Hold while speaking"}
+              </p>
+            </div>
+            <ActivationModeSelector
+              value={activationMode}
+              onChange={setActivationMode}
+              variant="compact"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* Test area - minimal chrome */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Test
+          </span>
+          <span className="text-[10px] text-muted-foreground/60">
+            {activationMode === "tap" || isUsingGnomeHotkeys
+              ? `${readableHotkey} to start/stop`
+              : `Hold ${readableHotkey}`}
+          </span>
+        </div>
+        <Textarea
+          rows={2}
+          placeholder="Click here and use your hotkey to dictate..."
+          className="text-sm resize-none"
+        />
+      </div>
+    </div>
+  );
+
   const canProceed = () => {
     switch (currentStep) {
       case 0:
         return isSignedIn || skipAuth; // Authentication step
       case 1:
-        // Signed-in users using cloud mode can always proceed
-        if (
-          isSignedIn &&
-          !skipAuth &&
-          cloudTranscriptionMode === "openwhispr" &&
-          !useLocalWhisper
-        ) {
+        // For signed-in users: Setup step includes permissions
+        if (isSignedIn && !skipAuth) {
+          // Check permissions
+          if (!permissionsHook.micPermissionGranted) {
+            return false;
+          }
+          const currentPlatform = permissionsHook.pasteToolsInfo?.platform;
+          if (currentPlatform === "darwin") {
+            return permissionsHook.accessibilityPermissionGranted;
+          }
           return true;
         }
-        // Setup - check if configuration is complete
+
+        // For non-signed-in users: Setup - check if configuration is complete
         if (useLocalWhisper) {
           const modelToCheck =
             localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel;
@@ -651,7 +632,12 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           return openaiApiKey.trim().length > 0; // Default to OpenAI
         }
       case 2: {
-        // Permissions
+        // For signed-in users, this is activation step
+        if (isSignedIn && !skipAuth) {
+          return hotkey.trim() !== "";
+        }
+
+        // For non-signed-in users, this is permissions step
         if (!permissionsHook.micPermissionGranted) {
           return false;
         }
@@ -662,7 +648,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         return true;
       }
       case 3:
-        return hotkey.trim() !== ""; // Activation step (final)
+        return hotkey.trim() !== ""; // Activation step for non-signed-in users
       default:
         return false;
     }
@@ -740,15 +726,21 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       {showProgress && (
         <div className="shrink-0 bg-background/80 backdrop-blur-2xl border-t border-white/5 px-6 md:px-12 py-3 z-10">
           <div className="max-w-3xl mx-auto flex items-center justify-between">
-            <Button
-              onClick={prevStep}
-              variant="outline"
-              disabled={currentStep === 0 || (currentStep === 1 && isSignedIn && !skipAuth)}
-              className="h-8 px-5 rounded-full text-xs"
-            >
-              <ChevronLeft className="w-3.5 h-3.5" />
-              Back
-            </Button>
+            {/* Hide back button on first step for signed-in users */}
+            {!(currentStep === 1 && isSignedIn && !skipAuth) && (
+              <Button
+                onClick={prevStep}
+                variant="outline"
+                disabled={currentStep === 0}
+                className="h-8 px-5 rounded-full text-xs"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+                Back
+              </Button>
+            )}
+
+            {/* Spacer to push next button to the right when back button is hidden */}
+            {currentStep === 1 && isSignedIn && !skipAuth && <div />}
 
             <div className="flex items-center gap-2">
               {currentStep === steps.length - 1 ? (

@@ -50,6 +50,7 @@ export default function AuthenticationStep({
   const [authMode, setAuthMode] = useState<AuthMode>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState<SocialProvider | null>(null);
@@ -193,7 +194,7 @@ export default function AuthenticationStep({
           const result = await authClient.signUp.email({
             email: email.trim(),
             password,
-            name: email.trim().split("@")[0],
+            name: fullName.trim() || email.trim().split("@")[0],
           });
 
           if (result.error) {
@@ -241,6 +242,7 @@ export default function AuthenticationStep({
   const handleBack = useCallback(() => {
     setAuthMode(null);
     setPassword("");
+    setFullName("");
     setError(null);
   }, []);
 
@@ -248,6 +250,7 @@ export default function AuthenticationStep({
     setAuthMode((mode) => (mode === "sign-in" ? "sign-up" : "sign-in"));
     setError(null);
     setPassword("");
+    setFullName("");
   }, []);
 
   // Auth not configured state
@@ -334,6 +337,17 @@ export default function AuthenticationStep({
 
         {/* Password Form */}
         <form onSubmit={handleSubmit} className="space-y-2">
+          {authMode === "sign-up" && (
+            <Input
+              type="text"
+              placeholder="Enter your full name"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              className="h-9 text-xs"
+              disabled={isSubmitting}
+              autoFocus
+            />
+          )}
           <Input
             type="password"
             placeholder={authMode === "sign-up" ? "Create a password" : "Enter your password"}
@@ -343,7 +357,7 @@ export default function AuthenticationStep({
             required
             minLength={authMode === "sign-up" ? 8 : undefined}
             disabled={isSubmitting}
-            autoFocus
+            autoFocus={authMode === "sign-in"}
           />
 
           {authMode === "sign-up" && (

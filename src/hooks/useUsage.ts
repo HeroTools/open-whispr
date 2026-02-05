@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "./useAuth";
 import { CACHE_CONFIG } from "../config/constants";
-import { refreshSession } from "../lib/neonAuth";
+import { withSessionRefresh } from "../lib/neonAuth";
 
 interface UsageData {
   wordsUsed: number;
@@ -43,38 +43,36 @@ export function useUsage(): UseUsageResult | null {
   const [error, setError] = useState<string | null>(null);
   const lastFetchRef = useRef<number>(0);
 
-  const fetchUsage = useCallback(async (isRetry = false) => {
+  const fetchUsage = useCallback(async () => {
     if (!window.electronAPI?.cloudUsage) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      const result = await window.electronAPI.cloudUsage();
-      if (result.success) {
-        setData({
-          wordsUsed: result.wordsUsed ?? 0,
-          wordsRemaining: result.wordsRemaining ?? 0,
-          limit: result.limit ?? 2000,
-          plan: result.plan ?? "free",
-          isSubscribed: result.isSubscribed ?? false,
-          isTrial: result.isTrial ?? false,
-          trialDaysLeft: result.trialDaysLeft ?? null,
-          currentPeriodEnd: result.currentPeriodEnd ?? null,
-          resetAt: result.resetAt ?? "rolling",
-        });
-        lastFetchRef.current = Date.now();
-      } else if (result.code === "AUTH_EXPIRED" && !isRetry) {
-        // Try refreshing the session and retry once
-        const refreshed = await refreshSession();
-        if (refreshed) {
-          return fetchUsage(true);
+      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
+      await withSessionRefresh(async () => {
+        const result = await window.electronAPI.cloudUsage();
+        if (result.success) {
+          setData({
+            wordsUsed: result.wordsUsed ?? 0,
+            wordsRemaining: result.wordsRemaining ?? 0,
+            limit: result.limit ?? 2000,
+            plan: result.plan ?? "free",
+            isSubscribed: result.isSubscribed ?? false,
+            isTrial: result.isTrial ?? false,
+            trialDaysLeft: result.trialDaysLeft ?? null,
+            currentPeriodEnd: result.currentPeriodEnd ?? null,
+            resetAt: result.resetAt ?? "rolling",
+          });
+          lastFetchRef.current = Date.now();
+        } else {
+          // Throw error to trigger withSessionRefresh retry logic if needed
+          const error: any = new Error(result.error || "Failed to fetch usage");
+          error.code = result.code;
+          throw error;
         }
-        localStorage.setItem("isSignedIn", "false");
-        setError(result.error || "Session expired");
-      } else {
-        setError(result.error || "Failed to fetch usage");
-      }
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch usage");
     } finally {

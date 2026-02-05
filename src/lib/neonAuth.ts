@@ -26,6 +26,66 @@ export async function refreshSession(): Promise<boolean> {
   }
 }
 
+/**
+ * Signs out the user and clears all session cookies.
+ * This is useful when session refresh fails and we need to fully clear the stale session.
+ */
+export async function signOut(): Promise<void> {
+  try {
+    // Clear session cookies via IPC
+    if (window.electronAPI?.authClearSession) {
+      await window.electronAPI.authClearSession();
+    }
+
+    // Sign out via auth client if available
+    if (authClient) {
+      await authClient.signOut();
+    }
+
+    // Clear local storage
+    localStorage.setItem("isSignedIn", "false");
+  } catch (err) {
+    // Fallback: at minimum clear local storage
+    localStorage.setItem("isSignedIn", "false");
+  }
+}
+
+/**
+ * Utility to wrap API calls that may fail due to expired session.
+ * Automatically attempts to refresh the session and retry once on AUTH_EXPIRED.
+ * Signs out the user if refresh fails.
+ *
+ * @param operation - The async operation to perform
+ * @returns The result of the operation
+ */
+export async function withSessionRefresh<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error: any) {
+    // Check if this is an auth expiration error
+    const isAuthExpired =
+      error?.code === "AUTH_EXPIRED" ||
+      error?.message?.toLowerCase().includes("session expired") ||
+      error?.message?.toLowerCase().includes("auth expired");
+
+    if (isAuthExpired) {
+      // Attempt to refresh the session
+      const refreshed = await refreshSession();
+
+      if (refreshed) {
+        // Retry the operation with refreshed session
+        return await operation();
+      }
+
+      // Refresh failed - sign out to clear stale session
+      await signOut();
+    }
+
+    // Re-throw the original error
+    throw error;
+  }
+}
+
 export async function signInWithSocial(provider: SocialProvider): Promise<{ error?: Error }> {
   if (!authClient) {
     return { error: new Error("Auth not configured") };

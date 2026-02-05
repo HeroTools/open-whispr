@@ -480,24 +480,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </div>
                 </div>
 
-                <div className="p-4 bg-muted border border-border rounded-xl">
-                  <h4 className="font-medium text-foreground mb-3">Account Benefits</h4>
-                  <ul className="text-sm text-muted-foreground space-y-2">
-                    <li className="flex items-center gap-2">
-                      <span className="text-success">✓</span>
-                      Sync settings across all your devices
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-success">✓</span>
-                      Access your transcription history anywhere
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <span className="text-success">✓</span>
-                      Priority support and updates
-                    </li>
-                  </ul>
-                </div>
-
                 <UsageDisplay />
 
                 {/* Billing Section */}

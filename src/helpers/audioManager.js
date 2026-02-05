@@ -3,7 +3,7 @@ import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constant
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
-import { refreshSession } from "../lib/neonAuth";
+import { withSessionRefresh } from "../lib/neonAuth";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -991,7 +991,7 @@ class AudioManager {
     return result;
   }
 
-  async processWithOpenWhisprCloud(audioBlob, metadata = {}, isRetry = false) {
+  async processWithOpenWhisprCloud(audioBlob, metadata = {}) {
     if (!navigator.onLine) {
       const err = new Error("You're offline. Cloud transcription requires an internet connection.");
       err.code = "OFFLINE";
@@ -1008,26 +1008,18 @@ class AudioManager {
     const dictionaryPrompt = this.getCustomDictionaryPrompt();
     if (dictionaryPrompt) opts.prompt = dictionaryPrompt;
 
+    // Use withSessionRefresh to handle AUTH_EXPIRED automatically
     const transcriptionStart = performance.now();
-    const result = await window.electronAPI.cloudTranscribe(arrayBuffer, opts);
-    timings.transcriptionProcessingDurationMs = Math.round(performance.now() - transcriptionStart);
-
-    if (!result.success) {
-      // On AUTH_EXPIRED, try refreshing the session and retry once
-      if (result.code === "AUTH_EXPIRED" && !isRetry) {
-        logger.debug("Session expired, attempting refresh", {}, "auth");
-        const refreshed = await refreshSession();
-        if (refreshed) {
-          logger.debug("Session refreshed, retrying transcription", {}, "auth");
-          return this.processWithOpenWhisprCloud(audioBlob, metadata, true);
-        }
-        // Refresh failed - update localStorage to reflect signed-out state
-        localStorage.setItem("isSignedIn", "false");
+    const result = await withSessionRefresh(async () => {
+      const res = await window.electronAPI.cloudTranscribe(arrayBuffer, opts);
+      if (!res.success) {
+        const err = new Error(res.error || "Cloud transcription failed");
+        err.code = res.code;
+        throw err;
       }
-      const err = new Error(result.error || "Cloud transcription failed");
-      err.code = result.code;
-      throw err;
-    }
+      return res;
+    });
+    timings.transcriptionProcessingDurationMs = Math.round(performance.now() - transcriptionStart);
 
     // Process with reasoning if enabled
     let processedText = result.text;
@@ -1040,22 +1032,20 @@ class AudioManager {
       const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
 
       if (cloudTranscriptionMode === "openwhispr") {
-        let reasonResult = await window.electronAPI.cloudReason(processedText, {
-          model: cloudReasoningModel,
-          agentName,
-          customDictionary: this.getCustomDictionaryArray(),
-        });
-        // Retry reasoning once on AUTH_EXPIRED after refreshing session
-        if (!reasonResult.success && reasonResult.code === "AUTH_EXPIRED" && !isRetry) {
-          const refreshed = await refreshSession();
-          if (refreshed) {
-            reasonResult = await window.electronAPI.cloudReason(processedText, {
-              model: cloudReasoningModel,
-              agentName,
-              customDictionary: this.getCustomDictionaryArray(),
-            });
+        const reasonResult = await withSessionRefresh(async () => {
+          const res = await window.electronAPI.cloudReason(processedText, {
+            model: cloudReasoningModel,
+            agentName,
+            customDictionary: this.getCustomDictionaryArray(),
+          });
+          if (!res.success) {
+            const err = new Error(res.error || "Cloud reasoning failed");
+            err.code = res.code;
+            throw err;
           }
-        }
+          return res;
+        });
+
         if (reasonResult.success) {
           processedText = reasonResult.text;
         }
@@ -1609,13 +1599,20 @@ class AudioManager {
     try {
       const [, wsResult] = await Promise.all([
         this.cacheMicrophoneDeviceId(),
-        (async () => {
+        withSessionRefresh(async () => {
           const language = localStorage.getItem("preferredLanguage");
-          return window.electronAPI.assemblyAiStreamingWarmup({
+          const res = await window.electronAPI.assemblyAiStreamingWarmup({
             sampleRate: 16000,
             language: language !== "auto" ? language : undefined,
           });
-        })(),
+          // Throw error to trigger retry if AUTH_EXPIRED
+          if (!res.success && res.code) {
+            const err = new Error(res.error || "Warmup failed");
+            err.code = res.code;
+            throw err;
+          }
+          return res;
+        }),
       ]);
 
       if (wsResult.success) {
@@ -1662,23 +1659,35 @@ class AudioManager {
         );
       }
 
-      const language = localStorage.getItem("preferredLanguage");
-      const result = await window.electronAPI.assemblyAiStreamingStart({
-        sampleRate: 16000,
-        language: language !== "auto" ? language : undefined,
+      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
+      const result = await withSessionRefresh(async () => {
+        const language = localStorage.getItem("preferredLanguage");
+        const res = await window.electronAPI.assemblyAiStreamingStart({
+          sampleRate: 16000,
+          language: language !== "auto" ? language : undefined,
+        });
+
+        if (!res.success) {
+          if (res.code === "NO_API") {
+            // Return special marker to indicate fallback needed
+            return { needsFallback: true };
+          }
+          const err = new Error(res.error || "Failed to start streaming session");
+          err.code = res.code;
+          throw err;
+        }
+        return res;
       });
 
-      if (!result.success) {
+      // Handle fallback to regular recording if streaming not configured
+      if (result.needsFallback) {
         stream.getTracks().forEach((track) => track.stop());
-        if (result.code === "NO_API") {
-          logger.debug(
-            "Streaming API not configured, falling back to regular recording",
-            {},
-            "streaming"
-          );
-          return this.startRecording();
-        }
-        throw new Error(result.error || "Failed to start streaming session");
+        logger.debug(
+          "Streaming API not configured, falling back to regular recording",
+          {},
+          "streaming"
+        );
+        return this.startRecording();
       }
 
       this.streamingAudioContext = new AudioContext({ sampleRate: 16000 });

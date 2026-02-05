@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
 import {
-  Settings,
+  Sliders,
   Mic,
   Brain,
   User,
@@ -32,8 +32,8 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
     },
     {
       id: "general",
-      label: "General",
-      icon: Settings,
+      label: "Preferences",
+      icon: Sliders,
       description: "Appearance, hotkey & startup",
       group: "App",
     },
