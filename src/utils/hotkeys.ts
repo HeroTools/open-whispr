@@ -27,11 +27,7 @@ function formatModifierPart(part: string, platform: Platform): string {
       return "Shift";
     case "Super":
     case "Meta":
-      return platform === "darwin"
-        ? "Cmd"
-        : platform === "win32"
-          ? "Win"
-          : "Super";
+      return platform === "darwin" ? "Cmd" : platform === "win32" ? "Win" : "Super";
     case "Win":
       return platform === "win32" ? "Win" : "Super";
     case "Fn":

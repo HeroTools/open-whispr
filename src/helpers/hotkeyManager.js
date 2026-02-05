@@ -59,9 +59,7 @@ class HotkeyManager {
 
   getSuggestions(failedHotkey) {
     const isCompound = failedHotkey.includes("+");
-    let suggestions = isCompound
-      ? [...SUGGESTED_HOTKEYS.compound]
-      : [...SUGGESTED_HOTKEYS.single];
+    let suggestions = isCompound ? [...SUGGESTED_HOTKEYS.compound] : [...SUGGESTED_HOTKEYS.single];
 
     if (process.platform === "darwin" && isCompound) {
       suggestions = ["Control+Alt", "Alt+Command", "Command+Shift+Space"];
@@ -197,8 +195,7 @@ class HotkeyManager {
             const savedHotkey = await mainWindow.webContents.executeJavaScript(`
               localStorage.getItem("dictationKey") || ""
             `);
-            const hotkey =
-              savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Control+Super";
+            const hotkey = savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Control+Super";
             const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(hotkey);
 
             const success = await this.gnomeManager.registerKeybinding(gnomeHotkey);

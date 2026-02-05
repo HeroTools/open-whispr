@@ -1,10 +1,5 @@
 import React, { useState } from "react";
-import {
-  Accordion,
-  AccordionItem,
-  AccordionTrigger,
-  AccordionContent,
-} from "./accordion";
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./accordion";
 import {
   VALIDATION_RULES,
   getRecommendedPatterns,
@@ -46,9 +41,7 @@ export function HotkeyGuidanceAccordion({
   const renderReserved = (platformKey: AccordionPlatform) => {
     const platform = PLATFORM_MAP[platformKey];
     const reserved = getReservedShortcuts(platform);
-    const formatted = reserved.map((shortcut) =>
-      formatHotkeyLabelForPlatform(shortcut, platform)
-    );
+    const formatted = reserved.map((shortcut) => formatHotkeyLabelForPlatform(shortcut, platform));
     const unique = Array.from(new Set(formatted));
     const displayCount = 8;
     const visible = showAll[platformKey] ? unique : unique.slice(0, displayCount);

@@ -413,9 +413,7 @@ export function normalizeHotkey(hotkey: string, platform: Platform): string {
     keys.push(normalizeKeyToken(part));
   }
 
-  modifiers.sort(
-    (a, b) => MODIFIER_ORDER.indexOf(a) - MODIFIER_ORDER.indexOf(b)
-  );
+  modifiers.sort((a, b) => MODIFIER_ORDER.indexOf(a) - MODIFIER_ORDER.indexOf(b));
 
   return [...modifiers, ...keys].join("+");
 }
@@ -495,8 +493,7 @@ export function validateHotkey(
   if (isLeftRightMix(parts)) {
     return {
       valid: false,
-      error:
-        "Do not mix left and right versions of the same modifier in one shortcut.",
+      error: "Do not mix left and right versions of the same modifier in one shortcut.",
       errorCode: "LEFT_RIGHT_MIX",
     };
   }
@@ -527,9 +524,7 @@ export function validateHotkey(
   }
 
   const normalizedHotkey = normalizeHotkey(hotkey, platform);
-  const normalizedExisting = existingHotkeys.map((existing) =>
-    normalizeHotkey(existing, platform)
-  );
+  const normalizedExisting = existingHotkeys.map((existing) => normalizeHotkey(existing, platform));
 
   if (normalizedExisting.includes(normalizedHotkey)) {
     return {
@@ -540,9 +535,7 @@ export function validateHotkey(
   }
 
   const reserved = getReservedShortcuts(platform);
-  const normalizedReserved = reserved.map((entry) =>
-    normalizeHotkey(entry, platform)
-  );
+  const normalizedReserved = reserved.map((entry) => normalizeHotkey(entry, platform));
 
   if (normalizedReserved.includes(normalizedHotkey)) {
     return {
