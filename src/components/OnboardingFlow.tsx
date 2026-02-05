@@ -31,6 +31,7 @@ import LanguageSelector from "./ui/LanguageSelector";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { HotkeyInput } from "./ui/HotkeyInput";
+import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 
@@ -176,9 +177,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       try {
         // Get platform-appropriate default hotkey
         const defaultHotkey = getDefaultHotkey();
+        const platform = window.electronAPI?.getPlatform?.() ?? "darwin";
 
-        // Only auto-register if no hotkey is currently set or it's the old default
-        if (!hotkey || hotkey === "`" || hotkey === "GLOBE") {
+        // Only auto-register if no hotkey is currently set
+        const shouldAutoRegister =
+          !hotkey || hotkey.trim() === "" || (platform !== "darwin" && hotkey === "GLOBE");
+
+        if (shouldAutoRegister) {
           // Try to register the default hotkey silently
           const success = await registerHotkey(defaultHotkey);
           if (success) {
@@ -449,7 +454,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           </div>
         );
 
-      case 3: // Hotkey & Test (combined)
+      case 3: {
+        // Hotkey & Test (combined)
+        const guideDefaultPlatform =
+          window.electronAPI?.getPlatform?.() === "win32"
+            ? "windows"
+            : window.electronAPI?.getPlatform?.() === "linux"
+              ? "linux"
+              : "macos";
+
         return (
           <div className="space-y-6">
             <div className="text-center">
@@ -467,6 +480,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               }}
               disabled={isHotkeyRegistering}
             />
+            <HotkeyGuidanceAccordion defaultValue={guideDefaultPlatform} className="mt-2" />
 
             {!isUsingGnomeHotkeys && (
               <div className="pt-2">
@@ -508,6 +522,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             </div>
           </div>
         );
+      }
 
       case 4: // Agent Name (final step)
         return (

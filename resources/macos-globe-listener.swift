@@ -5,6 +5,7 @@ import Darwin
 let mask = CGEventMask(1 << CGEventType.flagsChanged.rawValue)
 var fnIsDown = false
 var eventTap: CFMachPort?
+var lastModifierFlags: CGEventFlags = []
 
 func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
     if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
@@ -25,6 +26,28 @@ func eventTapCallback(proxy: CGEventTapProxy, type: CGEventType, event: CGEvent,
         fnIsDown = false
         FileHandle.standardOutput.write("FN_UP\n".data(using: .utf8)!)
         fflush(stdout)
+    }
+
+    let modifierMask: CGEventFlags = [.maskControl, .maskCommand, .maskAlternate, .maskShift]
+    let currentModifiers = flags.intersection(modifierMask)
+
+    if currentModifiers != lastModifierFlags {
+        let released = lastModifierFlags.subtracting(currentModifiers)
+        let releases: [(CGEventFlags, String)] = [
+            (.maskControl, "control"),
+            (.maskCommand, "command"),
+            (.maskAlternate, "option"),
+            (.maskShift, "shift"),
+        ]
+
+        for (flag, name) in releases {
+            if released.contains(flag) {
+                FileHandle.standardOutput.write("MODIFIER_UP:\(name)\n".data(using: .utf8)!)
+                fflush(stdout)
+            }
+        }
+
+        lastModifierFlags = currentModifiers
     }
 
     return Unmanaged.passUnretained(event)

@@ -97,6 +97,13 @@ class IPCHandlers {
       this.windowManager.showDictationPanel();
     });
 
+    ipcMain.handle("force-stop-dictation", () => {
+      if (this.windowManager?.forceStopMacCompoundPush) {
+        this.windowManager.forceStopMacCompoundPush("manual");
+      }
+      return { success: true };
+    });
+
     ipcMain.handle("set-main-window-interactivity", (event, shouldCapture) => {
       this.windowManager.setMainWindowInteractivity(Boolean(shouldCapture));
       return { success: true };

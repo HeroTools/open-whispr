@@ -8,17 +8,12 @@ const HOTKEY_REGISTRATION_DELAY_MS = 1000;
 // Suggested alternative hotkeys when registration fails
 const SUGGESTED_HOTKEYS = {
   single: ["F8", "F9", "F10", "Pause", "ScrollLock"],
-  compound: [
-    "CommandOrControl+Shift+Space",
-    "CommandOrControl+Shift+D",
-    "Alt+Space",
-    "CommandOrControl+`",
-  ],
+  compound: ["Control+Super", "Control+Alt", "Control+Shift+Space", "Alt+F7"],
 };
 
 class HotkeyManager {
   constructor() {
-    this.currentHotkey = "`";
+    this.currentHotkey = process.platform === "darwin" ? "GLOBE" : "Control+Super";
     this.isInitialized = false;
     this.isListeningMode = false;
     this.gnomeManager = null;
@@ -44,18 +39,6 @@ class HotkeyManager {
       };
     }
 
-    if (process.platform === "win32") {
-      // Windows reserves certain keys
-      const winReserved = ["PrintScreen", "Win", "Super"];
-      if (winReserved.some((k) => hotkey.includes(k))) {
-        return {
-          reason: "os_reserved",
-          message: `"${hotkey}" is reserved by Windows.`,
-          suggestions: this.getSuggestions(hotkey),
-        };
-      }
-    }
-
     if (process.platform === "linux") {
       // Linux DE's often reserve Super/Meta combinations
       if (hotkey.includes("Super") || hotkey.includes("Meta")) {
@@ -76,14 +59,22 @@ class HotkeyManager {
 
   getSuggestions(failedHotkey) {
     const isCompound = failedHotkey.includes("+");
-    const suggestions = isCompound
+    let suggestions = isCompound
       ? [...SUGGESTED_HOTKEYS.compound]
       : [...SUGGESTED_HOTKEYS.single];
+
+    if (process.platform === "darwin" && isCompound) {
+      suggestions = ["Control+Alt", "Alt+Command", "Command+Shift+Space"];
+    } else if (process.platform === "win32" && isCompound) {
+      suggestions = ["Control+Super", "Control+Alt", "Control+Shift+K"];
+    } else if (process.platform === "linux" && isCompound) {
+      suggestions = ["Control+Super", "Control+Shift+K", "Super+Shift+R"];
+    }
 
     return suggestions.filter((s) => s !== failedHotkey).slice(0, 3);
   }
 
-  setupShortcuts(hotkey = "`", callback) {
+  setupShortcuts(hotkey = "Control+Super", callback) {
     if (!callback) {
       throw new Error("Callback function is required for hotkey setup");
     }
@@ -93,8 +84,8 @@ class HotkeyManager {
     debugLogger.log(`[HotkeyManager] Current hotkey: "${this.currentHotkey}"`);
 
     // If we're already using this hotkey AND it's actually registered, return success
-    // Note: We need to check isRegistered because on first run, currentHotkey is set to "`"
-    // but it's not actually registered yet
+    // Note: We need to check isRegistered because on first run, currentHotkey is set to the
+    // default value but it's not actually registered yet.
     if (
       hotkey === this.currentHotkey &&
       hotkey !== "GLOBE" &&
@@ -206,7 +197,8 @@ class HotkeyManager {
             const savedHotkey = await mainWindow.webContents.executeJavaScript(`
               localStorage.getItem("dictationKey") || ""
             `);
-            const hotkey = savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Alt+R";
+            const hotkey =
+              savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Control+Super";
             const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(hotkey);
 
             const success = await this.gnomeManager.registerKeybinding(gnomeHotkey);
@@ -260,7 +252,7 @@ class HotkeyManager {
         this.notifyHotkeyFailure(savedHotkey, result);
       }
 
-      const defaultHotkey = process.platform === "darwin" ? "GLOBE" : "`";
+      const defaultHotkey = process.platform === "darwin" ? "GLOBE" : "Control+Super";
 
       if (defaultHotkey === "GLOBE") {
         this.currentHotkey = "GLOBE";
@@ -279,7 +271,7 @@ class HotkeyManager {
       debugLogger.log(
         `[HotkeyManager] Default hotkey "${defaultHotkey}" failed, trying fallbacks...`
       );
-      const fallbackHotkeys = ["F8", "F9", "CommandOrControl+Shift+Space"];
+      const fallbackHotkeys = ["F8", "F9", "Control+Shift+Space"];
 
       for (const fallback of fallbackHotkeys) {
         const fallbackResult = this.setupShortcuts(fallback, callback);
@@ -335,7 +327,7 @@ class HotkeyManager {
       this.mainWindow.webContents.send("hotkey-registration-failed", {
         hotkey,
         error: result?.error || `Could not register "${hotkey}"`,
-        suggestions: result?.suggestions || ["F8", "F9", "CommandOrControl+Shift+Space"],
+        suggestions: result?.suggestions || ["F8", "F9", "Control+Shift+Space"],
       });
     }
   }

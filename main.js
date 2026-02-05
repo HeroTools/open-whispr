@@ -280,6 +280,12 @@ async function startApp() {
       }
     });
 
+    globeKeyManager.on("modifier-up", (modifier) => {
+      if (windowManager?.handleMacPushModifierUp) {
+        windowManager.handleMacPushModifierUp(modifier);
+      }
+    });
+
     globeKeyManager.start();
   }
 

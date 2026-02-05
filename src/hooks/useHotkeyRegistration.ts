@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef } from "react";
 import { formatHotkeyLabel } from "../utils/hotkeys";
+import { validateHotkey } from "../utils/hotkeyValidator";
+import { getPlatform } from "../utils/platform";
 
 export interface UseHotkeyRegistrationOptions {
   /**
@@ -88,6 +90,21 @@ export function useHotkeyRegistration(
       // Validate hotkey format
       if (!hotkey || hotkey.trim() === "") {
         const errorMsg = "Please enter a valid hotkey";
+        setLastError(errorMsg);
+        if (showErrorToast && showAlert) {
+          showAlert({
+            title: "Invalid Hotkey",
+            description: errorMsg,
+          });
+        }
+        onError?.(errorMsg, hotkey);
+        return false;
+      }
+
+      const platform = getPlatform();
+      const validation = validateHotkey(hotkey, platform);
+      if (!validation.valid) {
+        const errorMsg = validation.error || "That shortcut is not supported.";
         setLastError(errorMsg);
         if (showErrorToast && showAlert) {
           showAlert({

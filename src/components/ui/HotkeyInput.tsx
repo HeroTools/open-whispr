@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
 import { formatHotkeyLabel } from "../../utils/hotkeys";
+import { getPlatform } from "../../utils/platform";
 
 const CODE_TO_KEY: Record<string, string> = {
   Backquote: "`",
@@ -155,17 +156,19 @@ export function mapKeyboardEventToHotkey(e: KeyboardEvent): string | null {
     return null;
   }
 
+  const platform = getPlatform();
   const modifiers: string[] = [];
 
-  if (e.ctrlKey || e.metaKey) {
-    modifiers.push("CommandOrControl");
+  if (platform === "darwin") {
+    if (e.ctrlKey) modifiers.push("Control");
+    if (e.metaKey) modifiers.push("Command");
+  } else {
+    if (e.ctrlKey) modifiers.push("Control");
+    if (e.metaKey) modifiers.push("Super");
   }
-  if (e.altKey) {
-    modifiers.push("Alt");
-  }
-  if (e.shiftKey) {
-    modifiers.push("Shift");
-  }
+
+  if (e.altKey) modifiers.push("Alt");
+  if (e.shiftKey) modifiers.push("Shift");
 
   return modifiers.length > 0 ? [...modifiers, baseKey].join("+") : baseKey;
 }
@@ -181,7 +184,36 @@ export function HotkeyInput({
   const [activeModifiers, setActiveModifiers] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
   const lastCapturedHotkeyRef = useRef<string | null>(null);
-  const isMac = typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
+  const keyDownTimeRef = useRef<number>(0);
+  const heldModifiersRef = useRef<{
+    ctrl: boolean;
+    meta: boolean;
+    alt: boolean;
+    shift: boolean;
+  }>({ ctrl: false, meta: false, alt: false, shift: false });
+  const platform = getPlatform();
+  const isMac = platform === "darwin";
+  const isWindows = platform === "win32";
+
+  const MODIFIER_HOLD_THRESHOLD_MS = 200;
+
+  const buildModifierOnlyHotkey = useCallback(
+    (modifiers: { ctrl: boolean; meta: boolean; alt: boolean; shift: boolean }): string | null => {
+      const parts: string[] = [];
+
+      if (modifiers.ctrl) parts.push("Control");
+      if (modifiers.meta) parts.push(isMac ? "Command" : "Super");
+      if (modifiers.alt) parts.push("Alt");
+      if (modifiers.shift) parts.push("Shift");
+
+      // Require at least 2 modifiers for modifier-only combos
+      if (parts.length >= 2) {
+        return parts.join("+");
+      }
+      return null;
+    },
+    [isMac]
+  );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -189,27 +221,81 @@ export function HotkeyInput({
       e.preventDefault();
       e.stopPropagation();
 
+      // Track held modifiers for modifier-only capture
+      heldModifiersRef.current = {
+        ctrl: e.ctrlKey,
+        meta: e.metaKey,
+        alt: e.altKey,
+        shift: e.shiftKey,
+      };
+
+      // Track when first pressed (for hold detection)
+      if (keyDownTimeRef.current === 0) {
+        keyDownTimeRef.current = Date.now();
+      }
+
       const mods = new Set<string>();
-      if (e.ctrlKey || e.metaKey) mods.add(isMac ? "Cmd" : "Ctrl");
+      if (isMac) {
+        if (e.metaKey) mods.add("Cmd");
+        if (e.ctrlKey) mods.add("Ctrl");
+      } else {
+        if (e.ctrlKey) mods.add("Ctrl");
+        if (e.metaKey) mods.add(isWindows ? "Win" : "Super");
+      }
       if (e.altKey) mods.add(isMac ? "Option" : "Alt");
       if (e.shiftKey) mods.add("Shift");
       setActiveModifiers(mods);
 
+      // Try to get non-modifier hotkey first
       const hotkey = mapKeyboardEventToHotkey(e.nativeEvent);
       if (hotkey) {
+        keyDownTimeRef.current = 0;
         lastCapturedHotkeyRef.current = hotkey;
         onChange(hotkey);
         setIsCapturing(false);
         setActiveModifiers(new Set());
         containerRef.current?.blur();
       }
+      // If no base key, modifiers are held - don't finalize yet
     },
-    [disabled, onChange, isMac]
+    [disabled, onChange, isMac, isWindows, buildModifierOnlyHotkey]
   );
 
-  const handleKeyUp = useCallback(() => {
-    setActiveModifiers(new Set());
-  }, []);
+  const handleKeyUp = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      e.preventDefault();
+
+      // Check if this is a modifier release and we had modifiers held
+      const wasHoldingModifiers =
+        heldModifiersRef.current.ctrl ||
+        heldModifiersRef.current.meta ||
+        heldModifiersRef.current.alt ||
+        heldModifiersRef.current.shift;
+
+      if (wasHoldingModifiers && MODIFIER_CODES.has(e.nativeEvent.code)) {
+        const holdDuration = Date.now() - keyDownTimeRef.current;
+
+        // Only capture if held long enough
+        if (holdDuration >= MODIFIER_HOLD_THRESHOLD_MS) {
+          const modifierHotkey = buildModifierOnlyHotkey(heldModifiersRef.current);
+          if (modifierHotkey) {
+            lastCapturedHotkeyRef.current = modifierHotkey;
+            onChange(modifierHotkey);
+            setIsCapturing(false);
+            setActiveModifiers(new Set());
+            containerRef.current?.blur();
+          }
+        }
+      }
+
+      // Reset state
+      heldModifiersRef.current = { ctrl: false, meta: false, alt: false, shift: false };
+      setActiveModifiers(new Set());
+      keyDownTimeRef.current = 0;
+    },
+    [disabled, onChange, buildModifierOnlyHotkey]
+  );
 
   const handleFocus = useCallback(() => {
     if (!disabled) {
@@ -311,11 +397,17 @@ export function HotkeyInput({
                   </span>
                 </div>
               ) : (
-                <p className="text-center text-gray-500">Press any key or combination</p>
+                <p className="text-center text-gray-500">
+                  Press a key combination (three keys or fewer)
+                </p>
               )}
 
               <p className="text-xs text-center text-gray-400">
-                {isMac ? "Try ⌘⇧K or ⌥Space" : "Try Ctrl+Shift+K or Alt+Space"}
+                {isMac
+                  ? "Try Fn, Ctrl+Option, or Ctrl+Space"
+                  : isWindows
+                    ? "Try Ctrl+Win, Ctrl+Alt, or Ctrl+Space"
+                    : "Try Ctrl+Super, Ctrl+Alt, or Ctrl+Space"}
               </p>
             </div>
           ) : value ? (

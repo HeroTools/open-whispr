@@ -20,6 +20,7 @@ import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
 import type { UpdateInfoResult } from "../types/electron";
 import { HotkeyInput } from "./ui/HotkeyInput";
+import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import DeveloperSection from "./DeveloperSection";
@@ -536,6 +537,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 }}
                 disabled={isHotkeyRegistering}
               />
+              <HotkeyGuidanceAccordion className="mt-4" />
 
               {!isUsingGnomeHotkeys && (
                 <div className="mt-6">
