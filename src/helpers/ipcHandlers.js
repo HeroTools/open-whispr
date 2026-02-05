@@ -682,7 +682,7 @@ class IPCHandlers {
     });
 
     // Proxy Mistral transcription through main process to avoid CORS
-    ipcMain.handle("proxy-mistral-transcription", async (event, { audioBuffer, model, language }) => {
+    ipcMain.handle("proxy-mistral-transcription", async (event, { audioBuffer, model, language, contextBias }) => {
       const apiKey = this.environmentManager.getMistralKey();
       if (!apiKey) {
         throw new Error("Mistral API key not configured");
@@ -694,6 +694,9 @@ class IPCHandlers {
       formData.append("model", model || "voxtral-mini-latest");
       if (language && language !== "auto") {
         formData.append("language", language);
+      }
+      if (contextBias) {
+        formData.append("context_bias", contextBias);
       }
 
       const response = await fetch("https://api.mistral.ai/v1/audio/transcriptions", {

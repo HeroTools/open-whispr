@@ -363,6 +363,7 @@ declare global {
         audioBuffer: ArrayBuffer;
         model?: string;
         language?: string;
+        contextBias?: string;
       }) => Promise<{ text: string }>;
 
       // Custom endpoint API keys
