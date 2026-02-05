@@ -87,7 +87,7 @@ export function ProviderTabs({
             key={provider.id}
             data-tab-button
             onClick={() => onSelect(provider.id)}
-            className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md font-medium text-xs transition-colors duration-150 ${
+            className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors duration-150 ${
               scrollable ? "whitespace-nowrap" : ""
             } ${isSelected ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >

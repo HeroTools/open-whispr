@@ -50,14 +50,7 @@ export default function PermissionCard({
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-xs font-medium text-foreground">{title}</h3>
-            {granted && (
-              <span className="text-[9px] font-medium text-success uppercase tracking-wider">
-                ✓
-              </span>
-            )}
-          </div>
+          <h3 className="text-xs font-medium text-foreground">{title}</h3>
           <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{description}</p>
         </div>
 

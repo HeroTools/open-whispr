@@ -251,9 +251,13 @@ export default function App() {
                 e.stopPropagation();
                 isRecording ? cancelRecording() : cancelProcessing();
               }}
-              className="w-5 h-5 rounded-full bg-card/90 hover:bg-destructive border border-border hover:border-destructive flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
+              className="group/cancel w-5 h-5 rounded-full bg-surface-2/90 hover:bg-destructive border border-border hover:border-destructive/70 flex items-center justify-center transition-all duration-150 shadow-sm backdrop-blur-sm"
             >
-              <X size={10} strokeWidth={2.5} color="white" />
+              <X
+                size={10}
+                strokeWidth={2.5}
+                className="text-foreground group-hover/cancel:text-destructive-foreground transition-colors duration-150"
+              />
             </button>
           )}
           <Tooltip content={micProps.tooltip}>

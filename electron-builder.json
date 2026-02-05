@@ -1,6 +1,10 @@
 {
   "appId": "com.herotools.openwispr",
   "productName": "OpenWhispr",
+  "protocols": {
+    "name": "OpenWhispr Protocol",
+    "schemes": ["openwhispr"]
+  },
   "directories": {
     "output": "dist"
   },

@@ -71,6 +71,10 @@
   --color-brand-highlight: #c0a77d;
   --color-brand-link: #2e3659;
   --color-pattern: #e7e5e4;
+
+  /* Model picker premium effects (light mode) */
+  --shadow-metallic-light: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover-subtle: 0 2px 8px -2px rgba(0, 0, 0, 0.1);
 }
 
 .dark {
@@ -118,6 +122,12 @@
   --shadow-card-hover: 0 2px 8px oklch(0 0 0 / 0.35);
   --shadow-elevated: 0 8px 24px oklch(0 0 0 / 0.4);
   --shadow-modal: 0 24px 48px -12px oklch(0 0 0 / 0.5);
+
+  /* Model picker premium effects */
+  --shadow-metallic-dark: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-selected-glow: inset 0 0 0 1px oklch(0.62 0.22 260 / 0.15),
+    0 0 16px -4px oklch(0.62 0.22 260 / 0.25);
+  --shadow-card-hover-subtle: 0 2px 8px -2px rgba(0, 0, 0, 0.15);
 }
 
 @layer base {
@@ -363,6 +373,41 @@ a:hover {
   }
   to {
     width: 0%;
+  }
+}
+
+/* Model picker LED pulse animation */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px oklch(0.62 0.22 260 / 0.4);
+    opacity: 0.8;
+  }
+  50% {
+    box-shadow: 0 0 8px oklch(0.62 0.22 260 / 0.6);
+    opacity: 1;
+  }
+}
+
+/* Spinner rotation for downloading state */
+@keyframes spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Scale-in animation for completion */
+@keyframes scale-in {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 

@@ -98,7 +98,7 @@ export function useSettings() {
     }
   );
 
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage("preferredLanguage", "en", {
+  const [preferredLanguage, setPreferredLanguage] = useLocalStorage("preferredLanguage", "auto", {
     serialize: String,
     deserialize: String,
   });

@@ -55,7 +55,7 @@ const buttonVariants = cva(
           "shadow-sm",
           "hover:bg-muted hover:border-border-hover",
           "active:scale-[0.985]",
-          "dark:bg-surface-3/60 dark:border-border-subtle/50 dark:hover:bg-surface-raised/70",
+          "dark:bg-surface-raised/90 dark:border-border-hover dark:hover:bg-surface-raised",
           "transition-all duration-200 ease-out",
         ].join(" "),
 
@@ -94,7 +94,7 @@ const buttonVariants = cva(
           "shadow-sm gap-2",
           "hover:bg-surface-2/90 hover:border-border-hover hover:shadow",
           "active:scale-[0.985] active:shadow-sm",
-          "dark:bg-surface-2/60 dark:hover:bg-surface-3/70 dark:border-border-subtle/40",
+          "dark:bg-surface-raised/80 dark:border-border-hover dark:hover:bg-surface-raised/95",
           "transition-all duration-200 ease-out",
         ].join(" "),
       },

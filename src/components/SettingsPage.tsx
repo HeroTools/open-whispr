@@ -46,6 +46,7 @@ import UsageDisplay from "./UsageDisplay";
 import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
 import { SettingsRow } from "./ui/SettingsSection";
+import { useUsage } from "../hooks/useUsage";
 
 export type SettingsSectionType =
   | "account"
@@ -197,6 +198,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
   const { theme, setTheme } = useTheme();
+  const usage = useUsage();
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({

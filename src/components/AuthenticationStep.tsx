@@ -1,6 +1,12 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
-import { authClient, NEON_AUTH_URL, signInWithSocial, type SocialProvider } from "../lib/neonAuth";
+import {
+  authClient,
+  NEON_AUTH_URL,
+  signInWithSocial,
+  refreshSession,
+  type SocialProvider,
+} from "../lib/neonAuth";
 import { OPENWHISPR_API_URL } from "../config/constants";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -49,6 +55,52 @@ export default function AuthenticationStep({
   const [isSocialLoading, setIsSocialLoading] = useState<SocialProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Track if we've already processed the OAuth callback
+  const oauthProcessedRef = useRef(false);
+
+  // Check for OAuth callback verifier in URL and poll for session
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const hasVerifier = params.has("neon_auth_session_verifier");
+
+    if (hasVerifier && !oauthProcessedRef.current) {
+      oauthProcessedRef.current = true;
+      setIsSocialLoading("google");
+
+      let attempts = 0;
+      const maxAttempts = 20;
+
+      const checkSession = async () => {
+        attempts++;
+
+        try {
+          const success = await refreshSession();
+
+          if (success) {
+            if (pollInterval) clearInterval(pollInterval);
+          } else if (attempts >= maxAttempts) {
+            setError("Authentication timed out. Please try again.");
+            setIsSocialLoading(null);
+            if (pollInterval) clearInterval(pollInterval);
+          }
+        } catch (err) {
+          if (attempts >= maxAttempts) {
+            setError("Authentication failed. Please try again.");
+            setIsSocialLoading(null);
+            if (pollInterval) clearInterval(pollInterval);
+          }
+        }
+      };
+
+      checkSession();
+      const pollInterval = setInterval(checkSession, 500);
+
+      return () => {
+        clearInterval(pollInterval);
+      };
+    }
+  }, []);
+
   useEffect(() => {
     if (isLoaded && isSignedIn) {
       onAuthComplete();
@@ -86,7 +138,6 @@ export default function AuthenticationStep({
     }
   }, []);
 
-  // Check if email exists and determine auth mode
   const handleEmailContinue = useCallback(async () => {
     if (!email.trim() || !authClient) return;
 
@@ -94,18 +145,14 @@ export default function AuthenticationStep({
     setError(null);
 
     try {
-      // Check if user exists via API
       if (!OPENWHISPR_API_URL) {
-        // If API URL is not configured, default to sign-up
         setAuthMode("sign-up");
         return;
       }
 
       const response = await fetch(`${OPENWHISPR_API_URL}/api/check-user`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim() }),
       });
 
@@ -114,22 +161,29 @@ export default function AuthenticationStep({
       }
 
       const data = await response.json();
-
-      // Route user to sign-in if they exist, sign-up if they don't
       setAuthMode(data.exists ? "sign-in" : "sign-up");
     } catch (err) {
       console.error("Error checking user existence:", err);
-      // On error, default to sign-up and let the backend handle it
       setAuthMode("sign-up");
     } finally {
       setIsCheckingEmail(false);
     }
   }, [email]);
 
+  const errorMessageIncludes = (message: string | undefined, keywords: string[]): boolean => {
+    if (!message) return false;
+    const lowerMessage = message.toLowerCase();
+    return keywords.some((keyword) => lowerMessage.includes(keyword));
+  };
+
   const handleSubmit = useCallback(
     async (e: React.FormEvent) => {
       e.preventDefault();
-      if (!authClient) return;
+
+      if (!authClient) {
+        setError("Authentication service is not configured. Please contact support.");
+        return;
+      }
 
       setIsSubmitting(true);
       setError(null);
@@ -139,12 +193,12 @@ export default function AuthenticationStep({
           const result = await authClient.signUp.email({
             email: email.trim(),
             password,
+            name: email.trim().split("@")[0],
           });
+
           if (result.error) {
-            // If user already exists, switch to sign-in mode
             if (
-              result.error.message?.toLowerCase().includes("already exists") ||
-              result.error.message?.toLowerCase().includes("already registered")
+              errorMessageIncludes(result.error.message, ["already exists", "already registered"])
             ) {
               setAuthMode("sign-in");
               setError("Account exists. Please sign in.");
@@ -152,24 +206,25 @@ export default function AuthenticationStep({
             } else {
               setError(result.error.message || "Failed to create account");
             }
+          } else {
+            onAuthComplete();
           }
         } else {
           const result = await authClient.signIn.email({
             email: email.trim(),
             password,
           });
+
           if (result.error) {
-            // If user not found, switch to sign-up mode
-            if (
-              result.error.message?.toLowerCase().includes("not found") ||
-              result.error.message?.toLowerCase().includes("no user")
-            ) {
+            if (errorMessageIncludes(result.error.message, ["not found", "no user"])) {
               setAuthMode("sign-up");
               setError("No account found. Let's create one.");
               setPassword("");
             } else {
               setError(result.error.message || "Invalid email or password");
             }
+          } else {
+            onAuthComplete();
           }
         }
       } catch (err: unknown) {
@@ -180,7 +235,7 @@ export default function AuthenticationStep({
         setIsSubmitting(false);
       }
     },
-    [authMode, email, password]
+    [authMode, email, password, onAuthComplete]
   );
 
   const handleBack = useCallback(() => {
@@ -320,31 +375,6 @@ export default function AuthenticationStep({
               </span>
             )}
           </Button>
-
-          {/* Terms and Privacy Policy — Only show for sign-up */}
-          {authMode === "sign-up" && (
-            <p className="text-[10px] text-muted-foreground/60 leading-tight text-center">
-              By creating an account, you agree to our{" "}
-              <a
-                href="https://openwhispr.com/terms"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a
-                href="https://openwhispr.com/privacy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                Privacy Policy
-              </a>
-              .
-            </p>
-          )}
         </form>
 
         {/* Toggle Auth Mode */}
@@ -460,12 +490,35 @@ export default function AuthenticationStep({
         <button
           type="button"
           onClick={onContinueWithoutAccount}
-          className="w-full text-center text-xs text-muted-foreground/70 hover:text-foreground transition-colors py-1.5 rounded hover:bg-muted/30"
+          className="w-full text-center text-xs text-muted-foreground/85 hover:text-foreground transition-colors py-1.5 rounded hover:bg-muted/30"
           disabled={isSocialLoading !== null || isCheckingEmail}
         >
           Continue without an account
         </button>
       </div>
+
+      {/* Terms and Privacy Policy */}
+      <p className="text-[10px] text-muted-foreground/80 leading-tight text-center">
+        By continuing, you agree to our{" "}
+        <a
+          href="https://openwhispr.com/terms"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          Terms of Service
+        </a>{" "}
+        and{" "}
+        <a
+          href="https://openwhispr.com/privacy"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline"
+        >
+          Privacy Policy
+        </a>
+        .
+      </p>
     </div>
   );
 }

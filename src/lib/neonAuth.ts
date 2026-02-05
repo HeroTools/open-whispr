@@ -21,7 +21,7 @@ export async function refreshSession(): Promise<boolean> {
   try {
     const result = await authClient.getSession();
     return Boolean(result.data?.session?.user);
-  } catch {
+  } catch (err) {
     return false;
   }
 }

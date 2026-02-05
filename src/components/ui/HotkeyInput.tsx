@@ -274,7 +274,7 @@ export function HotkeyInput({
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={`
-          relative group flex flex-col items-center justify-center py-4 px-5
+          relative group flex flex-col items-center justify-center py-4 px-5 min-h-28
           rounded-md border cursor-pointer select-none outline-none
           transition-all duration-150
           ${

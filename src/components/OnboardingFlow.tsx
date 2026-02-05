@@ -16,6 +16,7 @@ import {
 import TitleBar from "./TitleBar";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import PermissionCard from "./ui/PermissionCard";
+import SupportDropdown from "./ui/SupportDropdown";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import PasteToolsInfo from "./ui/PasteToolsInfo";
 import StepProgress from "./ui/StepProgress";
@@ -319,9 +320,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 </p>
               </div>
 
-              <div className="space-y-4 p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+              <div className="space-y-2.5 p-3 bg-muted/50 border border-border/60 rounded">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-muted-foreground">
                     Language
                   </label>
                   <LanguageSelector
@@ -333,14 +334,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-medium text-muted-foreground">
                     AI Model
                   </label>
                   <select
                     value={cloudReasoningModel}
                     onChange={(e) => setCloudReasoningModel(e.target.value)}
-                    className="w-full px-3 py-2 border border-neutral-200 rounded-lg bg-white text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full h-9 px-3 text-sm font-medium bg-surface-1/80 backdrop-blur-sm border border-border/70 rounded shadow-sm transition-all duration-200 hover:border-border-hover hover:bg-surface-2/70 focus:outline-none focus:ring-2 focus:ring-ring/30 focus:ring-offset-1 focus:border-border-active"
                   >
                     <optgroup label="Fast">
                       <option value="llama-3.3-70b-versatile">Llama 3.3 70B — Recommended</option>
@@ -464,10 +465,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             />
 
             {/* Language Selection - shown for both modes */}
-            <div className="space-y-4 p-4 bg-muted border border-border rounded-xl">
-              <h4 className="font-medium text-foreground mb-3">Preferred Language</h4>
-              <label className="block text-sm font-medium text-muted-foreground mb-2">
-                Which language do you primarily speak?
+            <div className="space-y-2 p-3 bg-muted/50 border border-border/60 rounded">
+              <label className="block text-xs font-medium text-muted-foreground">
+                Preferred Language
               </label>
               <LanguageSelector
                 value={preferredLanguage}
@@ -476,11 +476,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 }}
                 className="w-full"
               />
-              <p className="text-xs text-muted-foreground mt-1">
-                {useLocalWhisper
-                  ? "Helps Whisper better understand your speech"
-                  : "Improves transcription speed and accuracy. AI text enhancement is enabled by default."}
-              </p>
             </div>
           </div>
         );
@@ -715,6 +710,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         <TitleBar
           showTitle={true}
           className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
+          actions={isSignedIn ? <SupportDropdown /> : undefined}
         ></TitleBar>
       </div>
 
@@ -747,7 +743,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <Button
               onClick={prevStep}
               variant="outline"
-              disabled={currentStep === 0}
+              disabled={currentStep === 0 || (currentStep === 1 && isSignedIn && !skipAuth)}
               className="h-8 px-5 rounded-full text-xs"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
