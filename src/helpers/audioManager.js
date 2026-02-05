@@ -1047,11 +1047,25 @@ class AudioManager {
       // Use IPC proxy for Mistral to avoid CORS (their API doesn't support browser requests)
       if (provider === "mistral" && window.electronAPI?.proxyMistralTranscription) {
         const audioBuffer = await optimizedAudio.arrayBuffer();
-        const result = await window.electronAPI.proxyMistralTranscription({
-          audioBuffer,
-          model,
-          language,
-        });
+        const proxyData = { audioBuffer, model, language };
+
+        // Pass custom dictionary as context_bias for Mistral (equivalent to OpenAI's prompt field)
+        // Mistral requires each token to match ^[^,\s]+$ — no spaces allowed within tokens.
+        // Split multi-word entries into separate words so the model gets natural hints
+        // (e.g. "Sahne Muh-Muhs" → "Sahne,Muh-Muhs" instead of "Sahne_Muh-Muhs").
+        // Mistral supports up to 100 context_bias tokens — silently cap to avoid API errors.
+        if (dictionaryPrompt) {
+          const tokens = dictionaryPrompt
+            .split(",")
+            .flatMap(entry => entry.trim().split(/\s+/))
+            .filter(Boolean)
+            .slice(0, 100);
+          if (tokens.length > 0) {
+            proxyData.contextBias = tokens.join(",");
+          }
+        }
+
+        const result = await window.electronAPI.proxyMistralTranscription(proxyData);
         const proxyText = result?.text ?? result?.data?.text ?? result?.transcription?.text;
 
         if (proxyText && proxyText.trim().length > 0) {
