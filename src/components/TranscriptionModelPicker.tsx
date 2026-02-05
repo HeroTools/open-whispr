@@ -76,9 +76,8 @@ function LocalModelCard({
   return (
     <div
       onClick={handleClick}
-      className={`relative w-full text-left overflow-hidden rounded-lg border transition-all duration-200 group ${
-        isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
-      } ${isDownloaded && !isSelected ? "cursor-pointer" : ""}`}
+      className={`relative w-full text-left overflow-hidden rounded-lg border transition-all duration-200 group ${isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
+        } ${isDownloaded && !isSelected ? "cursor-pointer" : ""}`}
     >
       {/* Left accent bar for selected model */}
       {isSelected && (
@@ -89,11 +88,10 @@ function LocalModelCard({
         <div className="shrink-0">
           {isDownloaded ? (
             <div
-              className={`w-1.5 h-1.5 rounded-full ${
-                isSelected
+              className={`w-1.5 h-1.5 rounded-full ${isSelected
                   ? "bg-primary shadow-[0_0_6px_oklch(0.62_0.22_260/0.6)]"
                   : "bg-success shadow-[0_0_4px_rgba(34,197,94,0.5)]"
-              }`}
+                }`}
             />
           ) : isDownloading ? (
             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
@@ -187,6 +185,8 @@ interface TranscriptionModelPickerProps {
   setOpenaiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
+  mistralApiKey: string;
+  setMistralApiKey: (key: string) => void;
   customTranscriptionApiKey?: string;
   setCustomTranscriptionApiKey?: (key: string) => void;
   cloudTranscriptionBaseUrl?: string;
@@ -198,6 +198,7 @@ interface TranscriptionModelPickerProps {
 const CLOUD_PROVIDER_TABS = [
   { id: "openai", name: "OpenAI" },
   { id: "groq", name: "Groq", recommended: true },
+  { id: "mistral", name: "Mistral" },
   { id: "custom", name: "Custom" },
 ];
 
@@ -219,24 +220,21 @@ function ModeToggle({ useLocalWhisper, onModeChange }: ModeToggleProps) {
     <div className="relative flex p-0.5 rounded-lg bg-surface-raised dark:bg-surface-1 border border-border dark:border-border-subtle">
       {/* Sliding indicator */}
       <div
-        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-card border border-border dark:border-border-subtle shadow-sm dark:shadow-(--shadow-card) transition-transform duration-200 ease-out ${
-          useLocalWhisper ? "translate-x-[calc(100%+4px)]" : "translate-x-0"
-        }`}
+        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-card border border-border dark:border-border-subtle shadow-sm dark:shadow-(--shadow-card) transition-transform duration-200 ease-out ${useLocalWhisper ? "translate-x-[calc(100%+4px)]" : "translate-x-0"
+          }`}
       />
       <button
         onClick={() => onModeChange(false)}
-        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${
-          !useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-        }`}
+        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${!useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
       >
         <Cloud className="w-3.5 h-3.5" />
         <span className="text-xs font-medium">Cloud</span>
       </button>
       <button
         onClick={() => onModeChange(true)}
-        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${
-          useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-        }`}
+        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+          }`}
       >
         <Lock className="w-3.5 h-3.5" />
         <span className="text-xs font-medium">Local</span>
@@ -260,6 +258,8 @@ export default function TranscriptionModelPicker({
   setOpenaiApiKey,
   groqApiKey,
   setGroqApiKey,
+  mistralApiKey = "",
+  setMistralApiKey,
   customTranscriptionApiKey = "",
   setCustomTranscriptionApiKey,
   cloudTranscriptionBaseUrl = "",
@@ -626,10 +626,10 @@ export default function TranscriptionModelPicker({
     const modelsToRender =
       localModels.length === 0
         ? Object.entries(WHISPER_MODEL_INFO).map(([modelId, info]) => ({
-            model: modelId,
-            downloaded: false,
-            size_mb: info.sizeMb,
-          }))
+          model: modelId,
+          downloaded: false,
+          size_mb: info.sizeMb,
+        }))
         : localModels;
 
     return (
@@ -698,10 +698,10 @@ export default function TranscriptionModelPicker({
     const modelsToRender =
       parakeetModels.length === 0
         ? Object.entries(PARAKEET_MODEL_INFO).map(([modelId, info]) => ({
-            model: modelId,
-            downloaded: false,
-            size_mb: info.sizeMb,
-          }))
+          model: modelId,
+          downloaded: false,
+          size_mb: info.sizeMb,
+        }))
         : parakeetModels;
 
     return (
@@ -777,7 +777,7 @@ export default function TranscriptionModelPicker({
                 {/* API Key */}
                 <ApiKeyInput
                   apiKey={customTranscriptionApiKey}
-                  setApiKey={setCustomTranscriptionApiKey || (() => {})}
+                  setApiKey={setCustomTranscriptionApiKey || (() => { })}
                   label="API Key (Optional)"
                   helpText=""
                 />
@@ -804,7 +804,9 @@ export default function TranscriptionModelPicker({
                       onClick={createExternalLinkHandler(
                         selectedCloudProvider === "groq"
                           ? "https://console.groq.com/keys"
-                          : "https://platform.openai.com/api-keys"
+                          : selectedCloudProvider === "mistral"
+                            ? "https://console.mistral.ai/api-keys"
+                            : "https://platform.openai.com/api-keys"
                       )}
                       className="text-[11px] text-white/70 hover:text-white transition-colors cursor-pointer"
                     >
@@ -812,8 +814,20 @@ export default function TranscriptionModelPicker({
                     </button>
                   </div>
                   <ApiKeyInput
-                    apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
-                    setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
+                    apiKey={
+                      selectedCloudProvider === "groq"
+                        ? groqApiKey
+                        : selectedCloudProvider === "mistral"
+                          ? mistralApiKey
+                          : openaiApiKey
+                    }
+                    setApiKey={
+                      selectedCloudProvider === "groq"
+                        ? setGroqApiKey
+                        : selectedCloudProvider === "mistral"
+                          ? setMistralApiKey
+                          : setOpenaiApiKey
+                    }
                     label=""
                     helpText=""
                   />

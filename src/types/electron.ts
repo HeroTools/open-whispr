@@ -356,6 +356,15 @@ declare global {
       getGroqKey: () => Promise<string | null>;
       saveGroqKey: (key: string) => Promise<void>;
 
+      // Mistral API key management
+      getMistralKey: () => Promise<string | null>;
+      saveMistralKey: (key: string) => Promise<void>;
+      proxyMistralTranscription: (data: {
+        audioBuffer: ArrayBuffer;
+        model?: string;
+        language?: string;
+      }) => Promise<{ text: string }>;
+
       // Custom endpoint API keys
       getCustomTranscriptionKey?: () => Promise<string | null>;
       saveCustomTranscriptionKey?: (key: string) => Promise<void>;

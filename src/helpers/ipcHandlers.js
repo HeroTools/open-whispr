@@ -673,6 +673,49 @@ class IPCHandlers {
       return this.environmentManager.saveGroqKey(key);
     });
 
+    ipcMain.handle("get-mistral-key", async () => {
+      return this.environmentManager.getMistralKey();
+    });
+
+    ipcMain.handle("save-mistral-key", async (event, key) => {
+      return this.environmentManager.saveMistralKey(key);
+    });
+
+    // Proxy Mistral transcription through main process to avoid CORS
+    ipcMain.handle("proxy-mistral-transcription", async (event, { audioBuffer, model, language }) => {
+      const apiKey = this.environmentManager.getMistralKey();
+      if (!apiKey) {
+        throw new Error("Mistral API key not configured");
+      }
+
+      const formData = new FormData();
+      const audioBlob = new Blob([Buffer.from(audioBuffer)], { type: "audio/webm" });
+      formData.append("file", audioBlob, "audio.webm");
+      formData.append("model", model || "voxtral-mini-latest");
+      if (language && language !== "auto") {
+        formData.append("language", language);
+      }
+
+      const response = await fetch("https://api.mistral.ai/v1/audio/transcriptions", {
+        method: "POST",
+        headers: {
+          "x-api-key": apiKey,
+        },
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Mistral API Error: ${response.status} ${errorText}`);
+      }
+
+      try {
+        return await response.json();
+      } catch (error) {
+        throw new Error("Invalid JSON response from Mistral");
+      }
+    });
+
     ipcMain.handle("get-custom-transcription-key", async () => {
       return this.environmentManager.getCustomTranscriptionKey();
     });

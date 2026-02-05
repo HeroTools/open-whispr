@@ -75,6 +75,14 @@ class EnvironmentManager {
     return this._saveKey("GROQ_API_KEY", key);
   }
 
+  getMistralKey() {
+    return this._getKey("MISTRAL_API_KEY");
+  }
+
+  saveMistralKey(key) {
+    return this._saveKey("MISTRAL_API_KEY", key);
+  }
+
   getCustomTranscriptionKey() {
     return this._getKey("CUSTOM_TRANSCRIPTION_API_KEY");
   }
@@ -137,6 +145,9 @@ OPENAI_API_KEY=${apiKey}
     }
     if (process.env.GROQ_API_KEY) {
       envContent += `GROQ_API_KEY=${process.env.GROQ_API_KEY}\n`;
+    }
+    if (process.env.MISTRAL_API_KEY) {
+      envContent += `MISTRAL_API_KEY=${process.env.MISTRAL_API_KEY}\n`;
     }
     if (process.env.CUSTOM_TRANSCRIPTION_API_KEY) {
       envContent += `CUSTOM_TRANSCRIPTION_API_KEY=${process.env.CUSTOM_TRANSCRIPTION_API_KEY}\n`;

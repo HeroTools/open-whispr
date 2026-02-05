@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Cancel Processing Button**: Added ability to cancel ongoing transcription processing
 - **Dark Mode Icon Inversion**: Monochrome provider icons now automatically invert in dark mode for better visibility
 - **Dynamic Window Resizing**: Window automatically resizes based on command menu and toast visibility
+- **Mistral Voxtral Transcription**: Added Mistral as a cloud transcription provider
 
 ### Changed
 - **Design System Overhaul**: Complete refactor of styling to use design tokens throughout the codebase
