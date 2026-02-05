@@ -266,8 +266,7 @@ $RECYCLE.BIN/
 *~
 
 # Claude Code
-.claude/settings.local.json
-.claude/skills/
+.claude/
 .agent/
 .agents/
 
