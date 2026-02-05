@@ -39,6 +39,7 @@
     "format:js": "eslint . --fix && cd src && eslint . --fix && prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format": "npm run format:js",
     "format:check": "eslint . && cd src && eslint . && prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "lint": "eslint . && cd src && eslint .",
     "preview": "cd src && vite preview",
     "clean": "node cleanup.js"
   },
