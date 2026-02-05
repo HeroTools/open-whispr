@@ -294,9 +294,9 @@ class WindowManager {
       return { action: "deny" };
     });
 
-    this.controlPanelWindow.webContents.on('did-create-window', (childWindow, details) => {
+    this.controlPanelWindow.webContents.on("did-create-window", (childWindow, details) => {
       childWindow.close();
-      if (details.url && !details.url.startsWith('devtools://')) {
+      if (details.url && !details.url.startsWith("devtools://")) {
         this.openExternalUrl(details.url, false);
       }
     });

@@ -125,8 +125,8 @@
 
   /* Model picker premium effects */
   --shadow-metallic-dark: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 8px rgba(0, 0, 0, 0.3);
-  --shadow-selected-glow: inset 0 0 0 1px oklch(0.62 0.22 260 / 0.15),
-    0 0 16px -4px oklch(0.62 0.22 260 / 0.25);
+  --shadow-selected-glow:
+    inset 0 0 0 1px oklch(0.62 0.22 260 / 0.15), 0 0 16px -4px oklch(0.62 0.22 260 / 0.25);
   --shadow-card-hover-subtle: 0 2px 8px -2px rgba(0, 0, 0, 0.15);
 }
 
