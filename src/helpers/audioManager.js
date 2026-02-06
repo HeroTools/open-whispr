@@ -4,6 +4,7 @@ import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
+import { getBaseLanguageCode, validateLanguageForModel } from "../utils/languageSupport";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -377,9 +378,9 @@ class AudioManager {
       // Send original audio to main process - FFmpeg in main process handles conversion
       // (renderer-side AudioContext conversion was unreliable with WebM/Opus format)
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const language = localStorage.getItem("preferredLanguage");
+      const language = getBaseLanguageCode(localStorage.getItem("preferredLanguage"));
       const options = { model };
-      if (language && language !== "auto") {
+      if (language) {
         options.language = language;
       }
 
@@ -456,9 +457,9 @@ class AudioManager {
 
     try {
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const language = localStorage.getItem("preferredLanguage");
+      const language = validateLanguageForModel(localStorage.getItem("preferredLanguage"), model);
       const options = { model };
-      if (language && language !== "auto") {
+      if (language) {
         options.language = language;
       }
 
@@ -1008,11 +1009,11 @@ class AudioManager {
     }
 
     const timings = {};
-    const language = localStorage.getItem("preferredLanguage");
+    const language = getBaseLanguageCode(localStorage.getItem("preferredLanguage"));
 
     const arrayBuffer = await audioBlob.arrayBuffer();
     const opts = {};
-    if (language && language !== "auto") opts.language = language;
+    if (language) opts.language = language;
 
     const dictionaryPrompt = this.getCustomDictionaryPrompt();
     if (dictionaryPrompt) opts.prompt = dictionaryPrompt;
@@ -1046,6 +1047,7 @@ class AudioManager {
             model: cloudReasoningModel,
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
+            language: localStorage.getItem("preferredLanguage") || "auto",
           });
           if (!res.success) {
             const err = new Error(res.error || "Cloud reasoning failed");
@@ -1086,7 +1088,7 @@ class AudioManager {
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
     const timings = {};
-    const language = localStorage.getItem("preferredLanguage");
+    const language = getBaseLanguageCode(localStorage.getItem("preferredLanguage"));
     const allowLocalFallback = localStorage.getItem("allowLocalFallback") === "true";
     const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
 
@@ -1163,7 +1165,7 @@ class AudioManager {
       formData.append("file", optimizedAudio, `audio.${extension}`);
       formData.append("model", model);
 
-      if (language && language !== "auto") {
+      if (language) {
         formData.append("language", language);
       }
 
@@ -1609,10 +1611,9 @@ class AudioManager {
       const [, wsResult] = await Promise.all([
         this.cacheMicrophoneDeviceId(),
         withSessionRefresh(async () => {
-          const language = localStorage.getItem("preferredLanguage");
           const res = await window.electronAPI.assemblyAiStreamingWarmup({
             sampleRate: 16000,
-            language: language !== "auto" ? language : undefined,
+            language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
           });
           // Throw error to trigger retry if AUTH_EXPIRED
           if (!res.success && res.code) {
@@ -1670,10 +1671,9 @@ class AudioManager {
 
       // Use withSessionRefresh to handle AUTH_EXPIRED automatically
       const result = await withSessionRefresh(async () => {
-        const language = localStorage.getItem("preferredLanguage");
         const res = await window.electronAPI.assemblyAiStreamingStart({
           sampleRate: 16000,
-          language: language !== "auto" ? language : undefined,
+          language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
         });
 
         if (!res.success) {

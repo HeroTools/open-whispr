@@ -695,12 +695,11 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const result = await window.electronAPI.processAnthropicReasoning(
-        text,
-        model,
-        agentName,
-        config
-      );
+      const language = this.getPreferredLanguage();
+      const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
+        ...config,
+        language,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -747,7 +746,11 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, config);
+      const language = this.getPreferredLanguage();
+      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
+        ...config,
+        language,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -998,6 +1001,7 @@ class ReasoningService extends BaseReasoningService {
 
     try {
       const customDictionary = this.getCustomDictionary();
+      const language = this.getPreferredLanguage();
 
       // Use withSessionRefresh to handle AUTH_EXPIRED automatically
       const result = await withSessionRefresh(async () => {
@@ -1005,6 +1009,7 @@ class ReasoningService extends BaseReasoningService {
           model,
           agentName,
           customDictionary,
+          language,
         });
 
         if (!res.success) {
