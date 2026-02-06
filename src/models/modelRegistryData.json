@@ -7,31 +7,31 @@
       "sizeMb": 680,
       "language": "multilingual",
       "supportedLanguages": [
-        "en",
-        "de",
-        "es",
-        "fr",
-        "it",
-        "pt",
-        "nl",
-        "pl",
-        "ru",
-        "uk",
-        "zh",
-        "ja",
-        "ko",
-        "ar",
-        "hi",
-        "tr",
-        "vi",
-        "th",
-        "id",
+        "bg",
+        "hr",
         "cs",
-        "ro",
-        "hu",
+        "da",
+        "nl",
+        "en",
+        "et",
+        "fi",
+        "fr",
+        "de",
         "el",
-        "he",
-        "sv"
+        "hu",
+        "it",
+        "lv",
+        "lt",
+        "mt",
+        "pl",
+        "pt",
+        "ro",
+        "sk",
+        "sl",
+        "es",
+        "sv",
+        "ru",
+        "uk"
       ],
       "recommended": true,
       "downloadUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2",
@@ -471,5 +471,63 @@
         }
       ]
     }
-  ]
+  ],
+  "openwhisprCloudModels": {
+    "tiers": [
+      {
+        "id": "fast",
+        "label": "Fast",
+        "provider": "groq",
+        "models": [
+          {
+            "id": "llama-3.3-70b-versatile",
+            "name": "Llama 3.3 70B",
+            "description": "Fast, high-quality reasoning",
+            "recommended": true
+          },
+          {
+            "id": "llama-3.1-8b-instant",
+            "name": "Llama 3.1 8B",
+            "description": "Ultra-fast, low latency"
+          }
+        ]
+      },
+      {
+        "id": "balanced",
+        "label": "Balanced",
+        "provider": "openrouter",
+        "models": [
+          {
+            "id": "anthropic/claude-sonnet-4",
+            "name": "Claude Sonnet 4",
+            "description": "Balanced performance and quality",
+            "recommended": true
+          },
+          {
+            "id": "google/gemini-2.5-flash",
+            "name": "Gemini 2.5 Flash",
+            "description": "Fast with strong reasoning"
+          }
+        ]
+      },
+      {
+        "id": "quality",
+        "label": "Quality",
+        "provider": "openrouter",
+        "models": [
+          {
+            "id": "anthropic/claude-opus-4",
+            "name": "Claude Opus 4",
+            "description": "Most capable, highest quality",
+            "recommended": true
+          },
+          {
+            "id": "openai/gpt-4.1",
+            "name": "GPT-4.1",
+            "description": "Strong general-purpose reasoning"
+          }
+        ]
+      }
+    ]
+  }
 }

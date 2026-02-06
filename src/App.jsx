@@ -6,6 +6,7 @@ import { LoadingDots } from "./components/ui/LoadingDots";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
+import { useAuth } from "./hooks/useAuth";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -75,6 +76,8 @@ export default function App() {
   const { toast, toastCount } = useToast();
   const { hotkey } = useHotkey();
   const { isDragging, handleMouseDown, handleMouseUp } = useWindowDrag();
+  const { isSignedIn } = useAuth();
+
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
 
@@ -138,10 +141,23 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, toggleListening, cancelRecording, cancelProcessing } =
-    useAudioRecording(toast, {
-      onToggle: handleDictationToggle,
-    });
+  const {
+    isRecording,
+    isProcessing,
+    toggleListening,
+    cancelRecording,
+    cancelProcessing,
+    warmupStreaming,
+  } = useAudioRecording(toast, {
+    onToggle: handleDictationToggle,
+  });
+
+  // Trigger streaming warmup when user signs in (covers first-time account creation)
+  useEffect(() => {
+    if (isSignedIn) {
+      warmupStreaming();
+    }
+  }, [isSignedIn]);
 
   const handleClose = () => {
     window.electronAPI.hideWindow();
@@ -248,9 +264,13 @@ export default function App() {
                 e.stopPropagation();
                 isRecording ? cancelRecording() : cancelProcessing();
               }}
-              className="w-5 h-5 rounded-full bg-card/90 hover:bg-destructive border border-border hover:border-destructive flex items-center justify-center transition-all duration-150 shadow-lg backdrop-blur-sm"
+              className="group/cancel w-5 h-5 rounded-full bg-surface-2/90 hover:bg-destructive border border-border hover:border-destructive/70 flex items-center justify-center transition-all duration-150 shadow-sm backdrop-blur-sm"
             >
-              <X size={10} strokeWidth={2.5} color="white" />
+              <X
+                size={10}
+                strokeWidth={2.5}
+                className="text-foreground group-hover/cancel:text-destructive-foreground transition-colors duration-150"
+              />
             </button>
           )}
           <Tooltip content={micProps.tooltip}>

@@ -3,6 +3,7 @@ import { useLocalStorage } from "./useLocalStorage";
 import { useDebouncedCallback } from "./useDebouncedCallback";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
+import logger from "../utils/logger";
 import type { LocalTranscriptionProvider } from "../types/electron";
 
 export interface TranscriptionSettings {
@@ -17,7 +18,9 @@ export interface TranscriptionSettings {
   cloudTranscriptionProvider: string;
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
+  cloudTranscriptionMode: string;
   customDictionary: string[];
+  assemblyAiStreaming: boolean;
 }
 
 export interface ReasoningSettings {
@@ -44,6 +47,11 @@ export interface ApiKeySettings {
   groqApiKey: string;
   customTranscriptionApiKey: string;
   customReasoningApiKey: string;
+}
+
+export interface PrivacySettings {
+  cloudBackupEnabled: boolean;
+  telemetryEnabled: boolean;
 }
 
 export interface ThemeSettings {
@@ -95,7 +103,7 @@ export function useSettings() {
     }
   );
 
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage("preferredLanguage", "en", {
+  const [preferredLanguage, setPreferredLanguage] = useLocalStorage("preferredLanguage", "auto", {
     serialize: String,
     deserialize: String,
   });
@@ -136,6 +144,16 @@ export function useSettings() {
     }
   );
 
+  // Cloud transcription mode: "openwhispr" (server-side) or "byok" (bring your own key)
+  const [cloudTranscriptionMode, setCloudTranscriptionMode] = useLocalStorage(
+    "cloudTranscriptionMode",
+    "openwhispr",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   // Custom dictionary for improving transcription of specific words
   const [customDictionary, setCustomDictionaryRaw] = useLocalStorage<string[]>(
     "customDictionary",
@@ -153,12 +171,26 @@ export function useSettings() {
     }
   );
 
+  // Assembly AI real-time streaming (enabled by default for signed-in users)
+  const [assemblyAiStreaming, setAssemblyAiStreaming] = useLocalStorage(
+    "assemblyAiStreaming",
+    true,
+    {
+      serialize: String,
+      deserialize: (value) => value !== "false", // Default to true unless explicitly disabled
+    }
+  );
+
   // Wrap setter to sync dictionary to SQLite
   const setCustomDictionary = useCallback(
     (words: string[]) => {
       setCustomDictionaryRaw(words);
-      window.electronAPI?.setDictionary(words).catch(() => {
-        // Silently ignore SQLite sync errors
+      window.electronAPI?.setDictionary(words).catch((err) => {
+        logger.warn(
+          "Failed to sync dictionary to SQLite",
+          { error: (err as Error).message },
+          "settings"
+        );
       });
     },
     [setCustomDictionaryRaw]
@@ -181,8 +213,12 @@ export function useSettings() {
           // Recover localStorage from SQLite (e.g. localStorage was cleared)
           setCustomDictionaryRaw(dbWords);
         }
-      } catch {
-        // Silently ignore sync errors
+      } catch (err) {
+        logger.warn(
+          "Failed to sync dictionary on startup",
+          { error: (err as Error).message },
+          "settings"
+        );
       }
     };
 
@@ -234,6 +270,17 @@ export function useSettings() {
       if (["light", "dark", "auto"].includes(value)) return value as "light" | "dark" | "auto";
       return "auto";
     },
+  });
+
+  // Privacy settings — both default to OFF
+  const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage("cloudBackupEnabled", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
+
+  const [telemetryEnabled, setTelemetryEnabled] = useLocalStorage("telemetryEnabled", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
   });
 
   // Custom endpoint API keys - synced to .env like other keys
@@ -291,16 +338,24 @@ export function useSettings() {
       }
     };
 
-    syncKeys().catch(() => {
-      // Silently ignore sync errors
+    syncKeys().catch((err) => {
+      logger.warn(
+        "Failed to sync API keys on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const debouncedPersistToEnv = useDebouncedCallback(() => {
     if (typeof window !== "undefined" && window.electronAPI?.saveAllKeysToEnv) {
-      window.electronAPI.saveAllKeysToEnv().catch(() => {
-        // Silently ignore persistence errors
+      window.electronAPI.saveAllKeysToEnv().catch((err) => {
+        logger.warn(
+          "Failed to persist API keys to .env",
+          { error: (err as Error).message },
+          "settings"
+        );
       });
     }
   }, 1000);
@@ -397,17 +452,32 @@ export function useSettings() {
     }
   );
 
-  // Wrap setActivationMode to notify main process (for Windows Push-to-Talk)
   const setActivationMode = useCallback(
     (mode: "tap" | "push") => {
       setActivationModeLocal(mode);
-      // Notify main process so Windows key listener can start/stop
       if (typeof window !== "undefined" && window.electronAPI?.notifyActivationModeChanged) {
         window.electronAPI.notifyActivationModeChanged(mode);
       }
     },
     [setActivationModeLocal]
   );
+
+  // Sync activation mode from main process on first mount (handles localStorage cleared)
+  const hasRunActivationModeSync = useRef(false);
+  useEffect(() => {
+    if (hasRunActivationModeSync.current) return;
+    hasRunActivationModeSync.current = true;
+
+    const sync = async () => {
+      if (!window.electronAPI?.getActivationMode) return;
+      const envMode = await window.electronAPI.getActivationMode();
+      if (envMode && envMode !== activationMode) {
+        setActivationModeLocal(envMode);
+      }
+    };
+    sync().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Microphone settings
   const [preferBuiltInMic, setPreferBuiltInMic] = useLocalStorage("preferBuiltInMic", true, {
@@ -433,7 +503,13 @@ export function useSettings() {
         reasoningProvider,
         reasoningModel: reasoningProvider === "local" ? reasoningModel : undefined,
       })
-      .catch((err) => console.error("Failed to sync startup preferences:", err));
+      .catch((err) =>
+        logger.warn(
+          "Failed to sync startup preferences",
+          { error: (err as Error).message },
+          "settings"
+        )
+      );
   }, [
     useLocalWhisper,
     localTranscriptionProvider,
@@ -519,7 +595,10 @@ export function useSettings() {
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
+    cloudTranscriptionMode,
     customDictionary,
+    assemblyAiStreaming,
+    setAssemblyAiStreaming,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -541,6 +620,7 @@ export function useSettings() {
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
+    setCloudTranscriptionMode,
     setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
@@ -561,6 +641,10 @@ export function useSettings() {
     selectedMicDeviceId,
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
+    cloudBackupEnabled,
+    setCloudBackupEnabled,
+    telemetryEnabled,
+    setTelemetryEnabled,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,

@@ -77,7 +77,7 @@ export default function ModelCardList({
   }
 
   return (
-    <div className={`space-y-1 ${className}`}>
+    <div className={`space-y-0.5 ${className}`}>
       {models.map((model) => {
         const isSelected = selectedModel === model.value;
         const isDownloaded = model.isDownloaded;
@@ -116,18 +116,26 @@ export default function ModelCardList({
           <div
             key={model.value}
             onClick={handleCardClick}
-            className={`relative w-full p-2.5 pl-3 rounded-lg border text-left transition-all duration-200 group overflow-hidden ${
+            className={`relative w-full p-2 pl-2.5 rounded-md border text-left transition-all duration-200 group overflow-hidden ${
               isSelected ? styles.selected : styles.default
             } ${!isLocalMode || (isDownloaded && !isSelected) ? "cursor-pointer" : ""}`}
           >
             {/* Left accent bar for selected */}
             {isSelected && (
-              <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary rounded-l-lg" />
+              <div className="absolute left-0 top-0 bottom-0 w-1 bg-linear-to-b from-primary via-primary to-primary/80 rounded-l-md" />
             )}
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {/* Status dot with LED glow */}
-              <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${getStatusDotClass()}`} />
+              <div
+                className={`w-1.5 h-1.5 rounded-full shrink-0 ${getStatusDotClass()} ${
+                  isSelected && isDownloaded
+                    ? "animate-[pulse-glow_2s_ease-in-out_infinite]"
+                    : isDownloading
+                      ? "animate-[spinner-rotate_1s_linear_infinite]"
+                      : ""
+                }`}
+              />
 
               {/* Icon */}
               {model.icon ? (
@@ -142,9 +150,11 @@ export default function ModelCardList({
               )}
 
               {/* Model info - inline */}
-              <span className="text-sm font-medium text-foreground truncate">{model.label}</span>
+              <span className="text-sm font-semibold text-foreground truncate tracking-tight">
+                {model.label}
+              </span>
               {model.description && (
-                <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">
+                <span className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0">
                   {model.description}
                 </span>
               )}
@@ -176,7 +186,7 @@ export default function ModelCardList({
                         }}
                         size="sm"
                         variant="ghost"
-                        className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all active:scale-95"
                       >
                         <Trash2 size={12} />
                       </Button>

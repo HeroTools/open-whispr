@@ -155,8 +155,8 @@ export default function LocalModelPicker({
 
       {progressDisplay}
 
-      <div className="p-4">
-        <h5 className={`${styles.header} mb-3`}>Available Models</h5>
+      <div className="p-3">
+        <h5 className={`${styles.header} mb-2`}>Available Models</h5>
 
         <ModelCardList
           models={models.map(

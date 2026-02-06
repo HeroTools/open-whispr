@@ -1,9 +1,13 @@
 const { ipcMain, app, shell, BrowserWindow } = require("electron");
 const path = require("path");
+const http = require("http");
+const https = require("https");
+const crypto = require("crypto");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const { getSystemPrompt } = require("./prompts");
 const GnomeShortcutManager = require("./gnomeShortcut");
+const AssemblyAiStreaming = require("./assemblyAiStreaming");
 
 class IPCHandlers {
   constructor(managers) {
@@ -15,6 +19,8 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.sessionId = crypto.randomUUID();
+    this.assemblyAiStreaming = null;
     this.setupHandlers();
   }
 
@@ -97,6 +103,13 @@ class IPCHandlers {
       this.windowManager.showDictationPanel();
     });
 
+    ipcMain.handle("force-stop-dictation", () => {
+      if (this.windowManager?.forceStopMacCompoundPush) {
+        this.windowManager.forceStopMacCompoundPush("manual");
+      }
+      return { success: true };
+    });
+
     ipcMain.handle("set-main-window-interactivity", (event, shouldCapture) => {
       this.windowManager.setMainWindowInteractivity(Boolean(shouldCapture));
       return { success: true };
@@ -168,8 +181,8 @@ class IPCHandlers {
     });
 
     // Clipboard handlers
-    ipcMain.handle("paste-text", async (event, text) => {
-      return this.clipboardManager.pasteText(text);
+    ipcMain.handle("paste-text", async (event, text, options) => {
+      return this.clipboardManager.pasteText(text, options);
     });
 
     ipcMain.handle("read-clipboard", async (event) => {
@@ -698,6 +711,14 @@ class IPCHandlers {
       return this.environmentManager.saveDictationKey(key);
     });
 
+    ipcMain.handle("get-activation-mode", async () => {
+      return this.environmentManager.getActivationMode();
+    });
+
+    ipcMain.handle("save-activation-mode", async (event, mode) => {
+      return this.environmentManager.saveActivationMode(mode);
+    });
+
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
     });
@@ -745,6 +766,7 @@ class IPCHandlers {
         const result = await LocalReasoningService.processText(text, modelId, agentName, {
           ...config,
           customDictionary: this._getDictionarySafe(),
+          language: config?.language,
         });
         return { success: true, text: result };
       } catch (error) {
@@ -763,7 +785,11 @@ class IPCHandlers {
             throw new Error("Anthropic API key not configured");
           }
 
-          const systemPrompt = getSystemPrompt(agentName, this._getDictionarySafe());
+          const systemPrompt = getSystemPrompt(
+            agentName,
+            this._getDictionarySafe(),
+            config?.language
+          );
           const userPrompt = text;
 
           if (!modelId) {
@@ -798,8 +824,8 @@ class IPCHandlers {
             }
             throw new Error(
               errorData.error?.message ||
-              errorData.error ||
-              `Anthropic API error: ${response.status}`
+                errorData.error ||
+                `Anthropic API error: ${response.status}`
             );
           }
 
@@ -950,6 +976,348 @@ class IPCHandlers {
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
 
+    // Auth: clear all session cookies for sign-out.
+    // This clears every cookie in the renderer session rather than targeting
+    // individual auth cookies, which is acceptable because the app only sets
+    // cookies for Neon Auth. Avoids CSRF/Origin header issues that occur when
+    // the renderer tries to call the server-side sign-out endpoint directly.
+    ipcMain.handle("auth-clear-session", async (event) => {
+      try {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win) {
+          await win.webContents.session.clearStorageData({ storages: ["cookies"] });
+        }
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Failed to clear auth session:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    // --- OpenWhispr Cloud API handlers ---
+
+    const getApiUrl = () =>
+      process.env.OPENWHISPR_API_URL || process.env.VITE_OPENWHISPR_API_URL || "";
+
+    const getAuthUrl = () => process.env.NEON_AUTH_URL || process.env.VITE_NEON_AUTH_URL || "";
+
+    const getSessionCookies = async (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return "";
+
+      const scopedUrls = [getAuthUrl(), getApiUrl()].filter(Boolean);
+      const cookiesByName = new Map();
+
+      for (const url of scopedUrls) {
+        try {
+          const scopedCookies = await win.webContents.session.cookies.get({ url });
+          for (const cookie of scopedCookies) {
+            if (!cookiesByName.has(cookie.name)) {
+              cookiesByName.set(cookie.name, cookie.value);
+            }
+          }
+        } catch (error) {
+          debugLogger.warn("Failed to read scoped auth cookies", {
+            url,
+            error: error.message,
+          });
+        }
+      }
+
+      // Fallback for older sessions where cookies are not URL-scoped as expected.
+      if (cookiesByName.size === 0) {
+        const allCookies = await win.webContents.session.cookies.get({});
+        for (const cookie of allCookies) {
+          if (!cookiesByName.has(cookie.name)) {
+            cookiesByName.set(cookie.name, cookie.value);
+          }
+        }
+      }
+
+      const cookieHeader = [...cookiesByName.entries()]
+        .map(([name, value]) => `${name}=${value}`)
+        .join("; ");
+
+      debugLogger.debug(
+        "Resolved auth cookies for cloud request",
+        {
+          cookieCount: cookiesByName.size,
+          scopedUrls,
+        },
+        "auth"
+      );
+
+      return cookieHeader;
+    };
+
+    ipcMain.handle("cloud-transcribe", async (event, audioBuffer, opts = {}) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const audioData = Buffer.from(audioBuffer);
+        const boundary = `----OpenWhispr${Date.now()}`;
+        const parts = [];
+
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n` +
+            `Content-Type: audio/webm\r\n\r\n`
+        );
+        parts.push(audioData);
+        parts.push("\r\n");
+
+        if (opts.language) {
+          parts.push(
+            `--${boundary}\r\n` +
+              `Content-Disposition: form-data; name="language"\r\n\r\n` +
+              `${opts.language}\r\n`
+          );
+        }
+
+        if (opts.prompt) {
+          parts.push(
+            `--${boundary}\r\n` +
+              `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
+              `${opts.prompt}\r\n`
+          );
+        }
+
+        // Add client metadata for logging
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="clientType"\r\n\r\n` +
+            `desktop\r\n`
+        );
+
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="appVersion"\r\n\r\n` +
+            `${app.getVersion()}\r\n`
+        );
+
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="sessionId"\r\n\r\n` +
+            `${this.sessionId}\r\n`
+        );
+
+        parts.push(`--${boundary}--\r\n`);
+
+        const bodyParts = parts.map((p) => (typeof p === "string" ? Buffer.from(p) : p));
+        const body = Buffer.concat(bodyParts);
+
+        debugLogger.debug(
+          "Cloud transcribe request",
+          { audioSize: audioData.length, bodySize: body.length },
+          "cloud-api"
+        );
+
+        const url = new URL(`${apiUrl}/api/transcribe`);
+        const httpModule = url.protocol === "https:" ? https : http;
+
+        const data = await new Promise((resolve, reject) => {
+          const req = httpModule.request(
+            {
+              hostname: url.hostname,
+              port: url.port || (url.protocol === "https:" ? 443 : 80),
+              path: url.pathname,
+              method: "POST",
+              headers: {
+                "Content-Type": `multipart/form-data; boundary=${boundary}`,
+                "Content-Length": body.length,
+                Cookie: cookieHeader,
+              },
+            },
+            (res) => {
+              let responseData = "";
+              res.on("data", (chunk) => (responseData += chunk));
+              res.on("end", () => {
+                try {
+                  const parsed = JSON.parse(responseData);
+                  resolve({ statusCode: res.statusCode, data: parsed });
+                } catch (e) {
+                  reject(new Error(`Invalid JSON response: ${responseData.slice(0, 200)}`));
+                }
+              });
+            }
+          );
+          req.on("error", reject);
+          req.write(body);
+          req.end();
+        });
+
+        debugLogger.debug(
+          "Cloud transcribe response",
+          { statusCode: data.statusCode },
+          "cloud-api"
+        );
+
+        if (data.statusCode === 401) {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        if (data.statusCode === 429) {
+          return {
+            success: false,
+            error: "Daily word limit reached",
+            code: "LIMIT_REACHED",
+            limitReached: true,
+            ...data.data,
+          };
+        }
+        if (data.statusCode !== 200) {
+          throw new Error(data.data?.error || `API error: ${data.statusCode}`);
+        }
+
+        return {
+          success: true,
+          text: data.data.text,
+          wordsUsed: data.data.wordsUsed,
+          wordsRemaining: data.data.wordsRemaining,
+          plan: data.data.plan,
+          limitReached: data.data.limitReached || false,
+        };
+      } catch (error) {
+        debugLogger.error("Cloud transcription error", { error: error.message }, "cloud-api");
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("cloud-reason", async (event, text, opts = {}) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        console.log("[cloud-reason] ⬇ IPC called", {
+          apiUrl,
+          model: opts.model || "(default)",
+          agentName: opts.agentName || "(none)",
+          language: opts.language || "(auto)",
+          textLength: text?.length || 0,
+          textPreview: text?.substring(0, 80) || "(empty)",
+        });
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        console.log(`[cloud-reason] → Fetching ${apiUrl}/api/reason ...`);
+
+        const fetchStart = Date.now();
+        const response = await fetch(`${apiUrl}/api/reason`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Cookie: cookieHeader,
+          },
+          body: JSON.stringify({
+            text,
+            model: opts.model,
+            agentName: opts.agentName,
+            customDictionary: opts.customDictionary,
+            language: opts.language,
+          }),
+        });
+        const fetchMs = Date.now() - fetchStart;
+
+        console.log("[cloud-reason] ← Response", {
+          status: response.status,
+          ok: response.ok,
+          fetchMs,
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            console.log("[cloud-reason] ✗ 401 - session expired");
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          const errorData = await response.json().catch(() => ({}));
+          console.log("[cloud-reason] ✗ API error", { status: response.status, errorData });
+          throw new Error(errorData.error || `API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("[cloud-reason] ✓ Success", {
+          model: data.model,
+          provider: data.provider,
+          processingMs: data.processingMs,
+          resultLength: data.text?.length || 0,
+          resultPreview: data.text?.substring(0, 80) || "(empty)",
+        });
+        return { success: true, text: data.text, model: data.model, provider: data.provider };
+      } catch (error) {
+        console.log("[cloud-reason] ✗ Error:", error.message);
+        debugLogger.error("Cloud reasoning error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("cloud-usage", async (event) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}/api/usage`, {
+          headers: { Cookie: cookieHeader },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return { success: true, ...data };
+      } catch (error) {
+        debugLogger.error("Cloud usage fetch error:", error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    const fetchStripeUrl = async (event, endpoint, errorPrefix) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const response = await fetch(`${apiUrl}${endpoint}`, {
+          method: "POST",
+          headers: { Cookie: cookieHeader },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+          }
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(errorData.error || `API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return { success: true, url: data.url };
+      } catch (error) {
+        debugLogger.error(`${errorPrefix}:`, error);
+        return { success: false, error: error.message };
+      }
+    };
+
+    ipcMain.handle("cloud-checkout", (event) =>
+      fetchStripeUrl(event, "/api/stripe/checkout", "Cloud checkout error")
+    );
+
+    ipcMain.handle("cloud-billing-portal", (event) =>
+      fetchStripeUrl(event, "/api/stripe/portal", "Cloud billing portal error")
+    );
+
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
         const modelsDir = this.whisperManager.getModelsDir();
@@ -1066,6 +1434,201 @@ class IPCHandlers {
 
     ipcMain.handle("get-update-info", async () => {
       return this.updateManager.getUpdateInfo();
+    });
+
+    // --- Assembly AI Streaming handlers ---
+
+    // Helper to fetch streaming token
+    const fetchStreamingToken = async (event) => {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) {
+        throw new Error("OpenWhispr API URL not configured");
+      }
+
+      const cookieHeader = await getSessionCookies(event);
+      if (!cookieHeader) {
+        throw new Error("No session cookies available");
+      }
+
+      const tokenResponse = await fetch(`${apiUrl}/api/streaming-token`, {
+        method: "POST",
+        headers: {
+          Cookie: cookieHeader,
+        },
+      });
+
+      if (!tokenResponse.ok) {
+        if (tokenResponse.status === 401) {
+          const err = new Error("Session expired");
+          err.code = "AUTH_EXPIRED";
+          throw err;
+        }
+        const errorData = await tokenResponse.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to get streaming token: ${tokenResponse.status}`
+        );
+      }
+
+      const { token } = await tokenResponse.json();
+      if (!token) {
+        throw new Error("No token received from API");
+      }
+
+      return token;
+    };
+
+    ipcMain.handle("assemblyai-streaming-warmup", async (event, options = {}) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          return { success: false, error: "API not configured", code: "NO_API" };
+        }
+
+        if (!this.assemblyAiStreaming) {
+          this.assemblyAiStreaming = new AssemblyAiStreaming();
+        }
+
+        if (this.assemblyAiStreaming.hasWarmConnection()) {
+          debugLogger.debug("AssemblyAI connection already warm", {}, "streaming");
+          return { success: true, alreadyWarm: true };
+        }
+
+        let token = this.assemblyAiStreaming.getCachedToken();
+        if (!token) {
+          debugLogger.debug("Fetching new streaming token for warmup", {}, "streaming");
+          token = await fetchStreamingToken(event);
+        }
+
+        await this.assemblyAiStreaming.warmup({ ...options, token });
+        debugLogger.debug("AssemblyAI connection warmed up", {}, "streaming");
+
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("AssemblyAI warmup error", { error: error.message });
+        if (error.code === "AUTH_EXPIRED") {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        return { success: false, error: error.message };
+      }
+    });
+
+    let streamingStartInProgress = false;
+
+    ipcMain.handle("assemblyai-streaming-start", async (event, options = {}) => {
+      if (streamingStartInProgress) {
+        debugLogger.debug("Streaming start already in progress, ignoring", {}, "streaming");
+        return { success: false, error: "Operation in progress" };
+      }
+
+      streamingStartInProgress = true;
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          return { success: false, error: "API not configured", code: "NO_API" };
+        }
+
+        const win = BrowserWindow.fromWebContents(event.sender);
+
+        if (!this.assemblyAiStreaming) {
+          this.assemblyAiStreaming = new AssemblyAiStreaming();
+        }
+
+        // Clean up any stale active connection (shouldn't happen normally)
+        if (this.assemblyAiStreaming.isConnected) {
+          debugLogger.debug("AssemblyAI cleaning up stale connection before start", {}, "streaming");
+          await this.assemblyAiStreaming.disconnect(false);
+        }
+
+        const hasWarm = this.assemblyAiStreaming.hasWarmConnection();
+        debugLogger.debug("AssemblyAI streaming start", { hasWarmConnection: hasWarm }, "streaming");
+
+        let token = this.assemblyAiStreaming.getCachedToken();
+        if (!token) {
+          debugLogger.debug("Fetching streaming token from API", {}, "streaming");
+          token = await fetchStreamingToken(event);
+          this.assemblyAiStreaming.cacheToken(token);
+        } else {
+          debugLogger.debug("Using cached streaming token", {}, "streaming");
+        }
+
+        // Set up callbacks to forward events to renderer
+        this.assemblyAiStreaming.onPartialTranscript = (text) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("assemblyai-partial-transcript", text);
+          }
+        };
+
+        this.assemblyAiStreaming.onFinalTranscript = (text) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("assemblyai-final-transcript", text);
+          }
+        };
+
+        this.assemblyAiStreaming.onError = (error) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("assemblyai-error", error.message);
+          }
+        };
+
+        this.assemblyAiStreaming.onSessionEnd = (data) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("assemblyai-session-end", data);
+          }
+        };
+
+        await this.assemblyAiStreaming.connect({ ...options, token });
+        debugLogger.debug("AssemblyAI streaming started", {}, "streaming");
+
+        return {
+          success: true,
+          usedWarmConnection: this.assemblyAiStreaming.hasWarmConnection() === false,
+        };
+      } catch (error) {
+        debugLogger.error("AssemblyAI streaming start error", { error: error.message });
+        if (error.code === "AUTH_EXPIRED") {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        return { success: false, error: error.message };
+      } finally {
+        streamingStartInProgress = false;
+      }
+    });
+
+    ipcMain.on("assemblyai-streaming-send", (event, audioBuffer) => {
+      try {
+        if (!this.assemblyAiStreaming) return;
+        const buffer = Buffer.from(audioBuffer);
+        this.assemblyAiStreaming.sendAudio(buffer);
+      } catch (error) {
+        debugLogger.error("AssemblyAI streaming send error", { error: error.message });
+      }
+    });
+
+    ipcMain.on("assemblyai-streaming-force-endpoint", () => {
+      this.assemblyAiStreaming?.forceEndpoint();
+    });
+
+    ipcMain.handle("assemblyai-streaming-stop", async () => {
+      try {
+        let result = { text: "" };
+        if (this.assemblyAiStreaming) {
+          // disconnect() now returns the final text from Termination event
+          result = await this.assemblyAiStreaming.disconnect(true);
+          this.assemblyAiStreaming = null;
+        }
+
+        return { success: true, text: result?.text || "" };
+      } catch (error) {
+        debugLogger.error("AssemblyAI streaming stop error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("assemblyai-streaming-status", async () => {
+      if (!this.assemblyAiStreaming) {
+        return { isConnected: false, sessionId: null };
+      }
+      return this.assemblyAiStreaming.getStatus();
     });
   }
 

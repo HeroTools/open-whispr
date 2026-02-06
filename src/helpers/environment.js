@@ -2,35 +2,43 @@ const path = require("path");
 const fs = require("fs");
 const { app } = require("electron");
 
+const PERSISTED_KEYS = [
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "GEMINI_API_KEY",
+  "GROQ_API_KEY",
+  "CUSTOM_TRANSCRIPTION_API_KEY",
+  "CUSTOM_REASONING_API_KEY",
+  "LOCAL_TRANSCRIPTION_PROVIDER",
+  "PARAKEET_MODEL",
+  "LOCAL_WHISPER_MODEL",
+  "REASONING_PROVIDER",
+  "LOCAL_REASONING_MODEL",
+  "DICTATION_KEY",
+  "ACTIVATION_MODE",
+];
+
 class EnvironmentManager {
   constructor() {
     this.loadEnvironmentVariables();
   }
 
   loadEnvironmentVariables() {
-    // In production, try multiple locations for .env file
+    // Loaded in priority order — dotenv won't override, so first file wins per variable
     const possibleEnvPaths = [
-      // Development path
-      path.join(__dirname, "..", ".env"),
-      // Production packaged app paths
+      path.join(app.getPath("userData"), ".env"),
+      path.join(__dirname, "..", "..", ".env"), // Development
       path.join(process.resourcesPath, ".env"),
       path.join(process.resourcesPath, "app.asar.unpacked", ".env"),
-      path.join(app.getPath("userData"), ".env"), // User data directory
-      // Legacy paths
-      path.join(process.resourcesPath, "app", ".env"),
+      path.join(process.resourcesPath, "app", ".env"), // Legacy
     ];
 
     for (const envPath of possibleEnvPaths) {
       try {
         if (fs.existsSync(envPath)) {
-          const result = require("dotenv").config({ path: envPath });
-          if (!result.error) {
-            break;
-          }
+          require("dotenv").config({ path: envPath });
         }
-      } catch (error) {
-        // Continue to next path
-      }
+      } catch (error) {}
     }
   }
 
@@ -91,14 +99,24 @@ class EnvironmentManager {
     return this._saveKey("CUSTOM_REASONING_API_KEY", key);
   }
 
-  // Hotkey persistence for reliable startup
   getDictationKey() {
     return this._getKey("DICTATION_KEY");
   }
 
   saveDictationKey(key) {
     const result = this._saveKey("DICTATION_KEY", key);
-    // Persist to .env file immediately for reliable startup
+    this.saveAllKeysToEnvFile();
+    return result;
+  }
+
+  getActivationMode() {
+    const mode = this._getKey("ACTIVATION_MODE");
+    return mode === "push" ? "push" : "tap";
+  }
+
+  saveActivationMode(mode) {
+    const validMode = mode === "push" ? "push" : "tap";
+    const result = this._saveKey("ACTIVATION_MODE", validMode);
     this.saveAllKeysToEnvFile();
     return result;
   }
@@ -112,7 +130,6 @@ OPENAI_API_KEY=${apiKey}
 `;
 
     fs.writeFileSync(envPath, envContent, "utf8");
-
     require("dotenv").config({ path: envPath });
 
     return { success: true, path: envPath };
@@ -121,51 +138,15 @@ OPENAI_API_KEY=${apiKey}
   saveAllKeysToEnvFile() {
     const envPath = path.join(app.getPath("userData"), ".env");
 
-    // Build env content with all current keys
-    let envContent = `# OpenWhispr Environment Variables
-# This file was created automatically for production use
-`;
+    let envContent = "# OpenWhispr Environment Variables\n";
 
-    if (process.env.OPENAI_API_KEY) {
-      envContent += `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}\n`;
-    }
-    if (process.env.ANTHROPIC_API_KEY) {
-      envContent += `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}\n`;
-    }
-    if (process.env.GEMINI_API_KEY) {
-      envContent += `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}\n`;
-    }
-    if (process.env.GROQ_API_KEY) {
-      envContent += `GROQ_API_KEY=${process.env.GROQ_API_KEY}\n`;
-    }
-    if (process.env.CUSTOM_TRANSCRIPTION_API_KEY) {
-      envContent += `CUSTOM_TRANSCRIPTION_API_KEY=${process.env.CUSTOM_TRANSCRIPTION_API_KEY}\n`;
-    }
-    if (process.env.CUSTOM_REASONING_API_KEY) {
-      envContent += `CUSTOM_REASONING_API_KEY=${process.env.CUSTOM_REASONING_API_KEY}\n`;
-    }
-    if (process.env.LOCAL_TRANSCRIPTION_PROVIDER) {
-      envContent += `LOCAL_TRANSCRIPTION_PROVIDER=${process.env.LOCAL_TRANSCRIPTION_PROVIDER}\n`;
-    }
-    if (process.env.PARAKEET_MODEL) {
-      envContent += `PARAKEET_MODEL=${process.env.PARAKEET_MODEL}\n`;
-    }
-    if (process.env.LOCAL_WHISPER_MODEL) {
-      envContent += `LOCAL_WHISPER_MODEL=${process.env.LOCAL_WHISPER_MODEL}\n`;
-    }
-    if (process.env.REASONING_PROVIDER) {
-      envContent += `REASONING_PROVIDER=${process.env.REASONING_PROVIDER}\n`;
-    }
-    if (process.env.LOCAL_REASONING_MODEL) {
-      envContent += `LOCAL_REASONING_MODEL=${process.env.LOCAL_REASONING_MODEL}\n`;
-    }
-    if (process.env.DICTATION_KEY) {
-      envContent += `DICTATION_KEY=${process.env.DICTATION_KEY}\n`;
+    for (const key of PERSISTED_KEYS) {
+      if (process.env[key]) {
+        envContent += `${key}=${process.env[key]}\n`;
+      }
     }
 
     fs.writeFileSync(envPath, envContent, "utf8");
-
-    // Reload the env file
     require("dotenv").config({ path: envPath });
 
     return { success: true, path: envPath };

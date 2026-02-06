@@ -11,13 +11,13 @@ export interface ModelPickerStyles {
 export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   purple: {
     container:
-      "bg-card border border-border rounded-xl overflow-hidden dark:bg-surface-1 shadow-sm",
+      "bg-surface-1/95 dark:bg-white/[0.03] rounded-lg overflow-hidden border border-border/60 dark:border-white/8 backdrop-blur-xl shadow-(--shadow-metallic-light) dark:shadow-(--shadow-metallic-dark)",
     header: "font-medium text-foreground tracking-tight",
     modelCard: {
       selected:
-        "border-primary/30 bg-primary/8 dark:bg-primary/6 dark:border-primary/20 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.12),0_0_10px_-3px_oklch(0.62_0.22_260/0.18)]",
+        "border-primary/40 bg-primary/12 dark:bg-primary/8 shadow-(--shadow-selected-glow) relative before:absolute before:inset-0 before:bg-linear-to-b before:from-white/[0.03] before:to-transparent before:pointer-events-none",
       default:
-        "border-border bg-surface-1 hover:border-border-hover hover:bg-muted dark:bg-card dark:border-border dark:hover:border-border-hover dark:hover:bg-surface-raised",
+        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-all duration-200 ease-out",
     },
     badges: {
       selected:
@@ -37,13 +37,13 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   },
   indigo: {
     container:
-      "bg-card border border-border rounded-xl overflow-hidden dark:bg-surface-1 shadow-sm",
+      "bg-surface-1/95 dark:bg-white/[0.03] rounded-lg overflow-hidden border border-border/60 dark:border-white/8 backdrop-blur-xl shadow-(--shadow-metallic-light) dark:shadow-(--shadow-metallic-dark)",
     header: "font-medium text-foreground tracking-tight",
     modelCard: {
       selected:
-        "border-primary/30 bg-primary/8 dark:bg-primary/6 dark:border-primary/20 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.12),0_0_10px_-3px_oklch(0.62_0.22_260/0.18)]",
+        "border-primary/40 bg-primary/12 dark:bg-primary/8 shadow-(--shadow-selected-glow) relative before:absolute before:inset-0 before:bg-linear-to-b before:from-white/[0.03] before:to-transparent before:pointer-events-none",
       default:
-        "border-border bg-surface-1 hover:border-border-hover hover:bg-muted dark:bg-card dark:border-border dark:hover:border-border-hover dark:hover:bg-surface-raised",
+        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-all duration-200 ease-out",
     },
     badges: {
       selected:
@@ -63,13 +63,13 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
   },
   blue: {
     container:
-      "bg-surface-1 dark:bg-white/3 rounded-xl overflow-hidden border border-border dark:border-white/5 backdrop-blur-md shadow-sm",
+      "bg-surface-1/95 dark:bg-white/[0.03] rounded-lg overflow-hidden border border-border/60 dark:border-white/8 backdrop-blur-xl shadow-(--shadow-metallic-light) dark:shadow-(--shadow-metallic-dark)",
     header: "text-sm font-medium text-foreground tracking-tight",
     modelCard: {
       selected:
-        "border-primary/30 bg-primary/10 dark:bg-primary/6 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.15),0_0_12px_-3px_oklch(0.62_0.22_260/0.2)]",
+        "border-primary/40 bg-primary/12 dark:bg-primary/8 shadow-(--shadow-selected-glow) relative before:absolute before:inset-0 before:bg-linear-to-b before:from-white/[0.03] before:to-transparent before:pointer-events-none",
       default:
-        "border-border bg-surface-1 hover:border-border-hover hover:bg-surface-raised dark:border-white/5 dark:bg-white/3 dark:hover:border-white/20 dark:hover:bg-white/8",
+        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-all duration-200 ease-out",
     },
     badges: {
       selected:

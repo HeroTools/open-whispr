@@ -1,5 +1,16 @@
 import React, { useEffect } from "react";
-import { Settings, Mic, Brain, User, Sparkles, Wrench, BookOpen, ShieldCheck } from "lucide-react";
+import {
+  Sliders,
+  Mic,
+  Brain,
+  User,
+  Sparkles,
+  UserCircle,
+  Wrench,
+  BookOpen,
+  ShieldCheck,
+  Lock,
+} from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
 
@@ -14,9 +25,16 @@ interface SettingsModalProps {
 export default function SettingsModal({ open, onOpenChange, initialSection }: SettingsModalProps) {
   const sidebarItems: SidebarItem<SettingsSectionType>[] = [
     {
+      id: "account",
+      label: "Account",
+      icon: UserCircle,
+      description: "Sign in & usage",
+      group: "Profile",
+    },
+    {
       id: "general",
-      label: "General",
-      icon: Settings,
+      label: "Preferences",
+      icon: Sliders,
       description: "Appearance, hotkey & startup",
       group: "App",
     },
@@ -56,6 +74,13 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
       group: "Intelligence",
     },
     {
+      id: "privacy",
+      label: "Privacy",
+      icon: Lock,
+      description: "Cloud backup & analytics",
+      group: "System",
+    },
+    {
       id: "permissions",
       label: "Permissions",
       icon: ShieldCheck,
@@ -71,7 +96,7 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
     },
   ];
 
-  const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("general");
+  const [activeSection, setActiveSection] = React.useState<SettingsSectionType>("account");
 
   // Navigate to initial section when modal opens
   useEffect(() => {
