@@ -29,7 +29,10 @@ const MAIN_WINDOW_CONFIG = {
   fullScreenable: false,
   hasShadow: false, // Remove shadow for cleaner look
   acceptsFirstMouse: true, // Accept clicks even when not focused
-  type: process.platform === "darwin" ? "panel" : "normal", // Panel on macOS preserves floating behavior
+  // Panel on macOS preserves floating behavior
+  // Toolbar on Linux hides from Alt+Tab on most compositors (GNOME, KDE, etc.)
+  type:
+    process.platform === "darwin" ? "panel" : process.platform === "linux" ? "toolbar" : "normal",
 };
 
 // Control panel window configuration
@@ -94,6 +97,9 @@ class WindowPositionUtil {
     } else {
       // Linux and other platforms
       window.setAlwaysOnTop(true, "screen-saver");
+      // Attempt to set visible on all workspaces (works on X11, may not work on Wayland)
+      // For KDE Wayland, a separate KWin script integration is used (see kdeIntegration.js)
+      window.setVisibleOnAllWorkspaces(true);
     }
 
     // Bring window to front if visible

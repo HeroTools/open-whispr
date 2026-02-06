@@ -50,6 +50,7 @@ const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
+const KDEIntegration = require("./src/helpers/kdeIntegration");
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -64,6 +65,7 @@ let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
 let windowsKeyManager = null;
+let kdeIntegration = null;
 let globeKeyAlertShown = false;
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
@@ -110,6 +112,7 @@ function initializeManagers() {
   updateManager = new UpdateManager();
   globeKeyManager = new GlobeKeyManager();
   windowsKeyManager = new WindowsKeyManager();
+  kdeIntegration = new KDEIntegration();
 
   // Set up Globe key error handler on macOS
   if (process.platform === "darwin") {
@@ -215,6 +218,17 @@ async function startApp() {
 
   // Create main window
   await windowManager.createMainWindow();
+
+  // On Linux/KDE Wayland, configure the overlay window via KWin script
+  // This handles visibleOnAllWorkspaces and skipSwitcher which don't work via Electron APIs
+  if (process.platform === "linux") {
+    // Wait a bit for KWin to register the window, then configure it
+    setTimeout(() => {
+      kdeIntegration.configureOverlayWindowWithRetry(3, 500).catch((err) => {
+        debugLogger.debug("KDE integration error (non-fatal)", { error: err.message });
+      });
+    }, 1000);
+  }
 
   // Create control panel window
   await windowManager.createControlPanelWindow();
@@ -358,7 +372,9 @@ async function startApp() {
     });
 
     windowsKeyManager.on("unavailable", () => {
-      debugLogger.debug("[Push-to-Talk] Windows key listener not available - falling back to toggle mode");
+      debugLogger.debug(
+        "[Push-to-Talk] Windows key listener not available - falling back to toggle mode"
+      );
       windowManager.setWindowsPushToTalkAvailable(false);
       if (isLiveWindow(windowManager.mainWindow)) {
         windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
@@ -386,7 +402,9 @@ async function startApp() {
 
       if (activationMode === "push") {
         if (isValidHotkey(currentHotkey)) {
-          debugLogger.debug("[Push-to-Talk] Starting Windows key listener", { hotkey: currentHotkey });
+          debugLogger.debug("[Push-to-Talk] Starting Windows key listener", {
+            hotkey: currentHotkey,
+          });
           windowsKeyManager.start(currentHotkey);
         } else {
           debugLogger.debug("[Push-to-Talk] No valid hotkey to start listener");
