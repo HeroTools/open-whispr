@@ -30,7 +30,7 @@ const getLinuxSessionInfo = () => {
 // Platform-specific paste delays (ms before simulating keystroke)
 // Each platform has different timing requirements based on their paste mechanism
 const PASTE_DELAYS = {
-  darwin: 50, // macOS: AppleScript keystroke is async, needs time for clipboard to settle
+  darwin: 120, // macOS: allow hotkey release/focus settle before simulated Cmd+V
   win32_nircmd: 30, // Windows nircmd: give clipboard time to sync
   win32_pwsh: 40, // Windows PowerShell: give clipboard time to sync
   linux: 50, // Linux: Allow time for focus to return to target window on X11
@@ -39,7 +39,7 @@ const PASTE_DELAYS = {
 // Platform-specific clipboard restoration delays (ms after paste completes)
 // Ensures paste is fully processed before restoring original clipboard content
 const RESTORE_DELAYS = {
-  darwin: 100, // macOS: AppleScript needs time to complete keystroke
+  darwin: 450, // macOS: avoid restoring clipboard before target app consumes paste
   win32_nircmd: 80, // Windows nircmd: allow time for paste processing
   win32_pwsh: 80, // Windows PowerShell: allow time for paste processing
   linux: 200, // Linux: X11 event queue processing takes longer
@@ -232,7 +232,7 @@ class ClipboardManager {
             setTimeout(() => {
               clipboard.writeText(originalClipboard);
               this.safeLog("🔄 Original clipboard content restored");
-            }, 100);
+            }, RESTORE_DELAYS.darwin);
             resolve();
           } else {
             const errorMsg = `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`;

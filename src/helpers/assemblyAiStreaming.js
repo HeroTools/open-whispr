@@ -21,6 +21,7 @@ class AssemblyAiStreaming {
     this.connectionTimeout = null;
     this.accumulatedText = "";
     this.lastTurnText = "";
+    this.turns = [];
     this.terminationResolve = null;
     this.cachedToken = null;
     this.tokenFetchedAt = null;
@@ -186,6 +187,7 @@ class AssemblyAiStreaming {
     // Reset accumulated text for new session
     this.accumulatedText = "";
     this.lastTurnText = "";
+    this.turns = [];
 
     // Try to use pre-warmed connection for instant start
     if (this.hasWarmConnection()) {
@@ -255,25 +257,46 @@ class AssemblyAiStreaming {
         case "Turn":
           if (message.transcript) {
             if (message.end_of_turn) {
-              // Turn has ended - accumulate with previous turns
+              // Turn has ended - append once, then replace with formatted variant if needed
               const trimmedTranscript = message.transcript.trim();
-              // Only accumulate if this is new content (not a duplicate turn)
-              if (trimmedTranscript && trimmedTranscript !== this.lastTurnText) {
-                this.lastTurnText = trimmedTranscript;
-                this.accumulatedText = this.accumulatedText
-                  ? this.accumulatedText + " " + trimmedTranscript
-                  : trimmedTranscript;
-                // Pass the full accumulated text to the callback
-                this.onFinalTranscript?.(this.accumulatedText);
-                debugLogger.debug("AssemblyAI final transcript (end_of_turn)", {
-                  text: message.transcript.slice(0, 100),
-                  totalAccumulated: this.accumulatedText.length,
-                });
-              } else {
-                debugLogger.debug("AssemblyAI duplicate turn ignored", {
-                  text: message.transcript.slice(0, 100),
-                });
+              const normalizedTranscript = this.normalizeTurnText(trimmedTranscript);
+              const previousTurn = this.turns[this.turns.length - 1];
+
+              if (!trimmedTranscript || !normalizedTranscript) {
+                break;
               }
+
+              if (previousTurn && previousTurn.normalized === normalizedTranscript) {
+                // AssemblyAI can emit the same turn twice (raw then formatted). Replace previous
+                // turn only when this variant is formatted, otherwise ignore duplicate.
+                if (message.turn_is_formatted && previousTurn.text !== trimmedTranscript) {
+                  previousTurn.text = trimmedTranscript;
+                  this.lastTurnText = trimmedTranscript;
+                  this.accumulatedText = this.turns.map((turn) => turn.text).join(" ");
+                  this.onFinalTranscript?.(this.accumulatedText);
+                  debugLogger.debug("AssemblyAI formatted turn update applied", {
+                    text: trimmedTranscript.slice(0, 100),
+                    totalAccumulated: this.accumulatedText.length,
+                  });
+                } else {
+                  debugLogger.debug("AssemblyAI duplicate turn ignored", {
+                    text: trimmedTranscript.slice(0, 100),
+                  });
+                }
+                break;
+              }
+
+              this.turns.push({
+                text: trimmedTranscript,
+                normalized: normalizedTranscript,
+              });
+              this.lastTurnText = trimmedTranscript;
+              this.accumulatedText = this.turns.map((turn) => turn.text).join(" ");
+              this.onFinalTranscript?.(this.accumulatedText);
+              debugLogger.debug("AssemblyAI final transcript (end_of_turn)", {
+                text: message.transcript.slice(0, 100),
+                totalAccumulated: this.accumulatedText.length,
+              });
             } else if (message.turn_is_formatted) {
               // Formatted but turn not ended yet - show as preview without accumulating
               this.onPartialTranscript?.(message.transcript);
@@ -314,6 +337,14 @@ class AssemblyAiStreaming {
     } catch (err) {
       debugLogger.error("AssemblyAI message parse error", { error: err.message });
     }
+  }
+
+  normalizeTurnText(text) {
+    return text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   sendAudio(pcmBuffer) {
@@ -382,6 +413,7 @@ class AssemblyAiStreaming {
     this.cleanupWarmConnection();
     this.cachedToken = null;
     this.tokenFetchedAt = null;
+    this.turns = [];
   }
 
   getStatus() {

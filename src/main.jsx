@@ -7,8 +7,26 @@ import { ToastProvider } from "./components/ui/Toast.tsx";
 import { useTheme } from "./hooks/useTheme";
 import "./index.css";
 
+const VALID_CHANNELS = new Set(["development", "staging", "production"]);
+const DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL = {
+  development: "openwhispr-dev",
+  staging: "openwhispr-staging",
+  production: "openwhispr",
+};
+const inferredChannel = import.meta.env.DEV ? "development" : "production";
+const configuredChannel = (import.meta.env.VITE_OPENWHISPR_CHANNEL || inferredChannel)
+  .trim()
+  .toLowerCase();
+const APP_CHANNEL = VALID_CHANNELS.has(configuredChannel) ? configuredChannel : inferredChannel;
+const defaultOAuthProtocol =
+  DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL[APP_CHANNEL] || DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL.production;
+const OAUTH_PROTOCOL = (import.meta.env.VITE_OPENWHISPR_PROTOCOL || defaultOAuthProtocol)
+  .trim()
+  .toLowerCase();
+const OAUTH_AUTH_BRIDGE_URL = (import.meta.env.VITE_OPENWHISPR_AUTH_BRIDGE_URL || "").trim();
+
 // OAuth callback handler: when the browser redirects back from Google/Neon Auth
-// with a session verifier, redirect to the openwhispr:// protocol so Electron
+// with a session verifier, redirect to the configured custom protocol so Electron
 // can capture it and complete authentication. This check runs before React
 // mounts — if we detect we're in the system browser with a verifier, we
 // redirect immediately and skip mounting the app entirely.
@@ -18,8 +36,19 @@ function isOAuthBrowserRedirect() {
   const isInElectron = typeof window.electronAPI !== "undefined";
 
   if (verifier && !isInElectron) {
+    if (OAUTH_AUTH_BRIDGE_URL) {
+      try {
+        const bridgeUrl = new URL(OAUTH_AUTH_BRIDGE_URL);
+        bridgeUrl.searchParams.set("neon_auth_session_verifier", verifier);
+        window.location.replace(bridgeUrl.toString());
+        return true;
+      } catch {
+        // Fall back to protocol redirect below.
+      }
+    }
+
     setTimeout(() => {
-      window.location.href = `openwhispr://auth/callback?neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
+      window.location.href = `${OAUTH_PROTOCOL}://auth/callback?neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
     }, 2000);
 
     // Show an ultra-premium branded message while waiting
