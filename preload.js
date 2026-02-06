@@ -246,6 +246,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cloudCheckout: () => ipcRenderer.invoke("cloud-checkout"),
   cloudBillingPortal: () => ipcRenderer.invoke("cloud-billing-portal"),
 
+  // Referral stats
+  getReferralStats: () => ipcRenderer.invoke("get-referral-stats"),
+  sendReferralInvite: (email) => ipcRenderer.invoke("send-referral-invite", email),
+  getReferralInvites: () => ipcRenderer.invoke("get-referral-invites"),
+
   // Assembly AI Streaming
   assemblyAiStreamingWarmup: (options) => ipcRenderer.invoke("assemblyai-streaming-warmup", options),
   assemblyAiStreamingStart: (options) => ipcRenderer.invoke("assemblyai-streaming-start", options),

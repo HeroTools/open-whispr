@@ -1224,6 +1224,109 @@ class IPCHandlers {
       fetchStripeUrl(event, "/api/stripe/portal", "Cloud billing portal error")
     );
 
+    // Referral stats handler
+    ipcMain.handle("get-referral-stats", async (event) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          throw new Error("OpenWhispr API URL not configured");
+        }
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) {
+          throw new Error("No session cookies available");
+        }
+
+        const response = await fetch(`${apiUrl}/api/referrals/stats`, {
+          headers: {
+            Cookie: cookieHeader,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error("Unauthorized - please sign in");
+          }
+          throw new Error(`Failed to fetch referral stats: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        debugLogger.error("Error fetching referral stats:", error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle("send-referral-invite", async (event, email) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          throw new Error("OpenWhispr API URL not configured");
+        }
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) {
+          throw new Error("No session cookies available");
+        }
+
+        const response = await fetch(`${apiUrl}/api/referrals/invite`, {
+          method: "POST",
+          headers: {
+            Cookie: cookieHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || `Failed to send invite: ${response.status}`);
+        }
+
+        return data;
+      } catch (error) {
+        debugLogger.error("Error sending referral invite:", error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle("get-referral-invites", async (event) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          throw new Error("OpenWhispr API URL not configured");
+        }
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) {
+          throw new Error("No session cookies available");
+        }
+
+        const response = await fetch(`${apiUrl}/api/referrals/invites`, {
+          headers: {
+            Cookie: cookieHeader,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error("Unauthorized - please sign in");
+          }
+          throw new Error(`Failed to fetch referral invites: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        debugLogger.error("Error fetching referral invites:", error);
+        throw error;
+      }
+    });
+
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {
         const modelsDir = this.whisperManager.getModelsDir();

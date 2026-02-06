@@ -501,6 +501,45 @@ declare global {
       onAssemblyAiSessionEnd?: (
         callback: (data: { audioDuration?: number; text?: string }) => void
       ) => () => void;
+
+      // Referral stats
+      getReferralStats?: () => Promise<{
+        referralCode: string;
+        referralLink: string;
+        totalReferrals: number;
+        completedReferrals: number;
+        pendingReferrals: number;
+        totalMonthsEarned: number;
+        referrals: Array<{
+          id: string;
+          email: string;
+          name: string;
+          status: "pending" | "completed" | "rewarded";
+          created_at: string;
+          first_payment_at: string | null;
+        }>;
+      }>;
+
+      sendReferralInvite?: (email: string) => Promise<{
+        success: boolean;
+        invite: {
+          id: string;
+          recipientEmail: string;
+          status: "sent" | "failed" | "opened" | "converted";
+          sentAt: string;
+        };
+      }>;
+
+      getReferralInvites?: () => Promise<{
+        invites: Array<{
+          id: string;
+          recipientEmail: string;
+          status: "sent" | "failed" | "opened" | "converted";
+          sentAt: string;
+          openedAt?: string;
+          convertedAt?: string;
+        }>;
+      }>;
     };
 
     api?: {
