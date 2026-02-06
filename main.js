@@ -411,7 +411,7 @@ async function startApp() {
   // approach: use webRequest.onBeforeSendHeaders at the Chromium network layer.
   // Match all Neon Auth endpoints (avoids dependency on .env which isn't packaged).
   session.defaultSession.webRequest.onBeforeSendHeaders(
-    { urls: ["https://*.neonauth.*.neon.tech/*"] },
+    { urls: ["https://*.neon.tech/*"] },
     (details, callback) => {
       details.requestHeaders["Origin"] = new URL(details.url).origin;
       callback({ requestHeaders: details.requestHeaders });
