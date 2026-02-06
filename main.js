@@ -409,21 +409,14 @@ async function startApp() {
   // Electron loads pages from file:// so the browser sends no Origin header,
   // which Neon Auth (better-auth) rejects. This is the standard Electron
   // approach: use webRequest.onBeforeSendHeaders at the Chromium network layer.
-  const neonAuthUrl = process.env.VITE_NEON_AUTH_URL || "";
-  if (neonAuthUrl) {
-    try {
-      const neonOrigin = new URL(neonAuthUrl).origin;
-      session.defaultSession.webRequest.onBeforeSendHeaders(
-        { urls: [`${neonOrigin}/*`] },
-        (details, callback) => {
-          details.requestHeaders["Origin"] = neonOrigin;
-          callback({ requestHeaders: details.requestHeaders });
-        }
-      );
-    } catch (err) {
-      console.error("Failed to set up Neon Auth origin interceptor:", err);
+  // Match all Neon Auth endpoints (avoids dependency on .env which isn't packaged).
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    { urls: ["https://*.neonauth.*.neon.tech/*"] },
+    (details, callback) => {
+      details.requestHeaders["Origin"] = new URL(details.url).origin;
+      callback({ requestHeaders: details.requestHeaders });
     }
-  }
+  );
 
   // Initialize activation mode cache from persisted .env value
   windowManager.setActivationModeCache(environmentManager.getActivationMode());
