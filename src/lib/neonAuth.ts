@@ -2,8 +2,14 @@ import { createAuthClient } from "@neondatabase/auth";
 import { BetterAuthReactAdapter } from "@neondatabase/auth/react";
 
 export const NEON_AUTH_URL = import.meta.env.VITE_NEON_AUTH_URL || "";
+// Electron's origin is null/file:// which Neon Auth won't trust.
+// Send the Neon Auth server's own origin so requests pass trustedOrigins validation.
+const neonOrigin = NEON_AUTH_URL ? new URL(NEON_AUTH_URL).origin : "";
 export const authClient = NEON_AUTH_URL
-  ? createAuthClient(NEON_AUTH_URL, { adapter: BetterAuthReactAdapter() })
+  ? createAuthClient(NEON_AUTH_URL, {
+      adapter: BetterAuthReactAdapter(),
+      fetchOptions: { headers: { Origin: neonOrigin } },
+    })
   : null;
 
 export type SocialProvider = "google";
