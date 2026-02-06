@@ -694,12 +694,11 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const result = await window.electronAPI.processAnthropicReasoning(
-        text,
-        model,
-        agentName,
-        config
-      );
+      const language = this.getPreferredLanguage();
+      const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
+        ...config,
+        language,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -746,7 +745,11 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, config);
+      const language = this.getPreferredLanguage();
+      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
+        ...config,
+        language,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -997,10 +1000,12 @@ class ReasoningService extends BaseReasoningService {
 
     try {
       const customDictionary = this.getCustomDictionary();
+      const language = this.getPreferredLanguage();
       const result = await (window as any).electronAPI.cloudReason(text, {
         model,
         agentName,
         customDictionary,
+        language,
       });
 
       if (!result.success) {

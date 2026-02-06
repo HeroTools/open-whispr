@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Search, X, Check } from "lucide-react";
-import { LANGUAGE_OPTIONS, getLanguageLabel } from "../../utils/languages";
+import { LANGUAGE_OPTIONS, getLanguageLabel, getLanguageFlag } from "../../utils/languages";
 
 interface LanguageSelectorProps {
   value: string;
@@ -128,7 +128,10 @@ export default function LanguageSelector({
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className="truncate text-foreground">{getLanguageLabel(value)}</span>
+        <span className="truncate text-foreground">
+          <span className="mr-1.5">{getLanguageFlag(value)}</span>
+          {getLanguageLabel(value)}
+        </span>
         <ChevronDown
           className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-all duration-200 ${
             isOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"
@@ -204,7 +207,10 @@ export default function LanguageSelector({
                         role="option"
                         aria-selected={isSelected}
                       >
-                        <span className="truncate">{language.label}</span>
+                        <span className="truncate">
+                          <span className="mr-1.5">{language.flag}</span>
+                          {language.label}
+                        </span>
                         {isSelected && <Check className="w-3 h-3 shrink-0" />}
                       </button>
                     );

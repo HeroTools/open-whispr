@@ -751,6 +751,7 @@ class IPCHandlers {
         const result = await LocalReasoningService.processText(text, modelId, agentName, {
           ...config,
           customDictionary: this._getDictionarySafe(),
+          language: config?.language,
         });
         return { success: true, text: result };
       } catch (error) {
@@ -769,7 +770,11 @@ class IPCHandlers {
             throw new Error("Anthropic API key not configured");
           }
 
-          const systemPrompt = getSystemPrompt(agentName, this._getDictionarySafe());
+          const systemPrompt = getSystemPrompt(
+            agentName,
+            this._getDictionarySafe(),
+            config?.language
+          );
           const userPrompt = text;
 
           if (!modelId) {
@@ -1141,6 +1146,7 @@ class IPCHandlers {
             model: opts.model,
             agentName: opts.agentName,
             customDictionary: opts.customDictionary,
+            language: opts.language,
           }),
         });
 

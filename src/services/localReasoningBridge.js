@@ -49,7 +49,7 @@ class LocalReasoningService {
         repeatPenalty: config.repeatPenalty || 1.1,
         contextSize: config.contextSize || 4096,
         threads: config.threads || 4,
-        systemPrompt: getSystemPrompt(agentName, config.customDictionary),
+        systemPrompt: getSystemPrompt(agentName, config.customDictionary, config.language),
       };
 
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
