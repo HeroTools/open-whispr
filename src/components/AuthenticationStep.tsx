@@ -565,7 +565,7 @@ export default function AuthenticationStep({
           href="https://openwhispr.com/terms"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline"
+          className="text-link underline decoration-link/30 hover:decoration-link/60 transition-colors"
         >
           Terms of Service
         </a>{" "}
@@ -574,7 +574,7 @@ export default function AuthenticationStep({
           href="https://openwhispr.com/privacy"
           target="_blank"
           rel="noopener noreferrer"
-          className="text-primary hover:underline"
+          className="text-link underline decoration-link/30 hover:decoration-link/60 transition-colors"
         >
           Privacy Policy
         </a>

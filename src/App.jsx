@@ -76,7 +76,7 @@ export default function App() {
   const { toast, toastCount } = useToast();
   const { hotkey } = useHotkey();
   const { isDragging, handleMouseDown, handleMouseUp } = useWindowDrag();
-  useAuth();
+  const { isSignedIn } = useAuth();
 
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
@@ -141,10 +141,23 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, toggleListening, cancelRecording, cancelProcessing } =
-    useAudioRecording(toast, {
-      onToggle: handleDictationToggle,
-    });
+  const {
+    isRecording,
+    isProcessing,
+    toggleListening,
+    cancelRecording,
+    cancelProcessing,
+    warmupStreaming,
+  } = useAudioRecording(toast, {
+    onToggle: handleDictationToggle,
+  });
+
+  // Trigger streaming warmup when user signs in (covers first-time account creation)
+  useEffect(() => {
+    if (isSignedIn) {
+      warmupStreaming();
+    }
+  }, [isSignedIn]);
 
   const handleClose = () => {
     window.electronAPI.hideWindow();

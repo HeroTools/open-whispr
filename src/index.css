@@ -116,6 +116,7 @@
   --color-border-subtle: oklch(0.2 0.004 270);
   --color-border-hover: oklch(0.28 0.01 270);
   --color-border-active: oklch(0.45 0.15 260);
+  --color-link: oklch(0.64 0.09 250);
 
   /* Card depth shadows — no glow, clean depth only */
   --shadow-card: 0 1px 2px oklch(0 0 0 / 0.25);
@@ -291,15 +292,15 @@ textarea {
 
 /* Link styling */
 a {
-  color: var(--color-brand-link);
+  color: var(--color-link);
   text-decoration: none;
   transition: color 0.2s ease;
   cursor: pointer;
 }
 
 a:hover {
-  color: var(--color-brand-accent);
-  text-decoration: underline;
+  color: var(--color-link);
+  opacity: 0.8;
   cursor: pointer;
 }
 

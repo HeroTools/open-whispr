@@ -254,6 +254,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   assemblyAiStreamingWarmup: (options) => ipcRenderer.invoke("assemblyai-streaming-warmup", options),
   assemblyAiStreamingStart: (options) => ipcRenderer.invoke("assemblyai-streaming-start", options),
   assemblyAiStreamingSend: (audioBuffer) => ipcRenderer.send("assemblyai-streaming-send", audioBuffer),
+  assemblyAiStreamingForceEndpoint: () => ipcRenderer.send("assemblyai-streaming-force-endpoint"),
   assemblyAiStreamingStop: () => ipcRenderer.invoke("assemblyai-streaming-stop"),
   assemblyAiStreamingStatus: () => ipcRenderer.invoke("assemblyai-streaming-status"),
   onAssemblyAiPartialTranscript: registerListener("assemblyai-partial-transcript", (callback) => (_event, text) => callback(text)),

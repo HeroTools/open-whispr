@@ -664,7 +664,7 @@ export default function ReasoningModelSelector({
                               onClick={createExternalLinkHandler(
                                 "https://platform.openai.com/api-keys"
                               )}
-                              className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
                               Get your API key →
                             </a>
@@ -689,7 +689,7 @@ export default function ReasoningModelSelector({
                               onClick={createExternalLinkHandler(
                                 "https://console.anthropic.com/settings/keys"
                               )}
-                              className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
                               Get your API key →
                             </a>
@@ -715,7 +715,7 @@ export default function ReasoningModelSelector({
                               onClick={createExternalLinkHandler(
                                 "https://aistudio.google.com/app/api-keys"
                               )}
-                              className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
                               Get your API key →
                             </a>
@@ -739,7 +739,7 @@ export default function ReasoningModelSelector({
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={createExternalLinkHandler("https://console.groq.com/keys")}
-                              className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
                               Get your API key →
                             </a>

@@ -491,6 +491,7 @@ declare global {
         success: boolean;
         error?: string;
       }>;
+      assemblyAiStreamingForceEndpoint?: () => void;
       assemblyAiStreamingStop?: () => Promise<{
         success: boolean;
         text?: string;

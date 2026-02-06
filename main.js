@@ -217,6 +217,7 @@ function initializeManagers() {
   hotkeyManager = windowManager.hotkeyManager;
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();
+  clipboardManager.preWarmAccessibility();
   whisperManager = new WhisperManager();
   parakeetManager = new ParakeetManager();
   trayManager = new TrayManager();

@@ -1191,9 +1191,21 @@ class IPCHandlers {
         const apiUrl = getApiUrl();
         if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
 
+        console.log("[cloud-reason] ⬇ IPC called", {
+          apiUrl,
+          model: opts.model || "(default)",
+          agentName: opts.agentName || "(none)",
+          language: opts.language || "(auto)",
+          textLength: text?.length || 0,
+          textPreview: text?.substring(0, 80) || "(empty)",
+        });
+
         const cookieHeader = await getSessionCookies(event);
         if (!cookieHeader) throw new Error("No session cookies available");
 
+        console.log(`[cloud-reason] → Fetching ${apiUrl}/api/reason ...`);
+
+        const fetchStart = Date.now();
         const response = await fetch(`${apiUrl}/api/reason`, {
           method: "POST",
           headers: {
@@ -1208,18 +1220,35 @@ class IPCHandlers {
             language: opts.language,
           }),
         });
+        const fetchMs = Date.now() - fetchStart;
+
+        console.log("[cloud-reason] ← Response", {
+          status: response.status,
+          ok: response.ok,
+          fetchMs,
+        });
 
         if (!response.ok) {
           if (response.status === 401) {
+            console.log("[cloud-reason] ✗ 401 - session expired");
             return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
           }
           const errorData = await response.json().catch(() => ({}));
+          console.log("[cloud-reason] ✗ API error", { status: response.status, errorData });
           throw new Error(errorData.error || `API error: ${response.status}`);
         }
 
         const data = await response.json();
+        console.log("[cloud-reason] ✓ Success", {
+          model: data.model,
+          provider: data.provider,
+          processingMs: data.processingMs,
+          resultLength: data.text?.length || 0,
+          resultPreview: data.text?.substring(0, 80) || "(empty)",
+        });
         return { success: true, text: data.text, model: data.model, provider: data.provider };
       } catch (error) {
+        console.log("[cloud-reason] ✗ Error:", error.message);
         debugLogger.error("Cloud reasoning error:", error);
         return { success: false, error: error.message };
       }
@@ -1504,9 +1533,14 @@ class IPCHandlers {
           this.assemblyAiStreaming = new AssemblyAiStreaming();
         }
 
+        // Clean up any stale active connection (shouldn't happen normally)
         if (this.assemblyAiStreaming.isConnected) {
+          debugLogger.debug("AssemblyAI cleaning up stale connection before start", {}, "streaming");
           await this.assemblyAiStreaming.disconnect(false);
         }
+
+        const hasWarm = this.assemblyAiStreaming.hasWarmConnection();
+        debugLogger.debug("AssemblyAI streaming start", { hasWarmConnection: hasWarm }, "streaming");
 
         let token = this.assemblyAiStreaming.getCachedToken();
         if (!token) {
@@ -1568,6 +1602,10 @@ class IPCHandlers {
       } catch (error) {
         debugLogger.error("AssemblyAI streaming send error", { error: error.message });
       }
+    });
+
+    ipcMain.on("assemblyai-streaming-force-endpoint", () => {
+      this.assemblyAiStreaming?.forceEndpoint();
     });
 
     ipcMain.handle("assemblyai-streaming-stop", async () => {

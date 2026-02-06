@@ -17,6 +17,7 @@ import {
   Cloud,
   Key,
   ChevronDown,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
@@ -882,31 +883,47 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </>
             ) : isLoaded ? (
               <>
-                <SectionHeader title="Account" description="Sign in to access premium features" />
+                <SectionHeader title="Account" />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
                       label="Not Signed In"
-                      description="Sign in to sync settings and access premium features."
+                      description="Create an account to unlock premium features."
                     >
                       <Badge variant="outline">Offline</Badge>
                     </SettingsRow>
                   </SettingsPanelRow>
-                  <SettingsPanelRow>
-                    <Button
-                      onClick={() => {
-                        localStorage.removeItem("onboardingCompleted");
-                        localStorage.setItem("onboardingCurrentStep", "0");
-                        window.location.reload();
-                      }}
-                      size="sm"
-                      className="w-full"
-                    >
-                      <UserCircle className="mr-1.5 h-3.5 w-3.5" />
-                      Sign In or Create Account
-                    </Button>
-                  </SettingsPanelRow>
                 </SettingsPanel>
+
+                <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/3 dark:bg-primary/6 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div>
+                        <p className="text-[13px] font-medium text-foreground">
+                          Try Pro free for 7 days
+                        </p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                          Unlimited transcriptions, priority processing, and more.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          localStorage.removeItem("onboardingCompleted");
+                          localStorage.setItem("onboardingCurrentStep", "0");
+                          window.location.reload();
+                        }}
+                        size="sm"
+                        className="w-full"
+                      >
+                        <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                        Create Free Account
+                      </Button>
+                    </div>
+                  </div>
+                </div>
               </>
             ) : (
               <>

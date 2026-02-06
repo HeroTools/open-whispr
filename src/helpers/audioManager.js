@@ -38,7 +38,6 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
-    // Streaming state
     this.isStreaming = false;
     this.streamingAudioContext = null;
     this.streamingSource = null;
@@ -48,9 +47,8 @@ class AudioManager {
     this.streamingFinalText = "";
     this.streamingPartialText = "";
     this.streamingTextResolve = null;
-    // Cached microphone device ID to skip enumeration
+    this.streamingTextDebounce = null;
     this.cachedMicDeviceId = null;
-    // Persistent AudioContext reused across streaming recordings
     this.persistentAudioContext = null;
     this.workletModuleLoaded = false;
   }
@@ -78,15 +76,21 @@ class AudioManager {
     const preferBuiltIn = localStorage.getItem("preferBuiltInMic") !== "false";
     const selectedDeviceId = localStorage.getItem("selectedMicDeviceId") || "";
 
+    // Disable browser audio processing — dictation doesn't need it and it adds ~48ms latency
+    const noProcessing = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    };
+
     if (preferBuiltIn) {
-      // Use cached device ID if available (skip enumeration for faster start)
       if (this.cachedMicDeviceId) {
         logger.debug(
           "Using cached microphone device ID",
           { deviceId: this.cachedMicDeviceId },
           "audio"
         );
-        return { audio: { deviceId: { exact: this.cachedMicDeviceId } } };
+        return { audio: { deviceId: { exact: this.cachedMicDeviceId }, ...noProcessing } };
       }
 
       try {
@@ -95,14 +99,13 @@ class AudioManager {
         const builtInMic = audioInputs.find((d) => isBuiltInMicrophone(d.label));
 
         if (builtInMic) {
-          // Cache the device ID for future use
           this.cachedMicDeviceId = builtInMic.deviceId;
           logger.debug(
             "Using built-in microphone (cached for next time)",
             { deviceId: builtInMic.deviceId, label: builtInMic.label },
             "audio"
           );
-          return { audio: { deviceId: { exact: builtInMic.deviceId } } };
+          return { audio: { deviceId: { exact: builtInMic.deviceId }, ...noProcessing } };
         }
       } catch (error) {
         logger.debug(
@@ -113,15 +116,13 @@ class AudioManager {
       }
     }
 
-    // Use selected device if specified and not preferring built-in
     if (!preferBuiltIn && selectedDeviceId) {
       logger.debug("Using selected microphone", { deviceId: selectedDeviceId }, "audio");
-      return { audio: { deviceId: { exact: selectedDeviceId } } };
+      return { audio: { deviceId: { exact: selectedDeviceId }, ...noProcessing } };
     }
 
-    // Fall back to default device
     logger.debug("Using default microphone", {}, "audio");
-    return { audio: true };
+    return { audio: noProcessing };
   }
 
   async cacheMicrophoneDeviceId() {
@@ -152,7 +153,6 @@ class AudioManager {
       const constraints = await this.getAudioConstraints();
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-      // Log which microphone is actually being used
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
         const settings = audioTrack.getSettings();
@@ -184,7 +184,6 @@ class AudioManager {
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
 
-        // Debug: Log audio blob info
         logger.info(
           "Recording stopped",
           {
@@ -201,7 +200,6 @@ class AudioManager {
         this.recordingStartTime = null;
         await this.processAudio(audioBlob, { durationSeconds });
 
-        // Clean up stream
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -211,7 +209,6 @@ class AudioManager {
 
       return true;
     } catch (error) {
-      // Provide more specific error messages
       let errorTitle = "Recording Error";
       let errorDescription = `Failed to access microphone: ${error.message}`;
 
@@ -239,7 +236,6 @@ class AudioManager {
   stopRecording() {
     if (this.mediaRecorder?.state === "recording") {
       this.mediaRecorder.stop();
-      // State change will be handled in onstop callback
       return true;
     }
     return false;
@@ -1586,8 +1582,6 @@ class AudioManager {
     };
   }
 
-  // --- Assembly AI Real-time Streaming ---
-
   shouldUseStreaming() {
     const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
     const isSignedIn = localStorage.getItem("isSignedIn") === "true";
@@ -1627,6 +1621,34 @@ class AudioManager {
       ]);
 
       if (wsResult.success) {
+        // Pre-load AudioWorklet module so first recording is faster
+        try {
+          const audioContext = await this.getOrCreateAudioContext();
+          if (!this.workletModuleLoaded) {
+            const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+            await audioContext.audioWorklet.addModule(workletUrl);
+            this.workletModuleLoaded = true;
+            logger.debug("AudioWorklet module pre-loaded during warmup", {}, "streaming");
+          }
+        } catch (e) {
+          logger.debug("AudioWorklet pre-load failed (will retry on recording)", { error: e.message }, "streaming");
+        }
+
+        // Warm up the OS audio driver by briefly acquiring the mic, then releasing.
+        // This forces macOS to initialize the audio subsystem so subsequent
+        // getUserMedia calls resolve in ~100-200ms instead of ~500-1000ms.
+        if (!this.micDriverWarmedUp) {
+          try {
+            const constraints = await this.getAudioConstraints();
+            const tempStream = await navigator.mediaDevices.getUserMedia(constraints);
+            tempStream.getTracks().forEach((track) => track.stop());
+            this.micDriverWarmedUp = true;
+            logger.debug("Microphone driver pre-warmed", {}, "streaming");
+          } catch (e) {
+            logger.debug("Mic driver warmup failed (non-critical)", { error: e.message }, "streaming");
+          }
+        }
+
         logger.info(
           "AssemblyAI streaming connection warmed up",
           { alreadyWarm: wsResult.alreadyWarm, micCached: !!this.cachedMicDeviceId },
@@ -1664,9 +1686,12 @@ class AudioManager {
         return false;
       }
 
+      const t0 = performance.now();
       const constraints = await this.getAudioConstraints();
+      const tConstraints = performance.now();
 
-      // Parallelize mic acquisition and streaming session start
+      // Run getUserMedia and WebSocket connect in parallel.
+      // With warmup, WS resolves in ~5ms; getUserMedia (~500ms) dominates.
       const [stream, result] = await Promise.all([
         navigator.mediaDevices.getUserMedia(constraints),
         withSessionRefresh(async () => {
@@ -1686,6 +1711,7 @@ class AudioManager {
           return res;
         }),
       ]);
+      const tParallel = performance.now();
 
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
@@ -1702,7 +1728,6 @@ class AudioManager {
         );
       }
 
-      // Handle fallback to regular recording if streaming not configured
       if (result.needsFallback) {
         stream.getTracks().forEach((track) => track.stop());
         logger.debug(
@@ -1713,7 +1738,6 @@ class AudioManager {
         return this.startRecording();
       }
 
-      // Reuse persistent AudioContext across recordings
       const audioContext = await this.getOrCreateAudioContext();
       this.streamingAudioContext = audioContext;
       this.streamingSource = audioContext.createMediaStreamSource(stream);
@@ -1734,9 +1758,31 @@ class AudioManager {
 
       this.streamingSource.connect(this.streamingProcessor);
 
+      const tReady = performance.now();
+      logger.info(
+        "Streaming start timing",
+        {
+          constraintsMs: Math.round(tConstraints - t0),
+          getUserMediaAndWsMs: Math.round(tParallel - tConstraints),
+          pipelineMs: Math.round(tReady - tParallel),
+          totalMs: Math.round(tReady - t0),
+          usedWarmConnection: result.usedWarmConnection,
+          micDriverWarmedUp: !!this.micDriverWarmedUp,
+        },
+        "streaming"
+      );
+
+      // Show recording indicator only AFTER mic is live and audio pipeline is connected.
+      // This ensures no words are lost — the user sees "recording" exactly when audio flows.
+      this.isStreaming = true;
+      this.isRecording = true;
+      this.recordingStartTime = Date.now();
+      this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
+
       this.streamingFinalText = "";
       this.streamingPartialText = "";
       this.streamingTextResolve = null;
+      this.streamingTextDebounce = null;
 
       const partialCleanup = window.electronAPI.onAssemblyAiPartialTranscript((text) => {
         this.streamingPartialText = text;
@@ -1747,10 +1793,6 @@ class AudioManager {
         this.streamingFinalText = text;
         this.streamingPartialText = "";
         this.onPartialTranscript?.(text);
-        if (this.streamingTextResolve) {
-          this.streamingTextResolve();
-          this.streamingTextResolve = null;
-        }
       });
 
       const errorCleanup = window.electronAPI.onAssemblyAiError((error) => {
@@ -1769,11 +1811,6 @@ class AudioManager {
       });
 
       this.streamingCleanupFns = [partialCleanup, finalCleanup, errorCleanup, sessionEndCleanup];
-
-      this.isStreaming = true;
-      this.isRecording = true;
-      this.recordingStartTime = Date.now();
-      this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
 
       return true;
     } catch (error) {
@@ -1809,66 +1846,81 @@ class AudioManager {
       ? (Date.now() - this.recordingStartTime) / 1000
       : null;
 
-    // Capture accumulated text BEFORE cleanup resets it
+    const t0 = performance.now();
     let finalText = this.streamingFinalText || "";
-    const hasInProgressTurn = !!this.streamingPartialText;
 
-    this.isStreaming = false;
+    // 1. Update UI immediately
     this.isRecording = false;
     this.recordingStartTime = null;
     this.onStateChange?.({ isRecording: false, isProcessing: true, isStreaming: false });
 
-    // Stop worklet and audio capture, but keep IPC listeners alive
-    // so late-arriving Turn messages still update streamingFinalText
-    this.cleanupStreamingAudio();
-
-    // Fire disconnect in background — sends Terminate to AssemblyAI.
-    // We don't await the result; instead we wait for Turn messages
-    // to arrive via the still-active IPC listeners (much faster).
-    window.electronAPI.assemblyAiStreamingStop().catch((e) => {
-      logger.debug("Background streaming disconnect error", { error: e.message }, "streaming");
-    });
-
-    // Wait for AssemblyAI to finalize in-flight audio after Terminate.
-    // The IPC listeners update this.streamingFinalText when end_of_turn Turns arrive.
-    // Wait if: (a) there's an in-progress turn, or (b) we have no text at all yet.
-    if (hasInProgressTurn || !finalText) {
-      await Promise.race([
-        new Promise((resolve) => {
-          this.streamingTextResolve = resolve;
-        }),
-        new Promise((resolve) => setTimeout(resolve, 1500)),
-      ]);
-      this.streamingTextResolve = null;
-
-      const updatedFinal = this.streamingFinalText || "";
-      if (updatedFinal.length > finalText.length) finalText = updatedFinal;
-
-      // If timeout expired before the Turn arrived, use partial text as fallback
-      if (this.streamingPartialText) {
-        const withPartial = finalText
-          ? `${finalText} ${this.streamingPartialText}`
-          : this.streamingPartialText;
-        if (withPartial.length > finalText.length) {
-          finalText = withPartial;
-          logger.debug(
-            "Appended partial text after timeout",
-            { textLength: finalText.length },
-            "streaming"
-          );
-        }
+    // 2. Stop the processor — it flushes its remaining buffer on "stop".
+    //    Keep isStreaming TRUE so the port.onmessage handler forwards the flush to WebSocket.
+    if (this.streamingProcessor) {
+      try {
+        this.streamingProcessor.port.postMessage("stop");
+        this.streamingProcessor.disconnect();
+      } catch (e) {
+        // Ignore
       }
+      this.streamingProcessor = null;
+    }
+    if (this.streamingSource) {
+      try {
+        this.streamingSource.disconnect();
+      } catch (e) {
+        // Ignore
+      }
+      this.streamingSource = null;
+    }
+    this.streamingAudioContext = null;
+    if (this.streamingStream) {
+      this.streamingStream.getTracks().forEach((track) => track.stop());
+      this.streamingStream = null;
+    }
+    const tAudioCleanup = performance.now();
+
+    // 3. Wait for flushed buffer to travel: port → main thread → IPC → WebSocket → server.
+    //    Then mark streaming done so no further audio is forwarded.
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    this.isStreaming = false;
+
+    // 4. ForceEndpoint finalizes any in-progress turn, then Terminate closes the session.
+    //    The server MUST process ALL remaining audio and send ALL Turn messages before
+    //    responding with Termination — so awaiting this guarantees we get every word.
+    window.electronAPI.assemblyAiStreamingForceEndpoint?.();
+    const tForceEndpoint = performance.now();
+
+    await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
+      logger.debug("Streaming disconnect error", { error: e.message }, "streaming");
+    });
+    const tTerminate = performance.now();
+
+    // 5. Brief wait for any in-transit IPC Turn events to reach the renderer.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    finalText = this.streamingFinalText || "";
+
+    if (!finalText && this.streamingPartialText) {
+      finalText = this.streamingPartialText;
+      logger.debug("Using partial text as fallback", { textLength: finalText.length }, "streaming");
     }
 
     this.cleanupStreamingListeners();
 
     logger.info(
-      "Streaming recording stopped",
-      { durationSeconds, textLength: finalText.length },
+      "Streaming stop timing",
+      {
+        durationSeconds,
+        audioCleanupMs: Math.round(tAudioCleanup - t0),
+        flushWaitMs: Math.round(tForceEndpoint - tAudioCleanup),
+        terminateRoundTripMs: Math.round(tTerminate - tForceEndpoint),
+        totalStopMs: Math.round(tTerminate - t0),
+        textLength: finalText.length,
+      },
       "streaming"
     );
 
-    // Apply cloud reasoning (LLM text cleanup) if enabled
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
     if (useReasoningModel && finalText) {
       const reasoningStart = performance.now();
@@ -1911,11 +1963,21 @@ class AudioManager {
     }
 
     if (finalText) {
+      const tBeforePaste = performance.now();
       this.onTranscriptionComplete?.({
         success: true,
         text: finalText,
         source: "assemblyai-streaming",
       });
+
+      logger.info(
+        "Streaming total processing",
+        {
+          totalProcessingMs: Math.round(tBeforePaste - t0),
+          hasReasoning: useReasoningModel,
+        },
+        "streaming"
+      );
     }
 
     this.isProcessing = false;
@@ -1950,10 +2012,8 @@ class AudioManager {
       this.streamingSource = null;
     }
 
-    // Don't close persistent AudioContext — just clear the reference (Opt 4)
     this.streamingAudioContext = null;
 
-    // Stop media stream (releases microphone indicator)
     if (this.streamingStream) {
       this.streamingStream.getTracks().forEach((track) => track.stop());
       this.streamingStream = null;
@@ -1974,6 +2034,8 @@ class AudioManager {
     this.streamingFinalText = "";
     this.streamingPartialText = "";
     this.streamingTextResolve = null;
+    clearTimeout(this.streamingTextDebounce);
+    this.streamingTextDebounce = null;
   }
 
   async cleanupStreaming() {
@@ -1988,7 +2050,6 @@ class AudioManager {
     if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
     }
-    // Release persistent AudioContext on full cleanup
     if (this.persistentAudioContext && this.persistentAudioContext.state !== "closed") {
       this.persistentAudioContext.close().catch(() => {});
       this.persistentAudioContext = null;
