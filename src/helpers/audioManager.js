@@ -1038,6 +1038,7 @@ class AudioManager {
             model: cloudReasoningModel,
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
+            language: localStorage.getItem("preferredLanguage") || "auto",
           });
           if (!res.success) {
             const err = new Error(res.error || "Cloud reasoning failed");
