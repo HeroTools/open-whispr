@@ -18,6 +18,7 @@ import ResetPasswordView from "./ResetPasswordView";
 interface AuthenticationStepProps {
   onContinueWithoutAccount: () => void;
   onAuthComplete: () => void;
+  onNeedsVerification: (email: string) => void;
 }
 
 type AuthMode = "sign-in" | "sign-up" | null;
@@ -48,6 +49,7 @@ const GoogleIcon = ({ className }: { className?: string }) => (
 export default function AuthenticationStep({
   onContinueWithoutAccount,
   onAuthComplete,
+  onNeedsVerification,
 }: AuthenticationStepProps) {
   const { isSignedIn, isLoaded, user } = useAuth();
   const [authMode, setAuthMode] = useState<AuthMode>(null);
@@ -207,9 +209,8 @@ export default function AuthenticationStep({
               setError(result.error.message || "Failed to create account");
             }
           } else {
-            // Mark the sign-in time to enable grace period for session establishment
             updateLastSignInTime();
-            onAuthComplete();
+            onNeedsVerification(email.trim());
           }
         } else {
           const result = await authClient.signIn.email({
@@ -239,7 +240,7 @@ export default function AuthenticationStep({
         setIsSubmitting(false);
       }
     },
-    [authMode, email, password, onAuthComplete]
+    [authMode, email, password, onAuthComplete, onNeedsVerification]
   );
 
   const handleBack = useCallback(() => {

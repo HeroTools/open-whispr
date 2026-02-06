@@ -26,6 +26,7 @@ import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
 import LanguageSelector from "./ui/LanguageSelector";
 import AuthenticationStep from "./AuthenticationStep";
+import EmailVerificationStep from "./EmailVerificationStep";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { useAuth } from "../hooks/useAuth";
@@ -91,6 +92,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
   const [agentName, setAgentName] = useState("Agent");
   const [skipAuth, setSkipAuth] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
@@ -302,6 +304,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const renderStep = () => {
     switch (currentStep) {
       case 0: // Authentication (with Welcome)
+        if (pendingVerificationEmail) {
+          return (
+            <EmailVerificationStep
+              email={pendingVerificationEmail}
+              onVerified={() => {
+                setPendingVerificationEmail(null);
+                nextStep();
+              }}
+            />
+          );
+        }
         return (
           <AuthenticationStep
             onContinueWithoutAccount={() => {
@@ -310,6 +323,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             }}
             onAuthComplete={() => {
               nextStep();
+            }}
+            onNeedsVerification={(email) => {
+              setPendingVerificationEmail(email);
             }}
           />
         );
