@@ -123,29 +123,21 @@
       "instruction": "LANGUAGE CONTEXT: The user's preferred language is Dutch. The transcribed text will be in Dutch. You MUST respond entirely in Dutch while maintaining proper Dutch grammar, spelling, and punctuation. If the user naturally uses English words or technical terms, preserve those as-is."
     },
     {
-      "code": "en",
-      "label": "English",
-      "flag": "\uD83C\uDDEC\uD83C\uDDE7",
-      "whisper": true,
-      "parakeet": true,
-      "assemblyai": true
-    },
-    {
       "code": "en-US",
       "label": "English (US)",
       "flag": "\uD83C\uDDFA\uD83C\uDDF8",
-      "whisper": false,
-      "parakeet": false,
-      "assemblyai": false,
+      "whisper": true,
+      "parakeet": true,
+      "assemblyai": true,
       "instruction": "LANGUAGE CONTEXT: The user's preferred language is American English. You MUST use American English spelling conventions throughout your response (e.g., \"color\" not \"colour\", \"organize\" not \"organise\", \"center\" not \"centre\", \"defense\" not \"defence\", \"analyze\" not \"analyse\")."
     },
     {
       "code": "en-GB",
       "label": "English (UK)",
       "flag": "\uD83C\uDDEC\uD83C\uDDE7",
-      "whisper": false,
-      "parakeet": false,
-      "assemblyai": false,
+      "whisper": true,
+      "parakeet": true,
+      "assemblyai": true,
       "instruction": "LANGUAGE CONTEXT: The user's preferred language is British English. You MUST use British English spelling conventions throughout your response (e.g., \"colour\" not \"color\", \"organise\" not \"organize\", \"centre\" not \"center\", \"defence\" not \"defense\", \"analyse\" not \"analyze\")."
     },
     {

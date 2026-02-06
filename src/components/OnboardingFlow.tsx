@@ -319,8 +319,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Check className="w-7 h-7 text-emerald-600" />
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Setup</h2>
-                <p className="text-neutral-600">Choose your language and grant permissions</p>
+                <h2 className="text-2xl font-semibold text-foreground mb-2">Setup</h2>
+                <p className="text-muted-foreground">Choose your language and grant permissions</p>
               </div>
 
               {/* Language Selector */}

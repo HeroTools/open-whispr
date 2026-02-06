@@ -1,12 +1,20 @@
 import registry from "../config/languageRegistry.json";
 
-const WHISPER_LANGUAGES = new Set(registry.languages.filter((l) => l.whisper).map((l) => l.code));
+function buildLanguageSet(key: "whisper" | "parakeet" | "assemblyai"): Set<string> {
+  const set = new Set<string>();
+  for (const lang of registry.languages) {
+    if (lang[key]) {
+      set.add(lang.code);
+      const base = lang.code.split("-")[0];
+      if (base !== lang.code) set.add(base);
+    }
+  }
+  return set;
+}
 
-const PARAKEET_LANGUAGES = new Set(registry.languages.filter((l) => l.parakeet).map((l) => l.code));
-
-const ASSEMBLYAI_UNIVERSAL3_PRO_LANGUAGES = new Set(
-  registry.languages.filter((l) => l.assemblyai).map((l) => l.code)
-);
+const WHISPER_LANGUAGES = buildLanguageSet("whisper");
+const PARAKEET_LANGUAGES = buildLanguageSet("parakeet");
+const ASSEMBLYAI_UNIVERSAL3_PRO_LANGUAGES = buildLanguageSet("assemblyai");
 
 const MODEL_LANGUAGE_MAP: Record<string, Set<string>> = {
   "parakeet-tdt-0.6b-v3": PARAKEET_LANGUAGES,
@@ -40,7 +48,7 @@ export function validateLanguageForModel(
 }
 
 export function getLanguageInstruction(language: string | undefined): string {
-  if (!language || language === "en") return "";
+  if (!language) return "";
   return LANGUAGE_INSTRUCTIONS[language] || buildGenericInstruction(language);
 }
 
