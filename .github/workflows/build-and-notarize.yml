@@ -41,6 +41,9 @@ jobs:
 
     - name: Build Application
       run: npm run build:linux -- --publish never
+      env:
+        VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+        VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -84,6 +87,8 @@ jobs:
       run: npm run build:win -- --publish never
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+        VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -151,6 +156,8 @@ jobs:
       run: npm run build:mac -- --${{ matrix.arch }} --publish never
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+        VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
         CSC_IDENTITY_AUTO_DISCOVERY: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
         CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
