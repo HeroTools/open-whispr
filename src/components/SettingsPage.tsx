@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { RefreshCw, Download, Mic, Shield, FolderOpen, Sun, Moon, Monitor } from "lucide-react";
+import { RefreshCw, Download, Mic, Shield, FolderOpen } from "lucide-react";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -26,7 +26,6 @@ import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
-import { useTheme } from "../hooks/useTheme";
 import { SettingsRow } from "./ui/SettingsSection";
 
 export type SettingsSectionType =
@@ -54,7 +53,7 @@ function SettingsPanel({
 }) {
   return (
     <div
-      className={`rounded-lg border border-border/50 dark:border-border-subtle/70 bg-card/50 dark:bg-surface-2/50 backdrop-blur-sm divide-y divide-border/30 dark:divide-border-subtle/50 ${className}`}
+      className={`rounded-lg border border-border-subtle/70 bg-surface-2/50 backdrop-blur-sm divide-y divide-border-subtle/50 ${className}`}
     >
       {children}
     </div>
@@ -147,8 +146,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [isRemovingModels, setIsRemovingModels] = useState(false);
   const cachePathHint =
     typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)
-      ? "%USERPROFILE%\\.cache\\openwhispr\\whisper-models"
-      : "~/.cache/openwhispr/whisper-models";
+      ? "%USERPROFILE%\\.cache\\dictatevoice\\whisper-models"
+      : "~/.cache/dictatevoice/whisper-models";
 
   const {
     status: updateStatus,
@@ -171,7 +170,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
-  const { theme, setTheme } = useTheme();
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
@@ -302,7 +300,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         showAlertDialog({
           title: "Still Running",
           description:
-            "OpenWhispr didn't restart automatically. Please quit the app manually to finish installing the update.",
+            "DictateVoice didn't restart automatically. Please quit the app manually to finish installing the update.",
         });
       }, 10000);
     } else if (installTimeoutRef.current) {
@@ -319,7 +317,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   }, [installInitiated, showAlertDialog]);
 
   const resetAccessibilityPermissions = () => {
-    const message = `To fix accessibility permissions:\n\n1. Open System Settings > Privacy & Security > Accessibility\n2. Remove any old OpenWhispr or Electron entries\n3. Click (+) and add the current OpenWhispr app\n4. Make sure the checkbox is enabled\n5. Restart OpenWhispr\n\nClick OK to open System Settings.`;
+    const message = `To fix accessibility permissions:\n\n1. Open System Settings > Privacy & Security > Accessibility\n2. Remove any old DictateVoice or Electron entries\n3. Click (+) and add the current DictateVoice app\n4. Make sure the checkbox is enabled\n5. Restart DictateVoice\n\nClick OK to open System Settings.`;
 
     showConfirmDialog({
       title: "Reset Accessibility Permissions",
@@ -352,7 +350,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               return;
             }
 
-            window.dispatchEvent(new Event("openwhispr-models-cleared"));
+            window.dispatchEvent(new Event("dictatevoice-models-cleared"));
 
             showAlertDialog({
               title: "Models Removed",
@@ -376,7 +374,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const renderSectionContent = () => {
     switch (activeSection) {
       // ───────────────────────────────────────────────────
-      // GENERAL — Updates, Appearance, Hotkey, Startup, Mic
+      // GENERAL — Updates, Hotkey, Startup, Mic
       // ───────────────────────────────────────────────────
       case "general":
         return (
@@ -533,47 +531,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </SettingsPanel>
             </div>
 
-            {/* Appearance */}
-            <div>
-              <SectionHeader title="Appearance" description="Control how OpenWhispr looks" />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow label="Theme" description="Choose light, dark, or match your system">
-                    <div className="inline-flex items-center gap-px p-0.5 bg-muted/60 dark:bg-surface-2 rounded-md">
-                      {(
-                        [
-                          { value: "light", icon: Sun, label: "Light" },
-                          { value: "dark", icon: Moon, label: "Dark" },
-                          { value: "auto", icon: Monitor, label: "Auto" },
-                        ] as const
-                      ).map((option) => {
-                        const Icon = option.icon;
-                        const isSelected = theme === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            onClick={() => setTheme(option.value)}
-                            className={`
-                              flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-[11px] font-medium
-                              transition-all duration-100
-                              ${
-                                isSelected
-                                  ? "bg-background dark:bg-surface-raised text-foreground shadow-sm"
-                                  : "text-muted-foreground hover:text-foreground"
-                              }
-                            `}
-                          >
-                            <Icon className={`w-3 h-3 ${isSelected ? "text-primary" : ""}`} />
-                            {option.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </SettingsRow>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
             {/* Dictation Hotkey */}
             <div>
               <SectionHeader
@@ -610,7 +567,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   <SettingsPanelRow>
                     <SettingsRow
                       label="Launch at login"
-                      description="Start OpenWhispr automatically when you log in"
+                      description="Start DictateVoice automatically when you log in"
                     >
                       <Toggle
                         checked={autoStartEnabled}
@@ -707,7 +664,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   <p className="text-[12px] font-medium text-foreground">Add a word or phrase</p>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="e.g. OpenWhispr, Kubernetes, Dr. Martinez..."
+                      placeholder="e.g. DictateVoice, Kubernetes, Dr. Martinez..."
                       value={newDictionaryWord}
                       onChange={(e) => setNewDictionaryWord(e.target.value)}
                       onKeyDown={(e) => {
@@ -768,7 +725,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       {customDictionary.map((word) => (
                         <span
                           key={word}
-                          className="group inline-flex items-center gap-0.5 pl-2 pr-1 py-0.5 bg-primary/5 dark:bg-primary/10 text-foreground rounded-[5px] text-[11px] border border-border/30 dark:border-border-subtle transition-all hover:border-destructive/40 hover:bg-destructive/5"
+                          className="group inline-flex items-center gap-0.5 pl-2 pr-1 py-0.5 bg-primary/10 text-foreground rounded-[5px] text-[11px] border border-border-subtle transition-all hover:border-destructive/40 hover:bg-destructive/5"
                         >
                           {word}
                           <button
@@ -794,7 +751,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </SettingsPanelRow>
                 </SettingsPanel>
               ) : (
-                <div className="rounded-lg border border-dashed border-border/40 dark:border-border-subtle py-6 flex flex-col items-center justify-center text-center">
+                <div className="rounded-lg border border-dashed border-border-subtle py-6 flex flex-col items-center justify-center text-center">
                   <p className="text-[11px] text-muted-foreground/50">No words added yet</p>
                   <p className="text-[10px] text-muted-foreground/40 mt-0.5">
                     Words you add will appear here
@@ -951,7 +908,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         <span
                           className={`shrink-0 mt-0.5 text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded ${
                             example.mode === "Instruction"
-                              ? "bg-primary/10 text-primary dark:bg-primary/15"
+                              ? "bg-primary/15 text-primary"
                               : "bg-muted text-muted-foreground"
                           }`}
                         >
@@ -992,7 +949,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           <div className="space-y-5">
             <SectionHeader
               title="Permissions"
-              description="Test and manage system permissions required for OpenWhispr to function correctly"
+              description="Test and manage system permissions required for DictateVoice to function correctly"
             />
 
             {/* Permission Cards - matching onboarding style */}
@@ -1048,7 +1005,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   <SettingsPanelRow>
                     <SettingsRow
                       label="Reset accessibility permissions"
-                      description="Fix issues after reinstalling or rebuilding the app by removing and re-adding OpenWhispr in System Settings"
+                      description="Fix issues after reinstalling or rebuilding the app by removing and re-adding DictateVoice in System Settings"
                     >
                       <Button
                         onClick={resetAccessibilityPermissions}
@@ -1118,7 +1075,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           showConfirmDialog({
                             title: "Reset All App Data",
                             description:
-                              "This will permanently delete ALL OpenWhispr data including:\n\n- Database and transcriptions\n- Local storage settings\n- Downloaded models\n- Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone.",
+                              "This will permanently delete ALL DictateVoice data including:\n\n- Database and transcriptions\n- Local storage settings\n- Downloaded models\n- Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone.",
                             onConfirm: () => {
                               window.electronAPI
                                 ?.cleanupApp()

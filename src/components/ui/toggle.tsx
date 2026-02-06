@@ -13,7 +13,7 @@ export const Toggle = ({ checked, onChange, disabled = false }: ToggleProps) => 
     }
     return checked
       ? "bg-primary hover:bg-primary/90"
-      : "bg-muted-foreground/30 hover:bg-muted-foreground/40 dark:bg-surface-raised dark:hover:bg-surface-3";
+      : "bg-surface-raised hover:bg-surface-3";
   };
 
   return (

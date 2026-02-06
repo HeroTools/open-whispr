@@ -1,6 +1,6 @@
 const fs = require("fs");
 
-console.log("Setting up OpenWhispr...");
+console.log("Setting up DictateVoice...");
 
 const envTemplate = `# OpenAI API Configuration
 # Get your API key from: https://platform.openai.com/api-keys
@@ -43,6 +43,6 @@ Note: Make sure you have the necessary system permissions for:
 - Microphone access
 - Accessibility permissions (for text pasting)
 
-For local Whisper processing, OpenWhispr uses whisper.cpp (bundled with the app).
+For local Whisper processing, DictateVoice uses whisper.cpp (bundled with the app).
 Models are downloaded automatically on first use.
 `);

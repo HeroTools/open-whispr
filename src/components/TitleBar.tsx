@@ -59,8 +59,8 @@ export default function TitleBar({
                 size="icon"
                 onClick={() => setShowQuitConfirm(true)}
                 className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                title="Quit OpenWhispr"
-                aria-label="Quit OpenWhispr"
+                title="Quit DictateVoice"
+                aria-label="Quit DictateVoice"
               >
                 <Power size={16} />
               </Button>
@@ -89,8 +89,8 @@ export default function TitleBar({
                 size="icon"
                 onClick={() => setShowQuitConfirm(true)}
                 className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                title="Quit OpenWhispr"
-                aria-label="Quit OpenWhispr"
+                title="Quit DictateVoice"
+                aria-label="Quit DictateVoice"
               >
                 <Power size={16} />
               </Button>
@@ -101,8 +101,8 @@ export default function TitleBar({
       <ConfirmDialog
         open={showQuitConfirm}
         onOpenChange={setShowQuitConfirm}
-        title="Quit OpenWhispr?"
-        description="This will close OpenWhispr and stop background processes."
+        title="Quit DictateVoice?"
+        description="This will close DictateVoice and stop background processes."
         confirmText="Quit"
         cancelText="Cancel"
         onConfirm={handleQuit}

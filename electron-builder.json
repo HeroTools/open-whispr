@@ -1,6 +1,6 @@
 {
-  "appId": "com.herotools.openwispr",
-  "productName": "OpenWhispr",
+  "appId": "com.dictatevoice.app",
+  "productName": "DictateVoice",
   "directories": {
     "output": "dist"
   },
@@ -111,8 +111,8 @@
     "identity": "HeroTools Inc. (9R85XFMH59)",
     "extendInfo": {
       "LSUIElement": false,
-      "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
-      "NSAccessibilityUsageDescription": "OpenWhispr needs accessibility permissions to paste transcribed text into other applications."
+      "NSMicrophoneUsageDescription": "DictateVoice needs microphone access for speech-to-text transcription.",
+      "NSAccessibilityUsageDescription": "DictateVoice needs accessibility permissions to paste transcribed text into other applications."
     }
   },
   "win": {
@@ -173,7 +173,7 @@
     "include": "resources/nsis/cleanup-models.nsh"
   },
   "dmg": {
-    "title": "OpenWhispr",
+    "title": "DictateVoice",
     "icon": "src/assets/icon.icns",
     "window": {
       "width": 540,
@@ -182,8 +182,8 @@
   },
   "publish": {
     "provider": "github",
-    "owner": "OpenWhispr",
-    "repo": "openwhispr",
+    "owner": "DictateVoice",
+    "repo": "dictatevoice",
     "private": false,
     "releaseType": "draft"
   }

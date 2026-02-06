@@ -39,17 +39,17 @@ export default function PasteToolsInfo({
       <InfoBox variant="success">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-success dark:text-success" />
+            <Terminal className="w-6 h-6 text-success" />
             <div>
-              <h3 className="font-semibold text-success dark:text-success">
+              <h3 className="font-semibold text-success">
                 Automatic Pasting Ready
               </h3>
-              <p className="text-sm text-success dark:text-success">
+              <p className="text-sm text-success">
                 Windows supports automatic pasting out of the box. No setup required!
               </p>
             </div>
           </div>
-          <div className="text-success dark:text-success">
+          <div className="text-success">
             <Check className="w-5 h-5" />
           </div>
         </div>
@@ -67,18 +67,18 @@ export default function PasteToolsInfo({
       <InfoBox variant="success">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Terminal className="w-6 h-6 text-success dark:text-success" />
+            <Terminal className="w-6 h-6 text-success" />
             <div>
-              <h3 className="font-semibold text-success dark:text-success">
+              <h3 className="font-semibold text-success">
                 Automatic Pasting Ready
               </h3>
-              <p className="text-sm text-success dark:text-success">
+              <p className="text-sm text-success">
                 Using <code className="bg-success/20 px-1 rounded">{method}</code> for automatic
                 text pasting{methodSuffix}
               </p>
             </div>
           </div>
-          <div className="text-success dark:text-success">
+          <div className="text-success">
             <Check className="w-5 h-5" />
           </div>
         </div>
@@ -96,15 +96,15 @@ export default function PasteToolsInfo({
     return (
       <InfoBox variant="warning" className="space-y-3">
         <div className="flex items-start gap-3">
-          <Info className="w-6 h-6 text-warning dark:text-warning flex-shrink-0 mt-0.5" />
+          <Info className="w-6 h-6 text-warning flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-warning dark:text-warning">
+            <h3 className="font-semibold text-warning">
               {showInstall ? "Optional: Enable Automatic Pasting" : "Clipboard Mode on Wayland"}
             </h3>
 
             {showInstall ? (
               <>
-                <p className="text-sm text-warning dark:text-warning mt-1">
+                <p className="text-sm text-warning mt-1">
                   For automatic text pasting, install{" "}
                   <code className="bg-warning/20 px-1 rounded font-mono">{recommendedTool}</code>:
                 </p>
@@ -132,28 +132,28 @@ export default function PasteToolsInfo({
                 </div>
 
                 {isWayland && recommendedTool === "wtype" && xwaylandAvailable && (
-                  <p className="text-sm text-warning dark:text-warning mt-3">
+                  <p className="text-sm text-warning mt-3">
                     Note: For XWayland apps, xdotool also works.
                   </p>
                 )}
 
                 {isWayland && recommendedTool !== "wtype" && (
-                  <p className="text-sm text-warning dark:text-warning mt-3">
+                  <p className="text-sm text-warning mt-3">
                     Note: automatic pasting works for XWayland apps only.
                   </p>
                 )}
               </>
             ) : (
-              <p className="text-sm text-warning dark:text-warning mt-1">
-                Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text
+              <p className="text-sm text-warning mt-1">
+                Automatic pasting isn't available on this Wayland session. DictateVoice will copy text
                 to your clipboard so you can paste manually with{" "}
                 <kbd className="bg-warning/20 px-1 rounded text-xs">Ctrl+V</kbd>.
               </p>
             )}
 
             {showInstall && (
-              <p className="text-sm text-warning dark:text-warning mt-3">
-                Without this tool, OpenWhispr will copy text to your clipboard. You can then paste
+              <p className="text-sm text-warning mt-3">
+                Without this tool, DictateVoice will copy text to your clipboard. You can then paste
                 manually with <kbd className="bg-warning/20 px-1 rounded text-xs">Ctrl+V</kbd>.
               </p>
             )}

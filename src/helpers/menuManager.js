@@ -5,7 +5,7 @@ class MenuManager {
     if (process.platform === "darwin") {
       const template = [
         {
-          label: "OpenWhispr",
+          label: "DictateVoice",
           submenu: [
             { role: "about" },
             { type: "separator" },
@@ -15,7 +15,7 @@ class MenuManager {
             { role: "hideOthers" },
             { role: "unhide" },
             { type: "separator" },
-            { role: "quit", label: "Quit OpenWhispr" },
+            { role: "quit", label: "Quit DictateVoice" },
           ],
         },
       ];
@@ -29,7 +29,7 @@ class MenuManager {
       // On macOS, create a proper application menu
       const template = [
         {
-          label: "OpenWhispr",
+          label: "DictateVoice",
           submenu: [
             { role: "about" },
             { type: "separator" },
@@ -39,7 +39,7 @@ class MenuManager {
             { role: "hideOthers" },
             { role: "unhide" },
             { type: "separator" },
-            { role: "quit", label: "Quit OpenWhispr" },
+            { role: "quit", label: "Quit DictateVoice" },
           ],
         },
         {
@@ -93,7 +93,7 @@ class MenuManager {
               label: "Learn More",
               click: async () => {
                 const { shell } = require("electron");
-                await shell.openExternal("https://github.com/OpenWhispr/openwhispr");
+                await shell.openExternal("https://github.com/DictateVoice/dictatevoice");
               },
             },
           ],

@@ -1,5 +1,5 @@
 {
-  "name": "open-whispr",
+  "name": "dictate-voice",
   "version": "1.3.4",
   "description": "A desktop dictation application using whisper.cpp for speech-to-text transcription",
   "main": "main.js",
@@ -51,8 +51,8 @@
     "desktop-app"
   ],
   "author": {
-    "name": "OpenWhispr Team",
-    "email": "support@openwhispr.com"
+    "name": "DictateVoice Team",
+    "email": "support@dictatevoice.com"
   },
   "license": "MIT",
   "devDependencies": {

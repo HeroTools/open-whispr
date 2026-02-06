@@ -368,7 +368,7 @@ export function HotkeyInput({
           disabled
             ? "bg-muted/30 border-border cursor-not-allowed opacity-50"
             : isCapturing
-              ? "bg-primary/8 border-primary/50 shadow-[0_0_0_2px_rgba(37,99,212,0.15)]"
+              ? "bg-primary/5 border-primary/40 shadow-[0_0_0_2px_rgba(112,255,186,0.15)]"
               : "bg-surface-1 border-border-subtle hover:border-border-hover hover:bg-surface-2"
         }
       `}

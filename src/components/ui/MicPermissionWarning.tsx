@@ -60,14 +60,14 @@ export default function MicPermissionWarning({
     <div
       className={cn(
         "rounded-md p-2.5 border",
-        "bg-warning/8 border-warning/20 dark:bg-warning/10 dark:border-warning/20"
+        "bg-warning/10 border-warning/20"
       )}
     >
       <div className="flex items-center gap-2.5">
         <div className="w-6 h-6 rounded-md bg-warning/15 flex items-center justify-center shrink-0">
-          <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-warning" />
+          <AlertCircle className="w-3.5 h-3.5 text-warning" />
         </div>
-        <p className="flex-1 text-[11px] text-amber-700 dark:text-warning/90 leading-snug">
+        <p className="flex-1 text-[11px] text-warning/90 leading-snug">
           {error || config.message}
         </p>
         <div className="flex items-center gap-1 shrink-0">
@@ -75,7 +75,7 @@ export default function MicPermissionWarning({
             variant="ghost"
             size="sm"
             onClick={onOpenSoundSettings}
-            className="h-6 px-2 text-[10px] text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-warning dark:hover:text-warning dark:hover:bg-warning/10"
+            className="h-6 px-2 text-[10px] text-warning hover:text-warning hover:bg-warning/10"
           >
             {config.soundLabel}
           </Button>
@@ -84,7 +84,7 @@ export default function MicPermissionWarning({
               variant="ghost"
               size="sm"
               onClick={onOpenPrivacySettings}
-              className="h-6 px-2 text-[10px] text-amber-700 hover:text-amber-800 hover:bg-amber-100 dark:text-warning dark:hover:text-warning dark:hover:bg-warning/10"
+              className="h-6 px-2 text-[10px] text-warning hover:text-warning hover:bg-warning/10"
             >
               {config.privacyLabel}
             </Button>

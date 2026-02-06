@@ -102,7 +102,7 @@ class DebugLogger {
       return argLevel;
     }
 
-    const envLevel = normalizeLevel(process.env.OPENWHISPR_LOG_LEVEL || process.env.LOG_LEVEL);
+    const envLevel = normalizeLevel(process.env.DICTATEVOICE_LOG_LEVEL || process.env.LOG_LEVEL);
     if (envLevel) {
       return envLevel;
     }

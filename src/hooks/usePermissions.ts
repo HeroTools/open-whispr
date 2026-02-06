@@ -82,7 +82,7 @@ const describeMicError = (error: unknown): string => {
   }
 
   if (name === "NotAllowedError" || name === "SecurityError") {
-    return `Permission was denied. Open ${privacyPath} and allow OpenWhispr.`;
+    return `Permission was denied. Open ${privacyPath} and allow DictateVoice.`;
   }
 
   if (name === "NotReadableError" || name === "AbortError") {
@@ -219,7 +219,7 @@ export const usePermissions = (
     // On macOS, actually test the accessibility permission
     if (platform === "darwin") {
       try {
-        await window.electronAPI.pasteText("OpenWhispr accessibility test");
+        await window.electronAPI.pasteText("DictateVoice accessibility test");
         setAccessibilityPermissionGranted(true);
       } catch (err) {
         console.error("Accessibility permission test failed:", err);
@@ -279,7 +279,7 @@ export const usePermissions = (
             showAlertDialog({
               title: "Clipboard Mode on Wayland",
               description:
-                "Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text to your clipboard and you can paste with Ctrl+V.",
+                "Automatic pasting isn't available on this Wayland session. DictateVoice will copy text to your clipboard and you can paste with Ctrl+V.",
             });
           } else {
             const waylandNote = isWayland
@@ -289,7 +289,7 @@ export const usePermissions = (
               : "";
             showAlertDialog({
               title: "Optional: Install Paste Tool",
-              description: `For automatic pasting, install ${recommendedTool || "xdotool"}:\n\n${installCmd}${waylandNote}\n\nWithout this, you can still use OpenWhispr - text will be copied to your clipboard and you can paste with Ctrl+V.`,
+              description: `For automatic pasting, install ${recommendedTool || "xdotool"}:\n\n${installCmd}${waylandNote}\n\nWithout this, you can still use DictateVoice - text will be copied to your clipboard and you can paste with Ctrl+V.`,
             });
           }
         }

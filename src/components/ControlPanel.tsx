@@ -330,15 +330,15 @@ export default function ControlPanel() {
 
           {/* AI Enhancement CTA */}
           {!useReasoningModel && !aiCTADismissed && (
-            <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
+            <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/10 p-3">
               <button
                 onClick={() => setAiCTADismissed(true)}
-                className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
               >
                 <X size={14} />
               </button>
               <div className="flex items-start gap-3 pr-6">
-                <div className="shrink-0 w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                <div className="shrink-0 w-8 h-8 rounded-md bg-primary/20 flex items-center justify-center">
                   <Sparkles size={16} className="text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -365,7 +365,7 @@ export default function ControlPanel() {
           )}
 
           {/* Content area */}
-          <div className="rounded-lg border border-border bg-card/50 dark:bg-card/30 backdrop-blur-sm">
+          <div className="rounded-lg border border-border-subtle bg-card/30 backdrop-blur-sm">
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-8">
                 <Loader2 size={14} className="animate-spin text-primary" />
@@ -373,13 +373,13 @@ export default function ControlPanel() {
               </div>
             ) : history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 px-4">
-                <div className="w-10 h-10 rounded-md bg-muted/50 dark:bg-white/4 flex items-center justify-center mb-3">
+                <div className="w-10 h-10 rounded-md bg-surface-raised flex items-center justify-center mb-3">
                   <Mic size={18} className="text-muted-foreground" />
                 </div>
                 <p className="text-sm text-muted-foreground mb-3">No transcriptions yet</p>
                 <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
                   <span>Press</span>
-                  <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border text-[11px] font-mono font-medium">
+                  <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-raised border border-border-subtle text-[11px] font-mono font-medium">
                     {formatHotkeyLabel(hotkey)}
                   </kbd>
                   <span>to start</span>

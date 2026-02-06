@@ -7,7 +7,7 @@ if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") 
 
 // Group all windows under single taskbar entry on Windows
 if (process.platform === "win32") {
-  app.setAppUserModelId("com.herotools.openwispr");
+  app.setAppUserModelId("com.dictatevoice.app");
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
@@ -19,8 +19,8 @@ if (!gotSingleInstanceLock) {
 const isLiveWindow = (window) => window && !window.isDestroyed();
 
 // Ensure macOS menus use the proper casing for the app name
-if (process.platform === "darwin" && app.getName() !== "OpenWhispr") {
-  app.setName("OpenWhispr");
+if (process.platform === "darwin" && app.getName() !== "DictateVoice") {
+  app.setName("DictateVoice");
 }
 
 // Add global error handling for uncaught exceptions
@@ -129,13 +129,13 @@ function initializeManagers() {
           "Run `npm run compile:globe` and rebuild the app to regenerate the listener binary."
         );
       } else {
-        detailLines.push("Try reinstalling OpenWhispr or contact support if the issue persists.");
+        detailLines.push("Try reinstalling DictateVoice or contact support if the issue persists.");
       }
 
       dialog.showMessageBox({
         type: "warning",
         title: "Globe Hotkey Unavailable",
-        message: "OpenWhispr could not activate the Globe key hotkey.",
+        message: "DictateVoice could not activate the Globe key hotkey.",
         detail: detailLines.join("\n\n"),
       });
     });
@@ -467,7 +467,7 @@ if (gotSingleInstanceLock) {
     startApp().catch((error) => {
       console.error("Failed to start app:", error);
       dialog.showErrorBox(
-        "OpenWhispr Startup Error",
+        "DictateVoice Startup Error",
         `Failed to start the application:\n\n${error.message}\n\nPlease report this issue.`
       );
       app.exit(1);

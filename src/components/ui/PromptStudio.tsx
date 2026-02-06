@@ -221,8 +221,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       />
 
       {/* Tab Navigation + Content in a single panel */}
-      <div className="rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2 overflow-hidden">
-        <div className="flex border-b border-border/40 dark:border-border-subtle">
+      <div className="rounded-xl border border-border-subtle bg-surface-2 overflow-hidden">
+        <div className="flex border-b border-border-subtle">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -232,8 +232,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-medium transition-all duration-150 border-b-2 ${
                   isActive
-                    ? "border-primary text-foreground bg-primary/5 dark:bg-primary/3"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-black/2 dark:hover:bg-white/2"
+                    ? "border-primary text-foreground bg-primary/3"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-white/2"
                 }`}
               >
                 <Icon className="w-3.5 h-3.5" />
@@ -245,7 +245,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
         {/* ── View Tab ── */}
         {activeTab === "current" && (
-          <div className="divide-y divide-border/40 dark:divide-border-subtle">
+          <div className="divide-y divide-border-subtle">
             <div className="px-5 py-4">
               <div className="space-y-2">
                 {[
@@ -294,7 +294,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                   )}
                 </Button>
               </div>
-              <div className="bg-muted/30 dark:bg-surface-raised/30 border border-border/30 rounded-lg p-4 max-h-80 overflow-y-auto">
+              <div className="bg-surface-raised/30 border border-border/30 rounded-lg p-4 max-h-80 overflow-y-auto">
                 <pre className="text-[11px] font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed">
                   {getCurrentPrompt().replace(/\{\{agentName\}\}/g, agentName)}
                 </pre>
@@ -305,7 +305,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
         {/* ── Edit Tab ── */}
         {activeTab === "edit" && (
-          <div className="divide-y divide-border/40 dark:divide-border-subtle">
+          <div className="divide-y divide-border-subtle">
             <div className="px-5 py-4">
               <p className="text-[12px] text-muted-foreground leading-relaxed">
                 <span className="font-medium text-warning">Caution</span> — Modifying this prompt
@@ -356,10 +356,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             };
 
             return (
-              <div className="divide-y divide-border/40 dark:divide-border-subtle">
+              <div className="divide-y divide-border-subtle">
                 {!useReasoningModel && (
                   <div className="px-5 py-4">
-                    <div className="rounded-lg border border-warning/20 bg-warning/5 dark:bg-warning/10 px-4 py-3">
+                    <div className="rounded-lg border border-warning/20 bg-warning/10 px-4 py-3">
                       <div className="flex items-start gap-2.5">
                         <AlertTriangle className="w-3.5 h-3.5 text-warning mt-0.5 shrink-0" />
                         <p className="text-[12px] text-muted-foreground leading-relaxed">
@@ -401,7 +401,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                       <span
                         className={`text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded ${
                           isAgentAddressed
-                            ? "bg-primary/10 text-primary dark:bg-primary/15"
+                            ? "bg-primary/15 text-primary"
                             : "bg-muted text-muted-foreground"
                         }`}
                       >
@@ -446,7 +446,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                         <Copy className="w-3 h-3 text-muted-foreground" />
                       </Button>
                     </div>
-                    <div className="bg-muted/30 dark:bg-surface-raised/30 border border-border/30 rounded-lg p-4 max-h-48 overflow-y-auto">
+                    <div className="bg-surface-raised/30 border border-border/30 rounded-lg p-4 max-h-48 overflow-y-auto">
                       <pre className="text-[12px] text-foreground whitespace-pre-wrap leading-relaxed">
                         {testResult}
                       </pre>

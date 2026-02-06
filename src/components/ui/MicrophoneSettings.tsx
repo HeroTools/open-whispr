@@ -96,10 +96,10 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
       </SettingsRow>
 
       {preferBuiltInMic && builtInDevice && (
-        <div className="p-3 bg-success/10 dark:bg-success/20 border border-success/30 rounded-lg">
+        <div className="p-3 bg-success/20 border border-success/30 rounded-lg">
           <div className="flex items-center gap-2">
-            <Mic className="w-4 h-4 text-success dark:text-success" />
-            <span className="text-sm text-success dark:text-success">
+            <Mic className="w-4 h-4 text-success" />
+            <span className="text-sm text-success">
               Using: <span className="font-medium">{builtInDevice.label}</span>
             </span>
           </div>
@@ -107,8 +107,8 @@ export const MicrophoneSettings: React.FC<MicrophoneSettingsProps> = ({
       )}
 
       {preferBuiltInMic && !builtInDevice && devices.length > 0 && (
-        <div className="p-3 bg-warning/10 dark:bg-warning/20 border border-warning/30 rounded-lg">
-          <p className="text-sm text-warning dark:text-warning">
+        <div className="p-3 bg-warning/20 border border-warning/30 rounded-lg">
+          <p className="text-sm text-warning">
             No built-in microphone detected. Using system default.
           </p>
         </div>

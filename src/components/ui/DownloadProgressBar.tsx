@@ -16,7 +16,7 @@ export function DownloadProgressBar({
   const etaText = eta ? formatETA(eta) : "";
 
   return (
-    <div className="px-2.5 py-2 border-b border-white/5 dark:border-border-subtle">
+    <div className="px-2.5 py-2 border-b border-border-subtle">
       <div className="flex items-center gap-2 mb-2">
         {/* Compact percentage with LED glow */}
         <div className="relative flex items-center justify-center w-6 h-6">
@@ -53,11 +53,11 @@ export function DownloadProgressBar({
 
       {/* Progress bar - thinner, premium */}
       <div
-        className="w-full rounded-full overflow-hidden bg-white/5 dark:bg-white/3"
+        className="w-full rounded-full overflow-hidden bg-white/3"
         style={{ height: 4 }}
       >
         <div
-          className={`${isInstalling ? "animate-pulse" : ""} bg-primary shadow-[0_0_8px_oklch(0.62_0.22_260/0.4)]`}
+          className={`${isInstalling ? "animate-pulse" : ""} bg-primary shadow-[0_0_8px_rgba(112,255,186,0.4)]`}
           style={{
             height: "100%",
             width: `${isInstalling ? 100 : Math.min(percentage, 100)}%`,

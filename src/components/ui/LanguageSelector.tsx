@@ -96,10 +96,10 @@ export default function LanguageSelector({
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg bg-white/5 dark:bg-white/3 text-left transition-all duration-200 ${
+        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg bg-white/3 text-left transition-all duration-200 ${
           isOpen
             ? "border-primary/50 ring-1 ring-primary/20 bg-white/8"
-            : "border-white/10 dark:border-white/5 hover:border-white/20 hover:bg-white/8"
+            : "border-white/5 hover:border-white/20 hover:bg-white/8"
         }`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
@@ -113,7 +113,7 @@ export default function LanguageSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1.5 bg-popover/95 backdrop-blur-xl border border-white/10 dark:border-white/5 rounded-xl shadow-xl max-h-60 overflow-hidden">
+        <div className="absolute z-50 w-full mt-1.5 bg-popover/95 backdrop-blur-xl border border-white/5 rounded-xl shadow-xl max-h-60 overflow-hidden">
           <div className="p-2 border-b border-white/5">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -124,7 +124,7 @@ export default function LanguageSelector({
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Search..."
-                className="w-full pl-8 pr-7 py-1.5 text-sm bg-white/5 dark:bg-white/3 text-foreground border border-white/10 rounded-lg focus:border-primary/50 focus:ring-1 focus:ring-primary/20 focus:outline-none placeholder:text-muted-foreground/50"
+                className="w-full pl-8 pr-7 py-1.5 text-sm bg-white/3 text-foreground border border-white/10 rounded-lg focus:border-primary/50 focus:ring-1 focus:ring-primary/20 focus:outline-none placeholder:text-muted-foreground/50"
               />
               {searchQuery && (
                 <button

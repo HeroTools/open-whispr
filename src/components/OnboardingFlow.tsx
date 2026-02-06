@@ -76,7 +76,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   } = useSettings();
 
   const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
-  const agentName = "OpenWhispr"; // Default agent name, editable in settings
+  const agentName = "DictateVoice"; // Default agent name, editable in settings
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
@@ -280,7 +280,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <div className="absolute inset-0 bg-primary/30 rounded-2xl blur-xl" />
               <img
                 src="./assets/icon.png"
-                alt="OpenWhispr"
+                alt="DictateVoice"
                 className="relative w-16 h-16 rounded-2xl shadow-lg"
               />
             </div>
@@ -288,7 +288,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {/* Title */}
             <div className="space-y-1">
               <h2 className="text-xl font-semibold text-foreground tracking-tight">
-                Welcome to OpenWhispr
+                Welcome to DictateVoice
               </h2>
               <p className="text-sm text-muted-foreground">
                 Professional voice-to-text for your computer
@@ -297,22 +297,22 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
             {/* Feature grid - compact and refined */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 dark:bg-white/3 border border-white/10 dark:border-white/5">
-                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface-1 border border-border-subtle">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Mic className="w-4 h-4 text-primary" />
                 </div>
                 <span className="text-xs font-medium text-foreground">Voice to Text</span>
                 <span className="text-[10px] text-muted-foreground">Instant</span>
               </div>
-              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 dark:bg-white/3 border border-white/10 dark:border-white/5">
-                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface-1 border border-border-subtle">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Command className="w-4 h-4 text-primary" />
                 </div>
                 <span className="text-xs font-medium text-foreground">Works Anywhere</span>
                 <span className="text-[10px] text-muted-foreground">Any app</span>
               </div>
-              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-white/5 dark:bg-white/3 border border-white/10 dark:border-white/5">
-                <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
+              <div className="flex flex-col items-center gap-1.5 p-3 rounded-xl bg-surface-1 border border-border-subtle">
+                <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                   <Shield className="w-4 h-4 text-primary" />
                 </div>
                 <span className="text-xs font-medium text-foreground">Private</span>
@@ -385,7 +385,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             <div className="text-center">
               <h2 className="text-lg font-semibold text-foreground tracking-tight">Permissions</h2>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {isMacOS ? "Required for OpenWhispr to work" : "Microphone access required"}
+                {isMacOS ? "Required for DictateVoice to work" : "Microphone access required"}
               </p>
             </div>
 
@@ -554,18 +554,6 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   };
 
-  // Load Google Font only in the browser
-  React.useEffect(() => {
-    const link = document.createElement("link");
-    link.href =
-      "https://fonts.googleapis.com/css2?family=Noto+Sans:wght@300;400;500;600;700&display=swap";
-    link.rel = "stylesheet";
-    document.head.appendChild(link);
-    return () => {
-      document.head.removeChild(link);
-    };
-  }, []);
-
   return (
     <div
       className="h-screen flex flex-col bg-background"
@@ -600,7 +588,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </div>
 
       {/* Progress Bar */}
-      <div className="flex-shrink-0 bg-background/80 backdrop-blur-2xl border-b border-white/5 px-6 md:px-12 py-4 z-10">
+      <div className="flex-shrink-0 bg-background/80 backdrop-blur-2xl border-b border-border-subtle px-6 md:px-12 py-4 z-10">
         <div className="max-w-3xl mx-auto">
           <StepProgress steps={steps} currentStep={currentStep} />
         </div>
@@ -609,7 +597,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       {/* Content - This will grow to fill available space */}
       <div className="flex-1 px-6 md:px-12 py-6 overflow-y-auto">
         <div className="max-w-3xl mx-auto">
-          <Card className="bg-card/80 backdrop-blur-2xl border border-white/10 dark:border-white/5 shadow-xl rounded-2xl overflow-hidden">
+          <Card className="bg-card/80 backdrop-blur-2xl border border-border-subtle shadow-xl rounded-2xl overflow-hidden">
             <CardContent className="p-8 md:p-10">
               <div className="space-y-6">{renderStep()}</div>
             </CardContent>
@@ -618,7 +606,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       </div>
 
       {/* Footer - This will stick to the bottom */}
-      <div className="flex-shrink-0 bg-background/80 backdrop-blur-2xl border-t border-white/5 px-6 md:px-12 py-3 z-10">
+      <div className="flex-shrink-0 bg-background/80 backdrop-blur-2xl border-t border-border-subtle px-6 md:px-12 py-3 z-10">
         <div className="max-w-3xl mx-auto flex items-center justify-between">
           <Button
             onClick={prevStep}

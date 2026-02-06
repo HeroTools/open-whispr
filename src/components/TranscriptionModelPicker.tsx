@@ -216,10 +216,10 @@ interface ModeToggleProps {
 
 function ModeToggle({ useLocalWhisper, onModeChange }: ModeToggleProps) {
   return (
-    <div className="relative flex p-0.5 rounded-lg bg-surface-raised dark:bg-surface-1 border border-border dark:border-border-subtle">
+    <div className="relative flex p-0.5 rounded-lg bg-surface-1 border border-border-subtle">
       {/* Sliding indicator */}
       <div
-        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-card border border-border dark:border-border-subtle shadow-sm dark:shadow-(--shadow-card) transition-transform duration-200 ease-out ${
+        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-card border border-border-subtle shadow-(--shadow-card) transition-transform duration-200 ease-out ${
           useLocalWhisper ? "translate-x-[calc(100%+4px)]" : "translate-x-0"
         }`}
       />
@@ -421,8 +421,8 @@ export default function TranscriptionModelPicker({
 
   useEffect(() => {
     const handleModelsCleared = () => loadLocalModels();
-    window.addEventListener("openwhispr-models-cleared", handleModelsCleared);
-    return () => window.removeEventListener("openwhispr-models-cleared", handleModelsCleared);
+    window.addEventListener("dictatevoice-models-cleared", handleModelsCleared);
+    return () => window.removeEventListener("dictatevoice-models-cleared", handleModelsCleared);
   }, [loadLocalModels]);
 
   const {

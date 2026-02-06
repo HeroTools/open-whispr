@@ -51,7 +51,7 @@ function AppRouter() {
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading OpenWhispr...</p>
+          <p className="text-muted-foreground">Loading DictateVoice...</p>
         </div>
       </div>
     );
@@ -67,7 +67,9 @@ function AppRouter() {
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ToastProvider>
-      <AppRouter />
+      <div className="grain-overlay">
+        <AppRouter />
+      </div>
     </ToastProvider>
   </React.StrictMode>
 );

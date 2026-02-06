@@ -41,14 +41,14 @@ export default function TranscriptionItem({
 
   return (
     <div
-      className="group relative px-3 py-2.5 transition-colors duration-150 hover:bg-muted/30 dark:hover:bg-white/2"
+      className="group relative px-3 py-2.5 transition-colors duration-150 hover:bg-white/2"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-start gap-3">
         {/* Number badge - compact pill */}
         <div className="flex-shrink-0 mt-0.5">
-          <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-1.5 rounded-sm bg-primary/10 dark:bg-primary/15 text-primary text-[10px] font-semibold tabular-nums">
+          <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-1.5 rounded-sm bg-primary/15 text-primary text-[10px] font-semibold tabular-nums">
             {total - index}
           </span>
         </div>

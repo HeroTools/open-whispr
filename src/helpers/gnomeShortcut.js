@@ -1,12 +1,12 @@
 const { execFileSync } = require("child_process");
 const debugLogger = require("./debugLogger");
 
-const DBUS_SERVICE_NAME = "com.openwhispr.App";
-const DBUS_OBJECT_PATH = "/com/openwhispr/App";
-const DBUS_INTERFACE = "com.openwhispr.App";
+const DBUS_SERVICE_NAME = "com.dictatevoice.App";
+const DBUS_OBJECT_PATH = "/com/dictatevoice/App";
+const DBUS_INTERFACE = "com.dictatevoice.App";
 
 const KEYBINDING_PATH =
-  "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/openwhispr/";
+  "/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/dictatevoice/";
 const KEYBINDING_SCHEMA = "org.gnome.settings-daemon.plugins.media-keys.custom-keybinding";
 
 // Valid pattern for GNOME shortcut format (e.g., "<Alt>r", "<Control><Shift>space")
@@ -89,7 +89,7 @@ class GnomeShortcutManager {
   }
 
   _createInterfaceClass(dbusModule, callback) {
-    class OpenWhisprInterface extends dbusModule.interface.Interface {
+    class DictateVoiceInterface extends dbusModule.interface.Interface {
       constructor() {
         super(DBUS_INTERFACE);
         this._callback = callback;
@@ -102,13 +102,13 @@ class GnomeShortcutManager {
       }
     }
 
-    OpenWhisprInterface.configureMembers({
+    DictateVoiceInterface.configureMembers({
       methods: {
         Toggle: { inSignature: "", outSignature: "" },
       },
     });
 
-    return OpenWhisprInterface;
+    return DictateVoiceInterface;
   }
 
   static isValidShortcut(shortcut) {
@@ -137,7 +137,7 @@ class GnomeShortcutManager {
 
       execFileSync(
         "gsettings",
-        ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "name", "OpenWhispr Toggle"],
+        ["set", `${KEYBINDING_SCHEMA}:${KEYBINDING_PATH}`, "name", "DictateVoice Toggle"],
         { stdio: "pipe" }
       );
       execFileSync(

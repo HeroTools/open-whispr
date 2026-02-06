@@ -114,7 +114,7 @@ export default function DeveloperSection() {
       </div>
 
       {/* Debug Toggle */}
-      <div className="rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2 divide-y divide-border/40 dark:divide-border-subtle">
+      <div className="rounded-xl border border-border-subtle bg-surface-2 divide-y divide-border-subtle">
         <div className="px-5 py-4">
           <div className="flex items-center justify-between gap-6">
             <div className="min-w-0 flex-1">
@@ -149,7 +149,7 @@ export default function DeveloperSection() {
               Current log file
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-muted/30 dark:bg-surface-raised/30 px-3 py-2 rounded-lg border border-border/30">
+              <code className="flex-1 text-[11px] text-muted-foreground font-mono break-all leading-relaxed bg-surface-raised/30 px-3 py-2 rounded-lg border border-border/30">
                 {logPath}
               </code>
               <Button
@@ -186,7 +186,7 @@ export default function DeveloperSection() {
             What gets logged
           </h3>
         </div>
-        <div className="rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2">
+        <div className="rounded-xl border border-border-subtle bg-surface-2">
           <div className="px-5 py-4">
             <div className="grid grid-cols-2 gap-x-6 gap-y-2">
               {[
@@ -209,7 +209,7 @@ export default function DeveloperSection() {
 
       {/* Performance note — conditional */}
       {debugEnabled && (
-        <div className="rounded-xl border border-warning/20 bg-warning/5 dark:bg-warning/10">
+        <div className="rounded-xl border border-warning/20 bg-warning/10">
           <div className="px-5 py-4">
             <p className="text-[12px] text-muted-foreground leading-relaxed">
               <span className="font-medium text-warning">Note</span> — Debug logging writes to disk
@@ -227,7 +227,7 @@ export default function DeveloperSection() {
               Sharing logs for support
             </h3>
           </div>
-          <div className="rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2">
+          <div className="rounded-xl border border-border-subtle bg-surface-2">
             <div className="px-5 py-4">
               <div className="space-y-2">
                 {[

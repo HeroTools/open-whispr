@@ -36,21 +36,21 @@ const COLOR_CONFIG: Record<
 > = {
   indigo: {
     selected:
-      "border-primary/30 bg-primary/8 dark:bg-primary/6 dark:border-primary/20 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.12),0_0_10px_-3px_oklch(0.62_0.22_260/0.18)]",
+      "border-primary/20 bg-primary/6 shadow-[0_0_0_1px_rgba(112,255,186,0.12),0_0_10px_-3px_rgba(112,255,186,0.18)]",
     default:
-      "border-border bg-surface-1 hover:border-border-hover hover:bg-muted dark:border-white/5 dark:bg-white/3 dark:hover:border-white/20 dark:hover:bg-white/8",
+      "border-white/5 bg-white/3 hover:border-white/20 hover:bg-white/8",
   },
   purple: {
     selected:
-      "border-primary/30 bg-primary/8 dark:bg-primary/6 dark:border-primary/20 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.12),0_0_10px_-3px_oklch(0.62_0.22_260/0.18)]",
+      "border-primary/20 bg-primary/6 shadow-[0_0_0_1px_rgba(112,255,186,0.12),0_0_10px_-3px_rgba(112,255,186,0.18)]",
     default:
-      "border-border bg-surface-1 hover:border-border-hover hover:bg-muted dark:border-white/5 dark:bg-white/3 dark:hover:border-white/20 dark:hover:bg-white/8",
+      "border-white/5 bg-white/3 hover:border-white/20 hover:bg-white/8",
   },
   blue: {
     selected:
-      "border-primary/30 bg-primary/10 dark:bg-primary/6 shadow-[0_0_0_1px_oklch(0.62_0.22_260/0.15),0_0_12px_-3px_oklch(0.62_0.22_260/0.2)]",
+      "border-primary/20 bg-primary/6 shadow-[0_0_0_1px_rgba(112,255,186,0.15),0_0_12px_-3px_rgba(112,255,186,0.2)]",
     default:
-      "border-border bg-surface-1 hover:border-border-hover hover:bg-muted dark:border-white/5 dark:bg-white/3 dark:hover:border-white/20 dark:hover:bg-white/8",
+      "border-white/5 bg-white/3 hover:border-white/20 hover:bg-white/8",
   },
 };
 
@@ -98,12 +98,12 @@ export default function ModelCardList({
         const getStatusDotClass = () => {
           if (!isLocalMode) {
             return isSelected
-              ? "bg-primary shadow-[0_0_6px_oklch(0.62_0.22_260/0.6)]"
+              ? "bg-primary shadow-[0_0_6px_rgba(112,255,186,0.6)]"
               : "bg-muted-foreground/30";
           }
           if (isDownloaded) {
             return isSelected
-              ? "bg-primary shadow-[0_0_6px_oklch(0.62_0.22_260/0.6)]"
+              ? "bg-primary shadow-[0_0_6px_rgba(112,255,186,0.6)]"
               : "bg-success shadow-[0_0_4px_rgba(34,197,94,0.5)]";
           }
           if (isDownloading) {

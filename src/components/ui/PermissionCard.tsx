@@ -27,7 +27,7 @@ export default function PermissionCard({
         "group relative rounded-lg p-2.5 transition-all duration-150",
         "border",
         granted
-          ? "bg-success/5 border-success/15 dark:bg-success/8 dark:border-success/20"
+          ? "bg-success/8 border-success/20"
           : "bg-surface-1 border-border-subtle hover:bg-surface-2 hover:border-border-hover"
       )}
     >
@@ -36,7 +36,7 @@ export default function PermissionCard({
         <div
           className={cn(
             "w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors",
-            granted ? "bg-success/10" : "bg-primary/8 dark:bg-primary/10"
+            granted ? "bg-success/10" : "bg-primary/10"
           )}
         >
           {granted ? (

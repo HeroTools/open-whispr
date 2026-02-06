@@ -9,96 +9,75 @@ const buttonVariants = cva(
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
     "rounded-[6px] text-sm font-medium cursor-pointer select-none",
     "transition-all duration-150 ease-out",
-    "outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+    "outline-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
     "disabled:pointer-events-none disabled:opacity-40",
     "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 shrink-0",
   ].join(" "),
   {
     variants: {
       variant: {
-        // Primary CTA — refined blue metallic
+        // Primary CTA — flat mint
         default: [
-          "relative text-white font-semibold tracking-[0.01em]",
-          "bg-gradient-to-b from-[#4a8df0] to-[#2563d4]",
-          "border border-[#1e4fad]/70",
-          "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_1px_2px_0_rgba(0,0,0,0.1),0_1px_3px_0_rgba(37,99,212,0.2)]",
-          "hover:from-[#5a9af5] hover:to-[#3574e0]",
-          "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2),0_2px_4px_0_rgba(0,0,0,0.12),0_2px_8px_0_rgba(37,99,212,0.25)]",
-          "active:from-[#3574e0] active:to-[#1e4fad] active:scale-[0.98]",
-          "active:shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.15)]",
+          "relative text-[#080908] font-semibold tracking-[0.01em]",
+          "bg-[#70FFBA]",
+          "border border-[#70FFBA]/20",
+          "shadow-none",
+          "hover:bg-[#8BFFC8] hover:shadow-[0_0_12px_rgba(112,255,186,0.15)]",
+          "active:bg-[#5DE6A6] active:scale-[0.98]",
         ].join(" "),
 
-        // Success — emerald metallic
+        // Success — same as primary (mint IS success)
         success: [
-          "relative text-white font-semibold tracking-[0.01em]",
-          "bg-gradient-to-b from-[#34d399] to-[#10b981]",
-          "border border-[#059669]/70",
-          "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_1px_2px_0_rgba(0,0,0,0.1),0_1px_3px_0_rgba(16,185,129,0.2)]",
-          "hover:from-[#4ade80] hover:to-[#22c55e]",
-          "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2),0_2px_4px_0_rgba(0,0,0,0.12),0_2px_8px_0_rgba(16,185,129,0.25)]",
-          "active:from-[#22c55e] active:to-[#059669] active:scale-[0.98]",
-          "active:shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.15)]",
+          "relative text-[#080908] font-semibold tracking-[0.01em]",
+          "bg-[#70FFBA]",
+          "border border-[#70FFBA]/20",
+          "shadow-none",
+          "hover:bg-[#8BFFC8] hover:shadow-[0_0_12px_rgba(112,255,186,0.15)]",
+          "active:bg-[#5DE6A6] active:scale-[0.98]",
         ].join(" "),
 
-        // Destructive — red metallic
+        // Destructive — flat red
         destructive: [
           "relative text-white font-semibold tracking-[0.01em]",
-          "bg-gradient-to-b from-[#f87171] to-[#ef4444]",
-          "border border-[#dc2626]/70",
-          "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12),0_1px_2px_0_rgba(0,0,0,0.1),0_1px_3px_0_rgba(239,68,68,0.2)]",
-          "hover:from-[#fca5a5] hover:to-[#f87171]",
-          "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_4px_0_rgba(0,0,0,0.12),0_2px_8px_0_rgba(239,68,68,0.25)]",
-          "active:from-[#ef4444] active:to-[#dc2626] active:scale-[0.98]",
-          "active:shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.15)]",
+          "bg-[#FF6B6B]",
+          "border border-[#FF6B6B]/20",
+          "shadow-none",
+          "hover:bg-[#FF8585]",
+          "active:bg-[#E65555] active:scale-[0.98]",
         ].join(" "),
 
-        // Outline — uses design tokens
+        // Outline — flat with border
         outline: [
           "relative font-medium",
-          "text-foreground bg-muted/80",
+          "text-foreground bg-surface-1",
           "border border-border",
-          "shadow-sm backdrop-blur-sm",
-          "hover:bg-muted",
+          "hover:bg-surface-2 hover:border-border-hover",
           "active:scale-[0.98]",
-          // Dark mode overrides
-          "dark:bg-surface-3",
-          "dark:border-border-subtle",
-          "dark:hover:bg-surface-raised",
         ].join(" "),
 
-        // Secondary — uses design tokens
+        // Secondary — subtle surface
         secondary: [
           "relative font-medium",
-          "text-foreground bg-secondary",
-          "border border-border/50",
-          "hover:bg-muted",
+          "text-foreground bg-surface-2",
+          "border border-border-subtle",
+          "hover:bg-surface-raised",
           "active:scale-[0.98]",
-          // Dark mode overrides
-          "dark:text-foreground/90 dark:bg-white/8",
-          "dark:border-white/5",
-          "dark:hover:bg-white/12",
         ].join(" "),
 
-        // Ghost — uses design tokens
+        // Ghost — minimal
         ghost: [
           "font-medium",
-          "text-foreground",
-          "hover:bg-muted",
+          "text-muted-foreground",
+          "hover:text-foreground hover:bg-surface-1",
           "active:scale-[0.98]",
-          // Dark mode overrides
-          "dark:text-foreground/90",
-          "dark:hover:bg-white/8",
         ].join(" "),
 
-        // Link — uses design tokens
+        // Link
         link: [
           "font-medium",
           "text-primary",
           "hover:text-primary/80 hover:underline",
           "underline-offset-4",
-          // Dark mode overrides
-          "dark:text-primary",
-          "dark:hover:text-primary/80",
         ].join(" "),
       },
       size: {

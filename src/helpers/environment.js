@@ -106,7 +106,7 @@ class EnvironmentManager {
   createProductionEnvFile(apiKey) {
     const envPath = path.join(app.getPath("userData"), ".env");
 
-    const envContent = `# OpenWhispr Environment Variables
+    const envContent = `# DictateVoice Environment Variables
 # This file was created automatically for production use
 OPENAI_API_KEY=${apiKey}
 `;
@@ -122,7 +122,7 @@ OPENAI_API_KEY=${apiKey}
     const envPath = path.join(app.getPath("userData"), ".env");
 
     // Build env content with all current keys
-    let envContent = `# OpenWhispr Environment Variables
+    let envContent = `# DictateVoice Environment Variables
 # This file was created automatically for production use
 `;
 

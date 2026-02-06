@@ -174,47 +174,38 @@ const variantConfig = {
   default: {
     icon: Info,
     containerClass: cn(
-      // Glass morphism base
-      "bg-card/90 dark:bg-surface-2/95",
-      "border border-border/60 dark:border-white/10",
-      // Metallic highlight
-      "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_4px_12px_-2px_rgba(0,0,0,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
-      "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_8px_24px_-4px_rgba(0,0,0,0.4),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
+      "bg-surface-2/95",
+      "border border-border-subtle",
+      "shadow-elevated"
     ),
     iconClass: "text-muted-foreground",
-    titleClass: "text-card-foreground",
+    titleClass: "text-foreground",
     descClass: "text-muted-foreground",
     progressClass: "bg-muted-foreground/30",
   },
   destructive: {
     icon: AlertCircle,
     containerClass: cn(
-      // Subtle red tint with glass
-      "bg-destructive/8 dark:bg-destructive/12",
-      "border border-destructive/20 dark:border-destructive/25",
-      // Colored glow
-      "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(220,38,38,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
-      "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-4px_rgba(220,38,38,0.25),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
+      "bg-[#FF6B6B]/10",
+      "border border-[#FF6B6B]/20",
+      "shadow-elevated"
     ),
-    iconClass: "text-destructive",
-    titleClass: "text-destructive dark:text-red-400",
-    descClass: "text-destructive/80 dark:text-red-400/80",
-    progressClass: "bg-destructive/40",
+    iconClass: "text-[#FF6B6B]",
+    titleClass: "text-[#FF6B6B]",
+    descClass: "text-[#FF6B6B]/80",
+    progressClass: "bg-[#FF6B6B]/40",
   },
   success: {
     icon: CheckCircle2,
     containerClass: cn(
-      // Subtle green tint with glass
-      "bg-success/8 dark:bg-success/12",
-      "border border-success/20 dark:border-success/25",
-      // Colored glow
-      "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(22,163,74,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
-      "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-4px_rgba(22,163,74,0.25),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
+      "bg-primary/10",
+      "border border-primary/20",
+      "shadow-elevated"
     ),
-    iconClass: "text-success",
-    titleClass: "text-success dark:text-emerald-400",
-    descClass: "text-success/80 dark:text-emerald-400/80",
-    progressClass: "bg-success/40",
+    iconClass: "text-primary",
+    titleClass: "text-primary",
+    descClass: "text-primary/80",
+    progressClass: "bg-primary/40",
   },
 };
 
@@ -302,7 +293,7 @@ const Toast: React.FC<
           className={cn(
             "absolute right-1.5 top-1.5 p-1 rounded-[4px]",
             "opacity-50 hover:opacity-100",
-            "hover:bg-foreground/5 dark:hover:bg-white/10",
+            "hover:bg-white/10",
             "transition-all duration-150",
             "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40",
             config.iconClass

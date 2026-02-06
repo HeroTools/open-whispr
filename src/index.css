@@ -1,123 +1,76 @@
 @import "tailwindcss";
 
 @theme {
-  /* OpenWhispr Theme — registers color tokens with Tailwind v4.
-     These are the light-mode defaults; .dark overrides them below. */
-  --color-primary: #2563eb;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f5f5f5;
-  --color-secondary-foreground: #171717;
-  --color-muted: #f5f5f5;
-  --color-muted-foreground: #737373;
-  --color-accent: oklch(0.55 0.22 285);
-  --color-accent-foreground: #ffffff;
-  --color-destructive: #dc2626;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #e5e5e5;
-  --color-input: #f9f6f1;
-  --color-ring: #2563eb;
-  --color-background: #ffffff;
-  --color-foreground: #171717;
-  --color-card: #ffffff;
-  --color-card-foreground: #171717;
-  --color-popover: #ffffff;
-  --color-popover-foreground: #171717;
-  --color-link: #2563eb;
-  --color-success: #16a34a;
-  --color-success-foreground: #ffffff;
-  --color-warning: #d97706;
-  --color-warning-foreground: #ffffff;
-  --color-info: #2563eb;
-  --color-info-foreground: #ffffff;
+  /* DictateVoice — Luxury Minimal Dark Theme
+     Single dark palette. No light mode. Every component reads these tokens. */
 
-  /* Surface hierarchy — light mode equivalents */
-  --color-surface-0: #ffffff;
-  --color-surface-1: #fafafa;
-  --color-surface-2: #ffffff;
-  --color-surface-3: #f5f5f5;
-  --color-surface-raised: #f0f0f0;
+  /* Core palette */
+  --color-primary: #70FFBA;
+  --color-primary-foreground: #080908;
+  --color-secondary: #1A2E26;
+  --color-secondary-foreground: #FFFFFF;
+  --color-muted: #111311;
+  --color-muted-foreground: #6B7370;
+  --color-accent: #70FFBA;
+  --color-accent-foreground: #080908;
+  --color-destructive: #FF6B6B;
+  --color-destructive-foreground: #FFFFFF;
+  --color-border: #222523;
+  --color-input: #111311;
+  --color-ring: #70FFBA;
+  --color-background: #080908;
+  --color-foreground: #FFFFFF;
+  --color-card: #0F110F;
+  --color-card-foreground: #FFFFFF;
+  --color-popover: #141614;
+  --color-popover-foreground: #FFFFFF;
+  --color-link: #70FFBA;
 
-  /* Border states — light mode equivalents */
-  --color-border-subtle: #e5e5e5;
-  --color-border-hover: #d4d4d4;
-  --color-border-active: #2563eb;
+  /* Semantic colors */
+  --color-success: #70FFBA;
+  --color-success-foreground: #080908;
+  --color-warning: #FFB86B;
+  --color-warning-foreground: #080908;
+  --color-info: #6BB8FF;
+  --color-info-foreground: #FFFFFF;
+
+  /* Surface hierarchy — layered depth */
+  --color-surface-0: #080908;
+  --color-surface-1: #0D0F0D;
+  --color-surface-2: #121412;
+  --color-surface-3: #1A2E26;
+  --color-surface-raised: #1A1D1A;
+
+  /* Border states */
+  --color-border-subtle: #1C1F1C;
+  --color-border-hover: #2E3230;
+  --color-border-active: #70FFBA;
 }
 
 :root {
   /* Typography */
   --font-family-sans:
-    "Noto Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+    "Satoshi", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-family-mono:
+    "JetBrains Mono", "Fira Code", ui-monospace, monospace;
 
   /* Opacities */
   --opacity-subtle: 0.1;
   --opacity-medium: 0.5;
   --opacity-high: 0.9;
 
-  /* Border Radius — generous Clerk-style rounding */
-  --radius: 0.625rem;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
+  /* Border Radius — tight, precise geometry */
+  --radius: 0.5rem;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
 
-  /* Custom Light Mode Brand Colors (Parchment Theme) */
-  --color-parchment-bg: #f9f6f1;
-  --color-parchment-border: #ddd4c7;
-  --color-parchment-text: #2b1f14;
-  --color-parchment-accent: #c0a77d;
-  --color-brand-primary: #2b1f14;
-  --color-brand-accent: #4b2e2b;
-  --color-brand-highlight: #c0a77d;
-  --color-brand-link: #2e3659;
-  --color-pattern: #e7e5e4;
-}
-
-.dark {
-  /* Dark mode — clear surface hierarchy: bg < muted < card < popover */
-  --color-background: oklch(0.1 0.005 270);
-  --color-foreground: oklch(0.95 0 0);
-  --color-card: oklch(0.15 0.008 270);
-  --color-card-foreground: oklch(0.95 0 0);
-  --color-popover: oklch(0.17 0.008 270);
-  --color-popover-foreground: oklch(0.95 0 0);
-  --color-primary: oklch(0.62 0.22 260);
-  --color-primary-foreground: oklch(0.99 0 0);
-  --color-secondary: oklch(0.18 0.005 270);
-  --color-secondary-foreground: oklch(0.92 0 0);
-  --color-muted: oklch(0.13 0.005 270);
-  --color-muted-foreground: oklch(0.55 0 0);
-  --color-accent: oklch(0.68 0.20 285);
-  --color-accent-foreground: oklch(0.99 0 0);
-  --color-destructive: oklch(0.6 0.25 25);
-  --color-destructive-foreground: oklch(0.99 0 0);
-  --color-border: oklch(0.23 0.005 270);
-  --color-input: oklch(0.12 0.005 270);
-  --color-ring: oklch(0.62 0.22 260);
-  --color-success: oklch(0.7 0.18 145);
-  --color-success-foreground: oklch(0.99 0 0);
-  --color-warning: oklch(0.75 0.15 70);
-  --color-warning-foreground: oklch(0.15 0 0);
-  --color-info: oklch(0.68 0.2 240);
-  --color-info-foreground: oklch(0.99 0 0);
-
-  /* Surface hierarchy — layered depth system */
-  --color-surface-0: oklch(0.1 0.005 270);
-  --color-surface-1: oklch(0.13 0.006 270);
-  --color-surface-2: oklch(0.155 0.008 270);
-  --color-surface-3: oklch(0.18 0.01 270);
-  --color-surface-raised: oklch(0.2 0.012 270);
-
-  /* Border states */
-  --color-border-subtle: oklch(0.2 0.004 270);
-  --color-border-hover: oklch(0.28 0.01 270);
-  --color-border-active: oklch(0.45 0.15 260);
-
-  /* Card depth shadows — no glow, clean depth only */
-  --shadow-card: 0 1px 2px oklch(0 0 0 / 0.25);
-  --shadow-card-hover: 0 2px 8px oklch(0 0 0 / 0.35);
-  --shadow-elevated: 0 8px 24px oklch(0 0 0 / 0.4);
-  --shadow-modal: 0 24px 48px -12px oklch(0 0 0 / 0.5);
+  /* Shadows — subtle depth, no glow */
+  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-card-hover: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 8px 24px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 24px 48px -12px rgba(0, 0, 0, 0.6);
 }
 
 @layer base {
@@ -126,8 +79,7 @@
     transition:
       background-color 150ms ease,
       border-color 150ms ease,
-      color 150ms ease,
-      box-shadow 150ms ease;
+      color 150ms ease;
   }
 
   body {
@@ -136,13 +88,12 @@
     margin: 0;
     padding: 0;
     font-family: var(--font-family-sans);
-    font-feature-settings:
-      "liga" 1,
-      "kern" 1;
+    font-feature-settings: "liga" 1, "kern" 1;
     text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
-  /* Electron specific styles */
   html,
   body {
     min-height: 100vh;
@@ -152,7 +103,7 @@
     min-height: 100vh;
   }
 
-  /* Make dictation window (App) transparent, but keep control panel solid */
+  /* Dictation window transparency */
   body:has(.dictation-window) {
     background: transparent;
   }
@@ -162,29 +113,8 @@
   }
 }
 
-/* OpenWhispr Brand Typography */
-.brand-heading {
-  font-family: var(--font-family-sans);
-  font-weight: 600;
-  letter-spacing: -0.02em;
-}
-
-.brand-body {
-  font-family: var(--font-family-sans);
-  line-height: 1.6;
-}
-
-.brand-script {
-  font-family: var(--font-family-sans);
-  font-style: italic;
-}
-
-h1,
-h2,
-h3,
-h4,
-h5,
-h6 {
+/* DictateVoice Typography */
+h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-family-sans);
   font-weight: 600;
   letter-spacing: -0.025em;
@@ -196,144 +126,80 @@ h1 {
   font-weight: 700;
 }
 
-/* Modern Button Styling - handled by button component */
 button {
   font-family: var(--font-family-sans);
   cursor: pointer;
 }
 
-/* Ensure all interactive elements have pointer cursor */
 button:hover,
 [role="button"]:hover,
-.cursor-pointer:hover,
-svg:hover,
-[data-icon]:hover,
-.icon:hover {
+.cursor-pointer:hover {
   cursor: pointer;
 }
 
-/* Embossed paper-like input styling */
+/* Inputs — flat, minimal */
 input,
 textarea {
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   transition: all 0.2s ease;
   font-family: var(--font-family-sans);
-  box-shadow: inset 0 1px 3px rgba(43, 31, 20, var(--opacity-subtle));
-}
-
-/* Light mode inputs - embossed parchment */
-:root input,
-:root textarea {
-  background-color: var(--color-parchment-bg);
-  border: 1px solid var(--color-parchment-border);
-  color: var(--color-parchment-text);
-}
-
-:root input:focus,
-:root textarea:focus {
-  border-color: var(--color-parchment-accent);
-  box-shadow:
-    0 0 0 2px oklch(from var(--color-parchment-accent) l c h / 0.2),
-    inset 0 1px 3px oklch(from var(--color-parchment-text) l c h / var(--opacity-subtle));
-  background-color: var(--color-background);
-}
-
-/* Dark mode inputs — flat, no embossed shadow */
-.dark input,
-.dark textarea {
   background-color: var(--color-input);
   border: 1px solid var(--color-border);
-  color: oklch(0.9 0 0);
+  color: var(--color-foreground);
   box-shadow: none;
 }
 
-.dark input:focus,
-.dark textarea:focus {
+input:focus,
+textarea:focus {
   border-color: var(--color-border-active);
-  box-shadow: 0 0 0 2px oklch(0.62 0.22 260 / 0.15);
+  box-shadow: 0 0 0 2px rgba(112, 255, 186, 0.1);
 }
 
-/* Card styling - elevated parchment */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-muted-foreground);
+  opacity: 0.5;
+}
+
+/* Cards — flat, border-only differentiation */
 .card {
   background-color: var(--color-card);
-  border: 1px solid var(--color-parchment-border);
-  border-radius: 12px;
-  box-shadow:
-    0 4px 8px oklch(from var(--color-parchment-text) l c h / 0.08),
-    0 1px 0 oklch(from var(--color-card) l c h / var(--opacity-medium)) inset;
-  transition: all 0.2s ease;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  transition: border-color 150ms ease;
 }
 
 .card:hover {
-  box-shadow:
-    0 8px 16px oklch(from var(--color-parchment-text) l c h / var(--opacity-subtle)),
-    0 1px 0 oklch(from var(--color-card) l c h / var(--opacity-medium)) inset;
-  transform: translateY(-1px);
-}
-
-/* Dark mode cards — grounded, no lift, subtle border glow */
-.dark .card {
-  border-color: var(--color-border-subtle);
-  box-shadow: var(--shadow-card);
-}
-
-.dark .card:hover {
-  box-shadow: var(--shadow-card-hover);
-  transform: none;
   border-color: var(--color-border-hover);
 }
 
-/* Link styling */
+/* Links */
 a {
-  color: var(--color-brand-link);
+  color: var(--color-link);
   text-decoration: none;
   transition: color 0.2s ease;
   cursor: pointer;
 }
 
 a:hover {
-  color: var(--color-brand-accent);
+  color: var(--color-link);
+  opacity: 0.8;
   text-decoration: underline;
-  cursor: pointer;
 }
 
-/* Status indicators */
-.status-active {
-  color: var(--color-brand-accent);
-  font-weight: 600;
-}
-
-.text-brand-primary {
-  color: var(--color-brand-primary);
-}
-
-.text-brand-accent {
-  color: var(--color-brand-accent);
-}
-
-.text-brand-highlight {
-  color: var(--color-brand-highlight);
-}
-
-.text-brand-link {
-  color: var(--color-brand-link);
-}
-
-/* ---- Premium UI Utilities ---- */
-
-/* Section panel — grouped settings container */
+/* Section panel */
 .section-panel {
   background: var(--color-surface-2);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-xl);
 }
 
-/* Gradient accent bar — top border highlight for panels */
+/* Accent bar — mint gradient highlight */
 .accent-bar {
   position: relative;
 }
 
-.dark .accent-bar::before {
+.accent-bar::before {
   content: "";
   position: absolute;
   top: 0;
@@ -342,49 +208,77 @@ a:hover {
   height: 1px;
   background: linear-gradient(
     90deg,
-    oklch(0.62 0.22 260 / 0.5),
-    oklch(0.7 0.18 280 / 0.3),
+    rgba(112, 255, 186, 0.4),
+    rgba(112, 255, 186, 0.15),
     transparent 80%
   );
   pointer-events: none;
   z-index: 1;
 }
 
-/* Monochrome icon theming - explicit light/dark handling */
+/* Icon monochrome */
 .icon-monochrome {
-  filter: none;
-  transition: filter 150ms ease;
-}
-
-.dark .icon-monochrome {
   filter: invert(1);
+  transition: filter 150ms ease;
 }
 
 /* Toast progress bar animation */
 @keyframes toast-progress {
-  from {
-    width: 100%;
-  }
-  to {
-    width: 0%;
-  }
+  from { width: 100%; }
+  to { width: 0%; }
 }
 
-/* Custom scrollbar styling for Windows/Linux (Chromium) */
+/* Motion system */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ring-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.5; }
+  50% { transform: scale(1.12); opacity: 0.2; }
+}
+
+/* Grain overlay — barely perceptible texture for depth */
+.grain-overlay {
+  position: relative;
+}
+
+.grain-overlay::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  opacity: 0.02;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Custom scrollbar */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-surface-1);
-  border-radius: var(--radius-sm);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
   background: var(--color-border);
-  border-radius: var(--radius-sm);
-  border: 2px solid var(--color-surface-1);
+  border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
@@ -392,5 +286,5 @@ a:hover {
 }
 
 ::-webkit-scrollbar-corner {
-  background: var(--color-surface-1);
+  background: transparent;
 }
