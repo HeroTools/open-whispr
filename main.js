@@ -1,4 +1,4 @@
-const { app, globalShortcut, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, globalShortcut, BrowserWindow, dialog, ipcMain, session } = require("electron");
 const path = require("path");
 const http = require("http");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
@@ -404,6 +404,26 @@ async function startApp() {
   // Initialize all managers now that app is ready
   initializeManagers();
   startAuthBridgeServer();
+
+  // Inject Origin header for Neon Auth requests.
+  // Electron loads pages from file:// so the browser sends no Origin header,
+  // which Neon Auth (better-auth) rejects. This is the standard Electron
+  // approach: use webRequest.onBeforeSendHeaders at the Chromium network layer.
+  const neonAuthUrl = process.env.VITE_NEON_AUTH_URL || "";
+  if (neonAuthUrl) {
+    try {
+      const neonOrigin = new URL(neonAuthUrl).origin;
+      session.defaultSession.webRequest.onBeforeSendHeaders(
+        { urls: [`${neonOrigin}/*`] },
+        (details, callback) => {
+          details.requestHeaders["Origin"] = neonOrigin;
+          callback({ requestHeaders: details.requestHeaders });
+        }
+      );
+    } catch (err) {
+      console.error("Failed to set up Neon Auth origin interceptor:", err);
+    }
+  }
 
   // Initialize activation mode cache from persisted .env value
   windowManager.setActivationModeCache(environmentManager.getActivationMode());
