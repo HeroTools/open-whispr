@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import "./index.css";
 import { useToast } from "./components/ui/Toast";
 import { LoadingDots } from "./components/ui/LoadingDots";
+import { ProcessingSpinner, VoiceProcessingIndicator } from "./components/ui/ProcessingSpinner";
 import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
@@ -26,19 +27,17 @@ const SoundWaveIcon = ({ size = 16 }) => {
   );
 };
 
-// Voice Wave Animation Component (for processing state)
-const VoiceWaveIndicator = ({ isListening }) => {
+// Recording Wave Animation Component (animated sound bars for recording)
+const RecordingWaveIndicator = () => {
+  const bars = [0, 0.1, 0.2, 0.1, 0];
   return (
-    <div className="flex items-center justify-center gap-0.5">
-      {[...Array(4)].map((_, i) => (
+    <div className="flex items-center justify-center gap-0.5 h-5">
+      {bars.map((delay, i) => (
         <div
           key={i}
-          className={`w-0.5 bg-white rounded-full transition-all duration-150 ${
-            isListening ? "animate-pulse h-4" : "h-2"
-          }`}
+          className="w-1 bg-white rounded-full animate-voice-bar"
           style={{
-            animationDelay: isListening ? `${i * 0.1}s` : "0s",
-            animationDuration: isListening ? `${0.6 + i * 0.1}s` : "0s",
+            animationDelay: `${delay}s`,
           }}
         />
       ))}
@@ -166,34 +165,45 @@ export default function App() {
   // Get microphone button properties based on state
   const getMicButtonProps = () => {
     const baseClasses =
-      "rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden border-2 border-white/70 cursor-pointer";
+      "rounded-full w-10 h-10 flex items-center justify-center relative border-2 cursor-pointer";
 
     switch (micState) {
       case "idle":
         return {
-          className: `${baseClasses} bg-black/50 cursor-pointer`,
+          className: `${baseClasses} bg-black/50 border-white/70`,
           tooltip: `Press [${hotkey}] to speak`,
+          statusText: null,
         };
       case "hover":
         return {
-          className: `${baseClasses} bg-black/50 cursor-pointer`,
+          className: `${baseClasses} bg-black/50 border-white/70`,
           tooltip: `Press [${hotkey}] to speak`,
+          statusText: null,
         };
       case "recording":
         return {
-          className: `${baseClasses} bg-blue-600 cursor-pointer`,
-          tooltip: "Recording...",
+          className: `${baseClasses} bg-blue-500 border-blue-300 animate-recording-pulse`,
+          style: {
+            boxShadow: '0 0 20px rgba(59, 130, 246, 0.7), 0 0 40px rgba(59, 130, 246, 0.4)',
+          },
+          tooltip: `Recording... Press [${hotkey}] to stop`,
+          statusText: "Recording",
         };
       case "processing":
         return {
-          className: `${baseClasses} bg-purple-600 cursor-not-allowed`,
-          tooltip: "Processing...",
+          className: `${baseClasses} bg-purple-500 border-purple-300 cursor-not-allowed`,
+          style: {
+            boxShadow: '0 0 20px rgba(147, 51, 234, 0.7), 0 0 40px rgba(147, 51, 234, 0.4)',
+          },
+          tooltip: "Transcribing your speech...",
+          statusText: "Processing",
         };
       default:
         return {
-          className: `${baseClasses} bg-black/50 cursor-pointer`,
+          className: `${baseClasses} bg-black/50 border-white/70`,
           style: { transform: "scale(0.8)" },
           tooltip: "Click to speak",
+          statusText: null,
         };
     }
   };
@@ -206,6 +216,21 @@ export default function App() {
       <div className="fixed bottom-6 right-6 z-50">
         <div className="relative">
           <Tooltip content={micProps.tooltip}>
+            <div className="flex flex-col items-center relative">
+            {/* Pulsing rings for recording - outside button for visibility */}
+            {micState === "recording" && (
+              <>
+                <div className="absolute inset-0 -m-2 rounded-full border-2 border-blue-400 animate-recording-ring pointer-events-none"></div>
+                <div
+                  className="absolute inset-0 -m-2 rounded-full border-2 border-blue-400 animate-recording-ring pointer-events-none"
+                  style={{ animationDelay: '0.75s' }}
+                ></div>
+              </>
+            )}
+            {/* Pulsing ring for processing */}
+            {micState === "processing" && (
+              <div className="absolute inset-0 -m-1 rounded-full border-2 border-purple-400 opacity-70 animate-pulse pointer-events-none"></div>
+            )}
             <button
               ref={buttonRef}
               onMouseDown={(e) => {
@@ -286,21 +311,40 @@ export default function App() {
               {micState === "idle" || micState === "hover" ? (
                 <SoundWaveIcon size={micState === "idle" ? 12 : 14} />
               ) : micState === "recording" ? (
-                <LoadingDots />
+                <RecordingWaveIndicator />
               ) : micState === "processing" ? (
-                <VoiceWaveIndicator isListening={true} />
+                <ProcessingSpinner size={18} color="white" />
               ) : null}
 
-              {/* State indicator ring for recording */}
-              {micState === "recording" && (
-                <div className="absolute inset-0 rounded-full border-2 border-blue-300 animate-pulse"></div>
-              )}
-
-              {/* State indicator ring for processing */}
-              {micState === "processing" && (
-                <div className="absolute inset-0 rounded-full border-2 border-purple-300 opacity-50"></div>
-              )}
             </button>
+
+            {/* Status text label */}
+            {micProps.statusText && (
+              <div className="animate-fade-in-up mt-2">
+                <span
+                  className={`text-xs font-semibold px-3 py-1 rounded-full shadow-lg ${
+                    micState === "recording"
+                      ? "bg-blue-500 text-white"
+                      : "bg-purple-500 text-white"
+                  }`}
+                  style={{
+                    fontSize: '11px',
+                    boxShadow: micState === "recording"
+                      ? '0 0 12px rgba(59, 130, 246, 0.6)'
+                      : '0 0 12px rgba(147, 51, 234, 0.6)'
+                  }}
+                >
+                  {micState === "recording" && (
+                    <span className="inline-block w-2 h-2 rounded-full bg-white mr-1.5 animate-pulse"></span>
+                  )}
+                  {micState === "processing" && (
+                    <span className="inline-block w-2 h-2 rounded-full border border-white border-t-transparent mr-1.5 animate-spin"></span>
+                  )}
+                  {micProps.statusText}
+                </span>
+              </div>
+            )}
+            </div>
           </Tooltip>
           {isCommandMenuOpen && (
             <div
