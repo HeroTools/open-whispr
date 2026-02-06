@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 import { useDebouncedCallback } from "./useDebouncedCallback";
-import { getModelProvider } from "../models/ModelRegistry";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
 import type { LocalTranscriptionProvider } from "../types/electron";
@@ -18,7 +17,10 @@ export interface TranscriptionSettings {
   cloudTranscriptionProvider: string;
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
+  cloudTranscriptionMode: string;
+  cloudReasoningModel: string;
   customDictionary: string[];
+  assemblyAiStreaming: boolean;
 }
 
 export interface ReasoningSettings {
@@ -45,6 +47,10 @@ export interface ApiKeySettings {
   groqApiKey: string;
   customTranscriptionApiKey: string;
   customReasoningApiKey: string;
+}
+
+export interface ThemeSettings {
+  theme: "light" | "dark" | "auto";
 }
 
 export function useSettings() {
@@ -92,7 +98,7 @@ export function useSettings() {
     }
   );
 
-  const [preferredLanguage, setPreferredLanguage] = useLocalStorage("preferredLanguage", "en", {
+  const [preferredLanguage, setPreferredLanguage] = useLocalStorage("preferredLanguage", "auto", {
     serialize: String,
     deserialize: String,
   });
@@ -133,6 +139,26 @@ export function useSettings() {
     }
   );
 
+  // Cloud transcription mode: "openwhispr" (server-side) or "byok" (bring your own key)
+  const [cloudTranscriptionMode, setCloudTranscriptionMode] = useLocalStorage(
+    "cloudTranscriptionMode",
+    "openwhispr",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  // Cloud reasoning model (for OpenWhispr cloud mode)
+  const [cloudReasoningModel, setCloudReasoningModel] = useLocalStorage(
+    "cloudReasoningModel",
+    "llama-3.3-70b-versatile",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   // Custom dictionary for improving transcription of specific words
   const [customDictionary, setCustomDictionaryRaw] = useLocalStorage<string[]>(
     "customDictionary",
@@ -147,6 +173,16 @@ export function useSettings() {
           return [];
         }
       },
+    }
+  );
+
+  // Assembly AI real-time streaming (enabled by default for signed-in users)
+  const [assemblyAiStreaming, setAssemblyAiStreaming] = useLocalStorage(
+    "assemblyAiStreaming",
+    true,
+    {
+      serialize: String,
+      deserialize: (value) => value !== "false", // Default to true unless explicitly disabled
     }
   );
 
@@ -198,6 +234,11 @@ export function useSettings() {
     deserialize: String,
   });
 
+  const [reasoningProvider, setReasoningProvider] = useLocalStorage("reasoningProvider", "openai", {
+    serialize: String,
+    deserialize: String,
+  });
+
   // API keys - localStorage for UI, synced to Electron IPC for persistence
   const [openaiApiKey, setOpenaiApiKeyLocal] = useLocalStorage("openaiApiKey", "", {
     serialize: String,
@@ -217,6 +258,15 @@ export function useSettings() {
   const [groqApiKey, setGroqApiKeyLocal] = useLocalStorage("groqApiKey", "", {
     serialize: String,
     deserialize: String,
+  });
+
+  // Theme setting
+  const [theme, setTheme] = useLocalStorage<"light" | "dark" | "auto">("theme", "auto", {
+    serialize: String,
+    deserialize: (value) => {
+      if (["light", "dark", "auto"].includes(value)) return value as "light" | "dark" | "auto";
+      return "auto";
+    },
   });
 
   // Custom endpoint API keys - synced to .env like other keys
@@ -355,12 +405,17 @@ export function useSettings() {
   });
 
   // Wrap setDictationKey to notify main process (for Windows Push-to-Talk)
+  // and persist to file-based storage for reliable startup
   const setDictationKey = useCallback(
     (key: string) => {
       setDictationKeyLocal(key);
       // Notify main process so Windows key listener can restart with new key
       if (typeof window !== "undefined" && window.electronAPI?.notifyHotkeyChanged) {
         window.electronAPI.notifyHotkeyChanged(key);
+      }
+      // Also save to file-based storage for reliable persistence across restarts
+      if (typeof window !== "undefined" && window.electronAPI?.saveDictationKey) {
+        window.electronAPI.saveDictationKey(key);
       }
     },
     [setDictationKeyLocal]
@@ -397,9 +452,6 @@ export function useSettings() {
     serialize: String,
     deserialize: String,
   });
-
-  // Computed values
-  const reasoningProvider = getModelProvider(reasoningModel);
 
   // Sync startup pre-warming preferences to main process
   useEffect(() => {
@@ -469,11 +521,12 @@ export function useSettings() {
       if (settings.useReasoningModel !== undefined)
         setUseReasoningModel(settings.useReasoningModel);
       if (settings.reasoningModel !== undefined) setReasoningModel(settings.reasoningModel);
+      if (settings.reasoningProvider !== undefined)
+        setReasoningProvider(settings.reasoningProvider);
       if (settings.cloudReasoningBaseUrl !== undefined)
         setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
-      // reasoningProvider is computed from reasoningModel, not stored separately
     },
-    [setUseReasoningModel, setReasoningModel, setCloudReasoningBaseUrl]
+    [setUseReasoningModel, setReasoningModel, setReasoningProvider, setCloudReasoningBaseUrl]
   );
 
   const updateApiKeys = useCallback(
@@ -499,7 +552,11 @@ export function useSettings() {
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
+    cloudTranscriptionMode,
+    cloudReasoningModel,
     customDictionary,
+    assemblyAiStreaming,
+    setAssemblyAiStreaming,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -508,6 +565,7 @@ export function useSettings() {
     geminiApiKey,
     groqApiKey,
     dictationKey,
+    theme,
     setUseLocalWhisper,
     setWhisperModel,
     setLocalTranscriptionProvider,
@@ -520,14 +578,12 @@ export function useSettings() {
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
+    setCloudTranscriptionMode,
+    setCloudReasoningModel,
     setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
-    setReasoningProvider: (provider: string) => {
-      if (provider !== "custom") {
-        setReasoningModel("");
-      }
-    },
+    setReasoningProvider,
     setOpenaiApiKey,
     setAnthropicApiKey,
     setGeminiApiKey,
@@ -537,6 +593,7 @@ export function useSettings() {
     customReasoningApiKey,
     setCustomReasoningApiKey,
     setDictationKey,
+    setTheme,
     activationMode,
     setActivationMode,
     preferBuiltInMic,

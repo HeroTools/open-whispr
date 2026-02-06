@@ -4,7 +4,9 @@ import AudioManager from "../helpers/audioManager";
 export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [partialTranscript, setPartialTranscript] = useState("");
   const audioManagerRef = useRef(null);
   const { onToggle } = options;
 
@@ -12,16 +14,34 @@ export const useAudioRecording = (toast, options = {}) => {
     audioManagerRef.current = new AudioManager();
 
     audioManagerRef.current.setCallbacks({
-      onStateChange: ({ isRecording, isProcessing }) => {
+      onStateChange: ({ isRecording, isProcessing, isStreaming }) => {
         setIsRecording(isRecording);
         setIsProcessing(isProcessing);
+        setIsStreaming(isStreaming ?? false);
+        if (!isStreaming) {
+          setPartialTranscript("");
+        }
       },
       onError: (error) => {
+        // Provide specific titles for cloud error codes
+        const title =
+          error.code === "AUTH_EXPIRED"
+            ? "Session Expired"
+            : error.code === "OFFLINE"
+              ? "You're Offline"
+              : error.code === "LIMIT_REACHED"
+                ? "Daily Limit Reached"
+                : error.title;
+
         toast({
-          title: error.title,
+          title,
           description: error.description,
           variant: "destructive",
+          duration: error.code === "AUTH_EXPIRED" ? 8000 : undefined,
         });
+      },
+      onPartialTranscript: (text) => {
+        setPartialTranscript(text);
       },
       onTranscriptionComplete: async (result) => {
         if (result.success) {
@@ -38,34 +58,63 @@ export const useAudioRecording = (toast, options = {}) => {
               variant: "default",
             });
           }
+
+          // Cloud usage: limit reached after this transcription
+          if (result.source === "openwhispr" && result.limitReached) {
+            // Notify control panel to show UpgradePrompt dialog
+            window.electronAPI?.notifyLimitReached?.({
+              wordsUsed: result.wordsUsed,
+              limit:
+                result.wordsRemaining !== undefined
+                  ? result.wordsUsed + result.wordsRemaining
+                  : 2000,
+            });
+          }
+
+          audioManagerRef.current.warmupStreamingConnection();
         }
       },
     });
 
-    // Set up hotkey listener for tap-to-talk mode
-    const handleToggle = () => {
+    audioManagerRef.current.warmupStreamingConnection();
+
+    const handleToggle = async () => {
       const currentState = audioManagerRef.current.getState();
 
       if (!currentState.isRecording && !currentState.isProcessing) {
-        audioManagerRef.current.startRecording();
+        if (audioManagerRef.current.shouldUseStreaming()) {
+          await audioManagerRef.current.startStreamingRecording();
+        } else {
+          await audioManagerRef.current.startRecording();
+        }
       } else if (currentState.isRecording) {
-        audioManagerRef.current.stopRecording();
+        if (currentState.isStreaming) {
+          await audioManagerRef.current.stopStreamingRecording();
+        } else {
+          audioManagerRef.current.stopRecording();
+        }
       }
     };
 
-    // Set up listener for push-to-talk start
-    const handleStart = () => {
+    const handleStart = async () => {
       const currentState = audioManagerRef.current.getState();
       if (!currentState.isRecording && !currentState.isProcessing) {
-        audioManagerRef.current.startRecording();
+        if (audioManagerRef.current.shouldUseStreaming()) {
+          await audioManagerRef.current.startStreamingRecording();
+        } else {
+          await audioManagerRef.current.startRecording();
+        }
       }
     };
 
-    // Set up listener for push-to-talk stop
-    const handleStop = () => {
+    const handleStop = async () => {
       const currentState = audioManagerRef.current.getState();
       if (currentState.isRecording) {
-        audioManagerRef.current.stopRecording();
+        if (currentState.isStreaming) {
+          await audioManagerRef.current.stopStreamingRecording();
+        } else {
+          audioManagerRef.current.stopRecording();
+        }
       }
     };
 
@@ -108,40 +157,61 @@ export const useAudioRecording = (toast, options = {}) => {
 
   const startRecording = async () => {
     if (audioManagerRef.current) {
+      if (audioManagerRef.current.shouldUseStreaming()) {
+        return await audioManagerRef.current.startStreamingRecording();
+      }
       return await audioManagerRef.current.startRecording();
     }
     return false;
   };
 
-  const stopRecording = () => {
+  const stopRecording = async () => {
     if (audioManagerRef.current) {
+      const state = audioManagerRef.current.getState();
+      if (state.isStreaming) {
+        return await audioManagerRef.current.stopStreamingRecording();
+      }
       return audioManagerRef.current.stopRecording();
     }
     return false;
   };
 
-  const cancelRecording = () => {
+  const cancelRecording = async () => {
     if (audioManagerRef.current) {
+      const state = audioManagerRef.current.getState();
+      if (state.isStreaming) {
+        return await audioManagerRef.current.stopStreamingRecording();
+      }
       return audioManagerRef.current.cancelRecording();
     }
     return false;
   };
 
-  const toggleListening = () => {
+  const cancelProcessing = () => {
+    if (audioManagerRef.current) {
+      return audioManagerRef.current.cancelProcessing();
+    }
+    return false;
+  };
+
+  const toggleListening = async () => {
     if (!isRecording && !isProcessing) {
-      startRecording();
+      await startRecording();
     } else if (isRecording) {
-      stopRecording();
+      await stopRecording();
     }
   };
 
   return {
     isRecording,
     isProcessing,
+    isStreaming,
     transcript,
+    partialTranscript,
     startRecording,
     stopRecording,
     cancelRecording,
+    cancelProcessing,
     toggleListening,
   };
 };

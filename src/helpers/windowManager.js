@@ -1,10 +1,15 @@
-const { app, screen, BrowserWindow, dialog } = require("electron");
+const { app, screen, BrowserWindow, shell, dialog } = require("electron");
 const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
 const { DEV_SERVER_PORT } = DevServerManager;
-const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
+const {
+  MAIN_WINDOW_CONFIG,
+  CONTROL_PANEL_CONFIG,
+  WINDOW_SIZES,
+  WindowPositionUtil,
+} = require("./windowConfig");
 
 class WindowManager {
   constructor() {
@@ -93,6 +98,36 @@ class WindowManager {
       this.mainWindow.setIgnoreMouseEvents(true, { forward: true });
     }
     this.isMainWindowInteractive = shouldCapture;
+  }
+
+  resizeMainWindow(sizeKey) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return { success: false, message: "Window not available" };
+    }
+
+    const newSize = WINDOW_SIZES[sizeKey] || WINDOW_SIZES.BASE;
+    const currentBounds = this.mainWindow.getBounds();
+
+    const bottomRightX = currentBounds.x + currentBounds.width;
+    const bottomRightY = currentBounds.y + currentBounds.height;
+
+    const display = screen.getDisplayNearestPoint({ x: bottomRightX, y: bottomRightY });
+    const workArea = display.workArea || display.bounds;
+
+    let newX = bottomRightX - newSize.width;
+    let newY = bottomRightY - newSize.height;
+
+    newX = Math.max(workArea.x, Math.min(newX, workArea.x + workArea.width - newSize.width));
+    newY = Math.max(workArea.y, Math.min(newY, workArea.y + workArea.height - newSize.height));
+
+    this.mainWindow.setBounds({
+      x: newX,
+      y: newY,
+      width: newSize.width,
+      height: newSize.height,
+    });
+
+    return { success: true, bounds: { x: newX, y: newY, ...newSize } };
   }
 
   /**
@@ -351,6 +386,17 @@ class WindowManager {
     return await this.dragManager.stopWindowDrag();
   }
 
+  openExternalUrl(url, showError = true) {
+    shell.openExternal(url).catch((error) => {
+      if (showError) {
+        dialog.showErrorBox(
+          "Unable to Open Link",
+          `Failed to open the link in your browser:\n${url}\n\nError: ${error.message}`
+        );
+      }
+    });
+  }
+
   async createControlPanelWindow() {
     if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
       if (this.controlPanelWindow.isMinimized()) {
@@ -365,12 +411,39 @@ class WindowManager {
 
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
+    this.controlPanelWindow.webContents.on("will-navigate", (event, url) => {
+      const appUrl = DevServerManager.getAppUrl(true);
+      const controlPanelUrl = appUrl.startsWith("http") ? appUrl : `file://${appUrl}`;
+
+      if (
+        url.startsWith(controlPanelUrl) ||
+        url.startsWith("file://") ||
+        url.startsWith("devtools://")
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      this.openExternalUrl(url);
+    });
+
+    this.controlPanelWindow.webContents.setWindowOpenHandler(({ url }) => {
+      this.openExternalUrl(url);
+      return { action: "deny" };
+    });
+
+    this.controlPanelWindow.webContents.on("did-create-window", (childWindow, details) => {
+      childWindow.close();
+      if (details.url && !details.url.startsWith("devtools://")) {
+        this.openExternalUrl(details.url, false);
+      }
+    });
+
     const visibilityTimer = setTimeout(() => {
       if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) {
         return;
       }
       if (!this.controlPanelWindow.isVisible()) {
-        console.warn("Control panel did not become visible in time; forcing show");
         this.controlPanelWindow.show();
         this.controlPanelWindow.focus();
       }
@@ -421,7 +494,6 @@ class WindowManager {
           return;
         }
         clearVisibilityTimer();
-        console.error("Failed to load control panel:", errorCode, errorDescription, validatedURL);
         if (process.env.NODE_ENV !== "development") {
           this.showLoadFailureDialog("Control panel", errorCode, errorDescription, validatedURL);
         }

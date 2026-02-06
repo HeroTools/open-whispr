@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename)
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './', // Use relative paths for file:// protocol in Electron
+  envDir: path.resolve(__dirname, '..'), // Load .env from project root
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),
@@ -18,6 +19,7 @@ export default defineConfig({
   },
   server: {
     port: 5174,
+    host: '127.0.0.1', // Use IP address instead of localhost for Neon Auth CORS
   },
   build: {
     outDir: 'dist',

@@ -3,6 +3,7 @@ import { API_ENDPOINTS, buildApiUrl, normalizeBaseUrl } from "../config/constant
 import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
+import { withSessionRefresh } from "../lib/neonAuth";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -27,6 +28,7 @@ class AudioManager {
     this.onStateChange = null;
     this.onError = null;
     this.onTranscriptionComplete = null;
+    this.onPartialTranscript = null;
     this.cachedApiKey = null;
     this.cachedApiKeyProvider = null;
     this.cachedTranscriptionEndpoint = null;
@@ -35,6 +37,16 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
+    // Streaming state
+    this.isStreaming = false;
+    this.streamingAudioContext = null;
+    this.streamingSource = null;
+    this.streamingProcessor = null;
+    this.streamingStream = null;
+    this.streamingCleanupFns = [];
+    this.streamingFinalText = "";
+    // Cached microphone device ID to skip enumeration
+    this.cachedMicDeviceId = null;
   }
 
   getCustomDictionaryPrompt() {
@@ -49,10 +61,11 @@ class AudioManager {
     return null;
   }
 
-  setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
+  setCallbacks({ onStateChange, onError, onTranscriptionComplete, onPartialTranscript }) {
     this.onStateChange = onStateChange;
     this.onError = onError;
     this.onTranscriptionComplete = onTranscriptionComplete;
+    this.onPartialTranscript = onPartialTranscript;
   }
 
   async getAudioConstraints() {
@@ -60,14 +73,26 @@ class AudioManager {
     const selectedDeviceId = localStorage.getItem("selectedMicDeviceId") || "";
 
     if (preferBuiltIn) {
+      // Use cached device ID if available (skip enumeration for faster start)
+      if (this.cachedMicDeviceId) {
+        logger.debug(
+          "Using cached microphone device ID",
+          { deviceId: this.cachedMicDeviceId },
+          "audio"
+        );
+        return { audio: { deviceId: { exact: this.cachedMicDeviceId } } };
+      }
+
       try {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const audioInputs = devices.filter((d) => d.kind === "audioinput");
         const builtInMic = audioInputs.find((d) => isBuiltInMicrophone(d.label));
 
         if (builtInMic) {
+          // Cache the device ID for future use
+          this.cachedMicDeviceId = builtInMic.deviceId;
           logger.debug(
-            "Using built-in microphone",
+            "Using built-in microphone (cached for next time)",
             { deviceId: builtInMic.deviceId, label: builtInMic.label },
             "audio"
           );
@@ -91,6 +116,25 @@ class AudioManager {
     // Fall back to default device
     logger.debug("Using default microphone", {}, "audio");
     return { audio: true };
+  }
+
+  async cacheMicrophoneDeviceId() {
+    if (this.cachedMicDeviceId) return; // Already cached
+
+    const preferBuiltIn = localStorage.getItem("preferBuiltInMic") !== "false";
+    if (!preferBuiltIn) return; // Only needed for built-in mic detection
+
+    try {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputs = devices.filter((d) => d.kind === "audioinput");
+      const builtInMic = audioInputs.find((d) => isBuiltInMicrophone(d.label));
+      if (builtInMic) {
+        this.cachedMicDeviceId = builtInMic.deviceId;
+        logger.debug("Microphone device ID pre-cached", { deviceId: builtInMic.deviceId }, "audio");
+      }
+    } catch (error) {
+      logger.debug("Failed to pre-cache microphone device ID", { error: error.message }, "audio");
+    }
   }
 
   async startRecording() {
@@ -216,6 +260,15 @@ class AudioManager {
     return false;
   }
 
+  cancelProcessing() {
+    if (this.isProcessing) {
+      this.isProcessing = false;
+      this.onStateChange?.({ isRecording: false, isProcessing: false });
+      return true;
+    }
+    return false;
+  }
+
   async processAudio(audioBlob, metadata = {}) {
     const pipelineStart = performance.now();
 
@@ -224,6 +277,16 @@ class AudioManager {
       const localProvider = localStorage.getItem("localTranscriptionProvider") || "whisper";
       const whisperModel = localStorage.getItem("whisperModel") || "base";
       const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
+
+      const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+      const isSignedIn = localStorage.getItem("isSignedIn") === "true";
+
+      const useCloud = !useLocalWhisper && cloudTranscriptionMode === "openwhispr" && isSignedIn;
+      logger.debug(
+        "Transcription routing",
+        { useLocalWhisper, useCloud, isSignedIn },
+        "transcription"
+      );
 
       let result;
       let activeModel;
@@ -235,9 +298,16 @@ class AudioManager {
           activeModel = whisperModel;
           result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
         }
+      } else if (cloudTranscriptionMode === "openwhispr" && isSignedIn) {
+        activeModel = "openwhispr-cloud";
+        result = await this.processWithOpenWhisprCloud(audioBlob, metadata);
       } else {
         activeModel = this.getTranscriptionModel();
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
+      }
+
+      if (!this.isProcessing) {
+        return;
       }
 
       this.onTranscriptionComplete?.(result);
@@ -280,11 +350,14 @@ class AudioManager {
         this.onError?.({
           title: "Transcription Error",
           description: `Transcription failed: ${error.message}`,
+          code: error.code,
         });
       }
     } finally {
-      this.isProcessing = false;
-      this.onStateChange?.({ isRecording: false, isProcessing: false });
+      if (this.isProcessing) {
+        this.isProcessing = false;
+        this.onStateChange?.({ isRecording: false, isProcessing: false });
+      }
     }
   }
 
@@ -918,6 +991,90 @@ class AudioManager {
     return result;
   }
 
+  async processWithOpenWhisprCloud(audioBlob, metadata = {}) {
+    if (!navigator.onLine) {
+      const err = new Error("You're offline. Cloud transcription requires an internet connection.");
+      err.code = "OFFLINE";
+      throw err;
+    }
+
+    const timings = {};
+    const language = localStorage.getItem("preferredLanguage");
+
+    const arrayBuffer = await audioBlob.arrayBuffer();
+    const opts = {};
+    if (language && language !== "auto") opts.language = language;
+
+    const dictionaryPrompt = this.getCustomDictionaryPrompt();
+    if (dictionaryPrompt) opts.prompt = dictionaryPrompt;
+
+    // Use withSessionRefresh to handle AUTH_EXPIRED automatically
+    const transcriptionStart = performance.now();
+    const result = await withSessionRefresh(async () => {
+      const res = await window.electronAPI.cloudTranscribe(arrayBuffer, opts);
+      if (!res.success) {
+        const err = new Error(res.error || "Cloud transcription failed");
+        err.code = res.code;
+        throw err;
+      }
+      return res;
+    });
+    timings.transcriptionProcessingDurationMs = Math.round(performance.now() - transcriptionStart);
+
+    // Process with reasoning if enabled
+    let processedText = result.text;
+    const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+    if (useReasoningModel && processedText) {
+      const reasoningStart = performance.now();
+      const cloudReasoningModel =
+        localStorage.getItem("cloudReasoningModel") || "llama-3.3-70b-versatile";
+      const agentName = localStorage.getItem("agentName") || "";
+      const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+
+      if (cloudTranscriptionMode === "openwhispr") {
+        const reasonResult = await withSessionRefresh(async () => {
+          const res = await window.electronAPI.cloudReason(processedText, {
+            model: cloudReasoningModel,
+            agentName,
+            customDictionary: this.getCustomDictionaryArray(),
+          });
+          if (!res.success) {
+            const err = new Error(res.error || "Cloud reasoning failed");
+            err.code = res.code;
+            throw err;
+          }
+          return res;
+        });
+
+        if (reasonResult.success) {
+          processedText = reasonResult.text;
+        }
+      }
+      timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+    }
+
+    return {
+      success: true,
+      text: processedText,
+      source: "openwhispr",
+      timings,
+      limitReached: result.limitReached,
+      wordsUsed: result.wordsUsed,
+      wordsRemaining: result.wordsRemaining,
+    };
+  }
+
+  getCustomDictionaryArray() {
+    try {
+      const raw = localStorage.getItem("customDictionary");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
     const timings = {};
     const language = localStorage.getItem("preferredLanguage");
@@ -1413,16 +1570,311 @@ class AudioManager {
     return {
       isRecording: this.isRecording,
       isProcessing: this.isProcessing,
+      isStreaming: this.isStreaming,
     };
   }
 
+  // --- Assembly AI Real-time Streaming ---
+
+  shouldUseStreaming() {
+    const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+    const isSignedIn = localStorage.getItem("isSignedIn") === "true";
+    const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
+    const streamingDisabled = localStorage.getItem("assemblyAiStreaming") === "false";
+
+    return (
+      !useLocalWhisper &&
+      cloudTranscriptionMode === "openwhispr" &&
+      isSignedIn &&
+      !streamingDisabled
+    );
+  }
+
+  async warmupStreamingConnection() {
+    if (!this.shouldUseStreaming()) {
+      logger.debug("Streaming warmup skipped - not in streaming mode", {}, "streaming");
+      return false;
+    }
+
+    try {
+      const [, wsResult] = await Promise.all([
+        this.cacheMicrophoneDeviceId(),
+        withSessionRefresh(async () => {
+          const language = localStorage.getItem("preferredLanguage");
+          const res = await window.electronAPI.assemblyAiStreamingWarmup({
+            sampleRate: 16000,
+            language: language !== "auto" ? language : undefined,
+          });
+          // Throw error to trigger retry if AUTH_EXPIRED
+          if (!res.success && res.code) {
+            const err = new Error(res.error || "Warmup failed");
+            err.code = res.code;
+            throw err;
+          }
+          return res;
+        }),
+      ]);
+
+      if (wsResult.success) {
+        logger.info(
+          "AssemblyAI streaming connection warmed up",
+          { alreadyWarm: wsResult.alreadyWarm, micCached: !!this.cachedMicDeviceId },
+          "streaming"
+        );
+        return true;
+      } else if (wsResult.code === "NO_API") {
+        logger.debug("Streaming warmup skipped - API not configured", {}, "streaming");
+        return false;
+      } else {
+        logger.warn("AssemblyAI warmup failed", { error: wsResult.error }, "streaming");
+        return false;
+      }
+    } catch (error) {
+      logger.error("AssemblyAI warmup error", { error: error.message }, "streaming");
+      return false;
+    }
+  }
+
+  async startStreamingRecording() {
+    try {
+      if (this.isRecording || this.isStreaming || this.isProcessing) {
+        return false;
+      }
+
+      const constraints = await this.getAudioConstraints();
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      const audioTrack = stream.getAudioTracks()[0];
+      if (audioTrack) {
+        const settings = audioTrack.getSettings();
+        logger.info(
+          "Streaming recording started with microphone",
+          {
+            label: audioTrack.label,
+            deviceId: settings.deviceId?.slice(0, 20) + "...",
+            sampleRate: settings.sampleRate,
+            usedCachedId: !!this.cachedMicDeviceId,
+          },
+          "audio"
+        );
+      }
+
+      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
+      const result = await withSessionRefresh(async () => {
+        const language = localStorage.getItem("preferredLanguage");
+        const res = await window.electronAPI.assemblyAiStreamingStart({
+          sampleRate: 16000,
+          language: language !== "auto" ? language : undefined,
+        });
+
+        if (!res.success) {
+          if (res.code === "NO_API") {
+            // Return special marker to indicate fallback needed
+            return { needsFallback: true };
+          }
+          const err = new Error(res.error || "Failed to start streaming session");
+          err.code = res.code;
+          throw err;
+        }
+        return res;
+      });
+
+      // Handle fallback to regular recording if streaming not configured
+      if (result.needsFallback) {
+        stream.getTracks().forEach((track) => track.stop());
+        logger.debug(
+          "Streaming API not configured, falling back to regular recording",
+          {},
+          "streaming"
+        );
+        return this.startRecording();
+      }
+
+      this.streamingAudioContext = new AudioContext({ sampleRate: 16000 });
+      this.streamingSource = this.streamingAudioContext.createMediaStreamSource(stream);
+      this.streamingStream = stream;
+
+      const bufferSize = 4096;
+      this.streamingProcessor = this.streamingAudioContext.createScriptProcessor(bufferSize, 1, 1);
+
+      this.streamingProcessor.onaudioprocess = (event) => {
+        if (!this.isStreaming) return;
+
+        const inputData = event.inputBuffer.getChannelData(0);
+        const pcmData = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
+        }
+
+        window.electronAPI.assemblyAiStreamingSend(pcmData.buffer);
+      };
+
+      this.streamingSource.connect(this.streamingProcessor);
+      this.streamingProcessor.connect(this.streamingAudioContext.destination);
+
+      this.streamingFinalText = "";
+
+      const partialCleanup = window.electronAPI.onAssemblyAiPartialTranscript((text) => {
+        this.onPartialTranscript?.(text);
+      });
+
+      const finalCleanup = window.electronAPI.onAssemblyAiFinalTranscript((text) => {
+        this.streamingFinalText = text;
+        this.onPartialTranscript?.(text);
+      });
+
+      const errorCleanup = window.electronAPI.onAssemblyAiError((error) => {
+        logger.error("AssemblyAI streaming error", { error }, "streaming");
+        this.onError?.({
+          title: "Streaming Error",
+          description: error,
+        });
+      });
+
+      const sessionEndCleanup = window.electronAPI.onAssemblyAiSessionEnd((data) => {
+        logger.debug("AssemblyAI session ended", data, "streaming");
+        if (data.text) {
+          this.streamingFinalText = data.text;
+        }
+      });
+
+      this.streamingCleanupFns = [partialCleanup, finalCleanup, errorCleanup, sessionEndCleanup];
+
+      this.isStreaming = true;
+      this.isRecording = true;
+      this.recordingStartTime = Date.now();
+      this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
+
+      return true;
+    } catch (error) {
+      logger.error("Failed to start streaming recording", { error: error.message }, "streaming");
+
+      let errorTitle = "Streaming Error";
+      let errorDescription = `Failed to start streaming: ${error.message}`;
+
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        errorTitle = "Microphone Access Denied";
+        errorDescription =
+          "Please grant microphone permission in your system settings and try again.";
+      }
+
+      this.onError?.({
+        title: errorTitle,
+        description: errorDescription,
+      });
+
+      await this.cleanupStreaming();
+      return false;
+    }
+  }
+
+  async stopStreamingRecording() {
+    if (!this.isStreaming) return false;
+
+    const durationSeconds = this.recordingStartTime
+      ? (Date.now() - this.recordingStartTime) / 1000
+      : null;
+
+    this.isStreaming = false;
+    this.isRecording = false;
+    this.recordingStartTime = null;
+    this.onStateChange?.({ isRecording: false, isProcessing: true, isStreaming: false });
+
+    await this.cleanupStreaming();
+
+    let finalText = this.streamingFinalText || "";
+
+    try {
+      const result = await window.electronAPI.assemblyAiStreamingStop();
+      logger.info("Streaming recording stopped", { durationSeconds }, "streaming");
+
+      if (result?.text) {
+        finalText = result.text;
+      }
+    } catch (error) {
+      logger.error("Error stopping streaming", { error: error.message }, "streaming");
+    }
+
+    if (finalText) {
+      this.onTranscriptionComplete?.({
+        success: true,
+        text: finalText,
+        source: "assemblyai-streaming",
+      });
+    }
+
+    this.isProcessing = false;
+    this.onStateChange?.({ isRecording: false, isProcessing: false, isStreaming: false });
+
+    if (this.shouldUseStreaming()) {
+      this.warmupStreamingConnection().catch((e) => {
+        logger.debug("Background re-warm failed", { error: e.message }, "streaming");
+      });
+    }
+
+    return true;
+  }
+
+  async cleanupStreaming() {
+    for (const cleanup of this.streamingCleanupFns) {
+      try {
+        cleanup?.();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+    this.streamingCleanupFns = [];
+    this.streamingFinalText = "";
+
+    if (this.streamingProcessor) {
+      try {
+        this.streamingProcessor.disconnect();
+      } catch (e) {
+        // Ignore
+      }
+      this.streamingProcessor = null;
+    }
+
+    if (this.streamingSource) {
+      try {
+        this.streamingSource.disconnect();
+      } catch (e) {
+        // Ignore
+      }
+      this.streamingSource = null;
+    }
+
+    // Close audio context
+    if (this.streamingAudioContext) {
+      try {
+        await this.streamingAudioContext.close();
+      } catch (e) {
+        // Ignore
+      }
+      this.streamingAudioContext = null;
+    }
+
+    // Stop media stream
+    if (this.streamingStream) {
+      this.streamingStream.getTracks().forEach((track) => track.stop());
+      this.streamingStream = null;
+    }
+
+    this.isStreaming = false;
+  }
+
   cleanup() {
+    if (this.isStreaming) {
+      this.cleanupStreaming();
+    }
     if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
     }
     this.onStateChange = null;
     this.onError = null;
     this.onTranscriptionComplete = null;
+    this.onPartialTranscript = null;
   }
 }
 

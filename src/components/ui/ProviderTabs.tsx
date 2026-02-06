@@ -1,10 +1,11 @@
-import { ReactNode } from "react";
+import { ReactNode, useRef, useState, useEffect, useCallback } from "react";
 import { ProviderIcon } from "./ProviderIcon";
 import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyles";
 
 export interface ProviderTabItem {
   id: string;
   name: string;
+  recommended?: boolean;
 }
 
 type ColorScheme = Exclude<BaseColorScheme, "blue"> | "dynamic";
@@ -19,22 +20,6 @@ interface ProviderTabsProps {
   scrollable?: boolean;
 }
 
-const COLOR_CONFIG: Record<
-  Exclude<ColorScheme, "dynamic">,
-  { text: string; border: string; bg: string }
-> = {
-  indigo: {
-    text: "text-indigo-700",
-    border: "rgb(99 102 241)",
-    bg: "rgb(238 242 255)",
-  },
-  purple: {
-    text: "text-purple-700",
-    border: "rgb(147 51 234)",
-    bg: "rgb(250 245 255)",
-  },
-};
-
 export function ProviderTabs({
   providers,
   selectedId,
@@ -43,33 +28,74 @@ export function ProviderTabs({
   colorScheme = "indigo",
   scrollable = false,
 }: ProviderTabsProps) {
-  const colors = colorScheme !== "dynamic" ? COLOR_CONFIG[colorScheme] : null;
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({
+    opacity: 0,
+  });
+
+  const updateIndicator = useCallback(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const selectedIndex = providers.findIndex((p) => p.id === selectedId);
+    if (selectedIndex === -1) {
+      setIndicatorStyle({ opacity: 0 });
+      return;
+    }
+
+    const buttons = container.querySelectorAll<HTMLButtonElement>("[data-tab-button]");
+    const selectedButton = buttons[selectedIndex];
+    if (!selectedButton) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const buttonRect = selectedButton.getBoundingClientRect();
+
+    setIndicatorStyle({
+      width: buttonRect.width,
+      height: buttonRect.height,
+      transform: `translateX(${buttonRect.left - containerRect.left}px)`,
+      opacity: 1,
+    });
+  }, [providers, selectedId]);
+
+  useEffect(() => {
+    updateIndicator();
+  }, [updateIndicator]);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(() => updateIndicator());
+    if (containerRef.current) observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, [updateIndicator]);
 
   return (
     <div
-      className={`flex bg-gray-50 border-b border-gray-200 ${scrollable ? "overflow-x-auto" : ""}`}
+      ref={containerRef}
+      className={`relative flex p-0.5 rounded-md bg-surface-raised dark:bg-surface-1 ${scrollable ? "overflow-x-auto" : ""}`}
     >
+      {/* Sliding indicator - frosted glass treatment */}
+      <div
+        className="absolute top-0.5 left-0 rounded-md bg-card border border-border dark:border-border-subtle shadow-sm dark:shadow-(--shadow-card) transition-all duration-200 ease-out pointer-events-none"
+        style={indicatorStyle}
+      />
+
       {providers.map((provider) => {
         const isSelected = selectedId === provider.id;
-
-        // Get styles based on color scheme
-        const selectedStyles = colors
-          ? { borderBottomColor: colors.border, backgroundColor: colors.bg }
-          : { borderBottomColor: "rgb(99 102 241)", backgroundColor: "rgb(238 242 255)" };
-
-        const textClass = isSelected ? colors?.text || "text-indigo-700" : "text-gray-600";
 
         return (
           <button
             key={provider.id}
+            data-tab-button
             onClick={() => onSelect(provider.id)}
-            className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 font-medium transition-all ${
+            className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors duration-150 ${
               scrollable ? "whitespace-nowrap" : ""
-            } ${textClass} ${isSelected ? "border-b-2" : "hover:bg-gray-100"}`}
-            style={isSelected ? selectedStyles : undefined}
+            } ${isSelected ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
             <span>{provider.name}</span>
+            {provider.recommended && (
+              <span className="text-[9px] text-primary/70 font-medium">Recommended</span>
+            )}
           </button>
         );
       })}

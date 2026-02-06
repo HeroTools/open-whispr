@@ -10,6 +10,16 @@ if (process.platform === "win32") {
   app.setAppUserModelId("com.herotools.openwispr");
 }
 
+// Register custom protocol for OAuth callbacks
+// This must be done before app is ready
+if (process.defaultApp) {
+  if (process.argv.length >= 2) {
+    app.setAsDefaultProtocolClient('openwhispr', process.execPath, [process.argv[1]]);
+  }
+} else {
+  app.setAsDefaultProtocolClient('openwhispr');
+}
+
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
 if (!gotSingleInstanceLock) {
@@ -49,6 +59,7 @@ const TrayManager = require("./src/helpers/tray");
 const IPCHandlers = require("./src/helpers/ipcHandlers");
 const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
+const DevServerManager = require("./src/helpers/devServerManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
 
 // Manager instances - initialized after app.whenReady()
@@ -153,6 +164,38 @@ function initializeManagers() {
     windowsKeyManager,
   });
 }
+
+// Handle the protocol on macOS
+app.on('open-url', (event, url) => {
+  event.preventDefault();
+  if (url.startsWith('openwhispr://')) {
+    handleOAuthDeepLink(url);
+  }
+});
+
+// Extract the session verifier from the deep link and navigate the control
+// panel to its app URL with the verifier param so the Neon Auth SDK can
+// read it from window.location.search and complete authentication.
+function handleOAuthDeepLink(deepLinkUrl) {
+  try {
+    const parsed = new URL(deepLinkUrl);
+    const verifier = parsed.searchParams.get('neon_auth_session_verifier');
+    if (!verifier) return;
+
+    if (isLiveWindow(windowManager?.controlPanelWindow)) {
+      const appUrl = DevServerManager.getAppUrl(true);
+      const separator = appUrl.includes('?') ? '&' : '?';
+      const urlWithVerifier = `${appUrl}${separator}neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
+      if (debugLogger) debugLogger.debug('Navigating control panel with OAuth verifier');
+      windowManager.controlPanelWindow.loadURL(urlWithVerifier);
+      windowManager.controlPanelWindow.show();
+      windowManager.controlPanelWindow.focus();
+    }
+  } catch (err) {
+    if (debugLogger) debugLogger.error('Failed to handle OAuth deep link:', err);
+  }
+}
+
 
 // Main application startup
 async function startApp() {
@@ -444,9 +487,16 @@ async function startApp() {
   }
 }
 
+// Listen for usage limit reached from dictation overlay, forward to control panel
+ipcMain.on("limit-reached", (_event, data) => {
+  if (isLiveWindow(windowManager?.controlPanelWindow)) {
+    windowManager.controlPanelWindow.webContents.send("limit-reached", data);
+  }
+});
+
 // App event handlers
 if (gotSingleInstanceLock) {
-  app.on("second-instance", async () => {
+  app.on("second-instance", async (_event, commandLine) => {
     await app.whenReady();
     if (!windowManager) {
       return;
@@ -466,6 +516,12 @@ if (gotSingleInstanceLock) {
       windowManager.enforceMainWindowOnTop();
     } else {
       windowManager.createMainWindow();
+    }
+
+    // Check for OAuth protocol URL in command line arguments (Windows/Linux)
+    const url = commandLine.find(arg => arg.startsWith('openwhispr://'));
+    if (url) {
+      handleOAuthDeepLink(url);
     }
   });
 
