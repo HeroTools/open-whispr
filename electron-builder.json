@@ -121,7 +121,7 @@
       "portable"
     ],
     "signAndEditExecutable": false,
-    "icon": "src/assets/icon",
+    "icon": "./src/assets/icon.ico",
     "extraResources": [
       {
         "from": "resources/bin/nircmd.exe",
@@ -181,11 +181,5 @@
       "height": 380
     }
   },
-  "publish": {
-    "provider": "github",
-    "owner": "DictateVoice",
-    "repo": "dictatevoice",
-    "private": false,
-    "releaseType": "draft"
-  }
+  "publish": null
 }

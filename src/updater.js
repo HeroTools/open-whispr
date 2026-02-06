@@ -26,13 +26,10 @@ class UpdateManager {
       return;
     }
 
-    // Configure auto-updater for GitHub releases
-    autoUpdater.setFeedURL({
-      provider: "github",
-      owner: "DictateVoice",
-      repo: "dictatevoice",
-      private: false,
-    });
+    // Auto-updater disabled - no publish repository configured
+    // To enable: create your repository and update electron-builder.json "publish" section
+    console.log("Auto-updater disabled: no update repository configured");
+    return;
 
     // Disable auto-download - let user control when to download
     autoUpdater.autoDownload = false;
