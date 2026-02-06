@@ -10,7 +10,7 @@ const {
   cleanupFiles,
 } = require("./lib/download-utils");
 
-const WHISPER_CPP_REPO = "DictateVoice/whisper.cpp";
+const WHISPER_CPP_REPO = "OpenWhispr/whisper.cpp";
 
 // Version can be pinned via environment variable for reproducible builds
 const VERSION_OVERRIDE = process.env.WHISPER_CPP_VERSION || null;
