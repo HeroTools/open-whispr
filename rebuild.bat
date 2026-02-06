@@ -1,0 +1,6 @@
+@echo off
+echo Cleaning...
+rd /s /q dist 2>nul
+timeout /t 2 /nobreak >nul
+echo Building...
+npm run pack

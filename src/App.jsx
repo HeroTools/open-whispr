@@ -233,19 +233,6 @@ export default function App() {
 
   return (
     <div className="dictation-window">
-      {/* Ambient mint glow behind button during recording */}
-      {micState === "recording" && (
-        <div
-          className="fixed bottom-0 right-0 pointer-events-none"
-          style={{
-            width: 200,
-            height: 200,
-            background:
-              "radial-gradient(circle at center, rgba(112, 255, 186, 0.06) 0%, transparent 70%)",
-          }}
-        />
-      )}
-
       <div className="fixed bottom-6 right-6 z-50">
         <div
           className="relative flex items-center gap-2"

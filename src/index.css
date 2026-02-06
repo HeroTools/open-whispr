@@ -131,6 +131,16 @@ h1 {
 button {
   font-family: var(--font-family-sans);
   cursor: pointer;
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus {
+  outline: none;
+}
+
+button:active {
+  outline: none;
 }
 
 button:hover,

@@ -121,7 +121,7 @@
       "portable"
     ],
     "signAndEditExecutable": false,
-    "icon": "src/assets/icon.ico",
+    "icon": "src/assets/icon",
     "extraResources": [
       {
         "from": "resources/bin/nircmd.exe",
