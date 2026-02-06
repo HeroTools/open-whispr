@@ -1037,9 +1037,9 @@ class AudioManager {
     if (useReasoningModel && processedText) {
       const reasoningStart = performance.now();
       const agentName = localStorage.getItem("agentName") || "";
-      const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+      const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
 
-      if (cloudTranscriptionMode === "openwhispr") {
+      if (cloudReasoningMode === "openwhispr") {
         const reasonResult = await withSessionRefresh(async () => {
           const res = await window.electronAPI.cloudReason(processedText, {
             agentName,
@@ -1056,6 +1056,14 @@ class AudioManager {
 
         if (reasonResult.success) {
           processedText = reasonResult.text;
+        }
+      } else {
+        const reasoningModel = localStorage.getItem("reasoningModel") || "";
+        if (reasoningModel) {
+          const result = await this.processWithReasoningModel(processedText, reasoningModel, agentName);
+          if (result) {
+            processedText = result;
+          }
         }
       }
       timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
@@ -1933,34 +1941,50 @@ class AudioManager {
     if (useReasoningModel && finalText) {
       const reasoningStart = performance.now();
       const agentName = localStorage.getItem("agentName") || "";
+      const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
 
       try {
-        const reasonResult = await withSessionRefresh(async () => {
-          const res = await window.electronAPI.cloudReason(finalText, {
-            agentName,
-            customDictionary: this.getCustomDictionaryArray(),
-            language: localStorage.getItem("preferredLanguage") || "auto",
+        if (cloudReasoningMode === "openwhispr") {
+          const reasonResult = await withSessionRefresh(async () => {
+            const res = await window.electronAPI.cloudReason(finalText, {
+              agentName,
+              customDictionary: this.getCustomDictionaryArray(),
+              language: localStorage.getItem("preferredLanguage") || "auto",
+            });
+            if (!res.success) {
+              const err = new Error(res.error || "Cloud reasoning failed");
+              err.code = res.code;
+              throw err;
+            }
+            return res;
           });
-          if (!res.success) {
-            const err = new Error(res.error || "Cloud reasoning failed");
-            err.code = res.code;
-            throw err;
+
+          if (reasonResult.success && reasonResult.text) {
+            finalText = reasonResult.text;
           }
-          return res;
-        });
 
-        if (reasonResult.success && reasonResult.text) {
-          finalText = reasonResult.text;
+          logger.info(
+            "Streaming reasoning complete",
+            {
+              reasoningDurationMs: Math.round(performance.now() - reasoningStart),
+              model: reasonResult.model,
+            },
+            "streaming"
+          );
+        } else {
+          const reasoningModel = localStorage.getItem("reasoningModel") || "";
+          if (reasoningModel) {
+            const result = await this.processWithReasoningModel(finalText, reasoningModel, agentName);
+            if (result) {
+              finalText = result;
+            }
+            logger.info(
+              "Streaming BYOK reasoning complete",
+              { reasoningDurationMs: Math.round(performance.now() - reasoningStart) },
+              "streaming"
+            );
+          }
         }
-
-        logger.info(
-          "Streaming reasoning complete",
-          {
-            reasoningDurationMs: Math.round(performance.now() - reasoningStart),
-            model: reasonResult.model,
-          },
-          "streaming"
-        );
       } catch (reasonError) {
         logger.error(
           "Streaming reasoning failed, using raw text",

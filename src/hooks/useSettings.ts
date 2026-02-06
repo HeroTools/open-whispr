@@ -28,6 +28,7 @@ export interface ReasoningSettings {
   reasoningModel: string;
   reasoningProvider: string;
   cloudReasoningBaseUrl?: string;
+  cloudReasoningMode: string;
 }
 
 export interface HotkeySettings {
@@ -147,6 +148,15 @@ export function useSettings() {
   // Cloud transcription mode: "openwhispr" (server-side) or "byok" (bring your own key)
   const [cloudTranscriptionMode, setCloudTranscriptionMode] = useLocalStorage(
     "cloudTranscriptionMode",
+    "openwhispr",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  const [cloudReasoningMode, setCloudReasoningMode] = useLocalStorage(
+    "cloudReasoningMode",
     "openwhispr",
     {
       serialize: String,
@@ -568,8 +578,10 @@ export function useSettings() {
         setReasoningProvider(settings.reasoningProvider);
       if (settings.cloudReasoningBaseUrl !== undefined)
         setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
+      if (settings.cloudReasoningMode !== undefined)
+        setCloudReasoningMode(settings.cloudReasoningMode);
     },
-    [setUseReasoningModel, setReasoningModel, setReasoningProvider, setCloudReasoningBaseUrl]
+    [setUseReasoningModel, setReasoningModel, setReasoningProvider, setCloudReasoningBaseUrl, setCloudReasoningMode]
   );
 
   const updateApiKeys = useCallback(
@@ -596,6 +608,7 @@ export function useSettings() {
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     cloudTranscriptionMode,
+    cloudReasoningMode,
     customDictionary,
     assemblyAiStreaming,
     setAssemblyAiStreaming,
@@ -621,6 +634,7 @@ export function useSettings() {
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setCloudTranscriptionMode,
+    setCloudReasoningMode,
     setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,

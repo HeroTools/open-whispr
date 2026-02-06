@@ -16,7 +16,6 @@ import {
   Monitor,
   Cloud,
   Key,
-  ChevronDown,
   Sparkles,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
@@ -172,22 +171,17 @@ function TranscriptionSection({
   setCloudTranscriptionBaseUrl,
   toast,
 }: TranscriptionSectionProps) {
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-
-  // Determine if we're in "advanced" mode (BYOK or local)
-  const isAdvancedMode = cloudTranscriptionMode === "byok" || useLocalWhisper;
-
-  // When user is signed in and using OpenWhispr Cloud, keep it simple
+  const isCustomMode = cloudTranscriptionMode === "byok" || useLocalWhisper;
   const isCloudMode = isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       <SectionHeader
         title="Speech to Text"
         description="Choose how OpenWhispr transcribes your voice"
       />
 
-      {/* Primary option: OpenWhispr Cloud */}
+      {/* Mode selector */}
       {isSignedIn && (
         <SettingsPanel>
           <SettingsPanelRow>
@@ -197,7 +191,6 @@ function TranscriptionSection({
                   setCloudTranscriptionMode("openwhispr");
                   setUseLocalWhisper(false);
                   updateTranscriptionSettings({ useLocalWhisper: false });
-                  setAdvancedOpen(false);
                   toast({
                     title: "Switched to OpenWhispr Cloud",
                     description: "Transcription will use OpenWhispr's cloud service.",
@@ -249,135 +242,335 @@ function TranscriptionSection({
               </div>
             </button>
           </SettingsPanelRow>
+          <SettingsPanelRow>
+            <button
+              onClick={() => {
+                if (!isCustomMode) {
+                  setCloudTranscriptionMode("byok");
+                  setUseLocalWhisper(false);
+                  updateTranscriptionSettings({ useLocalWhisper: false });
+                  toast({
+                    title: "Switched to Custom Setup",
+                    description: "Configure your own provider and API key.",
+                    variant: "success",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  isCustomMode
+                    ? "bg-accent/10 dark:bg-accent/15"
+                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                }`}
+              >
+                <Key
+                  className={`w-4 h-4 transition-colors ${
+                    isCustomMode ? "text-accent" : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-foreground">Custom Setup</span>
+                  {isCustomMode && (
+                    <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  Use your own provider and API key.
+                </p>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                  isCustomMode
+                    ? "border-accent bg-accent"
+                    : "border-border-hover dark:border-border-subtle"
+                }`}
+              >
+                {isCustomMode && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                  </div>
+                )}
+              </div>
+            </button>
+          </SettingsPanelRow>
         </SettingsPanel>
       )}
 
-      {/* Advanced section */}
-      <div>
-        <button
-          onClick={() => setAdvancedOpen(!advancedOpen)}
-          className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer mb-3"
-        >
-          <ChevronDown
-            className={`w-3.5 h-3.5 transition-transform duration-200 ${
-              advancedOpen || isAdvancedMode ? "rotate-0" : "-rotate-90"
-            }`}
-          />
-          Advanced
-          {isAdvancedMode && (
-            <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm ml-1">
-              Active
-            </span>
-          )}
-        </button>
+      {/* Custom Setup model picker — shown when Custom Setup is active or not signed in */}
+      {(isCustomMode || !isSignedIn) && (
+        <TranscriptionModelPicker
+          selectedCloudProvider={cloudTranscriptionProvider}
+          onCloudProviderSelect={setCloudTranscriptionProvider}
+          selectedCloudModel={cloudTranscriptionModel}
+          onCloudModelSelect={setCloudTranscriptionModel}
+          selectedLocalModel={
+            localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+          }
+          onLocalModelSelect={(modelId) => {
+            if (localTranscriptionProvider === "nvidia") {
+              setParakeetModel(modelId);
+            } else {
+              setWhisperModel(modelId);
+            }
+          }}
+          selectedLocalProvider={localTranscriptionProvider}
+          onLocalProviderSelect={setLocalTranscriptionProvider}
+          useLocalWhisper={useLocalWhisper}
+          onModeChange={(isLocal) => {
+            setUseLocalWhisper(isLocal);
+            updateTranscriptionSettings({ useLocalWhisper: isLocal });
+            if (isLocal) {
+              setCloudTranscriptionMode("byok");
+            }
+          }}
+          openaiApiKey={openaiApiKey}
+          setOpenaiApiKey={setOpenaiApiKey}
+          groqApiKey={groqApiKey}
+          setGroqApiKey={setGroqApiKey}
+          customTranscriptionApiKey={customTranscriptionApiKey}
+          setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+          cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+          setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+          variant="settings"
+        />
+      )}
+    </div>
+  );
+}
 
-        {(advancedOpen || isAdvancedMode) && (
-          <div className="space-y-3">
-            {isSignedIn && (
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <button
-                    onClick={() => {
-                      if (cloudTranscriptionMode !== "byok" || useLocalWhisper) {
-                        setCloudTranscriptionMode("byok");
-                        setUseLocalWhisper(false);
-                        updateTranscriptionSettings({ useLocalWhisper: false });
-                        toast({
-                          title: "Switched to Bring Your Own Key",
-                          description: "You'll need to provide your own API key for transcription.",
-                          variant: "success",
-                          duration: 3000,
-                        });
-                      }
-                    }}
-                    className="w-full flex items-center gap-3 text-left cursor-pointer group"
+// ── AI Models section (extracted for clarity) ───────────────────────
+
+interface AiModelsSectionProps {
+  isSignedIn: boolean;
+  cloudReasoningMode: string;
+  setCloudReasoningMode: (mode: string) => void;
+  useReasoningModel: boolean;
+  setUseReasoningModel: (value: boolean) => void;
+  reasoningModel: string;
+  setReasoningModel: (model: string) => void;
+  reasoningProvider: string;
+  setReasoningProvider: (provider: string) => void;
+  cloudReasoningBaseUrl: string;
+  setCloudReasoningBaseUrl: (url: string) => void;
+  openaiApiKey: string;
+  setOpenaiApiKey: (key: string) => void;
+  anthropicApiKey: string;
+  setAnthropicApiKey: (key: string) => void;
+  geminiApiKey: string;
+  setGeminiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
+  customReasoningApiKey: string;
+  setCustomReasoningApiKey: (key: string) => void;
+  showAlertDialog: (dialog: { title: string; description: string }) => void;
+  toast: (opts: {
+    title: string;
+    description: string;
+    variant?: string;
+    duration?: number;
+  }) => void;
+}
+
+function AiModelsSection({
+  isSignedIn,
+  cloudReasoningMode,
+  setCloudReasoningMode,
+  useReasoningModel,
+  setUseReasoningModel,
+  reasoningModel,
+  setReasoningModel,
+  reasoningProvider,
+  setReasoningProvider,
+  cloudReasoningBaseUrl,
+  setCloudReasoningBaseUrl,
+  openaiApiKey,
+  setOpenaiApiKey,
+  anthropicApiKey,
+  setAnthropicApiKey,
+  geminiApiKey,
+  setGeminiApiKey,
+  groqApiKey,
+  setGroqApiKey,
+  customReasoningApiKey,
+  setCustomReasoningApiKey,
+  showAlertDialog,
+  toast,
+}: AiModelsSectionProps) {
+  const isCustomMode = cloudReasoningMode === "byok";
+  const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="AI Text Enhancement"
+        description="Clean up transcriptions, handle commands, and fix errors while preserving your tone."
+      />
+
+      {/* Enable toggle — always at top */}
+      <SettingsPanel>
+        <SettingsPanelRow>
+          <SettingsRow label="Enable text cleanup" description="AI improves transcription quality">
+            <Toggle
+              checked={useReasoningModel}
+              onChange={setUseReasoningModel}
+            />
+          </SettingsRow>
+        </SettingsPanelRow>
+      </SettingsPanel>
+
+      {useReasoningModel && (
+        <>
+          {/* Mode selector */}
+          {isSignedIn && (
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCloudMode) {
+                      setCloudReasoningMode("openwhispr");
+                      toast({
+                        title: "Switched to OpenWhispr Cloud",
+                        description: "AI text enhancement will use OpenWhispr's cloud service.",
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "bg-primary/10 dark:bg-primary/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
                   >
-                    <div
-                      className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
-                        cloudTranscriptionMode === "byok" && !useLocalWhisper
-                          ? "bg-accent/10 dark:bg-accent/15"
-                          : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    <Cloud
+                      className={`w-4 h-4 transition-colors ${
+                        isCloudMode ? "text-primary" : "text-muted-foreground"
                       }`}
-                    >
-                      <Key
-                        className={`w-4 h-4 transition-colors ${
-                          cloudTranscriptionMode === "byok" && !useLocalWhisper
-                            ? "text-accent"
-                            : "text-muted-foreground"
-                        }`}
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[12px] font-medium text-foreground">
-                          Bring Your Own Key
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-medium text-foreground">OpenWhispr Cloud</span>
+                      {isCloudMode && (
+                        <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                          Active
                         </span>
-                        {cloudTranscriptionMode === "byok" && !useLocalWhisper && (
-                          <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
-                            Active
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                        Use your own API key. No usage limits.
-                      </p>
-                    </div>
-                    <div
-                      className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
-                        cloudTranscriptionMode === "byok" && !useLocalWhisper
-                          ? "border-accent bg-accent"
-                          : "border-border-hover dark:border-border-subtle"
-                      }`}
-                    >
-                      {cloudTranscriptionMode === "byok" && !useLocalWhisper && (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
-                        </div>
                       )}
                     </div>
-                  </button>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            )}
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      Just works. No configuration needed.
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "border-primary bg-primary"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCloudMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCustomMode) {
+                      setCloudReasoningMode("byok");
+                      toast({
+                        title: "Switched to Custom Setup",
+                        description: "Configure your own provider and API key.",
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "bg-accent/10 dark:bg-accent/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Key
+                      className={`w-4 h-4 transition-colors ${
+                        isCustomMode ? "text-accent" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-medium text-foreground">Custom Setup</span>
+                      {isCustomMode && (
+                        <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      Use your own provider and API key.
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "border-accent bg-accent"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCustomMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+            </SettingsPanel>
+          )}
 
-            <TranscriptionModelPicker
-              selectedCloudProvider={cloudTranscriptionProvider}
-              onCloudProviderSelect={setCloudTranscriptionProvider}
-              selectedCloudModel={cloudTranscriptionModel}
-              onCloudModelSelect={setCloudTranscriptionModel}
-              selectedLocalModel={
-                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
-              }
-              onLocalModelSelect={(modelId) => {
-                if (localTranscriptionProvider === "nvidia") {
-                  setParakeetModel(modelId);
-                } else {
-                  setWhisperModel(modelId);
-                }
-              }}
-              selectedLocalProvider={localTranscriptionProvider}
-              onLocalProviderSelect={setLocalTranscriptionProvider}
-              useLocalWhisper={useLocalWhisper}
-              onModeChange={(isLocal) => {
-                setUseLocalWhisper(isLocal);
-                updateTranscriptionSettings({ useLocalWhisper: isLocal });
-                if (isLocal) {
-                  setCloudTranscriptionMode("byok");
-                }
-              }}
+          {/* Custom Setup model picker — shown when Custom Setup is active or not signed in */}
+          {(isCustomMode || !isSignedIn) && (
+            <ReasoningModelSelector
+              useReasoningModel={useReasoningModel}
+              setUseReasoningModel={setUseReasoningModel}
+              reasoningModel={reasoningModel}
+              setReasoningModel={setReasoningModel}
+              localReasoningProvider={reasoningProvider}
+              setLocalReasoningProvider={setReasoningProvider}
+              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
               openaiApiKey={openaiApiKey}
               setOpenaiApiKey={setOpenaiApiKey}
+              anthropicApiKey={anthropicApiKey}
+              setAnthropicApiKey={setAnthropicApiKey}
+              geminiApiKey={geminiApiKey}
+              setGeminiApiKey={setGeminiApiKey}
               groqApiKey={groqApiKey}
               setGroqApiKey={setGroqApiKey}
-              customTranscriptionApiKey={customTranscriptionApiKey}
-              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
-              variant="settings"
+              customReasoningApiKey={customReasoningApiKey}
+              setCustomReasoningApiKey={setCustomReasoningApiKey}
+              showAlertDialog={showAlertDialog}
             />
-          </div>
-        )}
-      </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
@@ -443,6 +636,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     updateReasoningSettings,
     cloudTranscriptionMode,
     setCloudTranscriptionMode,
+    cloudReasoningMode,
+    setCloudReasoningMode,
     cloudBackupEnabled,
     setCloudBackupEnabled,
     telemetryEnabled,
@@ -933,6 +1128,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       </div>
                       <Button
                         onClick={() => {
+                          localStorage.setItem("pendingCloudMigration", "true");
                           localStorage.removeItem("onboardingCompleted");
                           localStorage.setItem("onboardingCurrentStep", "0");
                           window.location.reload();
@@ -1409,53 +1605,34 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "aiModels":
         return (
-          <div className="space-y-5">
-            <SectionHeader
-              title="AI Text Enhancement"
-              description='Configure how AI models clean up and format your transcriptions. Handles commands like "scratch that", creates proper lists, and fixes errors while preserving your natural tone.'
-            />
-
-            {isSignedIn && cloudTranscriptionMode === "openwhispr" ? (
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow label="Clean up transcriptions" description="Powered by OpenWhispr">
-                    <Toggle
-                      checked={useReasoningModel}
-                      onChange={(value) => {
-                        setUseReasoningModel(value);
-                        updateReasoningSettings({ useReasoningModel: value });
-                      }}
-                    />
-                  </SettingsRow>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            ) : (
-              <ReasoningModelSelector
-                useReasoningModel={useReasoningModel}
-                setUseReasoningModel={(value) => {
-                  setUseReasoningModel(value);
-                  updateReasoningSettings({ useReasoningModel: value });
-                }}
-                setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
-                cloudReasoningBaseUrl={cloudReasoningBaseUrl}
-                reasoningModel={reasoningModel}
-                setReasoningModel={setReasoningModel}
-                localReasoningProvider={reasoningProvider}
-                setLocalReasoningProvider={setReasoningProvider}
-                openaiApiKey={openaiApiKey}
-                setOpenaiApiKey={setOpenaiApiKey}
-                anthropicApiKey={anthropicApiKey}
-                setAnthropicApiKey={setAnthropicApiKey}
-                geminiApiKey={geminiApiKey}
-                setGeminiApiKey={setGeminiApiKey}
-                groqApiKey={groqApiKey}
-                setGroqApiKey={setGroqApiKey}
-                customReasoningApiKey={customReasoningApiKey}
-                setCustomReasoningApiKey={setCustomReasoningApiKey}
-                showAlertDialog={showAlertDialog}
-              />
-            )}
-          </div>
+          <AiModelsSection
+            isSignedIn={isSignedIn ?? false}
+            cloudReasoningMode={cloudReasoningMode}
+            setCloudReasoningMode={setCloudReasoningMode}
+            useReasoningModel={useReasoningModel}
+            setUseReasoningModel={(value) => {
+              setUseReasoningModel(value);
+              updateReasoningSettings({ useReasoningModel: value });
+            }}
+            reasoningModel={reasoningModel}
+            setReasoningModel={setReasoningModel}
+            reasoningProvider={reasoningProvider}
+            setReasoningProvider={setReasoningProvider}
+            cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+            setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            anthropicApiKey={anthropicApiKey}
+            setAnthropicApiKey={setAnthropicApiKey}
+            geminiApiKey={geminiApiKey}
+            setGeminiApiKey={setGeminiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            customReasoningApiKey={customReasoningApiKey}
+            setCustomReasoningApiKey={setCustomReasoningApiKey}
+            showAlertDialog={showAlertDialog}
+            toast={toast}
+          />
         );
 
       // ───────────────────────────────────────────────────

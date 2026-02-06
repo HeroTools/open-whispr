@@ -245,7 +245,7 @@ export function getReasoningModelLabel(modelId: string): string {
 export function getModelProvider(modelId: string): string {
   // When in OpenWhispr cloud mode, route reasoning through the cloud API
   if (typeof localStorage !== "undefined") {
-    const cloudMode = localStorage.getItem("cloudTranscriptionMode");
+    const cloudMode = localStorage.getItem("cloudReasoningMode");
     const isSignedIn = localStorage.getItem("isSignedIn") === "true";
     if (cloudMode === "openwhispr" && isSignedIn) {
       return "openwhispr";
