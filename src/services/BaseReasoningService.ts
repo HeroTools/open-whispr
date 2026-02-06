@@ -21,8 +21,14 @@ export abstract class BaseReasoningService {
     }
   }
 
+  protected getPreferredLanguage(): string {
+    if (typeof window === "undefined" || !window.localStorage) return "auto";
+    return window.localStorage.getItem("preferredLanguage") || "auto";
+  }
+
   protected getSystemPrompt(agentName: string | null): string {
-    return getSystemPrompt(agentName, this.getCustomDictionary());
+    const language = this.getPreferredLanguage();
+    return getSystemPrompt(agentName, this.getCustomDictionary(), language);
   }
 
   protected calculateMaxTokens(

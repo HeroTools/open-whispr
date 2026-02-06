@@ -3,6 +3,7 @@ import { useLocalStorage } from "./useLocalStorage";
 import { useDebouncedCallback } from "./useDebouncedCallback";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
+import logger from "../utils/logger";
 import type { LocalTranscriptionProvider } from "../types/electron";
 
 export interface TranscriptionSettings {
@@ -18,7 +19,6 @@ export interface TranscriptionSettings {
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
   cloudTranscriptionMode: string;
-  cloudReasoningModel: string;
   customDictionary: string[];
   assemblyAiStreaming: boolean;
 }
@@ -47,6 +47,11 @@ export interface ApiKeySettings {
   groqApiKey: string;
   customTranscriptionApiKey: string;
   customReasoningApiKey: string;
+}
+
+export interface PrivacySettings {
+  cloudBackupEnabled: boolean;
+  telemetryEnabled: boolean;
 }
 
 export interface ThemeSettings {
@@ -149,16 +154,6 @@ export function useSettings() {
     }
   );
 
-  // Cloud reasoning model (for OpenWhispr cloud mode)
-  const [cloudReasoningModel, setCloudReasoningModel] = useLocalStorage(
-    "cloudReasoningModel",
-    "llama-3.3-70b-versatile",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
-
   // Custom dictionary for improving transcription of specific words
   const [customDictionary, setCustomDictionaryRaw] = useLocalStorage<string[]>(
     "customDictionary",
@@ -190,8 +185,12 @@ export function useSettings() {
   const setCustomDictionary = useCallback(
     (words: string[]) => {
       setCustomDictionaryRaw(words);
-      window.electronAPI?.setDictionary(words).catch(() => {
-        // Silently ignore SQLite sync errors
+      window.electronAPI?.setDictionary(words).catch((err) => {
+        logger.warn(
+          "Failed to sync dictionary to SQLite",
+          { error: (err as Error).message },
+          "settings"
+        );
       });
     },
     [setCustomDictionaryRaw]
@@ -214,8 +213,12 @@ export function useSettings() {
           // Recover localStorage from SQLite (e.g. localStorage was cleared)
           setCustomDictionaryRaw(dbWords);
         }
-      } catch {
-        // Silently ignore sync errors
+      } catch (err) {
+        logger.warn(
+          "Failed to sync dictionary on startup",
+          { error: (err as Error).message },
+          "settings"
+        );
       }
     };
 
@@ -267,6 +270,17 @@ export function useSettings() {
       if (["light", "dark", "auto"].includes(value)) return value as "light" | "dark" | "auto";
       return "auto";
     },
+  });
+
+  // Privacy settings — both default to OFF
+  const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage("cloudBackupEnabled", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
+
+  const [telemetryEnabled, setTelemetryEnabled] = useLocalStorage("telemetryEnabled", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
   });
 
   // Custom endpoint API keys - synced to .env like other keys
@@ -324,16 +338,24 @@ export function useSettings() {
       }
     };
 
-    syncKeys().catch(() => {
-      // Silently ignore sync errors
+    syncKeys().catch((err) => {
+      logger.warn(
+        "Failed to sync API keys on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const debouncedPersistToEnv = useDebouncedCallback(() => {
     if (typeof window !== "undefined" && window.electronAPI?.saveAllKeysToEnv) {
-      window.electronAPI.saveAllKeysToEnv().catch(() => {
-        // Silently ignore persistence errors
+      window.electronAPI.saveAllKeysToEnv().catch((err) => {
+        logger.warn(
+          "Failed to persist API keys to .env",
+          { error: (err as Error).message },
+          "settings"
+        );
       });
     }
   }, 1000);
@@ -430,17 +452,32 @@ export function useSettings() {
     }
   );
 
-  // Wrap setActivationMode to notify main process (for Windows Push-to-Talk)
   const setActivationMode = useCallback(
     (mode: "tap" | "push") => {
       setActivationModeLocal(mode);
-      // Notify main process so Windows key listener can start/stop
       if (typeof window !== "undefined" && window.electronAPI?.notifyActivationModeChanged) {
         window.electronAPI.notifyActivationModeChanged(mode);
       }
     },
     [setActivationModeLocal]
   );
+
+  // Sync activation mode from main process on first mount (handles localStorage cleared)
+  const hasRunActivationModeSync = useRef(false);
+  useEffect(() => {
+    if (hasRunActivationModeSync.current) return;
+    hasRunActivationModeSync.current = true;
+
+    const sync = async () => {
+      if (!window.electronAPI?.getActivationMode) return;
+      const envMode = await window.electronAPI.getActivationMode();
+      if (envMode && envMode !== activationMode) {
+        setActivationModeLocal(envMode);
+      }
+    };
+    sync().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Microphone settings
   const [preferBuiltInMic, setPreferBuiltInMic] = useLocalStorage("preferBuiltInMic", true, {
@@ -466,7 +503,13 @@ export function useSettings() {
         reasoningProvider,
         reasoningModel: reasoningProvider === "local" ? reasoningModel : undefined,
       })
-      .catch((err) => console.error("Failed to sync startup preferences:", err));
+      .catch((err) =>
+        logger.warn(
+          "Failed to sync startup preferences",
+          { error: (err as Error).message },
+          "settings"
+        )
+      );
   }, [
     useLocalWhisper,
     localTranscriptionProvider,
@@ -553,7 +596,6 @@ export function useSettings() {
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     cloudTranscriptionMode,
-    cloudReasoningModel,
     customDictionary,
     assemblyAiStreaming,
     setAssemblyAiStreaming,
@@ -579,7 +621,6 @@ export function useSettings() {
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setCloudTranscriptionMode,
-    setCloudReasoningModel,
     setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
@@ -600,6 +641,10 @@ export function useSettings() {
     selectedMicDeviceId,
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
+    cloudBackupEnabled,
+    setCloudBackupEnabled,
+    telemetryEnabled,
+    setTelemetryEnabled,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,

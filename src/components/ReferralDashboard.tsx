@@ -126,16 +126,16 @@ function StatCard({
     <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 dark:bg-surface-1/50 border border-border/30 dark:border-border-subtle/30">
       <div
         className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${
-          highlight
-            ? "bg-success/10 dark:bg-success/15"
-            : "bg-muted/50 dark:bg-surface-raised/50"
+          highlight ? "bg-success/10 dark:bg-success/15" : "bg-muted/50 dark:bg-surface-raised/50"
         }`}
       >
         <Icon className={`w-4 h-4 ${highlight ? "text-success" : "text-muted-foreground"}`} />
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-[11px] text-muted-foreground">{label}</p>
-        <p className={`text-lg font-bold tabular-nums ${highlight ? "text-success" : "text-foreground"}`}>
+        <p
+          className={`text-lg font-bold tabular-nums ${highlight ? "text-success" : "text-foreground"}`}
+        >
           {value}
         </p>
       </div>
@@ -175,7 +175,9 @@ function InviteListItem({ invite }: { invite: ReferralInvite }) {
           <Mail className="w-4 h-4 text-muted-foreground" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-medium text-foreground truncate">{invite.recipientEmail}</p>
+          <p className="text-[13px] font-medium text-foreground truncate">
+            {invite.recipientEmail}
+          </p>
           <p className="text-[11px] text-muted-foreground flex items-center gap-1">
             <Calendar className="w-3 h-3" />
             {formatDate(invite.sentAt)}
@@ -188,7 +190,15 @@ function InviteListItem({ invite }: { invite: ReferralInvite }) {
 }
 
 // Empty state component
-function EmptyState({ icon: Icon, title, description }: { icon: React.ElementType; title: string; description: string }) {
+function EmptyState({
+  icon: Icon,
+  title,
+  description,
+}: {
+  icon: React.ElementType;
+  title: string;
+  description: string;
+}) {
   return (
     <div className="flex flex-col items-center justify-center py-10 text-center">
       <div className="w-12 h-12 rounded-full bg-muted/30 dark:bg-surface-1/50 flex items-center justify-center mb-3">
@@ -386,7 +396,9 @@ export function ReferralDashboard() {
             </h4>
             <div className="flex items-center gap-2">
               <div className="flex-1 bg-muted/50 dark:bg-surface-1/50 px-3 py-2 rounded-md border border-border/30 dark:border-border-subtle/30">
-                <p className="text-[12px] font-mono text-foreground truncate">{stats.referralLink}</p>
+                <p className="text-[12px] font-mono text-foreground truncate">
+                  {stats.referralLink}
+                </p>
               </div>
               <Button
                 variant="outline"
@@ -449,7 +461,11 @@ export function ReferralDashboard() {
           {/* Stats Row */}
           <div className="grid grid-cols-3 gap-2">
             <StatCard label="Total Referrals" value={stats.totalReferrals} icon={Users} />
-            <StatCard label="Paid Subscribers" value={stats.completedReferrals} icon={ChevronRight} />
+            <StatCard
+              label="Paid Subscribers"
+              value={stats.completedReferrals}
+              icon={ChevronRight}
+            />
             <StatCard
               label="Free Months"
               value={stats.totalMonthsEarned}
@@ -461,8 +477,8 @@ export function ReferralDashboard() {
           {/* Rewards Note */}
           <div className="rounded-lg bg-primary/5 dark:bg-primary/10 border border-primary/10 dark:border-primary/20 px-3 py-2.5">
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              <span className="font-medium text-foreground">Unlimited rewards!</span>{" "}
-              There&apos;s no cap on referrals. Keep sharing to earn more free months of Pro.
+              <span className="font-medium text-foreground">Unlimited rewards!</span> There&apos;s
+              no cap on referrals. Keep sharing to earn more free months of Pro.
             </p>
           </div>
         </TabsContent>

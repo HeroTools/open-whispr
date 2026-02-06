@@ -4,6 +4,7 @@ import logger from "../utils/logger";
 import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
+import { getBaseLanguageCode, validateLanguageForModel } from "../utils/languageSupport";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -37,7 +38,6 @@ class AudioManager {
     this.recordingStartTime = null;
     this.reasoningAvailabilityCache = { value: false, expiresAt: 0 };
     this.cachedReasoningPreference = null;
-    // Streaming state
     this.isStreaming = false;
     this.streamingAudioContext = null;
     this.streamingSource = null;
@@ -45,8 +45,12 @@ class AudioManager {
     this.streamingStream = null;
     this.streamingCleanupFns = [];
     this.streamingFinalText = "";
-    // Cached microphone device ID to skip enumeration
+    this.streamingPartialText = "";
+    this.streamingTextResolve = null;
+    this.streamingTextDebounce = null;
     this.cachedMicDeviceId = null;
+    this.persistentAudioContext = null;
+    this.workletModuleLoaded = false;
   }
 
   getCustomDictionaryPrompt() {
@@ -72,15 +76,21 @@ class AudioManager {
     const preferBuiltIn = localStorage.getItem("preferBuiltInMic") !== "false";
     const selectedDeviceId = localStorage.getItem("selectedMicDeviceId") || "";
 
+    // Disable browser audio processing — dictation doesn't need it and it adds ~48ms latency
+    const noProcessing = {
+      echoCancellation: false,
+      noiseSuppression: false,
+      autoGainControl: false,
+    };
+
     if (preferBuiltIn) {
-      // Use cached device ID if available (skip enumeration for faster start)
       if (this.cachedMicDeviceId) {
         logger.debug(
           "Using cached microphone device ID",
           { deviceId: this.cachedMicDeviceId },
           "audio"
         );
-        return { audio: { deviceId: { exact: this.cachedMicDeviceId } } };
+        return { audio: { deviceId: { exact: this.cachedMicDeviceId }, ...noProcessing } };
       }
 
       try {
@@ -89,14 +99,13 @@ class AudioManager {
         const builtInMic = audioInputs.find((d) => isBuiltInMicrophone(d.label));
 
         if (builtInMic) {
-          // Cache the device ID for future use
           this.cachedMicDeviceId = builtInMic.deviceId;
           logger.debug(
             "Using built-in microphone (cached for next time)",
             { deviceId: builtInMic.deviceId, label: builtInMic.label },
             "audio"
           );
-          return { audio: { deviceId: { exact: builtInMic.deviceId } } };
+          return { audio: { deviceId: { exact: builtInMic.deviceId }, ...noProcessing } };
         }
       } catch (error) {
         logger.debug(
@@ -107,15 +116,13 @@ class AudioManager {
       }
     }
 
-    // Use selected device if specified and not preferring built-in
     if (!preferBuiltIn && selectedDeviceId) {
       logger.debug("Using selected microphone", { deviceId: selectedDeviceId }, "audio");
-      return { audio: { deviceId: { exact: selectedDeviceId } } };
+      return { audio: { deviceId: { exact: selectedDeviceId }, ...noProcessing } };
     }
 
-    // Fall back to default device
     logger.debug("Using default microphone", {}, "audio");
-    return { audio: true };
+    return { audio: noProcessing };
   }
 
   async cacheMicrophoneDeviceId() {
@@ -146,7 +153,6 @@ class AudioManager {
       const constraints = await this.getAudioConstraints();
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
-      // Log which microphone is actually being used
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
         const settings = audioTrack.getSettings();
@@ -178,7 +184,6 @@ class AudioManager {
 
         const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
 
-        // Debug: Log audio blob info
         logger.info(
           "Recording stopped",
           {
@@ -195,7 +200,6 @@ class AudioManager {
         this.recordingStartTime = null;
         await this.processAudio(audioBlob, { durationSeconds });
 
-        // Clean up stream
         stream.getTracks().forEach((track) => track.stop());
       };
 
@@ -205,7 +209,6 @@ class AudioManager {
 
       return true;
     } catch (error) {
-      // Provide more specific error messages
       let errorTitle = "Recording Error";
       let errorDescription = `Failed to access microphone: ${error.message}`;
 
@@ -233,7 +236,6 @@ class AudioManager {
   stopRecording() {
     if (this.mediaRecorder?.state === "recording") {
       this.mediaRecorder.stop();
-      // State change will be handled in onstop callback
       return true;
     }
     return false;
@@ -281,10 +283,11 @@ class AudioManager {
       const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
       const isSignedIn = localStorage.getItem("isSignedIn") === "true";
 
-      const useCloud = !useLocalWhisper && cloudTranscriptionMode === "openwhispr" && isSignedIn;
+      const isOpenWhisprCloudMode = !useLocalWhisper && cloudTranscriptionMode === "openwhispr";
+      const useCloud = isOpenWhisprCloudMode && isSignedIn;
       logger.debug(
         "Transcription routing",
-        { useLocalWhisper, useCloud, isSignedIn },
+        { useLocalWhisper, useCloud, isSignedIn, cloudTranscriptionMode },
         "transcription"
       );
 
@@ -298,7 +301,14 @@ class AudioManager {
           activeModel = whisperModel;
           result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
         }
-      } else if (cloudTranscriptionMode === "openwhispr" && isSignedIn) {
+      } else if (isOpenWhisprCloudMode) {
+        if (!isSignedIn) {
+          const err = new Error(
+            "OpenWhispr Cloud requires sign-in. Please sign in again or switch to BYOK mode."
+          );
+          err.code = "AUTH_REQUIRED";
+          throw err;
+        }
         activeModel = "openwhispr-cloud";
         result = await this.processWithOpenWhisprCloud(audioBlob, metadata);
       } else {
@@ -368,9 +378,9 @@ class AudioManager {
       // Send original audio to main process - FFmpeg in main process handles conversion
       // (renderer-side AudioContext conversion was unreliable with WebM/Opus format)
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const language = localStorage.getItem("preferredLanguage");
+      const language = getBaseLanguageCode(localStorage.getItem("preferredLanguage"));
       const options = { model };
-      if (language && language !== "auto") {
+      if (language) {
         options.language = language;
       }
 
@@ -447,9 +457,9 @@ class AudioManager {
 
     try {
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const language = localStorage.getItem("preferredLanguage");
+      const language = validateLanguageForModel(localStorage.getItem("preferredLanguage"), model);
       const options = { model };
-      if (language && language !== "auto") {
+      if (language) {
         options.language = language;
       }
 
@@ -999,11 +1009,11 @@ class AudioManager {
     }
 
     const timings = {};
-    const language = localStorage.getItem("preferredLanguage");
+    const language = getBaseLanguageCode(localStorage.getItem("preferredLanguage"));
 
     const arrayBuffer = await audioBlob.arrayBuffer();
     const opts = {};
-    if (language && language !== "auto") opts.language = language;
+    if (language) opts.language = language;
 
     const dictionaryPrompt = this.getCustomDictionaryPrompt();
     if (dictionaryPrompt) opts.prompt = dictionaryPrompt;
@@ -1026,17 +1036,15 @@ class AudioManager {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
     if (useReasoningModel && processedText) {
       const reasoningStart = performance.now();
-      const cloudReasoningModel =
-        localStorage.getItem("cloudReasoningModel") || "llama-3.3-70b-versatile";
       const agentName = localStorage.getItem("agentName") || "";
       const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
 
       if (cloudTranscriptionMode === "openwhispr") {
         const reasonResult = await withSessionRefresh(async () => {
           const res = await window.electronAPI.cloudReason(processedText, {
-            model: cloudReasoningModel,
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
+            language: localStorage.getItem("preferredLanguage") || "auto",
           });
           if (!res.success) {
             const err = new Error(res.error || "Cloud reasoning failed");
@@ -1077,7 +1085,7 @@ class AudioManager {
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
     const timings = {};
-    const language = localStorage.getItem("preferredLanguage");
+    const language = getBaseLanguageCode(localStorage.getItem("preferredLanguage"));
     const allowLocalFallback = localStorage.getItem("allowLocalFallback") === "true";
     const fallbackModel = localStorage.getItem("fallbackWhisperModel") || "base";
 
@@ -1154,7 +1162,7 @@ class AudioManager {
       formData.append("file", optimizedAudio, `audio.${extension}`);
       formData.append("model", model);
 
-      if (language && language !== "auto") {
+      if (language) {
         formData.append("language", language);
       }
 
@@ -1544,9 +1552,9 @@ class AudioManager {
     }
   }
 
-  async safePaste(text) {
+  async safePaste(text, options = {}) {
     try {
-      await window.electronAPI.pasteText(text);
+      await window.electronAPI.pasteText(text, options);
       return true;
     } catch (error) {
       this.onError?.({
@@ -1574,8 +1582,6 @@ class AudioManager {
     };
   }
 
-  // --- Assembly AI Real-time Streaming ---
-
   shouldUseStreaming() {
     const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
     const isSignedIn = localStorage.getItem("isSignedIn") === "true";
@@ -1600,10 +1606,9 @@ class AudioManager {
       const [, wsResult] = await Promise.all([
         this.cacheMicrophoneDeviceId(),
         withSessionRefresh(async () => {
-          const language = localStorage.getItem("preferredLanguage");
           const res = await window.electronAPI.assemblyAiStreamingWarmup({
             sampleRate: 16000,
-            language: language !== "auto" ? language : undefined,
+            language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
           });
           // Throw error to trigger retry if AUTH_EXPIRED
           if (!res.success && res.code) {
@@ -1616,6 +1621,42 @@ class AudioManager {
       ]);
 
       if (wsResult.success) {
+        // Pre-load AudioWorklet module so first recording is faster
+        try {
+          const audioContext = await this.getOrCreateAudioContext();
+          if (!this.workletModuleLoaded) {
+            const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+            await audioContext.audioWorklet.addModule(workletUrl);
+            this.workletModuleLoaded = true;
+            logger.debug("AudioWorklet module pre-loaded during warmup", {}, "streaming");
+          }
+        } catch (e) {
+          logger.debug(
+            "AudioWorklet pre-load failed (will retry on recording)",
+            { error: e.message },
+            "streaming"
+          );
+        }
+
+        // Warm up the OS audio driver by briefly acquiring the mic, then releasing.
+        // This forces macOS to initialize the audio subsystem so subsequent
+        // getUserMedia calls resolve in ~100-200ms instead of ~500-1000ms.
+        if (!this.micDriverWarmedUp) {
+          try {
+            const constraints = await this.getAudioConstraints();
+            const tempStream = await navigator.mediaDevices.getUserMedia(constraints);
+            tempStream.getTracks().forEach((track) => track.stop());
+            this.micDriverWarmedUp = true;
+            logger.debug("Microphone driver pre-warmed", {}, "streaming");
+          } catch (e) {
+            logger.debug(
+              "Mic driver warmup failed (non-critical)",
+              { error: e.message },
+              "streaming"
+            );
+          }
+        }
+
         logger.info(
           "AssemblyAI streaming connection warmed up",
           { alreadyWarm: wsResult.alreadyWarm, micCached: !!this.cachedMicDeviceId },
@@ -1635,14 +1676,50 @@ class AudioManager {
     }
   }
 
+  async getOrCreateAudioContext() {
+    if (this.persistentAudioContext && this.persistentAudioContext.state !== "closed") {
+      if (this.persistentAudioContext.state === "suspended") {
+        await this.persistentAudioContext.resume();
+      }
+      return this.persistentAudioContext;
+    }
+    this.persistentAudioContext = new AudioContext({ sampleRate: 16000 });
+    this.workletModuleLoaded = false;
+    return this.persistentAudioContext;
+  }
+
   async startStreamingRecording() {
     try {
       if (this.isRecording || this.isStreaming || this.isProcessing) {
         return false;
       }
 
+      const t0 = performance.now();
       const constraints = await this.getAudioConstraints();
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const tConstraints = performance.now();
+
+      // Run getUserMedia and WebSocket connect in parallel.
+      // With warmup, WS resolves in ~5ms; getUserMedia (~500ms) dominates.
+      const [stream, result] = await Promise.all([
+        navigator.mediaDevices.getUserMedia(constraints),
+        withSessionRefresh(async () => {
+          const res = await window.electronAPI.assemblyAiStreamingStart({
+            sampleRate: 16000,
+            language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+          });
+
+          if (!res.success) {
+            if (res.code === "NO_API") {
+              return { needsFallback: true };
+            }
+            const err = new Error(res.error || "Failed to start streaming session");
+            err.code = res.code;
+            throw err;
+          }
+          return res;
+        }),
+      ]);
+      const tParallel = performance.now();
 
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
@@ -1659,27 +1736,6 @@ class AudioManager {
         );
       }
 
-      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
-      const result = await withSessionRefresh(async () => {
-        const language = localStorage.getItem("preferredLanguage");
-        const res = await window.electronAPI.assemblyAiStreamingStart({
-          sampleRate: 16000,
-          language: language !== "auto" ? language : undefined,
-        });
-
-        if (!res.success) {
-          if (res.code === "NO_API") {
-            // Return special marker to indicate fallback needed
-            return { needsFallback: true };
-          }
-          const err = new Error(res.error || "Failed to start streaming session");
-          err.code = res.code;
-          throw err;
-        }
-        return res;
-      });
-
-      // Handle fallback to regular recording if streaming not configured
       if (result.needsFallback) {
         stream.getTracks().forEach((track) => track.stop());
         logger.debug(
@@ -1690,37 +1746,60 @@ class AudioManager {
         return this.startRecording();
       }
 
-      this.streamingAudioContext = new AudioContext({ sampleRate: 16000 });
-      this.streamingSource = this.streamingAudioContext.createMediaStreamSource(stream);
+      const audioContext = await this.getOrCreateAudioContext();
+      this.streamingAudioContext = audioContext;
+      this.streamingSource = audioContext.createMediaStreamSource(stream);
       this.streamingStream = stream;
 
-      const bufferSize = 4096;
-      this.streamingProcessor = this.streamingAudioContext.createScriptProcessor(bufferSize, 1, 1);
+      if (!this.workletModuleLoaded) {
+        const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+        await audioContext.audioWorklet.addModule(workletUrl);
+        this.workletModuleLoaded = true;
+      }
 
-      this.streamingProcessor.onaudioprocess = (event) => {
+      this.streamingProcessor = new AudioWorkletNode(audioContext, "pcm-streaming-processor");
+
+      this.streamingProcessor.port.onmessage = (event) => {
         if (!this.isStreaming) return;
-
-        const inputData = event.inputBuffer.getChannelData(0);
-        const pcmData = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          const s = Math.max(-1, Math.min(1, inputData[i]));
-          pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-        }
-
-        window.electronAPI.assemblyAiStreamingSend(pcmData.buffer);
+        window.electronAPI.assemblyAiStreamingSend(event.data);
       };
 
       this.streamingSource.connect(this.streamingProcessor);
-      this.streamingProcessor.connect(this.streamingAudioContext.destination);
+
+      const tReady = performance.now();
+      logger.info(
+        "Streaming start timing",
+        {
+          constraintsMs: Math.round(tConstraints - t0),
+          getUserMediaAndWsMs: Math.round(tParallel - tConstraints),
+          pipelineMs: Math.round(tReady - tParallel),
+          totalMs: Math.round(tReady - t0),
+          usedWarmConnection: result.usedWarmConnection,
+          micDriverWarmedUp: !!this.micDriverWarmedUp,
+        },
+        "streaming"
+      );
+
+      // Show recording indicator only AFTER mic is live and audio pipeline is connected.
+      // This ensures no words are lost — the user sees "recording" exactly when audio flows.
+      this.isStreaming = true;
+      this.isRecording = true;
+      this.recordingStartTime = Date.now();
+      this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
 
       this.streamingFinalText = "";
+      this.streamingPartialText = "";
+      this.streamingTextResolve = null;
+      this.streamingTextDebounce = null;
 
       const partialCleanup = window.electronAPI.onAssemblyAiPartialTranscript((text) => {
+        this.streamingPartialText = text;
         this.onPartialTranscript?.(text);
       });
 
       const finalCleanup = window.electronAPI.onAssemblyAiFinalTranscript((text) => {
         this.streamingFinalText = text;
+        this.streamingPartialText = "";
         this.onPartialTranscript?.(text);
       });
 
@@ -1741,11 +1820,6 @@ class AudioManager {
 
       this.streamingCleanupFns = [partialCleanup, finalCleanup, errorCleanup, sessionEndCleanup];
 
-      this.isStreaming = true;
-      this.isRecording = true;
-      this.recordingStartTime = Date.now();
-      this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
-
       return true;
     } catch (error) {
       logger.error("Failed to start streaming recording", { error: error.message }, "streaming");
@@ -1757,6 +1831,10 @@ class AudioManager {
         errorTitle = "Microphone Access Denied";
         errorDescription =
           "Please grant microphone permission in your system settings and try again.";
+      } else if (error.code === "AUTH_EXPIRED" || error.code === "AUTH_REQUIRED") {
+        errorTitle = "Sign-in Required";
+        errorDescription =
+          "Your OpenWhispr Cloud session is unavailable. Please sign in again from Settings.";
       }
 
       this.onError?.({
@@ -1776,32 +1854,138 @@ class AudioManager {
       ? (Date.now() - this.recordingStartTime) / 1000
       : null;
 
-    this.isStreaming = false;
+    const t0 = performance.now();
+    let finalText = this.streamingFinalText || "";
+
+    // 1. Update UI immediately
     this.isRecording = false;
     this.recordingStartTime = null;
     this.onStateChange?.({ isRecording: false, isProcessing: true, isStreaming: false });
 
-    await this.cleanupStreaming();
-
-    let finalText = this.streamingFinalText || "";
-
-    try {
-      const result = await window.electronAPI.assemblyAiStreamingStop();
-      logger.info("Streaming recording stopped", { durationSeconds }, "streaming");
-
-      if (result?.text) {
-        finalText = result.text;
+    // 2. Stop the processor — it flushes its remaining buffer on "stop".
+    //    Keep isStreaming TRUE so the port.onmessage handler forwards the flush to WebSocket.
+    if (this.streamingProcessor) {
+      try {
+        this.streamingProcessor.port.postMessage("stop");
+        this.streamingProcessor.disconnect();
+      } catch (e) {
+        // Ignore
       }
-    } catch (error) {
-      logger.error("Error stopping streaming", { error: error.message }, "streaming");
+      this.streamingProcessor = null;
+    }
+    if (this.streamingSource) {
+      try {
+        this.streamingSource.disconnect();
+      } catch (e) {
+        // Ignore
+      }
+      this.streamingSource = null;
+    }
+    this.streamingAudioContext = null;
+    if (this.streamingStream) {
+      this.streamingStream.getTracks().forEach((track) => track.stop());
+      this.streamingStream = null;
+    }
+    const tAudioCleanup = performance.now();
+
+    // 3. Wait for flushed buffer to travel: port -> main thread -> IPC -> WebSocket -> server.
+    //    Then mark streaming done so no further audio is forwarded.
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    this.isStreaming = false;
+
+    // 4. ForceEndpoint finalizes any in-progress turn, then Terminate closes the session.
+    //    The server MUST process ALL remaining audio and send ALL Turn messages before
+    //    responding with Termination — so awaiting this guarantees we get every word.
+    window.electronAPI.assemblyAiStreamingForceEndpoint?.();
+    const tForceEndpoint = performance.now();
+
+    await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
+      logger.debug("Streaming disconnect error", { error: e.message }, "streaming");
+    });
+    const tTerminate = performance.now();
+
+    // 5. Brief wait for any in-transit IPC Turn events to reach the renderer.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    finalText = this.streamingFinalText || "";
+
+    if (!finalText && this.streamingPartialText) {
+      finalText = this.streamingPartialText;
+      logger.debug("Using partial text as fallback", { textLength: finalText.length }, "streaming");
+    }
+
+    this.cleanupStreamingListeners();
+
+    logger.info(
+      "Streaming stop timing",
+      {
+        durationSeconds,
+        audioCleanupMs: Math.round(tAudioCleanup - t0),
+        flushWaitMs: Math.round(tForceEndpoint - tAudioCleanup),
+        terminateRoundTripMs: Math.round(tTerminate - tForceEndpoint),
+        totalStopMs: Math.round(tTerminate - t0),
+        textLength: finalText.length,
+      },
+      "streaming"
+    );
+
+    const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+    if (useReasoningModel && finalText) {
+      const reasoningStart = performance.now();
+      const agentName = localStorage.getItem("agentName") || "";
+
+      try {
+        const reasonResult = await withSessionRefresh(async () => {
+          const res = await window.electronAPI.cloudReason(finalText, {
+            agentName,
+            customDictionary: this.getCustomDictionaryArray(),
+            language: localStorage.getItem("preferredLanguage") || "auto",
+          });
+          if (!res.success) {
+            const err = new Error(res.error || "Cloud reasoning failed");
+            err.code = res.code;
+            throw err;
+          }
+          return res;
+        });
+
+        if (reasonResult.success && reasonResult.text) {
+          finalText = reasonResult.text;
+        }
+
+        logger.info(
+          "Streaming reasoning complete",
+          {
+            reasoningDurationMs: Math.round(performance.now() - reasoningStart),
+            model: reasonResult.model,
+          },
+          "streaming"
+        );
+      } catch (reasonError) {
+        logger.error(
+          "Streaming reasoning failed, using raw text",
+          { error: reasonError.message },
+          "streaming"
+        );
+      }
     }
 
     if (finalText) {
+      const tBeforePaste = performance.now();
       this.onTranscriptionComplete?.({
         success: true,
         text: finalText,
         source: "assemblyai-streaming",
       });
+
+      logger.info(
+        "Streaming total processing",
+        {
+          totalProcessingMs: Math.round(tBeforePaste - t0),
+          hasReasoning: useReasoningModel,
+        },
+        "streaming"
+      );
     }
 
     this.isProcessing = false;
@@ -1816,19 +2000,10 @@ class AudioManager {
     return true;
   }
 
-  async cleanupStreaming() {
-    for (const cleanup of this.streamingCleanupFns) {
-      try {
-        cleanup?.();
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-    }
-    this.streamingCleanupFns = [];
-    this.streamingFinalText = "";
-
+  cleanupStreamingAudio() {
     if (this.streamingProcessor) {
       try {
+        this.streamingProcessor.port.postMessage("stop");
         this.streamingProcessor.disconnect();
       } catch (e) {
         // Ignore
@@ -1845,17 +2020,8 @@ class AudioManager {
       this.streamingSource = null;
     }
 
-    // Close audio context
-    if (this.streamingAudioContext) {
-      try {
-        await this.streamingAudioContext.close();
-      } catch (e) {
-        // Ignore
-      }
-      this.streamingAudioContext = null;
-    }
+    this.streamingAudioContext = null;
 
-    // Stop media stream
     if (this.streamingStream) {
       this.streamingStream.getTracks().forEach((track) => track.stop());
       this.streamingStream = null;
@@ -1864,12 +2030,43 @@ class AudioManager {
     this.isStreaming = false;
   }
 
+  cleanupStreamingListeners() {
+    for (const cleanup of this.streamingCleanupFns) {
+      try {
+        cleanup?.();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+    this.streamingCleanupFns = [];
+    this.streamingFinalText = "";
+    this.streamingPartialText = "";
+    this.streamingTextResolve = null;
+    clearTimeout(this.streamingTextDebounce);
+    this.streamingTextDebounce = null;
+  }
+
+  async cleanupStreaming() {
+    this.cleanupStreamingAudio();
+    this.cleanupStreamingListeners();
+  }
+
   cleanup() {
     if (this.isStreaming) {
       this.cleanupStreaming();
     }
     if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
+    }
+    if (this.persistentAudioContext && this.persistentAudioContext.state !== "closed") {
+      this.persistentAudioContext.close().catch(() => {});
+      this.persistentAudioContext = null;
+      this.workletModuleLoaded = false;
+    }
+    try {
+      window.electronAPI?.assemblyAiStreamingStop?.();
+    } catch (e) {
+      // Ignore errors during cleanup (page may be unloading)
     }
     this.onStateChange = null;
     this.onError = null;

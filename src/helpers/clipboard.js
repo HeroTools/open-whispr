@@ -5,8 +5,12 @@ const path = require("path");
 const fs = require("fs");
 const debugLogger = require("./debugLogger");
 
-// Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
 const CACHE_TTL_MS = 30000;
+
+// macOS accessibility: once granted, permissions persist across app sessions,
+// so use a long TTL. Denied results re-check quickly so granting takes effect fast.
+const ACCESSIBILITY_GRANTED_TTL_MS = 24 * 60 * 60 * 1000;
+const ACCESSIBILITY_DENIED_TTL_MS = 5000;
 
 const getLinuxDesktopEnv = () =>
   [process.env.XDG_CURRENT_DESKTOP, process.env.XDG_SESSION_DESKTOP, process.env.DESKTOP_SESSION]
@@ -27,26 +31,21 @@ const getLinuxSessionInfo = () => {
   return { isWayland, xwaylandAvailable, desktopEnv, isGnome };
 };
 
-// Platform-specific paste delays (ms before simulating keystroke)
-// Each platform has different timing requirements based on their paste mechanism
+// ms before simulating keystroke
 const PASTE_DELAYS = {
-  darwin: 50, // macOS: AppleScript keystroke is async, needs time for clipboard to settle
-  win32_nircmd: 30, // Windows nircmd: give clipboard time to sync
-  win32_pwsh: 40, // Windows PowerShell: give clipboard time to sync
-  linux: 50, // Linux: Allow time for focus to return to target window on X11
+  darwin: 120,
+  win32_nircmd: 30,
+  win32_pwsh: 40,
+  linux: 50,
 };
 
-// Platform-specific clipboard restoration delays (ms after paste completes)
-// Ensures paste is fully processed before restoring original clipboard content
+// ms after paste completes before restoring clipboard
 const RESTORE_DELAYS = {
-  darwin: 100, // macOS: AppleScript needs time to complete keystroke
-  win32_nircmd: 80, // Windows nircmd: allow time for paste processing
-  win32_pwsh: 80, // Windows PowerShell: allow time for paste processing
-  linux: 200, // Linux: X11 event queue processing takes longer
+  darwin: 450,
+  win32_nircmd: 80,
+  win32_pwsh: 80,
+  linux: 200,
 };
-
-// Legacy constant for backward compatibility (used by macOS)
-const PASTE_DELAY_MS = PASTE_DELAYS.darwin;
 
 class ClipboardManager {
   constructor() {
@@ -54,9 +53,10 @@ class ClipboardManager {
     this.commandAvailabilityCache = new Map();
     this.nircmdPath = null;
     this.nircmdChecked = false;
+    this.fastPastePath = null;
+    this.fastPasteChecked = false;
   }
 
-  // Get path to nircmd.exe (Windows only)
   getNircmdPath() {
     if (this.nircmdChecked) {
       return this.nircmdPath;
@@ -68,11 +68,8 @@ class ClipboardManager {
       return null;
     }
 
-    // Try multiple paths for nircmd.exe
     const possiblePaths = [
-      // Production: extraResources
       path.join(process.resourcesPath, "bin", "nircmd.exe"),
-      // Development: resources/bin
       path.join(__dirname, "..", "..", "resources", "bin", "nircmd.exe"),
       path.join(process.cwd(), "resources", "bin", "nircmd.exe"),
     ];
@@ -104,7 +101,54 @@ class ClipboardManager {
     };
   }
 
-  // Safe logging method - only log in development
+  resolveFastPasteBinary() {
+    if (this.fastPasteChecked) {
+      return this.fastPastePath;
+    }
+    this.fastPasteChecked = true;
+
+    if (process.platform !== "darwin") {
+      return null;
+    }
+
+    const candidates = new Set([
+      path.join(__dirname, "..", "..", "resources", "bin", "macos-fast-paste"),
+      path.join(__dirname, "..", "..", "resources", "macos-fast-paste"),
+    ]);
+
+    if (process.resourcesPath) {
+      [
+        path.join(process.resourcesPath, "macos-fast-paste"),
+        path.join(process.resourcesPath, "bin", "macos-fast-paste"),
+        path.join(process.resourcesPath, "resources", "macos-fast-paste"),
+        path.join(process.resourcesPath, "resources", "bin", "macos-fast-paste"),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "macos-fast-paste"),
+        path.join(
+          process.resourcesPath,
+          "app.asar.unpacked",
+          "resources",
+          "bin",
+          "macos-fast-paste"
+        ),
+      ].forEach((candidate) => candidates.add(candidate));
+    }
+
+    for (const candidate of candidates) {
+      try {
+        const stats = fs.statSync(candidate);
+        if (stats.isFile()) {
+          fs.accessSync(candidate, fs.constants.X_OK);
+          this.fastPastePath = candidate;
+          return candidate;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    return null;
+  }
+
   safeLog(...args) {
     if (process.env.NODE_ENV === "development") {
       try {
@@ -118,7 +162,6 @@ class ClipboardManager {
     }
   }
 
-  // Check if a command exists on the system (cached)
   commandExists(cmd) {
     const now = Date.now();
     const cached = this.commandAvailabilityCache.get(cmd);
@@ -144,26 +187,23 @@ class ClipboardManager {
     }
   }
 
-  async pasteText(text) {
+  async pasteText(text, options = {}) {
     const startTime = Date.now();
     const platform = process.platform;
     let method = "unknown";
 
     try {
-      // Save original clipboard content first
       const originalClipboard = clipboard.readText();
       this.safeLog(
         "💾 Saved original clipboard content:",
         originalClipboard.substring(0, 50) + "..."
       );
 
-      // Copy text to clipboard first - this always works
       clipboard.writeText(text);
       this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
 
       if (platform === "darwin") {
-        method = "applescript";
-        // Check accessibility permissions first
+        method = this.resolveFastPasteBinary() ? "cgevent" : "applescript";
         this.safeLog("🔍 Checking accessibility permissions for paste operation...");
         const hasPermissions = await this.checkAccessibilityPermissions();
 
@@ -175,7 +215,7 @@ class ClipboardManager {
         }
 
         this.safeLog("✅ Permissions granted, attempting to paste...");
-        await this.pasteMacOS(originalClipboard);
+        await this.pasteMacOS(originalClipboard, options);
       } else if (platform === "win32") {
         const nircmdPath = this.getNircmdPath();
         method = nircmdPath ? "nircmd" : "powershell";
@@ -185,7 +225,6 @@ class ClipboardManager {
         await this.pasteLinux(originalClipboard);
       }
 
-      // Log successful paste operation timing
       this.safeLog("✅ Paste operation complete", {
         platform,
         method,
@@ -203,13 +242,19 @@ class ClipboardManager {
     }
   }
 
-  async pasteMacOS(originalClipboard) {
+  async pasteMacOS(originalClipboard, options = {}) {
+    const fastPasteBinary = this.resolveFastPasteBinary();
+    const useFastPaste = !!fastPasteBinary;
+    const pasteDelay = options.fromStreaming ? (useFastPaste ? 15 : 50) : PASTE_DELAYS.darwin;
+
     return new Promise((resolve, reject) => {
       setTimeout(() => {
-        const pasteProcess = spawn("osascript", [
-          "-e",
-          'tell application "System Events" to keystroke "v" using command down',
-        ]);
+        const pasteProcess = useFastPaste
+          ? spawn(fastPasteBinary)
+          : spawn("osascript", [
+              "-e",
+              'tell application "System Events" to keystroke "v" using command down',
+            ]);
 
         let errorOutput = "";
         let hasTimedOut = false;
@@ -220,21 +265,26 @@ class ClipboardManager {
 
         pasteProcess.on("close", (code) => {
           if (hasTimedOut) return;
-
-          // Clear timeout first
           clearTimeout(timeoutId);
-
-          // Clean up the process reference
           pasteProcess.removeAllListeners();
 
           if (code === 0) {
-            this.safeLog("✅ Text pasted successfully via Cmd+V simulation");
+            this.safeLog(`Text pasted successfully via ${useFastPaste ? "CGEvent" : "osascript"}`);
             setTimeout(() => {
               clipboard.writeText(originalClipboard);
-              this.safeLog("🔄 Original clipboard content restored");
-            }, 100);
+            }, RESTORE_DELAYS.darwin);
             resolve();
+          } else if (useFastPaste) {
+            this.safeLog(
+              code === 2
+                ? "CGEvent binary lacks accessibility trust, falling back to osascript"
+                : `CGEvent paste failed (code ${code}), falling back to osascript`
+            );
+            this.fastPasteChecked = true;
+            this.fastPastePath = null;
+            this.pasteMacOSWithOsascript(originalClipboard).then(resolve).catch(reject);
           } else {
+            this.accessibilityCache = { value: null, expiresAt: 0 };
             const errorMsg = `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`;
             reject(new Error(errorMsg));
           }
@@ -244,8 +294,16 @@ class ClipboardManager {
           if (hasTimedOut) return;
           clearTimeout(timeoutId);
           pasteProcess.removeAllListeners();
-          const errorMsg = `Paste command failed: ${error.message}. Text is copied to clipboard - please paste manually with Cmd+V.`;
-          reject(new Error(errorMsg));
+
+          if (useFastPaste) {
+            this.safeLog("CGEvent paste error, falling back to osascript");
+            this.fastPasteChecked = true;
+            this.fastPastePath = null;
+            this.pasteMacOSWithOsascript(originalClipboard).then(resolve).catch(reject);
+          } else {
+            const errorMsg = `Paste command failed: ${error.message}. Text is copied to clipboard - please paste manually with Cmd+V.`;
+            reject(new Error(errorMsg));
+          }
         });
 
         const timeoutId = setTimeout(() => {
@@ -256,12 +314,59 @@ class ClipboardManager {
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
           reject(new Error(errorMsg));
         }, 3000);
-      }, PASTE_DELAY_MS);
+      }, pasteDelay);
+    });
+  }
+
+  async pasteMacOSWithOsascript(originalClipboard) {
+    return new Promise((resolve, reject) => {
+      const pasteProcess = spawn("osascript", [
+        "-e",
+        'tell application "System Events" to keystroke "v" using command down',
+      ]);
+
+      let hasTimedOut = false;
+
+      pasteProcess.on("close", (code) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
+        pasteProcess.removeAllListeners();
+
+        if (code === 0) {
+          this.safeLog("Text pasted successfully via osascript fallback");
+          setTimeout(() => {
+            clipboard.writeText(originalClipboard);
+          }, RESTORE_DELAYS.darwin);
+          resolve();
+        } else {
+          this.accessibilityCache = { value: null, expiresAt: 0 };
+          const errorMsg = `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`;
+          reject(new Error(errorMsg));
+        }
+      });
+
+      pasteProcess.on("error", (error) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
+        pasteProcess.removeAllListeners();
+        const errorMsg = `Paste command failed: ${error.message}. Text is copied to clipboard - please paste manually with Cmd+V.`;
+        reject(new Error(errorMsg));
+      });
+
+      const timeoutId = setTimeout(() => {
+        hasTimedOut = true;
+        killProcess(pasteProcess, "SIGKILL");
+        pasteProcess.removeAllListeners();
+        reject(
+          new Error(
+            "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V."
+          )
+        );
+      }, 3000);
     });
   }
 
   async pasteWindows(originalClipboard) {
-    // Try nircmd first if available, fallback to PowerShell
     const nircmdPath = this.getNircmdPath();
 
     if (nircmdPath) {
@@ -349,10 +454,6 @@ class ClipboardManager {
 
         this.safeLog(`🪟 PowerShell paste starting (delay: ${pasteDelay}ms)`);
 
-        // Optimized PowerShell command:
-        // - Uses [void] to suppress output (faster)
-        // - WindowStyle Hidden to prevent window flash
-        // - ExecutionPolicy Bypass to skip policy checks
         const pasteProcess = spawn("powershell.exe", [
           "-NoProfile",
           "-NonInteractive",
@@ -454,8 +555,7 @@ class ClipboardManager {
       "clipboard"
     );
 
-    // Get the active window ID before any focus changes
-    // This is critical for X11 where our window might briefly take focus
+    // Capture target window before our window takes focus
     const getXdotoolActiveWindow = () => {
       if (!xdotoolExists || (isWayland && !xwaylandAvailable)) {
         return null;
@@ -490,14 +590,11 @@ class ClipboardManager {
       }
     };
 
-    // Capture the target window ID before we potentially lose focus
     const targetWindowId = getXdotoolActiveWindow();
     const xdotoolWindowClass = getXdotoolWindowClass(targetWindowId);
 
-    // Detect if the focused window is a terminal emulator
-    // Terminals use Ctrl+Shift+V for paste (since Ctrl+V/C are used for process control)
+    // Terminals use Ctrl+Shift+V instead of Ctrl+V
     const isTerminal = () => {
-      // Common terminal emulator class names
       const terminalClasses = [
         "konsole",
         "gnome-terminal",
@@ -525,13 +622,10 @@ class ClipboardManager {
       }
 
       try {
-        // Try kdotool for KDE Wayland (if available)
         if (this.commandExists("kdotool")) {
-          // First get the active window ID
           const windowIdResult = spawnSync("kdotool", ["getactivewindow"]);
           if (windowIdResult.status === 0) {
             const windowId = windowIdResult.stdout.toString().trim();
-            // Then get the window class name
             const classResult = spawnSync("kdotool", ["getwindowclassname", windowId]);
             if (classResult.status === 0) {
               const className = classResult.stdout.toString().toLowerCase().trim();
@@ -543,8 +637,8 @@ class ClipboardManager {
             }
           }
         }
-      } catch (error) {
-        // Silent fallback - if detection fails, assume non-terminal
+      } catch {
+        // Detection failed, assume non-terminal
       }
       return false;
     };
@@ -556,9 +650,7 @@ class ClipboardManager {
     const canUseYdotool = isWayland;
     const canUseXdotool = isWayland ? xwaylandAvailable && xdotoolExists : xdotoolExists;
 
-    // Define paste tools in preference order based on display server
-    // For X11, use windowactivate to ensure correct window receives the keystroke
-    // This is critical because OpenWhispr's window may briefly take focus during transcription
+    // windowactivate ensures the target window (not ours) receives the keystroke
     const xdotoolArgs = targetWindowId
       ? ["windowactivate", "--sync", targetWindowId, "key", pasteKeys]
       : ["key", pasteKeys];
@@ -569,11 +661,10 @@ class ClipboardManager {
       );
     }
 
-    // ydotool uses key codes: 29=LeftCtrl, 42=LeftShift, 47=V
-    // Format: keycode:1 (press), keycode:0 (release)
+    // ydotool key codes: 29=Ctrl, 42=Shift, 47=V; :1=press, :0=release
     const ydotoolArgs = inTerminal
-      ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"] // Ctrl+Shift+V
-      : ["key", "29:1", "47:1", "47:0", "29:0"]; // Ctrl+V
+      ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"]
+      : ["key", "29:1", "47:1", "47:0", "29:0"];
 
     const candidates = [
       ...(canUseWtype
@@ -590,7 +681,6 @@ class ClipboardManager {
       ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
     ];
 
-    // Filter to only available tools (this.commandExists is already cached)
     const available = candidates.filter((c) => this.commandExists(c.cmd));
 
     debugLogger.debug(
@@ -606,10 +696,8 @@ class ClipboardManager {
       "clipboard"
     );
 
-    // Attempt paste with a specific tool
     const pasteWith = (tool) =>
       new Promise((resolve, reject) => {
-        // Add small delay on X11 to allow focus to settle
         const delay = isWayland ? 0 : PASTE_DELAYS.linux;
 
         setTimeout(() => {
@@ -648,7 +736,7 @@ class ClipboardManager {
               },
               "clipboard"
             );
-          }, 2000); // Increased timeout to 2s for windowactivate --sync
+          }, 2000);
 
           proc.on("close", (code) => {
             if (timedOut) return reject(new Error(`Paste with ${tool.cmd} timed out`));
@@ -656,8 +744,6 @@ class ClipboardManager {
 
             if (code === 0) {
               debugLogger.debug("Paste successful", { cmd: tool.cmd }, "clipboard");
-              // Restore original clipboard after successful paste
-              // Delay allows time for X11 to process paste event before clipboard is overwritten
               setTimeout(() => clipboard.writeText(originalClipboard), RESTORE_DELAYS.linux);
               resolve();
             } else {
@@ -697,7 +783,6 @@ class ClipboardManager {
         }, delay);
       });
 
-    // Try each available tool in order
     const failedAttempts = [];
     for (const tool of available) {
       try {
@@ -720,9 +805,7 @@ class ClipboardManager {
 
     debugLogger.error("All paste tools failed", { failedAttempts }, "clipboard");
 
-    // Fallback for terminals: use xdotool type to directly input text
-    // This bypasses clipboard paste entirely and is more reliable for terminal emulators
-    // that may have issues with Ctrl+Shift+V keystroke simulation
+    // xdotool type fallback for terminals where Ctrl+Shift+V simulation fails
     if (inTerminal && xdotoolExists && !isWayland) {
       debugLogger.debug(
         "Trying xdotool type fallback for terminal",
@@ -755,7 +838,6 @@ class ClipboardManager {
       }
     }
 
-    // All tools failed - create specific error for renderer to handle
     const failureSummary =
       failedAttempts.length > 0
         ? `\n\nAttempted tools: ${failedAttempts.map((f) => `${f.tool} (${f.error})`).join(", ")}`
@@ -825,8 +907,6 @@ class ClipboardManager {
     }
 
     return new Promise((resolve) => {
-      // Check accessibility permissions
-
       const testProcess = spawn("osascript", [
         "-e",
         'tell application "System Events" to get name of first process',
@@ -847,7 +927,8 @@ class ClipboardManager {
         const allowed = code === 0;
         this.accessibilityCache = {
           value: allowed,
-          expiresAt: Date.now() + CACHE_TTL_MS,
+          expiresAt:
+            Date.now() + (allowed ? ACCESSIBILITY_GRANTED_TTL_MS : ACCESSIBILITY_DENIED_TTL_MS),
         };
         if (!allowed) {
           this.showAccessibilityDialog(testError);
@@ -858,7 +939,7 @@ class ClipboardManager {
       testProcess.on("error", (error) => {
         this.accessibilityCache = {
           value: false,
-          expiresAt: Date.now() + CACHE_TTL_MS,
+          expiresAt: Date.now() + ACCESSIBILITY_DENIED_TTL_MS,
         };
         resolve(false);
       });
@@ -920,9 +1001,7 @@ Would you like to open System Settings now?`;
       }
     });
 
-    permissionDialog.on("error", (error) => {
-      // Permission dialog error - user will need to manually grant permissions
-    });
+    permissionDialog.on("error", () => {});
   }
 
   openSystemSettings() {
@@ -950,11 +1029,8 @@ Would you like to open System Settings now?`;
           }
         });
       } else {
-        // All settings commands failed, try fallback
         spawn("open", ["-a", "System Preferences"]).on("error", () => {
-          spawn("open", ["-a", "System Settings"]).on("error", () => {
-            // Could not open settings app
-          });
+          spawn("open", ["-a", "System Settings"]).on("error", () => {});
         });
       }
     };
@@ -962,43 +1038,35 @@ Would you like to open System Settings now?`;
     tryNextCommand();
   }
 
+  preWarmAccessibility() {
+    if (process.platform !== "darwin") return;
+    this.checkAccessibilityPermissions().catch(() => {});
+    this.resolveFastPasteBinary();
+  }
+
   async readClipboard() {
-    try {
-      const text = clipboard.readText();
-      return text;
-    } catch (error) {
-      throw error;
-    }
+    return clipboard.readText();
   }
 
   async writeClipboard(text) {
-    try {
-      clipboard.writeText(text);
-      return { success: true };
-    } catch (error) {
-      throw error;
-    }
+    clipboard.writeText(text);
+    return { success: true };
   }
 
-  /**
-   * Check availability of paste tools on the current platform.
-   * Returns platform-specific information about paste capability.
-   */
   checkPasteTools() {
     const platform = process.platform;
 
-    // macOS uses AppleScript - always available, but needs accessibility permission
     if (platform === "darwin") {
+      const fastPaste = this.resolveFastPasteBinary();
       return {
         platform: "darwin",
         available: true,
-        method: "applescript",
+        method: fastPaste ? "cgevent" : "applescript",
         requiresPermission: true,
         tools: [],
       };
     }
 
-    // Windows uses PowerShell SendKeys - always available
     if (platform === "win32") {
       return {
         platform: "win32",
@@ -1009,10 +1077,7 @@ Would you like to open System Settings now?`;
       };
     }
 
-    // Linux - check for available paste tools
     const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
-
-    // Check which tools are available
     const tools = [];
     const canUseWtype = isWayland && !isGnome;
     const canUseYdotool = isWayland;

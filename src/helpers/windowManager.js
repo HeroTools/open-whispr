@@ -22,6 +22,8 @@ class WindowManager {
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
     this.windowsPushToTalkAvailable = false;
+    this.macCompoundPushState = null;
+    this._cachedActivationMode = "tap";
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -168,9 +170,22 @@ class WindowManager {
         return;
       }
 
+      const activationMode = await this.getActivationMode();
+      const currentHotkey = this.hotkeyManager.getCurrentHotkey?.();
+
+      if (
+        process.platform === "darwin" &&
+        activationMode === "push" &&
+        currentHotkey &&
+        currentHotkey !== "GLOBE" &&
+        currentHotkey.includes("+")
+      ) {
+        this.startMacCompoundPushToTalk(currentHotkey);
+        return;
+      }
+
       // Windows push mode: defer to windowsKeyManager if available, else fall through to toggle
       if (process.platform === "win32" && this.windowsPushToTalkAvailable) {
-        const activationMode = await this.getActivationMode();
         if (activationMode === "push") {
           return;
         }
@@ -187,6 +202,133 @@ class WindowManager {
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
+  }
+
+  startMacCompoundPushToTalk(hotkey) {
+    if (this.macCompoundPushState?.active) {
+      return;
+    }
+
+    const requiredModifiers = this.getMacRequiredModifiers(hotkey);
+    if (requiredModifiers.size === 0) {
+      return;
+    }
+
+    const MIN_HOLD_DURATION_MS = 150;
+    const MAX_PUSH_DURATION_MS = 300000; // 5 minutes max recording
+    const downTime = Date.now();
+
+    this.showDictationPanel();
+
+    // Set up safety timeout
+    const safetyTimeoutId = setTimeout(() => {
+      if (this.macCompoundPushState?.active) {
+        console.warn("[WindowManager] Compound PTT safety timeout triggered - stopping recording");
+        this.forceStopMacCompoundPush("timeout");
+      }
+    }, MAX_PUSH_DURATION_MS);
+
+    this.macCompoundPushState = {
+      active: true,
+      downTime,
+      isRecording: false,
+      requiredModifiers,
+      safetyTimeoutId,
+    };
+
+    setTimeout(() => {
+      if (!this.macCompoundPushState || this.macCompoundPushState.downTime !== downTime) {
+        return;
+      }
+
+      if (!this.macCompoundPushState.isRecording) {
+        this.macCompoundPushState.isRecording = true;
+        this.sendStartDictation();
+      }
+    }, MIN_HOLD_DURATION_MS);
+  }
+
+  handleMacPushModifierUp(modifier) {
+    if (!this.macCompoundPushState?.active) {
+      return;
+    }
+
+    if (!this.macCompoundPushState.requiredModifiers.has(modifier)) {
+      return;
+    }
+
+    // Clear safety timeout
+    if (this.macCompoundPushState.safetyTimeoutId) {
+      clearTimeout(this.macCompoundPushState.safetyTimeoutId);
+    }
+
+    const wasRecording = this.macCompoundPushState.isRecording;
+    this.macCompoundPushState = null;
+
+    if (wasRecording) {
+      this.sendStopDictation();
+    } else {
+      this.hideDictationPanel();
+    }
+  }
+
+  forceStopMacCompoundPush(reason = "manual") {
+    if (!this.macCompoundPushState) {
+      return;
+    }
+
+    // Clear safety timeout
+    if (this.macCompoundPushState.safetyTimeoutId) {
+      clearTimeout(this.macCompoundPushState.safetyTimeoutId);
+    }
+
+    const wasRecording = this.macCompoundPushState.isRecording;
+    this.macCompoundPushState = null;
+
+    if (wasRecording) {
+      this.sendStopDictation();
+    }
+    this.hideDictationPanel();
+
+    // Notify renderer about forced stop
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send("compound-ptt-force-stopped", { reason });
+    }
+  }
+
+  getMacRequiredModifiers(hotkey) {
+    const required = new Set();
+    const parts = hotkey.split("+").map((part) => part.trim());
+
+    for (const part of parts) {
+      switch (part) {
+        case "Command":
+        case "Cmd":
+        case "CommandOrControl":
+        case "Super":
+        case "Meta":
+          required.add("command");
+          break;
+        case "Control":
+        case "Ctrl":
+          required.add("control");
+          break;
+        case "Alt":
+        case "Option":
+          required.add("option");
+          break;
+        case "Shift":
+          required.add("shift");
+          break;
+        case "Fn":
+          required.add("fn");
+          break;
+        default:
+          break;
+      }
+    }
+
+    return required;
   }
 
   sendStartDictation() {
@@ -210,18 +352,12 @@ class WindowManager {
     }
   }
 
-  async getActivationMode() {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-      return "tap";
-    }
-    try {
-      const mode = await this.mainWindow.webContents.executeJavaScript(
-        `localStorage.getItem("activationMode") || "tap"`
-      );
-      return mode === "push" ? "push" : "tap";
-    } catch {
-      return "tap";
-    }
+  getActivationMode() {
+    return this._cachedActivationMode;
+  }
+
+  setActivationModeCache(mode) {
+    this._cachedActivationMode = mode === "push" ? "push" : "tap";
   }
 
   setHotkeyListeningMode(enabled) {

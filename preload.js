@@ -23,7 +23,7 @@ const registerListener = (channel, handlerFactory) => {
 };
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  pasteText: (text) => ipcRenderer.invoke("paste-text", text),
+  pasteText: (text, options) => ipcRenderer.invoke("paste-text", text, options),
   hideWindow: () => ipcRenderer.invoke("hide-window"),
   showDictationPanel: () => ipcRenderer.invoke("show-dictation-panel"),
   onToggleDictation: registerListener(
@@ -201,6 +201,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getDictationKey: () => ipcRenderer.invoke("get-dictation-key"),
   saveDictationKey: (key) => ipcRenderer.invoke("save-dictation-key", key),
 
+  // Activation mode persistence (file-based for reliable startup)
+  getActivationMode: () => ipcRenderer.invoke("get-activation-mode"),
+  saveActivationMode: (mode) => ipcRenderer.invoke("save-activation-mode", mode),
+
   saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
   syncStartupPreferences: (prefs) => ipcRenderer.invoke("sync-startup-preferences", prefs),
 
@@ -254,7 +258,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Assembly AI Streaming
   assemblyAiStreamingWarmup: (options) => ipcRenderer.invoke("assemblyai-streaming-warmup", options),
   assemblyAiStreamingStart: (options) => ipcRenderer.invoke("assemblyai-streaming-start", options),
-  assemblyAiStreamingSend: (audioBuffer) => ipcRenderer.invoke("assemblyai-streaming-send", audioBuffer),
+  assemblyAiStreamingSend: (audioBuffer) => ipcRenderer.send("assemblyai-streaming-send", audioBuffer),
+  assemblyAiStreamingForceEndpoint: () => ipcRenderer.send("assemblyai-streaming-force-endpoint"),
   assemblyAiStreamingStop: () => ipcRenderer.invoke("assemblyai-streaming-stop"),
   assemblyAiStreamingStatus: () => ipcRenderer.invoke("assemblyai-streaming-status"),
   onAssemblyAiPartialTranscript: registerListener("assemblyai-partial-transcript", (callback) => (_event, text) => callback(text)),
@@ -271,6 +276,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const listener = () => callback?.();
     ipcRenderer.on("globe-key-pressed", listener);
     return () => ipcRenderer.removeListener("globe-key-pressed", listener);
+  },
+  onGlobeKeyReleased: (callback) => {
+    const listener = () => callback?.();
+    ipcRenderer.on("globe-key-released", listener);
+    return () => ipcRenderer.removeListener("globe-key-released", listener);
   },
 
   // Hotkey registration events (for notifying user when hotkey fails)

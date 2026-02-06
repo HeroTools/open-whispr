@@ -21,10 +21,10 @@ export default function UpgradePrompt({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <div className="text-center space-y-2 pt-2">
-          <h2 className="text-xl font-semibold text-neutral-900">
+          <h2 className="text-xl font-semibold text-foreground">
             You've reached your weekly limit
           </h2>
-          <p className="text-sm text-neutral-500">
+          <p className="text-sm text-muted-foreground">
             {wordsUsed.toLocaleString()} of {limit.toLocaleString()} words used.
             <br />
             Your transcription was saved and pasted.
@@ -58,7 +58,7 @@ export default function UpgradePrompt({
           />
         </div>
 
-        <p className="text-xs text-neutral-400 text-center">Rolling weekly limit</p>
+        <p className="text-xs text-muted-foreground/60 text-center">Rolling weekly limit</p>
       </DialogContent>
     </Dialog>
   );
@@ -78,17 +78,17 @@ function OptionCard({
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-4 rounded-xl border transition-shadow duration-150 hover:shadow-md flex items-center justify-between ${
+      className={`w-full text-left p-4 rounded-lg border transition-shadow duration-150 hover:shadow-md flex items-center justify-between cursor-pointer ${
         highlighted
-          ? "bg-gradient-to-r from-indigo-50 to-purple-50/50 border-indigo-200"
-          : "bg-neutral-50 border-neutral-200 hover:border-neutral-300"
+          ? "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/15"
+          : "bg-muted/50 dark:bg-surface-2 border-border dark:border-border-subtle hover:border-border-hover"
       }`}
     >
       <div>
-        <div className="font-medium text-neutral-900">{title}</div>
-        <div className="text-sm text-neutral-500">{description}</div>
+        <div className="font-medium text-foreground">{title}</div>
+        <div className="text-sm text-muted-foreground">{description}</div>
       </div>
-      <ChevronRight className="h-4 w-4 text-neutral-400 flex-shrink-0" />
+      <ChevronRight className="h-4 w-4 text-muted-foreground/60 shrink-0" />
     </button>
   );
 }

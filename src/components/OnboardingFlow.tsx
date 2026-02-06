@@ -26,11 +26,15 @@ import { useClipboard } from "../hooks/useClipboard";
 import { useSettings } from "../hooks/useSettings";
 import LanguageSelector from "./ui/LanguageSelector";
 import AuthenticationStep from "./AuthenticationStep";
+import EmailVerificationStep from "./EmailVerificationStep";
 import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { useAuth } from "../hooks/useAuth";
 import { HotkeyInput } from "./ui/HotkeyInput";
+import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { getValidationMessage } from "../utils/hotkeyValidator";
+import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 
@@ -88,6 +92,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [hotkey, setHotkey] = useState(dictationKey || getDefaultHotkey());
   const [agentName, setAgentName] = useState("Agent");
   const [skipAuth, setSkipAuth] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
   const [isModelDownloaded, setIsModelDownloaded] = useState(false);
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
   const readableHotkey = formatHotkeyLabel(hotkey);
@@ -102,9 +107,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setHotkey(registeredHotkey);
       setDictationKey(registeredHotkey);
     },
-    showSuccessToast: false, // Don't show toast during onboarding auto-registration
+    showSuccessToast: false,
     showErrorToast: false,
   });
+
+  const validateHotkeyForInput = useCallback(
+    (hotkey: string) => getValidationMessage(hotkey, getPlatform()),
+    []
+  );
 
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog); // Initialize clipboard hook for permission checks
@@ -188,9 +198,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       try {
         // Get platform-appropriate default hotkey
         const defaultHotkey = getDefaultHotkey();
+        const platform = window.electronAPI?.getPlatform?.() ?? "darwin";
 
-        // Only auto-register if no hotkey is currently set or it's the old default
-        if (!hotkey || hotkey === "`" || hotkey === "GLOBE") {
+        // Only auto-register if no hotkey is currently set
+        const shouldAutoRegister =
+          !hotkey || hotkey.trim() === "" || (platform !== "darwin" && hotkey === "GLOBE");
+
+        if (shouldAutoRegister) {
           // Try to register the default hotkey silently
           const success = await registerHotkey(defaultHotkey);
           if (success) {
@@ -290,6 +304,17 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const renderStep = () => {
     switch (currentStep) {
       case 0: // Authentication (with Welcome)
+        if (pendingVerificationEmail) {
+          return (
+            <EmailVerificationStep
+              email={pendingVerificationEmail}
+              onVerified={() => {
+                setPendingVerificationEmail(null);
+                nextStep();
+              }}
+            />
+          );
+        }
         return (
           <AuthenticationStep
             onContinueWithoutAccount={() => {
@@ -298,6 +323,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             }}
             onAuthComplete={() => {
               nextStep();
+            }}
+            onNeedsVerification={(email) => {
+              setPendingVerificationEmail(email);
             }}
           />
         );
@@ -314,8 +342,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                 <div className="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Check className="w-7 h-7 text-emerald-600" />
                 </div>
-                <h2 className="text-2xl font-semibold text-gray-900 mb-2">Setup</h2>
-                <p className="text-neutral-600">Choose your language and grant permissions</p>
+                <h2 className="text-2xl font-semibold text-foreground mb-2">Setup</h2>
+                <p className="text-muted-foreground">Choose your language and grant permissions</p>
               </div>
 
               {/* Language Selector */}
@@ -552,6 +580,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             }}
             disabled={isHotkeyRegistering}
             variant="hero"
+            validate={validateHotkeyForInput}
           />
         </div>
 

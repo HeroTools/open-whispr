@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import AudioManager from "../helpers/audioManager";
+import logger from "../utils/logger";
 
 export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -47,7 +48,21 @@ export const useAudioRecording = (toast, options = {}) => {
         if (result.success) {
           setTranscript(result.text);
 
-          await audioManagerRef.current.safePaste(result.text);
+          const isStreaming = result.source?.includes("streaming");
+          const pasteStart = performance.now();
+          await audioManagerRef.current.safePaste(
+            result.text,
+            isStreaming ? { fromStreaming: true } : {}
+          );
+          logger.info(
+            "Paste timing",
+            {
+              pasteMs: Math.round(performance.now() - pasteStart),
+              source: result.source,
+              textLength: result.text.length,
+            },
+            "streaming"
+          );
 
           audioManagerRef.current.saveTranscription(result.text);
 
@@ -202,6 +217,10 @@ export const useAudioRecording = (toast, options = {}) => {
     }
   };
 
+  const warmupStreaming = () => {
+    audioManagerRef.current?.warmupStreamingConnection();
+  };
+
   return {
     isRecording,
     isProcessing,
@@ -213,5 +232,6 @@ export const useAudioRecording = (toast, options = {}) => {
     cancelRecording,
     cancelProcessing,
     toggleListening,
+    warmupStreaming,
   };
 };

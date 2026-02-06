@@ -10,6 +10,7 @@ import {
   BookOpen,
   ShieldCheck,
   Gift,
+  Lock,
 } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
@@ -79,6 +80,13 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
       icon: Sparkles,
       description: "System prompt studio",
       group: "Intelligence",
+    },
+    {
+      id: "privacy",
+      label: "Privacy",
+      icon: Lock,
+      description: "Cloud backup & analytics",
+      group: "System",
     },
     {
       id: "permissions",

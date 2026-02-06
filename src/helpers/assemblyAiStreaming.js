@@ -3,9 +3,11 @@ const debugLogger = require("./debugLogger");
 
 const SAMPLE_RATE = 16000;
 const WEBSOCKET_TIMEOUT_MS = 30000;
-const TERMINATION_TIMEOUT_MS = 2000;
+const TERMINATION_TIMEOUT_MS = 5000;
 const TOKEN_REFRESH_BUFFER_MS = 30000;
 const TOKEN_EXPIRY_MS = 300000;
+const REWARM_DELAY_MS = 2000;
+const MAX_REWARM_ATTEMPTS = 3;
 
 class AssemblyAiStreaming {
   constructor() {
@@ -21,11 +23,15 @@ class AssemblyAiStreaming {
     this.connectionTimeout = null;
     this.accumulatedText = "";
     this.lastTurnText = "";
+    this.turns = [];
     this.terminationResolve = null;
     this.cachedToken = null;
     this.tokenFetchedAt = null;
     this.warmConnection = null;
     this.warmConnectionReady = false;
+    this.warmConnectionOptions = null;
+    this.rewarmAttempts = 0;
+    this.rewarmTimer = null;
   }
 
   buildWebSocketUrl(options) {
@@ -76,6 +82,8 @@ class AssemblyAiStreaming {
     this.warmConnectionReady = false;
     this.cachedToken = token;
     this.tokenFetchedAt = Date.now();
+    this.warmConnectionOptions = options;
+    this.rewarmAttempts = 0;
 
     const url = this.buildWebSocketUrl(options);
     debugLogger.debug("AssemblyAI warming up connection");
@@ -115,10 +123,43 @@ class AssemblyAiStreaming {
 
       this.warmConnection.on("close", () => {
         clearTimeout(warmupTimeout);
-        debugLogger.debug("AssemblyAI warm connection closed");
+        // Only auto re-warm if this was a ready connection that got closed by the server
+        // (not one we intentionally consumed via useWarmConnection)
+        const wasReady = this.warmConnectionReady;
+        debugLogger.debug("AssemblyAI warm connection closed", { wasReady });
         this.cleanupWarmConnection();
+        if (wasReady) {
+          this.scheduleRewarm();
+        }
       });
     });
+  }
+
+  scheduleRewarm() {
+    if (this.rewarmAttempts >= MAX_REWARM_ATTEMPTS) {
+      debugLogger.debug("AssemblyAI max re-warm attempts reached, giving up");
+      return;
+    }
+    if (this.isConnected) {
+      // Active session in progress, don't re-warm
+      return;
+    }
+    const token = this.getCachedToken();
+    if (!token || !this.warmConnectionOptions) {
+      debugLogger.debug("AssemblyAI cannot re-warm: no valid token or options");
+      return;
+    }
+
+    this.rewarmAttempts++;
+    debugLogger.debug("AssemblyAI scheduling re-warm", { attempt: this.rewarmAttempts });
+    clearTimeout(this.rewarmTimer);
+    this.rewarmTimer = setTimeout(() => {
+      this.rewarmTimer = null;
+      if (this.hasWarmConnection() || this.isConnected) return;
+      this.warmup({ ...this.warmConnectionOptions, token }).catch((err) => {
+        debugLogger.debug("AssemblyAI auto re-warm failed", { error: err.message });
+      });
+    }, REWARM_DELAY_MS);
   }
 
   useWarmConnection() {
@@ -186,6 +227,7 @@ class AssemblyAiStreaming {
     // Reset accumulated text for new session
     this.accumulatedText = "";
     this.lastTurnText = "";
+    this.turns = [];
 
     // Try to use pre-warmed connection for instant start
     if (this.hasWarmConnection()) {
@@ -255,25 +297,46 @@ class AssemblyAiStreaming {
         case "Turn":
           if (message.transcript) {
             if (message.end_of_turn) {
-              // Turn has ended - accumulate with previous turns
+              // Turn has ended - append once, then replace with formatted variant if needed
               const trimmedTranscript = message.transcript.trim();
-              // Only accumulate if this is new content (not a duplicate turn)
-              if (trimmedTranscript && trimmedTranscript !== this.lastTurnText) {
-                this.lastTurnText = trimmedTranscript;
-                this.accumulatedText = this.accumulatedText
-                  ? this.accumulatedText + " " + trimmedTranscript
-                  : trimmedTranscript;
-                // Pass the full accumulated text to the callback
-                this.onFinalTranscript?.(this.accumulatedText);
-                debugLogger.debug("AssemblyAI final transcript (end_of_turn)", {
-                  text: message.transcript.slice(0, 100),
-                  totalAccumulated: this.accumulatedText.length,
-                });
-              } else {
-                debugLogger.debug("AssemblyAI duplicate turn ignored", {
-                  text: message.transcript.slice(0, 100),
-                });
+              const normalizedTranscript = this.normalizeTurnText(trimmedTranscript);
+              const previousTurn = this.turns[this.turns.length - 1];
+
+              if (!trimmedTranscript || !normalizedTranscript) {
+                break;
               }
+
+              if (previousTurn && previousTurn.normalized === normalizedTranscript) {
+                // AssemblyAI can emit the same turn twice (raw then formatted). Replace previous
+                // turn only when this variant is formatted, otherwise ignore duplicate.
+                if (message.turn_is_formatted && previousTurn.text !== trimmedTranscript) {
+                  previousTurn.text = trimmedTranscript;
+                  this.lastTurnText = trimmedTranscript;
+                  this.accumulatedText = this.turns.map((turn) => turn.text).join(" ");
+                  this.onFinalTranscript?.(this.accumulatedText);
+                  debugLogger.debug("AssemblyAI formatted turn update applied", {
+                    text: trimmedTranscript.slice(0, 100),
+                    totalAccumulated: this.accumulatedText.length,
+                  });
+                } else {
+                  debugLogger.debug("AssemblyAI duplicate turn ignored", {
+                    text: trimmedTranscript.slice(0, 100),
+                  });
+                }
+                break;
+              }
+
+              this.turns.push({
+                text: trimmedTranscript,
+                normalized: normalizedTranscript,
+              });
+              this.lastTurnText = trimmedTranscript;
+              this.accumulatedText = this.turns.map((turn) => turn.text).join(" ");
+              this.onFinalTranscript?.(this.accumulatedText);
+              debugLogger.debug("AssemblyAI final transcript (end_of_turn)", {
+                text: message.transcript.slice(0, 100),
+                totalAccumulated: this.accumulatedText.length,
+              });
             } else if (message.turn_is_formatted) {
               // Formatted but turn not ended yet - show as preview without accumulating
               this.onPartialTranscript?.(message.transcript);
@@ -316,6 +379,14 @@ class AssemblyAiStreaming {
     }
   }
 
+  normalizeTurnText(text) {
+    return text
+      .toLowerCase()
+      .replace(/[^\p{L}\p{N}\s]/gu, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
   sendAudio(pcmBuffer) {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return false;
@@ -325,26 +396,36 @@ class AssemblyAiStreaming {
     return true;
   }
 
+  forceEndpoint() {
+    if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+
+    this.ws.send(JSON.stringify({ type: "ForceEndpoint" }));
+    debugLogger.debug("AssemblyAI ForceEndpoint sent");
+    return true;
+  }
+
   async disconnect(terminate = true) {
     if (!this.ws) return { text: this.accumulatedText };
 
     if (terminate && this.ws.readyState === WebSocket.OPEN) {
       try {
-        // Send terminate message and wait for Termination response (event-driven)
         this.ws.send(JSON.stringify({ type: "Terminate" }));
 
-        // Wait for the Termination message from server, with a timeout fallback
+        let timeoutId;
         const result = await Promise.race([
           new Promise((resolve) => {
             this.terminationResolve = resolve;
           }),
-          new Promise((resolve) =>
-            setTimeout(() => {
+          new Promise((resolve) => {
+            timeoutId = setTimeout(() => {
               debugLogger.debug("AssemblyAI termination timeout, using accumulated text");
               resolve({ text: this.accumulatedText });
-            }, TERMINATION_TIMEOUT_MS)
-          ),
+            }, TERMINATION_TIMEOUT_MS);
+          }),
         ]);
+        clearTimeout(timeoutId);
 
         this.terminationResolve = null;
         this.cleanup();
@@ -380,8 +461,12 @@ class AssemblyAiStreaming {
   cleanupAll() {
     this.cleanup();
     this.cleanupWarmConnection();
+    clearTimeout(this.rewarmTimer);
+    this.rewarmTimer = null;
     this.cachedToken = null;
     this.tokenFetchedAt = null;
+    this.warmConnectionOptions = null;
+    this.turns = [];
   }
 
   getStatus() {

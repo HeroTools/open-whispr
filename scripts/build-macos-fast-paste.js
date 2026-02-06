@@ -11,14 +11,14 @@ if (!isMac) {
 }
 
 const projectRoot = path.resolve(__dirname, "..");
-const swiftSource = path.join(projectRoot, "resources", "macos-globe-listener.swift");
+const swiftSource = path.join(projectRoot, "resources", "macos-fast-paste.swift");
 const outputDir = path.join(projectRoot, "resources", "bin");
-const outputBinary = path.join(outputDir, "macos-globe-listener");
-const hashFile = path.join(outputDir, ".macos-globe-listener.hash");
+const outputBinary = path.join(outputDir, "macos-fast-paste");
+const hashFile = path.join(outputDir, ".macos-fast-paste.hash");
 const moduleCacheDir = path.join(outputDir, ".swift-module-cache");
 
 function log(message) {
-  console.log(`[globe-listener] ${message}`);
+  console.log(`[fast-paste] ${message}`);
 }
 
 function ensureDir(dirPath) {
@@ -28,7 +28,7 @@ function ensureDir(dirPath) {
 }
 
 if (!fs.existsSync(swiftSource)) {
-  console.error(`[globe-listener] Swift source not found at ${swiftSource}`);
+  console.error(`[fast-paste] Swift source not found at ${swiftSource}`);
   process.exit(1);
 }
 
@@ -48,7 +48,6 @@ if (fs.existsSync(outputBinary)) {
   }
 }
 
-// Secondary check: compare source hash
 if (!needsBuild && fs.existsSync(outputBinary)) {
   try {
     const sourceContent = fs.readFileSync(swiftSource, "utf8");
@@ -61,7 +60,6 @@ if (!needsBuild && fs.existsSync(outputBinary)) {
         needsBuild = true;
       }
     } else {
-      // No hash file exists, save current hash for next time
       fs.writeFileSync(hashFile, currentHash);
     }
   } catch (err) {
@@ -101,24 +99,22 @@ if (result.status !== 0) {
 }
 
 if (result.status !== 0) {
-  console.error("[globe-listener] Failed to compile macOS Globe listener binary.");
+  console.error("[fast-paste] Failed to compile macOS fast-paste binary.");
   process.exit(result.status ?? 1);
 }
 
 try {
   fs.chmodSync(outputBinary, 0o755);
 } catch (error) {
-  console.warn(`[globe-listener] Unable to set executable permissions: ${error.message}`);
+  console.warn(`[fast-paste] Unable to set executable permissions: ${error.message}`);
 }
 
-// Save source hash after successful build
 try {
   const sourceContent = fs.readFileSync(swiftSource, "utf8");
   const hash = crypto.createHash("sha256").update(sourceContent).digest("hex");
   fs.writeFileSync(hashFile, hash);
 } catch (err) {
-  // Non-critical, just log
   log(`Warning: Could not save source hash: ${err.message}`);
 }
 
-log("Successfully built macOS Globe listener binary.");
+log("Successfully built macOS fast-paste binary.");

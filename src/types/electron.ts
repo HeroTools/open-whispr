@@ -166,7 +166,7 @@ declare global {
   interface Window {
     electronAPI: {
       // Basic window operations
-      pasteText: (text: string) => Promise<void>;
+      pasteText: (text: string, options?: { fromStreaming?: boolean }) => Promise<void>;
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
       onToggleDictation: (callback: () => void) => (() => void) | void;
@@ -339,6 +339,7 @@ declare global {
 
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
+      onGlobeKeyReleased?: (callback: () => void) => () => void;
 
       // Hotkey registration events
       onHotkeyFallbackUsed?: (
@@ -365,6 +366,10 @@ declare global {
       // Dictation key persistence (file-based for reliable startup)
       getDictationKey?: () => Promise<string | null>;
       saveDictationKey?: (key: string) => Promise<void>;
+
+      // Activation mode persistence (file-based for reliable startup)
+      getActivationMode?: () => Promise<"tap" | "push">;
+      saveActivationMode?: (mode: "tap" | "push") => Promise<void>;
 
       // Debug logging
       getLogLevel?: () => Promise<string>;
@@ -486,6 +491,7 @@ declare global {
         success: boolean;
         error?: string;
       }>;
+      assemblyAiStreamingForceEndpoint?: () => void;
       assemblyAiStreamingStop?: () => Promise<{
         success: boolean;
         text?: string;

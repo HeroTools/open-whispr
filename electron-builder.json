@@ -89,6 +89,7 @@
     "src/assets/**/*",
     "resources/macos-globe-listener.swift",
     "resources/bin/macos-globe-listener",
+    "resources/bin/macos-fast-paste",
     {
       "from": "resources/bin/",
       "to": "bin/",
