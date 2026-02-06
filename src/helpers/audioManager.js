@@ -1035,15 +1035,12 @@ class AudioManager {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
     if (useReasoningModel && processedText) {
       const reasoningStart = performance.now();
-      const cloudReasoningModel =
-        localStorage.getItem("cloudReasoningModel") || "llama-3.3-70b-versatile";
       const agentName = localStorage.getItem("agentName") || "";
       const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
 
       if (cloudTranscriptionMode === "openwhispr") {
         const reasonResult = await withSessionRefresh(async () => {
           const res = await window.electronAPI.cloudReason(processedText, {
-            model: cloudReasoningModel,
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
             language: localStorage.getItem("preferredLanguage") || "auto",
@@ -1702,24 +1699,20 @@ class AudioManager {
       this.streamingSource = this.streamingAudioContext.createMediaStreamSource(stream);
       this.streamingStream = stream;
 
-      const bufferSize = 4096;
-      this.streamingProcessor = this.streamingAudioContext.createScriptProcessor(bufferSize, 1, 1);
+      const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+      await this.streamingAudioContext.audioWorklet.addModule(workletUrl);
 
-      this.streamingProcessor.onaudioprocess = (event) => {
+      this.streamingProcessor = new AudioWorkletNode(
+        this.streamingAudioContext,
+        "pcm-streaming-processor"
+      );
+
+      this.streamingProcessor.port.onmessage = (event) => {
         if (!this.isStreaming) return;
-
-        const inputData = event.inputBuffer.getChannelData(0);
-        const pcmData = new Int16Array(inputData.length);
-        for (let i = 0; i < inputData.length; i++) {
-          const s = Math.max(-1, Math.min(1, inputData[i]));
-          pcmData[i] = s < 0 ? s * 0x8000 : s * 0x7fff;
-        }
-
-        window.electronAPI.assemblyAiStreamingSend(pcmData.buffer);
+        window.electronAPI.assemblyAiStreamingSend(event.data);
       };
 
       this.streamingSource.connect(this.streamingProcessor);
-      this.streamingProcessor.connect(this.streamingAudioContext.destination);
 
       this.streamingFinalText = "";
 
@@ -1823,14 +1816,11 @@ class AudioManager {
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
     if (useReasoningModel && finalText) {
       const reasoningStart = performance.now();
-      const cloudReasoningModel =
-        localStorage.getItem("cloudReasoningModel") || "llama-3.3-70b-versatile";
       const agentName = localStorage.getItem("agentName") || "";
 
       try {
         const reasonResult = await withSessionRefresh(async () => {
           const res = await window.electronAPI.cloudReason(finalText, {
-            model: cloudReasoningModel,
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
             language: localStorage.getItem("preferredLanguage") || "auto",
@@ -1851,7 +1841,7 @@ class AudioManager {
           "Streaming reasoning complete",
           {
             reasoningDurationMs: Math.round(performance.now() - reasoningStart),
-            model: cloudReasoningModel,
+            model: reasonResult.model,
           },
           "streaming"
         );
@@ -1897,6 +1887,7 @@ class AudioManager {
 
     if (this.streamingProcessor) {
       try {
+        this.streamingProcessor.port.postMessage("stop");
         this.streamingProcessor.disconnect();
       } catch (e) {
         // Ignore

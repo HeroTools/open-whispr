@@ -19,7 +19,6 @@ export interface TranscriptionSettings {
   cloudTranscriptionModel: string;
   cloudTranscriptionBaseUrl?: string;
   cloudTranscriptionMode: string;
-  cloudReasoningModel: string;
   customDictionary: string[];
   assemblyAiStreaming: boolean;
 }
@@ -149,16 +148,6 @@ export function useSettings() {
   const [cloudTranscriptionMode, setCloudTranscriptionMode] = useLocalStorage(
     "cloudTranscriptionMode",
     "openwhispr",
-    {
-      serialize: String,
-      deserialize: String,
-    }
-  );
-
-  // Cloud reasoning model (for OpenWhispr cloud mode)
-  const [cloudReasoningModel, setCloudReasoningModel] = useLocalStorage(
-    "cloudReasoningModel",
-    "llama-3.3-70b-versatile",
     {
       serialize: String,
       deserialize: String,
@@ -592,7 +581,6 @@ export function useSettings() {
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
     cloudTranscriptionMode,
-    cloudReasoningModel,
     customDictionary,
     assemblyAiStreaming,
     setAssemblyAiStreaming,
@@ -618,7 +606,6 @@ export function useSettings() {
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
     setCloudTranscriptionMode,
-    setCloudReasoningModel,
     setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,

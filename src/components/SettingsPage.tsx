@@ -165,8 +165,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     updateReasoningSettings,
     cloudTranscriptionMode,
     setCloudTranscriptionMode,
-    cloudReasoningModel,
-    setCloudReasoningModel,
     cloudBackupEnabled,
     setCloudBackupEnabled,
     telemetryEnabled,
@@ -1111,34 +1109,20 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               description='Configure how AI models clean up and format your transcriptions. Handles commands like "scratch that", creates proper lists, and fixes errors while preserving your natural tone.'
             />
 
-            {/* Simplified cloud model picker when in OpenWhispr cloud mode */}
             {isSignedIn && cloudTranscriptionMode === "openwhispr" ? (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-muted-foreground">AI Model</label>
-                </div>
-                <select
-                  value={cloudReasoningModel}
-                  onChange={(e) => setCloudReasoningModel(e.target.value)}
-                  className="w-full px-3 py-2 border border-border rounded-lg bg-input text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                >
-                  <optgroup label="Fast (Groq)">
-                    <option value="llama-3.3-70b-versatile">Llama 3.3 70B — Recommended</option>
-                    <option value="llama-3.1-8b-instant">Llama 3.1 8B — Fastest</option>
-                  </optgroup>
-                  <optgroup label="Balanced (OpenRouter)">
-                    <option value="anthropic/claude-sonnet-4">Claude Sonnet 4</option>
-                    <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
-                  </optgroup>
-                  <optgroup label="Quality (OpenRouter)">
-                    <option value="anthropic/claude-opus-4">Claude Opus 4</option>
-                    <option value="openai/gpt-4.1">GPT-4.1</option>
-                  </optgroup>
-                </select>
-                <p className="text-xs text-muted-foreground">
-                  No API key needed. Powered by OpenWhispr.
-                </p>
-              </div>
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow label="Clean up transcriptions" description="Powered by OpenWhispr">
+                    <Toggle
+                      checked={useReasoningModel}
+                      onChange={(value) => {
+                        setUseReasoningModel(value);
+                        updateReasoningSettings({ useReasoningModel: value });
+                      }}
+                    />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
             ) : (
               <ReasoningModelSelector
                 useReasoningModel={useReasoningModel}
