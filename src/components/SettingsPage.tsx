@@ -16,6 +16,7 @@ import {
   Monitor,
   Cloud,
   Key,
+  ChevronDown,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
@@ -45,11 +46,13 @@ import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
-import UsageDisplay from "./UsageDisplay";
+import { Skeleton } from "./ui/skeleton";
+import { Progress } from "./ui/progress";
 import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useUsage } from "../hooks/useUsage";
+import { cn } from "./lib/utils";
 
 export type SettingsSectionType =
   | "account"
@@ -102,6 +105,278 @@ function SectionHeader({ title, description }: { title: string; description?: st
       {description && (
         <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
       )}
+    </div>
+  );
+}
+
+// ── Transcription section (extracted for clarity) ───────────────────
+
+interface TranscriptionSectionProps {
+  isSignedIn: boolean;
+  cloudTranscriptionMode: string;
+  setCloudTranscriptionMode: (mode: string) => void;
+  useLocalWhisper: boolean;
+  setUseLocalWhisper: (value: boolean) => void;
+  updateTranscriptionSettings: (settings: { useLocalWhisper: boolean }) => void;
+  cloudTranscriptionProvider: string;
+  setCloudTranscriptionProvider: (provider: string) => void;
+  cloudTranscriptionModel: string;
+  setCloudTranscriptionModel: (model: string) => void;
+  localTranscriptionProvider: string;
+  setLocalTranscriptionProvider: (provider: string) => void;
+  whisperModel: string;
+  setWhisperModel: (model: string) => void;
+  parakeetModel: string;
+  setParakeetModel: (model: string) => void;
+  openaiApiKey: string;
+  setOpenaiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
+  customTranscriptionApiKey: string;
+  setCustomTranscriptionApiKey: (key: string) => void;
+  cloudTranscriptionBaseUrl?: string;
+  setCloudTranscriptionBaseUrl: (url: string) => void;
+  toast: (opts: {
+    title: string;
+    description: string;
+    variant?: string;
+    duration?: number;
+  }) => void;
+}
+
+function TranscriptionSection({
+  isSignedIn,
+  cloudTranscriptionMode,
+  setCloudTranscriptionMode,
+  useLocalWhisper,
+  setUseLocalWhisper,
+  updateTranscriptionSettings,
+  cloudTranscriptionProvider,
+  setCloudTranscriptionProvider,
+  cloudTranscriptionModel,
+  setCloudTranscriptionModel,
+  localTranscriptionProvider,
+  setLocalTranscriptionProvider,
+  whisperModel,
+  setWhisperModel,
+  parakeetModel,
+  setParakeetModel,
+  openaiApiKey,
+  setOpenaiApiKey,
+  groqApiKey,
+  setGroqApiKey,
+  customTranscriptionApiKey,
+  setCustomTranscriptionApiKey,
+  cloudTranscriptionBaseUrl,
+  setCloudTranscriptionBaseUrl,
+  toast,
+}: TranscriptionSectionProps) {
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  // Determine if we're in "advanced" mode (BYOK or local)
+  const isAdvancedMode = cloudTranscriptionMode === "byok" || useLocalWhisper;
+
+  // When user is signed in and using OpenWhispr Cloud, keep it simple
+  const isCloudMode = isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
+
+  return (
+    <div className="space-y-5">
+      <SectionHeader
+        title="Speech to Text"
+        description="Choose how OpenWhispr transcribes your voice"
+      />
+
+      {/* Primary option: OpenWhispr Cloud */}
+      {isSignedIn && (
+        <SettingsPanel>
+          <SettingsPanelRow>
+            <button
+              onClick={() => {
+                if (!isCloudMode) {
+                  setCloudTranscriptionMode("openwhispr");
+                  setUseLocalWhisper(false);
+                  updateTranscriptionSettings({ useLocalWhisper: false });
+                  setAdvancedOpen(false);
+                  toast({
+                    title: "Switched to OpenWhispr Cloud",
+                    description: "Transcription will use OpenWhispr's cloud service.",
+                    variant: "success",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  isCloudMode
+                    ? "bg-primary/10 dark:bg-primary/15"
+                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                }`}
+              >
+                <Cloud
+                  className={`w-4 h-4 transition-colors ${
+                    isCloudMode ? "text-primary" : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-foreground">OpenWhispr Cloud</span>
+                  {isCloudMode && (
+                    <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  Just works. No configuration needed.
+                </p>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                  isCloudMode
+                    ? "border-primary bg-primary"
+                    : "border-border-hover dark:border-border-subtle"
+                }`}
+              >
+                {isCloudMode && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                  </div>
+                )}
+              </div>
+            </button>
+          </SettingsPanelRow>
+        </SettingsPanel>
+      )}
+
+      {/* Advanced section */}
+      <div>
+        <button
+          onClick={() => setAdvancedOpen(!advancedOpen)}
+          className="flex items-center gap-1.5 text-[12px] font-medium text-muted-foreground hover:text-foreground transition-colors cursor-pointer mb-3"
+        >
+          <ChevronDown
+            className={`w-3.5 h-3.5 transition-transform duration-200 ${
+              advancedOpen || isAdvancedMode ? "rotate-0" : "-rotate-90"
+            }`}
+          />
+          Advanced
+          {isAdvancedMode && (
+            <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm ml-1">
+              Active
+            </span>
+          )}
+        </button>
+
+        {(advancedOpen || isAdvancedMode) && (
+          <div className="space-y-3">
+            {isSignedIn && (
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <button
+                    onClick={() => {
+                      if (cloudTranscriptionMode !== "byok" || useLocalWhisper) {
+                        setCloudTranscriptionMode("byok");
+                        setUseLocalWhisper(false);
+                        updateTranscriptionSettings({ useLocalWhisper: false });
+                        toast({
+                          title: "Switched to Bring Your Own Key",
+                          description: "You'll need to provide your own API key for transcription.",
+                          variant: "success",
+                          duration: 3000,
+                        });
+                      }
+                    }}
+                    className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                  >
+                    <div
+                      className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                        cloudTranscriptionMode === "byok" && !useLocalWhisper
+                          ? "bg-accent/10 dark:bg-accent/15"
+                          : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                      }`}
+                    >
+                      <Key
+                        className={`w-4 h-4 transition-colors ${
+                          cloudTranscriptionMode === "byok" && !useLocalWhisper
+                            ? "text-accent"
+                            : "text-muted-foreground"
+                        }`}
+                      />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[12px] font-medium text-foreground">
+                          Bring Your Own Key
+                        </span>
+                        {cloudTranscriptionMode === "byok" && !useLocalWhisper && (
+                          <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                            Active
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                        Use your own API key. No usage limits.
+                      </p>
+                    </div>
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                        cloudTranscriptionMode === "byok" && !useLocalWhisper
+                          ? "border-accent bg-accent"
+                          : "border-border-hover dark:border-border-subtle"
+                      }`}
+                    >
+                      {cloudTranscriptionMode === "byok" && !useLocalWhisper && (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            )}
+
+            <TranscriptionModelPicker
+              selectedCloudProvider={cloudTranscriptionProvider}
+              onCloudProviderSelect={setCloudTranscriptionProvider}
+              selectedCloudModel={cloudTranscriptionModel}
+              onCloudModelSelect={setCloudTranscriptionModel}
+              selectedLocalModel={
+                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+              }
+              onLocalModelSelect={(modelId) => {
+                if (localTranscriptionProvider === "nvidia") {
+                  setParakeetModel(modelId);
+                } else {
+                  setWhisperModel(modelId);
+                }
+              }}
+              selectedLocalProvider={localTranscriptionProvider}
+              onLocalProviderSelect={setLocalTranscriptionProvider}
+              useLocalWhisper={useLocalWhisper}
+              onModeChange={(isLocal) => {
+                setUseLocalWhisper(isLocal);
+                updateTranscriptionSettings({ useLocalWhisper: isLocal });
+                if (isLocal) {
+                  setCloudTranscriptionMode("byok");
+                }
+              }}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              customTranscriptionApiKey={customTranscriptionApiKey}
+              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+              variant="settings"
+            />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -205,6 +480,18 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const { agentName, setAgentName } = useAgentName();
   const { theme, setTheme } = useTheme();
   const usage = useUsage();
+  const hasShownApproachingToast = useRef(false);
+  useEffect(() => {
+    if (usage?.isApproachingLimit && !hasShownApproachingToast.current) {
+      hasShownApproachingToast.current = true;
+      toast({
+        title: "Approaching Weekly Limit",
+        description: `You've used ${usage.wordsUsed.toLocaleString()} of ${usage.limit.toLocaleString()} free words this week.`,
+        duration: 6000,
+      });
+    }
+  }, [usage?.isApproachingLimit, usage?.wordsUsed, usage?.limit, toast]);
+
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
@@ -438,153 +725,201 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     switch (activeSection) {
       case "account":
         return (
-          <div className="space-y-8">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Account</h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                Manage your account settings and sign-in status.
-              </p>
-            </div>
-
+          <div className="space-y-5">
             {!NEON_AUTH_URL ? (
-              <div className="p-6 bg-amber-50 border border-amber-200 rounded-xl">
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-                    <UserCircle className="w-5 h-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <h4 className="font-medium text-amber-900 mb-1">Account Features Disabled</h4>
-                    <p className="text-sm text-amber-800">
-                      Authentication is not configured for this installation. Set{" "}
-                      <code className="bg-amber-100 px-1 rounded">VITE_NEON_AUTH_URL</code> in your
-                      .env file to enable account features.
-                    </p>
-                  </div>
-                </div>
-              </div>
+              <>
+                <SectionHeader title="Account" description="Authentication is not configured" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Account Features Disabled"
+                      description="Set VITE_NEON_AUTH_URL in your .env file to enable account features."
+                    >
+                      <Badge variant="warning">Disabled</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
             ) : isLoaded && isSignedIn && user ? (
-              <div className="space-y-6">
-                <div className="p-6 bg-primary/5 dark:bg-primary/10 border border-primary/20 rounded-xl">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                      {user.image ? (
-                        <img
-                          src={user.image}
-                          alt={user.name || "User"}
-                          className="w-16 h-16 rounded-full object-cover"
-                        />
-                      ) : (
-                        <UserCircle className="w-8 h-8 text-primary" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-foreground text-lg truncate">
-                        {user.name || "User"}
-                      </h4>
-                      <p className="text-sm text-muted-foreground truncate">{user.email}</p>
-                      <span className="inline-flex items-center mt-2 text-xs text-success bg-success/15 px-2 py-0.5 rounded-full">
-                        Signed in
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <UsageDisplay />
-
-                {/* Billing Section */}
-                {usage && (
-                  <div className="p-4 bg-muted border border-border rounded-xl">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-medium text-foreground">Billing</h4>
-                      {usage.isTrial ? (
-                        <Badge variant="outline" className="text-indigo-600 border-indigo-300">
-                          Trial ({usage.trialDaysLeft} {usage.trialDaysLeft === 1 ? "day" : "days"}{" "}
-                          left)
-                        </Badge>
-                      ) : usage.isSubscribed ? (
-                        <Badge variant="default" className="bg-indigo-600">
-                          Pro
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline">Free</Badge>
-                      )}
-                    </div>
-
-                    <div className="text-sm text-muted-foreground mb-4">
-                      {usage.isTrial ? (
-                        <p>
-                          Enjoying unlimited transcriptions during your trial. Upgrade anytime to
-                          continue after your trial ends.
+              <>
+                <SectionHeader title="Account" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden bg-primary/10 dark:bg-primary/15">
+                        {user.image ? (
+                          <img
+                            src={user.image}
+                            alt={user.name || "User"}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserCircle className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-medium text-foreground truncate">
+                          {user.name || "User"}
                         </p>
-                      ) : usage.isSubscribed ? (
-                        <p>
-                          {usage.currentPeriodEnd
-                            ? `Next billing date: ${new Date(usage.currentPeriodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`
-                            : "You have unlimited transcriptions"}
-                        </p>
-                      ) : (
-                        <p>Upgrade to Pro for unlimited transcriptions</p>
-                      )}
+                        <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <Badge variant="success">Signed in</Badge>
                     </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
 
-                    {!usage.isTrial && (
-                      <Button
-                        onClick={() =>
-                          usage.isSubscribed ? usage.openBillingPortal() : usage.openCheckout()
+                <SectionHeader title="Plan" />
+                {!usage || !usage.hasLoaded ? (
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                    </SettingsPanelRow>
+                    <SettingsPanelRow>
+                      <div className="space-y-2">
+                        <Skeleton className="h-3 w-48" />
+                        <Skeleton className="h-8 w-full rounded" />
+                      </div>
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                ) : (
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <SettingsRow
+                        label={usage.isSubscribed ? (usage.isTrial ? "Trial" : "Pro") : "Free"}
+                        description={
+                          usage.isTrial
+                            ? `${usage.trialDaysLeft} ${usage.trialDaysLeft === 1 ? "day" : "days"} remaining \u2014 unlimited transcriptions`
+                            : usage.isSubscribed
+                              ? usage.currentPeriodEnd
+                                ? `Next billing: ${new Date(usage.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                                : "Unlimited transcriptions"
+                              : `${usage.wordsUsed.toLocaleString()} / ${usage.limit.toLocaleString()} words this week`
                         }
-                        variant="outline"
-                        size="sm"
-                        className="w-full"
                       >
-                        {usage.isSubscribed ? "Manage Billing" : "Upgrade to Pro"}
-                      </Button>
+                        {usage.isTrial ? (
+                          <Badge variant="info">Trial</Badge>
+                        ) : usage.isSubscribed ? (
+                          <Badge variant="success">Pro</Badge>
+                        ) : usage.isOverLimit ? (
+                          <Badge variant="warning">Limit reached</Badge>
+                        ) : (
+                          <Badge variant="outline">Free</Badge>
+                        )}
+                      </SettingsRow>
+                    </SettingsPanelRow>
+
+                    {!usage.isSubscribed && !usage.isTrial && (
+                      <SettingsPanelRow>
+                        <div className="space-y-1.5">
+                          <Progress
+                            value={
+                              usage.limit > 0
+                                ? Math.min(100, (usage.wordsUsed / usage.limit) * 100)
+                                : 0
+                            }
+                            className={cn(
+                              "h-1.5",
+                              usage.isOverLimit
+                                ? "[&>div]:bg-destructive"
+                                : usage.isApproachingLimit
+                                  ? "[&>div]:bg-warning"
+                                  : "[&>div]:bg-primary"
+                            )}
+                          />
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span className="tabular-nums">
+                              {usage.wordsUsed.toLocaleString()} / {usage.limit.toLocaleString()}
+                            </span>
+                            {usage.isApproachingLimit && (
+                              <span className="text-warning">
+                                {usage.wordsRemaining.toLocaleString()} remaining
+                              </span>
+                            )}
+                            {!usage.isApproachingLimit && !usage.isOverLimit && (
+                              <span>Rolling weekly limit</span>
+                            )}
+                          </div>
+                        </div>
+                      </SettingsPanelRow>
                     )}
-                  </div>
+
+                    <SettingsPanelRow>
+                      {usage.isSubscribed && !usage.isTrial ? (
+                        <Button
+                          onClick={() => usage.openBillingPortal()}
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
+                          Manage Billing
+                        </Button>
+                      ) : (
+                        <Button onClick={() => usage.openCheckout()} size="sm" className="w-full">
+                          Upgrade to Pro
+                        </Button>
+                      )}
+                    </SettingsPanelRow>
+                  </SettingsPanel>
                 )}
 
-                <Button
-                  onClick={handleSignOut}
-                  variant="outline"
-                  disabled={isSigningOut}
-                  className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
-                >
-                  <LogOut className="mr-2 h-4 w-4" />
-                  {isSigningOut ? "Signing out..." : "Sign Out"}
-                </Button>
-              </div>
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <Button
+                      onClick={handleSignOut}
+                      variant="outline"
+                      disabled={isSigningOut}
+                      size="sm"
+                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
+                    >
+                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                      {isSigningOut ? "Signing out..." : "Sign Out"}
+                    </Button>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
             ) : isLoaded ? (
-              <div className="space-y-6">
-                <div className="p-6 bg-muted border border-border rounded-xl">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 bg-muted-foreground/20 rounded-full flex items-center justify-center flex-shrink-0">
-                      <UserCircle className="w-5 h-5 text-muted-foreground" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-foreground mb-1">Not Signed In</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Sign in to sync your settings across devices and access premium features.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={() => {
-                    // Reset onboarding to go back to auth screen
-                    localStorage.removeItem("onboardingCompleted");
-                    localStorage.setItem("onboardingCurrentStep", "0");
-                    window.location.reload();
-                  }}
-                  className="w-full"
-                >
-                  <UserCircle className="mr-2 h-4 w-4" />
-                  Sign In or Create Account
-                </Button>
-              </div>
+              <>
+                <SectionHeader title="Account" description="Sign in to access premium features" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Not Signed In"
+                      description="Sign in to sync settings and access premium features."
+                    >
+                      <Badge variant="outline">Offline</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                  <SettingsPanelRow>
+                    <Button
+                      onClick={() => {
+                        localStorage.removeItem("onboardingCompleted");
+                        localStorage.setItem("onboardingCurrentStep", "0");
+                        window.location.reload();
+                      }}
+                      size="sm"
+                      className="w-full"
+                    >
+                      <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                      Sign In or Create Account
+                    </Button>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
             ) : (
-              <div className="flex items-center justify-center py-8">
-                <RefreshCw className="w-6 h-6 animate-spin text-muted-foreground" />
-              </div>
+              <>
+                <SectionHeader title="Account" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
             )}
           </div>
         );
@@ -863,109 +1198,33 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "transcription":
         return (
-          <div className="space-y-5">
-            <SectionHeader
-              title="Speech to Text"
-              description="Choose a cloud provider for fast transcription or use local Whisper models for complete privacy"
-            />
-
-            {/* Cloud/BYOK mode toggle — only shown when signed in */}
-            {isSignedIn && !useLocalWhisper && (
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                <button
-                  onClick={() => {
-                    if (cloudTranscriptionMode !== "openwhispr") {
-                      setCloudTranscriptionMode("openwhispr");
-                      toast({
-                        title: "Switched to OpenWhispr Cloud",
-                        description: "Transcription will use OpenWhispr's cloud service.",
-                        variant: "success",
-                        duration: 3000,
-                      });
-                    }
-                  }}
-                  className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-                    cloudTranscriptionMode === "openwhispr"
-                      ? "border-indigo-500 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500/20"
-                      : "border-neutral-200 bg-white hover:border-neutral-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Cloud className="w-4 h-4 text-indigo-600" />
-                    <span className="font-medium text-neutral-900">OpenWhispr Cloud</span>
-                  </div>
-                  <p className="text-xs text-neutral-500">Just works. No configuration needed.</p>
-                </button>
-                <button
-                  onClick={() => {
-                    if (cloudTranscriptionMode !== "byok") {
-                      setCloudTranscriptionMode("byok");
-                      toast({
-                        title: "Switched to Bring Your Own Key",
-                        description: "You'll need to provide your own API key for transcription.",
-                        variant: "success",
-                        duration: 3000,
-                      });
-                    }
-                  }}
-                  className={`p-4 border-2 rounded-xl text-left transition-all cursor-pointer ${
-                    cloudTranscriptionMode === "byok"
-                      ? "border-indigo-500 bg-indigo-50/30 shadow-sm ring-1 ring-indigo-500/20"
-                      : "border-neutral-200 bg-white hover:border-neutral-300"
-                  }`}
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <Key className="w-4 h-4 text-neutral-600" />
-                    <span className="font-medium text-neutral-900">Bring Your Own Key</span>
-                  </div>
-                  <p className="text-xs text-neutral-500">Use your own API key. No usage limits.</p>
-                </button>
-              </div>
-            )}
-
-            {/* When OpenWhispr Cloud mode is active, hide the full picker */}
-            {isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper ? (
-              <div className="p-4 bg-neutral-50 border border-neutral-200 rounded-xl">
-                <p className="text-sm text-neutral-600">
-                  Transcription is handled by OpenWhispr's servers. Change your language in General
-                  settings.
-                </p>
-              </div>
-            ) : (
-              <TranscriptionModelPicker
-                selectedCloudProvider={cloudTranscriptionProvider}
-                onCloudProviderSelect={setCloudTranscriptionProvider}
-                selectedCloudModel={cloudTranscriptionModel}
-                onCloudModelSelect={setCloudTranscriptionModel}
-                selectedLocalModel={
-                  localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
-                }
-                onLocalModelSelect={(modelId) => {
-                  if (localTranscriptionProvider === "nvidia") {
-                    setParakeetModel(modelId);
-                  } else {
-                    setWhisperModel(modelId);
-                  }
-                }}
-                selectedLocalProvider={localTranscriptionProvider}
-                onLocalProviderSelect={setLocalTranscriptionProvider}
-                useLocalWhisper={useLocalWhisper}
-                onModeChange={(isLocal) => {
-                  setUseLocalWhisper(isLocal);
-                  updateTranscriptionSettings({ useLocalWhisper: isLocal });
-                }}
-                openaiApiKey={openaiApiKey}
-                setOpenaiApiKey={setOpenaiApiKey}
-                groqApiKey={groqApiKey}
-                setGroqApiKey={setGroqApiKey}
-                customTranscriptionApiKey={customTranscriptionApiKey}
-                setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-                cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-                setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
-                variant="settings"
-              />
-            )}
-          </div>
+          <TranscriptionSection
+            isSignedIn={isSignedIn ?? false}
+            cloudTranscriptionMode={cloudTranscriptionMode}
+            setCloudTranscriptionMode={setCloudTranscriptionMode}
+            useLocalWhisper={useLocalWhisper}
+            setUseLocalWhisper={setUseLocalWhisper}
+            updateTranscriptionSettings={updateTranscriptionSettings}
+            cloudTranscriptionProvider={cloudTranscriptionProvider}
+            setCloudTranscriptionProvider={setCloudTranscriptionProvider}
+            cloudTranscriptionModel={cloudTranscriptionModel}
+            setCloudTranscriptionModel={setCloudTranscriptionModel}
+            localTranscriptionProvider={localTranscriptionProvider}
+            setLocalTranscriptionProvider={setLocalTranscriptionProvider}
+            whisperModel={whisperModel}
+            setWhisperModel={setWhisperModel}
+            parakeetModel={parakeetModel}
+            setParakeetModel={setParakeetModel}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            customTranscriptionApiKey={customTranscriptionApiKey}
+            setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+            cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+            setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+            toast={toast}
+          />
         );
 
       // ───────────────────────────────────────────────────

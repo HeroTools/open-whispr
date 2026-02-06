@@ -537,6 +537,9 @@ async function startApp() {
           // If released too quickly, don't do anything (tap is ignored in push mode)
         }
       }
+
+      // Fn release also stops compound push-to-talk for Fn+F-key hotkeys
+      windowManager.handleMacPushModifierUp("fn");
     });
 
     globeKeyManager.on("modifier-up", (modifier) => {

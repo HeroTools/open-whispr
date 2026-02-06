@@ -46,8 +46,13 @@ class AudioManager {
     this.streamingStream = null;
     this.streamingCleanupFns = [];
     this.streamingFinalText = "";
+    this.streamingPartialText = "";
+    this.streamingTextResolve = null;
     // Cached microphone device ID to skip enumeration
     this.cachedMicDeviceId = null;
+    // Persistent AudioContext reused across streaming recordings
+    this.persistentAudioContext = null;
+    this.workletModuleLoaded = false;
   }
 
   getCustomDictionaryPrompt() {
@@ -1551,9 +1556,9 @@ class AudioManager {
     }
   }
 
-  async safePaste(text) {
+  async safePaste(text, options = {}) {
     try {
-      await window.electronAPI.pasteText(text);
+      await window.electronAPI.pasteText(text, options);
       return true;
     } catch (error) {
       this.onError?.({
@@ -1641,6 +1646,18 @@ class AudioManager {
     }
   }
 
+  async getOrCreateAudioContext() {
+    if (this.persistentAudioContext && this.persistentAudioContext.state !== "closed") {
+      if (this.persistentAudioContext.state === "suspended") {
+        await this.persistentAudioContext.resume();
+      }
+      return this.persistentAudioContext;
+    }
+    this.persistentAudioContext = new AudioContext({ sampleRate: 16000 });
+    this.workletModuleLoaded = false;
+    return this.persistentAudioContext;
+  }
+
   async startStreamingRecording() {
     try {
       if (this.isRecording || this.isStreaming || this.isProcessing) {
@@ -1648,7 +1665,27 @@ class AudioManager {
       }
 
       const constraints = await this.getAudioConstraints();
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+
+      // Parallelize mic acquisition and streaming session start
+      const [stream, result] = await Promise.all([
+        navigator.mediaDevices.getUserMedia(constraints),
+        withSessionRefresh(async () => {
+          const res = await window.electronAPI.assemblyAiStreamingStart({
+            sampleRate: 16000,
+            language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+          });
+
+          if (!res.success) {
+            if (res.code === "NO_API") {
+              return { needsFallback: true };
+            }
+            const err = new Error(res.error || "Failed to start streaming session");
+            err.code = res.code;
+            throw err;
+          }
+          return res;
+        }),
+      ]);
 
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
@@ -1665,25 +1702,6 @@ class AudioManager {
         );
       }
 
-      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
-      const result = await withSessionRefresh(async () => {
-        const res = await window.electronAPI.assemblyAiStreamingStart({
-          sampleRate: 16000,
-          language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
-        });
-
-        if (!res.success) {
-          if (res.code === "NO_API") {
-            // Return special marker to indicate fallback needed
-            return { needsFallback: true };
-          }
-          const err = new Error(res.error || "Failed to start streaming session");
-          err.code = res.code;
-          throw err;
-        }
-        return res;
-      });
-
       // Handle fallback to regular recording if streaming not configured
       if (result.needsFallback) {
         stream.getTracks().forEach((track) => track.stop());
@@ -1695,17 +1713,19 @@ class AudioManager {
         return this.startRecording();
       }
 
-      this.streamingAudioContext = new AudioContext({ sampleRate: 16000 });
-      this.streamingSource = this.streamingAudioContext.createMediaStreamSource(stream);
+      // Reuse persistent AudioContext across recordings
+      const audioContext = await this.getOrCreateAudioContext();
+      this.streamingAudioContext = audioContext;
+      this.streamingSource = audioContext.createMediaStreamSource(stream);
       this.streamingStream = stream;
 
-      const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-      await this.streamingAudioContext.audioWorklet.addModule(workletUrl);
+      if (!this.workletModuleLoaded) {
+        const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+        await audioContext.audioWorklet.addModule(workletUrl);
+        this.workletModuleLoaded = true;
+      }
 
-      this.streamingProcessor = new AudioWorkletNode(
-        this.streamingAudioContext,
-        "pcm-streaming-processor"
-      );
+      this.streamingProcessor = new AudioWorkletNode(audioContext, "pcm-streaming-processor");
 
       this.streamingProcessor.port.onmessage = (event) => {
         if (!this.isStreaming) return;
@@ -1715,14 +1735,22 @@ class AudioManager {
       this.streamingSource.connect(this.streamingProcessor);
 
       this.streamingFinalText = "";
+      this.streamingPartialText = "";
+      this.streamingTextResolve = null;
 
       const partialCleanup = window.electronAPI.onAssemblyAiPartialTranscript((text) => {
+        this.streamingPartialText = text;
         this.onPartialTranscript?.(text);
       });
 
       const finalCleanup = window.electronAPI.onAssemblyAiFinalTranscript((text) => {
         this.streamingFinalText = text;
+        this.streamingPartialText = "";
         this.onPartialTranscript?.(text);
+        if (this.streamingTextResolve) {
+          this.streamingTextResolve();
+          this.streamingTextResolve = null;
+        }
       });
 
       const errorCleanup = window.electronAPI.onAssemblyAiError((error) => {
@@ -1781,36 +1809,64 @@ class AudioManager {
       ? (Date.now() - this.recordingStartTime) / 1000
       : null;
 
+    // Capture accumulated text BEFORE cleanup resets it
+    let finalText = this.streamingFinalText || "";
+    const hasInProgressTurn = !!this.streamingPartialText;
+
     this.isStreaming = false;
     this.isRecording = false;
     this.recordingStartTime = null;
     this.onStateChange?.({ isRecording: false, isProcessing: true, isStreaming: false });
 
-    await this.cleanupStreaming();
+    // Stop worklet and audio capture, but keep IPC listeners alive
+    // so late-arriving Turn messages still update streamingFinalText
+    this.cleanupStreamingAudio();
 
-    let finalText = this.streamingFinalText || "";
+    // Fire disconnect in background — sends Terminate to AssemblyAI.
+    // We don't await the result; instead we wait for Turn messages
+    // to arrive via the still-active IPC listeners (much faster).
+    window.electronAPI.assemblyAiStreamingStop().catch((e) => {
+      logger.debug("Background streaming disconnect error", { error: e.message }, "streaming");
+    });
 
-    try {
-      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
-      const result = await withSessionRefresh(async () => {
-        const res = await window.electronAPI.assemblyAiStreamingStop();
-        // Throw error to trigger retry if AUTH_EXPIRED
-        if (!res.success && res.code) {
-          const err = new Error(res.error || "Failed to stop streaming");
-          err.code = res.code;
-          throw err;
+    // Wait for AssemblyAI to finalize in-flight audio after Terminate.
+    // The IPC listeners update this.streamingFinalText when end_of_turn Turns arrive.
+    // Wait if: (a) there's an in-progress turn, or (b) we have no text at all yet.
+    if (hasInProgressTurn || !finalText) {
+      await Promise.race([
+        new Promise((resolve) => {
+          this.streamingTextResolve = resolve;
+        }),
+        new Promise((resolve) => setTimeout(resolve, 1500)),
+      ]);
+      this.streamingTextResolve = null;
+
+      const updatedFinal = this.streamingFinalText || "";
+      if (updatedFinal.length > finalText.length) finalText = updatedFinal;
+
+      // If timeout expired before the Turn arrived, use partial text as fallback
+      if (this.streamingPartialText) {
+        const withPartial = finalText
+          ? `${finalText} ${this.streamingPartialText}`
+          : this.streamingPartialText;
+        if (withPartial.length > finalText.length) {
+          finalText = withPartial;
+          logger.debug(
+            "Appended partial text after timeout",
+            { textLength: finalText.length },
+            "streaming"
+          );
         }
-        return res;
-      });
-
-      logger.info("Streaming recording stopped", { durationSeconds }, "streaming");
-
-      if (result?.text) {
-        finalText = result.text;
       }
-    } catch (error) {
-      logger.error("Error stopping streaming", { error: error.message }, "streaming");
     }
+
+    this.cleanupStreamingListeners();
+
+    logger.info(
+      "Streaming recording stopped",
+      { durationSeconds, textLength: finalText.length },
+      "streaming"
+    );
 
     // Apply cloud reasoning (LLM text cleanup) if enabled
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
@@ -1874,17 +1930,7 @@ class AudioManager {
     return true;
   }
 
-  async cleanupStreaming() {
-    for (const cleanup of this.streamingCleanupFns) {
-      try {
-        cleanup?.();
-      } catch (e) {
-        // Ignore cleanup errors
-      }
-    }
-    this.streamingCleanupFns = [];
-    this.streamingFinalText = "";
-
+  cleanupStreamingAudio() {
     if (this.streamingProcessor) {
       try {
         this.streamingProcessor.port.postMessage("stop");
@@ -1904,17 +1950,10 @@ class AudioManager {
       this.streamingSource = null;
     }
 
-    // Close audio context
-    if (this.streamingAudioContext) {
-      try {
-        await this.streamingAudioContext.close();
-      } catch (e) {
-        // Ignore
-      }
-      this.streamingAudioContext = null;
-    }
+    // Don't close persistent AudioContext — just clear the reference (Opt 4)
+    this.streamingAudioContext = null;
 
-    // Stop media stream
+    // Stop media stream (releases microphone indicator)
     if (this.streamingStream) {
       this.streamingStream.getTracks().forEach((track) => track.stop());
       this.streamingStream = null;
@@ -1923,12 +1962,37 @@ class AudioManager {
     this.isStreaming = false;
   }
 
+  cleanupStreamingListeners() {
+    for (const cleanup of this.streamingCleanupFns) {
+      try {
+        cleanup?.();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+    }
+    this.streamingCleanupFns = [];
+    this.streamingFinalText = "";
+    this.streamingPartialText = "";
+    this.streamingTextResolve = null;
+  }
+
+  async cleanupStreaming() {
+    this.cleanupStreamingAudio();
+    this.cleanupStreamingListeners();
+  }
+
   cleanup() {
     if (this.isStreaming) {
       this.cleanupStreaming();
     }
     if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
+    }
+    // Release persistent AudioContext on full cleanup
+    if (this.persistentAudioContext && this.persistentAudioContext.state !== "closed") {
+      this.persistentAudioContext.close().catch(() => {});
+      this.persistentAudioContext = null;
+      this.workletModuleLoaded = false;
     }
     try {
       window.electronAPI?.assemblyAiStreamingStop?.();

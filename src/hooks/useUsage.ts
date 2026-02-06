@@ -28,6 +28,7 @@ interface UseUsageResult {
   isApproachingLimit: boolean;
   resetAt: string | null;
   isLoading: boolean;
+  hasLoaded: boolean;
   error: string | null;
   refetch: () => Promise<void>;
   openCheckout: () => Promise<void>;
@@ -39,7 +40,8 @@ const USAGE_CACHE_TTL = CACHE_CONFIG.API_KEY_TTL; // 1 hour
 export function useUsage(): UseUsageResult | null {
   const { isSignedIn, isLoaded } = useAuth();
   const [data, setData] = useState<UsageData | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const lastFetchRef = useRef<number>(0);
 
@@ -77,6 +79,7 @@ export function useUsage(): UseUsageResult | null {
       setError(err instanceof Error ? err.message : "Failed to fetch usage");
     } finally {
       setIsLoading(false);
+      setHasLoaded(true);
     }
   }, []);
 
@@ -87,6 +90,9 @@ export function useUsage(): UseUsageResult | null {
     const shouldFetch = Date.now() - lastFetchRef.current > USAGE_CACHE_TTL;
     if (shouldFetch) {
       fetchUsage();
+    } else {
+      setIsLoading(false);
+      setHasLoaded(true);
     }
   }, [isLoaded, isSignedIn, fetchUsage]);
 
@@ -128,6 +134,7 @@ export function useUsage(): UseUsageResult | null {
     isApproachingLimit,
     resetAt: data?.resetAt ?? null,
     isLoading,
+    hasLoaded,
     error,
     refetch: fetchUsage,
     openCheckout,

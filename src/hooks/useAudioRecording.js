@@ -47,7 +47,11 @@ export const useAudioRecording = (toast, options = {}) => {
         if (result.success) {
           setTranscript(result.text);
 
-          await audioManagerRef.current.safePaste(result.text);
+          const isStreaming = result.source?.includes("streaming");
+          await audioManagerRef.current.safePaste(
+            result.text,
+            isStreaming ? { fromStreaming: true } : {}
+          );
 
           audioManagerRef.current.saveTranscription(result.text);
 

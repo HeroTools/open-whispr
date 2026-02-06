@@ -181,8 +181,8 @@ class IPCHandlers {
     });
 
     // Clipboard handlers
-    ipcMain.handle("paste-text", async (event, text) => {
-      return this.clipboardManager.pasteText(text);
+    ipcMain.handle("paste-text", async (event, text, options) => {
+      return this.clipboardManager.pasteText(text, options);
     });
 
     ipcMain.handle("read-clipboard", async (event) => {
@@ -1560,19 +1560,13 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("assemblyai-streaming-send", async (event, audioBuffer) => {
+    ipcMain.on("assemblyai-streaming-send", (event, audioBuffer) => {
       try {
-        if (!this.assemblyAiStreaming) {
-          return { success: false, error: "Streaming not started" };
-        }
-
+        if (!this.assemblyAiStreaming) return;
         const buffer = Buffer.from(audioBuffer);
-        const sent = this.assemblyAiStreaming.sendAudio(buffer);
-
-        return { success: sent };
+        this.assemblyAiStreaming.sendAudio(buffer);
       } catch (error) {
         debugLogger.error("AssemblyAI streaming send error", { error: error.message });
-        return { success: false, error: error.message };
       }
     });
 

@@ -8,6 +8,11 @@ const debugLogger = require("./debugLogger");
 // Cache TTL constants - these mirror CACHE_CONFIG.AVAILABILITY_CHECK_TTL in src/config/constants.ts
 const CACHE_TTL_MS = 30000;
 
+// macOS accessibility: once granted, permissions persist across app sessions,
+// so use a long TTL. Denied results re-check quickly so granting takes effect fast.
+const ACCESSIBILITY_GRANTED_TTL_MS = 24 * 60 * 60 * 1000;
+const ACCESSIBILITY_DENIED_TTL_MS = 5000;
+
 const getLinuxDesktopEnv = () =>
   [process.env.XDG_CURRENT_DESKTOP, process.env.XDG_SESSION_DESKTOP, process.env.DESKTOP_SESSION]
     .filter(Boolean)
@@ -144,7 +149,7 @@ class ClipboardManager {
     }
   }
 
-  async pasteText(text) {
+  async pasteText(text, options = {}) {
     const startTime = Date.now();
     const platform = process.platform;
     let method = "unknown";
@@ -175,7 +180,7 @@ class ClipboardManager {
         }
 
         this.safeLog("✅ Permissions granted, attempting to paste...");
-        await this.pasteMacOS(originalClipboard);
+        await this.pasteMacOS(originalClipboard, options);
       } else if (platform === "win32") {
         const nircmdPath = this.getNircmdPath();
         method = nircmdPath ? "nircmd" : "powershell";
@@ -203,7 +208,10 @@ class ClipboardManager {
     }
   }
 
-  async pasteMacOS(originalClipboard) {
+  async pasteMacOS(originalClipboard, options = {}) {
+    // For streaming transcription, sufficient time has already elapsed since key release,
+    // so we can use a shorter delay. Default to the standard delay for non-streaming paths.
+    const pasteDelay = options.fromStreaming ? 50 : PASTE_DELAY_MS;
     return new Promise((resolve, reject) => {
       setTimeout(() => {
         const pasteProcess = spawn("osascript", [
@@ -235,6 +243,8 @@ class ClipboardManager {
             }, RESTORE_DELAYS.darwin);
             resolve();
           } else {
+            // Invalidate accessibility cache so we re-check next time
+            this.accessibilityCache = { value: null, expiresAt: 0 };
             const errorMsg = `Paste failed (code ${code}). Text is copied to clipboard - please paste manually with Cmd+V.`;
             reject(new Error(errorMsg));
           }
@@ -256,7 +266,7 @@ class ClipboardManager {
             "Paste operation timed out. Text is copied to clipboard - please paste manually with Cmd+V.";
           reject(new Error(errorMsg));
         }, 3000);
-      }, PASTE_DELAY_MS);
+      }, pasteDelay);
     });
   }
 
@@ -847,7 +857,8 @@ class ClipboardManager {
         const allowed = code === 0;
         this.accessibilityCache = {
           value: allowed,
-          expiresAt: Date.now() + CACHE_TTL_MS,
+          expiresAt:
+            Date.now() + (allowed ? ACCESSIBILITY_GRANTED_TTL_MS : ACCESSIBILITY_DENIED_TTL_MS),
         };
         if (!allowed) {
           this.showAccessibilityDialog(testError);
@@ -858,7 +869,7 @@ class ClipboardManager {
       testProcess.on("error", (error) => {
         this.accessibilityCache = {
           value: false,
-          expiresAt: Date.now() + CACHE_TTL_MS,
+          expiresAt: Date.now() + ACCESSIBILITY_DENIED_TTL_MS,
         };
         resolve(false);
       });

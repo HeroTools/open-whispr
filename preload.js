@@ -23,7 +23,7 @@ const registerListener = (channel, handlerFactory) => {
 };
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  pasteText: (text) => ipcRenderer.invoke("paste-text", text),
+  pasteText: (text, options) => ipcRenderer.invoke("paste-text", text, options),
   hideWindow: () => ipcRenderer.invoke("hide-window"),
   showDictationPanel: () => ipcRenderer.invoke("show-dictation-panel"),
   onToggleDictation: registerListener(
@@ -253,7 +253,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Assembly AI Streaming
   assemblyAiStreamingWarmup: (options) => ipcRenderer.invoke("assemblyai-streaming-warmup", options),
   assemblyAiStreamingStart: (options) => ipcRenderer.invoke("assemblyai-streaming-start", options),
-  assemblyAiStreamingSend: (audioBuffer) => ipcRenderer.invoke("assemblyai-streaming-send", audioBuffer),
+  assemblyAiStreamingSend: (audioBuffer) => ipcRenderer.send("assemblyai-streaming-send", audioBuffer),
   assemblyAiStreamingStop: () => ipcRenderer.invoke("assemblyai-streaming-stop"),
   assemblyAiStreamingStatus: () => ipcRenderer.invoke("assemblyai-streaming-status"),
   onAssemblyAiPartialTranscript: registerListener("assemblyai-partial-transcript", (callback) => (_event, text) => callback(text)),

@@ -320,6 +320,9 @@ class WindowManager {
         case "Shift":
           required.add("shift");
           break;
+        case "Fn":
+          required.add("fn");
+          break;
         default:
           break;
       }

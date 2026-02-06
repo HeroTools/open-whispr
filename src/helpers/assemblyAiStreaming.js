@@ -3,7 +3,7 @@ const debugLogger = require("./debugLogger");
 
 const SAMPLE_RATE = 16000;
 const WEBSOCKET_TIMEOUT_MS = 30000;
-const TERMINATION_TIMEOUT_MS = 2000;
+const TERMINATION_TIMEOUT_MS = 1500;
 const TOKEN_REFRESH_BUFFER_MS = 30000;
 const TOKEN_EXPIRY_MS = 300000;
 
