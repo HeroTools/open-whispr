@@ -7,11 +7,30 @@ const WINDOW_SIZES = {
   EXPANDED: { width: 400, height: 500 },
 };
 
+// Helper to get icon path for Windows
+function getWindowIcon() {
+  if (process.platform !== "win32") {
+    return undefined;
+  }
+
+  // In production, the icon is in resources/src/assets/
+  // In development, it's in src/assets/
+  const isDev = process.env.NODE_ENV === "development";
+
+  if (isDev) {
+    return path.join(__dirname, "..", "assets", "icon.ico");
+  } else {
+    // In production, resources are accessed via process.resourcesPath
+    return path.join(process.resourcesPath, "src", "assets", "icon.ico");
+  }
+}
+
 // Main dictation window configuration
 const MAIN_WINDOW_CONFIG = {
   width: WINDOW_SIZES.BASE.width,
   height: WINDOW_SIZES.BASE.height,
   title: "Voice Recorder",
+  icon: getWindowIcon(),
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,
@@ -36,6 +55,7 @@ const MAIN_WINDOW_CONFIG = {
 const CONTROL_PANEL_CONFIG = {
   width: 1200,
   height: 800,
+  icon: getWindowIcon(),
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,
