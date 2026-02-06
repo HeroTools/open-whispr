@@ -1535,12 +1535,20 @@ class IPCHandlers {
 
         // Clean up any stale active connection (shouldn't happen normally)
         if (this.assemblyAiStreaming.isConnected) {
-          debugLogger.debug("AssemblyAI cleaning up stale connection before start", {}, "streaming");
+          debugLogger.debug(
+            "AssemblyAI cleaning up stale connection before start",
+            {},
+            "streaming"
+          );
           await this.assemblyAiStreaming.disconnect(false);
         }
 
         const hasWarm = this.assemblyAiStreaming.hasWarmConnection();
-        debugLogger.debug("AssemblyAI streaming start", { hasWarmConnection: hasWarm }, "streaming");
+        debugLogger.debug(
+          "AssemblyAI streaming start",
+          { hasWarmConnection: hasWarm },
+          "streaming"
+        );
 
         let token = this.assemblyAiStreaming.getCachedToken();
         if (!token) {

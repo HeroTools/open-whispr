@@ -1631,7 +1631,11 @@ class AudioManager {
             logger.debug("AudioWorklet module pre-loaded during warmup", {}, "streaming");
           }
         } catch (e) {
-          logger.debug("AudioWorklet pre-load failed (will retry on recording)", { error: e.message }, "streaming");
+          logger.debug(
+            "AudioWorklet pre-load failed (will retry on recording)",
+            { error: e.message },
+            "streaming"
+          );
         }
 
         // Warm up the OS audio driver by briefly acquiring the mic, then releasing.
@@ -1645,7 +1649,11 @@ class AudioManager {
             this.micDriverWarmedUp = true;
             logger.debug("Microphone driver pre-warmed", {}, "streaming");
           } catch (e) {
-            logger.debug("Mic driver warmup failed (non-critical)", { error: e.message }, "streaming");
+            logger.debug(
+              "Mic driver warmup failed (non-critical)",
+              { error: e.message },
+              "streaming"
+            );
           }
         }
 

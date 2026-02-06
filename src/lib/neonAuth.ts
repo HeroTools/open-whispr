@@ -1,5 +1,6 @@
 import { createAuthClient } from "@neondatabase/auth";
 import { BetterAuthReactAdapter } from "@neondatabase/auth/react";
+import { OPENWHISPR_API_URL } from "../config/constants";
 
 export const NEON_AUTH_URL = import.meta.env.VITE_NEON_AUTH_URL || "";
 export const authClient = NEON_AUTH_URL
@@ -200,11 +201,11 @@ export async function signInWithSocial(provider: SocialProvider): Promise<{ erro
   }
 
   try {
-    // Build an absolute callback URL. Neon Auth redirects here after OAuth.
-    // In the browser, this page detects it's outside Electron and redirects
-    // to the app's custom protocol to hand the verifier back to Electron.
-    const base = window.location.href.split("?")[0].split("#")[0];
-    const callbackURL = `${base}?panel=true`;
+    // Electron's file:// origin is rejected by Neon Auth — use a relative path instead
+    const isElectron = Boolean((window as any).electronAPI);
+    const callbackURL = isElectron
+      ? "/?panel=true"
+      : `${window.location.href.split("?")[0].split("#")[0]}?panel=true`;
 
     await authClient.signIn.social({
       provider,
@@ -219,8 +220,8 @@ export async function signInWithSocial(provider: SocialProvider): Promise<{ erro
 }
 
 /**
- * Requests a password reset email to be sent to the specified email address.
- * The email contains a link that redirects to the app with a reset token.
+ * Requests a password reset email. Routes through the API proxy when available,
+ * falls back to direct Neon Auth for web environments.
  */
 export async function requestPasswordReset(email: string): Promise<{ error?: Error }> {
   if (!authClient) {
@@ -228,8 +229,22 @@ export async function requestPasswordReset(email: string): Promise<{ error?: Err
   }
 
   try {
-    // Build the redirect URL for the password reset link.
-    // This will redirect back to the app with a token parameter.
+    if (OPENWHISPR_API_URL) {
+      const res = await fetch(`${OPENWHISPR_API_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to send reset email");
+      }
+
+      return {};
+    }
+
+    // Fallback: direct Neon Auth (web environments with proper URLs)
     const base = window.location.href.split("?")[0].split("#")[0];
     const redirectTo = `${base}?panel=true&reset_password=true`;
 

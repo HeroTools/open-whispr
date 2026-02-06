@@ -405,11 +405,8 @@ async function startApp() {
   initializeManagers();
   startAuthBridgeServer();
 
-  // Inject Origin header for Neon Auth requests.
-  // Electron loads pages from file:// so the browser sends no Origin header,
-  // which Neon Auth (better-auth) rejects. This is the standard Electron
-  // approach: use webRequest.onBeforeSendHeaders at the Chromium network layer.
-  // Match all Neon Auth endpoints (avoids dependency on .env which isn't packaged).
+  // Electron's file:// sends no Origin header, which Neon Auth rejects.
+  // Inject the request's own origin at the Chromium network layer.
   session.defaultSession.webRequest.onBeforeSendHeaders(
     { urls: ["https://*.neon.tech/*"] },
     (details, callback) => {

@@ -853,7 +853,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           onClick={async () => {
                             const result = await usage.openBillingPortal();
                             if (!result.success) {
-                              toast({ title: "Couldn't open billing", description: result.error, variant: "destructive" });
+                              toast({
+                                title: "Couldn't open billing",
+                                description: result.error,
+                                variant: "destructive",
+                              });
                             }
                           }}
                           variant="outline"
@@ -867,7 +871,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           onClick={async () => {
                             const result = await usage.openCheckout();
                             if (!result.success) {
-                              toast({ title: "Couldn't open checkout", description: result.error, variant: "destructive" });
+                              toast({
+                                title: "Couldn't open checkout",
+                                description: result.error,
+                                variant: "destructive",
+                              });
                             }
                           }}
                           size="sm"

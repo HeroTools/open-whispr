@@ -105,6 +105,17 @@ export default function AuthenticationStep({
 
   useEffect(() => {
     if (isLoaded && isSignedIn) {
+      if (OPENWHISPR_API_URL && user?.id && user?.email) {
+        fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userId: user.id,
+            email: user.email,
+            name: user.name || null,
+          }),
+        }).catch((err) => console.error("Failed to init user:", err));
+      }
       onAuthComplete();
     }
   }, [isLoaded, isSignedIn, onAuthComplete]);
@@ -210,6 +221,23 @@ export default function AuthenticationStep({
             }
           } else {
             updateLastSignInTime();
+
+            if (OPENWHISPR_API_URL) {
+              try {
+                await fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    userId: result.data?.user?.id,
+                    email: email.trim(),
+                    name: fullName.trim() || email.trim().split("@")[0],
+                  }),
+                });
+              } catch (initErr) {
+                console.error("Failed to init user:", initErr);
+              }
+            }
+
             onNeedsVerification(email.trim());
           }
         } else {
