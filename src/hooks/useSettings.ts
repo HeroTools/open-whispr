@@ -50,6 +50,11 @@ export interface ApiKeySettings {
   customReasoningApiKey: string;
 }
 
+export interface PrivacySettings {
+  cloudBackupEnabled: boolean;
+  telemetryEnabled: boolean;
+}
+
 export interface ThemeSettings {
   theme: "light" | "dark" | "auto";
 }
@@ -276,6 +281,17 @@ export function useSettings() {
       if (["light", "dark", "auto"].includes(value)) return value as "light" | "dark" | "auto";
       return "auto";
     },
+  });
+
+  // Privacy settings — both default to OFF
+  const [cloudBackupEnabled, setCloudBackupEnabled] = useLocalStorage("cloudBackupEnabled", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
+  });
+
+  const [telemetryEnabled, setTelemetryEnabled] = useLocalStorage("telemetryEnabled", false, {
+    serialize: String,
+    deserialize: (value) => value === "true",
   });
 
   // Custom endpoint API keys - synced to .env like other keys
@@ -623,6 +639,10 @@ export function useSettings() {
     selectedMicDeviceId,
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
+    cloudBackupEnabled,
+    setCloudBackupEnabled,
+    telemetryEnabled,
+    setTelemetryEnabled,
     updateTranscriptionSettings,
     updateReasoningSettings,
     updateApiKeys,

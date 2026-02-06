@@ -1475,7 +1475,15 @@ class IPCHandlers {
       }
     });
 
+    let streamingStartInProgress = false;
+
     ipcMain.handle("assemblyai-streaming-start", async (event, options = {}) => {
+      if (streamingStartInProgress) {
+        debugLogger.debug("Streaming start already in progress, ignoring", {}, "streaming");
+        return { success: false, error: "Operation in progress" };
+      }
+
+      streamingStartInProgress = true;
       try {
         const apiUrl = getApiUrl();
         if (!apiUrl) {
@@ -1539,6 +1547,8 @@ class IPCHandlers {
           return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
         }
         return { success: false, error: error.message };
+      } finally {
+        streamingStartInProgress = false;
       }
     });
 

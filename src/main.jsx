@@ -8,6 +8,8 @@ import { ToastProvider } from "./components/ui/Toast.tsx";
 import { useTheme } from "./hooks/useTheme";
 import "./index.css";
 
+let root = null;
+
 const VALID_CHANNELS = new Set(["development", "staging", "production"]);
 const DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL = {
   development: "openwhispr-dev",
@@ -311,7 +313,10 @@ function AppRouter() {
 }
 
 function mountApp() {
-  ReactDOM.createRoot(document.getElementById("root")).render(
+  if (!root) {
+    root = ReactDOM.createRoot(document.getElementById("root"));
+  }
+  root.render(
     <React.StrictMode>
       <ErrorBoundary>
         <ToastProvider>
@@ -320,4 +325,8 @@ function mountApp() {
       </ErrorBoundary>
     </React.StrictMode>
   );
+}
+
+if (import.meta.hot) {
+  import.meta.hot.accept();
 }

@@ -1819,6 +1819,51 @@ class AudioManager {
       logger.error("Error stopping streaming", { error: error.message }, "streaming");
     }
 
+    // Apply cloud reasoning (LLM text cleanup) if enabled
+    const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+    if (useReasoningModel && finalText) {
+      const reasoningStart = performance.now();
+      const cloudReasoningModel =
+        localStorage.getItem("cloudReasoningModel") || "llama-3.3-70b-versatile";
+      const agentName = localStorage.getItem("agentName") || "";
+
+      try {
+        const reasonResult = await withSessionRefresh(async () => {
+          const res = await window.electronAPI.cloudReason(finalText, {
+            model: cloudReasoningModel,
+            agentName,
+            customDictionary: this.getCustomDictionaryArray(),
+            language: localStorage.getItem("preferredLanguage") || "auto",
+          });
+          if (!res.success) {
+            const err = new Error(res.error || "Cloud reasoning failed");
+            err.code = res.code;
+            throw err;
+          }
+          return res;
+        });
+
+        if (reasonResult.success && reasonResult.text) {
+          finalText = reasonResult.text;
+        }
+
+        logger.info(
+          "Streaming reasoning complete",
+          {
+            reasoningDurationMs: Math.round(performance.now() - reasoningStart),
+            model: cloudReasoningModel,
+          },
+          "streaming"
+        );
+      } catch (reasonError) {
+        logger.error(
+          "Streaming reasoning failed, using raw text",
+          { error: reasonError.message },
+          "streaming"
+        );
+      }
+    }
+
     if (finalText) {
       this.onTranscriptionComplete?.({
         success: true,
@@ -1893,6 +1938,11 @@ class AudioManager {
     }
     if (this.mediaRecorder?.state === "recording") {
       this.stopRecording();
+    }
+    try {
+      window.electronAPI?.assemblyAiStreamingStop?.();
+    } catch (e) {
+      // Ignore errors during cleanup (page may be unloading)
     }
     this.onStateChange = null;
     this.onError = null;
