@@ -23,6 +23,7 @@ class WindowManager {
     this.loadErrorShown = false;
     this.windowsPushToTalkAvailable = false;
     this.macCompoundPushState = null;
+    this._cachedActivationMode = "tap";
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -348,18 +349,12 @@ class WindowManager {
     }
   }
 
-  async getActivationMode() {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-      return "tap";
-    }
-    try {
-      const mode = await this.mainWindow.webContents.executeJavaScript(
-        `localStorage.getItem("activationMode") || "tap"`
-      );
-      return mode === "push" ? "push" : "tap";
-    } catch {
-      return "tap";
-    }
+  getActivationMode() {
+    return this._cachedActivationMode;
+  }
+
+  setActivationModeCache(mode) {
+    this._cachedActivationMode = mode === "push" ? "push" : "tap";
   }
 
   setHotkeyListeningMode(enabled) {

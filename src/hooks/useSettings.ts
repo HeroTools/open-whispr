@@ -452,17 +452,32 @@ export function useSettings() {
     }
   );
 
-  // Wrap setActivationMode to notify main process (for Windows Push-to-Talk)
   const setActivationMode = useCallback(
     (mode: "tap" | "push") => {
       setActivationModeLocal(mode);
-      // Notify main process so Windows key listener can start/stop
       if (typeof window !== "undefined" && window.electronAPI?.notifyActivationModeChanged) {
         window.electronAPI.notifyActivationModeChanged(mode);
       }
     },
     [setActivationModeLocal]
   );
+
+  // Sync activation mode from main process on first mount (handles localStorage cleared)
+  const hasRunActivationModeSync = useRef(false);
+  useEffect(() => {
+    if (hasRunActivationModeSync.current) return;
+    hasRunActivationModeSync.current = true;
+
+    const sync = async () => {
+      if (!window.electronAPI?.getActivationMode) return;
+      const envMode = await window.electronAPI.getActivationMode();
+      if (envMode && envMode !== activationMode) {
+        setActivationModeLocal(envMode);
+      }
+    };
+    sync().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Microphone settings
   const [preferBuiltInMic, setPreferBuiltInMic] = useLocalStorage("preferBuiltInMic", true, {

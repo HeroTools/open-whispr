@@ -711,6 +711,14 @@ class IPCHandlers {
       return this.environmentManager.saveDictationKey(key);
     });
 
+    ipcMain.handle("get-activation-mode", async () => {
+      return this.environmentManager.getActivationMode();
+    });
+
+    ipcMain.handle("save-activation-mode", async (event, mode) => {
+      return this.environmentManager.saveActivationMode(mode);
+    });
+
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
     });

@@ -103,6 +103,18 @@ class EnvironmentManager {
     return result;
   }
 
+  getActivationMode() {
+    const mode = this._getKey("ACTIVATION_MODE");
+    return mode === "push" ? "push" : "tap";
+  }
+
+  saveActivationMode(mode) {
+    const validMode = mode === "push" ? "push" : "tap";
+    const result = this._saveKey("ACTIVATION_MODE", validMode);
+    this.saveAllKeysToEnvFile();
+    return result;
+  }
+
   createProductionEnvFile(apiKey) {
     const envPath = path.join(app.getPath("userData"), ".env");
 
@@ -161,6 +173,9 @@ OPENAI_API_KEY=${apiKey}
     }
     if (process.env.DICTATION_KEY) {
       envContent += `DICTATION_KEY=${process.env.DICTATION_KEY}\n`;
+    }
+    if (process.env.ACTIVATION_MODE) {
+      envContent += `ACTIVATION_MODE=${process.env.ACTIVATION_MODE}\n`;
     }
 
     fs.writeFileSync(envPath, envContent, "utf8");

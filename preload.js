@@ -201,6 +201,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getDictationKey: () => ipcRenderer.invoke("get-dictation-key"),
   saveDictationKey: (key) => ipcRenderer.invoke("save-dictation-key", key),
 
+  // Activation mode persistence (file-based for reliable startup)
+  getActivationMode: () => ipcRenderer.invoke("get-activation-mode"),
+  saveActivationMode: (mode) => ipcRenderer.invoke("save-activation-mode", mode),
+
   saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
   syncStartupPreferences: (prefs) => ipcRenderer.invoke("sync-startup-preferences", prefs),
 

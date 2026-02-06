@@ -367,6 +367,10 @@ declare global {
       getDictationKey?: () => Promise<string | null>;
       saveDictationKey?: (key: string) => Promise<void>;
 
+      // Activation mode persistence (file-based for reliable startup)
+      getActivationMode?: () => Promise<"tap" | "push">;
+      saveActivationMode?: (mode: "tap" | "push") => Promise<void>;
+
       // Debug logging
       getLogLevel?: () => Promise<string>;
       log?: (entry: {

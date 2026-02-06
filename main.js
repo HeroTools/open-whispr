@@ -404,6 +404,15 @@ async function startApp() {
   initializeManagers();
   startAuthBridgeServer();
 
+  // Initialize activation mode cache from persisted .env value
+  windowManager.setActivationModeCache(environmentManager.getActivationMode());
+
+  // Update cache + persist when renderer changes activation mode (all platforms)
+  ipcMain.on("activation-mode-changed", (_event, mode) => {
+    windowManager.setActivationModeCache(mode);
+    environmentManager.saveActivationMode(mode);
+  });
+
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === "development") {
     await new Promise((resolve) => setTimeout(resolve, 2000));
