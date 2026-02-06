@@ -28,6 +28,8 @@ import LanguageSelector from "./ui/LanguageSelector";
 import AuthenticationStep from "./AuthenticationStep";
 import EmailVerificationStep from "./EmailVerificationStep";
 import { setAgentName as saveAgentName } from "../utils/agentName";
+import { addAgent, generateAgentId, loadAgents } from "../utils/agentStorage";
+import { Agent } from "../types/agent";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { useAuth } from "../hooks/useAuth";
 import { HotkeyInput } from "./ui/HotkeyInput";
@@ -255,6 +257,30 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setDictationKey(hotkey);
     saveAgentName(agentName);
 
+    // Create first agent if none exist
+    try {
+      const config = loadAgents();
+      if (config.agents.length === 0) {
+        const reasoningModel = localStorage.getItem('reasoningModel') || 'gpt-4.1-mini';
+        const reasoningProvider = localStorage.getItem('reasoningProvider') || 'openai';
+
+        const firstAgent: Agent = {
+          id: generateAgentId(),
+          name: agentName || 'Agent',
+          isDefault: true,
+          aiProvider: reasoningProvider,
+          aiModel: reasoningModel,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+        };
+
+        addAgent(firstAgent);
+        console.log('Created first agent:', firstAgent.name);
+      }
+    } catch (error) {
+      console.error('Failed to create first agent:', error);
+    }
+
     const skippedAuth = skipAuth;
     localStorage.setItem("authenticationSkipped", skippedAuth.toString());
     localStorage.setItem("onboardingCompleted", "true");
@@ -267,7 +293,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
 
     return true;
-  }, [hotkey, agentName, setDictationKey, ensureHotkeyRegistered]);
+  }, [hotkey, agentName, setDictationKey, ensureHotkeyRegistered, skipAuth]);
 
   const nextStep = useCallback(async () => {
     if (currentStep >= steps.length - 1) {

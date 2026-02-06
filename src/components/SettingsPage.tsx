@@ -37,6 +37,7 @@ import { useUpdater } from "../hooks/useUpdater";
 
 import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
+import { AgentManagementPage } from "./AgentManagementPage";
 
 import { HotkeyInput } from "./ui/HotkeyInput";
 import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
@@ -60,6 +61,7 @@ export type SettingsSectionType =
   | "transcription"
   | "dictionary"
   | "aiModels"
+  | "agents"
   | "agentConfig"
   | "prompts"
   | "permissions"
@@ -1638,6 +1640,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       // AGENT CONFIG
       // ───────────────────────────────────────────────────
+      case "agents":
+        return <AgentManagementPage />;
+
       case "agentConfig":
         return (
           <div className="space-y-5">

@@ -1,5 +1,6 @@
 import promptData from "./promptData.json";
 import { getLanguageInstruction } from "../utils/languageSupport";
+import { Agent } from "../types/agent";
 
 export const UNIFIED_SYSTEM_PROMPT = promptData.UNIFIED_SYSTEM_PROMPT;
 export const LEGACY_PROMPTS = promptData.LEGACY_PROMPTS;
@@ -10,12 +11,19 @@ export function buildPrompt(text: string, agentName: string | null): string {
   return UNIFIED_SYSTEM_PROMPT.replace(/\{\{agentName\}\}/g, name).replace(/\{\{text\}\}/g, text);
 }
 
+/**
+ * Génère le prompt système pour un agent
+ * @param agent - Objet agent complet (ou null pour utiliser le nom par défaut)
+ * @param customDictionary - Dictionnaire personnalisé de mots
+ * @param language - Code de langue pour instructions spécifiques
+ * @returns Le prompt système complet
+ */
 export function getSystemPrompt(
-  agentName: string | null,
+  agent: Agent | null,
   customDictionary?: string[],
   language?: string
 ): string {
-  const name = agentName?.trim() || "Assistant";
+  const name = agent?.name?.trim() || "Assistant";
 
   let promptTemplate = UNIFIED_SYSTEM_PROMPT;
   if (typeof window !== "undefined" && window.localStorage) {
@@ -36,11 +44,31 @@ export function getSystemPrompt(
     prompt += "\n\n" + langInstruction;
   }
 
+  // Ajouter les instructions personnalisées de l'agent
+  if (agent?.customInstructions?.trim()) {
+    prompt += "\n\nADDITIONAL AGENT INSTRUCTIONS:\n" + agent.customInstructions.trim();
+  }
+
   if (customDictionary && customDictionary.length > 0) {
     prompt += DICTIONARY_SUFFIX + customDictionary.join(", ");
   }
 
   return prompt;
+}
+
+/**
+ * Version legacy pour compatibilité - accepte string ou Agent
+ */
+export function getSystemPromptLegacy(
+  agentNameOrAgent: string | Agent | null,
+  customDictionary?: string[],
+  language?: string
+): string {
+  if (typeof agentNameOrAgent === 'string' || agentNameOrAgent === null) {
+    // Compatibilité avec l'ancien système
+    return getSystemPrompt(null, customDictionary, language);
+  }
+  return getSystemPrompt(agentNameOrAgent, customDictionary, language);
 }
 
 export function getUserPrompt(text: string): string {

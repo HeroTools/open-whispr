@@ -60,10 +60,17 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
       group: "Intelligence",
     },
     {
-      id: "agentConfig",
-      label: "Agent",
+      id: "agents",
+      label: "Agents",
       icon: User,
-      description: "Voice agent setup",
+      description: "Multi-agent configuration",
+      group: "Intelligence",
+    },
+    {
+      id: "agentConfig",
+      label: "Legacy Agent",
+      icon: User,
+      description: "Voice agent setup (deprecated)",
       group: "Intelligence",
     },
     {

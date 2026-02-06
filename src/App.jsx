@@ -7,6 +7,7 @@ import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useAuth } from "./hooks/useAuth";
+import { runMigrations } from "./utils/agentMigration";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -89,6 +90,11 @@ export default function App() {
     setWindowInteractivity(false);
     return () => setWindowInteractivity(false);
   }, [setWindowInteractivity]);
+
+  // Run migrations on app startup
+  useEffect(() => {
+    runMigrations();
+  }, []);
 
   useEffect(() => {
     const unsubscribeFallback = window.electronAPI?.onHotkeyFallbackUsed?.((data) => {

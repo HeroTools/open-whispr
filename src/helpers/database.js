@@ -24,8 +24,21 @@ class DatabaseManager {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           text TEXT NOT NULL,
           timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          agent_id TEXT
         )
+      `);
+
+      // Add agent_id column if it doesn't exist (migration)
+      try {
+        this.db.exec(`ALTER TABLE transcriptions ADD COLUMN agent_id TEXT`);
+      } catch (error) {
+        // Column already exists, ignore
+      }
+
+      // Create index for agent_id if it doesn't exist
+      this.db.exec(`
+        CREATE INDEX IF NOT EXISTS idx_agent_id ON transcriptions(agent_id)
       `);
 
       this.db.exec(`
@@ -43,13 +56,13 @@ class DatabaseManager {
     }
   }
 
-  saveTranscription(text) {
+  saveTranscription(text, agentId = null) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
-      const stmt = this.db.prepare("INSERT INTO transcriptions (text) VALUES (?)");
-      const result = stmt.run(text);
+      const stmt = this.db.prepare("INSERT INTO transcriptions (text, agent_id) VALUES (?, ?)");
+      const result = stmt.run(text, agentId);
 
       const fetchStmt = this.db.prepare("SELECT * FROM transcriptions WHERE id = ?");
       const transcription = fetchStmt.get(result.lastInsertRowid);
@@ -61,13 +74,22 @@ class DatabaseManager {
     }
   }
 
-  getTranscriptions(limit = 50) {
+  getTranscriptions(limit = 50, agentId = null) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
-      const stmt = this.db.prepare("SELECT * FROM transcriptions ORDER BY timestamp DESC LIMIT ?");
-      const transcriptions = stmt.all(limit);
+      let stmt;
+      let transcriptions;
+
+      if (agentId) {
+        stmt = this.db.prepare("SELECT * FROM transcriptions WHERE agent_id = ? ORDER BY timestamp DESC LIMIT ?");
+        transcriptions = stmt.all(agentId, limit);
+      } else {
+        stmt = this.db.prepare("SELECT * FROM transcriptions ORDER BY timestamp DESC LIMIT ?");
+        transcriptions = stmt.all(limit);
+      }
+
       return transcriptions;
     } catch (error) {
       console.error("Error getting transcriptions:", error.message);

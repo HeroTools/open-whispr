@@ -1,4 +1,5 @@
 import { getSystemPrompt } from "../config/prompts";
+import { Agent } from "../types/agent";
 
 export interface ReasoningConfig {
   maxTokens?: number;
@@ -26,9 +27,12 @@ export abstract class BaseReasoningService {
     return window.localStorage.getItem("preferredLanguage") || "auto";
   }
 
-  protected getSystemPrompt(agentName: string | null): string {
+  /**
+   * Génère le prompt système en utilisant l'objet Agent complet
+   */
+  protected getSystemPrompt(agent: Agent | null): string {
     const language = this.getPreferredLanguage();
-    return getSystemPrompt(agentName, this.getCustomDictionary(), language);
+    return getSystemPrompt(agent, this.getCustomDictionary(), language);
   }
 
   protected calculateMaxTokens(
@@ -45,7 +49,7 @@ export abstract class BaseReasoningService {
   abstract processText(
     text: string,
     modelId: string,
-    agentName?: string | null,
+    agent?: Agent | null,
     config?: ReasoningConfig
   ): Promise<string>;
 }

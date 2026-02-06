@@ -7,6 +7,8 @@ import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../config/prompts";
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
+import { Agent } from "../types/agent";
+import { agentDetectionService } from "./AgentDetectionService";
 
 /**
  * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
@@ -262,11 +264,11 @@ class ReasoningService extends BaseReasoningService {
     apiKey: string,
     model: string,
     text: string,
-    agentName: string | null,
+    agent: Agent | null,
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt = this.getSystemPrompt(agentName);
+    const systemPrompt = this.getSystemPrompt(agent);
     const userPrompt = text;
 
     const messages = [
@@ -400,22 +402,43 @@ class ReasoningService extends BaseReasoningService {
 
   async processText(
     text: string,
-    model: string = "",
-    agentName: string | null = null,
+    model?: string,
+    agent?: Agent | null,
     config: ReasoningConfig = {}
   ): Promise<string> {
-    const trimmedModel = model?.trim?.() || "";
-    if (!trimmedModel) {
+    // Détecter l'agent dans le texte si aucun agent n'est fourni
+    let detectionResult;
+    let finalAgent = agent;
+    let finalText = text;
+
+    if (!agent) {
+      detectionResult = agentDetectionService.detectAgent(text);
+      finalAgent = detectionResult.agent;
+      finalText = detectionResult.cleanedText;
+
+      logger.logReasoning("AGENT_DETECTION", {
+        originalText: text.substring(0, 100),
+        agentDetected: detectionResult.agentDetected,
+        agentName: finalAgent?.name,
+        cleanedText: finalText.substring(0, 100),
+        isInstructionMode: detectionResult.isInstructionMode,
+      });
+    }
+
+    // Utiliser le modèle de l'agent si aucun modèle n'est fourni explicitement
+    const effectiveModel = model?.trim?.() || finalAgent?.aiModel || "";
+    if (!effectiveModel) {
       throw new Error("No reasoning model selected");
     }
-    const provider = getModelProvider(trimmedModel);
+    const provider = getModelProvider(effectiveModel);
 
     logger.logReasoning("PROVIDER_SELECTION", {
-      model: trimmedModel,
+      model: effectiveModel,
       provider,
-      agentName,
+      agentName: finalAgent?.name,
+      agentId: finalAgent?.id,
       hasConfig: Object.keys(config).length > 0,
-      textLength: text.length,
+      textLength: finalText.length,
       timestamp: new Date().toISOString(),
     });
 
@@ -425,27 +448,28 @@ class ReasoningService extends BaseReasoningService {
 
       logger.logReasoning("ROUTING_TO_PROVIDER", {
         provider,
-        model,
+        model: effectiveModel,
+        agentName: finalAgent?.name,
       });
 
       switch (provider) {
         case "openai":
-          result = await this.processWithOpenAI(text, trimmedModel, agentName, config);
+          result = await this.processWithOpenAI(finalText, effectiveModel, finalAgent, config);
           break;
         case "anthropic":
-          result = await this.processWithAnthropic(text, trimmedModel, agentName, config);
+          result = await this.processWithAnthropic(finalText, effectiveModel, finalAgent, config);
           break;
         case "local":
-          result = await this.processWithLocal(text, trimmedModel, agentName, config);
+          result = await this.processWithLocal(finalText, effectiveModel, finalAgent, config);
           break;
         case "gemini":
-          result = await this.processWithGemini(text, trimmedModel, agentName, config);
+          result = await this.processWithGemini(finalText, effectiveModel, finalAgent, config);
           break;
         case "groq":
-          result = await this.processWithGroq(text, model, agentName, config);
+          result = await this.processWithGroq(finalText, effectiveModel, finalAgent, config);
           break;
         case "openwhispr":
-          result = await this.processWithOpenWhispr(text, model, agentName, config);
+          result = await this.processWithOpenWhispr(finalText, effectiveModel, finalAgent, config);
           break;
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
@@ -455,7 +479,7 @@ class ReasoningService extends BaseReasoningService {
 
       logger.logReasoning("PROVIDER_SUCCESS", {
         provider,
-        model,
+        model: effectiveModel,
         processingTimeMs: processingTime,
         resultLength: result.length,
         resultPreview: result.substring(0, 100) + (result.length > 100 ? "..." : ""),
@@ -465,7 +489,7 @@ class ReasoningService extends BaseReasoningService {
     } catch (error) {
       logger.logReasoning("PROVIDER_ERROR", {
         provider,
-        model,
+        model: effectiveModel,
         error: (error as Error).message,
         stack: (error as Error).stack,
       });
@@ -476,7 +500,7 @@ class ReasoningService extends BaseReasoningService {
   private async processWithOpenAI(
     text: string,
     model: string,
-    agentName: string | null = null,
+    agent: Agent | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
     const reasoningProvider = window.localStorage?.getItem("reasoningProvider") || "";
@@ -484,7 +508,7 @@ class ReasoningService extends BaseReasoningService {
 
     logger.logReasoning("OPENAI_START", {
       model,
-      agentName,
+      agentName: agent?.name,
       isCustomProvider,
       hasApiKey: false, // Will update after fetching
     });
@@ -503,7 +527,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = this.getSystemPrompt(agentName);
+      const systemPrompt = this.getSystemPrompt(agent);
       const userPrompt = text;
 
       const messages = [
@@ -702,12 +726,12 @@ class ReasoningService extends BaseReasoningService {
   private async processWithAnthropic(
     text: string,
     model: string,
-    agentName: string | null = null,
+    agent: Agent | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
     logger.logReasoning("ANTHROPIC_START", {
       model,
-      agentName,
+      agentName: agent?.name,
       environment: typeof window !== "undefined" ? "browser" : "node",
     });
 
@@ -720,7 +744,7 @@ class ReasoningService extends BaseReasoningService {
       });
 
       const language = this.getPreferredLanguage();
-      const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
+      const result = await window.electronAPI.processAnthropicReasoning(text, model, agent?.name, {
         ...config,
         language,
       });
@@ -753,12 +777,12 @@ class ReasoningService extends BaseReasoningService {
   private async processWithLocal(
     text: string,
     model: string,
-    agentName: string | null = null,
+    agent: Agent | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
     logger.logReasoning("LOCAL_START", {
       model,
-      agentName,
+      agentName: agent?.name,
       environment: typeof window !== "undefined" ? "browser" : "node",
     });
 
@@ -771,7 +795,7 @@ class ReasoningService extends BaseReasoningService {
       });
 
       const language = this.getPreferredLanguage();
-      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
+      const result = await window.electronAPI.processLocalReasoning(text, model, agent?.name, {
         ...config,
         language,
       });
@@ -804,12 +828,12 @@ class ReasoningService extends BaseReasoningService {
   private async processWithGemini(
     text: string,
     model: string,
-    agentName: string | null = null,
+    agent: Agent | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
     logger.logReasoning("GEMINI_START", {
       model,
-      agentName,
+      agentName: agent?.name,
       hasApiKey: false,
     });
 
@@ -827,7 +851,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = this.getSystemPrompt(agentName);
+      const systemPrompt = this.getSystemPrompt(agent);
       const userPrompt = text;
 
       const requestBody = {
@@ -986,7 +1010,7 @@ class ReasoningService extends BaseReasoningService {
   private async processWithGroq(
     text: string,
     model: string,
-    agentName: string | null = null,
+    agent: Agent | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
     logger.logReasoning("GROQ_START", { model, agentName });
@@ -1005,7 +1029,7 @@ class ReasoningService extends BaseReasoningService {
         apiKey,
         model,
         text,
-        agentName,
+        agent,
         config,
         "Groq"
       );
@@ -1024,7 +1048,7 @@ class ReasoningService extends BaseReasoningService {
   private async processWithOpenWhispr(
     text: string,
     model: string,
-    agentName: string | null = null,
+    agent: Agent | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
     logger.logReasoning("OPENWHISPR_START", { model, agentName });
@@ -1043,7 +1067,7 @@ class ReasoningService extends BaseReasoningService {
       const result = await withSessionRefresh(async () => {
         const res = await (window as any).electronAPI.cloudReason(text, {
           model,
-          agentName,
+          agentName: agent?.name,
           customDictionary,
           language,
         });
