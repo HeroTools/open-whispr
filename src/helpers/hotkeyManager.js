@@ -5,6 +5,14 @@ const GnomeShortcutManager = require("./gnomeShortcut");
 // Delay to ensure localStorage is accessible after window load
 const HOTKEY_REGISTRATION_DELAY_MS = 1000;
 
+// Right-side single modifiers are handled by native listeners, not globalShortcut
+const RIGHT_SIDE_MODIFIER_PATTERN =
+  /^Right(Control|Ctrl|Alt|Option|Shift|Command|Cmd|Super|Meta|Win)$/i;
+
+function isRightSideModifier(hotkey) {
+  return RIGHT_SIDE_MODIFIER_PATTERN.test(hotkey);
+}
+
 // Suggested alternative hotkeys when registration fails
 const SUGGESTED_HOTKEYS = {
   single: ["F8", "F9", "F10", "Pause", "ScrollLock"],
@@ -87,6 +95,7 @@ class HotkeyManager {
     if (
       hotkey === this.currentHotkey &&
       hotkey !== "GLOBE" &&
+      !isRightSideModifier(hotkey) &&
       globalShortcut.isRegistered(hotkey)
     ) {
       debugLogger.log(
@@ -95,8 +104,12 @@ class HotkeyManager {
       return { success: true, hotkey };
     }
 
-    // Unregister the previous hotkey (if it's not GLOBE, which doesn't use globalShortcut)
-    if (this.currentHotkey && this.currentHotkey !== "GLOBE") {
+    // Unregister the previous hotkey (skip GLOBE and right-side modifiers - they use native listeners)
+    if (
+      this.currentHotkey &&
+      this.currentHotkey !== "GLOBE" &&
+      !isRightSideModifier(this.currentHotkey)
+    ) {
       debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${this.currentHotkey}"`);
       globalShortcut.unregister(this.currentHotkey);
     }
@@ -112,6 +125,15 @@ class HotkeyManager {
         }
         this.currentHotkey = hotkey;
         debugLogger.log("[HotkeyManager] GLOBE key set successfully");
+        return { success: true, hotkey };
+      }
+
+      // Right-side single modifiers are handled by native listeners (Swift/C), not globalShortcut
+      if (isRightSideModifier(hotkey)) {
+        this.currentHotkey = hotkey;
+        debugLogger.log(
+          `[HotkeyManager] Right-side modifier "${hotkey}" set - using native listener`
+        );
         return { success: true, hotkey };
       }
 

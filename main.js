@@ -329,7 +329,57 @@ async function startApp() {
       }
     });
 
+    // Right-side single modifier handling (e.g., RightOption as hotkey)
+    let rightModDownTime = 0;
+    let rightModIsRecording = false;
+
+    globeKeyManager.on("right-modifier-down", async (modifier) => {
+      const currentHotkey = hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey();
+      if (currentHotkey !== modifier) return;
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+
+      const activationMode = await windowManager.getActivationMode();
+      windowManager.showDictationPanel();
+      if (activationMode === "push") {
+        rightModDownTime = Date.now();
+        rightModIsRecording = false;
+        setTimeout(() => {
+          if (rightModDownTime > 0 && !rightModIsRecording) {
+            rightModIsRecording = true;
+            windowManager.sendStartDictation();
+          }
+        }, MIN_HOLD_DURATION_MS);
+      } else {
+        windowManager.mainWindow.webContents.send("toggle-dictation");
+      }
+    });
+
+    globeKeyManager.on("right-modifier-up", async (modifier) => {
+      const currentHotkey = hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey();
+      if (currentHotkey !== modifier) return;
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+
+      const activationMode = await windowManager.getActivationMode();
+      if (activationMode === "push") {
+        rightModDownTime = 0;
+        if (rightModIsRecording) {
+          rightModIsRecording = false;
+          windowManager.sendStopDictation();
+        } else {
+          windowManager.hideDictationPanel();
+        }
+      }
+    });
+
     globeKeyManager.start();
+
+    // Reset native key state when hotkey changes
+    ipcMain.on("hotkey-changed", (_event, newHotkey) => {
+      globeKeyDownTime = 0;
+      globeKeyIsRecording = false;
+      rightModDownTime = 0;
+      rightModIsRecording = false;
+    });
   }
 
   // Set up Windows Push-to-Talk handling
@@ -344,53 +394,62 @@ async function startApp() {
     const WIN_MIN_HOLD_DURATION_MS = 150;
 
     // Helper to check if hotkey is valid for Windows key listener
-    // Supports compound hotkeys like "CommandOrControl+F11"
     const isValidHotkey = (hotkey) => {
       if (!hotkey) return false;
-      if (hotkey === "GLOBE") return false; // GLOBE is macOS only
+      if (hotkey === "GLOBE") return false;
       return true;
+    };
+
+    // Right-side single modifiers need the native listener even in tap mode
+    const isRightSideMod = (hotkey) => /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
+
+    // Whether native listener is needed (push mode always, tap mode only for right-side modifiers)
+    const needsNativeListener = (hotkey, mode) => {
+      if (!isValidHotkey(hotkey)) return false;
+      if (mode === "push") return true;
+      return isRightSideMod(hotkey);
     };
 
     windowsKeyManager.on("key-down", async (key) => {
       debugLogger.debug("[Push-to-Talk] Key DOWN received", { key });
-      // Handle dictation if in push-to-talk mode
-      if (isLiveWindow(windowManager.mainWindow)) {
-        const activationMode = await windowManager.getActivationMode();
-        debugLogger.debug("[Push-to-Talk] Activation mode check", { activationMode });
-        if (activationMode === "push") {
-          debugLogger.debug("[Push-to-Talk] Starting recording sequence");
-          windowManager.showDictationPanel();
-          // Track when key was pressed for push-to-talk
-          winKeyDownTime = Date.now();
-          winKeyIsRecording = false;
-          // Start recording after a brief delay to distinguish tap from hold
-          setTimeout(async () => {
-            if (winKeyDownTime > 0 && !winKeyIsRecording) {
-              winKeyIsRecording = true;
-              debugLogger.debug("[Push-to-Talk] Sending start dictation command");
-              windowManager.sendStartDictation();
-            }
-          }, WIN_MIN_HOLD_DURATION_MS);
-        }
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+
+      const activationMode = await windowManager.getActivationMode();
+      debugLogger.debug("[Push-to-Talk] Activation mode check", { activationMode });
+      if (activationMode === "push") {
+        debugLogger.debug("[Push-to-Talk] Starting recording sequence");
+        windowManager.showDictationPanel();
+        winKeyDownTime = Date.now();
+        winKeyIsRecording = false;
+        setTimeout(async () => {
+          if (winKeyDownTime > 0 && !winKeyIsRecording) {
+            winKeyIsRecording = true;
+            debugLogger.debug("[Push-to-Talk] Sending start dictation command");
+            windowManager.sendStartDictation();
+          }
+        }, WIN_MIN_HOLD_DURATION_MS);
+      } else if (activationMode === "tap") {
+        // Tap mode with native listener (right-side modifiers)
+        windowManager.showDictationPanel();
+        windowManager.mainWindow.webContents.send("toggle-dictation");
       }
     });
 
     windowsKeyManager.on("key-up", async () => {
       debugLogger.debug("[Push-to-Talk] Key UP received");
-      if (isLiveWindow(windowManager.mainWindow)) {
-        const activationMode = await windowManager.getActivationMode();
-        if (activationMode === "push") {
-          const wasRecording = winKeyIsRecording;
-          winKeyDownTime = 0;
-          winKeyIsRecording = false;
-          if (wasRecording) {
-            debugLogger.debug("[Push-to-Talk] Sending stop dictation command");
-            windowManager.sendStopDictation();
-          } else {
-            // Short tap (< hold threshold) - hide panel since recording never started
-            debugLogger.debug("[Push-to-Talk] Short tap detected, hiding panel");
-            windowManager.hideDictationPanel();
-          }
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+
+      const activationMode = await windowManager.getActivationMode();
+      if (activationMode === "push") {
+        const wasRecording = winKeyIsRecording;
+        winKeyDownTime = 0;
+        winKeyIsRecording = false;
+        if (wasRecording) {
+          debugLogger.debug("[Push-to-Talk] Sending stop dictation command");
+          windowManager.sendStopDictation();
+        } else {
+          debugLogger.debug("[Push-to-Talk] Short tap detected, hiding panel");
+          windowManager.hideDictationPanel();
         }
       }
     });
@@ -433,21 +492,14 @@ async function startApp() {
       const currentHotkey = hotkeyManager.getCurrentHotkey();
       debugLogger.debug("[Push-to-Talk] Current state", { activationMode, currentHotkey });
 
-      if (activationMode === "push") {
-        if (isValidHotkey(currentHotkey)) {
-          debugLogger.debug("[Push-to-Talk] Starting Windows key listener", { hotkey: currentHotkey });
-          windowsKeyManager.start(currentHotkey);
-        } else {
-          debugLogger.debug("[Push-to-Talk] No valid hotkey to start listener");
-        }
+      if (needsNativeListener(currentHotkey, activationMode)) {
+        debugLogger.debug("[Push-to-Talk] Starting Windows key listener", { hotkey: currentHotkey });
+        windowsKeyManager.start(currentHotkey);
       } else {
-        debugLogger.debug("[Push-to-Talk] Not in push mode, skipping listener start");
+        debugLogger.debug("[Push-to-Talk] Native listener not needed for current configuration");
       }
     };
 
-    // Delay (ms) before starting the Windows key listener after app startup.
-    // The hotkeyManager loads saved hotkey 1 second after did-finish-load event,
-    // so we wait 3 seconds to ensure settings are fully loaded before starting.
     const STARTUP_DELAY_MS = 3000;
     debugLogger.debug("[Push-to-Talk] Scheduling listener start", { delayMs: STARTUP_DELAY_MS });
     setTimeout(startWindowsKeyListener, STARTUP_DELAY_MS);
@@ -455,15 +507,12 @@ async function startApp() {
     // Listen for activation mode changes from renderer
     ipcMain.on("activation-mode-changed", async (_event, mode) => {
       debugLogger.debug("[Push-to-Talk] IPC: Activation mode changed", { mode });
-      if (mode === "push") {
-        const currentHotkey = hotkeyManager.getCurrentHotkey();
-        debugLogger.debug("[Push-to-Talk] Current hotkey", { hotkey: currentHotkey });
-        if (isValidHotkey(currentHotkey)) {
-          debugLogger.debug("[Push-to-Talk] Starting listener", { hotkey: currentHotkey });
-          windowsKeyManager.start(currentHotkey);
-        }
+      const currentHotkey = hotkeyManager.getCurrentHotkey();
+      if (needsNativeListener(currentHotkey, mode)) {
+        debugLogger.debug("[Push-to-Talk] Starting listener", { hotkey: currentHotkey });
+        windowsKeyManager.start(currentHotkey);
       } else {
-        debugLogger.debug("[Push-to-Talk] Stopping listener (mode is tap)");
+        debugLogger.debug("[Push-to-Talk] Stopping listener");
         windowsKeyManager.stop();
       }
     });
@@ -471,17 +520,12 @@ async function startApp() {
     // Listen for hotkey changes from renderer
     ipcMain.on("hotkey-changed", async (_event, hotkey) => {
       debugLogger.debug("[Push-to-Talk] IPC: Hotkey changed", { hotkey });
-      if (!isLiveWindow(windowManager.mainWindow)) {
-        return;
-      }
+      if (!isLiveWindow(windowManager.mainWindow)) return;
       const activationMode = await windowManager.getActivationMode();
-      debugLogger.debug("[Push-to-Talk] Current activation mode", { activationMode });
-      if (activationMode === "push") {
-        windowsKeyManager.stop();
-        if (isValidHotkey(hotkey)) {
-          debugLogger.debug("[Push-to-Talk] Starting listener for new hotkey", { hotkey });
-          windowsKeyManager.start(hotkey);
-        }
+      windowsKeyManager.stop();
+      if (needsNativeListener(hotkey, activationMode)) {
+        debugLogger.debug("[Push-to-Talk] Starting listener for new hotkey", { hotkey });
+        windowsKeyManager.start(hotkey);
       }
     });
   }

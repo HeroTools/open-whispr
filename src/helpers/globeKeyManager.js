@@ -47,6 +47,16 @@ class GlobeKeyManager extends EventEmitter {
             this.emit("globe-down");
           } else if (line === "FN_UP") {
             this.emit("globe-up");
+          } else if (line.startsWith("RIGHT_MOD_DOWN:")) {
+            const modifier = line.replace("RIGHT_MOD_DOWN:", "").trim();
+            if (modifier) {
+              this.emit("right-modifier-down", modifier);
+            }
+          } else if (line.startsWith("RIGHT_MOD_UP:")) {
+            const modifier = line.replace("RIGHT_MOD_UP:", "").trim();
+            if (modifier) {
+              this.emit("right-modifier-up", modifier);
+            }
           } else if (line.startsWith("MODIFIER_UP:")) {
             const modifier = line.replace("MODIFIER_UP:", "").trim().toLowerCase();
             if (modifier) {

@@ -4,6 +4,7 @@ export type ValidationErrorCode =
   | "TOO_MANY_KEYS"
   | "NO_MODIFIER_OR_SPECIAL"
   | "LEFT_RIGHT_MIX"
+  | "LEFT_MODIFIER_ONLY"
   | "DUPLICATE"
   | "RESERVED"
   | "INVALID_GLOBE";
@@ -17,6 +18,24 @@ export interface ValidationResult {
 const MODIFIER_ORDER = ["Control", "Command", "Alt", "Shift", "Super", "Fn"];
 
 const MODIFIERS = new Set(MODIFIER_ORDER);
+
+const RIGHT_SIDE_MODIFIERS = new Set([
+  "rightcontrol",
+  "rightctrl",
+  "rightalt",
+  "rightoption",
+  "rightshift",
+  "rightcommand",
+  "rightcmd",
+  "rightsuper",
+  "rightmeta",
+  "rightwin",
+]);
+
+function isRightSideModifier(part: string): boolean {
+  const normalized = part.replace(/[-_ ]/g, "").toLowerCase();
+  return RIGHT_SIDE_MODIFIERS.has(normalized);
+}
 
 const SPECIAL_KEYS = new Set(
   [
@@ -313,6 +332,20 @@ function normalizeModifier(part: string, platform: Platform): string | null {
     return "Fn";
   }
 
+  // Handle right-side modifiers (e.g., RightControl, RightOption)
+  // These are valid modifiers but we preserve their "Right" prefix for single-modifier validation
+  if (isRightSideModifier(part)) {
+    // Return a normalized form but mark it as a modifier
+    if (lowered.includes("control") || lowered.includes("ctrl")) return "RightControl";
+    if (lowered.includes("alt") || lowered.includes("option"))
+      return platform === "darwin" ? "RightOption" : "RightAlt";
+    if (lowered.includes("shift")) return "RightShift";
+    if (lowered.includes("command") || lowered.includes("cmd")) return "RightCommand";
+    if (lowered.includes("super") || lowered.includes("meta") || lowered.includes("win")) {
+      return platform === "darwin" ? "RightCommand" : "RightSuper";
+    }
+  }
+
   return null;
 }
 
@@ -521,6 +554,31 @@ export function validateHotkey(
         "Shortcuts must include a modifier or a non-alphanumeric key (like arrows, space, or function keys).",
       errorCode: "NO_MODIFIER_OR_SPECIAL",
     };
+  }
+
+  // Check for modifier-only hotkeys: require right-side for single modifier, or 2+ modifiers
+  const modifierCount = parts.filter((part) => normalizeModifier(part, platform) !== null).length;
+  const hasBaseKey = parts.length > modifierCount;
+
+  if (!hasBaseKey && modifierCount === 1) {
+    const singleMod = parts[0];
+    if (!isRightSideModifier(singleMod)) {
+      return {
+        valid: false,
+        error:
+          "Single modifier hotkeys must use the right-side key (e.g., RightOption). Or use two modifiers (e.g., Control+Alt).",
+        errorCode: "LEFT_MODIFIER_ONLY",
+      };
+    }
+    // Right-side single modifiers require native listeners (not available on Linux)
+    if (platform === "linux") {
+      return {
+        valid: false,
+        error:
+          "Right-side single modifier hotkeys are not supported on Linux. Use two modifiers (e.g., Control+Alt) instead.",
+        errorCode: "LEFT_MODIFIER_ONLY",
+      };
+    }
   }
 
   const normalizedHotkey = normalizeHotkey(hotkey, platform);

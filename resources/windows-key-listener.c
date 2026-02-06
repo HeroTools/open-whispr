@@ -83,6 +83,14 @@ DWORD ParseKeyCode(const char* keyName) {
     if (_stricmp(keyName, "CapsLock") == 0) return VK_CAPITAL;
     if (_stricmp(keyName, "NumLock") == 0) return VK_NUMLOCK;
 
+    // Right-side modifier keys (used as single-key hotkeys)
+    if (_stricmp(keyName, "RightAlt") == 0 || _stricmp(keyName, "RightOption") == 0) return VK_RMENU;
+    if (_stricmp(keyName, "RightControl") == 0 || _stricmp(keyName, "RightCtrl") == 0) return VK_RCONTROL;
+    if (_stricmp(keyName, "RightShift") == 0) return VK_RSHIFT;
+    if (_stricmp(keyName, "RightSuper") == 0 || _stricmp(keyName, "RightWin") == 0 ||
+        _stricmp(keyName, "RightMeta") == 0 || _stricmp(keyName, "RightCommand") == 0 ||
+        _stricmp(keyName, "RightCmd") == 0) return VK_RWIN;
+
     // Backtick/tilde - the default hotkey
     if (strcmp(keyName, "`") == 0 || _stricmp(keyName, "Backquote") == 0) return VK_OEM_3;
 

@@ -64,6 +64,24 @@ export function formatHotkeyLabelForPlatform(hotkey: string, platform: Platform)
     return "Globe/Fn";
   }
 
+  // Right-side single modifiers
+  const rightSideMap: Record<string, string> = {
+    RightOption: platform === "darwin" ? "Right Option" : "Right Alt",
+    RightAlt: "Right Alt",
+    RightCommand: "Right Cmd",
+    RightCmd: "Right Cmd",
+    RightControl: "Right Ctrl",
+    RightCtrl: "Right Ctrl",
+    RightShift: "Right Shift",
+    RightSuper: platform === "win32" ? "Right Win" : "Right Super",
+    RightMeta:
+      platform === "darwin" ? "Right Cmd" : platform === "win32" ? "Right Win" : "Right Super",
+    RightWin: "Right Win",
+  };
+  if (rightSideMap[hotkey]) {
+    return rightSideMap[hotkey];
+  }
+
   if (hotkey.includes("+")) {
     const parts = hotkey.split("+");
     const formattedParts = parts.map((part) => formatModifierPart(part, platform));

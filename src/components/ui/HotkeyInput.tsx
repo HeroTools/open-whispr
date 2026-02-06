@@ -196,6 +196,12 @@ export function HotkeyInput({
     alt: boolean;
     shift: boolean;
   }>({ ctrl: false, meta: false, alt: false, shift: false });
+  const modifierCodesRef = useRef<{
+    ctrl?: string;
+    meta?: string;
+    alt?: string;
+    shift?: string;
+  }>({});
   const platform = getPlatform();
   const isMac = platform === "darwin";
   const isWindows = platform === "win32";
@@ -203,15 +209,34 @@ export function HotkeyInput({
   const MODIFIER_HOLD_THRESHOLD_MS = 200;
 
   const buildModifierOnlyHotkey = useCallback(
-    (modifiers: { ctrl: boolean; meta: boolean; alt: boolean; shift: boolean }): string | null => {
-      const parts: string[] = [];
+    (
+      modifiers: { ctrl: boolean; meta: boolean; alt: boolean; shift: boolean },
+      codes: { ctrl?: string; meta?: string; alt?: string; shift?: string }
+    ): string | null => {
+      // Check for right-side single modifier first
+      const rightSidePressed: string[] = [];
+      if (codes.ctrl === "ControlRight") rightSidePressed.push("RightControl");
+      if (codes.meta === "MetaRight") rightSidePressed.push(isMac ? "RightCommand" : "RightSuper");
+      if (codes.alt === "AltRight") rightSidePressed.push(isMac ? "RightOption" : "RightAlt");
+      if (codes.shift === "ShiftRight") rightSidePressed.push("RightShift");
 
+      // If exactly one right-side modifier, allow it as single-key hotkey
+      if (rightSidePressed.length === 1) {
+        const activeCount = [modifiers.ctrl, modifiers.meta, modifiers.alt, modifiers.shift].filter(
+          Boolean
+        ).length;
+        if (activeCount === 1) {
+          return rightSidePressed[0];
+        }
+      }
+
+      // Otherwise require 2+ modifiers (existing logic)
+      const parts: string[] = [];
       if (modifiers.ctrl) parts.push("Control");
       if (modifiers.meta) parts.push(isMac ? "Command" : "Super");
       if (modifiers.alt) parts.push("Alt");
       if (modifiers.shift) parts.push("Shift");
 
-      // Require at least 2 modifiers for modifier-only combos
       if (parts.length >= 2) {
         return parts.join("+");
       }
@@ -233,6 +258,18 @@ export function HotkeyInput({
         alt: e.altKey,
         shift: e.shiftKey,
       };
+
+      // Track which specific keys are pressed (for left/right detection)
+      const code = e.nativeEvent.code;
+      if (code === "ControlLeft" || code === "ControlRight") {
+        modifierCodesRef.current.ctrl = code;
+      } else if (code === "MetaLeft" || code === "MetaRight") {
+        modifierCodesRef.current.meta = code;
+      } else if (code === "AltLeft" || code === "AltRight") {
+        modifierCodesRef.current.alt = code;
+      } else if (code === "ShiftLeft" || code === "ShiftRight") {
+        modifierCodesRef.current.shift = code;
+      }
 
       // Track when first pressed (for hold detection)
       if (keyDownTimeRef.current === 0) {
@@ -263,7 +300,7 @@ export function HotkeyInput({
       }
       // If no base key, modifiers are held - don't finalize yet
     },
-    [disabled, onChange, isMac, isWindows, buildModifierOnlyHotkey]
+    [disabled, onChange, isMac, isWindows]
   );
 
   const handleKeyUp = useCallback(
@@ -283,7 +320,10 @@ export function HotkeyInput({
 
         // Only capture if held long enough
         if (holdDuration >= MODIFIER_HOLD_THRESHOLD_MS) {
-          const modifierHotkey = buildModifierOnlyHotkey(heldModifiersRef.current);
+          const modifierHotkey = buildModifierOnlyHotkey(
+            heldModifiersRef.current,
+            modifierCodesRef.current
+          );
           if (modifierHotkey) {
             lastCapturedHotkeyRef.current = modifierHotkey;
             onChange(modifierHotkey);
@@ -296,6 +336,7 @@ export function HotkeyInput({
 
       // Reset state
       heldModifiersRef.current = { ctrl: false, meta: false, alt: false, shift: false };
+      modifierCodesRef.current = {};
       setActiveModifiers(new Set());
       keyDownTimeRef.current = 0;
     },
