@@ -704,6 +704,14 @@ class ClipboardManager {
       ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"]
       : ["key", "29:1", "47:1", "47:0", "29:0"];
 
+    // On GNOME Wayland, prefer ydotool over xdotool because xdotool can only
+    // interact with XWayland windows and may target the wrong window (e.g. OpenWhispr
+    // itself) while reporting success, preventing fallback to ydotool.
+    // Also on GNOME Wayland, terminal detection via xdotool/kdotool fails for native
+    // Wayland windows, so ydotool should use Ctrl+Shift+V which works in both
+    // terminals (correct paste) and other apps (paste without formatting).
+    const gnomeWaylandYdotoolArgs = ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"];
+
     const candidates = [
       ...(canUseWtype
         ? [
@@ -715,8 +723,15 @@ class ClipboardManager {
               : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
           ]
         : []),
-      ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
-      ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
+      ...(isGnome && isWayland
+        ? [
+            ...(canUseYdotool ? [{ cmd: "ydotool", args: gnomeWaylandYdotoolArgs }] : []),
+            ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
+          ]
+        : [
+            ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
+            ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
+          ]),
     ];
 
     const available = candidates.filter((c) => this.commandExists(c.cmd));
