@@ -6,6 +6,7 @@ import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../c
 import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../config/prompts";
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
+import { withSessionRefresh } from "../lib/neonAuth";
 
 /**
  * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
@@ -997,15 +998,23 @@ class ReasoningService extends BaseReasoningService {
 
     try {
       const customDictionary = this.getCustomDictionary();
-      const result = await (window as any).electronAPI.cloudReason(text, {
-        model,
-        agentName,
-        customDictionary,
-      });
 
-      if (!result.success) {
-        throw new Error(result.error || "OpenWhispr cloud reasoning failed");
-      }
+      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
+      const result = await withSessionRefresh(async () => {
+        const res = await (window as any).electronAPI.cloudReason(text, {
+          model,
+          agentName,
+          customDictionary,
+        });
+
+        if (!res.success) {
+          const err: any = new Error(res.error || "OpenWhispr cloud reasoning failed");
+          err.code = res.code;
+          throw err;
+        }
+
+        return res;
+      });
 
       logger.logReasoning("OPENWHISPR_SUCCESS", {
         model: result.model,

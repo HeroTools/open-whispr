@@ -281,10 +281,12 @@ class AudioManager {
       const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
       const isSignedIn = localStorage.getItem("isSignedIn") === "true";
 
-      const useCloud = !useLocalWhisper && cloudTranscriptionMode === "openwhispr" && isSignedIn;
+      const isOpenWhisprCloudMode =
+        !useLocalWhisper && cloudTranscriptionMode === "openwhispr";
+      const useCloud = isOpenWhisprCloudMode && isSignedIn;
       logger.debug(
         "Transcription routing",
-        { useLocalWhisper, useCloud, isSignedIn },
+        { useLocalWhisper, useCloud, isSignedIn, cloudTranscriptionMode },
         "transcription"
       );
 
@@ -298,7 +300,14 @@ class AudioManager {
           activeModel = whisperModel;
           result = await this.processWithLocalWhisper(audioBlob, whisperModel, metadata);
         }
-      } else if (cloudTranscriptionMode === "openwhispr" && isSignedIn) {
+      } else if (isOpenWhisprCloudMode) {
+        if (!isSignedIn) {
+          const err = new Error(
+            "OpenWhispr Cloud requires sign-in. Please sign in again or switch to BYOK mode."
+          );
+          err.code = "AUTH_REQUIRED";
+          throw err;
+        }
         activeModel = "openwhispr-cloud";
         result = await this.processWithOpenWhisprCloud(audioBlob, metadata);
       } else {
@@ -1757,6 +1766,10 @@ class AudioManager {
         errorTitle = "Microphone Access Denied";
         errorDescription =
           "Please grant microphone permission in your system settings and try again.";
+      } else if (error.code === "AUTH_EXPIRED" || error.code === "AUTH_REQUIRED") {
+        errorTitle = "Sign-in Required";
+        errorDescription =
+          "Your OpenWhispr Cloud session is unavailable. Please sign in again from Settings.";
       }
 
       this.onError?.({
@@ -1786,7 +1799,18 @@ class AudioManager {
     let finalText = this.streamingFinalText || "";
 
     try {
-      const result = await window.electronAPI.assemblyAiStreamingStop();
+      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
+      const result = await withSessionRefresh(async () => {
+        const res = await window.electronAPI.assemblyAiStreamingStop();
+        // Throw error to trigger retry if AUTH_EXPIRED
+        if (!res.success && res.code) {
+          const err = new Error(res.error || "Failed to stop streaming");
+          err.code = res.code;
+          throw err;
+        }
+        return res;
+      });
+
       logger.info("Streaming recording stopped", { durationSeconds }, "streaming");
 
       if (result?.text) {

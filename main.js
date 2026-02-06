@@ -1,4 +1,58 @@
 const { app, globalShortcut, BrowserWindow, dialog, ipcMain } = require("electron");
+const path = require("path");
+const http = require("http");
+require("dotenv").config({ path: path.join(__dirname, ".env") });
+
+const VALID_CHANNELS = new Set(["development", "staging", "production"]);
+const DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL = {
+  development: "openwhispr-dev",
+  staging: "openwhispr-staging",
+  production: "openwhispr",
+};
+const BASE_WINDOWS_APP_ID = "com.herotools.openwispr";
+const DEFAULT_AUTH_BRIDGE_PORT = 5199;
+
+function isElectronBinaryExec() {
+  const execPath = (process.execPath || "").toLowerCase();
+  return (
+    execPath.includes("/electron.app/contents/macos/electron") ||
+    execPath.endsWith("/electron") ||
+    execPath.endsWith("\\electron.exe")
+  );
+}
+
+function inferDefaultChannel() {
+  if (process.env.NODE_ENV === "development" || process.defaultApp || isElectronBinaryExec()) {
+    return "development";
+  }
+  return "production";
+}
+
+function resolveAppChannel() {
+  const rawChannel = (process.env.OPENWHISPR_CHANNEL || process.env.VITE_OPENWHISPR_CHANNEL || "")
+    .trim()
+    .toLowerCase();
+
+  if (VALID_CHANNELS.has(rawChannel)) {
+    return rawChannel;
+  }
+
+  return inferDefaultChannel();
+}
+
+const APP_CHANNEL = resolveAppChannel();
+process.env.OPENWHISPR_CHANNEL = APP_CHANNEL;
+
+function configureChannelUserDataPath() {
+  if (APP_CHANNEL === "production") {
+    return;
+  }
+
+  const isolatedPath = path.join(app.getPath("appData"), `OpenWhispr-${APP_CHANNEL}`);
+  app.setPath("userData", isolatedPath);
+}
+
+configureChannelUserDataPath();
 
 // Enable native Wayland global shortcuts: https://github.com/electron/electron/pull/45171
 if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
@@ -7,17 +61,48 @@ if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") 
 
 // Group all windows under single taskbar entry on Windows
 if (process.platform === "win32") {
-  app.setAppUserModelId("com.herotools.openwispr");
+  const windowsAppId =
+    APP_CHANNEL === "production"
+      ? BASE_WINDOWS_APP_ID
+      : `${BASE_WINDOWS_APP_ID}.${APP_CHANNEL}`;
+  app.setAppUserModelId(windowsAppId);
 }
 
-// Register custom protocol for OAuth callbacks
-// This must be done before app is ready
-if (process.defaultApp) {
-  if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient('openwhispr', process.execPath, [process.argv[1]]);
+function getOAuthProtocol() {
+  const fromEnv = (process.env.VITE_OPENWHISPR_PROTOCOL || process.env.OPENWHISPR_PROTOCOL || "")
+    .trim()
+    .toLowerCase();
+
+  if (/^[a-z][a-z0-9+.-]*$/.test(fromEnv)) {
+    return fromEnv;
   }
-} else {
-  app.setAsDefaultProtocolClient('openwhispr');
+
+  return DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL[APP_CHANNEL] || DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL.production;
+}
+
+const OAUTH_PROTOCOL = getOAuthProtocol();
+
+function shouldRegisterProtocolWithAppArg() {
+  return Boolean(process.defaultApp) || isElectronBinaryExec();
+}
+
+// Register custom protocol for OAuth callbacks.
+// In development, always include the app path argument so macOS/Windows/Linux
+// can launch the project app instead of opening bare Electron.
+function registerOpenWhisprProtocol() {
+  const protocol = OAUTH_PROTOCOL;
+
+  if (shouldRegisterProtocolWithAppArg()) {
+    const appArg = process.argv[1] ? path.resolve(process.argv[1]) : path.resolve(".");
+    return app.setAsDefaultProtocolClient(protocol, process.execPath, [appArg]);
+  }
+
+  return app.setAsDefaultProtocolClient(protocol);
+}
+
+const protocolRegistered = registerOpenWhisprProtocol();
+if (!protocolRegistered) {
+  console.warn(`[Auth] Failed to register ${OAUTH_PROTOCOL}:// protocol handler`);
 }
 
 const gotSingleInstanceLock = app.requestSingleInstanceLock();
@@ -76,6 +161,23 @@ let updateManager = null;
 let globeKeyManager = null;
 let windowsKeyManager = null;
 let globeKeyAlertShown = false;
+let authBridgeServer = null;
+
+function parseAuthBridgePort() {
+  const raw = (process.env.OPENWHISPR_AUTH_BRIDGE_PORT || "").trim();
+  if (!raw) return DEFAULT_AUTH_BRIDGE_PORT;
+
+  const parsed = Number(raw);
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    return DEFAULT_AUTH_BRIDGE_PORT;
+  }
+
+  return parsed;
+}
+
+const AUTH_BRIDGE_HOST = "127.0.0.1";
+const AUTH_BRIDGE_PORT = parseAuthBridgePort();
+const AUTH_BRIDGE_PATH = "/oauth/callback";
 
 // Set up PATH for production builds to find system tools (whisper.cpp, ffmpeg)
 function setupProductionPath() {
@@ -168,7 +270,7 @@ function initializeManagers() {
 // Handle the protocol on macOS
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  if (url.startsWith('openwhispr://')) {
+  if (url.startsWith(`${OAUTH_PROTOCOL}://`)) {
     handleOAuthDeepLink(url);
   }
 });
@@ -176,31 +278,131 @@ app.on('open-url', (event, url) => {
 // Extract the session verifier from the deep link and navigate the control
 // panel to its app URL with the verifier param so the Neon Auth SDK can
 // read it from window.location.search and complete authentication.
+function navigateControlPanelWithVerifier(verifier) {
+  if (!verifier) return;
+  if (!isLiveWindow(windowManager?.controlPanelWindow)) return;
+
+  const appUrl = DevServerManager.getAppUrl(true);
+  if (!appUrl) return;
+
+  const separator = appUrl.includes('?') ? '&' : '?';
+  const urlWithVerifier = `${appUrl}${separator}neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
+  if (debugLogger) {
+    debugLogger.debug("Navigating control panel with OAuth verifier", {
+      appChannel: APP_CHANNEL,
+      oauthProtocol: OAUTH_PROTOCOL,
+      devServerUrl: appUrl,
+      authBridgeUrl: `http://${AUTH_BRIDGE_HOST}:${AUTH_BRIDGE_PORT}${AUTH_BRIDGE_PATH}`,
+    });
+  }
+  windowManager.controlPanelWindow.loadURL(urlWithVerifier);
+  windowManager.controlPanelWindow.show();
+  windowManager.controlPanelWindow.focus();
+}
+
 function handleOAuthDeepLink(deepLinkUrl) {
   try {
     const parsed = new URL(deepLinkUrl);
     const verifier = parsed.searchParams.get('neon_auth_session_verifier');
     if (!verifier) return;
-
-    if (isLiveWindow(windowManager?.controlPanelWindow)) {
-      const appUrl = DevServerManager.getAppUrl(true);
-      const separator = appUrl.includes('?') ? '&' : '?';
-      const urlWithVerifier = `${appUrl}${separator}neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
-      if (debugLogger) debugLogger.debug('Navigating control panel with OAuth verifier');
-      windowManager.controlPanelWindow.loadURL(urlWithVerifier);
-      windowManager.controlPanelWindow.show();
-      windowManager.controlPanelWindow.focus();
-    }
+    navigateControlPanelWithVerifier(verifier);
   } catch (err) {
     if (debugLogger) debugLogger.error('Failed to handle OAuth deep link:', err);
   }
 }
 
+function parseJsonBody(req) {
+  return new Promise((resolve, reject) => {
+    let raw = "";
+    req.on("data", (chunk) => {
+      raw += chunk;
+      if (raw.length > 32 * 1024) {
+        reject(new Error("Request body too large"));
+        req.destroy();
+      }
+    });
+    req.on("end", () => {
+      if (!raw) return resolve({});
+      try {
+        resolve(JSON.parse(raw));
+      } catch {
+        reject(new Error("Invalid JSON payload"));
+      }
+    });
+    req.on("error", reject);
+  });
+}
+
+function writeCorsHeaders(res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+}
+
+function startAuthBridgeServer() {
+  if (APP_CHANNEL !== "development" || authBridgeServer) {
+    return;
+  }
+
+  authBridgeServer = http.createServer(async (req, res) => {
+    writeCorsHeaders(res);
+    if (req.method === "OPTIONS") {
+      res.writeHead(204);
+      res.end();
+      return;
+    }
+
+    const requestUrl = new URL(req.url || "/", `http://${AUTH_BRIDGE_HOST}:${AUTH_BRIDGE_PORT}`);
+    if (requestUrl.pathname !== AUTH_BRIDGE_PATH) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
+
+    let verifier = requestUrl.searchParams.get("neon_auth_session_verifier");
+    if (!verifier && req.method === "POST") {
+      try {
+        const body = await parseJsonBody(req);
+        verifier = body?.neon_auth_session_verifier || body?.verifier || null;
+      } catch (error) {
+        res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+        res.end(error.message || "Invalid request");
+        return;
+      }
+    }
+
+    if (!verifier) {
+      res.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Missing neon_auth_session_verifier");
+      return;
+    }
+
+    navigateControlPanelWithVerifier(verifier);
+
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    res.end("<html><body><h3>OpenWhispr sign-in complete.</h3><p>You can close this tab.</p></body></html>");
+  });
+
+  authBridgeServer.on("error", (error) => {
+    if (debugLogger) {
+      debugLogger.error("OAuth auth bridge server failed:", error);
+    }
+  });
+
+  authBridgeServer.listen(AUTH_BRIDGE_PORT, AUTH_BRIDGE_HOST, () => {
+    if (debugLogger) {
+      debugLogger.debug("OAuth auth bridge server started", {
+        url: `http://${AUTH_BRIDGE_HOST}:${AUTH_BRIDGE_PORT}${AUTH_BRIDGE_PATH}`,
+      });
+    }
+  });
+}
 
 // Main application startup
 async function startApp() {
   // Initialize all managers now that app is ready
   initializeManagers();
+  startAuthBridgeServer();
 
   // In development, add a small delay to let Vite start properly
   if (process.env.NODE_ENV === "development") {
@@ -513,7 +715,7 @@ if (gotSingleInstanceLock) {
     }
 
     // Check for OAuth protocol URL in command line arguments (Windows/Linux)
-    const url = commandLine.find(arg => arg.startsWith('openwhispr://'));
+    const url = commandLine.find(arg => arg.startsWith(`${OAUTH_PROTOCOL}://`));
     if (url) {
       handleOAuthDeepLink(url);
     }
@@ -584,6 +786,10 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("will-quit", () => {
+    if (authBridgeServer) {
+      authBridgeServer.close();
+      authBridgeServer = null;
+    }
     if (hotkeyManager) {
       hotkeyManager.unregisterAll();
     } else {

@@ -979,11 +979,56 @@ class IPCHandlers {
     const getApiUrl = () =>
       process.env.OPENWHISPR_API_URL || process.env.VITE_OPENWHISPR_API_URL || "";
 
+    const getAuthUrl = () =>
+      process.env.NEON_AUTH_URL || process.env.VITE_NEON_AUTH_URL || "";
+
     const getSessionCookies = async (event) => {
       const win = BrowserWindow.fromWebContents(event.sender);
       if (!win) return "";
-      const cookies = await win.webContents.session.cookies.get({});
-      return cookies.map((c) => `${c.name}=${c.value}`).join("; ");
+
+      const scopedUrls = [getAuthUrl(), getApiUrl()].filter(Boolean);
+      const cookiesByName = new Map();
+
+      for (const url of scopedUrls) {
+        try {
+          const scopedCookies = await win.webContents.session.cookies.get({ url });
+          for (const cookie of scopedCookies) {
+            if (!cookiesByName.has(cookie.name)) {
+              cookiesByName.set(cookie.name, cookie.value);
+            }
+          }
+        } catch (error) {
+          debugLogger.warn("Failed to read scoped auth cookies", {
+            url,
+            error: error.message,
+          });
+        }
+      }
+
+      // Fallback for older sessions where cookies are not URL-scoped as expected.
+      if (cookiesByName.size === 0) {
+        const allCookies = await win.webContents.session.cookies.get({});
+        for (const cookie of allCookies) {
+          if (!cookiesByName.has(cookie.name)) {
+            cookiesByName.set(cookie.name, cookie.value);
+          }
+        }
+      }
+
+      const cookieHeader = [...cookiesByName.entries()]
+        .map(([name, value]) => `${name}=${value}`)
+        .join("; ");
+
+      debugLogger.debug(
+        "Resolved auth cookies for cloud request",
+        {
+          cookieCount: cookiesByName.size,
+          scopedUrls,
+        },
+        "auth"
+      );
+
+      return cookieHeader;
     };
 
     ipcMain.handle("cloud-transcribe", async (event, audioBuffer, opts = {}) => {

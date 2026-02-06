@@ -8,6 +8,100 @@ export const authClient = NEON_AUTH_URL
 
 export type SocialProvider = "google";
 
+const LAST_SIGN_IN_STORAGE_KEY = "openwhispr:lastSignInTime";
+const GRACE_PERIOD_MS = 60_000;
+const GRACE_RETRY_COUNT = 6;
+const INITIAL_GRACE_RETRY_DELAY_MS = 500;
+
+let lastSignInTime: number | null = null;
+
+function getLocalStorageSafe(): Storage | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function loadLastSignInTimeFromStorage(): number | null {
+  const storage = getLocalStorageSafe();
+  if (!storage) return null;
+
+  const raw = storage.getItem(LAST_SIGN_IN_STORAGE_KEY);
+  if (!raw) return null;
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    storage.removeItem(LAST_SIGN_IN_STORAGE_KEY);
+    return null;
+  }
+
+  return parsed;
+}
+
+function persistLastSignInTime(value: number | null): void {
+  const storage = getLocalStorageSafe();
+  if (!storage) return;
+
+  if (value === null) {
+    storage.removeItem(LAST_SIGN_IN_STORAGE_KEY);
+  } else {
+    storage.setItem(LAST_SIGN_IN_STORAGE_KEY, String(value));
+  }
+}
+
+function getLastSignInTime(): number | null {
+  const stored = loadLastSignInTimeFromStorage();
+  if (stored !== null) {
+    lastSignInTime = stored;
+  }
+  return lastSignInTime;
+}
+
+function createAuthExpiredError(originalError: unknown): Error {
+  if (originalError instanceof Error) {
+    (originalError as Error & { code?: string }).code = "AUTH_EXPIRED";
+    return originalError;
+  }
+
+  const error = new Error("Session expired");
+  (error as Error & { code?: string }).code = "AUTH_EXPIRED";
+  return error;
+}
+
+export function clearLastSignInTime(): void {
+  lastSignInTime = null;
+  persistLastSignInTime(null);
+}
+
+function markSignedOutState(): void {
+  const storage = getLocalStorageSafe();
+  storage?.setItem("isSignedIn", "false");
+  clearLastSignInTime();
+}
+
+/**
+ * Updates the last sign-in timestamp. Call this after successful OAuth.
+ */
+export function updateLastSignInTime(): void {
+  const now = Date.now();
+  lastSignInTime = now;
+  persistLastSignInTime(now);
+}
+
+/**
+ * Check if we're within the grace period after sign-in.
+ * Exported so useAuth can also suppress premature sign-outs.
+ */
+export function isWithinGracePeriod(): boolean {
+  const startedAt = getLastSignInTime();
+  if (!startedAt) return false;
+
+  const elapsed = Math.max(0, Date.now() - startedAt);
+  return elapsed < GRACE_PERIOD_MS;
+}
+
 /**
  * Attempts to refresh the current session by calling getSession().
  * The Neon Auth SDK automatically refreshes expired tokens when this is called.
@@ -21,7 +115,7 @@ export async function refreshSession(): Promise<boolean> {
   try {
     const result = await authClient.getSession();
     return Boolean(result.data?.session?.user);
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -43,46 +137,60 @@ export async function signOut(): Promise<void> {
     }
 
     // Clear local storage
-    localStorage.setItem("isSignedIn", "false");
-  } catch (err) {
+    markSignedOutState();
+  } catch {
     // Fallback: at minimum clear local storage
-    localStorage.setItem("isSignedIn", "false");
+    markSignedOutState();
   }
 }
 
 /**
  * Utility to wrap API calls that may fail due to expired session.
- * Automatically attempts to refresh the session and retry once on AUTH_EXPIRED.
- * Signs out the user if refresh fails.
+ * Automatically retries AUTH_EXPIRED calls during OAuth grace, then attempts a
+ * single session refresh before surfacing the auth error to the caller.
+ *
+ * During the grace period, retries the operation with exponential backoff to wait
+ * for session cookies to establish.
  *
  * @param operation - The async operation to perform
  * @returns The result of the operation
  */
 export async function withSessionRefresh<T>(operation: () => Promise<T>): Promise<T> {
-  try {
-    return await operation();
-  } catch (error: any) {
-    // Check if this is an auth expiration error
-    const isAuthExpired =
-      error?.code === "AUTH_EXPIRED" ||
-      error?.message?.toLowerCase().includes("session expired") ||
-      error?.message?.toLowerCase().includes("auth expired");
+  const startedInGracePeriod = isWithinGracePeriod();
+  let graceRetriesUsed = 0;
+  let refreshAttempted = false;
 
-    if (isAuthExpired) {
-      // Attempt to refresh the session
-      const refreshed = await refreshSession();
+  while (true) {
+    try {
+      return await operation();
+    } catch (error: any) {
+      const isAuthExpired =
+        error?.code === "AUTH_EXPIRED" ||
+        error?.message?.toLowerCase().includes("session expired") ||
+        error?.message?.toLowerCase().includes("auth expired");
 
-      if (refreshed) {
-        // Retry the operation with refreshed session
-        return await operation();
+      if (!isAuthExpired) {
+        throw error;
       }
 
-      // Refresh failed - sign out to clear stale session
-      await signOut();
-    }
+      if (startedInGracePeriod && graceRetriesUsed < GRACE_RETRY_COUNT) {
+        const delayMs = INITIAL_GRACE_RETRY_DELAY_MS * Math.pow(2, graceRetriesUsed);
+        graceRetriesUsed += 1;
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
 
-    // Re-throw the original error
-    throw error;
+      if (!refreshAttempted) {
+        refreshAttempted = true;
+        const refreshed = await refreshSession();
+        if (refreshed) {
+          continue;
+        }
+      }
+
+      markSignedOutState();
+      throw createAuthExpiredError(error);
+    }
   }
 }
 
@@ -94,7 +202,7 @@ export async function signInWithSocial(provider: SocialProvider): Promise<{ erro
   try {
     // Build an absolute callback URL. Neon Auth redirects here after OAuth.
     // In the browser, this page detects it's outside Electron and redirects
-    // to the openwhispr:// protocol to hand the verifier back to the app.
+    // to the app's custom protocol to hand the verifier back to Electron.
     const base = window.location.href.split("?")[0].split("#")[0];
     const callbackURL = `${base}?panel=true`;
 
@@ -107,5 +215,58 @@ export async function signInWithSocial(provider: SocialProvider): Promise<{ erro
     return {};
   } catch (error) {
     return { error: error instanceof Error ? error : new Error("Social sign-in failed") };
+  }
+}
+
+/**
+ * Requests a password reset email to be sent to the specified email address.
+ * The email contains a link that redirects to the app with a reset token.
+ */
+export async function requestPasswordReset(email: string): Promise<{ error?: Error }> {
+  if (!authClient) {
+    return { error: new Error("Auth not configured") };
+  }
+
+  try {
+    // Build the redirect URL for the password reset link.
+    // This will redirect back to the app with a token parameter.
+    const base = window.location.href.split("?")[0].split("#")[0];
+    const redirectTo = `${base}?panel=true&reset_password=true`;
+
+    await authClient.requestPasswordReset({
+      email: email.trim(),
+      redirectTo,
+    });
+
+    return {};
+  } catch (error) {
+    return { error: error instanceof Error ? error : new Error("Failed to send reset email") };
+  }
+}
+
+/**
+ * Resets the user's password using the token from the reset email.
+ * After successful reset, the user is automatically signed in.
+ */
+export async function resetPassword(
+  newPassword: string,
+  token: string
+): Promise<{ error?: Error }> {
+  if (!authClient) {
+    return { error: new Error("Auth not configured") };
+  }
+
+  try {
+    await authClient.resetPassword({
+      newPassword,
+      token,
+    });
+
+    // Mark sign-in time for grace period after password reset
+    updateLastSignInTime();
+
+    return {};
+  } catch (error) {
+    return { error: error instanceof Error ? error : new Error("Failed to reset password") };
   }
 }

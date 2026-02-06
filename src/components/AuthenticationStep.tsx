@@ -4,7 +4,7 @@ import {
   authClient,
   NEON_AUTH_URL,
   signInWithSocial,
-  refreshSession,
+  updateLastSignInTime,
   type SocialProvider,
 } from "../lib/neonAuth";
 import { OPENWHISPR_API_URL } from "../config/constants";
@@ -12,6 +12,8 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { AlertCircle, ArrowRight, Check, Loader2, ChevronLeft } from "lucide-react";
 import logoIcon from "../assets/icon.png";
+import ForgotPasswordView from "./ForgotPasswordView";
+import ResetPasswordView from "./ResetPasswordView";
 
 interface AuthenticationStepProps {
   onContinueWithoutAccount: () => void;
@@ -19,6 +21,7 @@ interface AuthenticationStepProps {
 }
 
 type AuthMode = "sign-in" | "sign-up" | null;
+type PasswordResetView = "forgot" | "reset" | null;
 
 // Custom SVG icons for social providers (clean, modern style)
 const GoogleIcon = ({ className }: { className?: string }) => (
@@ -55,50 +58,44 @@ export default function AuthenticationStep({
   const [isCheckingEmail, setIsCheckingEmail] = useState(false);
   const [isSocialLoading, setIsSocialLoading] = useState<SocialProvider | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [passwordResetView, setPasswordResetView] = useState<PasswordResetView>(null);
+  const [resetToken, setResetToken] = useState<string | null>(null);
 
   // Track if we've already processed the OAuth callback
   const oauthProcessedRef = useRef(false);
+  const resetProcessedRef = useRef(false);
 
-  // Check for OAuth callback verifier in URL and poll for session
+  // Check for OAuth callback verifier or password reset token in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hasVerifier = params.has("neon_auth_session_verifier");
+    const token = params.get("token");
+    const isResetPassword = params.has("reset_password");
+
+    // Handle password reset callback (user clicked link in email)
+    if (token && isResetPassword && !resetProcessedRef.current) {
+      resetProcessedRef.current = true;
+      setResetToken(token);
+      setPasswordResetView("reset");
+      console.log("[Auth] Password reset token detected, showing reset form");
+      return;
+    }
 
     if (hasVerifier && !oauthProcessedRef.current) {
       oauthProcessedRef.current = true;
       setIsSocialLoading("google");
 
-      let attempts = 0;
-      const maxAttempts = 20;
+      // CRITICAL: Activate grace period IMMEDIATELY when OAuth callback starts
+      // Session cookies take 10-15 seconds to establish, so we need protection
+      // from the very beginning, not after the first successful refresh
+      updateLastSignInTime();
 
-      const checkSession = async () => {
-        attempts++;
-
-        try {
-          const success = await refreshSession();
-
-          if (success) {
-            if (pollInterval) clearInterval(pollInterval);
-          } else if (attempts >= maxAttempts) {
-            setError("Authentication timed out. Please try again.");
-            setIsSocialLoading(null);
-            if (pollInterval) clearInterval(pollInterval);
-          }
-        } catch (err) {
-          if (attempts >= maxAttempts) {
-            setError("Authentication failed. Please try again.");
-            setIsSocialLoading(null);
-            if (pollInterval) clearInterval(pollInterval);
-          }
-        }
-      };
-
-      checkSession();
-      const pollInterval = setInterval(checkSession, 500);
-
-      return () => {
-        clearInterval(pollInterval);
-      };
+      // Don't poll for session - it causes premature session state clearing.
+      // Instead, proceed immediately to onboarding. The session cookies will
+      // establish in the background (10-15 seconds), and withSessionRefresh()
+      // will handle retries automatically when the user tries to use features.
+      // The useEffect below will detect when session is ready via isSignedIn.
+      console.log("[Auth] OAuth callback detected, grace period active. Proceeding to onboarding...");
     }
   }, []);
 
@@ -208,6 +205,8 @@ export default function AuthenticationStep({
               setError(result.error.message || "Failed to create account");
             }
           } else {
+            // Mark the sign-in time to enable grace period for session establishment
+            updateLastSignInTime();
             onAuthComplete();
           }
         } else {
@@ -225,6 +224,8 @@ export default function AuthenticationStep({
               setError(result.error.message || "Invalid email or password");
             }
           } else {
+            // Mark the sign-in time to enable grace period for session establishment
+            updateLastSignInTime();
             onAuthComplete();
           }
         }
@@ -244,6 +245,22 @@ export default function AuthenticationStep({
     setPassword("");
     setFullName("");
     setError(null);
+  }, []);
+
+  const handleForgotPassword = useCallback(() => {
+    setPasswordResetView("forgot");
+    setError(null);
+  }, []);
+
+  const handleBackFromPasswordReset = useCallback(() => {
+    setPasswordResetView(null);
+    setResetToken(null);
+    setError(null);
+    // Clear URL params without reload
+    const url = new URL(window.location.href);
+    url.searchParams.delete("token");
+    url.searchParams.delete("reset_password");
+    window.history.replaceState({}, "", url.toString());
   }, []);
 
   const toggleAuthMode = useCallback(() => {
@@ -313,6 +330,27 @@ export default function AuthenticationStep({
     );
   }
 
+  // Password reset flow - show reset form if we have a token
+  if (passwordResetView === "reset" && resetToken) {
+    return (
+      <ResetPasswordView
+        token={resetToken}
+        onSuccess={onAuthComplete}
+        onBack={handleBackFromPasswordReset}
+      />
+    );
+  }
+
+  // Password reset flow - show forgot password form
+  if (passwordResetView === "forgot") {
+    return (
+      <ForgotPasswordView
+        email={email}
+        onBack={handleBackFromPasswordReset}
+      />
+    );
+  }
+
   // Password form (after email is entered)
   if (authMode !== null) {
     return (
@@ -364,6 +402,17 @@ export default function AuthenticationStep({
             <p className="text-[9px] text-muted-foreground/70 leading-tight">
               Password must be at least 8 characters
             </p>
+          )}
+
+          {authMode === "sign-in" && (
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="text-[10px] text-primary hover:text-primary/80 transition-colors text-left"
+              disabled={isSubmitting}
+            >
+              Forgot password?
+            </button>
           )}
 
           {/* Error Display */}

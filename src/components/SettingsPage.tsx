@@ -18,7 +18,7 @@ import {
   Key,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import { NEON_AUTH_URL } from "../lib/neonAuth";
+import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -406,9 +406,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const handleSignOut = useCallback(async () => {
     setIsSigningOut(true);
     try {
-      // Clear session cookies via Electron's main process to avoid
-      // CSRF/Origin header issues with the server-side sign-out endpoint
-      await window.electronAPI?.authClearSession?.();
+      await signOut();
       // Clear onboarding to show auth screen again
       localStorage.removeItem("onboardingCompleted");
       localStorage.removeItem("onboardingCurrentStep");
