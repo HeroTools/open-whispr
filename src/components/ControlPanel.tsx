@@ -302,15 +302,16 @@ export default function ControlPanel() {
       />
 
       {/* Main content */}
-      <div className="p-4">
-        <div className="max-w-3xl mx-auto">
-          {/* Header row */}
-          <div className="flex items-center justify-between mb-3 px-1">
-            <div className="flex items-center gap-2">
-              <FileText size={14} className="text-primary" />
-              <h2 className="text-sm font-semibold text-foreground">Transcriptions</h2>
+      <div className="p-8">
+        <div className="max-w-4xl mx-auto">
+          {/* Header row - luxury spacing */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-baseline gap-3">
+              <h1 className="text-3xl font-semibold text-foreground tracking-tight">
+                Transcriptions
+              </h1>
               {history.length > 0 && (
-                <span className="text-[11px] text-muted-foreground tabular-nums">
+                <span className="text-lg text-primary font-medium tabular-nums">
                   ({history.length})
                 </span>
               )}
@@ -320,43 +321,48 @@ export default function ControlPanel() {
                 onClick={clearHistory}
                 variant="ghost"
                 size="sm"
-                className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                className="h-8 px-3 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
               >
-                <Trash2 size={12} className="mr-1" />
-                Clear
+                <Trash2 size={14} className="mr-1.5" />
+                Clear All
               </Button>
             )}
           </div>
 
-          {/* AI Enhancement CTA */}
+          {/* AI Enhancement CTA - premium design */}
           {!useReasoningModel && !aiCTADismissed && (
-            <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/10 p-3">
+            <div className="mb-8 relative rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-6 shadow-[0_0_40px_rgba(112,255,186,0.1)] overflow-hidden">
+              {/* Glow effect */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-50" />
+
               <button
                 onClick={() => setAiCTADismissed(true)}
-                className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+                className="absolute top-4 right-4 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-white/10 transition-all duration-200 z-10"
               >
-                <X size={14} />
+                <X size={16} />
               </button>
-              <div className="flex items-start gap-3 pr-6">
-                <div className="shrink-0 w-8 h-8 rounded-md bg-primary/20 flex items-center justify-center">
-                  <Sparkles size={16} className="text-primary" />
+
+              <div className="relative flex items-start gap-5">
+                <div className="shrink-0 w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center shadow-[0_0_20px_rgba(112,255,186,0.2)]">
+                  <Sparkles size={22} className="text-primary" />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[13px] font-medium text-foreground mb-0.5">
+                <div className="flex-1 min-w-0 pr-8">
+                  <p className="text-lg font-semibold text-foreground mb-2">
                     Enhance your transcriptions with AI
                   </p>
-                  <p className="text-[12px] text-muted-foreground mb-2">
+                  <p className="text-sm text-muted-foreground mb-4 leading-relaxed">
                     Automatically fix grammar, punctuation, and formatting as you speak.
                   </p>
                   <Button
                     variant="default"
                     size="sm"
-                    className="h-7 text-[11px]"
+                    className="h-9 px-4 text-sm shadow-[0_0_20px_rgba(112,255,186,0.3)] hover:shadow-[0_0_30px_rgba(112,255,186,0.4)] transition-all duration-300"
                     onClick={() => {
                       setSettingsSection("aiModels");
                       setShowSettings(true);
                     }}
                   >
+                    <Sparkles size={14} className="mr-2" />
                     Enable AI Enhancement
                   </Button>
                 </div>
@@ -364,29 +370,30 @@ export default function ControlPanel() {
             </div>
           )}
 
-          {/* Content area */}
-          <div className="rounded-lg border border-border-subtle bg-card/30 backdrop-blur-sm">
+          {/* Content area - refined */}
+          <div className="rounded-2xl border border-border-subtle bg-surface-raised/50 backdrop-blur-sm overflow-hidden shadow-xl">
             {isLoading ? (
-              <div className="flex items-center justify-center gap-2 py-8">
-                <Loader2 size={14} className="animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Loading…</span>
+              <div className="flex items-center justify-center gap-3 py-16">
+                <Loader2 size={18} className="animate-spin text-primary" />
+                <span className="text-base text-muted-foreground">Loading…</span>
               </div>
             ) : history.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4">
-                <div className="w-10 h-10 rounded-md bg-surface-raised flex items-center justify-center mb-3">
-                  <Mic size={18} className="text-muted-foreground" />
+              <div className="flex flex-col items-center justify-center py-20 px-6">
+                <div className="w-16 h-16 rounded-2xl bg-surface-raised flex items-center justify-center mb-5 shadow-lg">
+                  <Mic size={28} className="text-muted-foreground" />
                 </div>
-                <p className="text-sm text-muted-foreground mb-3">No transcriptions yet</p>
-                <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                <p className="text-lg text-foreground mb-2 font-medium">No transcriptions yet</p>
+                <p className="text-sm text-muted-foreground mb-5">Start dictating to see your transcriptions here</p>
+                <div className="flex items-center gap-3 text-sm text-muted-foreground">
                   <span>Press</span>
-                  <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-raised border border-border-subtle text-[11px] font-mono font-medium">
+                  <kbd className="inline-flex items-center h-8 px-3 rounded-lg bg-surface-raised border border-border-subtle text-sm font-mono font-medium shadow-sm">
                     {formatHotkeyLabel(hotkey)}
                   </kbd>
-                  <span>to start</span>
+                  <span>to start dictating</span>
                 </div>
               </div>
             ) : (
-              <div className="divide-y divide-border/50 max-h-[calc(100vh-180px)] overflow-y-auto">
+              <div className="divide-y divide-border/30 max-h-[calc(100vh-240px)] overflow-y-auto">
                 {history.map((item, index) => (
                   <TranscriptionItem
                     key={item.id}

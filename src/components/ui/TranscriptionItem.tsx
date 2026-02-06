@@ -12,7 +12,7 @@ interface TranscriptionItemProps {
   onDelete: (id: number) => void;
 }
 
-const TEXT_PREVIEW_LENGTH = 120;
+const TEXT_PREVIEW_LENGTH = 280;
 
 export default function TranscriptionItem({
   item,
@@ -41,14 +41,14 @@ export default function TranscriptionItem({
 
   return (
     <div
-      className="group relative px-3 py-2.5 transition-colors duration-150 hover:bg-white/2"
+      className="group relative px-6 py-5 transition-all duration-300 hover:bg-primary/5"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex items-start gap-3">
-        {/* Number badge - compact pill */}
-        <div className="flex-shrink-0 mt-0.5">
-          <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-1.5 rounded-sm bg-primary/15 text-primary text-[10px] font-semibold tabular-nums">
+      <div className="flex items-start gap-5">
+        {/* Number badge - luxury pill with glow */}
+        <div className="flex-shrink-0 mt-1">
+          <span className="inline-flex items-center justify-center min-w-[40px] h-7 px-2.5 rounded-lg bg-primary/15 text-primary text-xs font-semibold tabular-nums shadow-[0_0_10px_rgba(112,255,186,0.15)]">
             {total - index}
           </span>
         </div>
@@ -58,32 +58,32 @@ export default function TranscriptionItem({
           {/* Text */}
           <p
             className={cn(
-              "text-foreground text-[13px] leading-[1.5] break-words",
-              !isExpanded && isLongText && "line-clamp-2"
+              "text-foreground text-[15px] leading-relaxed break-words",
+              !isExpanded && isLongText && "line-clamp-3"
             )}
           >
             {displayText}
           </p>
 
           {/* Metadata row */}
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-[11px] text-muted-foreground tabular-nums">
+          <div className="flex items-center gap-3 mt-2.5">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {formattedTimestamp}
             </span>
             {isLongText && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="inline-flex items-center gap-0.5 text-[11px] text-primary/80 hover:text-primary transition-colors"
+                className="inline-flex items-center gap-1 text-xs text-primary/80 hover:text-primary transition-colors duration-200"
               >
                 {isExpanded ? (
                   <>
-                    <span>Less</span>
-                    <ChevronUp size={12} />
+                    <span>Show Less</span>
+                    <ChevronUp size={14} />
                   </>
                 ) : (
                   <>
-                    <span>More</span>
-                    <ChevronDown size={12} />
+                    <span>Show More</span>
+                    <ChevronDown size={14} />
                   </>
                 )}
               </button>
@@ -91,28 +91,28 @@ export default function TranscriptionItem({
           </div>
         </div>
 
-        {/* Actions - fade in on hover */}
+        {/* Actions - fade in on hover with scale */}
         <div
           className={cn(
-            "flex items-center gap-0.5 flex-shrink-0 transition-opacity duration-150",
-            isHovered ? "opacity-100" : "opacity-0"
+            "flex items-center gap-1 flex-shrink-0 transition-all duration-300",
+            isHovered ? "opacity-100 scale-100" : "opacity-0 scale-95"
           )}
         >
           <Button
             size="icon"
             variant="ghost"
             onClick={() => onCopy(item.text)}
-            className="h-6 w-6 rounded-sm text-muted-foreground hover:text-foreground hover:bg-foreground/10"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/10 transition-all duration-200"
           >
-            <Copy size={12} />
+            <Copy size={14} />
           </Button>
           <Button
             size="icon"
             variant="ghost"
             onClick={() => onDelete(item.id)}
-            className="h-6 w-6 rounded-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200"
           >
-            <Trash2 size={12} />
+            <Trash2 size={14} />
           </Button>
         </div>
       </div>
