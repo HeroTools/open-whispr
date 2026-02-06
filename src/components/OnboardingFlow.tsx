@@ -30,6 +30,7 @@ import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { useAuth } from "../hooks/useAuth";
 import { HotkeyInput } from "./ui/HotkeyInput";
+import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
@@ -188,9 +189,13 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       try {
         // Get platform-appropriate default hotkey
         const defaultHotkey = getDefaultHotkey();
+        const platform = window.electronAPI?.getPlatform?.() ?? "darwin";
 
-        // Only auto-register if no hotkey is currently set or it's the old default
-        if (!hotkey || hotkey === "`" || hotkey === "GLOBE") {
+        // Only auto-register if no hotkey is currently set
+        const shouldAutoRegister =
+          !hotkey || hotkey.trim() === "" || (platform !== "darwin" && hotkey === "GLOBE");
+
+        if (shouldAutoRegister) {
           // Try to register the default hotkey silently
           const success = await registerHotkey(defaultHotkey);
           if (success) {
