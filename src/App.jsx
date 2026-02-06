@@ -54,28 +54,6 @@ const VoiceWaveIndicator = ({ isListening }) => {
   );
 };
 
-// Minimal tooltip
-const Tooltip = ({ children, content }) => {
-  const [isVisible, setIsVisible] = useState(false);
-
-  return (
-    <div className="relative inline-block">
-      <div onMouseEnter={() => setIsVisible(true)} onMouseLeave={() => setIsVisible(false)}>
-        {children}
-      </div>
-      {isVisible && (
-        <div
-          className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-2 py-1 text-[10px] text-foreground bg-popover border border-border-subtle rounded-md whitespace-nowrap z-10 shadow-elevated backdrop-blur-xl"
-          style={{ maxWidth: "120px" }}
-        >
-          {content}
-          <div className="absolute top-full left-1/2 transform -translate-x-1/2 w-0 h-0 border-l-[4px] border-r-[4px] border-t-[4px] border-transparent border-t-popover" />
-        </div>
-      )}
-    </div>
-  );
-};
-
 export default function App() {
   const [isHovered, setIsHovered] = useState(false);
   const [isCommandMenuOpen, setIsCommandMenuOpen] = useState(false);
@@ -253,17 +231,6 @@ export default function App() {
     }
   };
 
-  const getTooltipText = () => {
-    switch (micState) {
-      case "recording":
-        return "Recording...";
-      case "processing":
-        return "Processing...";
-      default:
-        return `[${hotkey}] to speak`;
-    }
-  };
-
   return (
     <div className="dictation-window">
       {/* Ambient mint glow behind button during recording */}
@@ -307,79 +274,77 @@ export default function App() {
             </button>
           )}
 
-          <Tooltip content={getTooltipText()}>
-            <button
-              ref={buttonRef}
-              onMouseDown={(e) => {
+          <button
+            ref={buttonRef}
+            onMouseDown={(e) => {
+              setIsCommandMenuOpen(false);
+              setDragStartPos({ x: e.clientX, y: e.clientY });
+              setHasDragged(false);
+              handleMouseDown(e);
+            }}
+            onMouseMove={(e) => {
+              if (dragStartPos && !hasDragged) {
+                const distance = Math.sqrt(
+                  Math.pow(e.clientX - dragStartPos.x, 2) +
+                    Math.pow(e.clientY - dragStartPos.y, 2)
+                );
+                if (distance > 5) {
+                  setHasDragged(true);
+                }
+              }
+            }}
+            onMouseUp={(e) => {
+              handleMouseUp(e);
+              setDragStartPos(null);
+            }}
+            onClick={(e) => {
+              if (!hasDragged) {
                 setIsCommandMenuOpen(false);
-                setDragStartPos({ x: e.clientX, y: e.clientY });
-                setHasDragged(false);
-                handleMouseDown(e);
-              }}
-              onMouseMove={(e) => {
-                if (dragStartPos && !hasDragged) {
-                  const distance = Math.sqrt(
-                    Math.pow(e.clientX - dragStartPos.x, 2) +
-                      Math.pow(e.clientY - dragStartPos.y, 2)
-                  );
-                  if (distance > 5) {
-                    setHasDragged(true);
-                  }
-                }
-              }}
-              onMouseUp={(e) => {
-                handleMouseUp(e);
-                setDragStartPos(null);
-              }}
-              onClick={(e) => {
-                if (!hasDragged) {
-                  setIsCommandMenuOpen(false);
-                  toggleListening();
-                }
-                e.preventDefault();
-              }}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                if (!hasDragged) {
-                  setWindowInteractivity(true);
-                  setIsCommandMenuOpen((prev) => !prev);
-                }
-              }}
-              onFocus={() => setIsHovered(true)}
-              onBlur={() => setIsHovered(false)}
-              style={{
-                ...getMicButtonStyles(),
-                cursor:
-                  micState === "processing"
-                    ? "not-allowed"
-                    : isDragging
-                      ? "grabbing"
-                      : "pointer",
-              }}
-            >
-              {/* Content based on state */}
-              {micState === "idle" || micState === "hover" ? (
-                <SoundWaveIcon size={micState === "idle" ? 13 : 15} />
-              ) : micState === "recording" ? (
-                <LoadingDots />
-              ) : micState === "processing" ? (
-                <VoiceWaveIndicator isListening={true} />
-              ) : null}
+                toggleListening();
+              }
+              e.preventDefault();
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              if (!hasDragged) {
+                setWindowInteractivity(true);
+                setIsCommandMenuOpen((prev) => !prev);
+              }
+            }}
+            onFocus={() => setIsHovered(true)}
+            onBlur={() => setIsHovered(false)}
+            style={{
+              ...getMicButtonStyles(),
+              cursor:
+                micState === "processing"
+                  ? "not-allowed"
+                  : isDragging
+                    ? "grabbing"
+                    : "pointer",
+            }}
+          >
+            {/* Content based on state */}
+            {micState === "idle" || micState === "hover" ? (
+              <SoundWaveIcon size={micState === "idle" ? 13 : 15} />
+            ) : micState === "recording" ? (
+              <LoadingDots />
+            ) : micState === "processing" ? (
+              <VoiceWaveIndicator isListening={true} />
+            ) : null}
 
-              {/* Recording pulse ring */}
-              {micState === "recording" && (
-                <div
-                  className="absolute inset-0 rounded-full border-2 border-[#70FFBA]/40"
-                  style={{ animation: "ring-pulse 2s ease-in-out infinite" }}
-                />
-              )}
+            {/* Recording pulse ring */}
+            {micState === "recording" && (
+              <div
+                className="absolute inset-0 rounded-full border-2 border-[#70FFBA]/40"
+                style={{ animation: "ring-pulse 2s ease-in-out infinite" }}
+              />
+            )}
 
-              {/* Processing indicator ring */}
-              {micState === "processing" && (
-                <div className="absolute inset-0 rounded-full border border-[#70FFBA]/15" />
-              )}
-            </button>
-          </Tooltip>
+            {/* Processing indicator ring */}
+            {micState === "processing" && (
+              <div className="absolute inset-0 rounded-full border border-[#70FFBA]/15" />
+            )}
+          </button>
 
           {/* Command menu */}
           {isCommandMenuOpen && (

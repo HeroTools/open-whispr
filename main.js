@@ -475,12 +475,9 @@ if (gotSingleInstanceLock) {
   });
 
   app.on("window-all-closed", () => {
-    // Don't quit on macOS when all windows are closed
-    // The app should stay in the dock/menu bar
-    if (process.platform !== "darwin") {
-      app.quit();
-    }
-    // On macOS, keep the app running even without windows
+    // Don't quit when all windows are closed — app lives in system tray
+    // On all platforms, the user can restore the control panel from the tray icon
+    // To actually quit, user must use tray menu → Quit or Cmd/Ctrl+Q
   });
 
   app.on("browser-window-focus", (event, window) => {

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Squircle mask for macOS-style icon shape -->
+    <clipPath id="squircle">
+      <path d="M512 0C227 0 128 0 64 64S0 227 0 512s0 384 64 448 163 64 448 64 384 0 448-64 64-163 64-448S1024 128 960 64 797 0 512 0Z"/>
+    </clipPath>
+    <!-- Background gradient -->
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0D100D"/>
+      <stop offset="100%" stop-color="#050705"/>
+    </linearGradient>
+    <!-- Mint gradient for waveform -->
+    <linearGradient id="mintGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8AFFCF"/>
+      <stop offset="50%" stop-color="#70FFBA"/>
+      <stop offset="100%" stop-color="#5CE6A5"/>
+    </linearGradient>
+    <!-- Subtle glow -->
+    <radialGradient id="glow" cx="50%" cy="50%" r="45%">
+      <stop offset="0%" stop-color="#70FFBA" stop-opacity="0.15"/>
+      <stop offset="70%" stop-color="#70FFBA" stop-opacity="0.05"/>
+      <stop offset="100%" stop-color="#70FFBA" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <g clip-path="url(#squircle)">
+    <!-- Background -->
+    <rect width="1024" height="1024" fill="url(#bg)"/>
+
+    <!-- Ambient glow -->
+    <circle cx="512" cy="512" r="460" fill="url(#glow)"/>
+
+    <!-- Abstract voice waveform - 5 vertical bars with varying heights -->
+    <!-- Bar 1 (shortest) -->
+    <rect x="220" y="420" width="80" height="184" rx="40" fill="url(#mintGrad)" opacity="0.85"/>
+
+    <!-- Bar 2 (medium-short) -->
+    <rect x="340" y="340" width="80" height="344" rx="40" fill="url(#mintGrad)" opacity="0.9"/>
+
+    <!-- Bar 3 (tallest - center) -->
+    <rect x="460" y="220" width="104" height="584" rx="52" fill="url(#mintGrad)"/>
+
+    <!-- Bar 4 (medium-tall) -->
+    <rect x="604" y="300" width="80" height="424" rx="40" fill="url(#mintGrad)" opacity="0.9"/>
+
+    <!-- Bar 5 (medium) -->
+    <rect x="724" y="380" width="80" height="264" rx="40" fill="url(#mintGrad)" opacity="0.85"/>
+
+    <!-- Subtle highlight on center bar -->
+    <rect x="472" y="232" width="80" height="280" rx="40" fill="white" opacity="0.1"/>
+  </g>
+</svg>

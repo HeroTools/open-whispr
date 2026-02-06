@@ -139,7 +139,7 @@ export function useSettings() {
   // Custom dictionary for improving transcription of specific words
   const [customDictionary, setCustomDictionaryRaw] = useLocalStorage<string[]>(
     "customDictionary",
-    [],
+    ["DictateVoice"],
     {
       serialize: JSON.stringify,
       deserialize: (value) => {
@@ -164,7 +164,7 @@ export function useSettings() {
     [setCustomDictionaryRaw]
   );
 
-  // One-time sync: reconcile localStorage ↔ SQLite on startup
+  // One-time sync: reconcile localStorage ↔ SQLite on startup, ensure DictateVoice is included
   const hasRunDictionarySync = useRef(false);
   useEffect(() => {
     if (hasRunDictionarySync.current) return;
@@ -173,6 +173,13 @@ export function useSettings() {
     const syncDictionary = async () => {
       if (typeof window === "undefined" || !window.electronAPI?.getDictionary) return;
       try {
+        // Ensure "DictateVoice" is always in the dictionary
+        if (!customDictionary.includes("DictateVoice")) {
+          const updated = ["DictateVoice", ...customDictionary];
+          setCustomDictionaryRaw(updated);
+          await window.electronAPI.setDictionary(updated);
+        }
+
         const dbWords = await window.electronAPI.getDictionary();
         if (dbWords.length === 0 && customDictionary.length > 0) {
           // Seed SQLite from localStorage (first-time migration)

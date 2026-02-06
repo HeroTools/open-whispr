@@ -183,7 +183,12 @@ class WindowManager {
       lastToggleTime = now;
 
       if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
+        // Use showInactive to avoid stealing focus from the target app
+        if (typeof this.mainWindow.showInactive === "function") {
+          this.mainWindow.showInactive();
+        } else {
+          this.mainWindow.show();
+        }
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
@@ -195,7 +200,12 @@ class WindowManager {
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
+        // Use showInactive to avoid stealing focus from the target app
+        if (typeof this.mainWindow.showInactive === "function") {
+          this.mainWindow.showInactive();
+        } else {
+          this.mainWindow.show();
+        }
       }
       this.mainWindow.webContents.send("start-dictation");
     }
@@ -290,11 +300,7 @@ class WindowManager {
     this.controlPanelWindow.on("close", (event) => {
       if (!this.isQuitting) {
         event.preventDefault();
-        if (process.platform === "darwin") {
-          this.hideControlPanelToTray();
-        } else {
-          this.controlPanelWindow.minimize();
-        }
+        this.hideControlPanelToTray();
       }
     });
 

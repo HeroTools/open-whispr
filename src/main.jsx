@@ -61,15 +61,18 @@ function AppRouter() {
     return <OnboardingFlow onComplete={handleOnboardingComplete} />;
   }
 
-  return isControlPanel ? <ControlPanel /> : <App />;
+  // Only apply grain overlay on control panel, not dictation window (transparent bg)
+  if (isControlPanel) {
+    return <div className="grain-overlay"><ControlPanel /></div>;
+  }
+
+  return <App />;
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <ToastProvider>
-      <div className="grain-overlay">
-        <AppRouter />
-      </div>
+      <AppRouter />
     </ToastProvider>
   </React.StrictMode>
 );

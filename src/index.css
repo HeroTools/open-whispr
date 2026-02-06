@@ -104,12 +104,14 @@
   }
 
   /* Dictation window transparency */
-  body:has(.dictation-window) {
-    background: transparent;
+  body:has(.dictation-window),
+  html:has(.dictation-window) {
+    background: transparent !important;
   }
 
   body:has(.dictation-window) #root {
-    background: transparent;
+    background: transparent !important;
+    min-height: 0;
   }
 }
 
