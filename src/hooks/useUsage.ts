@@ -31,8 +31,8 @@ interface UseUsageResult {
   hasLoaded: boolean;
   error: string | null;
   refetch: () => Promise<void>;
-  openCheckout: () => Promise<void>;
-  openBillingPortal: () => Promise<void>;
+  openCheckout: () => Promise<{ success: boolean; error?: string }>;
+  openBillingPortal: () => Promise<{ success: boolean; error?: string }>;
 }
 
 const USAGE_CACHE_TTL = CACHE_CONFIG.API_KEY_TTL; // 1 hour
@@ -96,20 +96,28 @@ export function useUsage(): UseUsageResult | null {
     }
   }, [isLoaded, isSignedIn, fetchUsage]);
 
-  const openCheckout = useCallback(async () => {
-    if (!window.electronAPI?.cloudCheckout || !window.electronAPI?.openExternal) return;
+  const openCheckout = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    if (!window.electronAPI?.cloudCheckout || !window.electronAPI?.openExternal) {
+      return { success: false, error: "App not ready" };
+    }
     const result = await window.electronAPI.cloudCheckout();
     if (result.success && result.url) {
       await window.electronAPI.openExternal(result.url);
+      return { success: true };
     }
+    return { success: false, error: result.error || "Failed to start checkout" };
   }, []);
 
-  const openBillingPortal = useCallback(async () => {
-    if (!window.electronAPI?.cloudBillingPortal || !window.electronAPI?.openExternal) return;
+  const openBillingPortal = useCallback(async (): Promise<{ success: boolean; error?: string }> => {
+    if (!window.electronAPI?.cloudBillingPortal || !window.electronAPI?.openExternal) {
+      return { success: false, error: "App not ready" };
+    }
     const result = await window.electronAPI.cloudBillingPortal();
     if (result.success && result.url) {
       await window.electronAPI.openExternal(result.url);
+      return { success: true };
     }
+    return { success: false, error: result.error || "Failed to open billing portal" };
   }, []);
 
   // Return null when not signed in

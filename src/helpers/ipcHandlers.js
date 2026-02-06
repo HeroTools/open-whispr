@@ -1305,7 +1305,7 @@ class IPCHandlers {
         const data = await response.json();
         return { success: true, url: data.url };
       } catch (error) {
-        debugLogger.error(`${errorPrefix}:`, error);
+        debugLogger.error(`${errorPrefix}: ${error.message}`);
         return { success: false, error: error.message };
       }
     };

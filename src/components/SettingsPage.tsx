@@ -850,7 +850,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     <SettingsPanelRow>
                       {usage.isSubscribed && !usage.isTrial ? (
                         <Button
-                          onClick={() => usage.openBillingPortal()}
+                          onClick={async () => {
+                            const result = await usage.openBillingPortal();
+                            if (!result.success) {
+                              toast({ title: "Couldn't open billing", description: result.error, variant: "destructive" });
+                            }
+                          }}
                           variant="outline"
                           size="sm"
                           className="w-full"
@@ -858,7 +863,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           Manage Billing
                         </Button>
                       ) : (
-                        <Button onClick={() => usage.openCheckout()} size="sm" className="w-full">
+                        <Button
+                          onClick={async () => {
+                            const result = await usage.openCheckout();
+                            if (!result.success) {
+                              toast({ title: "Couldn't open checkout", description: result.error, variant: "destructive" });
+                            }
+                          }}
+                          size="sm"
+                          className="w-full"
+                        >
                           Upgrade to Pro
                         </Button>
                       )}
