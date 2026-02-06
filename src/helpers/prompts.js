@@ -1,13 +1,17 @@
 const promptData = require("../config/promptData.json");
-const languageInstructionsData = require("../config/languageInstructionsData.json");
+const languageRegistry = require("../config/languageRegistry.json");
 
 const UNIFIED_SYSTEM_PROMPT = promptData.UNIFIED_SYSTEM_PROMPT;
 const DICTIONARY_SUFFIX = promptData.DICTIONARY_SUFFIX;
 
+const _langInstructions = Object.fromEntries(
+  languageRegistry.languages.filter((l) => l.instruction).map((l) => [l.code, l.instruction])
+);
+
 function getLanguageInstruction(language) {
   if (!language || language === "en") return "";
-  if (languageInstructionsData[language]) return languageInstructionsData[language];
-  const template = languageInstructionsData["_genericTemplate"] || "";
+  if (_langInstructions[language]) return _langInstructions[language];
+  const template = languageRegistry._genericTemplate || "";
   return template.replace("{{code}}", language);
 }
 

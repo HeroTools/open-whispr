@@ -1,7 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Search, X, Check } from "lucide-react";
-import { LANGUAGE_OPTIONS, getLanguageLabel, getLanguageFlag } from "../../utils/languages";
+import registry from "../../config/languageRegistry.json";
+
+const LANGUAGE_OPTIONS = registry.languages.map(({ code, label, flag }) => ({
+  value: code,
+  label,
+  flag,
+}));
 
 interface LanguageSelectorProps {
   value: string;
@@ -129,8 +135,10 @@ export default function LanguageSelector({
         aria-expanded={isOpen}
       >
         <span className="truncate text-foreground">
-          <span className="mr-1.5">{getLanguageFlag(value)}</span>
-          {getLanguageLabel(value)}
+          <span className="mr-1.5">
+            {LANGUAGE_OPTIONS.find((l) => l.value === value)?.flag ?? "\uD83C\uDF10"}
+          </span>
+          {LANGUAGE_OPTIONS.find((l) => l.value === value)?.label ?? value}
         </span>
         <ChevronDown
           className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-all duration-200 ${

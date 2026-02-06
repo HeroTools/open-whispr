@@ -1,101 +1,25 @@
-import languageInstructionsData from "../config/languageInstructionsData.json";
+import registry from "../config/languageRegistry.json";
 
-// STT model language support sets
-const WHISPER_LANGUAGES = new Set([
-  "af",
-  "ar",
-  "hy",
-  "az",
-  "be",
-  "bs",
-  "bg",
-  "ca",
-  "zh",
-  "hr",
-  "cs",
-  "da",
-  "nl",
-  "en",
-  "et",
-  "fi",
-  "fr",
-  "gl",
-  "de",
-  "el",
-  "he",
-  "hi",
-  "hu",
-  "is",
-  "id",
-  "it",
-  "ja",
-  "kn",
-  "kk",
-  "ko",
-  "lv",
-  "lt",
-  "mk",
-  "ms",
-  "mr",
-  "mi",
-  "ne",
-  "no",
-  "fa",
-  "pl",
-  "pt",
-  "ro",
-  "ru",
-  "sr",
-  "sk",
-  "sl",
-  "es",
-  "sw",
-  "sv",
-  "tl",
-  "ta",
-  "th",
-  "tr",
-  "uk",
-  "ur",
-  "vi",
-  "cy",
-]);
+const WHISPER_LANGUAGES = new Set(registry.languages.filter((l) => l.whisper).map((l) => l.code));
 
-const PARAKEET_LANGUAGES = new Set([
-  "bg",
-  "hr",
-  "cs",
-  "da",
-  "nl",
-  "en",
-  "et",
-  "fi",
-  "fr",
-  "de",
-  "el",
-  "hu",
-  "it",
-  "lv",
-  "lt",
-  "mt",
-  "pl",
-  "pt",
-  "ro",
-  "sk",
-  "sl",
-  "es",
-  "sv",
-  "ru",
-  "uk",
-]);
+const PARAKEET_LANGUAGES = new Set(registry.languages.filter((l) => l.parakeet).map((l) => l.code));
 
-const ASSEMBLYAI_UNIVERSAL3_PRO_LANGUAGES = new Set(["en", "es", "pt", "fr", "de", "it"]);
+const ASSEMBLYAI_UNIVERSAL3_PRO_LANGUAGES = new Set(
+  registry.languages.filter((l) => l.assemblyai).map((l) => l.code)
+);
 
 const MODEL_LANGUAGE_MAP: Record<string, Set<string>> = {
   "parakeet-tdt-0.6b-v3": PARAKEET_LANGUAGES,
 };
 
-const LANGUAGE_INSTRUCTIONS: Record<string, string> = languageInstructionsData;
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = Object.fromEntries(
+  registry.languages
+    .filter(
+      (l): l is typeof l & { instruction: string } =>
+        "instruction" in l && typeof l.instruction === "string"
+    )
+    .map((l) => [l.code, l.instruction])
+);
 
 export function getBaseLanguageCode(language: string | null | undefined): string | undefined {
   if (!language || language === "auto") return undefined;
@@ -121,7 +45,7 @@ export function getLanguageInstruction(language: string | undefined): string {
 }
 
 function buildGenericInstruction(langCode: string): string {
-  const template = LANGUAGE_INSTRUCTIONS["_genericTemplate"] || "";
+  const template = registry._genericTemplate || "";
   return template.replace("{{code}}", langCode);
 }
 
