@@ -108,7 +108,7 @@ export const usePermissions = (
   const openSystemSettings = useCallback(
     async (
       settingType: "microphone" | "sound" | "accessibility",
-      apiMethod: () => Promise<{ success: boolean; error?: string } | undefined> | undefined
+      apiMethod?: () => Promise<{ success: boolean; error?: string } | undefined>
     ) => {
       const titles = {
         microphone: "Microphone Settings",
@@ -269,10 +269,17 @@ export const usePermissions = (
         const isWayland = result?.isWayland;
         const xwaylandAvailable = result?.xwaylandAvailable;
         const recommendedTool = result?.recommendedInstall;
-        const installCmd =
-          recommendedTool === "wtype"
-            ? "sudo dnf install wtype  # Fedora\nsudo apt install wtype  # Debian/Ubuntu"
-            : "sudo apt install xdotool  # Debian/Ubuntu/Mint\nsudo dnf install xdotool  # Fedora";
+        let installCmd;
+        if (recommendedTool === "wtype") {
+          installCmd = "sudo dnf install wtype  # Fedora\nsudo apt install wtype  # Debian/Ubuntu";
+        } else if (recommendedTool && recommendedTool.includes("ydotool")) {
+          installCmd =
+            "sudo apt install ydotool  # Debian/Ubuntu\nsudo systemctl enable --now ydotoold\n\n" +
+            "sudo dnf install ydotool  # Fedora/RHEL\nsudo systemctl enable --now ydotoold";
+        } else {
+          installCmd =
+            "sudo apt install xdotool  # Debian/Ubuntu/Mint\nsudo dnf install xdotool  # Fedora";
+        }
 
         if (showAlertDialog) {
           if (isWayland && !xwaylandAvailable && !recommendedTool) {

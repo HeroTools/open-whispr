@@ -57,7 +57,10 @@ class GnomeShortcutManager {
   }
 
   static isWayland() {
-    return process.env.XDG_SESSION_TYPE === "wayland";
+    return (
+      (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
+      !!process.env.WAYLAND_DISPLAY
+    );
   }
 
   async initDBusService(callback) {

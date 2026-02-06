@@ -231,6 +231,10 @@ class HotkeyManager {
         setTimeout(registerGnomeHotkey, HOTKEY_REGISTRATION_DELAY_MS);
         this.isInitialized = true;
         return;
+      } else {
+        debugLogger.log(
+          "[HotkeyManager] Wayland detected but not GNOME/supported. Falling back to native Electron shortcuts (Portal)."
+        );
       }
     }
 
