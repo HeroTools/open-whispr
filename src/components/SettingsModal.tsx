@@ -1,5 +1,5 @@
 import React, { useEffect } from "react";
-import { Settings, Mic, Brain, User, Sparkles, Wrench, BookOpen, ShieldCheck } from "lucide-react";
+import { Settings, Mic, Brain, User, Sparkles, Wrench, BookOpen, ShieldCheck, Sliders } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
 
@@ -17,56 +17,63 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
       id: "general",
       label: "General",
       icon: Settings,
-      description: "Appearance, hotkey & startup",
+      description: "Updates, hotkeys & startup",
+      group: "App",
+    },
+    {
+      id: "preferences",
+      label: "Preferences",
+      icon: Sliders,
+      description: "Behavior & notifications",
       group: "App",
     },
     {
       id: "transcription",
       label: "Transcription",
       icon: Mic,
-      description: "Speech-to-text engine",
+      description: "Speech recognition",
       group: "Speech",
     },
     {
       id: "dictionary",
       label: "Dictionary",
       icon: BookOpen,
-      description: "Custom words & phrases",
+      description: "Custom vocabulary",
       group: "Speech",
     },
     {
       id: "aiModels",
-      label: "AI Models",
+      label: "AI Enhancement",
       icon: Brain,
-      description: "Text cleanup & enhancement",
+      description: "Text cleanup & polish",
       group: "Intelligence",
     },
     {
       id: "agentConfig",
-      label: "Agent",
+      label: "Voice Assistant",
       icon: User,
-      description: "Voice agent setup",
+      description: "Agent configuration",
       group: "Intelligence",
     },
     {
       id: "prompts",
       label: "Prompts",
       icon: Sparkles,
-      description: "System prompt studio",
+      description: "System instructions",
       group: "Intelligence",
     },
     {
       id: "permissions",
       label: "Permissions",
       icon: ShieldCheck,
-      description: "Microphone & accessibility",
+      description: "System access",
       group: "System",
     },
     {
       id: "developer",
       label: "Developer",
       icon: Wrench,
-      description: "Logs, diagnostics & data",
+      description: "Advanced tools",
       group: "System",
     },
   ];

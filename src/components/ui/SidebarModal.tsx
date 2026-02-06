@@ -88,29 +88,29 @@ export default function SidebarModal<T extends string>({
             </DialogPrimitive.Close>
 
             <div className="flex h-[85vh]">
-              {/* Sidebar */}
+              {/* Sidebar - Luxury redesign */}
               <div
-                className={`${sidebarWidth} shrink-0 border-r border-border-subtle flex flex-col bg-surface-0`}
+                className={`${sidebarWidth} shrink-0 border-r border-border-subtle/50 flex flex-col bg-gradient-to-b from-surface-0 to-surface-1`}
               >
                 {/* Title */}
-                <div className="px-4 pt-5 pb-0.5">
-                  <h2 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                <div className="px-5 pt-6 pb-4">
+                  <h2 className="text-sm font-semibold text-foreground tracking-tight">
                     {title}
                   </h2>
                 </div>
 
                 {/* Navigation */}
-                <nav className="relative flex-1 px-2 pt-2.5 pb-2 overflow-y-auto">
+                <nav className="relative flex-1 px-3 pb-3 overflow-y-auto">
                   {groupedItems.map((group, groupIndex) => (
-                    <div key={groupIndex} className={groupIndex > 0 ? "mt-3" : ""}>
+                    <div key={groupIndex} className={groupIndex > 0 ? "mt-5" : ""}>
                       {group.label && (
-                        <div className="px-2 pb-0.5 pt-1.5">
-                          <span className="text-[9px] font-medium tracking-[0.08em] uppercase text-muted-foreground/50">
+                        <div className="px-2.5 pb-2 pt-2">
+                          <span className="text-[10px] font-semibold tracking-wider uppercase text-muted-foreground/40">
                             {group.label}
                           </span>
                         </div>
                       )}
-                      <div className="space-y-px">
+                      <div className="space-y-1">
                         {group.items.map((item) => {
                           const Icon = item.icon;
                           const isActive = activeSection === item.id;
@@ -119,37 +119,44 @@ export default function SidebarModal<T extends string>({
                               key={item.id}
                               data-section-id={item.id}
                               onClick={() => onSectionChange(item.id)}
-                              className={`group relative w-full flex items-center gap-2.5 px-2.5 py-2 text-left text-[12px] rounded-lg transition-all duration-100 outline-none ${
+                              className={`group relative w-full flex items-center gap-3 px-3 py-2.5 text-left text-[13px] rounded-xl transition-all duration-200 outline-none ${
                                 isActive
-                                  ? "text-foreground bg-surface-raised"
-                                  : "text-foreground/60 hover:text-foreground hover:bg-surface-2"
+                                  ? "text-foreground bg-primary/10 shadow-[0_0_20px_rgba(112,255,186,0.15)]"
+                                  : "text-foreground/60 hover:text-foreground hover:bg-surface-raised"
                               }`}
                             >
-                              {/* Active indicator bar */}
+                              {/* Active glow indicator */}
                               {isActive && (
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full bg-primary" />
+                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full bg-primary shadow-[0_0_8px_rgba(112,255,186,0.6)]" />
                               )}
                               <div
-                                className={`flex items-center justify-center h-6 w-6 rounded-md shrink-0 transition-all duration-100 ${
-                                  isActive ? "bg-primary/15" : "bg-transparent"
+                                className={`flex items-center justify-center h-7 w-7 rounded-lg shrink-0 transition-all duration-200 ${
+                                  isActive ? "bg-primary/20" : "bg-transparent group-hover:bg-surface-raised"
                                 }`}
                               >
                                 <Icon
-                                  className={`h-4 w-4 shrink-0 transition-colors duration-100 ${
+                                  className={`h-[18px] w-[18px] shrink-0 transition-colors duration-200 ${
                                     isActive
                                       ? "text-primary"
-                                      : "text-foreground/40 group-hover:text-foreground/80"
+                                      : "text-foreground/40 group-hover:text-foreground/70"
                                   }`}
                                 />
                               </div>
-                              <span
-                                className={`flex-1 truncate leading-tight ${isActive ? "font-medium" : "font-normal"}`}
-                              >
-                                {item.label}
-                              </span>
+                              <div className="flex-1 min-w-0">
+                                <span
+                                  className={`block truncate leading-tight ${isActive ? "font-semibold" : "font-medium"}`}
+                                >
+                                  {item.label}
+                                </span>
+                                {item.description && !isActive && (
+                                  <span className="block text-[10px] text-muted-foreground/40 truncate mt-0.5">
+                                    {item.description}
+                                  </span>
+                                )}
+                              </div>
                               {renderBadge(item)}
                               {item.shortcut && !item.badge && (
-                                <kbd className="ml-auto text-[9px] text-muted-foreground/25 font-mono shrink-0">
+                                <kbd className="ml-auto text-[9px] text-muted-foreground/20 font-mono shrink-0">
                                   {item.shortcut}
                                 </kbd>
                               )}
@@ -163,20 +170,20 @@ export default function SidebarModal<T extends string>({
 
                 {/* Footer / version */}
                 {version && (
-                  <div className="px-3 py-2.5 border-t border-border-subtle">
-                    <div className="flex items-center gap-1.5">
-                      <div className="h-1 w-1 rounded-full bg-success/60" />
-                      <span className="text-[9px] text-muted-foreground/40 tabular-nums tracking-wide">
-                        v{version}
+                  <div className="px-4 py-3 border-t border-border-subtle/30">
+                    <div className="flex items-center gap-2">
+                      <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
+                      <span className="text-[10px] text-muted-foreground/50 tabular-nums font-medium">
+                        Version {version}
                       </span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Main Content */}
+              {/* Main Content - Enhanced */}
               <div className="flex-1 overflow-y-auto bg-surface-1">
-                <div className="p-6">{children}</div>
+                <div className="p-8 max-w-3xl mx-auto">{children}</div>
               </div>
             </div>
           </div>

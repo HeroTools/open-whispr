@@ -27,9 +27,11 @@ import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
 import { SettingsRow } from "./ui/SettingsSection";
+import { LANGUAGE_OPTIONS } from "../utils/languages";
 
 export type SettingsSectionType =
   | "general"
+  | "preferences"
   | "transcription"
   | "dictionary"
   | "aiModels"
@@ -53,7 +55,7 @@ function SettingsPanel({
 }) {
   return (
     <div
-      className={`rounded-lg border border-border-subtle/70 bg-surface-2/50 backdrop-blur-sm divide-y divide-border-subtle/50 ${className}`}
+      className={`rounded-xl border border-border-subtle/50 bg-surface-raised/50 backdrop-blur-sm divide-y divide-border-subtle/30 shadow-sm overflow-hidden ${className}`}
     >
       {children}
     </div>
@@ -67,15 +69,15 @@ function SettingsPanelRow({
   children: React.ReactNode;
   className?: string;
 }) {
-  return <div className={`px-4 py-3 ${className}`}>{children}</div>;
+  return <div className={`px-5 py-4 ${className}`}>{children}</div>;
 }
 
 function SectionHeader({ title, description }: { title: string; description?: string }) {
   return (
-    <div className="mb-3">
-      <h3 className="text-[13px] font-semibold text-foreground tracking-tight">{title}</h3>
+    <div className="mb-5">
+      <h3 className="text-lg font-semibold text-foreground tracking-tight">{title}</h3>
       {description && (
-        <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+        <p className="text-sm text-muted-foreground/80 mt-1.5 leading-relaxed">{description}</p>
       )}
     </div>
   );
@@ -140,6 +142,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
+    language,
+    setLanguage,
   } = useSettings();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
@@ -378,10 +382,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "general":
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Updates */}
             <div>
-              <SectionHeader title="Updates" />
+              <SectionHeader
+                title="Updates"
+                description="Keep DictateVoice up to date with the latest features and improvements"
+              />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <SettingsRow
@@ -534,8 +541,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Dictation Hotkey */}
             <div>
               <SectionHeader
-                title="Dictation Hotkey"
-                description="The key combination that starts and stops voice dictation"
+                title="Dictation Control"
+                description="Configure how you activate and control voice dictation"
               />
               <SettingsPanel>
                 <SettingsPanelRow>
@@ -583,8 +590,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Microphone */}
             <div>
               <SectionHeader
-                title="Microphone"
-                description="Select which input device to use for dictation"
+                title="Audio Input"
+                description="Choose your preferred microphone and configure audio settings"
               />
               <SettingsPanel>
                 <SettingsPanelRow>
@@ -601,14 +608,124 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         );
 
       // ───────────────────────────────────────────────────
+      // PREFERENCES - New section with additional options
+      // ───────────────────────────────────────────────────
+      case "preferences":
+        return (
+          <div className="space-y-8">
+            {/* Language */}
+            <div>
+              <SectionHeader
+                title="Language"
+                description="Select the primary language for speech recognition"
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Transcription language"
+                    description="Choose a specific language or let the engine detect automatically"
+                  >
+                    <select
+                      value={language || "auto"}
+                      onChange={(e) => setLanguage(e.target.value)}
+                      className="h-9 px-3 rounded-lg bg-surface-raised border border-border-subtle text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
+                    >
+                      {LANGUAGE_OPTIONS.map((lang) => (
+                        <option key={lang.value} value={lang.value}>
+                          {lang.label}
+                        </option>
+                      ))}
+                    </select>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Behavior */}
+            <div>
+              <SectionHeader
+                title="Behavior"
+                description="Customize how DictateVoice responds after transcription"
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Auto-paste transcription"
+                    description="Automatically paste text where your cursor is after transcribing"
+                  >
+                    <Toggle checked={true} onChange={() => {}} disabled />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Copy to clipboard"
+                    description="Also save transcription to clipboard for manual pasting"
+                  >
+                    <Toggle checked={true} onChange={() => {}} disabled />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Show control panel on error"
+                    description="Automatically open settings when transcription fails"
+                  >
+                    <Toggle checked={false} onChange={() => {}} disabled />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+              <p className="mt-3 text-xs text-muted-foreground/50 px-1">
+                More behavior options coming soon
+              </p>
+            </div>
+
+            {/* Notifications */}
+            <div>
+              <SectionHeader
+                title="Notifications"
+                description="Configure alerts and feedback during dictation"
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Audio feedback"
+                    description="Play sounds when starting and stopping recording"
+                  >
+                    <Toggle checked={false} onChange={() => {}} disabled />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Error notifications"
+                    description="Show system notifications when transcription fails"
+                  >
+                    <Toggle checked={false} onChange={() => {}} disabled />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Success confirmation"
+                    description="Brief notification when transcription completes successfully"
+                  >
+                    <Toggle checked={false} onChange={() => {}} disabled />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+              <p className="mt-3 text-xs text-muted-foreground/50 px-1">
+                Notification settings coming in future update
+              </p>
+            </div>
+          </div>
+        );
+
+      // ───────────────────────────────────────────────────
       // TRANSCRIPTION
       // ───────────────────────────────────────────────────
       case "transcription":
         return (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <SectionHeader
-              title="Speech to Text"
-              description="Choose a cloud provider for fast transcription or use local Whisper models for complete privacy"
+              title="Speech Recognition"
+              description="Choose between cloud-based services for speed or local models for privacy"
             />
 
             <TranscriptionModelPicker
@@ -651,10 +768,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "dictionary":
         return (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <SectionHeader
               title="Custom Dictionary"
-              description="Add words, names, or technical terms to improve transcription accuracy"
+              description="Train the speech engine to recognize your unique vocabulary"
             />
 
             {/* Add Words */}
@@ -789,10 +906,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "aiModels":
         return (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <SectionHeader
-              title="AI Text Enhancement"
-              description='Configure how AI models clean up and format your transcriptions. Handles commands like "scratch that", creates proper lists, and fixes errors while preserving your natural tone.'
+              title="AI Enhancement"
+              description="Automatically polish transcriptions with grammar fixes, formatting, and intelligent command handling"
             />
 
             <ReasoningModelSelector
@@ -827,10 +944,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "agentConfig":
         return (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <SectionHeader
-              title="Voice Agent"
-              description="Name your AI assistant so you can address it directly during dictation"
+              title="Voice Assistant"
+              description="Personalize your AI companion with a custom name and voice commands"
             />
 
             {/* Agent Name */}
@@ -931,10 +1048,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "prompts":
         return (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <SectionHeader
-              title="Prompt Studio"
-              description="View, customize, and test the unified system prompt that powers text cleanup and instruction detection"
+              title="Prompt Engineering"
+              description="Fine-tune system prompts to customize AI behavior and output style"
             />
 
             <PromptStudio />
@@ -946,10 +1063,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "permissions":
         return (
-          <div className="space-y-5">
+          <div className="space-y-6">
             <SectionHeader
-              title="Permissions"
-              description="Test and manage system permissions required for DictateVoice to function correctly"
+              title="System Permissions"
+              description="Grant access to microphone, accessibility features, and other system capabilities"
             />
 
             {/* Permission Cards - matching onboarding style */}
@@ -1028,14 +1145,19 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "developer":
         return (
-          <div className="space-y-6">
+          <div className="space-y-8">
+            <SectionHeader
+              title="Developer Tools"
+              description="Advanced diagnostics, logging, and debugging capabilities"
+            />
+
             <DeveloperSection />
 
             {/* Data Management — moved from General */}
-            <div className="border-t border-border/40 pt-8">
+            <div className="border-t border-border/30 pt-8">
               <SectionHeader
-                title="Data Management"
-                description="Manage cached models and app data"
+                title="Data & Storage"
+                description="Manage cached files, models, and application data"
               />
 
               <div className="space-y-4">
