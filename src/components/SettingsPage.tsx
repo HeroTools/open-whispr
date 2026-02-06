@@ -16,6 +16,7 @@ import {
   Monitor,
   Cloud,
   Key,
+  Gift,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NEON_AUTH_URL } from "../lib/neonAuth";
@@ -36,6 +37,7 @@ import { useUpdater } from "../hooks/useUpdater";
 
 import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
+import { ReferralDashboard } from "./ReferralDashboard";
 
 import { HotkeyInput } from "./ui/HotkeyInput";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
@@ -57,6 +59,7 @@ export type SettingsSectionType =
   | "agentConfig"
   | "prompts"
   | "permissions"
+  | "referrals"
   | "developer";
 
 interface SettingsPageProps {
@@ -1364,6 +1367,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             )}
           </div>
         );
+
+      // ───────────────────────────────────────────────────
+      // REFERRALS
+      // ───────────────────────────────────────────────────
+      case "referrals":
+        return <ReferralDashboard />;
 
       // ───────────────────────────────────────────────────
       // DEVELOPER (+ data management moved here)
