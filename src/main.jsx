@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import ControlPanel from "./components/ControlPanel.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
+import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
 import { useTheme } from "./hooks/useTheme";
 import "./index.css";
@@ -312,9 +313,11 @@ function AppRouter() {
 function mountApp() {
   ReactDOM.createRoot(document.getElementById("root")).render(
     <React.StrictMode>
-      <ToastProvider>
-        <AppRouter />
-      </ToastProvider>
+      <ErrorBoundary>
+        <ToastProvider>
+          <AppRouter />
+        </ToastProvider>
+      </ErrorBoundary>
     </React.StrictMode>
   );
 }

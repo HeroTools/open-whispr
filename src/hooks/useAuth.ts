@@ -27,7 +27,11 @@ export function useAuth() {
 
   useEffect(() => {
     if (!isPending && lastSyncedStateRef.current !== isSignedIn) {
-      logger.debug("Auth state sync", { isSignedIn, rawIsSignedIn, gracePeriod: gracePeriodActive }, "auth");
+      logger.debug(
+        "Auth state sync",
+        { isSignedIn, rawIsSignedIn, gracePeriod: gracePeriodActive },
+        "auth"
+      );
       localStorage.setItem("isSignedIn", String(isSignedIn));
       lastSyncedStateRef.current = isSignedIn;
     }

@@ -3,6 +3,7 @@ import { useLocalStorage } from "./useLocalStorage";
 import { useDebouncedCallback } from "./useDebouncedCallback";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
+import logger from "../utils/logger";
 import type { LocalTranscriptionProvider } from "../types/electron";
 
 export interface TranscriptionSettings {
@@ -190,8 +191,12 @@ export function useSettings() {
   const setCustomDictionary = useCallback(
     (words: string[]) => {
       setCustomDictionaryRaw(words);
-      window.electronAPI?.setDictionary(words).catch(() => {
-        // Silently ignore SQLite sync errors
+      window.electronAPI?.setDictionary(words).catch((err) => {
+        logger.warn(
+          "Failed to sync dictionary to SQLite",
+          { error: (err as Error).message },
+          "settings"
+        );
       });
     },
     [setCustomDictionaryRaw]
@@ -214,8 +219,12 @@ export function useSettings() {
           // Recover localStorage from SQLite (e.g. localStorage was cleared)
           setCustomDictionaryRaw(dbWords);
         }
-      } catch {
-        // Silently ignore sync errors
+      } catch (err) {
+        logger.warn(
+          "Failed to sync dictionary on startup",
+          { error: (err as Error).message },
+          "settings"
+        );
       }
     };
 
@@ -324,16 +333,24 @@ export function useSettings() {
       }
     };
 
-    syncKeys().catch(() => {
-      // Silently ignore sync errors
+    syncKeys().catch((err) => {
+      logger.warn(
+        "Failed to sync API keys on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const debouncedPersistToEnv = useDebouncedCallback(() => {
     if (typeof window !== "undefined" && window.electronAPI?.saveAllKeysToEnv) {
-      window.electronAPI.saveAllKeysToEnv().catch(() => {
-        // Silently ignore persistence errors
+      window.electronAPI.saveAllKeysToEnv().catch((err) => {
+        logger.warn(
+          "Failed to persist API keys to .env",
+          { error: (err as Error).message },
+          "settings"
+        );
       });
     }
   }, 1000);
@@ -466,7 +483,13 @@ export function useSettings() {
         reasoningProvider,
         reasoningModel: reasoningProvider === "local" ? reasoningModel : undefined,
       })
-      .catch((err) => console.error("Failed to sync startup preferences:", err));
+      .catch((err) =>
+        logger.warn(
+          "Failed to sync startup preferences",
+          { error: (err as Error).message },
+          "settings"
+        )
+      );
   }, [
     useLocalWhisper,
     localTranscriptionProvider,

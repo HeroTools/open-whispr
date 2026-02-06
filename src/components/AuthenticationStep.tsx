@@ -95,7 +95,9 @@ export default function AuthenticationStep({
       // establish in the background (10-15 seconds), and withSessionRefresh()
       // will handle retries automatically when the user tries to use features.
       // The useEffect below will detect when session is ready via isSignedIn.
-      console.log("[Auth] OAuth callback detected, grace period active. Proceeding to onboarding...");
+      console.log(
+        "[Auth] OAuth callback detected, grace period active. Proceeding to onboarding..."
+      );
     }
   }, []);
 
@@ -343,12 +345,7 @@ export default function AuthenticationStep({
 
   // Password reset flow - show forgot password form
   if (passwordResetView === "forgot") {
-    return (
-      <ForgotPasswordView
-        email={email}
-        onBack={handleBackFromPasswordReset}
-      />
-    );
+    return <ForgotPasswordView email={email} onBack={handleBackFromPasswordReset} />;
   }
 
   // Password form (after email is entered)

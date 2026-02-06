@@ -991,8 +991,7 @@ class IPCHandlers {
     const getApiUrl = () =>
       process.env.OPENWHISPR_API_URL || process.env.VITE_OPENWHISPR_API_URL || "";
 
-    const getAuthUrl = () =>
-      process.env.NEON_AUTH_URL || process.env.VITE_NEON_AUTH_URL || "";
+    const getAuthUrl = () => process.env.NEON_AUTH_URL || process.env.VITE_NEON_AUTH_URL || "";
 
     const getSessionCookies = async (event) => {
       const win = BrowserWindow.fromWebContents(event.sender);

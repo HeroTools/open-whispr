@@ -9,7 +9,10 @@ interface ForgotPasswordViewProps {
   onBack: () => void;
 }
 
-export default function ForgotPasswordView({ email: initialEmail = "", onBack }: ForgotPasswordViewProps) {
+export default function ForgotPasswordView({
+  email: initialEmail = "",
+  onBack,
+}: ForgotPasswordViewProps) {
   const [email, setEmail] = useState(initialEmail);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
