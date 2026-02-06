@@ -5,25 +5,56 @@ export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [transcript, setTranscript] = useState("");
+  const [partialTranscript, setPartialTranscript] = useState("");
+  const partialTranscriptRef = useRef("");
+  const rafIdRef = useRef(null);
   const audioManagerRef = useRef(null);
   const { onToggle } = options;
 
   useEffect(() => {
     audioManagerRef.current = new AudioManager();
 
+    const clearPartialTranscript = () => {
+      partialTranscriptRef.current = "";
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      setPartialTranscript("");
+    };
+
+    const schedulePartialTranscriptUpdate = () => {
+      if (rafIdRef.current !== null) {
+        return;
+      }
+      rafIdRef.current = requestAnimationFrame(() => {
+        rafIdRef.current = null;
+        setPartialTranscript(partialTranscriptRef.current);
+      });
+    };
+
     audioManagerRef.current.setCallbacks({
       onStateChange: ({ isRecording, isProcessing }) => {
         setIsRecording(isRecording);
         setIsProcessing(isProcessing);
+        if (isRecording) {
+          clearPartialTranscript();
+        }
       },
       onError: (error) => {
+        clearPartialTranscript();
         toast({
           title: error.title,
           description: error.description,
           variant: "destructive",
         });
       },
+      onPartialTranscript: (text) => {
+        partialTranscriptRef.current = text;
+        schedulePartialTranscriptUpdate();
+      },
       onTranscriptionComplete: async (result) => {
+        clearPartialTranscript();
         if (result.success) {
           setTranscript(result.text);
 
@@ -103,6 +134,10 @@ export const useAudioRecording = (toast, options = {}) => {
       if (audioManagerRef.current) {
         audioManagerRef.current.cleanup();
       }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
     };
   }, [toast, onToggle]);
 
@@ -146,6 +181,7 @@ export const useAudioRecording = (toast, options = {}) => {
     isRecording,
     isProcessing,
     transcript,
+    partialTranscript,
     startRecording,
     stopRecording,
     cancelRecording,

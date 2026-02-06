@@ -138,7 +138,7 @@ export default function App() {
     setWindowInteractivity(false);
   }, [setWindowInteractivity]);
 
-  const { isRecording, isProcessing, toggleListening, cancelRecording, cancelProcessing } =
+  const { isRecording, isProcessing, partialTranscript, toggleListening, cancelRecording, cancelProcessing } =
     useAudioRecording(toast, {
       onToggle: handleDictationToggle,
     });
@@ -226,6 +226,13 @@ export default function App() {
 
   return (
     <div className="dictation-window">
+      {isProcessing && partialTranscript && (
+        <div className="fixed bottom-20 right-6 z-40 max-w-xs">
+          <div className="bg-neutral-900/95 backdrop-blur-sm rounded-lg border border-white/10 px-3 py-2 shadow-lg">
+            <p className="text-white text-sm leading-relaxed break-words">{partialTranscript}</p>
+          </div>
+        </div>
+      )}
       {/* Bottom-right voice button - window expands upward/leftward */}
       <div className="fixed bottom-6 right-6 z-50">
         <div

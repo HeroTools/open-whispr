@@ -49,10 +49,11 @@ class AudioManager {
     return null;
   }
 
-  setCallbacks({ onStateChange, onError, onTranscriptionComplete }) {
+  setCallbacks({ onStateChange, onError, onTranscriptionComplete, onPartialTranscript }) {
     this.onStateChange = onStateChange;
     this.onError = onError;
     this.onTranscriptionComplete = onTranscriptionComplete;
+    this.onPartialTranscript = onPartialTranscript;
   }
 
   async getAudioConstraints() {
@@ -826,10 +827,12 @@ class AudioManager {
 
       if (payload.type === "transcript.text.delta" && typeof payload.delta === "string") {
         collectedText += payload.delta;
+        this.onPartialTranscript?.(collectedText);
         return;
       }
       if (payload.type === "transcript.text.segment" && typeof payload.text === "string") {
         collectedText += payload.text;
+        this.onPartialTranscript?.(collectedText);
         return;
       }
       if (payload.type === "transcript.text.done" && typeof payload.text === "string") {
@@ -1438,6 +1441,7 @@ class AudioManager {
     this.onStateChange = null;
     this.onError = null;
     this.onTranscriptionComplete = null;
+    this.onPartialTranscript = null;
   }
 }
 
