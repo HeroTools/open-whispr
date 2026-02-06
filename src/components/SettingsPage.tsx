@@ -40,6 +40,8 @@ import ReasoningModelSelector from "./ReasoningModelSelector";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { getValidationMessage } from "../utils/hotkeyValidator";
+import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
@@ -213,6 +215,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showErrorToast: true,
     showAlert: showAlertDialog,
   });
+
+  const validateHotkeyForInput = useCallback(
+    (hotkey: string) => getValidationMessage(hotkey, getPlatform()),
+    []
+  );
 
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
@@ -795,6 +802,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       await registerHotkey(newHotkey);
                     }}
                     disabled={isHotkeyRegistering}
+                    validate={validateHotkeyForInput}
                   />
                 </SettingsPanelRow>
 

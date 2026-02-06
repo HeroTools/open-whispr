@@ -1,3 +1,5 @@
+import { formatHotkeyLabelForPlatform } from "./hotkeys";
+
 export type Platform = "darwin" | "win32" | "linux";
 
 export type ValidationErrorCode =
@@ -488,6 +490,22 @@ export function getValidExamples(platform: Platform): readonly string[] {
     default:
       return [];
   }
+}
+
+export function getValidationMessage(
+  hotkey: string,
+  platform: Platform,
+  existingHotkeys: string[] = []
+): string | null {
+  const result = validateHotkey(hotkey, platform, existingHotkeys);
+  if (result.valid) return null;
+
+  if (result.errorCode === "RESERVED") {
+    const label = formatHotkeyLabelForPlatform(hotkey, platform);
+    return `${label} is reserved by the system`;
+  }
+
+  return result.error || "That shortcut is not supported";
 }
 
 export function validateHotkey(

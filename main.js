@@ -510,6 +510,11 @@ async function startApp() {
     });
 
     globeKeyManager.on("globe-up", async () => {
+      // Forward to control panel for hotkey capture (Fn key released)
+      if (isLiveWindow(windowManager.controlPanelWindow)) {
+        windowManager.controlPanelWindow.webContents.send("globe-key-released");
+      }
+
       // Handle push-to-talk release if Globe is the current hotkey
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         const activationMode = await windowManager.getActivationMode();

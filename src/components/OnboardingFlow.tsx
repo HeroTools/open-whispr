@@ -32,6 +32,8 @@ import { useAuth } from "../hooks/useAuth";
 import { HotkeyInput } from "./ui/HotkeyInput";
 import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { getValidationMessage } from "../utils/hotkeyValidator";
+import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 
@@ -103,9 +105,14 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       setHotkey(registeredHotkey);
       setDictationKey(registeredHotkey);
     },
-    showSuccessToast: false, // Don't show toast during onboarding auto-registration
+    showSuccessToast: false,
     showErrorToast: false,
   });
+
+  const validateHotkeyForInput = useCallback(
+    (hotkey: string) => getValidationMessage(hotkey, getPlatform()),
+    []
+  );
 
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog); // Initialize clipboard hook for permission checks
@@ -557,6 +564,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             }}
             disabled={isHotkeyRegistering}
             variant="hero"
+            validate={validateHotkeyForInput}
           />
         </div>
 

@@ -267,6 +267,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("globe-key-pressed", listener);
     return () => ipcRenderer.removeListener("globe-key-pressed", listener);
   },
+  onGlobeKeyReleased: (callback) => {
+    const listener = () => callback?.();
+    ipcRenderer.on("globe-key-released", listener);
+    return () => ipcRenderer.removeListener("globe-key-released", listener);
+  },
 
   // Hotkey registration events (for notifying user when hotkey fails)
   onHotkeyFallbackUsed: (callback) => {

@@ -92,11 +92,12 @@ class HotkeyManager {
     // If we're already using this hotkey AND it's actually registered, return success
     // Note: We need to check isRegistered because on first run, currentHotkey is set to the
     // default value but it's not actually registered yet.
+    const checkAccelerator = hotkey.startsWith("Fn+") ? hotkey.slice(3) : hotkey;
     if (
       hotkey === this.currentHotkey &&
       hotkey !== "GLOBE" &&
       !isRightSideModifier(hotkey) &&
-      globalShortcut.isRegistered(hotkey)
+      globalShortcut.isRegistered(checkAccelerator)
     ) {
       debugLogger.log(
         `[HotkeyManager] Hotkey "${hotkey}" is already the current hotkey and registered, no change needed`
@@ -110,8 +111,11 @@ class HotkeyManager {
       this.currentHotkey !== "GLOBE" &&
       !isRightSideModifier(this.currentHotkey)
     ) {
-      debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${this.currentHotkey}"`);
-      globalShortcut.unregister(this.currentHotkey);
+      const prevAccelerator = this.currentHotkey.startsWith("Fn+")
+        ? this.currentHotkey.slice(3)
+        : this.currentHotkey;
+      debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${prevAccelerator}"`);
+      globalShortcut.unregister(prevAccelerator);
     }
 
     try {
@@ -137,14 +141,20 @@ class HotkeyManager {
         return { success: true, hotkey };
       }
 
-      const alreadyRegistered = globalShortcut.isRegistered(hotkey);
-      debugLogger.log(`[HotkeyManager] Is "${hotkey}" already registered? ${alreadyRegistered}`);
+      // Fn+ prefix is a UI-level distinction (user holds Fn to get real F-keys on macOS).
+      // At the OS/Electron level, the accelerator is just the key without Fn.
+      const accelerator = hotkey.startsWith("Fn+") ? hotkey.slice(3) : hotkey;
+
+      const alreadyRegistered = globalShortcut.isRegistered(accelerator);
+      debugLogger.log(
+        `[HotkeyManager] Is "${accelerator}" already registered? ${alreadyRegistered}`
+      );
 
       if (process.platform === "linux") {
-        globalShortcut.unregister(hotkey);
+        globalShortcut.unregister(accelerator);
       }
 
-      const success = globalShortcut.register(hotkey, callback);
+      const success = globalShortcut.register(accelerator, callback);
       debugLogger.log(`[HotkeyManager] Registration result for "${hotkey}": ${success}`);
 
       if (success) {
@@ -152,7 +162,7 @@ class HotkeyManager {
         debugLogger.log(`[HotkeyManager] Hotkey "${hotkey}" registered successfully`);
         return { success: true, hotkey };
       } else {
-        const failureInfo = this.getFailureReason(hotkey);
+        const failureInfo = this.getFailureReason(accelerator);
         console.error(`[HotkeyManager] Failed to register hotkey: ${hotkey}`, failureInfo);
         debugLogger.log(`[HotkeyManager] Registration failed:`, failureInfo);
 
