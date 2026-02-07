@@ -13,8 +13,6 @@ import { useModelDownload } from "../hooks/useModelDownload";
 import {
   getTranscriptionProviders,
   TranscriptionProviderData,
-  type WhisperModelInfo,
-  type ParakeetModelInfo,
   WHISPER_MODEL_INFO,
   PARAKEET_MODEL_INFO,
 } from "../models/ModelRegistry";
@@ -26,6 +24,10 @@ import {
 import { getProviderIcon, isMonochromeProvider } from "../utils/providerIcons";
 import { API_ENDPOINTS } from "../config/constants";
 import { createExternalLinkHandler } from "../utils/externalLinks";
+import {
+  getWhisperModelDisplayInfo,
+  getParakeetModelDisplayInfo,
+} from "../utils/transcriptionModelDisplayInfo";
 
 interface LocalModel {
   model: string;
@@ -208,36 +210,6 @@ interface ProviderTabWithOptionalDisabled {
   name: string;
   recommended?: boolean;
   disabled?: boolean;
-}
-
-type WhisperModelDisplayInfo = Pick<
-  WhisperModelInfo,
-  "name" | "description" | "size" | "recommended"
->;
-type ParakeetModelDisplayInfo = Pick<
-  ParakeetModelInfo,
-  "name" | "description" | "size" | "language" | "recommended"
->;
-
-function getWhisperModelDisplayInfo(modelId: string): WhisperModelDisplayInfo {
-  const info = WHISPER_MODEL_INFO[modelId];
-  if (info) return info;
-  return {
-    name: modelId,
-    description: "Model",
-    size: "Unknown",
-  };
-}
-
-function getParakeetModelDisplayInfo(modelId: string): ParakeetModelDisplayInfo {
-  const info = PARAKEET_MODEL_INFO[modelId];
-  if (info) return info;
-  return {
-    name: modelId,
-    description: "NVIDIA Parakeet Model",
-    size: "Unknown",
-    language: "en",
-  };
 }
 
 const CLOUD_PROVIDER_TABS: ProviderTabWithOptionalDisabled[] = [

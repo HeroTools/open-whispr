@@ -7,6 +7,7 @@ import { useModelDownload } from "../hooks/useModelDownload";
 import { WHISPER_MODEL_INFO } from "../models/ModelRegistry";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
 import { getProviderIcon } from "../utils/providerIcons";
+import { getWhisperModelDisplayInfo } from "../utils/transcriptionModelDisplayInfo";
 
 interface WhisperModel {
   model: string;
@@ -154,11 +155,7 @@ export default function LocalWhisperPicker({
         <ModelCardList
           models={models.map((model): ModelCardOption => {
             const modelId = model.model;
-            const info = WHISPER_MODEL_INFO[modelId] || {
-              name: modelId,
-              description: "Model",
-              size: "Unknown",
-            };
+            const info = getWhisperModelDisplayInfo(modelId);
             return {
               value: modelId,
               label: info.name,
