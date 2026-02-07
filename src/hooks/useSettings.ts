@@ -581,7 +581,13 @@ export function useSettings() {
       if (settings.cloudReasoningMode !== undefined)
         setCloudReasoningMode(settings.cloudReasoningMode);
     },
-    [setUseReasoningModel, setReasoningModel, setReasoningProvider, setCloudReasoningBaseUrl, setCloudReasoningMode]
+    [
+      setUseReasoningModel,
+      setReasoningModel,
+      setReasoningProvider,
+      setCloudReasoningBaseUrl,
+      setCloudReasoningMode,
+    ]
   );
 
   const updateApiKeys = useCallback(

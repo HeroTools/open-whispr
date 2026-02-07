@@ -1,6 +1,7 @@
 import { createAuthClient } from "@neondatabase/auth";
 import { BetterAuthReactAdapter } from "@neondatabase/auth/react";
 import { OPENWHISPR_API_URL } from "../config/constants";
+import { openExternalLink } from "../utils/externalLinks";
 
 export const NEON_AUTH_URL = import.meta.env.VITE_NEON_AUTH_URL || "";
 export const authClient = NEON_AUTH_URL
@@ -195,24 +196,43 @@ export async function withSessionRefresh<T>(operation: () => Promise<T>): Promis
   }
 }
 
+function getElectronOAuthCallbackURL(): string {
+  const configuredUrl = (import.meta.env.VITE_OPENWHISPR_OAUTH_CALLBACK_URL || "").trim();
+  if (configuredUrl) return configuredUrl;
+
+  if (window.location.protocol !== "file:") return `${window.location.origin}/?panel=true`;
+
+  const port = import.meta.env.VITE_DEV_SERVER_PORT || "5183";
+  return `http://localhost:${port}/?panel=true`;
+}
+
 export async function signInWithSocial(provider: SocialProvider): Promise<{ error?: Error }> {
   if (!authClient) {
     return { error: new Error("Auth not configured") };
   }
 
   try {
-    // Electron's file:// origin is rejected by Neon Auth — use a relative path instead
     const isElectron = Boolean((window as any).electronAPI);
-    const callbackURL = isElectron
-      ? "/?panel=true"
-      : `${window.location.href.split("?")[0].split("#")[0]}?panel=true`;
 
-    await authClient.signIn.social({
-      provider,
-      callbackURL,
-      newUserCallbackURL: callbackURL,
-    });
+    if (isElectron) {
+      const callbackURL = getElectronOAuthCallbackURL();
 
+      const response = await fetch(`${NEON_AUTH_URL}/api/auth/sign-in/social`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ provider, callbackURL, disableRedirect: true }),
+      });
+
+      const data = await response.json();
+      if (!data.url) return { error: new Error("Failed to get OAuth URL") };
+
+      openExternalLink(data.url);
+      return {};
+    }
+
+    const callbackURL = `${window.location.href.split("?")[0].split("#")[0]}?panel=true`;
+    await authClient.signIn.social({ provider, callbackURL, newUserCallbackURL: callbackURL });
     return {};
   } catch (error) {
     return { error: error instanceof Error ? error : new Error("Social sign-in failed") };

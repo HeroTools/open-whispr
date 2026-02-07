@@ -516,11 +516,18 @@ export default function AuthenticationStep({
         className="w-full h-9"
       >
         {isSocialLoading === "google" ? (
-          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          <>
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">
+              Complete sign-in in your browser...
+            </span>
+          </>
         ) : (
-          <GoogleIcon className="w-4 h-4" />
+          <>
+            <GoogleIcon className="w-4 h-4" />
+            <span className="text-sm font-medium">Continue with Google</span>
+          </>
         )}
-        <span className="text-sm font-medium">Continue with Google</span>
       </Button>
 
       {/* Divider — Minimal */}

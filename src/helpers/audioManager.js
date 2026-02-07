@@ -1060,7 +1060,11 @@ class AudioManager {
       } else {
         const reasoningModel = localStorage.getItem("reasoningModel") || "";
         if (reasoningModel) {
-          const result = await this.processWithReasoningModel(processedText, reasoningModel, agentName);
+          const result = await this.processWithReasoningModel(
+            processedText,
+            reasoningModel,
+            agentName
+          );
           if (result) {
             processedText = result;
           }
@@ -1974,7 +1978,11 @@ class AudioManager {
         } else {
           const reasoningModel = localStorage.getItem("reasoningModel") || "";
           if (reasoningModel) {
-            const result = await this.processWithReasoningModel(finalText, reasoningModel, agentName);
+            const result = await this.processWithReasoningModel(
+              finalText,
+              reasoningModel,
+              agentName
+            );
             if (result) {
               finalText = result;
             }

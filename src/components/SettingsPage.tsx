@@ -417,10 +417,7 @@ function AiModelsSection({
       <SettingsPanel>
         <SettingsPanelRow>
           <SettingsRow label="Enable text cleanup" description="AI improves transcription quality">
-            <Toggle
-              checked={useReasoningModel}
-              onChange={setUseReasoningModel}
-            />
+            <Toggle checked={useReasoningModel} onChange={setUseReasoningModel} />
           </SettingsRow>
         </SettingsPanelRow>
       </SettingsPanel>
@@ -460,7 +457,9 @@ function AiModelsSection({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[12px] font-medium text-foreground">OpenWhispr Cloud</span>
+                      <span className="text-[12px] font-medium text-foreground">
+                        OpenWhispr Cloud
+                      </span>
                       {isCloudMode && (
                         <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
                           Active

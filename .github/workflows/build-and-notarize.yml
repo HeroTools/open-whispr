@@ -44,6 +44,7 @@ jobs:
       env:
         VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
         VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
+        VITE_OPENWHISPR_OAUTH_CALLBACK_URL: ${{ vars.VITE_OPENWHISPR_OAUTH_CALLBACK_URL }}
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -89,6 +90,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
         VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
+        VITE_OPENWHISPR_OAUTH_CALLBACK_URL: ${{ vars.VITE_OPENWHISPR_OAUTH_CALLBACK_URL }}
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
@@ -158,6 +160,7 @@ jobs:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
         VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
         VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
+        VITE_OPENWHISPR_OAUTH_CALLBACK_URL: ${{ vars.VITE_OPENWHISPR_OAUTH_CALLBACK_URL }}
         CSC_IDENTITY_AUTO_DISCOVERY: ${{ github.event_name != 'pull_request' && 'true' || 'false' }}
         CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
