@@ -47,6 +47,11 @@ export class SecureCache<T> {
     this.cache.clear();
   }
 
+  getSize(): number {
+    this.cleanup();
+    return this.cache.size;
+  }
+
   // Clean up expired entries
   cleanup(): void {
     const now = Date.now();

@@ -213,7 +213,7 @@ class ReasoningService extends BaseReasoningService {
     logger.logReasoning(`${provider.toUpperCase()}_KEY_RETRIEVAL`, {
       provider,
       fromCache: !!apiKey,
-      cacheSize: this.apiKeyCache.size || 0,
+      cacheSize: this.apiKeyCache.getSize(),
     });
 
     if (!apiKey) {
@@ -1072,17 +1072,6 @@ class ReasoningService extends BaseReasoningService {
       throw error;
     } finally {
       this.isProcessing = false;
-    }
-  }
-
-  private getCustomDictionary(): string[] {
-    try {
-      const raw = localStorage.getItem("customDictionary");
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
     }
   }
 
