@@ -57,6 +57,51 @@ class AudioManager {
     this.cachedMicDeviceId = null;
     this.persistentAudioContext = null;
     this.workletModuleLoaded = false;
+    this.workletBlobUrl = null;
+  }
+
+  getWorkletBlobUrl() {
+    if (this.workletBlobUrl) return this.workletBlobUrl;
+    const code = `
+const BUFFER_SIZE = 800;
+class PCMStreamingProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this._buffer = new Int16Array(BUFFER_SIZE);
+    this._offset = 0;
+    this._stopped = false;
+    this.port.onmessage = (event) => {
+      if (event.data === "stop") {
+        if (this._offset > 0) {
+          const partial = this._buffer.slice(0, this._offset);
+          this.port.postMessage(partial.buffer, [partial.buffer]);
+          this._buffer = new Int16Array(BUFFER_SIZE);
+          this._offset = 0;
+        }
+        this._stopped = true;
+      }
+    };
+  }
+  process(inputs) {
+    if (this._stopped) return false;
+    const input = inputs[0]?.[0];
+    if (!input) return true;
+    for (let i = 0; i < input.length; i++) {
+      const s = Math.max(-1, Math.min(1, input[i]));
+      this._buffer[this._offset++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      if (this._offset >= BUFFER_SIZE) {
+        this.port.postMessage(this._buffer.buffer, [this._buffer.buffer]);
+        this._buffer = new Int16Array(BUFFER_SIZE);
+        this._offset = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
+`;
+    this.workletBlobUrl = URL.createObjectURL(new Blob([code], { type: "application/javascript" }));
+    return this.workletBlobUrl;
   }
 
   getCustomDictionaryPrompt() {
@@ -1643,8 +1688,7 @@ class AudioManager {
         try {
           const audioContext = await this.getOrCreateAudioContext();
           if (!this.workletModuleLoaded) {
-            const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-            await audioContext.audioWorklet.addModule(workletUrl);
+            await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
             this.workletModuleLoaded = true;
             logger.debug("AudioWorklet module pre-loaded during warmup", {}, "streaming");
           }
@@ -1770,8 +1814,7 @@ class AudioManager {
       this.streamingStream = stream;
 
       if (!this.workletModuleLoaded) {
-        const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-        await audioContext.audioWorklet.addModule(workletUrl);
+        await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
         this.workletModuleLoaded = true;
       }
 
@@ -2100,6 +2143,10 @@ class AudioManager {
       this.persistentAudioContext.close().catch(() => {});
       this.persistentAudioContext = null;
       this.workletModuleLoaded = false;
+      if (this.workletBlobUrl) {
+        URL.revokeObjectURL(this.workletBlobUrl);
+        this.workletBlobUrl = null;
+      }
     }
     try {
       window.electronAPI?.assemblyAiStreamingStop?.();
