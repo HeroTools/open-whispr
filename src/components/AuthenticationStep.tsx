@@ -205,6 +205,9 @@ export default function AuthenticationStep({
 
       try {
         if (authMode === "sign-up") {
+          // Set before signup — SDK may trigger isSignedIn before returning
+          needsVerificationRef.current = true;
+
           const result = await authClient.signUp.email({
             email: email.trim(),
             password,
@@ -212,6 +215,7 @@ export default function AuthenticationStep({
           });
 
           if (result.error) {
+            needsVerificationRef.current = false;
             if (
               errorMessageIncludes(result.error.message, ["already exists", "already registered"])
             ) {
@@ -240,7 +244,6 @@ export default function AuthenticationStep({
               }
             }
 
-            needsVerificationRef.current = true;
             onNeedsVerification(email.trim());
           }
         } else {

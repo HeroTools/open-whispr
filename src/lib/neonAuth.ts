@@ -217,7 +217,7 @@ export async function signInWithSocial(provider: SocialProvider): Promise<{ erro
     if (isElectron) {
       const callbackURL = getElectronOAuthCallbackURL();
 
-      const response = await fetch(`${NEON_AUTH_URL}/api/auth/sign-in/social`, {
+      const response = await fetch(`${NEON_AUTH_URL}/sign-in/social`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
