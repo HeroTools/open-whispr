@@ -3,8 +3,16 @@ name: Build and Notarize
 on:
   push:
     branches: [ main, develop ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.github/ISSUE_TEMPLATE/**'
   workflow_dispatch:
 
 jobs:
@@ -22,8 +30,24 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Cache native binaries
+      uses: actions/cache@v4
+      with:
+        path: resources/bin
+        key: linux-x64-bin-${{ hashFiles('scripts/download-*.js') }}
+
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js --current
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Download llama-server binaries
+      run: node scripts/download-llama-server.js --current
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Download sherpa-onnx binaries
+      run: node scripts/download-sherpa-onnx.js --current
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
@@ -42,6 +66,7 @@ jobs:
     - name: Build Application
       run: npm run build:linux -- --publish never
       env:
+        GH_TOKEN: ${{ secrets.GH_TOKEN }}
         VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
         VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
         VITE_OPENWHISPR_OAUTH_CALLBACK_URL: ${{ vars.VITE_OPENWHISPR_OAUTH_CALLBACK_URL }}
@@ -67,8 +92,24 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Cache native binaries
+      uses: actions/cache@v4
+      with:
+        path: resources/bin
+        key: windows-x64-bin-${{ hashFiles('scripts/download-*.js') }}
+
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js --current
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Download llama-server binaries
+      run: node scripts/download-llama-server.js --current
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Download sherpa-onnx binaries
+      run: node scripts/download-sherpa-onnx.js --current
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
@@ -117,8 +158,24 @@ jobs:
     - name: Install dependencies
       run: npm ci
 
+    - name: Cache native binaries
+      uses: actions/cache@v4
+      with:
+        path: resources/bin
+        key: macos-${{ matrix.arch }}-bin-${{ hashFiles('scripts/download-*.js') }}
+
     - name: Download whisper.cpp binaries
       run: node scripts/download-whisper-cpp.js --current --platform darwin --arch ${{ matrix.arch }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Download llama-server binaries
+      run: node scripts/download-llama-server.js --current --platform darwin --arch ${{ matrix.arch }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Download sherpa-onnx binaries
+      run: node scripts/download-sherpa-onnx.js --current --platform darwin --arch ${{ matrix.arch }}
       env:
         GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
 
@@ -126,8 +183,8 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ~/.cache/electron
-        key: macos-electron-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: macos-electron-
+        key: macos-${{ matrix.arch }}-electron-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: macos-${{ matrix.arch }}-electron-
 
     - name: Setup macOS Code Signing
       if: github.event_name != 'pull_request'

@@ -50,6 +50,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
 import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
+import logger from "../utils/logger";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "./lib/utils";
@@ -743,7 +744,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           const enabled = await window.electronAPI.getAutoStartEnabled();
           setAutoStartEnabled(enabled);
         } catch (error) {
-          console.error("Failed to get auto-start status:", error);
+          logger.error("Failed to get auto-start status", error, "settings");
         }
       }
       setAutoStartLoading(false);
@@ -760,7 +761,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           setAutoStartEnabled(enabled);
         }
       } catch (error) {
-        console.error("Failed to set auto-start:", error);
+        logger.error("Failed to set auto-start", error, "settings");
       } finally {
         setAutoStartLoading(false);
       }
@@ -796,7 +797,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           setActivationMode("tap");
         }
       } catch (error) {
-        console.error("Failed to check hotkey mode:", error);
+        logger.error("Failed to check hotkey mode", error, "settings");
       }
     };
     checkHotkeyMode();
@@ -906,7 +907,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // Reload the app to show onboarding/auth
       window.location.reload();
     } catch (error) {
-      console.error("Sign out failed:", error);
+      logger.error("Sign out failed", error, "auth");
       showAlertDialog({
         title: "Sign Out Failed",
         description: "Unable to sign out. Please try again.",
