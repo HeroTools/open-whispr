@@ -458,7 +458,11 @@ class IPCHandlers {
             `[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`
           );
           const { globalShortcut } = require("electron");
-          globalShortcut.unregister(currentHotkey);
+          try {
+            globalShortcut.unregister(currentHotkey);
+          } catch (err) {
+            debugLogger.log(`[IPC] Could not unregister "${currentHotkey}" (invalid accelerator): ${err.message}`);
+          }
         }
 
         // On Windows, stop the Windows key listener
@@ -478,12 +482,16 @@ class IPCHandlers {
         // Exiting capture mode - re-register globalShortcut if not already registered
         if (effectiveHotkey && effectiveHotkey !== "GLOBE") {
           const { globalShortcut } = require("electron");
-          if (!globalShortcut.isRegistered(effectiveHotkey)) {
-            debugLogger.log(
-              `[IPC] Re-registering globalShortcut "${effectiveHotkey}" after capture mode`
-            );
-            const callback = this.windowManager.createHotkeyCallback();
-            globalShortcut.register(effectiveHotkey, callback);
+          try {
+            if (!globalShortcut.isRegistered(effectiveHotkey)) {
+              debugLogger.log(
+                `[IPC] Re-registering globalShortcut "${effectiveHotkey}" after capture mode`
+              );
+              const callback = this.windowManager.createHotkeyCallback();
+              globalShortcut.register(effectiveHotkey, callback);
+            }
+          } catch (err) {
+            debugLogger.log(`[IPC] Could not re-register "${effectiveHotkey}" (invalid accelerator): ${err.message}`);
           }
         }
 
