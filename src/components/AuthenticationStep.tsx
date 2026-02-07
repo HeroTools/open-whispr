@@ -66,6 +66,8 @@ export default function AuthenticationStep({
   // Track if we've already processed the OAuth callback
   const oauthProcessedRef = useRef(false);
   const resetProcessedRef = useRef(false);
+  // Track if email verification was triggered (prevents auto-advance race condition)
+  const needsVerificationRef = useRef(false);
 
   // Check for OAuth callback verifier or password reset token in URL
   useEffect(() => {
@@ -104,7 +106,7 @@ export default function AuthenticationStep({
   }, []);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
+    if (isLoaded && isSignedIn && !needsVerificationRef.current) {
       if (OPENWHISPR_API_URL && user?.id && user?.email) {
         fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
           method: "POST",
@@ -173,7 +175,7 @@ export default function AuthenticationStep({
         throw new Error("Failed to check user existence");
       }
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       setAuthMode(data.exists ? "sign-in" : "sign-up");
     } catch (err) {
       console.error("Error checking user existence:", err);
@@ -238,6 +240,7 @@ export default function AuthenticationStep({
               }
             }
 
+            needsVerificationRef.current = true;
             onNeedsVerification(email.trim());
           }
         } else {

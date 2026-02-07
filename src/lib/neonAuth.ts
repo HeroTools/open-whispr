@@ -224,7 +224,21 @@ export async function signInWithSocial(provider: SocialProvider): Promise<{ erro
         body: JSON.stringify({ provider, callbackURL, disableRedirect: true }),
       });
 
-      const data = await response.json();
+      const text = await response.text();
+
+      if (!response.ok) {
+        console.error(`[Auth] Social sign-in failed: ${response.status}`, text.slice(0, 200));
+        return { error: new Error("Failed to initiate sign-in") };
+      }
+
+      let data: { url?: string };
+      try {
+        data = JSON.parse(text);
+      } catch {
+        console.error("[Auth] Non-JSON response from auth server:", text.slice(0, 200));
+        return { error: new Error("Unexpected response from auth server") };
+      }
+
       if (!data.url) return { error: new Error("Failed to get OAuth URL") };
 
       openExternalLink(data.url);

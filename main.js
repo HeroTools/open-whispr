@@ -415,7 +415,9 @@ async function startApp() {
   session.defaultSession.webRequest.onBeforeSendHeaders(
     { urls: ["https://*.neon.tech/*"] },
     (details, callback) => {
-      details.requestHeaders["Origin"] = new URL(details.url).origin;
+      try {
+        details.requestHeaders["Origin"] = new URL(details.url).origin;
+      } catch { /* malformed URL — leave Origin as-is */ }
       callback({ requestHeaders: details.requestHeaders });
     }
   );
