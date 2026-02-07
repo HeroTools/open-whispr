@@ -7,6 +7,8 @@ const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
+const DeepgramStreaming = require("./deepgramStreaming");
+const OpenAIRealtimeStreaming = require("./openaiRealtimeStreaming");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
@@ -822,6 +824,14 @@ class IPCHandlers {
 
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
+    });
+
+    ipcMain.handle("get-deepgram-key", async () => {
+      return this.environmentManager.getDeepgramKey();
+    });
+
+    ipcMain.handle("save-deepgram-key", async (event, key) => {
+      return this.environmentManager.saveDeepgramKey(key);
     });
 
     ipcMain.handle("save-all-keys-to-env", async () => {
@@ -1764,6 +1774,242 @@ class IPCHandlers {
       }
       return this.assemblyAiStreaming.getStatus();
     });
+
+    // --- Deepgram Streaming handlers ---
+
+    ipcMain.handle("deepgram-streaming-start", async (event, options) => {
+      try {
+        const apiKey = this.environmentManager.getDeepgramKey();
+        if (!apiKey) {
+          return { success: false, error: "Deepgram API key not configured", code: "NO_API" };
+        }
+
+        this.deepgramStreaming = new DeepgramStreaming();
+
+        this.deepgramStreaming.onPartialTranscript = (text) => {
+          this.broadcastToWindows("deepgram-partial-transcript", text);
+        };
+        this.deepgramStreaming.onFinalTranscript = (text) => {
+          this.broadcastToWindows("deepgram-final-transcript", text);
+        };
+        this.deepgramStreaming.onError = (error) => {
+          this.broadcastToWindows("deepgram-error", error);
+        };
+
+        await this.deepgramStreaming.connect({
+          apiKey,
+          sampleRate: options?.sampleRate || 16000,
+          language: options?.language,
+        });
+
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Deepgram streaming start error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.on("deepgram-streaming-send", (event, audioBuffer) => {
+      if (this.deepgramStreaming) {
+        this.deepgramStreaming.sendAudio(Buffer.from(audioBuffer));
+      }
+    });
+
+    ipcMain.handle("deepgram-streaming-stop", async () => {
+      try {
+        let result = { text: "" };
+        if (this.deepgramStreaming) {
+          result = await this.deepgramStreaming.disconnect();
+          this.deepgramStreaming = null;
+        }
+        return { success: true, text: result?.text || "" };
+      } catch (error) {
+        debugLogger.error("Deepgram streaming stop error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    // --- Parakeet Chunked Streaming handlers ---
+
+    ipcMain.handle("parakeet-streaming-start", async () => {
+      try {
+        const status = this.parakeetManager?.serverManager?.wsServer?.getStatus?.();
+        if (!status?.ready) {
+          return { success: false, error: "Parakeet server not running", code: "NO_SERVER" };
+        }
+
+        this.parakeetStreamingBuffer = [];
+        this.parakeetStreamingTimer = null;
+        this.parakeetStreamingFinalText = "";
+
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Parakeet streaming start error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.on("parakeet-streaming-send", (event, audioBuffer) => {
+      if (!this.parakeetStreamingBuffer) return;
+
+      // audioBuffer is int16 PCM from AudioWorklet — convert to float32
+      const int16 = new Int16Array(audioBuffer);
+      const float32 = new Float32Array(int16.length);
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / (int16[i] < 0 ? 0x8000 : 0x7fff);
+      }
+      this.parakeetStreamingBuffer.push(float32);
+
+      // Start chunked re-transcription timer if not already running
+      if (!this.parakeetStreamingTimer) {
+        this.parakeetStreamingTimer = setInterval(() => {
+          this._parakeetChunkedTranscribe();
+        }, 2000);
+      }
+    });
+
+    ipcMain.handle("parakeet-streaming-stop", async () => {
+      try {
+        // Clear timer
+        if (this.parakeetStreamingTimer) {
+          clearInterval(this.parakeetStreamingTimer);
+          this.parakeetStreamingTimer = null;
+        }
+
+        // Wait for any in-flight transcription to complete
+        const wsServer = this.parakeetManager?.serverManager?.wsServer;
+        if (wsServer?.transcribing) {
+          await new Promise((resolve) => {
+            const check = setInterval(() => {
+              if (!wsServer.transcribing) {
+                clearInterval(check);
+                resolve();
+              }
+            }, 100);
+            // Safety timeout
+            setTimeout(() => { clearInterval(check); resolve(); }, 10000);
+          });
+        }
+
+        // Final transcription of full buffer
+        if (this.parakeetStreamingBuffer?.length > 0) {
+          await this._parakeetChunkedTranscribe();
+        }
+
+        const text = this.parakeetStreamingFinalText || "";
+        this.parakeetStreamingBuffer = null;
+        this.parakeetStreamingFinalText = "";
+
+        return { success: true, text };
+      } catch (error) {
+        debugLogger.error("Parakeet streaming stop error", { error: error.message });
+        this.parakeetStreamingBuffer = null;
+        this.parakeetStreamingFinalText = "";
+        return { success: false, error: error.message };
+      }
+    });
+
+    // --- OpenAI Realtime Streaming handlers ---
+
+    ipcMain.handle("openai-realtime-streaming-start", async (event, options) => {
+      try {
+        const apiKey = this.environmentManager.getOpenAIKey();
+        if (!apiKey) {
+          return { success: false, error: "OpenAI API key not configured", code: "NO_API" };
+        }
+
+        this.openaiRealtimeStreaming = new OpenAIRealtimeStreaming();
+
+        this.openaiRealtimeStreaming.onPartialTranscript = (text) => {
+          this.broadcastToWindows("openai-realtime-partial-transcript", text);
+        };
+        this.openaiRealtimeStreaming.onFinalTranscript = (text) => {
+          this.broadcastToWindows("openai-realtime-final-transcript", text);
+        };
+        this.openaiRealtimeStreaming.onError = (error) => {
+          this.broadcastToWindows("openai-realtime-error", error);
+        };
+
+        await this.openaiRealtimeStreaming.connect({
+          apiKey,
+          language: options?.language,
+        });
+
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("OpenAI Realtime streaming start error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.on("openai-realtime-streaming-send", (event, audioBuffer) => {
+      if (this.openaiRealtimeStreaming) {
+        // Resample from 16kHz to 24kHz (OpenAI Realtime requires 24kHz)
+        const int16Input = new Int16Array(audioBuffer);
+        const ratio = 24000 / 16000; // 1.5
+        const outputLength = Math.round(int16Input.length * ratio);
+        const int16Output = new Int16Array(outputLength);
+
+        for (let i = 0; i < outputLength; i++) {
+          const srcIndex = i / ratio;
+          const srcFloor = Math.floor(srcIndex);
+          const srcCeil = Math.min(srcFloor + 1, int16Input.length - 1);
+          const frac = srcIndex - srcFloor;
+          int16Output[i] = Math.round(
+            int16Input[srcFloor] * (1 - frac) + int16Input[srcCeil] * frac
+          );
+        }
+
+        this.openaiRealtimeStreaming.sendAudio(Buffer.from(int16Output.buffer));
+      }
+    });
+
+    ipcMain.handle("openai-realtime-streaming-stop", async () => {
+      try {
+        let result = { text: "" };
+        if (this.openaiRealtimeStreaming) {
+          result = await this.openaiRealtimeStreaming.disconnect();
+          this.openaiRealtimeStreaming = null;
+        }
+        return { success: true, text: result?.text || "" };
+      } catch (error) {
+        debugLogger.error("OpenAI Realtime streaming stop error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+  }
+
+  async _parakeetChunkedTranscribe() {
+    const wsServer = this.parakeetManager?.serverManager?.wsServer;
+    if (!wsServer || wsServer.transcribing) {
+      return; // Skip this tick — server is busy
+    }
+
+    if (!this.parakeetStreamingBuffer || this.parakeetStreamingBuffer.length === 0) {
+      return;
+    }
+
+    try {
+      // Merge all chunks into one contiguous Float32Array, then wrap as Buffer.
+      // wsServer.transcribe() expects a Buffer (uses .copy() and .length in bytes).
+      const totalLength = this.parakeetStreamingBuffer.reduce((sum, chunk) => sum + chunk.length, 0);
+      const merged = new Float32Array(totalLength);
+      let offset = 0;
+      for (const chunk of this.parakeetStreamingBuffer) {
+        merged.set(chunk, offset);
+        offset += chunk.length;
+      }
+      const samplesBuffer = Buffer.from(merged.buffer, merged.byteOffset, merged.byteLength);
+
+      const result = await wsServer.transcribe(samplesBuffer, 16000);
+      if (result?.text) {
+        this.parakeetStreamingFinalText = result.text;
+        this.broadcastToWindows("parakeet-partial-transcript", result.text);
+      }
+    } catch (error) {
+      debugLogger.error("Parakeet chunked transcribe error", { error: error.message });
+      this.broadcastToWindows("parakeet-error", error.message);
+    }
   }
 
   broadcastToWindows(channel, payload) {

@@ -526,6 +526,60 @@ declare global {
       onAssemblyAiSessionEnd?: (
         callback: (data: { audioDuration?: number; text?: string }) => void
       ) => () => void;
+
+      // Deepgram Streaming
+      getDeepgramKey?: () => Promise<string>;
+      saveDeepgramKey?: (key: string) => Promise<{ success: boolean }>;
+      deepgramStreamingStart?: (options?: {
+        sampleRate?: number;
+        language?: string;
+      }) => Promise<{
+        success: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      deepgramStreamingSend?: (audioBuffer: ArrayBuffer) => void;
+      deepgramStreamingStop?: () => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
+      onDeepgramPartialTranscript?: (callback: (text: string) => void) => () => void;
+      onDeepgramFinalTranscript?: (callback: (text: string) => void) => () => void;
+      onDeepgramError?: (callback: (error: string) => void) => () => void;
+
+      // Parakeet Chunked Streaming
+      parakeetStreamingStart?: () => Promise<{
+        success: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      parakeetStreamingSend?: (audioBuffer: ArrayBuffer) => void;
+      parakeetStreamingStop?: () => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
+      onParakeetPartialTranscript?: (callback: (text: string) => void) => () => void;
+      onParakeetError?: (callback: (error: string) => void) => () => void;
+
+      // OpenAI Realtime Streaming
+      openaiRealtimeStreamingStart?: (options?: {
+        language?: string;
+      }) => Promise<{
+        success: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      openaiRealtimeStreamingSend?: (audioBuffer: ArrayBuffer) => void;
+      openaiRealtimeStreamingStop?: () => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
+      onOpenaiRealtimePartialTranscript?: (callback: (text: string) => void) => () => void;
+      onOpenaiRealtimeFinalTranscript?: (callback: (text: string) => void) => () => void;
+      onOpenaiRealtimeError?: (callback: (error: string) => void) => () => void;
     };
 
     api?: {

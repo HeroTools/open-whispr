@@ -7,6 +7,7 @@ import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useAuth } from "./hooks/useAuth";
+import { LiveTranscriptOverlay } from "./components/ui/LiveTranscriptOverlay";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -127,9 +128,13 @@ export default function App() {
     }
   }, [isCommandMenuOpen, isHovered, toastCount, setWindowInteractivity]);
 
+  const showTranscript = isStreaming && !!partialTranscript;
+
   useEffect(() => {
     const resizeWindow = () => {
-      if (isCommandMenuOpen && toastCount > 0) {
+      if (showTranscript) {
+        window.electronAPI?.resizeMainWindow?.("WITH_TRANSCRIPT");
+      } else if (isCommandMenuOpen && toastCount > 0) {
         window.electronAPI?.resizeMainWindow?.("EXPANDED");
       } else if (isCommandMenuOpen) {
         window.electronAPI?.resizeMainWindow?.("WITH_MENU");
@@ -140,7 +145,7 @@ export default function App() {
       }
     };
     resizeWindow();
-  }, [isCommandMenuOpen, toastCount]);
+  }, [showTranscript, isCommandMenuOpen, toastCount]);
 
   const handleDictationToggle = React.useCallback(() => {
     setIsCommandMenuOpen(false);
@@ -150,6 +155,8 @@ export default function App() {
   const {
     isRecording,
     isProcessing,
+    isStreaming,
+    partialTranscript,
     toggleListening,
     cancelRecording,
     cancelProcessing,
@@ -288,6 +295,10 @@ export default function App() {
             }
           }}
         >
+          <LiveTranscriptOverlay
+            text={partialTranscript}
+            isVisible={showTranscript}
+          />
           {(isRecording || isProcessing) && isHovered && (
             <button
               aria-label={isRecording ? "Cancel recording" : "Cancel processing"}

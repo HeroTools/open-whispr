@@ -652,6 +652,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudBackupEnabled,
     telemetryEnabled,
     setTelemetryEnabled,
+    streamingProvider,
+    setStreamingProvider,
+    deepgramApiKey,
+    setDeepgramApiKey,
   } = useSettings();
 
   const { toast } = useToast();
@@ -1557,35 +1561,102 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
       case "transcription":
         return (
-          <TranscriptionSection
-            isSignedIn={isSignedIn ?? false}
-            cloudTranscriptionMode={cloudTranscriptionMode}
-            setCloudTranscriptionMode={setCloudTranscriptionMode}
-            useLocalWhisper={useLocalWhisper}
-            setUseLocalWhisper={setUseLocalWhisper}
-            updateTranscriptionSettings={updateTranscriptionSettings}
-            cloudTranscriptionProvider={cloudTranscriptionProvider}
-            setCloudTranscriptionProvider={setCloudTranscriptionProvider}
-            cloudTranscriptionModel={cloudTranscriptionModel}
-            setCloudTranscriptionModel={setCloudTranscriptionModel}
-            localTranscriptionProvider={localTranscriptionProvider}
-            setLocalTranscriptionProvider={setLocalTranscriptionProvider}
-            whisperModel={whisperModel}
-            setWhisperModel={setWhisperModel}
-            parakeetModel={parakeetModel}
-            setParakeetModel={setParakeetModel}
-            openaiApiKey={openaiApiKey}
-            setOpenaiApiKey={setOpenaiApiKey}
-            groqApiKey={groqApiKey}
-            setGroqApiKey={setGroqApiKey}
-            mistralApiKey={mistralApiKey}
-            setMistralApiKey={setMistralApiKey}
-            customTranscriptionApiKey={customTranscriptionApiKey}
-            setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-            cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-            setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
-            toast={toast}
-          />
+          <>
+            <TranscriptionSection
+              isSignedIn={isSignedIn ?? false}
+              cloudTranscriptionMode={cloudTranscriptionMode}
+              setCloudTranscriptionMode={setCloudTranscriptionMode}
+              useLocalWhisper={useLocalWhisper}
+              setUseLocalWhisper={setUseLocalWhisper}
+              updateTranscriptionSettings={updateTranscriptionSettings}
+              cloudTranscriptionProvider={cloudTranscriptionProvider}
+              setCloudTranscriptionProvider={setCloudTranscriptionProvider}
+              cloudTranscriptionModel={cloudTranscriptionModel}
+              setCloudTranscriptionModel={setCloudTranscriptionModel}
+              localTranscriptionProvider={localTranscriptionProvider}
+              setLocalTranscriptionProvider={setLocalTranscriptionProvider}
+              whisperModel={whisperModel}
+              setWhisperModel={setWhisperModel}
+              parakeetModel={parakeetModel}
+              setParakeetModel={setParakeetModel}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              mistralApiKey={mistralApiKey}
+              setMistralApiKey={setMistralApiKey}
+              customTranscriptionApiKey={customTranscriptionApiKey}
+              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+              toast={toast}
+            />
+
+            {/* Live Transcription */}
+            <div className="mt-6 space-y-4">
+              <SectionHeader
+                title="Live Transcription"
+                description="Show real-time transcription text while recording. Text appears beside the microphone icon."
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <div className="text-[12px] font-medium text-foreground">Streaming Provider</div>
+                      <div className="text-[11px] text-muted-foreground mt-0.5">
+                        Choose which service provides live transcription
+                      </div>
+                    </div>
+                    <select
+                      value={streamingProvider}
+                      onChange={(e) => setStreamingProvider(e.target.value)}
+                      className="text-[12px] bg-background border border-border rounded-md px-2 py-1.5 text-foreground"
+                    >
+                      <option value="auto">Auto (OpenWhispr Cloud)</option>
+                      <option value="deepgram">Deepgram Nova-3</option>
+                      <option value="parakeet">Local (Parakeet)</option>
+                      <option value="openai-realtime">OpenAI Realtime</option>
+                      <option value="off">Disabled</option>
+                    </select>
+                  </div>
+                </SettingsPanelRow>
+
+                {streamingProvider === "deepgram" && (
+                  <SettingsPanelRow>
+                    <div className="space-y-2">
+                      <div className="text-[12px] font-medium text-foreground">Deepgram API Key</div>
+                      <Input
+                        type="password"
+                        placeholder="Enter your Deepgram API key"
+                        value={deepgramApiKey}
+                        onChange={(e) => setDeepgramApiKey(e.target.value)}
+                        className="text-[12px] h-8"
+                      />
+                      <p className="text-[10px] text-muted-foreground">
+                        Get your key at deepgram.com/dashboard. Nova-3 costs ~$0.0043/min.
+                      </p>
+                    </div>
+                  </SettingsPanelRow>
+                )}
+
+                {streamingProvider === "parakeet" && !useLocalWhisper && (
+                  <SettingsPanelRow>
+                    <p className="text-[11px] text-amber-500">
+                      Parakeet streaming requires local transcription mode to be enabled.
+                    </p>
+                  </SettingsPanelRow>
+                )}
+
+                {streamingProvider === "openai-realtime" && !openaiApiKey && (
+                  <SettingsPanelRow>
+                    <p className="text-[11px] text-amber-500">
+                      OpenAI Realtime requires an OpenAI API key (set above in Custom Setup).
+                    </p>
+                  </SettingsPanelRow>
+                )}
+              </SettingsPanel>
+            </div>
+          </>
         );
 
       case "dictionary":

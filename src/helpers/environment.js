@@ -16,6 +16,7 @@ const PERSISTED_KEYS = [
   "LOCAL_WHISPER_MODEL",
   "REASONING_PROVIDER",
   "LOCAL_REASONING_MODEL",
+  "DEEPGRAM_API_KEY",
   "DICTATION_KEY",
   "ACTIVATION_MODE",
   "FLOATING_ICON_AUTO_HIDE",
@@ -114,6 +115,14 @@ class EnvironmentManager {
 
   saveCustomReasoningKey(key) {
     return this._saveKey("CUSTOM_REASONING_API_KEY", key);
+  }
+
+  getDeepgramKey() {
+    return this._getKey("DEEPGRAM_API_KEY");
+  }
+
+  saveDeepgramKey(key) {
+    return this._saveKey("DEEPGRAM_API_KEY", key);
   }
 
   getDictationKey() {
