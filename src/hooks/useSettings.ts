@@ -203,13 +203,21 @@ function useSettingsInternal() {
   // Streaming provider: which backend to use for live transcription
   const [streamingProvider, setStreamingProvider] = useLocalStorage<string>(
     "streamingProvider",
-    "auto"
+    "auto",
+    {
+      serialize: String,
+      deserialize: String,
+    }
   );
 
   // Deepgram API key (stored in localStorage; persisted to .env via main process)
   const [deepgramApiKey, setDeepgramApiKeyRaw] = useLocalStorage<string>(
     "deepgramApiKey",
-    ""
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
   );
 
   // Wrap setter to sync dictionary to SQLite

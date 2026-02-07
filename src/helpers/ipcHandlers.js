@@ -1834,7 +1834,7 @@ class IPCHandlers {
     ipcMain.handle("parakeet-streaming-start", async () => {
       try {
         const status = this.parakeetManager?.serverManager?.wsServer?.getStatus?.();
-        if (!status?.ready) {
+        if (!status?.running) {
           return { success: false, error: "Parakeet server not running", code: "NO_SERVER" };
         }
 
