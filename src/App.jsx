@@ -128,6 +128,24 @@ export default function App() {
     }
   }, [isCommandMenuOpen, isHovered, toastCount, setWindowInteractivity]);
 
+  const handleDictationToggle = React.useCallback(() => {
+    setIsCommandMenuOpen(false);
+    setWindowInteractivity(false);
+  }, [setWindowInteractivity]);
+
+  const {
+    isRecording,
+    isProcessing,
+    isStreaming,
+    partialTranscript,
+    toggleListening,
+    cancelRecording,
+    cancelProcessing,
+    warmupStreaming,
+  } = useAudioRecording(toast, {
+    onToggle: handleDictationToggle,
+  });
+
   const showTranscript = isStreaming && !!partialTranscript;
 
   useEffect(() => {
@@ -146,24 +164,6 @@ export default function App() {
     };
     resizeWindow();
   }, [showTranscript, isCommandMenuOpen, toastCount]);
-
-  const handleDictationToggle = React.useCallback(() => {
-    setIsCommandMenuOpen(false);
-    setWindowInteractivity(false);
-  }, [setWindowInteractivity]);
-
-  const {
-    isRecording,
-    isProcessing,
-    isStreaming,
-    partialTranscript,
-    toggleListening,
-    cancelRecording,
-    cancelProcessing,
-    warmupStreaming,
-  } = useAudioRecording(toast, {
-    onToggle: handleDictationToggle,
-  });
 
   // Trigger streaming warmup when user signs in (covers first-time account creation)
   useEffect(() => {
