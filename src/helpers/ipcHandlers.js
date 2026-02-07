@@ -1005,10 +1005,22 @@ class IPCHandlers {
 
     // --- OpenWhispr Cloud API handlers ---
 
-    const getApiUrl = () =>
-      process.env.OPENWHISPR_API_URL || process.env.VITE_OPENWHISPR_API_URL || "";
+    // In production, VITE_* env vars aren't available in the main process because
+    // Vite only inlines them into the renderer bundle at build time. Load the
+    // runtime-env.json that the Vite build writes to src/dist/ as a fallback.
+    const runtimeEnv = (() => {
+      const fs = require("fs");
+      const envPath = path.join(__dirname, "..", "dist", "runtime-env.json");
+      try {
+        if (fs.existsSync(envPath)) return JSON.parse(fs.readFileSync(envPath, "utf8"));
+      } catch {}
+      return {};
+    })();
 
-    const getAuthUrl = () => process.env.NEON_AUTH_URL || process.env.VITE_NEON_AUTH_URL || "";
+    const getApiUrl = () =>
+      process.env.OPENWHISPR_API_URL || process.env.VITE_OPENWHISPR_API_URL || runtimeEnv.VITE_OPENWHISPR_API_URL || "";
+
+    const getAuthUrl = () => process.env.NEON_AUTH_URL || process.env.VITE_NEON_AUTH_URL || runtimeEnv.VITE_NEON_AUTH_URL || "";
 
     const getSessionCookies = async (event) => {
       const win = BrowserWindow.fromWebContents(event.sender);
