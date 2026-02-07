@@ -69,7 +69,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    
    **Method A - Environment file**:
    ```bash
-   cp env.example .env
+   cp .env.example .env
    # Edit .env and add your API keys:
    # OPENAI_API_KEY=your_openai_key
    # ANTHROPIC_API_KEY=your_anthropic_key
