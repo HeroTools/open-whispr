@@ -1,6 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { ChevronDown, Search, X, Check } from "lucide-react";
-import { LANGUAGE_OPTIONS, getLanguageLabel } from "../../utils/languages";
+import registry from "../../config/languageRegistry.json";
+
+const LANGUAGE_OPTIONS = registry.languages.map(({ code, label, flag }) => ({
+  value: code,
+  label,
+  flag,
+}));
 
 interface LanguageSelectorProps {
   value: string;
@@ -16,7 +23,9 @@ export default function LanguageSelector({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const filteredLanguages = LANGUAGE_OPTIONS.filter(
@@ -30,8 +39,19 @@ export default function LanguageSelector({
   }, [searchQuery]);
 
   useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      searchInputRef.current.focus();
+    if (isOpen) {
+      if (searchInputRef.current) {
+        searchInputRef.current.focus();
+      }
+      // Calculate dropdown position
+      if (triggerRef.current) {
+        const rect = triggerRef.current.getBoundingClientRect();
+        setDropdownPosition({
+          top: rect.bottom + 4, // 4px gap (mt-1)
+          left: rect.left,
+          width: rect.width,
+        });
+      }
     }
   }, [isOpen]);
   useEffect(() => {
@@ -92,79 +112,123 @@ export default function LanguageSelector({
 
   return (
     <div className={`relative ${className}`} ref={dropdownRef}>
+      {/* Trigger button - premium, tight, tactile macOS-style */}
       <button
+        ref={triggerRef}
         type="button"
         onClick={() => setIsOpen(!isOpen)}
         onKeyDown={handleKeyDown}
-        className={`w-full flex items-center justify-between px-3 py-2 border rounded-lg bg-white/5 dark:bg-white/3 text-left transition-all duration-200 ${
-          isOpen
-            ? "border-primary/50 ring-1 ring-primary/20 bg-white/8"
-            : "border-white/10 dark:border-white/5 hover:border-white/20 hover:bg-white/8"
-        }`}
+        className={`
+          group relative w-full flex items-center justify-between gap-2
+          h-9 px-3 text-left
+          rounded text-sm font-medium
+          border shadow-sm backdrop-blur-sm
+          transition-all duration-200 ease-out
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-1
+          ${
+            isOpen
+              ? "border-border-active bg-surface-2/90 shadow ring-1 ring-primary/20"
+              : "border-border/70 bg-surface-1/80 hover:border-border-hover hover:bg-surface-2/70 hover:shadow active:scale-[0.985]"
+          }
+        `}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
-        <span className="truncate text-sm text-foreground">{getLanguageLabel(value)}</span>
+        <span className="truncate text-foreground">
+          <span className="mr-1.5">
+            {LANGUAGE_OPTIONS.find((l) => l.value === value)?.flag ?? "\uD83C\uDF10"}
+          </span>
+          {LANGUAGE_OPTIONS.find((l) => l.value === value)?.label ?? value}
+        </span>
         <ChevronDown
-          className={`w-3.5 h-3.5 text-muted-foreground transition-transform duration-200 ${
-            isOpen ? "rotate-180" : ""
+          className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-all duration-200 ${
+            isOpen ? "rotate-180 text-primary" : "group-hover:text-foreground"
           }`}
         />
       </button>
 
-      {isOpen && (
-        <div className="absolute z-50 w-full mt-1.5 bg-popover/95 backdrop-blur-xl border border-white/10 dark:border-white/5 rounded-xl shadow-xl max-h-60 overflow-hidden">
-          <div className="p-2 border-b border-white/5">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Search..."
-                className="w-full pl-8 pr-7 py-1.5 text-sm bg-white/5 dark:bg-white/3 text-foreground border border-white/10 rounded-lg focus:border-primary/50 focus:ring-1 focus:ring-primary/20 focus:outline-none placeholder:text-muted-foreground/50"
-              />
-              {searchQuery && (
-                <button
-                  onClick={clearSearch}
-                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+      {/* Dropdown - ultra-premium glassmorphic panel (rendered via portal) */}
+      {isOpen &&
+        createPortal(
+          <div
+            ref={dropdownRef}
+            style={{
+              position: "fixed",
+              top: `${dropdownPosition.top}px`,
+              left: `${dropdownPosition.left}px`,
+              width: `${dropdownPosition.width}px`,
+            }}
+            className="z-9999 bg-popover/95 backdrop-blur-xl border border-border/70 rounded shadow-xl overflow-hidden"
+          >
+            {/* Inline search - minimal, borderless, integrated */}
+            <div className="px-2 pt-2 pb-1.5 border-b border-border/50">
+              <div className="relative">
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Search..."
+                  className="w-full h-7 pl-7 pr-6 text-xs bg-transparent text-foreground border-0 focus:outline-none placeholder:text-muted-foreground/50"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded p-0.5 hover:bg-muted/50"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Language list - tight, premium with smart scrollbar */}
+            <div className="max-h-48 overflow-y-auto px-1 pb-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
+              {filteredLanguages.length === 0 ? (
+                <div className="px-2.5 py-2 text-xs text-muted-foreground">No languages found</div>
+              ) : (
+                <div role="listbox" className="space-y-0.5 pt-1">
+                  {filteredLanguages.map((language, index) => {
+                    const isSelected = language.value === value;
+                    const isHighlighted = index === highlightedIndex;
+
+                    return (
+                      <button
+                        key={language.value}
+                        type="button"
+                        onClick={() => handleSelect(language.value)}
+                        className={`
+                          group w-full flex items-center justify-between gap-2
+                          h-7 px-2.5 text-left text-xs font-medium
+                          rounded transition-all duration-150 ease-out
+                          ${
+                            isSelected
+                              ? "bg-primary/15 text-primary shadow-sm"
+                              : isHighlighted
+                                ? "bg-muted/70 text-foreground"
+                                : "text-foreground hover:bg-muted/50 active:scale-[0.98]"
+                          }
+                        `}
+                        role="option"
+                        aria-selected={isSelected}
+                      >
+                        <span className="truncate">
+                          <span className="mr-1.5">{language.flag}</span>
+                          {language.label}
+                        </span>
+                        {isSelected && <Check className="w-3 h-3 shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
               )}
             </div>
-          </div>
-          <div className="max-h-44 overflow-y-auto">
-            {filteredLanguages.length === 0 ? (
-              <div className="px-3 py-2 text-sm text-muted-foreground">No languages found</div>
-            ) : (
-              <div role="listbox" className="p-1">
-                {filteredLanguages.map((language, index) => (
-                  <button
-                    key={language.value}
-                    type="button"
-                    onClick={() => handleSelect(language.value)}
-                    className={`w-full px-2.5 py-1.5 text-left text-sm rounded-md transition-colors ${
-                      language.value === value
-                        ? "bg-primary/15 text-primary font-medium"
-                        : "text-foreground hover:bg-white/5"
-                    } ${index === highlightedIndex && language.value !== value ? "bg-white/5" : ""}`}
-                    role="option"
-                    aria-selected={language.value === value}
-                  >
-                    <span className="flex items-center justify-between">
-                      {language.label}
-                      {language.value === value && <Check className="w-3.5 h-3.5" />}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }

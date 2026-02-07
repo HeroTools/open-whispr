@@ -1,6 +1,10 @@
 {
   "appId": "com.herotools.openwispr",
   "productName": "OpenWhispr",
+  "protocols": {
+    "name": "OpenWhispr Protocol",
+    "schemes": ["openwhispr"]
+  },
   "directories": {
     "output": "dist"
   },
@@ -85,6 +89,7 @@
     "src/assets/**/*",
     "resources/macos-globe-listener.swift",
     "resources/bin/macos-globe-listener",
+    "resources/bin/macos-fast-paste",
     {
       "from": "resources/bin/",
       "to": "bin/",

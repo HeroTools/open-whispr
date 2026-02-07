@@ -24,50 +24,45 @@ export default function PermissionCard({
   return (
     <div
       className={cn(
-        "group relative rounded-lg p-2.5 transition-all duration-150",
+        "group relative rounded-md p-3 transition-all duration-150",
         "border",
         granted
-          ? "bg-success/5 border-success/15 dark:bg-success/8 dark:border-success/20"
-          : "bg-surface-1 border-border-subtle hover:bg-surface-2 hover:border-border-hover"
+          ? "bg-success/5 border-success/20 dark:bg-success/5 dark:border-success/15"
+          : "bg-surface-1 border-border hover:bg-surface-2 hover:border-border-hover"
       )}
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-3">
         {/* Icon container */}
         <div
           className={cn(
-            "w-7 h-7 rounded-md flex items-center justify-center shrink-0 transition-colors",
-            granted ? "bg-success/10" : "bg-primary/8 dark:bg-primary/10"
+            "w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-all duration-150",
+            granted
+              ? "bg-success/10 dark:bg-success/15"
+              : "bg-primary/10 dark:bg-primary/15 group-hover:bg-primary/15"
           )}
         >
           {granted ? (
-            <Check className="w-3.5 h-3.5 text-success" strokeWidth={2.5} />
+            <Check className="w-4 h-4 text-success" strokeWidth={2.5} />
           ) : (
-            <Icon className="w-3.5 h-3.5 text-primary" />
+            <Icon className="w-4 h-4 text-primary" />
           )}
         </div>
 
         {/* Content */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-1.5">
-            <h3 className="text-[12px] font-medium text-foreground leading-tight">{title}</h3>
-            {granted && (
-              <span className="text-[9px] font-medium text-success/70 uppercase tracking-wider">
-                Granted
-              </span>
-            )}
-          </div>
-          <p className="text-[10px] text-muted-foreground/80 leading-snug mt-0.5">{description}</p>
+          <h3 className="text-xs font-medium text-foreground">{title}</h3>
+          <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{description}</p>
         </div>
 
         {/* Actions - only when not granted */}
         {!granted && (
-          <div className="flex items-center gap-1 shrink-0">
-            <Button onClick={onRequest} size="sm" className="h-6 px-2.5 text-[10px]">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Button onClick={onRequest} size="sm" className="h-7 px-3 text-[11px]">
               {buttonText}
             </Button>
             {onOpenSettings && (
-              <Button onClick={onOpenSettings} size="sm" variant="outline" className="h-6 w-6 p-0">
-                <Settings className="w-3 h-3 text-foreground" />
+              <Button onClick={onOpenSettings} size="sm" variant="ghost" className="h-7 w-7 p-0">
+                <Settings className="w-3.5 h-3.5" />
               </Button>
             )}
           </div>

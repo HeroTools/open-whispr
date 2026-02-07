@@ -76,25 +76,27 @@ function LocalModelCard({
   return (
     <div
       onClick={handleClick}
-      className={`relative w-full text-left overflow-hidden rounded-lg border transition-all duration-200 group ${isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
-        } ${isDownloaded && !isSelected ? "cursor-pointer" : ""}`}
+      className={`relative w-full text-left overflow-hidden rounded-md border transition-all duration-200 group ${
+        isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
+      } ${isDownloaded && !isSelected ? "cursor-pointer" : ""}`}
     >
       {/* Left accent bar for selected model */}
       {isSelected && (
-        <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-primary rounded-l-lg" />
+        <div className="absolute left-0 top-0 bottom-0 w-1 bg-linear-to-b from-primary via-primary to-primary/80 rounded-l-md" />
       )}
-      <div className="flex items-center gap-2 p-2.5 pl-3">
+      <div className="flex items-center gap-1.5 p-2 pl-2.5">
         {/* Status dot with LED glow */}
         <div className="shrink-0">
           {isDownloaded ? (
             <div
-              className={`w-1.5 h-1.5 rounded-full ${isSelected
-                  ? "bg-primary shadow-[0_0_6px_oklch(0.62_0.22_260/0.6)]"
+              className={`w-1.5 h-1.5 rounded-full ${
+                isSelected
+                  ? "bg-primary shadow-[0_0_6px_oklch(0.62_0.22_260/0.6)] animate-[pulse-glow_2s_ease-in-out_infinite]"
                   : "bg-success shadow-[0_0_4px_rgba(34,197,94,0.5)]"
                 }`}
             />
           ) : isDownloading ? (
-            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)]" />
+            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.5)] animate-[spinner-rotate_1s_linear_infinite]" />
           ) : (
             <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/20" />
           )}
@@ -103,13 +105,15 @@ function LocalModelCard({
         {/* Model info - single line, no description */}
         <div className="flex-1 min-w-0 flex items-center gap-1.5">
           <ProviderIcon provider={provider} className="w-3.5 h-3.5 shrink-0" />
-          <span className="font-medium text-sm text-foreground truncate">{name}</span>
-          <span className="text-[10px] text-muted-foreground/60 tabular-nums shrink-0">
+          <span className="font-semibold text-sm text-foreground truncate tracking-tight">
+            {name}
+          </span>
+          <span className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0">
             {actualSizeMb ? `${actualSizeMb}MB` : size}
           </span>
           {recommended && <span className={cardStyles.badges.recommended}>Recommended</span>}
           {languageLabel && (
-            <span className="text-[10px] text-muted-foreground/50 font-medium shrink-0">
+            <span className="text-[11px] text-muted-foreground/50 font-medium shrink-0">
               {languageLabel}
             </span>
           )}
@@ -131,7 +135,7 @@ function LocalModelCard({
                 }}
                 size="sm"
                 variant="ghost"
-                className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all active:scale-95"
               >
                 <Trash2 size={12} />
               </Button>
@@ -217,24 +221,27 @@ interface ModeToggleProps {
 
 function ModeToggle({ useLocalWhisper, onModeChange }: ModeToggleProps) {
   return (
-    <div className="relative flex p-0.5 rounded-lg bg-surface-raised dark:bg-surface-1 border border-border dark:border-border-subtle">
+    <div className="relative flex p-0.5 rounded-lg bg-surface-1/80 backdrop-blur-xl dark:bg-surface-1 border border-border/60 dark:border-white/8 shadow-(--shadow-metallic-light) dark:shadow-(--shadow-metallic-dark)">
       {/* Sliding indicator */}
       <div
-        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-card border border-border dark:border-border-subtle shadow-sm dark:shadow-(--shadow-card) transition-transform duration-200 ease-out ${useLocalWhisper ? "translate-x-[calc(100%+4px)]" : "translate-x-0"
-          }`}
+        className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-card border border-border/60 dark:border-border-subtle shadow-(--shadow-metallic-light) dark:shadow-(--shadow-metallic-dark) transition-transform duration-200 ease-out ${
+          useLocalWhisper ? "translate-x-[calc(100%)]" : "translate-x-0"
+        }`}
       />
       <button
         onClick={() => onModeChange(false)}
-        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${!useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-          }`}
+        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md transition-colors duration-150 ${
+          !useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+        }`}
       >
         <Cloud className="w-3.5 h-3.5" />
         <span className="text-xs font-medium">Cloud</span>
       </button>
       <button
         onClick={() => onModeChange(true)}
-        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md transition-colors duration-150 ${useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
-          }`}
+        className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md transition-colors duration-150 ${
+          useLocalWhisper ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+        }`}
       >
         <Lock className="w-3.5 h-3.5" />
         <span className="text-xs font-medium">Local</span>
@@ -633,7 +640,7 @@ export default function TranscriptionModelPicker({
         : localModels;
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {modelsToRender.map((model) => {
           const modelId = model.model;
           const info = WHISPER_MODEL_INFO[modelId] || {
@@ -705,7 +712,7 @@ export default function TranscriptionModelPicker({
         : parakeetModels;
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         {modelsToRender.map((model) => {
           const modelId = model.model;
           const info = PARAKEET_MODEL_INFO[modelId] || {
@@ -743,13 +750,13 @@ export default function TranscriptionModelPicker({
   };
 
   return (
-    <div className={`space-y-3 ${className}`}>
+    <div className={`space-y-2 ${className}`}>
       {/* Integrated mode toggle - always visible */}
       <ModeToggle useLocalWhisper={useLocalWhisper} onModeChange={handleModeChange} />
 
       {!useLocalWhisper ? (
         <div className={styles.container}>
-          <div className="p-2.5 pb-0">
+          <div className="p-2 pb-0">
             <ProviderTabs
               providers={CLOUD_PROVIDER_TABS}
               selectedId={selectedCloudProvider}
@@ -759,9 +766,9 @@ export default function TranscriptionModelPicker({
             />
           </div>
 
-          <div className="p-3">
+          <div className="p-2">
             {selectedCloudProvider === "custom" ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {/* Endpoint URL */}
                 <div className="space-y-1.5">
                   <label className="block text-xs font-medium text-foreground">Endpoint URL</label>
@@ -794,7 +801,7 @@ export default function TranscriptionModelPicker({
                 </div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {/* API Key with inline link */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -849,7 +856,7 @@ export default function TranscriptionModelPicker({
         </div>
       ) : (
         <div className={styles.container}>
-          <div className="p-2.5 pb-0">
+          <div className="p-2 pb-0">
             <ProviderTabs
               providers={LOCAL_PROVIDER_TABS}
               selectedId={internalLocalProvider}
@@ -860,7 +867,7 @@ export default function TranscriptionModelPicker({
 
           {progressDisplay}
 
-          <div className="p-3">
+          <div className="p-2">
             {internalLocalProvider === "whisper" && renderLocalModels()}
             {internalLocalProvider === "nvidia" && renderParakeetModels()}
           </div>

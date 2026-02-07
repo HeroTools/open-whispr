@@ -492,8 +492,8 @@ export default function ReasoningModelSelector({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between p-4 bg-card border border-border rounded-xl">
+    <div className="space-y-4">
+      <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
         <div>
           <label className="text-sm font-medium text-foreground">Enable AI Text Enhancement</label>
           <p className="text-xs text-muted-foreground">
@@ -516,7 +516,7 @@ export default function ReasoningModelSelector({
 
       {useReasoningModel && (
         <>
-          <div className="space-y-3">
+          <div className="space-y-2">
             <ProviderTabs
               providers={MODE_TABS}
               selectedId={selectedMode}
@@ -532,8 +532,8 @@ export default function ReasoningModelSelector({
           </div>
 
           {selectedMode === "cloud" ? (
-            <div className="space-y-4">
-              <div className="border border-border rounded-xl overflow-hidden">
+            <div className="space-y-2">
+              <div className="border border-border rounded-lg overflow-hidden">
                 <ProviderTabs
                   providers={cloudProviders}
                   selectedId={selectedCloudProvider}
@@ -541,11 +541,11 @@ export default function ReasoningModelSelector({
                   colorScheme="indigo"
                 />
 
-                <div className="p-4">
+                <div className="p-3">
                   {selectedCloudProvider === "custom" ? (
                     <>
                       {/* 1. Endpoint URL - TOP */}
-                      <div className="space-y-3">
+                      <div className="space-y-2">
                         <h4 className="font-medium text-foreground">Endpoint URL</h4>
                         <Input
                           value={customBaseInput}
@@ -562,7 +562,7 @@ export default function ReasoningModelSelector({
                       </div>
 
                       {/* 2. API Key - SECOND */}
-                      <div className="space-y-3 pt-4">
+                      <div className="space-y-2 pt-3">
                         <h4 className="font-medium text-foreground">API Key (Optional)</h4>
                         <ApiKeyInput
                           apiKey={customReasoningApiKey}
@@ -573,7 +573,7 @@ export default function ReasoningModelSelector({
                       </div>
 
                       {/* 3. Model Selection - THIRD */}
-                      <div className="space-y-3 pt-4">
+                      <div className="space-y-2 pt-3">
                         <div className="flex items-center justify-between">
                           <h4 className="text-sm font-medium text-foreground">Available Models</h4>
                           <div className="flex gap-2">
@@ -654,7 +654,7 @@ export default function ReasoningModelSelector({
                     <>
                       {/* 1. API Key - TOP */}
                       {selectedCloudProvider === "openai" && (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           <div className="flex items-baseline justify-between">
                             <h4 className="font-medium text-foreground">API Key</h4>
                             <a
@@ -664,7 +664,7 @@ export default function ReasoningModelSelector({
                               onClick={createExternalLinkHandler(
                                 "https://platform.openai.com/api-keys"
                               )}
-                              className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
                               Get your API key →
                             </a>
@@ -679,7 +679,7 @@ export default function ReasoningModelSelector({
                       )}
 
                       {selectedCloudProvider === "anthropic" && (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           <div className="flex items-baseline justify-between">
                             <h4 className="font-medium text-foreground">API Key</h4>
                             <a
@@ -689,7 +689,7 @@ export default function ReasoningModelSelector({
                               onClick={createExternalLinkHandler(
                                 "https://console.anthropic.com/settings/keys"
                               )}
-                              className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
                               Get your API key →
                             </a>
@@ -705,7 +705,7 @@ export default function ReasoningModelSelector({
                       )}
 
                       {selectedCloudProvider === "gemini" && (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           <div className="flex items-baseline justify-between">
                             <h4 className="font-medium text-foreground">API Key</h4>
                             <a
@@ -715,7 +715,7 @@ export default function ReasoningModelSelector({
                               onClick={createExternalLinkHandler(
                                 "https://aistudio.google.com/app/api-keys"
                               )}
-                              className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
                               Get your API key →
                             </a>
@@ -731,7 +731,7 @@ export default function ReasoningModelSelector({
                       )}
 
                       {selectedCloudProvider === "groq" && (
-                        <div className="space-y-3">
+                        <div className="space-y-2">
                           <div className="flex items-baseline justify-between">
                             <h4 className="font-medium text-foreground">API Key</h4>
                             <a
@@ -739,7 +739,7 @@ export default function ReasoningModelSelector({
                               target="_blank"
                               rel="noopener noreferrer"
                               onClick={createExternalLinkHandler("https://console.groq.com/keys")}
-                              className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
                               Get your API key →
                             </a>
@@ -755,7 +755,7 @@ export default function ReasoningModelSelector({
                       )}
 
                       {/* 2. Model Selection - BOTTOM */}
-                      <div className="pt-4 space-y-3">
+                      <div className="pt-3 space-y-2">
                         <h4 className="text-sm font-medium text-foreground">Select Model</h4>
                         <ModelCardList
                           models={selectedCloudModels}

@@ -2,7 +2,24 @@ import React, { useState, useCallback, useEffect, useRef, useMemo } from "react"
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { RefreshCw, Download, Mic, Shield, FolderOpen, Sun, Moon, Monitor } from "lucide-react";
+import {
+  RefreshCw,
+  Download,
+  Command,
+  Mic,
+  Shield,
+  FolderOpen,
+  LogOut,
+  UserCircle,
+  Sun,
+  Moon,
+  Monitor,
+  Cloud,
+  Key,
+  Sparkles,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -22,14 +39,23 @@ import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
 
 import { HotkeyInput } from "./ui/HotkeyInput";
+import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { getValidationMessage } from "../utils/hotkeyValidator";
+import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
+import { Skeleton } from "./ui/skeleton";
+import { Progress } from "./ui/progress";
+import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
 import { SettingsRow } from "./ui/SettingsSection";
+import { useUsage } from "../hooks/useUsage";
+import { cn } from "./lib/utils";
 
 export type SettingsSectionType =
+  | "account"
   | "general"
   | "transcription"
   | "dictionary"
@@ -37,6 +63,7 @@ export type SettingsSectionType =
   | "agentConfig"
   | "prompts"
   | "permissions"
+  | "privacy"
   | "developer";
 
 interface SettingsPageProps {
@@ -77,6 +104,477 @@ function SectionHeader({ title, description }: { title: string; description?: st
       <h3 className="text-[13px] font-semibold text-foreground tracking-tight">{title}</h3>
       {description && (
         <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+      )}
+    </div>
+  );
+}
+
+// ── Transcription section (extracted for clarity) ───────────────────
+
+interface TranscriptionSectionProps {
+  isSignedIn: boolean;
+  cloudTranscriptionMode: string;
+  setCloudTranscriptionMode: (mode: string) => void;
+  useLocalWhisper: boolean;
+  setUseLocalWhisper: (value: boolean) => void;
+  updateTranscriptionSettings: (settings: { useLocalWhisper: boolean }) => void;
+  cloudTranscriptionProvider: string;
+  setCloudTranscriptionProvider: (provider: string) => void;
+  cloudTranscriptionModel: string;
+  setCloudTranscriptionModel: (model: string) => void;
+  localTranscriptionProvider: string;
+  setLocalTranscriptionProvider: (provider: string) => void;
+  whisperModel: string;
+  setWhisperModel: (model: string) => void;
+  parakeetModel: string;
+  setParakeetModel: (model: string) => void;
+  openaiApiKey: string;
+  setOpenaiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
+  mistralApiKey: string;
+  setMistralApiKey: (key: string) => void;
+  customTranscriptionApiKey: string;
+  setCustomTranscriptionApiKey: (key: string) => void;
+  cloudTranscriptionBaseUrl?: string;
+  setCloudTranscriptionBaseUrl: (url: string) => void;
+  toast: (opts: {
+    title: string;
+    description: string;
+    variant?: string;
+    duration?: number;
+  }) => void;
+}
+
+function TranscriptionSection({
+  isSignedIn,
+  cloudTranscriptionMode,
+  setCloudTranscriptionMode,
+  useLocalWhisper,
+  setUseLocalWhisper,
+  updateTranscriptionSettings,
+  cloudTranscriptionProvider,
+  setCloudTranscriptionProvider,
+  cloudTranscriptionModel,
+  setCloudTranscriptionModel,
+  localTranscriptionProvider,
+  setLocalTranscriptionProvider,
+  whisperModel,
+  setWhisperModel,
+  parakeetModel,
+  setParakeetModel,
+  openaiApiKey,
+  setOpenaiApiKey,
+  groqApiKey,
+  setGroqApiKey,
+  mistralApiKey,
+  setMistralApiKey,
+  customTranscriptionApiKey,
+  setCustomTranscriptionApiKey,
+  cloudTranscriptionBaseUrl,
+  setCloudTranscriptionBaseUrl,
+  toast,
+}: TranscriptionSectionProps) {
+  const isCustomMode = cloudTranscriptionMode === "byok" || useLocalWhisper;
+  const isCloudMode = isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="Speech to Text"
+        description="Choose how OpenWhispr transcribes your voice"
+      />
+
+      {/* Mode selector */}
+      {isSignedIn && (
+        <SettingsPanel>
+          <SettingsPanelRow>
+            <button
+              onClick={() => {
+                if (!isCloudMode) {
+                  setCloudTranscriptionMode("openwhispr");
+                  setUseLocalWhisper(false);
+                  updateTranscriptionSettings({ useLocalWhisper: false });
+                  toast({
+                    title: "Switched to OpenWhispr Cloud",
+                    description: "Transcription will use OpenWhispr's cloud service.",
+                    variant: "success",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  isCloudMode
+                    ? "bg-primary/10 dark:bg-primary/15"
+                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                }`}
+              >
+                <Cloud
+                  className={`w-4 h-4 transition-colors ${
+                    isCloudMode ? "text-primary" : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-foreground">OpenWhispr Cloud</span>
+                  {isCloudMode && (
+                    <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  Just works. No configuration needed.
+                </p>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                  isCloudMode
+                    ? "border-primary bg-primary"
+                    : "border-border-hover dark:border-border-subtle"
+                }`}
+              >
+                {isCloudMode && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                  </div>
+                )}
+              </div>
+            </button>
+          </SettingsPanelRow>
+          <SettingsPanelRow>
+            <button
+              onClick={() => {
+                if (!isCustomMode) {
+                  setCloudTranscriptionMode("byok");
+                  setUseLocalWhisper(false);
+                  updateTranscriptionSettings({ useLocalWhisper: false });
+                  toast({
+                    title: "Switched to Custom Setup",
+                    description: "Configure your own provider and API key.",
+                    variant: "success",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  isCustomMode
+                    ? "bg-accent/10 dark:bg-accent/15"
+                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                }`}
+              >
+                <Key
+                  className={`w-4 h-4 transition-colors ${
+                    isCustomMode ? "text-accent" : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-foreground">Custom Setup</span>
+                  {isCustomMode && (
+                    <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  Use your own provider and API key.
+                </p>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                  isCustomMode
+                    ? "border-accent bg-accent"
+                    : "border-border-hover dark:border-border-subtle"
+                }`}
+              >
+                {isCustomMode && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                  </div>
+                )}
+              </div>
+            </button>
+          </SettingsPanelRow>
+        </SettingsPanel>
+      )}
+
+      {/* Custom Setup model picker — shown when Custom Setup is active or not signed in */}
+      {(isCustomMode || !isSignedIn) && (
+        <TranscriptionModelPicker
+          selectedCloudProvider={cloudTranscriptionProvider}
+          onCloudProviderSelect={setCloudTranscriptionProvider}
+          selectedCloudModel={cloudTranscriptionModel}
+          onCloudModelSelect={setCloudTranscriptionModel}
+          selectedLocalModel={
+            localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+          }
+          onLocalModelSelect={(modelId) => {
+            if (localTranscriptionProvider === "nvidia") {
+              setParakeetModel(modelId);
+            } else {
+              setWhisperModel(modelId);
+            }
+          }}
+          selectedLocalProvider={localTranscriptionProvider}
+          onLocalProviderSelect={setLocalTranscriptionProvider}
+          useLocalWhisper={useLocalWhisper}
+          onModeChange={(isLocal) => {
+            setUseLocalWhisper(isLocal);
+            updateTranscriptionSettings({ useLocalWhisper: isLocal });
+            if (isLocal) {
+              setCloudTranscriptionMode("byok");
+            }
+          }}
+          openaiApiKey={openaiApiKey}
+          setOpenaiApiKey={setOpenaiApiKey}
+          groqApiKey={groqApiKey}
+          setGroqApiKey={setGroqApiKey}
+          mistralApiKey={mistralApiKey}
+          setMistralApiKey={setMistralApiKey}
+          customTranscriptionApiKey={customTranscriptionApiKey}
+          setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+          cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+          setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+          variant="settings"
+        />
+      )}
+    </div>
+  );
+}
+
+// ── AI Models section (extracted for clarity) ───────────────────────
+
+interface AiModelsSectionProps {
+  isSignedIn: boolean;
+  cloudReasoningMode: string;
+  setCloudReasoningMode: (mode: string) => void;
+  useReasoningModel: boolean;
+  setUseReasoningModel: (value: boolean) => void;
+  reasoningModel: string;
+  setReasoningModel: (model: string) => void;
+  reasoningProvider: string;
+  setReasoningProvider: (provider: string) => void;
+  cloudReasoningBaseUrl: string;
+  setCloudReasoningBaseUrl: (url: string) => void;
+  openaiApiKey: string;
+  setOpenaiApiKey: (key: string) => void;
+  anthropicApiKey: string;
+  setAnthropicApiKey: (key: string) => void;
+  geminiApiKey: string;
+  setGeminiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
+  customReasoningApiKey: string;
+  setCustomReasoningApiKey: (key: string) => void;
+  showAlertDialog: (dialog: { title: string; description: string }) => void;
+  toast: (opts: {
+    title: string;
+    description: string;
+    variant?: string;
+    duration?: number;
+  }) => void;
+}
+
+function AiModelsSection({
+  isSignedIn,
+  cloudReasoningMode,
+  setCloudReasoningMode,
+  useReasoningModel,
+  setUseReasoningModel,
+  reasoningModel,
+  setReasoningModel,
+  reasoningProvider,
+  setReasoningProvider,
+  cloudReasoningBaseUrl,
+  setCloudReasoningBaseUrl,
+  openaiApiKey,
+  setOpenaiApiKey,
+  anthropicApiKey,
+  setAnthropicApiKey,
+  geminiApiKey,
+  setGeminiApiKey,
+  groqApiKey,
+  setGroqApiKey,
+  customReasoningApiKey,
+  setCustomReasoningApiKey,
+  showAlertDialog,
+  toast,
+}: AiModelsSectionProps) {
+  const isCustomMode = cloudReasoningMode === "byok";
+  const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="AI Text Enhancement"
+        description="Clean up transcriptions, handle commands, and fix errors while preserving your tone."
+      />
+
+      {/* Enable toggle — always at top */}
+      <SettingsPanel>
+        <SettingsPanelRow>
+          <SettingsRow label="Enable text cleanup" description="AI improves transcription quality">
+            <Toggle checked={useReasoningModel} onChange={setUseReasoningModel} />
+          </SettingsRow>
+        </SettingsPanelRow>
+      </SettingsPanel>
+
+      {useReasoningModel && (
+        <>
+          {/* Mode selector */}
+          {isSignedIn && (
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCloudMode) {
+                      setCloudReasoningMode("openwhispr");
+                      toast({
+                        title: "Switched to OpenWhispr Cloud",
+                        description: "AI text enhancement will use OpenWhispr's cloud service.",
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "bg-primary/10 dark:bg-primary/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Cloud
+                      className={`w-4 h-4 transition-colors ${
+                        isCloudMode ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-medium text-foreground">
+                        OpenWhispr Cloud
+                      </span>
+                      {isCloudMode && (
+                        <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      Just works. No configuration needed.
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "border-primary bg-primary"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCloudMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCustomMode) {
+                      setCloudReasoningMode("byok");
+                      toast({
+                        title: "Switched to Custom Setup",
+                        description: "Configure your own provider and API key.",
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "bg-accent/10 dark:bg-accent/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Key
+                      className={`w-4 h-4 transition-colors ${
+                        isCustomMode ? "text-accent" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-medium text-foreground">Custom Setup</span>
+                      {isCustomMode && (
+                        <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      Use your own provider and API key.
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "border-accent bg-accent"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCustomMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+            </SettingsPanel>
+          )}
+
+          {/* Custom Setup model picker — shown when Custom Setup is active or not signed in */}
+          {(isCustomMode || !isSignedIn) && (
+            <ReasoningModelSelector
+              useReasoningModel={useReasoningModel}
+              setUseReasoningModel={setUseReasoningModel}
+              reasoningModel={reasoningModel}
+              setReasoningModel={setReasoningModel}
+              localReasoningProvider={reasoningProvider}
+              setLocalReasoningProvider={setReasoningProvider}
+              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              anthropicApiKey={anthropicApiKey}
+              setAnthropicApiKey={setAnthropicApiKey}
+              geminiApiKey={geminiApiKey}
+              setGeminiApiKey={setGeminiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              customReasoningApiKey={customReasoningApiKey}
+              setCustomReasoningApiKey={setCustomReasoningApiKey}
+              showAlertDialog={showAlertDialog}
+            />
+          )}
+        </>
       )}
     </div>
   );
@@ -143,7 +641,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
+    cloudTranscriptionMode,
+    setCloudTranscriptionMode,
+    cloudReasoningMode,
+    setCloudReasoningMode,
+    cloudBackupEnabled,
+    setCloudBackupEnabled,
+    telemetryEnabled,
+    setTelemetryEnabled,
   } = useSettings();
+
+  const { toast } = useToast();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [isRemovingModels, setIsRemovingModels] = useState(false);
@@ -174,6 +682,19 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
   const { theme, setTheme } = useTheme();
+  const usage = useUsage();
+  const hasShownApproachingToast = useRef(false);
+  useEffect(() => {
+    if (usage?.isApproachingLimit && !hasShownApproachingToast.current) {
+      hasShownApproachingToast.current = true;
+      toast({
+        title: "Approaching Weekly Limit",
+        description: `You've used ${usage.wordsUsed.toLocaleString()} of ${usage.limit.toLocaleString()} free words this week.`,
+        duration: 6000,
+      });
+    }
+  }, [usage?.isApproachingLimit, usage?.wordsUsed, usage?.limit, toast]);
+
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
@@ -184,6 +705,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showErrorToast: true,
     showAlert: showAlertDialog,
   });
+
+  const validateHotkeyForInput = useCallback(
+    (hotkey: string) => getValidationMessage(hotkey, getPlatform()),
+    []
+  );
 
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
@@ -375,8 +901,271 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     });
   }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog]);
 
+  const { isSignedIn, isLoaded, user } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = useCallback(async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      // Clear onboarding to show auth screen again
+      localStorage.removeItem("onboardingCompleted");
+      localStorage.removeItem("onboardingCurrentStep");
+      // Reload the app to show onboarding/auth
+      window.location.reload();
+    } catch (error) {
+      console.error("Sign out failed:", error);
+      showAlertDialog({
+        title: "Sign Out Failed",
+        description: "Unable to sign out. Please try again.",
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [showAlertDialog]);
+
   const renderSectionContent = () => {
     switch (activeSection) {
+      case "account":
+        return (
+          <div className="space-y-5">
+            {!NEON_AUTH_URL ? (
+              <>
+                <SectionHeader title="Account" description="Authentication is not configured" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Account Features Disabled"
+                      description="Set VITE_NEON_AUTH_URL in your .env file to enable account features."
+                    >
+                      <Badge variant="warning">Disabled</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            ) : isLoaded && isSignedIn && user ? (
+              <>
+                <SectionHeader title="Account" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden bg-primary/10 dark:bg-primary/15">
+                        {user.image ? (
+                          <img
+                            src={user.image}
+                            alt={user.name || "User"}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserCircle className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-medium text-foreground truncate">
+                          {user.name || "User"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <Badge variant="success">Signed in</Badge>
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+
+                <SectionHeader title="Plan" />
+                {!usage || !usage.hasLoaded ? (
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                    </SettingsPanelRow>
+                    <SettingsPanelRow>
+                      <div className="space-y-2">
+                        <Skeleton className="h-3 w-48" />
+                        <Skeleton className="h-8 w-full rounded" />
+                      </div>
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                ) : (
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <SettingsRow
+                        label={usage.isSubscribed ? (usage.isTrial ? "Trial" : "Pro") : "Free"}
+                        description={
+                          usage.isTrial
+                            ? `${usage.trialDaysLeft} ${usage.trialDaysLeft === 1 ? "day" : "days"} remaining \u2014 unlimited transcriptions`
+                            : usage.isSubscribed
+                              ? usage.currentPeriodEnd
+                                ? `Next billing: ${new Date(usage.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                                : "Unlimited transcriptions"
+                              : `${usage.wordsUsed.toLocaleString()} / ${usage.limit.toLocaleString()} words this week`
+                        }
+                      >
+                        {usage.isTrial ? (
+                          <Badge variant="info">Trial</Badge>
+                        ) : usage.isSubscribed ? (
+                          <Badge variant="success">Pro</Badge>
+                        ) : usage.isOverLimit ? (
+                          <Badge variant="warning">Limit reached</Badge>
+                        ) : (
+                          <Badge variant="outline">Free</Badge>
+                        )}
+                      </SettingsRow>
+                    </SettingsPanelRow>
+
+                    {!usage.isSubscribed && !usage.isTrial && (
+                      <SettingsPanelRow>
+                        <div className="space-y-1.5">
+                          <Progress
+                            value={
+                              usage.limit > 0
+                                ? Math.min(100, (usage.wordsUsed / usage.limit) * 100)
+                                : 0
+                            }
+                            className={cn(
+                              "h-1.5",
+                              usage.isOverLimit
+                                ? "[&>div]:bg-destructive"
+                                : usage.isApproachingLimit
+                                  ? "[&>div]:bg-warning"
+                                  : "[&>div]:bg-primary"
+                            )}
+                          />
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span className="tabular-nums">
+                              {usage.wordsUsed.toLocaleString()} / {usage.limit.toLocaleString()}
+                            </span>
+                            {usage.isApproachingLimit && (
+                              <span className="text-warning">
+                                {usage.wordsRemaining.toLocaleString()} remaining
+                              </span>
+                            )}
+                            {!usage.isApproachingLimit && !usage.isOverLimit && (
+                              <span>Rolling weekly limit</span>
+                            )}
+                          </div>
+                        </div>
+                      </SettingsPanelRow>
+                    )}
+
+                    <SettingsPanelRow>
+                      {usage.isSubscribed && !usage.isTrial ? (
+                        <Button
+                          onClick={async () => {
+                            const result = await usage.openBillingPortal();
+                            if (!result.success) {
+                              toast({
+                                title: "Couldn't open billing",
+                                description: result.error,
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
+                          Manage Billing
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={async () => {
+                            const result = await usage.openCheckout();
+                            if (!result.success) {
+                              toast({
+                                title: "Couldn't open checkout",
+                                description: result.error,
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          size="sm"
+                          className="w-full"
+                        >
+                          Upgrade to Pro
+                        </Button>
+                      )}
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                )}
+
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <Button
+                      onClick={handleSignOut}
+                      variant="outline"
+                      disabled={isSigningOut}
+                      size="sm"
+                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
+                    >
+                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                      {isSigningOut ? "Signing out..." : "Sign Out"}
+                    </Button>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            ) : isLoaded ? (
+              <>
+                <SectionHeader title="Account" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Not Signed In"
+                      description="Create an account to unlock premium features."
+                    >
+                      <Badge variant="outline">Offline</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+
+                <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/3 dark:bg-primary/6 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div>
+                        <p className="text-[13px] font-medium text-foreground">
+                          Try Pro free for 7 days
+                        </p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                          Unlimited transcriptions, priority processing, and more.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          localStorage.setItem("pendingCloudMigration", "true");
+                          localStorage.removeItem("onboardingCompleted");
+                          localStorage.setItem("onboardingCurrentStep", "0");
+                          window.location.reload();
+                        }}
+                        size="sm"
+                        className="w-full"
+                      >
+                        <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                        Create Free Account
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <SectionHeader title="Account" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            )}
+          </div>
+        );
+
       // ───────────────────────────────────────────────────
       // GENERAL — Updates, Appearance, Hotkey, Startup, Mic
       // ───────────────────────────────────────────────────
@@ -590,6 +1379,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       await registerHotkey(newHotkey);
                     }}
                     disabled={isHotkeyRegistering}
+                    validate={validateHotkeyForInput}
                   />
                 </SettingsPanelRow>
 
@@ -650,47 +1440,35 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "transcription":
         return (
-          <div className="space-y-5">
-            <SectionHeader
-              title="Speech to Text"
-              description="Choose a cloud provider for fast transcription or use local Whisper models for complete privacy"
-            />
-
-            <TranscriptionModelPicker
-              selectedCloudProvider={cloudTranscriptionProvider}
-              onCloudProviderSelect={setCloudTranscriptionProvider}
-              selectedCloudModel={cloudTranscriptionModel}
-              onCloudModelSelect={setCloudTranscriptionModel}
-              selectedLocalModel={
-                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
-              }
-              onLocalModelSelect={(modelId) => {
-                if (localTranscriptionProvider === "nvidia") {
-                  setParakeetModel(modelId);
-                } else {
-                  setWhisperModel(modelId);
-                }
-              }}
-              selectedLocalProvider={localTranscriptionProvider}
-              onLocalProviderSelect={setLocalTranscriptionProvider}
-              useLocalWhisper={useLocalWhisper}
-              onModeChange={(isLocal) => {
-                setUseLocalWhisper(isLocal);
-                updateTranscriptionSettings({ useLocalWhisper: isLocal });
-              }}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
-              mistralApiKey={mistralApiKey}
-              setMistralApiKey={setMistralApiKey}
-              customTranscriptionApiKey={customTranscriptionApiKey}
-              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
-              variant="settings"
-            />
-          </div>
+          <TranscriptionSection
+            isSignedIn={isSignedIn ?? false}
+            cloudTranscriptionMode={cloudTranscriptionMode}
+            setCloudTranscriptionMode={setCloudTranscriptionMode}
+            useLocalWhisper={useLocalWhisper}
+            setUseLocalWhisper={setUseLocalWhisper}
+            updateTranscriptionSettings={updateTranscriptionSettings}
+            cloudTranscriptionProvider={cloudTranscriptionProvider}
+            setCloudTranscriptionProvider={setCloudTranscriptionProvider}
+            cloudTranscriptionModel={cloudTranscriptionModel}
+            setCloudTranscriptionModel={setCloudTranscriptionModel}
+            localTranscriptionProvider={localTranscriptionProvider}
+            setLocalTranscriptionProvider={setLocalTranscriptionProvider}
+            whisperModel={whisperModel}
+            setWhisperModel={setWhisperModel}
+            parakeetModel={parakeetModel}
+            setParakeetModel={setParakeetModel}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            mistralApiKey={mistralApiKey}
+            setMistralApiKey={setMistralApiKey}
+            customTranscriptionApiKey={customTranscriptionApiKey}
+            setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+            cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+            setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+            toast={toast}
+          />
         );
 
       // ───────────────────────────────────────────────────
@@ -836,37 +1614,34 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // ───────────────────────────────────────────────────
       case "aiModels":
         return (
-          <div className="space-y-5">
-            <SectionHeader
-              title="AI Text Enhancement"
-              description='Configure how AI models clean up and format your transcriptions. Handles commands like "scratch that", creates proper lists, and fixes errors while preserving your natural tone.'
-            />
-
-            <ReasoningModelSelector
-              useReasoningModel={useReasoningModel}
-              setUseReasoningModel={(value) => {
-                setUseReasoningModel(value);
-                updateReasoningSettings({ useReasoningModel: value });
-              }}
-              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
-              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
-              reasoningModel={reasoningModel}
-              setReasoningModel={setReasoningModel}
-              localReasoningProvider={reasoningProvider}
-              setLocalReasoningProvider={setReasoningProvider}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              anthropicApiKey={anthropicApiKey}
-              setAnthropicApiKey={setAnthropicApiKey}
-              geminiApiKey={geminiApiKey}
-              setGeminiApiKey={setGeminiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
-              customReasoningApiKey={customReasoningApiKey}
-              setCustomReasoningApiKey={setCustomReasoningApiKey}
-              showAlertDialog={showAlertDialog}
-            />
-          </div>
+          <AiModelsSection
+            isSignedIn={isSignedIn ?? false}
+            cloudReasoningMode={cloudReasoningMode}
+            setCloudReasoningMode={setCloudReasoningMode}
+            useReasoningModel={useReasoningModel}
+            setUseReasoningModel={(value) => {
+              setUseReasoningModel(value);
+              updateReasoningSettings({ useReasoningModel: value });
+            }}
+            reasoningModel={reasoningModel}
+            setReasoningModel={setReasoningModel}
+            reasoningProvider={reasoningProvider}
+            setReasoningProvider={setReasoningProvider}
+            cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+            setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            anthropicApiKey={anthropicApiKey}
+            setAnthropicApiKey={setAnthropicApiKey}
+            geminiApiKey={geminiApiKey}
+            setGeminiApiKey={setGeminiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            customReasoningApiKey={customReasoningApiKey}
+            setCustomReasoningApiKey={setCustomReasoningApiKey}
+            showAlertDialog={showAlertDialog}
+            toast={toast}
+          />
         );
 
       // ───────────────────────────────────────────────────
@@ -985,6 +1760,45 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             />
 
             <PromptStudio />
+          </div>
+        );
+
+      // ───────────────────────────────────────────────────
+      // PRIVACY
+      // ───────────────────────────────────────────────────
+      case "privacy":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Privacy</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Control what data leaves your device. Everything is off by default.
+              </p>
+            </div>
+
+            {isSignedIn && (
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Cloud backup"
+                    description="Save your transcriptions to the cloud so you never lose them."
+                  >
+                    <Toggle checked={cloudBackupEnabled} onChange={setCloudBackupEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            )}
+
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <SettingsRow
+                  label="Usage analytics"
+                  description="Help us improve OpenWhispr by sharing anonymous performance metrics. We never send transcription content — only timing and error data."
+                >
+                  <Toggle checked={telemetryEnabled} onChange={setTelemetryEnabled} />
+                </SettingsRow>
+              </SettingsPanelRow>
+            </SettingsPanel>
           </div>
         );
 

@@ -85,7 +85,7 @@ class LocalReasoningService extends BaseReasoningService {
         stack: (error as Error).stack,
       });
 
-      console.error("LocalReasoningService error:", error);
+      logger.error("LocalReasoningService error", { error: (error as Error).message }, "reasoning");
       throw error;
     } finally {
       this.isProcessing = false;
@@ -98,7 +98,11 @@ class LocalReasoningService extends BaseReasoningService {
       await modelManager.ensureLlamaCpp();
       return true;
     } catch (error) {
-      console.warn("Local reasoning not available:", (error as Error).message);
+      logger.warn(
+        "Local reasoning not available",
+        { error: (error as Error).message },
+        "reasoning"
+      );
       return false;
     }
   }
@@ -109,7 +113,11 @@ class LocalReasoningService extends BaseReasoningService {
       const modelsWithStatus = await modelManager.getModelsWithStatus();
       return modelsWithStatus.filter((model) => model.isDownloaded);
     } catch (error) {
-      console.error("Failed to get downloaded models:", error);
+      logger.error(
+        "Failed to get downloaded models",
+        { error: (error as Error).message },
+        "reasoning"
+      );
       return [];
     }
   }

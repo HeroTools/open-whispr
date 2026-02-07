@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "./ui/button";
 import {
   Trash2,
@@ -9,18 +9,21 @@ import {
   RefreshCw,
   Loader2,
   Sparkles,
+  Cloud,
   X,
 } from "lucide-react";
 import SettingsModal, { SettingsSectionType } from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
 import TranscriptionItem from "./ui/TranscriptionItem";
+import UpgradePrompt from "./UpgradePrompt";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useHotkey } from "../hooks/useHotkey";
 import { useToast } from "./ui/Toast";
 import { useUpdater } from "../hooks/useUpdater";
 import { useSettings } from "../hooks/useSettings";
+import { useAuth } from "../hooks/useAuth";
 import {
   useTranscriptions,
   initializeTranscriptions,
@@ -33,11 +36,17 @@ export default function ControlPanel() {
   const history = useTranscriptions();
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
+  const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
+  const [limitData, setLimitData] = useState<{ wordsUsed: number; limit: number } | null>(null);
+  const hasShownUpgradePrompt = useRef(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionType | undefined>();
   const [aiCTADismissed, setAiCTADismissed] = useState(false);
+  const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
+  const cloudMigrationProcessed = useRef(false);
   const { hotkey } = useHotkey();
   const { toast } = useToast();
-  const { useReasoningModel } = useSettings();
+  const { useReasoningModel, setUseLocalWhisper, setCloudTranscriptionMode } = useSettings();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
@@ -84,6 +93,44 @@ export default function ControlPanel() {
       });
     }
   }, [updateError, toast]);
+
+  // Listen for limit-reached events from the dictation overlay
+  useEffect(() => {
+    const dispose = window.electronAPI?.onLimitReached?.(
+      (data: { wordsUsed: number; limit: number }) => {
+        // Show dialog only once per session, then show toast for subsequent hits
+        if (!hasShownUpgradePrompt.current) {
+          hasShownUpgradePrompt.current = true;
+          setLimitData(data);
+          setShowUpgradePrompt(true);
+        } else {
+          toast({
+            title: "Daily Limit Reached",
+            description: "Resets at midnight UTC. Upgrade to Pro or use your own API key.",
+            duration: 5000,
+          });
+        }
+      }
+    );
+
+    return () => {
+      dispose?.();
+    };
+  }, [toast]);
+
+  // Switch existing users to OpenWhispr Cloud after account creation
+  useEffect(() => {
+    if (!authLoaded || !isSignedIn || cloudMigrationProcessed.current) return;
+    const isPending = localStorage.getItem("pendingCloudMigration") === "true";
+    const alreadyShown = localStorage.getItem("cloudMigrationShown") === "true";
+    if (!isPending || alreadyShown) return;
+
+    cloudMigrationProcessed.current = true;
+    setUseLocalWhisper(false);
+    setCloudTranscriptionMode("openwhispr");
+    localStorage.removeItem("pendingCloudMigration");
+    setShowCloudMigrationBanner(true);
+  }, [authLoaded, isSignedIn, setUseLocalWhisper, setCloudTranscriptionMode]);
 
   const loadTranscriptions = async () => {
     try {
@@ -257,6 +304,13 @@ export default function ControlPanel() {
         onOk={() => {}}
       />
 
+      <UpgradePrompt
+        open={showUpgradePrompt}
+        onOpenChange={setShowUpgradePrompt}
+        wordsUsed={limitData?.wordsUsed}
+        limit={limitData?.limit}
+      />
+
       <TitleBar
         actions={
           <>
@@ -327,6 +381,49 @@ export default function ControlPanel() {
               </Button>
             )}
           </div>
+
+          {/* Cloud Migration Notice */}
+          {showCloudMigrationBanner && (
+            <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
+              <button
+                onClick={() => {
+                  setShowCloudMigrationBanner(false);
+                  localStorage.setItem("cloudMigrationShown", "true");
+                }}
+                className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              >
+                <X size={14} />
+              </button>
+              <div className="flex items-start gap-3 pr-6">
+                <div className="shrink-0 w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                  <Cloud size={16} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-foreground mb-0.5">
+                    Welcome to OpenWhispr Pro
+                  </p>
+                  <p className="text-[12px] text-muted-foreground mb-2">
+                    Your 7-day free trial is active! We've switched your transcription to OpenWhispr
+                    Cloud for faster, more accurate results. Your previous settings are saved —
+                    switch back anytime in Settings.
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 text-[11px]"
+                    onClick={() => {
+                      setShowCloudMigrationBanner(false);
+                      localStorage.setItem("cloudMigrationShown", "true");
+                      setSettingsSection("transcription");
+                      setShowSettings(true);
+                    }}
+                  >
+                    View Settings
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* AI Enhancement CTA */}
           {!useReasoningModel && !aiCTADismissed && (

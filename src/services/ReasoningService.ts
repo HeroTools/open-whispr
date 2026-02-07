@@ -6,6 +6,7 @@ import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../c
 import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../config/prompts";
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
+import { withSessionRefresh } from "../lib/neonAuth";
 
 /**
  * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
@@ -23,6 +24,10 @@ class ReasoningService extends BaseReasoningService {
     super();
     this.apiKeyCache = new SecureCache();
     this.cacheCleanupStop = this.apiKeyCache.startAutoCleanup();
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => this.destroy());
+    }
   }
 
   private getConfiguredOpenAIBase(): string {
@@ -300,52 +305,64 @@ class ReasoningService extends BaseReasoningService {
     });
 
     const response = await withRetry(async () => {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        let errorData: any = { error: res.statusText };
-
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: errorText || res.statusText };
-        }
-
-        logger.logReasoning(`${providerName.toUpperCase()}_API_ERROR_DETAIL`, {
-          status: res.status,
-          statusText: res.statusText,
-          error: errorData,
-          errorMessage: errorData.error?.message || errorData.message || errorData.error,
-          fullResponse: errorText.substring(0, 500),
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
         });
 
-        const errorMessage =
-          errorData.error?.message ||
-          errorData.message ||
-          errorData.error ||
-          `${providerName} API error: ${res.status}`;
-        throw new Error(errorMessage);
+        if (!res.ok) {
+          const errorText = await res.text();
+          let errorData: any = { error: res.statusText };
+
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || res.statusText };
+          }
+
+          logger.logReasoning(`${providerName.toUpperCase()}_API_ERROR_DETAIL`, {
+            status: res.status,
+            statusText: res.statusText,
+            error: errorData,
+            errorMessage: errorData.error?.message || errorData.message || errorData.error,
+            fullResponse: errorText.substring(0, 500),
+          });
+
+          const errorMessage =
+            errorData.error?.message ||
+            errorData.message ||
+            errorData.error ||
+            `${providerName} API error: ${res.status}`;
+          throw new Error(errorMessage);
+        }
+
+        const jsonResponse = await res.json();
+
+        logger.logReasoning(`${providerName.toUpperCase()}_RAW_RESPONSE`, {
+          hasResponse: !!jsonResponse,
+          responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
+          hasChoices: !!jsonResponse?.choices,
+          choicesLength: jsonResponse?.choices?.length || 0,
+          fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
+        });
+
+        return jsonResponse;
+      } catch (error) {
+        if ((error as Error).name === "AbortError") {
+          throw new Error("Request timed out after 30s");
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const jsonResponse = await res.json();
-
-      logger.logReasoning(`${providerName.toUpperCase()}_RAW_RESPONSE`, {
-        hasResponse: !!jsonResponse,
-        responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
-        hasChoices: !!jsonResponse?.choices,
-        choicesLength: jsonResponse?.choices?.length || 0,
-        fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
-      });
-
-      return jsonResponse;
     }, createApiRetryStrategy());
 
     if (!response.choices || !response.choices[0]) {
@@ -426,6 +443,9 @@ class ReasoningService extends BaseReasoningService {
           break;
         case "groq":
           result = await this.processWithGroq(text, model, agentName, config);
+          break;
+        case "openwhispr":
+          result = await this.processWithOpenWhispr(text, model, agentName, config);
           break;
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
@@ -518,6 +538,8 @@ class ReasoningService extends BaseReasoningService {
         let lastError: Error | null = null;
 
         for (const { url: endpoint, type } of endpointCandidates) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
           try {
             const requestBody: any = { model };
 
@@ -538,6 +560,7 @@ class ReasoningService extends BaseReasoningService {
                 Authorization: `Bearer ${apiKey}`,
               },
               body: JSON.stringify(requestBody),
+              signal: controller.signal,
             });
 
             if (!res.ok) {
@@ -564,6 +587,9 @@ class ReasoningService extends BaseReasoningService {
             this.rememberOpenAiPreference(openAiBase, type);
             return res.json();
           } catch (error) {
+            if ((error as Error).name === "AbortError") {
+              throw new Error("Request timed out after 30s");
+            }
             lastError = error as Error;
             if (type === "responses") {
               logger.logReasoning("OPENAI_ENDPOINT_FALLBACK", {
@@ -573,6 +599,8 @@ class ReasoningService extends BaseReasoningService {
               continue;
             }
             throw error;
+          } finally {
+            clearTimeout(timeoutId);
           }
         }
 
@@ -691,12 +719,11 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const result = await window.electronAPI.processAnthropicReasoning(
-        text,
-        model,
-        agentName,
-        config
-      );
+      const language = this.getPreferredLanguage();
+      const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
+        ...config,
+        language,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -743,7 +770,11 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, config);
+      const language = this.getPreferredLanguage();
+      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
+        ...config,
+        language,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -835,52 +866,64 @@ class ReasoningService extends BaseReasoningService {
             requestBody: JSON.stringify(requestBody).substring(0, 200),
           });
 
-          const res = await fetch(`${API_ENDPOINTS.GEMINI}/models/${model}:generateContent`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": apiKey,
-            },
-            body: JSON.stringify(requestBody),
-          });
-
-          if (!res.ok) {
-            const errorText = await res.text();
-            let errorData: any = { error: res.statusText };
-
-            try {
-              errorData = JSON.parse(errorText);
-            } catch {
-              errorData = { error: errorText || res.statusText };
-            }
-
-            logger.logReasoning("GEMINI_API_ERROR_DETAIL", {
-              status: res.status,
-              statusText: res.statusText,
-              error: errorData,
-              errorMessage: errorData.error?.message || errorData.message || errorData.error,
-              fullResponse: errorText.substring(0, 500),
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          try {
+            const res = await fetch(`${API_ENDPOINTS.GEMINI}/models/${model}:generateContent`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": apiKey,
+              },
+              body: JSON.stringify(requestBody),
+              signal: controller.signal,
             });
 
-            const errorMessage =
-              errorData.error?.message ||
-              errorData.message ||
-              errorData.error ||
-              `Gemini API error: ${res.status}`;
-            throw new Error(errorMessage);
+            if (!res.ok) {
+              const errorText = await res.text();
+              let errorData: any = { error: res.statusText };
+
+              try {
+                errorData = JSON.parse(errorText);
+              } catch {
+                errorData = { error: errorText || res.statusText };
+              }
+
+              logger.logReasoning("GEMINI_API_ERROR_DETAIL", {
+                status: res.status,
+                statusText: res.statusText,
+                error: errorData,
+                errorMessage: errorData.error?.message || errorData.message || errorData.error,
+                fullResponse: errorText.substring(0, 500),
+              });
+
+              const errorMessage =
+                errorData.error?.message ||
+                errorData.message ||
+                errorData.error ||
+                `Gemini API error: ${res.status}`;
+              throw new Error(errorMessage);
+            }
+
+            const jsonResponse = await res.json();
+
+            logger.logReasoning("GEMINI_RAW_RESPONSE", {
+              hasResponse: !!jsonResponse,
+              responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
+              hasCandidates: !!jsonResponse?.candidates,
+              candidatesLength: jsonResponse?.candidates?.length || 0,
+              fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
+            });
+
+            return jsonResponse;
+          } catch (error) {
+            if ((error as Error).name === "AbortError") {
+              throw new Error("Request timed out after 30s");
+            }
+            throw error;
+          } finally {
+            clearTimeout(timeoutId);
           }
-
-          const jsonResponse = await res.json();
-
-          logger.logReasoning("GEMINI_RAW_RESPONSE", {
-            hasResponse: !!jsonResponse,
-            responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
-            hasCandidates: !!jsonResponse?.candidates,
-            candidatesLength: jsonResponse?.candidates?.length || 0,
-            fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
-          });
-
-          return jsonResponse;
         }, createApiRetryStrategy());
       } catch (fetchError) {
         logger.logReasoning("GEMINI_FETCH_ERROR", {
@@ -975,6 +1018,71 @@ class ReasoningService extends BaseReasoningService {
       throw error;
     } finally {
       this.isProcessing = false;
+    }
+  }
+
+  private async processWithOpenWhispr(
+    text: string,
+    model: string,
+    agentName: string | null = null,
+    config: ReasoningConfig = {}
+  ): Promise<string> {
+    logger.logReasoning("OPENWHISPR_START", { model, agentName });
+
+    if (this.isProcessing) {
+      throw new Error("Already processing a request");
+    }
+
+    this.isProcessing = true;
+
+    try {
+      const customDictionary = this.getCustomDictionary();
+      const language = this.getPreferredLanguage();
+
+      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
+      const result = await withSessionRefresh(async () => {
+        const res = await (window as any).electronAPI.cloudReason(text, {
+          model,
+          agentName,
+          customDictionary,
+          language,
+        });
+
+        if (!res.success) {
+          const err: any = new Error(res.error || "OpenWhispr cloud reasoning failed");
+          err.code = res.code;
+          throw err;
+        }
+
+        return res;
+      });
+
+      logger.logReasoning("OPENWHISPR_SUCCESS", {
+        model: result.model,
+        provider: result.provider,
+        resultLength: result.text.length,
+      });
+
+      return result.text;
+    } catch (error) {
+      logger.logReasoning("OPENWHISPR_ERROR", {
+        model,
+        error: (error as Error).message,
+      });
+      throw error;
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  private getCustomDictionary(): string[] {
+    try {
+      const raw = localStorage.getItem("customDictionary");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
     }
   }
 

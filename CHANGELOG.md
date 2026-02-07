@@ -7,23 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-02-06
+
 ### Added
-- **Cancel Processing Button**: Added ability to cancel ongoing transcription processing
-- **Dark Mode Icon Inversion**: Monochrome provider icons now automatically invert in dark mode for better visibility
+- **OpenWhispr Cloud**: Cloud-native transcription service — sign in and transcribe without managing API keys
+  - Google OAuth and email/password authentication via Neon Auth
+  - Email verification flow with polling and resend support
+  - Password reset via email magic links
+- **Subscription & Billing**: Free and Pro plans with Stripe-powered payments
+  - Free plan with rolling weekly word limits (2,000 words/week)
+  - Pro plan with unlimited transcriptions
+  - 7-day free trial for new accounts with countdown display
+  - In-app upgrade prompts when approaching or reaching usage limits
+  - Stripe billing portal access for Pro subscribers
+- **Usage Tracking**: Real-time usage display with progress bar, color-coded thresholds, and next billing date
+- **Account Section in Settings**: Profile display, plan status badge, usage bar, billing management, and sign out
+- **Upgrade Prompt Dialog**: When usage limit is reached, offers three paths — upgrade to Pro, bring your own key, or switch to local
+- **Cancel Processing Button**: Cancel ongoing transcription processing mid-flight
 - **Dynamic Window Resizing**: Window automatically resizes based on command menu and toast visibility
 - **Mistral Voxtral Transcription**: Added Mistral as a cloud transcription provider
+- **Dark Mode Icon Inversion**: Monochrome provider icons now automatically invert in dark mode for better visibility
 
 ### Changed
+- **Onboarding Redesign**: Auth-first onboarding flow
+  - Signed-in users get a streamlined 3-step flow (Welcome → Setup → Activation)
+  - Non-signed-in users get a 4-step flow with transcription mode selection
+  - Permissions merged into Setup step for signed-in users
+- **Transcription Mode Architecture**: Unified mode selection across OpenWhispr Cloud, Bring Your Own Key (BYOK), and Local
+  - Signed-in users default to OpenWhispr Cloud
+  - Non-signed-in users choose between BYOK and Local
 - **Design System Overhaul**: Complete refactor of styling to use design tokens throughout the codebase
   - Button component now uses `text-foreground`, `bg-muted`, `border-border` instead of hardcoded hex values
   - Removed hardcoded classes and inline styles across components
   - Improved button and badge consistency
 - **Settings UI Redesign**: Overhauled all settings pages with unified panel system, redesigned sidebar, and extracted permissions section
 - **Dark Mode Polish**: Premium button styling, glass morphism toasts, and streamlined visuals
-- **Onboarding Improvements**:
-  - Streamlined to 4-step flow
-  - Extended to support multiple local transcription providers (Whisper and NVIDIA Parakeet)
-  - Improved contrast and design system usage
+- **App Channel Isolation**: Development, staging, and production channels now use isolated user data directories
 
 ### Fixed
 - **Light Mode UI Visibility**: Fixed multiple UI elements that were invisible or hard to see in light mode:
@@ -36,6 +55,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Local Reasoning Model Persistence**: Fixed local reasoning model selection not persisting correctly
 - **Parakeet Model Status**: Added dedicated IPC channel for Parakeet model status checks
 - **Groq Qwen3 Models**: Removed thinking tokens from Qwen3 models on Groq provider
+- **OAuth Session Grace Period**: Automatic session refresh with exponential backoff retry during initial OAuth establishment
 
 ## [1.3.3] - 2026-01-28
 

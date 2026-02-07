@@ -29,7 +29,7 @@ export function MarkdownRenderer({ content, className }: MarkdownRendererProps) 
             href={href}
             target="_blank"
             rel="noopener noreferrer"
-            className="underline hover:opacity-80"
+            className="text-link underline decoration-link/30 hover:decoration-link/60 transition-colors"
           >
             {children}
           </a>

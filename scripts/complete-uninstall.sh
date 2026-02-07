@@ -4,7 +4,7 @@ set -euo pipefail
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
-echo "⚠️  This script will stop OpenWhispr, remove the installed app, and delete caches, databases, and preferences."
+echo "This script will stop OpenWhispr, remove the installed app, and delete caches, databases, and preferences."
 read -r -p "Continue with the full uninstall? [y/N]: " confirm
 if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
   echo "Aborted."

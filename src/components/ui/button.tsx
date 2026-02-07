@@ -7,63 +7,56 @@ import { cn } from "../lib/utils";
 const buttonVariants = cva(
   [
     "inline-flex items-center justify-center gap-2 whitespace-nowrap",
-    "rounded-[6px] text-sm font-medium cursor-pointer select-none",
-    "transition-all duration-150 ease-out",
-    "outline-none focus-visible:ring-2 focus-visible:ring-ring/40 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
-    "disabled:pointer-events-none disabled:opacity-40",
+    "rounded text-sm font-medium cursor-pointer select-none",
+    "transition-all duration-200 ease-out",
+    "outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-1 focus-visible:ring-offset-background",
+    "disabled:pointer-events-none disabled:opacity-50 disabled:cursor-not-allowed",
     "[&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:shrink-0 shrink-0",
   ].join(" "),
   {
     variants: {
       variant: {
-        // Primary CTA — refined blue metallic
+        // Primary CTA — ultra-premium with subtle depth
         default: [
-          "relative text-white font-semibold tracking-[0.01em]",
-          "bg-gradient-to-b from-[#4a8df0] to-[#2563d4]",
-          "border border-[#1e4fad]/70",
-          "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_1px_2px_0_rgba(0,0,0,0.1),0_1px_3px_0_rgba(37,99,212,0.2)]",
-          "hover:from-[#5a9af5] hover:to-[#3574e0]",
-          "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2),0_2px_4px_0_rgba(0,0,0,0.12),0_2px_8px_0_rgba(37,99,212,0.25)]",
-          "active:from-[#3574e0] active:to-[#1e4fad] active:scale-[0.98]",
-          "active:shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.15)]",
+          "relative text-primary-foreground font-semibold tracking-[0.005em]",
+          "bg-primary",
+          "border border-primary/60",
+          "shadow-sm",
+          "hover:bg-primary/95 hover:shadow",
+          "active:bg-primary/85 active:scale-[0.985]",
+          "transition-all duration-200 ease-out",
         ].join(" "),
 
-        // Success — emerald metallic
+        // Success — uses design tokens
         success: [
-          "relative text-white font-semibold tracking-[0.01em]",
-          "bg-gradient-to-b from-[#34d399] to-[#10b981]",
-          "border border-[#059669]/70",
-          "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_1px_2px_0_rgba(0,0,0,0.1),0_1px_3px_0_rgba(16,185,129,0.2)]",
-          "hover:from-[#4ade80] hover:to-[#22c55e]",
-          "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.2),0_2px_4px_0_rgba(0,0,0,0.12),0_2px_8px_0_rgba(16,185,129,0.25)]",
-          "active:from-[#22c55e] active:to-[#059669] active:scale-[0.98]",
-          "active:shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.15)]",
+          "relative text-success-foreground font-semibold tracking-[0.01em]",
+          "bg-success",
+          "border border-success/70",
+          "shadow-sm",
+          "hover:bg-success/90",
+          "active:bg-success/80 active:scale-[0.98]",
         ].join(" "),
 
-        // Destructive — red metallic
+        // Destructive — uses design tokens
         destructive: [
-          "relative text-white font-semibold tracking-[0.01em]",
-          "bg-gradient-to-b from-[#f87171] to-[#ef4444]",
-          "border border-[#dc2626]/70",
-          "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.12),0_1px_2px_0_rgba(0,0,0,0.1),0_1px_3px_0_rgba(239,68,68,0.2)]",
-          "hover:from-[#fca5a5] hover:to-[#f87171]",
-          "hover:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.15),0_2px_4px_0_rgba(0,0,0,0.12),0_2px_8px_0_rgba(239,68,68,0.25)]",
-          "active:from-[#ef4444] active:to-[#dc2626] active:scale-[0.98]",
-          "active:shadow-[inset_0_2px_4px_0_rgba(0,0,0,0.15)]",
+          "relative text-destructive-foreground font-semibold tracking-[0.01em]",
+          "bg-destructive",
+          "border border-destructive/70",
+          "shadow-sm",
+          "hover:bg-destructive/90",
+          "active:bg-destructive/80 active:scale-[0.98]",
         ].join(" "),
 
-        // Outline — uses design tokens
+        // Outline — refined with subtle glassmorphism
         outline: [
           "relative font-medium",
-          "text-foreground bg-muted/80",
-          "border border-border",
-          "shadow-sm backdrop-blur-sm",
-          "hover:bg-muted",
-          "active:scale-[0.98]",
-          // Dark mode overrides
-          "dark:bg-surface-3",
-          "dark:border-border-subtle",
-          "dark:hover:bg-surface-raised",
+          "text-foreground bg-muted/70 backdrop-blur-sm",
+          "border border-border/70",
+          "shadow-sm",
+          "hover:bg-muted hover:border-border-hover",
+          "active:scale-[0.985]",
+          "dark:bg-surface-raised/90 dark:border-border-hover dark:hover:bg-surface-raised",
+          "transition-all duration-200 ease-out",
         ].join(" "),
 
         // Secondary — uses design tokens
@@ -73,10 +66,7 @@ const buttonVariants = cva(
           "border border-border/50",
           "hover:bg-muted",
           "active:scale-[0.98]",
-          // Dark mode overrides
-          "dark:text-foreground/90 dark:bg-white/8",
-          "dark:border-white/5",
-          "dark:hover:bg-white/12",
+          "dark:text-foreground/90 dark:bg-white/8 dark:border-white/5 dark:hover:bg-white/12",
         ].join(" "),
 
         // Ghost — uses design tokens
@@ -85,9 +75,7 @@ const buttonVariants = cva(
           "text-foreground",
           "hover:bg-muted",
           "active:scale-[0.98]",
-          // Dark mode overrides
-          "dark:text-foreground/90",
-          "dark:hover:bg-white/8",
+          "dark:text-foreground/90 dark:hover:bg-white/8",
         ].join(" "),
 
         // Link — uses design tokens
@@ -96,16 +84,25 @@ const buttonVariants = cva(
           "text-primary",
           "hover:text-primary/80 hover:underline",
           "underline-offset-4",
-          // Dark mode overrides
-          "dark:text-primary",
-          "dark:hover:text-primary/80",
+        ].join(" "),
+
+        // Social button for auth flows - ultra-premium glassmorphism
+        social: [
+          "relative font-medium",
+          "text-foreground bg-surface-1/80 backdrop-blur-xl",
+          "border border-border/60",
+          "shadow-sm gap-2",
+          "hover:bg-surface-2/90 hover:border-border-hover hover:shadow",
+          "active:scale-[0.985] active:shadow-sm",
+          "dark:bg-surface-raised/80 dark:border-border-hover dark:hover:bg-surface-raised/95",
+          "transition-all duration-200 ease-out",
         ].join(" "),
       },
       size: {
-        default: "h-9 px-4 py-2",
+        default: "h-10 px-4 py-2",
         sm: "h-8 px-3 text-xs gap-1.5",
-        lg: "h-10 px-5 text-sm",
-        icon: "size-9",
+        lg: "h-12 px-6 text-sm",
+        icon: "size-10",
       },
     },
     defaultVariants: {

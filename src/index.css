@@ -54,12 +54,12 @@
   --opacity-medium: 0.5;
   --opacity-high: 0.9;
 
-  /* Border Radius — generous Clerk-style rounding */
-  --radius: 0.625rem;
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.625rem;
-  --radius-xl: 0.875rem;
+  /* Border Radius — ultra-tight, premium macOS-style rounding */
+  --radius: 0.375rem; /* 6px - default for buttons, inputs */
+  --radius-sm: 0.25rem; /* 4px - minimal rounding */
+  --radius-md: 0.375rem; /* 6px - standard */
+  --radius-lg: 0.5rem; /* 8px - cards, panels */
+  --radius-xl: 0.5rem; /* 8px - large cards (reduced from 10px) */
 
   /* Custom Light Mode Brand Colors (Parchment Theme) */
   --color-parchment-bg: #f9f6f1;
@@ -71,6 +71,10 @@
   --color-brand-highlight: #c0a77d;
   --color-brand-link: #2e3659;
   --color-pattern: #e7e5e4;
+
+  /* Model picker premium effects (light mode) */
+  --shadow-metallic-light: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 1px 3px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover-subtle: 0 2px 8px -2px rgba(0, 0, 0, 0.1);
 }
 
 .dark {
@@ -87,7 +91,7 @@
   --color-secondary-foreground: oklch(0.92 0 0);
   --color-muted: oklch(0.13 0.005 270);
   --color-muted-foreground: oklch(0.55 0 0);
-  --color-accent: oklch(0.68 0.20 285);
+  --color-accent: oklch(0.68 0.2 285);
   --color-accent-foreground: oklch(0.99 0 0);
   --color-destructive: oklch(0.6 0.25 25);
   --color-destructive-foreground: oklch(0.99 0 0);
@@ -112,12 +116,19 @@
   --color-border-subtle: oklch(0.2 0.004 270);
   --color-border-hover: oklch(0.28 0.01 270);
   --color-border-active: oklch(0.45 0.15 260);
+  --color-link: oklch(0.64 0.09 250);
 
   /* Card depth shadows — no glow, clean depth only */
   --shadow-card: 0 1px 2px oklch(0 0 0 / 0.25);
   --shadow-card-hover: 0 2px 8px oklch(0 0 0 / 0.35);
   --shadow-elevated: 0 8px 24px oklch(0 0 0 / 0.4);
   --shadow-modal: 0 24px 48px -12px oklch(0 0 0 / 0.5);
+
+  /* Model picker premium effects */
+  --shadow-metallic-dark: inset 0 1px 0 rgba(255, 255, 255, 0.03), 0 2px 8px rgba(0, 0, 0, 0.3);
+  --shadow-selected-glow:
+    inset 0 0 0 1px oklch(0.62 0.22 260 / 0.15), 0 0 16px -4px oklch(0.62 0.22 260 / 0.25);
+  --shadow-card-hover-subtle: 0 2px 8px -2px rgba(0, 0, 0, 0.15);
 }
 
 @layer base {
@@ -212,13 +223,13 @@ svg:hover,
   cursor: pointer;
 }
 
-/* Embossed paper-like input styling */
+/* Premium input styling with subtle depth */
 input,
 textarea {
-  border-radius: 8px;
+  border-radius: var(--radius);
   transition: all 0.2s ease;
   font-family: var(--font-family-sans);
-  box-shadow: inset 0 1px 3px rgba(43, 31, 20, var(--opacity-subtle));
+  box-shadow: inset 0 1px 2px oklch(from var(--color-foreground) l c h / 0.06);
 }
 
 /* Light mode inputs - embossed parchment */
@@ -243,31 +254,27 @@ textarea {
 .dark textarea {
   background-color: var(--color-input);
   border: 1px solid var(--color-border);
-  color: oklch(0.9 0 0);
+  color: var(--color-foreground);
   box-shadow: none;
 }
 
 .dark input:focus,
 .dark textarea:focus {
   border-color: var(--color-border-active);
-  box-shadow: 0 0 0 2px oklch(0.62 0.22 260 / 0.15);
+  box-shadow: 0 0 0 2px oklch(from var(--color-ring) l c h / 0.15);
 }
 
 /* Card styling - elevated parchment */
 .card {
   background-color: var(--color-card);
-  border: 1px solid var(--color-parchment-border);
-  border-radius: 12px;
-  box-shadow:
-    0 4px 8px oklch(from var(--color-parchment-text) l c h / 0.08),
-    0 1px 0 oklch(from var(--color-card) l c h / var(--opacity-medium)) inset;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-card, 0 1px 3px oklch(from var(--color-foreground) l c h / 0.08));
   transition: all 0.2s ease;
 }
 
 .card:hover {
-  box-shadow:
-    0 8px 16px oklch(from var(--color-parchment-text) l c h / var(--opacity-subtle)),
-    0 1px 0 oklch(from var(--color-card) l c h / var(--opacity-medium)) inset;
+  box-shadow: var(--shadow-card-hover, 0 4px 12px oklch(from var(--color-foreground) l c h / 0.1));
   transform: translateY(-1px);
 }
 
@@ -285,15 +292,15 @@ textarea {
 
 /* Link styling */
 a {
-  color: var(--color-brand-link);
+  color: var(--color-link);
   text-decoration: none;
   transition: color 0.2s ease;
   cursor: pointer;
 }
 
 a:hover {
-  color: var(--color-brand-accent);
-  text-decoration: underline;
+  color: var(--color-link);
+  opacity: 0.8;
   cursor: pointer;
 }
 
@@ -367,6 +374,41 @@ a:hover {
   }
   to {
     width: 0%;
+  }
+}
+
+/* Model picker LED pulse animation */
+@keyframes pulse-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 6px oklch(0.62 0.22 260 / 0.4);
+    opacity: 0.8;
+  }
+  50% {
+    box-shadow: 0 0 8px oklch(0.62 0.22 260 / 0.6);
+    opacity: 1;
+  }
+}
+
+/* Spinner rotation for downloading state */
+@keyframes spinner-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Scale-in animation for completion */
+@keyframes scale-in {
+  from {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 

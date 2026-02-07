@@ -50,6 +50,9 @@ jobs:
       run: npm run build:linux -- --publish always
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+        VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
+        VITE_OPENWHISPR_OAUTH_CALLBACK_URL: ${{ vars.VITE_OPENWHISPR_OAUTH_CALLBACK_URL }}
 
   build-windows:
     runs-on: windows-latest
@@ -86,6 +89,9 @@ jobs:
       run: npm run build:win -- --publish always
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+        VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
+        VITE_OPENWHISPR_OAUTH_CALLBACK_URL: ${{ vars.VITE_OPENWHISPR_OAUTH_CALLBACK_URL }}
 
   build-macos:
     runs-on: macos-latest
@@ -145,6 +151,9 @@ jobs:
       run: npm run build:mac -- --${{ matrix.arch }} --publish always
       env:
         GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        VITE_NEON_AUTH_URL: ${{ vars.VITE_NEON_AUTH_URL }}
+        VITE_OPENWHISPR_API_URL: ${{ vars.VITE_OPENWHISPR_API_URL }}
+        VITE_OPENWHISPR_OAUTH_CALLBACK_URL: ${{ vars.VITE_OPENWHISPR_OAUTH_CALLBACK_URL }}
         CSC_IDENTITY_AUTO_DISCOVERY: true
         CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
         APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}

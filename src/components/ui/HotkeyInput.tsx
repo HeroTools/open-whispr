@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { AlertTriangle } from "lucide-react";
 import { formatHotkeyLabel } from "../../utils/hotkeys";
+import { getPlatform } from "../../utils/platform";
 
 const CODE_TO_KEY: Record<string, string> = {
   Backquote: "`",
@@ -143,6 +145,7 @@ export interface HotkeyInputProps {
   onBlur?: () => void;
   disabled?: boolean;
   autoFocus?: boolean;
+  validate?: (hotkey: string) => string | null | undefined;
 }
 
 export function mapKeyboardEventToHotkey(e: KeyboardEvent): string | null {
@@ -155,17 +158,19 @@ export function mapKeyboardEventToHotkey(e: KeyboardEvent): string | null {
     return null;
   }
 
+  const platform = getPlatform();
   const modifiers: string[] = [];
 
-  if (e.ctrlKey || e.metaKey) {
-    modifiers.push("CommandOrControl");
+  if (platform === "darwin") {
+    if (e.ctrlKey) modifiers.push("Control");
+    if (e.metaKey) modifiers.push("Command");
+  } else {
+    if (e.ctrlKey) modifiers.push("Control");
+    if (e.metaKey) modifiers.push("Super");
   }
-  if (e.altKey) {
-    modifiers.push("Alt");
-  }
-  if (e.shiftKey) {
-    modifiers.push("Shift");
-  }
+
+  if (e.altKey) modifiers.push("Alt");
+  if (e.shiftKey) modifiers.push("Shift");
 
   return modifiers.length > 0 ? [...modifiers, baseKey].join("+") : baseKey;
 }
@@ -181,12 +186,110 @@ export function HotkeyInput({
   disabled = false,
   autoFocus = false,
   variant = "default",
+  validate,
 }: HotkeyInputProps & HotkeyInputVariant) {
   const [isCapturing, setIsCapturing] = useState(false);
   const [activeModifiers, setActiveModifiers] = useState<Set<string>>(new Set());
+  const [validationWarning, setValidationWarning] = useState<string | null>(null);
+  const [isFnHeld, setIsFnHeld] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const lastCapturedHotkeyRef = useRef<string | null>(null);
-  const isMac = typeof navigator !== "undefined" && /Mac|Darwin/.test(navigator.platform);
+  const keyDownTimeRef = useRef<number>(0);
+  const warningTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fnHeldRef = useRef(false);
+  const fnCapturedKeyRef = useRef(false);
+  const heldModifiersRef = useRef<{
+    ctrl: boolean;
+    meta: boolean;
+    alt: boolean;
+    shift: boolean;
+  }>({ ctrl: false, meta: false, alt: false, shift: false });
+  const modifierCodesRef = useRef<{
+    ctrl?: string;
+    meta?: string;
+    alt?: string;
+    shift?: string;
+  }>({});
+  const platform = getPlatform();
+  const isMac = platform === "darwin";
+  const isWindows = platform === "win32";
+
+  const MODIFIER_HOLD_THRESHOLD_MS = 200;
+
+  const buildModifierOnlyHotkey = useCallback(
+    (
+      modifiers: { ctrl: boolean; meta: boolean; alt: boolean; shift: boolean },
+      codes: { ctrl?: string; meta?: string; alt?: string; shift?: string }
+    ): string | null => {
+      // Check for right-side single modifier first
+      const rightSidePressed: string[] = [];
+      if (codes.ctrl === "ControlRight") rightSidePressed.push("RightControl");
+      if (codes.meta === "MetaRight") rightSidePressed.push(isMac ? "RightCommand" : "RightSuper");
+      if (codes.alt === "AltRight") rightSidePressed.push(isMac ? "RightOption" : "RightAlt");
+      if (codes.shift === "ShiftRight") rightSidePressed.push("RightShift");
+
+      // If exactly one right-side modifier, allow it as single-key hotkey
+      if (rightSidePressed.length === 1) {
+        const activeCount = [modifiers.ctrl, modifiers.meta, modifiers.alt, modifiers.shift].filter(
+          Boolean
+        ).length;
+        if (activeCount === 1) {
+          return rightSidePressed[0];
+        }
+      }
+
+      // Otherwise require 2+ modifiers (existing logic)
+      const parts: string[] = [];
+      if (modifiers.ctrl) parts.push("Control");
+      if (modifiers.meta) parts.push(isMac ? "Command" : "Super");
+      if (modifiers.alt) parts.push("Alt");
+      if (modifiers.shift) parts.push("Shift");
+
+      if (parts.length >= 2) {
+        return parts.join("+");
+      }
+      return null;
+    },
+    [isMac]
+  );
+
+  const clearFnHeld = useCallback(() => {
+    setIsFnHeld(false);
+    fnHeldRef.current = false;
+    fnCapturedKeyRef.current = false;
+  }, []);
+
+  const finalizeCapture = useCallback(
+    (hotkey: string) => {
+      if (warningTimeoutRef.current) {
+        clearTimeout(warningTimeoutRef.current);
+        warningTimeoutRef.current = null;
+      }
+
+      if (validate) {
+        const errorMsg = validate(hotkey);
+        if (errorMsg) {
+          setValidationWarning(errorMsg);
+          warningTimeoutRef.current = setTimeout(() => setValidationWarning(null), 4000);
+          heldModifiersRef.current = { ctrl: false, meta: false, alt: false, shift: false };
+          modifierCodesRef.current = {};
+          setActiveModifiers(new Set());
+          keyDownTimeRef.current = 0;
+          clearFnHeld();
+          return;
+        }
+      }
+
+      setValidationWarning(null);
+      lastCapturedHotkeyRef.current = hotkey;
+      onChange(hotkey);
+      setIsCapturing(false);
+      setActiveModifiers(new Set());
+      clearFnHeld();
+      containerRef.current?.blur();
+    },
+    [validate, onChange, clearFnHeld]
+  );
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -194,42 +297,121 @@ export function HotkeyInput({
       e.preventDefault();
       e.stopPropagation();
 
+      // Track held modifiers for modifier-only capture
+      heldModifiersRef.current = {
+        ctrl: e.ctrlKey,
+        meta: e.metaKey,
+        alt: e.altKey,
+        shift: e.shiftKey,
+      };
+
+      // Track which specific keys are pressed (for left/right detection)
+      const code = e.nativeEvent.code;
+      if (code === "ControlLeft" || code === "ControlRight") {
+        modifierCodesRef.current.ctrl = code;
+      } else if (code === "MetaLeft" || code === "MetaRight") {
+        modifierCodesRef.current.meta = code;
+      } else if (code === "AltLeft" || code === "AltRight") {
+        modifierCodesRef.current.alt = code;
+      } else if (code === "ShiftLeft" || code === "ShiftRight") {
+        modifierCodesRef.current.shift = code;
+      }
+
+      // Track when first pressed (for hold detection)
+      if (keyDownTimeRef.current === 0) {
+        keyDownTimeRef.current = Date.now();
+      }
+
       const mods = new Set<string>();
-      if (e.ctrlKey || e.metaKey) mods.add(isMac ? "Cmd" : "Ctrl");
+      if (isMac) {
+        if (e.metaKey) mods.add("Cmd");
+        if (e.ctrlKey) mods.add("Ctrl");
+      } else {
+        if (e.ctrlKey) mods.add("Ctrl");
+        if (e.metaKey) mods.add(isWindows ? "Win" : "Super");
+      }
       if (e.altKey) mods.add(isMac ? "Option" : "Alt");
       if (e.shiftKey) mods.add("Shift");
+      if (fnHeldRef.current) mods.add("Fn");
       setActiveModifiers(mods);
 
+      // Try to get non-modifier hotkey first
       const hotkey = mapKeyboardEventToHotkey(e.nativeEvent);
       if (hotkey) {
-        lastCapturedHotkeyRef.current = hotkey;
-        onChange(hotkey);
-        setIsCapturing(false);
-        setActiveModifiers(new Set());
-        containerRef.current?.blur();
+        keyDownTimeRef.current = 0;
+        if (fnHeldRef.current) {
+          fnCapturedKeyRef.current = true;
+          finalizeCapture(`Fn+${hotkey}`);
+        } else {
+          finalizeCapture(hotkey);
+        }
       }
+      // If no base key, modifiers are held - don't finalize yet
     },
-    [disabled, onChange, isMac]
+    [disabled, isMac, isWindows, finalizeCapture]
   );
 
-  const handleKeyUp = useCallback(() => {
-    setActiveModifiers(new Set());
-  }, []);
+  const handleKeyUp = useCallback(
+    (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (disabled) return;
+      e.preventDefault();
+
+      const wasHoldingModifiers =
+        heldModifiersRef.current.ctrl ||
+        heldModifiersRef.current.meta ||
+        heldModifiersRef.current.alt ||
+        heldModifiersRef.current.shift;
+
+      let attempted = false;
+
+      if (wasHoldingModifiers && MODIFIER_CODES.has(e.nativeEvent.code)) {
+        const holdDuration = Date.now() - keyDownTimeRef.current;
+
+        if (holdDuration >= MODIFIER_HOLD_THRESHOLD_MS) {
+          const modifierHotkey = buildModifierOnlyHotkey(
+            heldModifiersRef.current,
+            modifierCodesRef.current
+          );
+          if (modifierHotkey) {
+            attempted = true;
+            if (fnHeldRef.current) {
+              fnCapturedKeyRef.current = true;
+              finalizeCapture(`Fn+${modifierHotkey}`);
+            } else {
+              finalizeCapture(modifierHotkey);
+            }
+          }
+        }
+      }
+
+      if (!attempted) {
+        heldModifiersRef.current = { ctrl: false, meta: false, alt: false, shift: false };
+        modifierCodesRef.current = {};
+        setActiveModifiers(fnHeldRef.current ? new Set(["Fn"]) : new Set());
+        keyDownTimeRef.current = 0;
+      }
+    },
+    [disabled, buildModifierOnlyHotkey, finalizeCapture]
+  );
 
   const handleFocus = useCallback(() => {
     if (!disabled) {
       setIsCapturing(true);
+      setValidationWarning(null);
+      clearFnHeld();
       window.electronAPI?.setHotkeyListeningMode?.(true);
     }
-  }, [disabled]);
+  }, [disabled, clearFnHeld]);
 
   const handleBlur = useCallback(() => {
     setIsCapturing(false);
     setActiveModifiers(new Set());
+    setValidationWarning(null);
+    clearFnHeld();
     window.electronAPI?.setHotkeyListeningMode?.(false, lastCapturedHotkeyRef.current);
     lastCapturedHotkeyRef.current = null;
     onBlur?.();
-  }, [onBlur]);
+  }, [onBlur, clearFnHeld]);
 
   useEffect(() => {
     if (autoFocus && containerRef.current) {
@@ -240,22 +422,35 @@ export function HotkeyInput({
   useEffect(() => {
     return () => {
       window.electronAPI?.setHotkeyListeningMode?.(false, null);
+      if (warningTimeoutRef.current) clearTimeout(warningTimeoutRef.current);
     };
   }, []);
 
   useEffect(() => {
     if (!isCapturing || !isMac) return;
 
-    const dispose = window.electronAPI?.onGlobeKeyPressed?.(() => {
-      lastCapturedHotkeyRef.current = "GLOBE";
-      onChange("GLOBE");
-      setIsCapturing(false);
-      setActiveModifiers(new Set());
-      containerRef.current?.blur();
+    const disposeDown = window.electronAPI?.onGlobeKeyPressed?.(() => {
+      setValidationWarning(null);
+      setIsFnHeld(true);
+      fnHeldRef.current = true;
+      fnCapturedKeyRef.current = false;
+      setActiveModifiers((prev) => new Set([...prev, "Fn"]));
     });
 
-    return () => dispose?.();
-  }, [isCapturing, isMac, onChange]);
+    const disposeUp = window.electronAPI?.onGlobeKeyReleased?.(() => {
+      if (fnHeldRef.current && !fnCapturedKeyRef.current) {
+        finalizeCapture("GLOBE");
+      }
+      setIsFnHeld(false);
+      fnHeldRef.current = false;
+      fnCapturedKeyRef.current = false;
+    });
+
+    return () => {
+      disposeDown?.();
+      disposeUp?.();
+    };
+  }, [isCapturing, isMac, finalizeCapture]);
 
   const displayValue = formatHotkeyLabel(value);
   const isGlobe = value === "GLOBE";
@@ -274,15 +469,15 @@ export function HotkeyInput({
         onFocus={handleFocus}
         onBlur={handleBlur}
         className={`
-          relative group flex flex-col items-center justify-center py-5 px-6
-          rounded-lg border cursor-pointer select-none outline-none
-          transition-all duration-200
+          relative group flex flex-col items-center justify-center py-4 px-5 min-h-28
+          rounded-md border cursor-pointer select-none outline-none
+          transition-all duration-150
           ${
             disabled
               ? "bg-muted/30 border-border cursor-not-allowed opacity-50"
               : isCapturing
-                ? "bg-primary/5 border-primary/40"
-                : "bg-surface-1 border-border-subtle hover:border-border-hover hover:bg-surface-2"
+                ? "bg-primary/5 border-primary/30 shadow-[0_0_0_2px_rgba(37,99,212,0.1)]"
+                : "bg-surface-1 border-border hover:border-border-hover hover:bg-surface-2"
           }
         `}
       >
@@ -294,21 +489,36 @@ export function HotkeyInput({
               <span className="text-xs font-medium text-primary">Listening...</span>
             </div>
             {activeModifiers.size > 0 ? (
-              <div className="flex items-center gap-1.5">
-                {Array.from(activeModifiers).map((mod) => (
-                  <kbd
-                    key={mod}
-                    className="px-3 py-1.5 bg-primary/10 border border-primary/20 rounded text-sm font-semibold text-primary"
-                  >
-                    {mod}
-                  </kbd>
-                ))}
-                <span className="text-primary/50 text-sm font-medium">+</span>
+              <div className="flex flex-col items-center gap-1.5">
+                <div className="flex items-center gap-1.5">
+                  {Array.from(activeModifiers).map((mod) => (
+                    <kbd
+                      key={mod}
+                      className="px-2.5 py-1 bg-primary/10 border border-primary/20 rounded-sm text-xs font-semibold text-primary"
+                    >
+                      {mod}
+                    </kbd>
+                  ))}
+                  <span className="text-primary/50 text-sm font-medium">+</span>
+                </div>
+                {isFnHeld && (
+                  <span className="text-[10px] text-muted-foreground">
+                    Press a key to combine, or release for Globe
+                  </span>
+                )}
               </div>
             ) : (
               <span className="text-xs text-muted-foreground">
                 {isMac ? "Press any key or ⌘⇧K" : "Press any key or Ctrl+Shift+K"}
               </span>
+            )}
+            {validationWarning && (
+              <div className="flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-md bg-warning/8 border border-warning/20 dark:bg-warning/12 dark:border-warning/25">
+                <AlertTriangle className="w-3 h-3 text-warning shrink-0" />
+                <span className="text-[11px] text-warning dark:text-amber-400">
+                  {validationWarning}
+                </span>
+              </div>
             )}
           </div>
         ) : value ? (
@@ -321,17 +531,17 @@ export function HotkeyInput({
                     {i > 0 && (
                       <span className="text-muted-foreground/40 text-lg font-light">+</span>
                     )}
-                    <kbd className="px-3.5 py-2 bg-surface-raised border border-border-subtle rounded text-base font-semibold text-foreground shadow-sm">
+                    <kbd className="px-3 py-1.5 bg-surface-raised border border-border rounded-sm text-sm font-semibold text-foreground shadow-sm">
                       {part}
                     </kbd>
                   </React.Fragment>
                 ))
               ) : isGlobe ? (
-                <kbd className="px-4 py-2 bg-surface-raised border border-border-subtle rounded text-xl shadow-sm">
+                <kbd className="px-3 py-1.5 bg-surface-raised border border-border rounded-sm text-lg shadow-sm">
                   🌐
                 </kbd>
               ) : (
-                <kbd className="px-4 py-2 bg-surface-raised border border-border-subtle rounded text-base font-bold text-foreground shadow-sm">
+                <kbd className="px-3 py-1.5 bg-surface-raised border border-border rounded-sm text-sm font-semibold text-foreground shadow-sm">
                   {displayValue}
                 </kbd>
               )}
@@ -362,14 +572,14 @@ export function HotkeyInput({
       onFocus={handleFocus}
       onBlur={handleBlur}
       className={`
-        relative overflow-hidden rounded-lg border
-        transition-all duration-200 cursor-pointer select-none focus:outline-none
+        relative overflow-hidden rounded-md border
+        transition-all duration-150 cursor-pointer select-none focus:outline-none
         ${
           disabled
             ? "bg-muted/30 border-border cursor-not-allowed opacity-50"
             : isCapturing
-              ? "bg-primary/8 border-primary/50 shadow-[0_0_0_2px_rgba(37,99,212,0.15)]"
-              : "bg-surface-1 border-border-subtle hover:border-border-hover hover:bg-surface-2"
+              ? "bg-primary/5 border-primary/30 shadow-[0_0_0_2px_rgba(37,99,212,0.1)]"
+              : "bg-surface-1 border-border hover:border-border-hover hover:bg-surface-2"
         }
       `}
     >
@@ -379,39 +589,51 @@ export function HotkeyInput({
 
       <div className="px-4 py-3">
         {isCapturing ? (
-          <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-              <span className="text-xs font-medium text-muted-foreground">Recording</span>
-            </div>
-            {activeModifiers.size > 0 ? (
-              <div className="flex items-center gap-1">
-                {Array.from(activeModifiers).map((mod) => (
-                  <kbd
-                    key={mod}
-                    className="px-2 py-1 bg-primary/15 border border-primary/30 rounded text-xs font-semibold text-primary"
-                  >
-                    {mod}
-                  </kbd>
-                ))}
-                <span className="text-primary/40 text-xs">+ key</span>
+          <>
+            <div className="flex items-center justify-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
+                <span className="text-xs font-medium text-muted-foreground">Recording</span>
               </div>
-            ) : (
-              <span className="text-xs text-muted-foreground">
-                {isMac ? "Try ⌘⇧K" : "Try Ctrl+Shift+K"}
-              </span>
+              {activeModifiers.size > 0 ? (
+                <div className="flex items-center gap-1">
+                  {Array.from(activeModifiers).map((mod) => (
+                    <kbd
+                      key={mod}
+                      className="px-2 py-0.5 bg-primary/10 border border-primary/20 rounded-sm text-[11px] font-semibold text-primary"
+                    >
+                      {mod}
+                    </kbd>
+                  ))}
+                  <span className="text-primary/40 text-[11px]">
+                    {isFnHeld ? "+ key or release for Globe" : "+ key"}
+                  </span>
+                </div>
+              ) : (
+                <span className="text-[11px] text-muted-foreground">
+                  {isMac ? "Try ⌘⇧K" : "Try Ctrl+Shift+K"}
+                </span>
+              )}
+            </div>
+            {validationWarning && (
+              <div className="flex items-center gap-1.5 mt-1.5 px-3 py-1.5 rounded-md bg-warning/8 border border-warning/20 dark:bg-warning/12 dark:border-warning/25">
+                <AlertTriangle className="w-3 h-3 text-warning shrink-0" />
+                <span className="text-[11px] text-warning dark:text-amber-400">
+                  {validationWarning}
+                </span>
+              </div>
             )}
-          </div>
+          </>
         ) : value ? (
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">Hotkey</span>
+            <span className="text-[11px] font-medium text-muted-foreground">Hotkey</span>
             <div className="flex items-center gap-2">
               {hotkeyParts.length > 0 ? (
                 <div className="flex items-center gap-1">
                   {hotkeyParts.map((part, i) => (
                     <React.Fragment key={part}>
-                      {i > 0 && <span className="text-muted-foreground/30 text-xs">+</span>}
-                      <kbd className="px-2 py-1 bg-surface-raised border border-border-subtle rounded text-sm font-semibold text-foreground">
+                      {i > 0 && <span className="text-muted-foreground/30 text-[10px]">+</span>}
+                      <kbd className="px-2 py-0.5 bg-surface-raised border border-border rounded-sm text-xs font-semibold text-foreground">
                         {part}
                       </kbd>
                     </React.Fragment>
@@ -419,17 +641,17 @@ export function HotkeyInput({
                 </div>
               ) : isGlobe ? (
                 <div className="flex items-center gap-1.5">
-                  <kbd className="px-2 py-1 bg-surface-raised border border-border-subtle rounded text-lg">
+                  <kbd className="px-2 py-0.5 bg-surface-raised border border-border rounded-sm text-base">
                     🌐
                   </kbd>
-                  <span className="text-xs text-muted-foreground">Globe</span>
+                  <span className="text-[11px] text-muted-foreground">Globe</span>
                 </div>
               ) : (
-                <kbd className="px-3 py-1.5 bg-surface-raised border border-border-subtle rounded text-sm font-bold text-foreground">
+                <kbd className="px-2.5 py-1 bg-surface-raised border border-border rounded-sm text-xs font-semibold text-foreground">
                   {displayValue}
                 </kbd>
               )}
-              <span className="text-[10px] text-muted-foreground/60">click to change</span>
+              <span className="text-[10px] text-muted-foreground/50">click to change</span>
             </div>
           </div>
         ) : (
