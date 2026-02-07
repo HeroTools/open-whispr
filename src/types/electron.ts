@@ -194,9 +194,7 @@ declare global {
       // Database event listeners
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => () => void;
       onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => () => void;
-      onTranscriptionsCleared?: (
-        callback: (payload: { cleared: number }) => void
-      ) => () => void;
+      onTranscriptionsCleared?: (callback: (payload: { cleared: number }) => void) => () => void;
 
       // API key management
       getOpenAIKey: () => Promise<string>;
@@ -329,9 +327,7 @@ declare global {
       onUpdateAvailable: (callback: (event: any, info: any) => void) => () => void;
       onUpdateNotAvailable: (callback: (event: any, info: any) => void) => () => void;
       onUpdateDownloaded: (callback: (event: any, info: any) => void) => () => void;
-      onUpdateDownloadProgress: (
-        callback: (event: any, progressObj: any) => void
-      ) => () => void;
+      onUpdateDownloadProgress: (callback: (event: any, progressObj: any) => void) => () => void;
       onUpdateError: (callback: (event: any, error: any) => void) => () => void;
 
       // External URL operations

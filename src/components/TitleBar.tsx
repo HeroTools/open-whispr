@@ -37,10 +37,7 @@ export default function TitleBar({
   const getActionsContent = () => {
     if (!actions) return null;
 
-    if (
-      platform !== "darwin" &&
-      React.isValidElement<{ children?: React.ReactNode }>(actions)
-    ) {
+    if (platform !== "darwin" && React.isValidElement<{ children?: React.ReactNode }>(actions)) {
       const childrenArray = React.Children.toArray(actions.props.children);
       return <>{[...childrenArray].reverse()}</>;
     }
