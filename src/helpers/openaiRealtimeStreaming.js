@@ -89,32 +89,25 @@ class OpenAIRealtimeStreaming {
         this.connectTimeout = null;
 
         // Configure transcription session
+        // See: https://platform.openai.com/docs/guides/realtime-transcription
         const sessionConfig = {
-          type: "session.update",
+          type: "transcription_session.update",
           session: {
-            type: "transcription",
-            audio: {
-              input: {
-                format: {
-                  type: "audio/pcm",
-                  rate: 24000,
-                },
-                transcription: {
-                  model,
-                },
-                turn_detection: {
-                  type: "server_vad",
-                  threshold: 0.5,
-                  prefix_padding_ms: 300,
-                  silence_duration_ms: 500,
-                },
-              },
+            input_audio_format: "pcm16",
+            input_audio_transcription: {
+              model,
+            },
+            turn_detection: {
+              type: "server_vad",
+              threshold: 0.5,
+              prefix_padding_ms: 300,
+              silence_duration_ms: 500,
             },
           },
         };
 
         if (language && language !== "auto") {
-          sessionConfig.session.audio.input.transcription.language = language;
+          sessionConfig.session.input_audio_transcription.language = language;
         }
 
         this.ws.send(JSON.stringify(sessionConfig));
@@ -163,6 +156,8 @@ class OpenAIRealtimeStreaming {
 
   _handleMessage(msg) {
     switch (msg.type) {
+      case "transcription_session.created":
+      case "transcription_session.updated":
       case "session.created":
       case "session.updated":
         logger.debug("OpenAI Realtime session event", { type: msg.type }, "streaming");
@@ -205,6 +200,10 @@ class OpenAIRealtimeStreaming {
           { error: msg.error?.message, code: msg.error?.code },
           "streaming"
         );
+        // Suppress non-critical buffer errors (e.g. committing empty buffer)
+        if (msg.error?.message?.includes("buffer too small")) {
+          break;
+        }
         this.onError?.(msg.error?.message || "OpenAI Realtime server error");
         break;
 
@@ -243,14 +242,10 @@ class OpenAIRealtimeStreaming {
     const finalText = this.accumulatedText || "";
 
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      // Commit any remaining audio buffer
-      try {
-        this.ws.send(JSON.stringify({ type: "input_audio_buffer.commit" }));
-      } catch (e) {
-        // Ignore
-      }
+      // Skip input_audio_buffer.commit — the server processes remaining
+      // audio on close, and committing an empty buffer causes an error.
 
-      // Brief wait for final transcription
+      // Brief wait for any in-flight transcription to arrive
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       try {
