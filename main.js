@@ -268,11 +268,15 @@ function initializeManagers() {
   });
 }
 
-// Handle the protocol on macOS
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  if (url.startsWith(`${OAUTH_PROTOCOL}://`)) {
-    handleOAuthDeepLink(url);
+  if (!url.startsWith(`${OAUTH_PROTOCOL}://`)) return;
+
+  handleOAuthDeepLink(url);
+
+  if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
+    windowManager.controlPanelWindow.show();
+    windowManager.controlPanelWindow.focus();
   }
 });
 
