@@ -976,6 +976,15 @@ class IPCHandlers {
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
 
+    ipcMain.handle("request-microphone-access", async () => {
+      if (process.platform !== "darwin") {
+        return { granted: true };
+      }
+      const { systemPreferences } = require("electron");
+      const granted = await systemPreferences.askForMediaAccess("microphone");
+      return { granted };
+    });
+
     // Auth: clear all session cookies for sign-out.
     // This clears every cookie in the renderer session rather than targeting
     // individual auth cookies, which is acceptable because the app only sets

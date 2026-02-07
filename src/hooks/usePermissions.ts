@@ -180,6 +180,15 @@ export const usePermissions = (
     setMicPermissionError(null);
 
     try {
+      // macOS hardened runtime requires main-process mic prompt before getUserMedia works
+      if (window.electronAPI?.requestMicrophoneAccess) {
+        try {
+          await window.electronAPI.requestMicrophoneAccess();
+        } catch {
+          // ignored — getUserMedia below will surface the error
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stopTracks(stream);
       setMicPermissionGranted(true);

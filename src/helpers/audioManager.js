@@ -32,6 +32,12 @@ class AudioManager {
     this.onPartialTranscript = null;
     this.cachedApiKey = null;
     this.cachedApiKeyProvider = null;
+
+    this._onApiKeyChanged = () => {
+      this.cachedApiKey = null;
+      this.cachedApiKeyProvider = null;
+    };
+    window.addEventListener("api-key-changed", this._onApiKeyChanged);
     this.cachedTranscriptionEndpoint = null;
     this.cachedEndpointProvider = null;
     this.cachedEndpointBaseUrl = null;
@@ -2104,6 +2110,9 @@ class AudioManager {
     this.onError = null;
     this.onTranscriptionComplete = null;
     this.onPartialTranscript = null;
+    if (this._onApiKeyChanged) {
+      window.removeEventListener("api-key-changed", this._onApiKeyChanged);
+    }
   }
 }
 
