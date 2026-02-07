@@ -116,7 +116,7 @@ export async function refreshSession(): Promise<boolean> {
 
   try {
     const result = await authClient.getSession();
-    return Boolean(result.data?.session?.user);
+    return Boolean(result.data?.session && result.data?.user);
   } catch {
     return false;
   }
