@@ -644,11 +644,12 @@ async function startApp() {
     // Right-side single modifiers need the native listener even in tap mode
     const isRightSideMod = (hotkey) => /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
 
-    // Whether native listener is needed (push mode always, tap mode only for right-side modifiers)
+    const { isModifierOnlyHotkey } = require("./src/helpers/hotkeyManager");
+
     const needsNativeListener = (hotkey, mode) => {
       if (!isValidHotkey(hotkey)) return false;
       if (mode === "push") return true;
-      return isRightSideMod(hotkey);
+      return isRightSideMod(hotkey) || isModifierOnlyHotkey(hotkey);
     };
 
     windowsKeyManager.on("key-down", async (key) => {
@@ -670,7 +671,6 @@ async function startApp() {
           }
         }, WIN_MIN_HOLD_DURATION_MS);
       } else if (activationMode === "tap") {
-        // Tap mode with native listener (right-side modifiers)
         windowManager.showDictationPanel();
         windowManager.mainWindow.webContents.send("toggle-dictation");
       }

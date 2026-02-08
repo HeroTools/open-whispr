@@ -450,10 +450,14 @@ class IPCHandlers {
       // When exiting capture mode with a new hotkey, use that to avoid reading stale state
       const effectiveHotkey = !enabled && newHotkey ? newHotkey : hotkeyManager.getCurrentHotkey();
 
+      const { isModifierOnlyHotkey } = require("./hotkeyManager");
+      const usesNativeListener = (hotkey) =>
+        !hotkey || hotkey === "GLOBE" || isModifierOnlyHotkey(hotkey);
+
       if (enabled) {
         // Entering capture mode - unregister globalShortcut so it doesn't consume key events
         const currentHotkey = hotkeyManager.getCurrentHotkey();
-        if (currentHotkey && currentHotkey !== "GLOBE") {
+        if (currentHotkey && !usesNativeListener(currentHotkey)) {
           debugLogger.log(
             `[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`
           );
@@ -476,7 +480,7 @@ class IPCHandlers {
         }
       } else {
         // Exiting capture mode - re-register globalShortcut if not already registered
-        if (effectiveHotkey && effectiveHotkey !== "GLOBE") {
+        if (effectiveHotkey && !usesNativeListener(effectiveHotkey)) {
           const { globalShortcut } = require("electron");
           if (!globalShortcut.isRegistered(effectiveHotkey)) {
             debugLogger.log(
@@ -487,13 +491,16 @@ class IPCHandlers {
           }
         }
 
-        // On Windows, restart the listener if in push mode
         if (process.platform === "win32" && this.windowsKeyManager) {
           const activationMode = await this.windowManager.getActivationMode();
           debugLogger.log(
             `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${effectiveHotkey}"`
           );
-          if (activationMode === "push" && effectiveHotkey && effectiveHotkey !== "GLOBE") {
+          const needsListener =
+            effectiveHotkey &&
+            effectiveHotkey !== "GLOBE" &&
+            (activationMode === "push" || isModifierOnlyHotkey(effectiveHotkey));
+          if (needsListener) {
             debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${effectiveHotkey}`);
             this.windowsKeyManager.start(effectiveHotkey);
           }

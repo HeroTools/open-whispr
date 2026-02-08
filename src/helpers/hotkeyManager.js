@@ -13,6 +13,18 @@ function isRightSideModifier(hotkey) {
   return RIGHT_SIDE_MODIFIER_PATTERN.test(hotkey);
 }
 
+// Modifier-only combos (e.g. "Control+Super") bypass globalShortcut on Windows
+// and use the native low-level keyboard hook instead.
+const MODIFIER_NAMES = new Set([
+  "control", "ctrl", "alt", "option", "shift", "super",
+  "meta", "win", "command", "cmd", "commandorcontrol", "cmdorctrl",
+]);
+
+function isModifierOnlyHotkey(hotkey) {
+  if (!hotkey || !hotkey.includes("+")) return false;
+  return hotkey.split("+").every((part) => MODIFIER_NAMES.has(part.toLowerCase()));
+}
+
 // Suggested alternative hotkeys when registration fails
 const SUGGESTED_HOTKEYS = {
   single: ["F8", "F9", "F10", "Pause", "ScrollLock"],
@@ -97,6 +109,7 @@ class HotkeyManager {
       hotkey === this.currentHotkey &&
       hotkey !== "GLOBE" &&
       !isRightSideModifier(hotkey) &&
+      !isModifierOnlyHotkey(hotkey) &&
       globalShortcut.isRegistered(checkAccelerator)
     ) {
       debugLogger.log(
@@ -105,11 +118,12 @@ class HotkeyManager {
       return { success: true, hotkey };
     }
 
-    // Unregister the previous hotkey (skip GLOBE and right-side modifiers - they use native listeners)
+    // Unregister the previous hotkey (skip native-listener-only hotkeys)
     if (
       this.currentHotkey &&
       this.currentHotkey !== "GLOBE" &&
-      !isRightSideModifier(this.currentHotkey)
+      !isRightSideModifier(this.currentHotkey) &&
+      !isModifierOnlyHotkey(this.currentHotkey)
     ) {
       const prevAccelerator = this.currentHotkey.startsWith("Fn+")
         ? this.currentHotkey.slice(3)
@@ -143,6 +157,15 @@ class HotkeyManager {
         this.currentHotkey = hotkey;
         debugLogger.log(
           `[HotkeyManager] Right-side modifier "${hotkey}" set - using native listener`
+        );
+        return { success: true, hotkey };
+      }
+
+      // Modifier-only combos use the native keyboard hook on Windows
+      if (isModifierOnlyHotkey(hotkey) && process.platform === "win32") {
+        this.currentHotkey = hotkey;
+        debugLogger.log(
+          `[HotkeyManager] Modifier-only "${hotkey}" set - using Windows native listener`
         );
         return { success: true, hotkey };
       }
@@ -479,3 +502,4 @@ class HotkeyManager {
 }
 
 module.exports = HotkeyManager;
+module.exports.isModifierOnlyHotkey = isModifierOnlyHotkey;
