@@ -114,8 +114,14 @@ class HotkeyManager {
       const prevAccelerator = this.currentHotkey.startsWith("Fn+")
         ? this.currentHotkey.slice(3)
         : this.currentHotkey;
-      debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${prevAccelerator}"`);
-      globalShortcut.unregister(prevAccelerator);
+      try {
+        debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${prevAccelerator}"`);
+        globalShortcut.unregister(prevAccelerator);
+      } catch (error) {
+        debugLogger.warn(
+          `[HotkeyManager] Skipping previous hotkey unregister for non-accelerator "${prevAccelerator}": ${error.message}`
+        );
+      }
     }
 
     try {
