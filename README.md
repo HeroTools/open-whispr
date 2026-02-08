@@ -75,6 +75,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    # ANTHROPIC_API_KEY=your_anthropic_key
    # GEMINI_API_KEY=your_gemini_key
    # GROQ_API_KEY=your_groq_key
+   # MISTRAL_API_KEY=your_mistral_key
    ```
    
    **Method B - In-app configuration**:
@@ -193,6 +194,13 @@ sudo pacman -S xdotool
 ```
 
 **Wayland (Modern Linux Desktop)**:
+
+**Recommended:** Install `wl-clipboard` for reliable clipboard sharing between Wayland apps:
+```bash
+sudo apt install wl-clipboard    # Debian/Ubuntu
+sudo dnf install wl-clipboard    # Fedora/RHEL
+sudo pacman -S wl-clipboard      # Arch
+```
 
 Choose **one** of the following paste tools:
 
@@ -492,6 +500,9 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # Optional: Groq API Configuration (ultra-fast inference)
 GROQ_API_KEY=your_groq_api_key_here
 
+# Optional: Mistral API Configuration (Voxtral transcription)
+MISTRAL_API_KEY=your_mistral_api_key_here
+
 # Optional: Debug mode
 DEBUG=false
 ```
@@ -587,7 +598,7 @@ OpenWhispr is designed with privacy and security in mind:
 6. **Text not pasting**:
    - macOS: Check accessibility permissions (System Settings → Privacy & Security → Accessibility)
    - Linux X11: Install `xdotool`
-   - Linux Wayland: Install `wtype` or `ydotool` (ensure `ydotoold` daemon is running)
+   - Linux Wayland: Install `wtype` or `ydotool` for paste simulation (ensure `ydotoold` daemon is running)
    - All platforms: Text is always copied to clipboard - use Ctrl+V (Cmd+V on macOS) to paste manually
 7. **Panel position**: If the panel appears off-screen, restart the app to reset position
 

@@ -8,6 +8,8 @@ const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
 
+const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
+
 class IPCHandlers {
   constructor(managers) {
     this.environmentManager = managers.environmentManager;
@@ -683,6 +685,53 @@ class IPCHandlers {
     ipcMain.handle("save-groq-key", async (event, key) => {
       return this.environmentManager.saveGroqKey(key);
     });
+
+    ipcMain.handle("get-mistral-key", async () => {
+      return this.environmentManager.getMistralKey();
+    });
+
+    ipcMain.handle("save-mistral-key", async (event, key) => {
+      return this.environmentManager.saveMistralKey(key);
+    });
+
+    // Proxy Mistral transcription through main process to avoid CORS
+    ipcMain.handle(
+      "proxy-mistral-transcription",
+      async (event, { audioBuffer, model, language, contextBias }) => {
+        const apiKey = this.environmentManager.getMistralKey();
+        if (!apiKey) {
+          throw new Error("Mistral API key not configured");
+        }
+
+        const formData = new FormData();
+        const audioBlob = new Blob([Buffer.from(audioBuffer)], { type: "audio/webm" });
+        formData.append("file", audioBlob, "audio.webm");
+        formData.append("model", model || "voxtral-mini-latest");
+        if (language && language !== "auto") {
+          formData.append("language", language);
+        }
+        if (contextBias && contextBias.length > 0) {
+          for (const token of contextBias) {
+            formData.append("context_bias", token);
+          }
+        }
+
+        const response = await fetch(MISTRAL_TRANSCRIPTION_URL, {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Mistral API Error: ${response.status} ${errorText}`);
+        }
+
+        return await response.json();
+      }
+    );
 
     ipcMain.handle("get-custom-transcription-key", async () => {
       return this.environmentManager.getCustomTranscriptionKey();

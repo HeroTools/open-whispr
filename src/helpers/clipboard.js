@@ -47,18 +47,12 @@ const RESTORE_DELAYS = {
   linux: 200,
 };
 
-/**
- * Write text to clipboard via renderer's WebContents (for Wayland persistent ownership).
- * Uses JSON.stringify to safely embed text in executed JS. Returns a Promise.
- */
 function writeClipboardInRenderer(webContents, text) {
   if (!webContents || !webContents.executeJavaScript) {
     return Promise.reject(new Error("Invalid webContents for clipboard write"));
   }
   const escaped = JSON.stringify(text);
-  return webContents.executeJavaScript(
-    `navigator.clipboard.writeText(${escaped})`
-  );
+  return webContents.executeJavaScript(`navigator.clipboard.writeText(${escaped})`);
 }
 
 class ClipboardManager {
@@ -71,10 +65,28 @@ class ClipboardManager {
     this.fastPasteChecked = false;
   }
 
-  _isWaylandWithRenderer() {
+  _isWayland() {
     if (process.platform !== "linux") return false;
     const { isWayland } = getLinuxSessionInfo();
     return isWayland;
+  }
+
+  _writeClipboardWayland(text, webContents) {
+    if (this.commandExists("wl-copy")) {
+      try {
+        const result = spawnSync("wl-copy", ["--", text], { timeout: 2000 });
+        if (result.status === 0) {
+          clipboard.writeText(text);
+          return;
+        }
+      } catch {}
+    }
+
+    if (webContents && !webContents.isDestroyed()) {
+      writeClipboardInRenderer(webContents, text).catch(() => {});
+    }
+
+    clipboard.writeText(text);
   }
 
   getNircmdPath() {
@@ -220,24 +232,12 @@ class ClipboardManager {
         originalClipboard.substring(0, 50) + "..."
       );
 
-      const useRendererClipboard =
-        platform === "linux" &&
-        this._isWaylandWithRenderer() &&
-        webContents &&
-        !webContents.isDestroyed();
-      if (useRendererClipboard) {
-        try {
-          await writeClipboardInRenderer(webContents, text);
-          this.safeLog("📋 Text copied to clipboard (Wayland renderer):", text.substring(0, 50) + "...");
-        } catch (err) {
-          this.safeLog("Wayland renderer clipboard failed, using main process:", err?.message);
-          clipboard.writeText(text);
-          this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
-        }
+      if (platform === "linux" && this._isWayland()) {
+        this._writeClipboardWayland(text, webContents);
       } else {
         clipboard.writeText(text);
-        this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
       }
+      this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
 
       if (platform === "darwin") {
         method = this.resolveFastPasteBinary() ? "cgevent" : "applescript";
@@ -783,10 +783,8 @@ class ClipboardManager {
             if (code === 0) {
               debugLogger.debug("Paste successful", { cmd: tool.cmd }, "clipboard");
               setTimeout(() => {
-                if (isWayland && webContents && !webContents.isDestroyed()) {
-                  writeClipboardInRenderer(webContents, originalClipboard).catch((err) =>
-                    this.safeLog("Wayland clipboard restore failed:", err?.message)
-                  );
+                if (isWayland) {
+                  this._writeClipboardWayland(originalClipboard, webContents);
                 } else {
                   clipboard.writeText(originalClipboard);
                 }
@@ -1095,18 +1093,8 @@ Would you like to open System Settings now?`;
   }
 
   async writeClipboard(text, webContents = null) {
-    const useRendererClipboard =
-      process.platform === "linux" &&
-      this._isWaylandWithRenderer() &&
-      webContents &&
-      !webContents.isDestroyed();
-    if (useRendererClipboard) {
-      try {
-        await writeClipboardInRenderer(webContents, text);
-      } catch (err) {
-        this.safeLog("Wayland renderer clipboard failed in writeClipboard, using main process:", err?.message);
-        clipboard.writeText(text);
-      }
+    if (process.platform === "linux" && this._isWayland()) {
+      this._writeClipboardWayland(text, webContents);
     } else {
       clipboard.writeText(text);
     }
