@@ -12,6 +12,7 @@ const REASONING_CACHE_TTL = 30000; // 30 seconds
 const PLACEHOLDER_KEYS = {
   openai: "your_openai_api_key_here",
   groq: "your_groq_api_key_here",
+  mistral: "your_mistral_api_key_here",
 };
 
 const isValidApiKey = (key, provider = "openai") => {
@@ -620,6 +621,14 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       // For custom, we allow null/empty - the endpoint may not require auth
       if (!apiKey) {
         apiKey = null;
+      }
+    } else if (provider === "mistral") {
+      apiKey = await window.electronAPI.getMistralKey?.();
+      if (!isValidApiKey(apiKey, "mistral")) {
+        apiKey = localStorage.getItem("mistralApiKey");
+      }
+      if (!isValidApiKey(apiKey, "mistral")) {
+        throw new Error("Mistral API key not found. Please set your API key in the Control Panel.");
       }
     } else if (provider === "groq") {
       // Try to get Groq API key
@@ -1243,7 +1252,43 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const endpoint = this.getTranscriptionEndpoint();
       const isCustomEndpoint =
         provider === "custom" ||
-        (!endpoint.includes("api.openai.com") && !endpoint.includes("api.groq.com"));
+        (!endpoint.includes("api.openai.com") &&
+          !endpoint.includes("api.groq.com") &&
+          !endpoint.includes("api.mistral.ai"));
+
+      const apiCallStart = performance.now();
+
+      // Mistral uses x-api-key auth (not Bearer) and doesn't allow browser CORS — proxy through main process
+      if (provider === "mistral" && window.electronAPI?.proxyMistralTranscription) {
+        const audioBuffer = await optimizedAudio.arrayBuffer();
+        const proxyData = { audioBuffer, model, language };
+
+        if (dictionaryPrompt) {
+          const tokens = dictionaryPrompt
+            .split(",")
+            .flatMap((entry) => entry.trim().split(/\s+/))
+            .filter(Boolean)
+            .slice(0, 100);
+          if (tokens.length > 0) {
+            proxyData.contextBias = tokens;
+          }
+        }
+
+        const result = await window.electronAPI.proxyMistralTranscription(proxyData);
+        const proxyText = result?.text;
+
+        if (proxyText && proxyText.trim().length > 0) {
+          timings.transcriptionProcessingDurationMs = Math.round(performance.now() - apiCallStart);
+          const reasoningStart = performance.now();
+          const text = await this.processTranscription(proxyText, "mistral");
+          timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
+          const source = (await this.isReasoningAvailable()) ? "mistral-reasoned" : "mistral";
+          return { success: true, text, source, timings };
+        }
+
+        throw new Error("No text transcribed - Mistral response was empty");
+      }
 
       logger.debug(
         "Making transcription API request",
@@ -1281,7 +1326,6 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         "transcription"
       );
 
-      const apiCallStart = performance.now();
       const response = await fetch(endpoint, {
         method: "POST",
         headers,
@@ -1470,6 +1514,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       if (trimmedModel) {
         const isGroqModel = trimmedModel.startsWith("whisper-large-v3");
         const isOpenAIModel = trimmedModel.startsWith("gpt-4o") || trimmedModel === "whisper-1";
+        const isMistralModel = trimmedModel.startsWith("voxtral-");
 
         if (provider === "groq" && isGroqModel) {
           return trimmedModel;
@@ -1477,11 +1522,16 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         if (provider === "openai" && isOpenAIModel) {
           return trimmedModel;
         }
+        if (provider === "mistral" && isMistralModel) {
+          return trimmedModel;
+        }
         // Model doesn't match provider - fall through to default
       }
 
       // Return provider-appropriate default
-      return provider === "groq" ? "whisper-large-v3-turbo" : "gpt-4o-mini-transcribe";
+      if (provider === "groq") return "whisper-large-v3-turbo";
+      if (provider === "mistral") return "voxtral-mini-latest";
+      return "gpt-4o-mini-transcribe";
     } catch (error) {
       return "gpt-4o-mini-transcribe";
     }
@@ -1531,6 +1581,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         base = currentBaseUrl.trim() || API_ENDPOINTS.TRANSCRIPTION_BASE;
       } else if (currentProvider === "groq") {
         base = API_ENDPOINTS.GROQ_BASE;
+      } else if (currentProvider === "mistral") {
+        base = API_ENDPOINTS.MISTRAL_BASE;
       } else {
         // OpenAI or other standard providers
         base = API_ENDPOINTS.TRANSCRIPTION_BASE;
@@ -1621,7 +1673,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       return true;
     } catch (error) {
       const message =
-        error?.message ?? (typeof error?.toString === "function" ? error.toString() : String(error));
+        error?.message ??
+        (typeof error?.toString === "function" ? error.toString() : String(error));
       this.onError?.({
         title: "Paste Error",
         description: `Failed to paste text. Please check accessibility permissions. ${message}`,

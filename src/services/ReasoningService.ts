@@ -1113,7 +1113,9 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
-  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq" | "custom"): void {
+  clearApiKeyCache(
+    provider?: "openai" | "anthropic" | "gemini" | "groq" | "mistral" | "custom"
+  ): void {
     if (provider) {
       if (provider !== "custom") {
         this.apiKeyCache.delete(provider);
