@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-02-08
+
+### Fixed
+- **AI Enhancement CTA Persistence**: Dismissing the "Enable AI Enhancement" banner now persists to localStorage so it stays hidden across sessions
+
+### Changed
+- **Code Cleanup**: Removed excess comments and section dividers in ControlPanel
+
 ## [1.4.3] - 2026-02-08
 
 ### Added

@@ -40,7 +40,9 @@ export default function ControlPanel() {
   const [limitData, setLimitData] = useState<{ wordsUsed: number; limit: number } | null>(null);
   const hasShownUpgradePrompt = useRef(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionType | undefined>();
-  const [aiCTADismissed, setAiCTADismissed] = useState(false);
+  const [aiCTADismissed, setAiCTADismissed] = useState(
+    () => localStorage.getItem("aiCTADismissed") === "true"
+  );
   const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
   const cloudMigrationProcessed = useRef(false);
   const { hotkey } = useHotkey();
@@ -48,7 +50,6 @@ export default function ControlPanel() {
   const { useReasoningModel, setUseLocalWhisper, setCloudTranscriptionMode } = useSettings();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
-  // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
     status: updateStatus,
     downloadProgress,
@@ -72,7 +73,6 @@ export default function ControlPanel() {
     loadTranscriptions();
   }, []);
 
-  // Show toast when update is ready
   useEffect(() => {
     if (updateStatus.updateDownloaded && !isDownloading) {
       toast({
@@ -83,7 +83,6 @@ export default function ControlPanel() {
     }
   }, [updateStatus.updateDownloaded, isDownloading, toast]);
 
-  // Show toast on update error
   useEffect(() => {
     if (updateError) {
       toast({
@@ -94,11 +93,9 @@ export default function ControlPanel() {
     }
   }, [updateError, toast]);
 
-  // Listen for limit-reached events from the dictation overlay
   useEffect(() => {
     const dispose = window.electronAPI?.onLimitReached?.(
       (data: { wordsUsed: number; limit: number }) => {
-        // Show dialog only once per session, then show toast for subsequent hits
         if (!hasShownUpgradePrompt.current) {
           hasShownUpgradePrompt.current = true;
           setLimitData(data);
@@ -118,7 +115,6 @@ export default function ControlPanel() {
     };
   }, [toast]);
 
-  // Switch existing users to OpenWhispr Cloud after account creation
   useEffect(() => {
     if (!authLoaded || !isSignedIn || cloudMigrationProcessed.current) return;
     const isPending = localStorage.getItem("pendingCloudMigration") === "true";
@@ -218,7 +214,6 @@ export default function ControlPanel() {
 
   const handleUpdateClick = async () => {
     if (updateStatus.updateDownloaded) {
-      // Show confirmation dialog before installing
       showConfirmDialog({
         title: "Install Update",
         description:
@@ -236,7 +231,6 @@ export default function ControlPanel() {
         },
       });
     } else if (updateStatus.updateAvailable && !isDownloading) {
-      // Start download
       try {
         await downloadUpdate();
       } catch (error) {
@@ -314,7 +308,6 @@ export default function ControlPanel() {
       <TitleBar
         actions={
           <>
-            {/* Update button */}
             {!updateStatus.isDevelopment &&
               (updateStatus.updateAvailable ||
                 updateStatus.updateDownloaded ||
@@ -355,10 +348,8 @@ export default function ControlPanel() {
         initialSection={settingsSection}
       />
 
-      {/* Main content */}
       <div className="p-4">
         <div className="max-w-3xl mx-auto">
-          {/* Header row */}
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="flex items-center gap-2">
               <FileText size={14} className="text-primary" />
@@ -382,7 +373,6 @@ export default function ControlPanel() {
             )}
           </div>
 
-          {/* Cloud Migration Notice */}
           {showCloudMigrationBanner && (
             <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
               <button
@@ -425,11 +415,13 @@ export default function ControlPanel() {
             </div>
           )}
 
-          {/* AI Enhancement CTA */}
           {!useReasoningModel && !aiCTADismissed && (
             <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
               <button
-                onClick={() => setAiCTADismissed(true)}
+                onClick={() => {
+                  localStorage.setItem("aiCTADismissed", "true");
+                  setAiCTADismissed(true);
+                }}
                 className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               >
                 <X size={14} />
@@ -461,7 +453,6 @@ export default function ControlPanel() {
             </div>
           )}
 
-          {/* Content area */}
           <div className="rounded-lg border border-border bg-card/50 dark:bg-card/30 backdrop-blur-sm">
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-8">
