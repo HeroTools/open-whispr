@@ -34,6 +34,7 @@ const getLinuxSessionInfo = () => {
 // ms before simulating keystroke
 const PASTE_DELAYS = {
   darwin: 120,
+  win32_fast: 10,
   win32_nircmd: 30,
   win32_pwsh: 40,
   linux: 50,
@@ -63,6 +64,8 @@ class ClipboardManager {
     this.nircmdChecked = false;
     this.fastPastePath = null;
     this.fastPasteChecked = false;
+    this.winFastPastePath = null;
+    this.winFastPasteChecked = false;
   }
 
   _isWayland() {
@@ -181,6 +184,50 @@ class ClipboardManager {
     return null;
   }
 
+  resolveWindowsFastPasteBinary() {
+    if (this.winFastPasteChecked) {
+      return this.winFastPastePath;
+    }
+    this.winFastPasteChecked = true;
+
+    if (process.platform !== "win32") {
+      return null;
+    }
+
+    const binaryName = "windows-fast-paste.exe";
+    const candidates = new Set([
+      path.join(__dirname, "..", "..", "resources", "bin", binaryName),
+      path.join(__dirname, "..", "..", "resources", binaryName),
+    ]);
+
+    if (process.resourcesPath) {
+      [
+        path.join(process.resourcesPath, binaryName),
+        path.join(process.resourcesPath, "bin", binaryName),
+        path.join(process.resourcesPath, "resources", binaryName),
+        path.join(process.resourcesPath, "resources", "bin", binaryName),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", binaryName),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "bin", binaryName),
+      ].forEach((candidate) => candidates.add(candidate));
+    }
+
+    for (const candidate of candidates) {
+      try {
+        const stats = fs.statSync(candidate);
+        if (stats.isFile()) {
+          this.safeLog(`✅ Found windows-fast-paste.exe at: ${candidate}`);
+          this.winFastPastePath = candidate;
+          return candidate;
+        }
+      } catch {
+        continue;
+      }
+    }
+
+    this.safeLog("⚠️ windows-fast-paste.exe not found, will use nircmd/PowerShell fallback");
+    return null;
+  }
+
   safeLog(...args) {
     if (process.env.NODE_ENV === "development") {
       try {
@@ -254,8 +301,13 @@ class ClipboardManager {
         this.safeLog("✅ Permissions granted, attempting to paste...");
         await this.pasteMacOS(originalClipboard, options);
       } else if (platform === "win32") {
-        const nircmdPath = this.getNircmdPath();
-        method = nircmdPath ? "nircmd" : "powershell";
+        const winFastPaste = this.resolveWindowsFastPasteBinary();
+        if (winFastPaste) {
+          method = "sendinput";
+        } else {
+          const nircmdPath = this.getNircmdPath();
+          method = nircmdPath ? "nircmd" : "powershell";
+        }
         await this.pasteWindows(originalClipboard);
       } else {
         method = "linux-tools";
@@ -404,13 +456,92 @@ class ClipboardManager {
   }
 
   async pasteWindows(originalClipboard) {
-    const nircmdPath = this.getNircmdPath();
+    const fastPastePath = this.resolveWindowsFastPasteBinary();
 
+    if (fastPastePath) {
+      return this.pasteWithFastPaste(fastPastePath, originalClipboard);
+    }
+
+    return this.pasteWithNircmdOrPowerShell(originalClipboard);
+  }
+
+  async pasteWithFastPaste(fastPastePath, originalClipboard) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        let hasTimedOut = false;
+        const startTime = Date.now();
+
+        this.safeLog("⚡ Windows fast-paste starting");
+
+        const pasteProcess = spawn(fastPastePath, [], {
+          stdio: ["ignore", "pipe", "pipe"],
+          windowsHide: true,
+        });
+
+        let stdoutData = "";
+        let stderrData = "";
+
+        pasteProcess.stdout.on("data", (data) => {
+          stdoutData += data.toString();
+        });
+
+        pasteProcess.stderr.on("data", (data) => {
+          stderrData += data.toString();
+        });
+
+        pasteProcess.on("close", (code) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+
+          const elapsed = Date.now() - startTime;
+          const output = stdoutData.trim();
+
+          if (code === 0) {
+            this.safeLog("✅ Windows fast-paste success", {
+              elapsedMs: elapsed,
+              output,
+            });
+            setTimeout(() => {
+              clipboard.writeText(originalClipboard);
+              this.safeLog("🔄 Clipboard restored");
+            }, RESTORE_DELAYS.win32_nircmd);
+            resolve();
+          } else {
+            this.safeLog(
+              `❌ Windows fast-paste failed (code ${code}), falling back to nircmd/PowerShell`,
+              { elapsedMs: elapsed, stderr: stderrData.trim() }
+            );
+            this.pasteWithNircmdOrPowerShell(originalClipboard).then(resolve).catch(reject);
+          }
+        });
+
+        pasteProcess.on("error", (error) => {
+          if (hasTimedOut) return;
+          clearTimeout(timeoutId);
+          this.safeLog("❌ Windows fast-paste error, falling back to nircmd/PowerShell", {
+            elapsedMs: Date.now() - startTime,
+            error: error.message,
+          });
+          this.pasteWithNircmdOrPowerShell(originalClipboard).then(resolve).catch(reject);
+        });
+
+        const timeoutId = setTimeout(() => {
+          hasTimedOut = true;
+          this.safeLog("⏱️ Windows fast-paste timeout, falling back to nircmd/PowerShell");
+          killProcess(pasteProcess, "SIGKILL");
+          pasteProcess.removeAllListeners();
+          this.pasteWithNircmdOrPowerShell(originalClipboard).then(resolve).catch(reject);
+        }, 2000);
+      }, PASTE_DELAYS.win32_fast);
+    });
+  }
+
+  async pasteWithNircmdOrPowerShell(originalClipboard) {
+    const nircmdPath = this.getNircmdPath();
     if (nircmdPath) {
       return this.pasteWithNircmd(nircmdPath, originalClipboard);
-    } else {
-      return this.pasteWithPowerShell(originalClipboard);
     }
+    return this.pasteWithPowerShell(originalClipboard);
   }
 
   async pasteWithNircmd(nircmdPath, originalClipboard) {
@@ -1116,11 +1247,13 @@ Would you like to open System Settings now?`;
     }
 
     if (platform === "win32") {
+      const winFastPaste = this.resolveWindowsFastPasteBinary();
       return {
         platform: "win32",
         available: true,
-        method: "powershell",
+        method: winFastPaste ? "sendinput" : "powershell",
         requiresPermission: false,
+        terminalAware: !!winFastPaste,
         tools: [],
       };
     }

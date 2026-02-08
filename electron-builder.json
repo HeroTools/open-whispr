@@ -93,7 +93,7 @@
     {
       "from": "resources/bin/",
       "to": "bin/",
-      "filter": ["whisper-cpp-*", "whisper-server-*", "llama-server-*", "sherpa-onnx-*", "windows-key-listener*", "*.dylib", "*.dll", "*.so*"]
+      "filter": ["whisper-cpp-*", "whisper-server-*", "llama-server-*", "sherpa-onnx-*", "windows-key-listener*", "windows-fast-paste*", "*.dylib", "*.dll", "*.so*"]
     }
   ],
   "mac": {

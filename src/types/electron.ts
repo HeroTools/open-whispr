@@ -158,6 +158,7 @@ export interface PasteToolsResult {
   requiresPermission: boolean;
   isWayland?: boolean;
   xwaylandAvailable?: boolean;
+  terminalAware?: boolean;
   tools?: string[];
   recommendedInstall?: string;
 }
