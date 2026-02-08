@@ -171,9 +171,7 @@ export function useModelDownload({
             success = result?.success ?? false;
           }
         } else {
-          const result = (await window.electronAPI?.modelDownload?.(modelId)) as
-            | { success: boolean; error?: string }
-            | undefined;
+          const result = await window.electronAPI?.modelDownload?.(modelId);
           if (result && !result.success && result.error) {
             showAlertDialog({
               title: "Download Failed",

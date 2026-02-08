@@ -5,7 +5,7 @@ import fs from "fs";
 import { promises as fsPromises } from "fs";
 import https from "https";
 import { createWriteStream } from "fs";
-import tar from "tar";
+import * as tar from "tar";
 import os from "os";
 
 // Only import unzipper in main process
