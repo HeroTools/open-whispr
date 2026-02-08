@@ -1,4 +1,12 @@
-import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import React, {
+  type Dispatch,
+  type SetStateAction,
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  useMemo,
+} from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -49,12 +57,13 @@ import DeveloperSection from "./DeveloperSection";
 import LanguageSelector from "./ui/LanguageSelector";
 import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
-import { useToast } from "./ui/Toast";
+import { useToast, type ToastProps } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
 import logger from "../utils/logger";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "./lib/utils";
+import { type LocalTranscriptionProvider } from "../types/electron";
 
 export type SettingsSectionType =
   | "account"
@@ -67,6 +76,9 @@ export type SettingsSectionType =
   | "permissions"
   | "privacy"
   | "developer";
+
+type LocalTranscriptionProviderSetter = Dispatch<SetStateAction<LocalTranscriptionProvider>>;
+type ToastInput = Omit<ToastProps, "id">;
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
@@ -124,8 +136,8 @@ interface TranscriptionSectionProps {
   setCloudTranscriptionProvider: (provider: string) => void;
   cloudTranscriptionModel: string;
   setCloudTranscriptionModel: (model: string) => void;
-  localTranscriptionProvider: string;
-  setLocalTranscriptionProvider: (provider: string) => void;
+  localTranscriptionProvider: LocalTranscriptionProvider;
+  setLocalTranscriptionProvider: LocalTranscriptionProviderSetter;
   whisperModel: string;
   setWhisperModel: (model: string) => void;
   parakeetModel: string;
@@ -138,12 +150,7 @@ interface TranscriptionSectionProps {
   setCustomTranscriptionApiKey: (key: string) => void;
   cloudTranscriptionBaseUrl?: string;
   setCloudTranscriptionBaseUrl: (url: string) => void;
-  toast: (opts: {
-    title: string;
-    description: string;
-    variant?: string;
-    duration?: number;
-  }) => void;
+  toast: (opts: ToastInput) => void;
 }
 
 function TranscriptionSection({
@@ -323,7 +330,11 @@ function TranscriptionSection({
             }
           }}
           selectedLocalProvider={localTranscriptionProvider}
-          onLocalProviderSelect={setLocalTranscriptionProvider}
+          onLocalProviderSelect={(providerId) => {
+            if (providerId === "whisper" || providerId === "nvidia") {
+              setLocalTranscriptionProvider(providerId);
+            }
+          }}
           useLocalWhisper={useLocalWhisper}
           onModeChange={(isLocal) => {
             setUseLocalWhisper(isLocal);
@@ -372,12 +383,7 @@ interface AiModelsSectionProps {
   customReasoningApiKey: string;
   setCustomReasoningApiKey: (key: string) => void;
   showAlertDialog: (dialog: { title: string; description: string }) => void;
-  toast: (opts: {
-    title: string;
-    description: string;
-    variant?: string;
-    duration?: number;
-  }) => void;
+  toast: (opts: ToastInput) => void;
 }
 
 function AiModelsSection({
