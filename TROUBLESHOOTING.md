@@ -89,10 +89,15 @@
 
 **Cause:** Electron's main-process clipboard API uses X11 selections (via XWayland), which native Wayland apps cannot read.
 
-**Fix:** OpenWhispr uses the renderer's `navigator.clipboard` API for Wayland clipboard writes, which has native Wayland protocol support. If you're seeing this issue:
-1. Update to the latest version of OpenWhispr
+**Fix:**
+1. Install `wl-clipboard` for the most reliable Wayland clipboard support:
+   - Debian/Ubuntu: `sudo apt install wl-clipboard`
+   - Fedora/RHEL: `sudo dnf install wl-clipboard`
+   - Arch: `sudo pacman -S wl-clipboard`
 2. Ensure a paste tool is installed (`wtype`, `ydotool`, or `xdotool`)
-3. Restart OpenWhispr after updating
+3. Restart OpenWhispr after installing
+
+OpenWhispr tries clipboard methods in order: `wl-copy` (most reliable) → renderer `navigator.clipboard` → X11 fallback.
 
 ### Windows-Specific Issues
 

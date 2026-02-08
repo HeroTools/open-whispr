@@ -194,6 +194,13 @@ sudo pacman -S xdotool
 
 **Wayland (Modern Linux Desktop)**:
 
+**Recommended:** Install `wl-clipboard` for reliable clipboard sharing between Wayland apps:
+```bash
+sudo apt install wl-clipboard    # Debian/Ubuntu
+sudo dnf install wl-clipboard    # Fedora/RHEL
+sudo pacman -S wl-clipboard      # Arch
+```
+
 Choose **one** of the following paste tools:
 
 **Option 1: wtype** (requires virtual keyboard protocol support)
