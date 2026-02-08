@@ -230,8 +230,14 @@ class ClipboardManager {
         webContents &&
         !webContents.isDestroyed();
       if (useRendererClipboard) {
-        await writeClipboardInRenderer(webContents, text);
-        this.safeLog("📋 Text copied to clipboard (Wayland renderer):", text.substring(0, 50) + "...");
+        try {
+          await writeClipboardInRenderer(webContents, text);
+          this.safeLog("📋 Text copied to clipboard (Wayland renderer):", text.substring(0, 50) + "...");
+        } catch (err) {
+          this.safeLog("Wayland renderer clipboard failed, using main process:", err?.message);
+          clipboard.writeText(text);
+          this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
+        }
       } else {
         clipboard.writeText(text);
         this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
@@ -1100,7 +1106,12 @@ Would you like to open System Settings now?`;
       webContents &&
       !webContents.isDestroyed();
     if (useRendererClipboard) {
-      await writeClipboardInRenderer(webContents, text);
+      try {
+        await writeClipboardInRenderer(webContents, text);
+      } catch (err) {
+        this.safeLog("Wayland renderer clipboard failed in writeClipboard, using main process:", err?.message);
+        clipboard.writeText(text);
+      }
     } else {
       clipboard.writeText(text);
     }
