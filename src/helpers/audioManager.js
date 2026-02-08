@@ -1870,6 +1870,12 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           title: "Streaming Error",
           description: error,
         });
+        if (this.isStreaming) {
+          logger.warn("Connection lost during streaming, auto-stopping", {}, "streaming");
+          this.stopStreamingRecording().catch((e) => {
+            logger.error("Auto-stop after connection loss failed", { error: e.message }, "streaming");
+          });
+        }
       });
 
       const sessionEndCleanup = window.electronAPI.onAssemblyAiSessionEnd((data) => {
@@ -1960,8 +1966,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     window.electronAPI.assemblyAiStreamingForceEndpoint?.();
     const tForceEndpoint = performance.now();
 
-    await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
+    const stopResult = await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
       logger.debug("Streaming disconnect error", { error: e.message }, "streaming");
+      return { success: false };
     });
     const tTerminate = performance.now();
 
@@ -1973,6 +1980,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     if (!finalText && this.streamingPartialText) {
       finalText = this.streamingPartialText;
       logger.debug("Using partial text as fallback", { textLength: finalText.length }, "streaming");
+    }
+
+    if (!finalText && stopResult?.text) {
+      finalText = stopResult.text;
+      logger.debug("Using disconnect result text as fallback", { textLength: finalText.length }, "streaming");
     }
 
     this.cleanupStreamingListeners();

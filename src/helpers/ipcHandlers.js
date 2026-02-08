@@ -1239,6 +1239,9 @@ class IPCHandlers {
             agentName: opts.agentName,
             customDictionary: opts.customDictionary,
             language: opts.language,
+            sessionId: this.sessionId,
+            clientType: "desktop",
+            appVersion: app.getVersion(),
           }),
         });
         const fetchMs = Date.now() - fetchStart;
@@ -1641,8 +1644,8 @@ class IPCHandlers {
       try {
         let result = { text: "" };
         if (this.assemblyAiStreaming) {
-          // disconnect() now returns the final text from Termination event
           result = await this.assemblyAiStreaming.disconnect(true);
+          this.assemblyAiStreaming.cleanupAll();
           this.assemblyAiStreaming = null;
         }
 
