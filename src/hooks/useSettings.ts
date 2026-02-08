@@ -191,6 +191,26 @@ export function useSettings() {
     }
   );
 
+  // Streaming provider: which backend to use for live transcription
+  const [streamingProvider, setStreamingProvider] = useLocalStorage<string>(
+    "streamingProvider",
+    "auto",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
+  // Deepgram API key (stored in localStorage; persisted to .env via main process)
+  const [deepgramApiKey, setDeepgramApiKeyRaw] = useLocalStorage<string>(
+    "deepgramApiKey",
+    "",
+    {
+      serialize: String,
+      deserialize: String,
+    }
+  );
+
   // Wrap setter to sync dictionary to SQLite
   const setCustomDictionary = useCallback(
     (words: string[]) => {
@@ -346,6 +366,10 @@ export function useSettings() {
         const envKey = await window.electronAPI.getCustomReasoningKey?.();
         if (envKey) setCustomReasoningApiKeyLocal(envKey);
       }
+      if (!deepgramApiKey) {
+        const envKey = await window.electronAPI.getDeepgramKey?.();
+        if (envKey) setDeepgramApiKeyRaw(envKey);
+      }
     };
 
     syncKeys().catch((err) => {
@@ -433,6 +457,15 @@ export function useSettings() {
       invalidateApiKeyCaches("custom");
     },
     [setCustomReasoningApiKeyLocal, invalidateApiKeyCaches]
+  );
+
+  const setDeepgramApiKey = useCallback(
+    (key: string) => {
+      setDeepgramApiKeyRaw(key);
+      window.electronAPI?.saveDeepgramKey?.(key);
+      debouncedPersistToEnv();
+    },
+    [setDeepgramApiKeyRaw, debouncedPersistToEnv]
   );
 
   const [dictationKey, setDictationKeyLocal] = useLocalStorage("dictationKey", "", {
@@ -618,6 +651,10 @@ export function useSettings() {
     customDictionary,
     assemblyAiStreaming,
     setAssemblyAiStreaming,
+    streamingProvider,
+    setStreamingProvider,
+    deepgramApiKey,
+    setDeepgramApiKey,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
