@@ -128,6 +128,8 @@ class HotkeyManager {
       return { success: true, hotkey };
     }
 
+    const previousHotkey = this.currentHotkey;
+
     // Unregister the previous hotkey (skip native-listener-only hotkeys)
     if (
       this.currentHotkey &&
@@ -205,6 +207,8 @@ class HotkeyManager {
         console.error(`[HotkeyManager] Failed to register hotkey: ${hotkey}`, failureInfo);
         debugLogger.log(`[HotkeyManager] Registration failed:`, failureInfo);
 
+        this._restorePreviousHotkey(previousHotkey, callback);
+
         let errorMessage = failureInfo.message;
         if (failureInfo.suggestions.length > 0) {
           errorMessage += ` Try: ${failureInfo.suggestions.join(", ")}`;
@@ -220,7 +224,38 @@ class HotkeyManager {
     } catch (error) {
       console.error("[HotkeyManager] Error setting up shortcuts:", error);
       debugLogger.log(`[HotkeyManager] Exception during registration:`, error.message);
+      this._restorePreviousHotkey(previousHotkey, callback);
       return { success: false, error: error.message };
+    }
+  }
+
+  _restorePreviousHotkey(previousHotkey, callback) {
+    if (
+      !previousHotkey ||
+      previousHotkey === "GLOBE" ||
+      isRightSideModifier(previousHotkey) ||
+      isModifierOnlyHotkey(previousHotkey)
+    ) {
+      return;
+    }
+    const prevAccel = previousHotkey.startsWith("Fn+")
+      ? previousHotkey.slice(3)
+      : previousHotkey;
+    try {
+      const restored = globalShortcut.register(prevAccel, callback);
+      if (restored) {
+        debugLogger.log(
+          `[HotkeyManager] Restored previous hotkey "${previousHotkey}" after failed registration`
+        );
+      } else {
+        debugLogger.warn(
+          `[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`
+        );
+      }
+    } catch (err) {
+      debugLogger.warn(
+        `[HotkeyManager] Exception restoring previous hotkey "${previousHotkey}": ${err.message}`
+      );
     }
   }
 
@@ -513,3 +548,4 @@ class HotkeyManager {
 
 module.exports = HotkeyManager;
 module.exports.isModifierOnlyHotkey = isModifierOnlyHotkey;
+module.exports.isRightSideModifier = isRightSideModifier;
