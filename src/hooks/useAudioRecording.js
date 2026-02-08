@@ -43,9 +43,12 @@ export const useAudioRecording = (toast, options = {}) => {
       return false;
     }
 
-    const didStop = currentState.isStreaming
-      ? await audioManagerRef.current.stopStreamingRecording()
-      : audioManagerRef.current.stopRecording();
+    if (currentState.isStreaming) {
+      void playStopCue(); // streaming stop finalization is async, play cue immediately on stop action
+      return await audioManagerRef.current.stopStreamingRecording();
+    }
+
+    const didStop = audioManagerRef.current.stopRecording();
 
     if (didStop) {
       void playStopCue();
