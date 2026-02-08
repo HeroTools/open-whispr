@@ -1,4 +1,4 @@
-const { clipboard, app } = require("electron");
+const { clipboard } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 const { killProcess } = require("../utils/process");
 const path = require("path");
@@ -69,10 +69,6 @@ class ClipboardManager {
     this.nircmdChecked = false;
     this.fastPastePath = null;
     this.fastPasteChecked = false;
-    this.lastOwnedClipboardText = null;
-    app.on("will-quit", () => {
-      this.lastOwnedClipboardText = null;
-    });
   }
 
   _isWaylandWithRenderer() {
@@ -242,7 +238,6 @@ class ClipboardManager {
         clipboard.writeText(text);
         this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
       }
-      this.lastOwnedClipboardText = text;
 
       if (platform === "darwin") {
         method = this.resolveFastPasteBinary() ? "cgevent" : "applescript";
@@ -1115,7 +1110,6 @@ Would you like to open System Settings now?`;
     } else {
       clipboard.writeText(text);
     }
-    this.lastOwnedClipboardText = text;
     return { success: true };
   }
 
