@@ -1,6 +1,5 @@
 const modelManager = require("../helpers/modelManagerBridge").default;
 const debugLogger = require("../helpers/debugLogger");
-const { getSystemPrompt } = require("../helpers/prompts");
 
 class LocalReasoningService {
   constructor() {
@@ -9,10 +8,7 @@ class LocalReasoningService {
 
   async isAvailable() {
     try {
-      // Check if llama.cpp is installed
       await modelManager.ensureLlamaCpp();
-
-      // Check if at least one model is downloaded
       const models = await modelManager.getAllModels();
       return models.some((model) => model.isDownloaded);
     } catch (error) {
@@ -20,10 +16,9 @@ class LocalReasoningService {
     }
   }
 
-  async processText(text, modelId, agentName = null, config = {}) {
+  async processText(text, modelId, config = {}) {
     debugLogger.logReasoning("LOCAL_BRIDGE_START", {
       modelId,
-      agentName,
       textLength: text.length,
       hasConfig: Object.keys(config).length > 0,
     });
@@ -36,11 +31,6 @@ class LocalReasoningService {
     const startTime = Date.now();
 
     try {
-      debugLogger.logReasoning("LOCAL_BRIDGE_PROMPT", {
-        promptLength: text.length,
-        hasAgentName: !!agentName,
-      });
-
       const inferenceConfig = {
         maxTokens: config.maxTokens || this.calculateMaxTokens(text.length),
         temperature: config.temperature || 0.7,
@@ -49,7 +39,7 @@ class LocalReasoningService {
         repeatPenalty: config.repeatPenalty || 1.1,
         contextSize: config.contextSize || 4096,
         threads: config.threads || 4,
-        systemPrompt: getSystemPrompt(agentName, config.customDictionary, config.language),
+        systemPrompt: config.systemPrompt || "",
       };
 
       debugLogger.logReasoning("LOCAL_BRIDGE_INFERENCE", {
@@ -57,7 +47,6 @@ class LocalReasoningService {
         config: inferenceConfig,
       });
 
-      // Run inference
       const result = await modelManager.runInference(modelId, text, inferenceConfig);
 
       const processingTime = Date.now() - startTime;

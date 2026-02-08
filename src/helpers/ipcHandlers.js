@@ -5,7 +5,6 @@ const https = require("https");
 const crypto = require("crypto");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
-const { getSystemPrompt } = require("./prompts");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
 
@@ -22,14 +21,6 @@ class IPCHandlers {
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
     this.setupHandlers();
-  }
-
-  _getDictionarySafe() {
-    try {
-      return this.databaseManager.getDictionary();
-    } catch {
-      return [];
-    }
   }
 
   _syncStartupEnv(setVars, clearVars = []) {
@@ -767,14 +758,10 @@ class IPCHandlers {
     });
 
     // Local reasoning handler
-    ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
+    ipcMain.handle("process-local-reasoning", async (event, text, modelId, _agentName, config) => {
       try {
         const LocalReasoningService = require("../services/localReasoningBridge").default;
-        const result = await LocalReasoningService.processText(text, modelId, agentName, {
-          ...config,
-          customDictionary: this._getDictionarySafe(),
-          language: config?.language,
-        });
+        const result = await LocalReasoningService.processText(text, modelId, config);
         return { success: true, text: result };
       } catch (error) {
         return { success: false, error: error.message };
@@ -784,7 +771,7 @@ class IPCHandlers {
     // Anthropic reasoning handler
     ipcMain.handle(
       "process-anthropic-reasoning",
-      async (event, text, modelId, agentName, config) => {
+      async (event, text, modelId, _agentName, config) => {
         try {
           const apiKey = this.environmentManager.getAnthropicKey();
 
@@ -792,11 +779,7 @@ class IPCHandlers {
             throw new Error("Anthropic API key not configured");
           }
 
-          const systemPrompt = getSystemPrompt(
-            agentName,
-            this._getDictionarySafe(),
-            config?.language
-          );
+          const systemPrompt = config?.systemPrompt || "";
           const userPrompt = text;
 
           if (!modelId) {

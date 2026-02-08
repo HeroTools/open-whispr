@@ -163,28 +163,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       localStorage.setItem("customUnifiedPrompt", JSON.stringify(editedPrompt));
 
       try {
-        if (reasoningProvider === "local") {
-          const result = await window.electronAPI.processLocalReasoning(
-            testText,
-            reasoningModel,
-            agentName,
-            {}
-          );
-
-          if (result.success) {
-            setTestResult(result.text || "");
-          } else {
-            setTestResult(`Local model error: ${result.error}`);
-          }
-        } else {
-          const result = await ReasoningService.processText(
-            testText,
-            reasoningModel,
-            agentName,
-            {}
-          );
-          setTestResult(result);
-        }
+        const result = await ReasoningService.processText(testText, reasoningModel, agentName, {});
+        setTestResult(result);
       } finally {
         if (currentCustomPrompt) {
           localStorage.setItem("customUnifiedPrompt", currentCustomPrompt);

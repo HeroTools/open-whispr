@@ -719,10 +719,10 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const language = this.getPreferredLanguage();
+      const systemPrompt = this.getSystemPrompt(agentName);
       const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
         ...config,
-        language,
+        systemPrompt,
       });
 
       const processingTime = Date.now() - startTime;
@@ -770,10 +770,10 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const language = this.getPreferredLanguage();
+      const systemPrompt = this.getSystemPrompt(agentName);
       const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
         ...config,
-        language,
+        systemPrompt,
       });
 
       const processingTime = Date.now() - startTime;
