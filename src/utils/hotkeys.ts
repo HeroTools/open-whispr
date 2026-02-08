@@ -129,11 +129,11 @@ export function isCompoundHotkey(hotkey: string): boolean {
 /**
  * Gets the default hotkey for the current platform.
  * - macOS: GLOBE key (Fn key on modern Macs)
- * - Windows/Linux: Control+Super (Ctrl+Win / Ctrl+Super)
+ * - Windows/Linux: Control+Shift+Space
  */
 export function getDefaultHotkey(): string {
   const platform = getPlatform();
-  return platform === "darwin" ? "GLOBE" : "Control+Super";
+  return platform === "darwin" ? "GLOBE" : "Control+Shift+Space";
 }
 
 /**

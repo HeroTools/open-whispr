@@ -255,14 +255,14 @@ const MAC_RECOMMENDED = [
 ] as const;
 
 const WINDOWS_RECOMMENDED = [
-  "Ctrl + Win",
+  "Ctrl + Shift + Space",
   "Ctrl + Alt",
   "Ctrl (right) or Alt (right)",
   "Modifier + rarely used key (e.g., Ctrl + Page Up)",
 ] as const;
 
 const LINUX_RECOMMENDED = [
-  "Ctrl + Super",
+  "Ctrl + Shift + Space",
   "Ctrl + Shift + Super",
   "Super + Shift",
   "Ctrl (right) or Alt (right)",

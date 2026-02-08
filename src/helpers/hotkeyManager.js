@@ -38,12 +38,12 @@ function isModifierOnlyHotkey(hotkey) {
 // Suggested alternative hotkeys when registration fails
 const SUGGESTED_HOTKEYS = {
   single: ["F8", "F9", "F10", "Pause", "ScrollLock"],
-  compound: ["Control+Super", "Control+Alt", "Control+Shift+Space", "Alt+F7"],
+  compound: ["Control+Shift+Space", "Control+Alt", "Control+Shift+K", "Alt+F7"],
 };
 
 class HotkeyManager {
   constructor() {
-    this.currentHotkey = process.platform === "darwin" ? "GLOBE" : "Control+Super";
+    this.currentHotkey = process.platform === "darwin" ? "GLOBE" : "Control+Shift+Space";
     this.isInitialized = false;
     this.isListeningMode = false;
     this.gnomeManager = null;
@@ -94,15 +94,15 @@ class HotkeyManager {
     if (process.platform === "darwin" && isCompound) {
       suggestions = ["Control+Alt", "Alt+Command", "Command+Shift+Space"];
     } else if (process.platform === "win32" && isCompound) {
-      suggestions = ["Control+Super", "Control+Alt", "Control+Shift+K"];
+      suggestions = ["Control+Shift+Space", "Control+Alt", "Control+Shift+K"];
     } else if (process.platform === "linux" && isCompound) {
-      suggestions = ["Control+Super", "Control+Shift+K", "Super+Shift+R"];
+      suggestions = ["Control+Shift+Space", "Control+Shift+K", "Super+Shift+R"];
     }
 
     return suggestions.filter((s) => s !== failedHotkey).slice(0, 3);
   }
 
-  setupShortcuts(hotkey = "Control+Super", callback) {
+  setupShortcuts(hotkey = "Control+Shift+Space", callback) {
     if (!callback) {
       throw new Error("Callback function is required for hotkey setup");
     }
@@ -266,7 +266,8 @@ class HotkeyManager {
             const savedHotkey = await mainWindow.webContents.executeJavaScript(`
               localStorage.getItem("dictationKey") || ""
             `);
-            const hotkey = savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Control+Super";
+            const hotkey =
+              savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Control+Shift+Space";
             const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(hotkey);
 
             const success = await this.gnomeManager.registerKeybinding(gnomeHotkey);
@@ -335,7 +336,7 @@ class HotkeyManager {
         this.notifyHotkeyFailure(savedHotkey, result);
       }
 
-      const defaultHotkey = process.platform === "darwin" ? "GLOBE" : "Control+Super";
+      const defaultHotkey = process.platform === "darwin" ? "GLOBE" : "Control+Shift+Space";
 
       if (defaultHotkey === "GLOBE") {
         this.currentHotkey = "GLOBE";
