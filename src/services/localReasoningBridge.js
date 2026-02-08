@@ -11,7 +11,7 @@ class LocalReasoningService {
       await modelManager.ensureLlamaCpp();
       const models = await modelManager.getAllModels();
       return models.some((model) => model.isDownloaded);
-    } catch (error) {
+    } catch {
       return false;
     }
   }

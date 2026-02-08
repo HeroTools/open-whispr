@@ -16,8 +16,18 @@ function isRightSideModifier(hotkey) {
 // Modifier-only combos (e.g. "Control+Super") bypass globalShortcut on Windows
 // and use the native low-level keyboard hook instead.
 const MODIFIER_NAMES = new Set([
-  "control", "ctrl", "alt", "option", "shift", "super",
-  "meta", "win", "command", "cmd", "commandorcontrol", "cmdorctrl",
+  "control",
+  "ctrl",
+  "alt",
+  "option",
+  "shift",
+  "super",
+  "meta",
+  "win",
+  "command",
+  "cmd",
+  "commandorcontrol",
+  "cmdorctrl",
 ]);
 
 function isModifierOnlyHotkey(hotkey) {

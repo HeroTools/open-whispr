@@ -90,7 +90,6 @@ export function updateLastSignInTime(): void {
   persistLastSignInTime(now);
 }
 
-/** Exported so useAuth can suppress premature sign-outs during grace period. */
 export function isWithinGracePeriod(): boolean {
   const startedAt = getLastSignInTime();
   if (!startedAt) return false;
@@ -106,7 +105,7 @@ export async function refreshSession(): Promise<boolean> {
 
   try {
     const result = await authClient.getSession();
-    return Boolean(result.data?.session?.user);
+    return Boolean((result.data?.session as any)?.user);
   } catch {
     return false;
   }
@@ -126,11 +125,6 @@ export async function signOut(): Promise<void> {
   }
 }
 
-/**
- * Wraps API calls with automatic retry on AUTH_EXPIRED errors.
- * During grace period: retries with exponential backoff while cookies establish.
- * Otherwise: attempts a single session refresh before surfacing the error.
- */
 export async function withSessionRefresh<T>(operation: () => Promise<T>): Promise<T> {
   const startedInGracePeriod = isWithinGracePeriod();
   let graceRetriesUsed = 0;

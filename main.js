@@ -625,7 +625,7 @@ async function startApp() {
     globeKeyManager.start();
 
     // Reset native key state when hotkey changes
-    ipcMain.on("hotkey-changed", (_event, newHotkey) => {
+    ipcMain.on("hotkey-changed", (_event, _newHotkey) => {
       globeKeyDownTime = 0;
       globeKeyIsRecording = false;
       rightModDownTime = 0;

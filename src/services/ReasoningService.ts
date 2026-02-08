@@ -1075,7 +1075,7 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
-  private getCustomDictionary(): string[] {
+  protected getCustomDictionary(): string[] {
     try {
       const raw = localStorage.getItem("customDictionary");
       if (!raw) return [];

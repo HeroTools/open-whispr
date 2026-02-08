@@ -16,7 +16,11 @@ import {
   WHISPER_MODEL_INFO,
   PARAKEET_MODEL_INFO,
 } from "../models/ModelRegistry";
-import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
+import {
+  MODEL_PICKER_COLORS,
+  type ColorScheme,
+  type ModelPickerStyles,
+} from "../utils/modelPickerStyles";
 import { getProviderIcon, isMonochromeProvider } from "../utils/providerIcons";
 import { API_ENDPOINTS } from "../config/constants";
 import { createExternalLinkHandler } from "../utils/externalLinks";
@@ -44,7 +48,7 @@ interface LocalModelCardProps {
   onDelete: () => void;
   onDownload: () => void;
   onCancel: () => void;
-  styles: ReturnType<(typeof MODEL_PICKER_COLORS)[keyof typeof MODEL_PICKER_COLORS]>;
+  styles: ModelPickerStyles;
 }
 
 function LocalModelCard({
@@ -208,7 +212,7 @@ const CLOUD_PROVIDER_TABS = [
 
 const VALID_CLOUD_PROVIDER_IDS = CLOUD_PROVIDER_TABS.map((p) => p.id);
 
-const LOCAL_PROVIDER_TABS = [
+const LOCAL_PROVIDER_TABS: Array<{ id: string; name: string; disabled?: boolean }> = [
   { id: "whisper", name: "OpenAI Whisper" },
   { id: "nvidia", name: "NVIDIA Parakeet" },
 ];
@@ -643,10 +647,11 @@ export default function TranscriptionModelPicker({
       <div className="space-y-0.5">
         {modelsToRender.map((model) => {
           const modelId = model.model;
-          const info = WHISPER_MODEL_INFO[modelId] || {
+          const info = WHISPER_MODEL_INFO[modelId] ?? {
             name: modelId,
             description: "Model",
             size: "Unknown",
+            recommended: false,
           };
 
           return (
@@ -715,11 +720,12 @@ export default function TranscriptionModelPicker({
       <div className="space-y-0.5">
         {modelsToRender.map((model) => {
           const modelId = model.model;
-          const info = PARAKEET_MODEL_INFO[modelId] || {
+          const info = PARAKEET_MODEL_INFO[modelId] ?? {
             name: modelId,
             description: "NVIDIA Parakeet Model",
             size: "Unknown",
             language: "en",
+            recommended: false,
           };
 
           return (

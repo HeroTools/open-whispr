@@ -30,7 +30,7 @@ export default function TitleBar({
     try {
       await window.electronAPI?.appQuit?.();
     } catch {
-      // Silently handle if API not available
+      // noop
     }
   };
 
@@ -38,7 +38,8 @@ export default function TitleBar({
     if (!actions) return null;
 
     if (platform !== "darwin" && React.isValidElement(actions)) {
-      const childrenArray = React.Children.toArray(actions.props.children);
+      const el = actions as React.ReactElement<{ children?: React.ReactNode }>;
+      const childrenArray = React.Children.toArray(el.props.children);
       return <>{[...childrenArray].reverse()}</>;
     }
 

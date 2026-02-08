@@ -154,10 +154,11 @@ export default function LocalWhisperPicker({
         <ModelCardList
           models={models.map((model): ModelCardOption => {
             const modelId = model.model;
-            const info = WHISPER_MODEL_INFO[modelId] || {
+            const info = WHISPER_MODEL_INFO[modelId] ?? {
               name: modelId,
               description: "Model",
               size: "Unknown",
+              recommended: false,
             };
             return {
               value: modelId,

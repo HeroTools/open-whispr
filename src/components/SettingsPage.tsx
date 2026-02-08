@@ -51,6 +51,7 @@ import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
 import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
+import type { LocalTranscriptionProvider } from "../types/electron";
 import logger from "../utils/logger";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useUsage } from "../hooks/useUsage";
@@ -71,8 +72,6 @@ export type SettingsSectionType =
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
 }
-
-// ── Reusable layout primitives ──────────────────────────────────────
 
 function SettingsPanel({
   children,
@@ -111,8 +110,6 @@ function SectionHeader({ title, description }: { title: string; description?: st
   );
 }
 
-// ── Transcription section (extracted for clarity) ───────────────────
-
 interface TranscriptionSectionProps {
   isSignedIn: boolean;
   cloudTranscriptionMode: string;
@@ -125,7 +122,7 @@ interface TranscriptionSectionProps {
   cloudTranscriptionModel: string;
   setCloudTranscriptionModel: (model: string) => void;
   localTranscriptionProvider: string;
-  setLocalTranscriptionProvider: (provider: string) => void;
+  setLocalTranscriptionProvider: (provider: LocalTranscriptionProvider) => void;
   whisperModel: string;
   setWhisperModel: (model: string) => void;
   parakeetModel: string;
@@ -143,7 +140,7 @@ interface TranscriptionSectionProps {
   toast: (opts: {
     title: string;
     description: string;
-    variant?: string;
+    variant?: "default" | "destructive" | "success";
     duration?: number;
   }) => void;
 }
@@ -353,8 +350,6 @@ function TranscriptionSection({
   );
 }
 
-// ── AI Models section (extracted for clarity) ───────────────────────
-
 interface AiModelsSectionProps {
   isSignedIn: boolean;
   cloudReasoningMode: string;
@@ -381,7 +376,7 @@ interface AiModelsSectionProps {
   toast: (opts: {
     title: string;
     description: string;
-    variant?: string;
+    variant?: "default" | "destructive" | "success";
     duration?: number;
   }) => void;
 }
@@ -581,8 +576,6 @@ function AiModelsSection({
     </div>
   );
 }
-
-// ── Main component ──────────────────────────────────────────────────
 
 export default function SettingsPage({ activeSection = "general" }: SettingsPageProps) {
   const {
@@ -1169,9 +1162,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // GENERAL — Updates, Appearance, Hotkey, Startup, Mic
-      // ───────────────────────────────────────────────────
       case "general":
         return (
           <div className="space-y-6">
@@ -1461,9 +1451,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // TRANSCRIPTION
-      // ───────────────────────────────────────────────────
       case "transcription":
         return (
           <TranscriptionSection
@@ -1487,6 +1474,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             setOpenaiApiKey={setOpenaiApiKey}
             groqApiKey={groqApiKey}
             setGroqApiKey={setGroqApiKey}
+            mistralApiKey={mistralApiKey}
+            setMistralApiKey={setMistralApiKey}
             customTranscriptionApiKey={customTranscriptionApiKey}
             setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
             cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
@@ -1495,9 +1484,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           />
         );
 
-      // ───────────────────────────────────────────────────
-      // DICTIONARY
-      // ───────────────────────────────────────────────────
       case "dictionary":
         return (
           <div className="space-y-5">
@@ -1633,9 +1619,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // AI MODELS
-      // ───────────────────────────────────────────────────
       case "aiModels":
         return (
           <AiModelsSection
@@ -1668,9 +1651,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           />
         );
 
-      // ───────────────────────────────────────────────────
-      // AGENT CONFIG
-      // ───────────────────────────────────────────────────
       case "agentConfig":
         return (
           <div className="space-y-5">
@@ -1772,9 +1752,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // PROMPTS
-      // ───────────────────────────────────────────────────
       case "prompts":
         return (
           <div className="space-y-5">
@@ -1787,9 +1764,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // PRIVACY
-      // ───────────────────────────────────────────────────
       case "privacy":
         return (
           <div className="space-y-6">
@@ -1826,9 +1800,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // PERMISSIONS (new — extracted from General)
-      // ───────────────────────────────────────────────────
       case "permissions":
         return (
           <div className="space-y-5">
@@ -1908,9 +1879,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // DEVELOPER (+ data management moved here)
-      // ───────────────────────────────────────────────────
       case "developer":
         return (
           <div className="space-y-6">

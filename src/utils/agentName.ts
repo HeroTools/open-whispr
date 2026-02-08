@@ -11,7 +11,6 @@ export const setAgentName = (name: string): void => {
   localStorage.setItem(AGENT_NAME_KEY, name);
 };
 
-/** Only sets agent name if one isn't already stored (preserves existing user preferences) */
 export const setAgentNameIfEmpty = (name: string): void => {
   if (!localStorage.getItem(AGENT_NAME_KEY)) {
     localStorage.setItem(AGENT_NAME_KEY, name);

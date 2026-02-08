@@ -8,7 +8,7 @@ interface ModelWithStatus extends ModelDefinition {
   downloadProgress: number;
 }
 
-interface DownloadProgress {
+interface LLMDownloadProgressEvent {
   modelId: string;
   progress: number;
   downloadedSize: number;
@@ -19,7 +19,7 @@ export function useLocalModels() {
   const [models, setModels] = useState<ModelWithStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [progressMap, setProgressMap] = useState<Map<string, DownloadProgress>>(new Map());
+  const [progressMap, setProgressMap] = useState<Map<string, LLMDownloadProgressEvent>>(new Map());
 
   const loadModels = useCallback(async () => {
     try {
@@ -38,8 +38,7 @@ export function useLocalModels() {
   useEffect(() => {
     loadModels();
 
-    // Set up progress listener
-    const handleProgress = (_event: any, data: DownloadProgress) => {
+    const handleProgress = (_event: any, data: LLMDownloadProgressEvent) => {
       setProgressMap((prev) => new Map(prev).set(data.modelId, data));
     };
 

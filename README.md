@@ -352,7 +352,7 @@ Improve transcription accuracy for specific words, names, or technical terms:
   - Free plan: 2,000 words/week with 7-day Pro trial for new accounts
   - Pro plan: unlimited transcriptions
 - **Bring Your Own Key (BYOK)**:
-  - Use your own API keys from OpenAI, Groq, AssemblyAI, or custom endpoints
+  - Use your own API keys from OpenAI, Groq, Mistral, AssemblyAI, or custom endpoints
   - Full control over provider and model selection
 - **Local Processing**:
   - Install Whisper or NVIDIA Parakeet through the Control Panel
@@ -639,14 +639,14 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.4.2
+OpenWhispr is actively maintained and ready for production use. Current version: 1.4.3
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support (macOS, Windows, Linux)
 - ✅ OpenWhispr Cloud with account system and usage tracking
 - ✅ Free and Pro plans with Stripe billing
 - ✅ Local and cloud processing
-- ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Local)
+- ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Mistral, Local)
 - ✅ Compound hotkey support
 - ✅ Windows Push-to-Talk with native key listener
 - ✅ Custom dictionary for improved transcription accuracy

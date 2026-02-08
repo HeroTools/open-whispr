@@ -7,8 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-02-08
+
 ### Added
 - **Mistral Voxtral Transcription**: Added Mistral as a cloud transcription provider with Voxtral Mini model and custom dictionary support via context_bias
+- **TypeScript Compilation**: Added TypeScript as an explicit dev dependency with project-level `tsconfig.json`
+
+### Fixed
+- **Linux Wayland Clipboard**: Persistent clipboard ownership on Wayland so Ctrl+V works reliably after transcription
+- **Linux Window Flickering**: Fixed transparent window flickering on Wayland and X11 compositors
+- **Windows Modifier-Only Hotkeys**: Support modifier-only hotkeys on Windows via native keyboard hook
+- **Update Installation**: Resolved quitAndInstall hang by removing close listeners that block window shutdown during updates
+- **Custom System Prompts**: Pass custom system prompt to local and Anthropic BYOK reasoning
+- **Audio Cue Audibility**: Improved dictation start/stop audio cue volume
+- **Language Selector**: Fixed dropdown positioning and sizing inside settings modal
+- **Type Safety**: Tightened Electron IPC callback return types, model picker styles, toast variant types, and event handler signatures across the codebase
+
+### Changed
+- **Code Cleanup**: Removed excess comments, section dividers, and redundant JSDoc across components, hooks, and utilities
 
 ## [1.4.2] - 2026-02-07
 
