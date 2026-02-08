@@ -5,7 +5,7 @@ const STOP_NOTES = [1174.66, 880];
 const NOTE_DURATION_SECONDS = 0.06;
 const NOTE_GAP_SECONDS = 0.02;
 const NOTE_ATTACK_SECONDS = 0.008;
-const MAX_GAIN = 0.03;
+const MAX_GAIN = 0.2;
 const MIN_GAIN = 0.0001;
 
 let audioContext = null;
