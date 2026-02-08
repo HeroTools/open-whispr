@@ -155,9 +155,7 @@ class AssemblyAiStreaming {
         clearTimeout(warmupTimeout);
         this.stopKeepAlive();
         const wasReady = this.warmConnectionReady;
-        const savedOptions = this.warmConnectionOptions
-          ? { ...this.warmConnectionOptions }
-          : null;
+        const savedOptions = this.warmConnectionOptions ? { ...this.warmConnectionOptions } : null;
         debugLogger.debug("AssemblyAI warm connection closed", {
           wasReady,
           code,
@@ -174,9 +172,7 @@ class AssemblyAiStreaming {
 
   scheduleRewarm() {
     if (this.rewarmAttempts >= MAX_REWARM_ATTEMPTS) {
-      debugLogger.debug(
-        "AssemblyAI max re-warm attempts reached, will cold-start next recording"
-      );
+      debugLogger.debug("AssemblyAI max re-warm attempts reached, will cold-start next recording");
       return;
     }
     if (this.isConnected) {

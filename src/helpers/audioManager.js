@@ -1873,7 +1873,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         if (this.isStreaming) {
           logger.warn("Connection lost during streaming, auto-stopping", {}, "streaming");
           this.stopStreamingRecording().catch((e) => {
-            logger.error("Auto-stop after connection loss failed", { error: e.message }, "streaming");
+            logger.error(
+              "Auto-stop after connection loss failed",
+              { error: e.message },
+              "streaming"
+            );
           });
         }
       });
@@ -1972,9 +1976,6 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     });
     const tTerminate = performance.now();
 
-    // 5. Brief wait for any in-transit IPC Turn events to reach the renderer.
-    await new Promise((resolve) => setTimeout(resolve, 200));
-
     finalText = this.streamingFinalText || "";
 
     if (!finalText && this.streamingPartialText) {
@@ -1984,7 +1985,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
     if (!finalText && stopResult?.text) {
       finalText = stopResult.text;
-      logger.debug("Using disconnect result text as fallback", { textLength: finalText.length }, "streaming");
+      logger.debug(
+        "Using disconnect result text as fallback",
+        { textLength: finalText.length },
+        "streaming"
+      );
     }
 
     this.cleanupStreamingListeners();
