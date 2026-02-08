@@ -1,4 +1,4 @@
-const { clipboard, app } = require("electron");
+const { clipboard } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 const { killProcess } = require("../utils/process");
 const path = require("path");
@@ -47,6 +47,20 @@ const RESTORE_DELAYS = {
   linux: 200,
 };
 
+/**
+ * Write text to clipboard via renderer's WebContents (for Wayland persistent ownership).
+ * Uses JSON.stringify to safely embed text in executed JS. Returns a Promise.
+ */
+function writeClipboardInRenderer(webContents, text) {
+  if (!webContents || !webContents.executeJavaScript) {
+    return Promise.reject(new Error("Invalid webContents for clipboard write"));
+  }
+  const escaped = JSON.stringify(text);
+  return webContents.executeJavaScript(
+    `navigator.clipboard.writeText(${escaped})`
+  );
+}
+
 class ClipboardManager {
   constructor() {
     this.accessibilityCache = { value: null, expiresAt: 0 };
@@ -55,6 +69,12 @@ class ClipboardManager {
     this.nircmdChecked = false;
     this.fastPastePath = null;
     this.fastPasteChecked = false;
+  }
+
+  _isWaylandWithRenderer() {
+    if (process.platform !== "linux") return false;
+    const { isWayland } = getLinuxSessionInfo();
+    return isWayland;
   }
 
   getNircmdPath() {
@@ -191,6 +211,7 @@ class ClipboardManager {
     const startTime = Date.now();
     const platform = process.platform;
     let method = "unknown";
+    const webContents = options.webContents;
 
     try {
       const originalClipboard = clipboard.readText();
@@ -199,8 +220,24 @@ class ClipboardManager {
         originalClipboard.substring(0, 50) + "..."
       );
 
-      clipboard.writeText(text);
-      this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
+      const useRendererClipboard =
+        platform === "linux" &&
+        this._isWaylandWithRenderer() &&
+        webContents &&
+        !webContents.isDestroyed();
+      if (useRendererClipboard) {
+        try {
+          await writeClipboardInRenderer(webContents, text);
+          this.safeLog("📋 Text copied to clipboard (Wayland renderer):", text.substring(0, 50) + "...");
+        } catch (err) {
+          this.safeLog("Wayland renderer clipboard failed, using main process:", err?.message);
+          clipboard.writeText(text);
+          this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
+        }
+      } else {
+        clipboard.writeText(text);
+        this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
+      }
 
       if (platform === "darwin") {
         method = this.resolveFastPasteBinary() ? "cgevent" : "applescript";
@@ -222,7 +259,7 @@ class ClipboardManager {
         await this.pasteWindows(originalClipboard);
       } else {
         method = "linux-tools";
-        await this.pasteLinux(originalClipboard);
+        await this.pasteLinux(originalClipboard, options);
       }
 
       this.safeLog("✅ Paste operation complete", {
@@ -532,8 +569,9 @@ class ClipboardManager {
     });
   }
 
-  async pasteLinux(originalClipboard) {
+  async pasteLinux(originalClipboard, options = {}) {
     const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
+    const webContents = options.webContents;
     const xdotoolExists = this.commandExists("xdotool");
     const wtypeExists = this.commandExists("wtype");
     const ydotoolExists = this.commandExists("ydotool");
@@ -744,7 +782,15 @@ class ClipboardManager {
 
             if (code === 0) {
               debugLogger.debug("Paste successful", { cmd: tool.cmd }, "clipboard");
-              setTimeout(() => clipboard.writeText(originalClipboard), RESTORE_DELAYS.linux);
+              setTimeout(() => {
+                if (isWayland && webContents && !webContents.isDestroyed()) {
+                  writeClipboardInRenderer(webContents, originalClipboard).catch((err) =>
+                    this.safeLog("Wayland clipboard restore failed:", err?.message)
+                  );
+                } else {
+                  clipboard.writeText(originalClipboard);
+                }
+              }, RESTORE_DELAYS.linux);
               resolve();
             } else {
               debugLogger.error(
@@ -1048,8 +1094,22 @@ Would you like to open System Settings now?`;
     return clipboard.readText();
   }
 
-  async writeClipboard(text) {
-    clipboard.writeText(text);
+  async writeClipboard(text, webContents = null) {
+    const useRendererClipboard =
+      process.platform === "linux" &&
+      this._isWaylandWithRenderer() &&
+      webContents &&
+      !webContents.isDestroyed();
+    if (useRendererClipboard) {
+      try {
+        await writeClipboardInRenderer(webContents, text);
+      } catch (err) {
+        this.safeLog("Wayland renderer clipboard failed in writeClipboard, using main process:", err?.message);
+        clipboard.writeText(text);
+      }
+    } else {
+      clipboard.writeText(text);
+    }
     return { success: true };
   }
 

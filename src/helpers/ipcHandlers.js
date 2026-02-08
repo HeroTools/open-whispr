@@ -182,7 +182,7 @@ class IPCHandlers {
 
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text, options) => {
-      return this.clipboardManager.pasteText(text, options);
+      return this.clipboardManager.pasteText(text, { ...options, webContents: event.sender });
     });
 
     ipcMain.handle("read-clipboard", async (event) => {
@@ -190,7 +190,7 @@ class IPCHandlers {
     });
 
     ipcMain.handle("write-clipboard", async (event, text) => {
-      return this.clipboardManager.writeClipboard(text);
+      return this.clipboardManager.writeClipboard(text, event.sender);
     });
 
     ipcMain.handle("check-paste-tools", async () => {
