@@ -403,7 +403,9 @@ export default function ControlPanel() {
                     Welcome to OpenWhispr Pro
                   </p>
                   <p className="text-[12px] text-muted-foreground mb-2">
-                    Your 7-day free trial is active! We've switched your transcription to OpenWhispr Cloud for faster, more accurate results. Your previous settings are saved — switch back anytime in Settings.
+                    Your 7-day free trial is active! We've switched your transcription to OpenWhispr
+                    Cloud for faster, more accurate results. Your previous settings are saved —
+                    switch back anytime in Settings.
                   </p>
                   <Button
                     variant="default"

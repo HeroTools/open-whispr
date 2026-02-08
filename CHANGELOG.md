@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-02-07
+
+### Fixed
+- **AssemblyAI Streaming Reliability**: Fixed real-time WebSocket going silent after idle periods by adding keep-alive pings, readyState validation, re-warm recovery, and connection death handling
+
+## [1.4.1] - 2026-02-07
+
+### Added
+- **Runtime .env Configuration**: Environment variables now reload at runtime without requiring app restart
+- **Settings Retention on Pro**: Pro subscribers retain their settings when managing their subscription
+
+### Fixed
+- **macOS Microphone Permission**: Resolved hardened-runtime mic permission prompt by routing through main-process IPC and unifying API key cache invalidation with event-based AudioManager sync
+- **AudioWorklet ASAR Loading**: Inlined AudioWorklet as blob URL to fix module loading failure in packaged ASAR builds
+- **Google OAuth Flow**: OAuth now opens in the system browser with deep link callback instead of navigating the Electron window
+- **Auth Security Hardening**: Safe JSON parsing, guarded URL constructor, and fixed error information leaks in auth code
+- **Deep Link Focus**: Control panel now correctly receives focus when opened via deep link
+- **Neon Auth Electron Compatibility**: Routed auth flows through API proxy and fixed Origin header rejection for desktop app
+- **Billing Error Visibility**: Checkout and billing errors now surface as toast notifications instead of failing silently
+- **Hotkey Persistence**: Added file-based hotkey storage for reliable startup persistence (#181)
+- **Email Verification**: Disabled Neon Auth email verification step for smoother onboarding
+
+### Changed
+- **Build Optimization**: Binary dependencies are now cached during build for faster CI
+- **UI Polish**: Fixed scrollbar styling, provider button styling, and voice recorder icon fill
+
 ## [1.4.0] - 2026-02-06
 
 ### Added

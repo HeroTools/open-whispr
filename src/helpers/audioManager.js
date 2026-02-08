@@ -32,6 +32,12 @@ class AudioManager {
     this.onPartialTranscript = null;
     this.cachedApiKey = null;
     this.cachedApiKeyProvider = null;
+
+    this._onApiKeyChanged = () => {
+      this.cachedApiKey = null;
+      this.cachedApiKeyProvider = null;
+    };
+    window.addEventListener("api-key-changed", this._onApiKeyChanged);
     this.cachedTranscriptionEndpoint = null;
     this.cachedEndpointProvider = null;
     this.cachedEndpointBaseUrl = null;
@@ -51,6 +57,51 @@ class AudioManager {
     this.cachedMicDeviceId = null;
     this.persistentAudioContext = null;
     this.workletModuleLoaded = false;
+    this.workletBlobUrl = null;
+  }
+
+  getWorkletBlobUrl() {
+    if (this.workletBlobUrl) return this.workletBlobUrl;
+    const code = `
+const BUFFER_SIZE = 800;
+class PCMStreamingProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this._buffer = new Int16Array(BUFFER_SIZE);
+    this._offset = 0;
+    this._stopped = false;
+    this.port.onmessage = (event) => {
+      if (event.data === "stop") {
+        if (this._offset > 0) {
+          const partial = this._buffer.slice(0, this._offset);
+          this.port.postMessage(partial.buffer, [partial.buffer]);
+          this._buffer = new Int16Array(BUFFER_SIZE);
+          this._offset = 0;
+        }
+        this._stopped = true;
+      }
+    };
+  }
+  process(inputs) {
+    if (this._stopped) return false;
+    const input = inputs[0]?.[0];
+    if (!input) return true;
+    for (let i = 0; i < input.length; i++) {
+      const s = Math.max(-1, Math.min(1, input[i]));
+      this._buffer[this._offset++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      if (this._offset >= BUFFER_SIZE) {
+        this.port.postMessage(this._buffer.buffer, [this._buffer.buffer]);
+        this._buffer = new Int16Array(BUFFER_SIZE);
+        this._offset = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
+`;
+    this.workletBlobUrl = URL.createObjectURL(new Blob([code], { type: "application/javascript" }));
+    return this.workletBlobUrl;
   }
 
   getCustomDictionaryPrompt() {
@@ -1060,7 +1111,11 @@ class AudioManager {
       } else {
         const reasoningModel = localStorage.getItem("reasoningModel") || "";
         if (reasoningModel) {
-          const result = await this.processWithReasoningModel(processedText, reasoningModel, agentName);
+          const result = await this.processWithReasoningModel(
+            processedText,
+            reasoningModel,
+            agentName
+          );
           if (result) {
             processedText = result;
           }
@@ -1671,8 +1726,7 @@ class AudioManager {
       try {
         const audioContext = await this.getOrCreateAudioContext();
         if (!this.workletModuleLoaded) {
-          const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-          await audioContext.audioWorklet.addModule(workletUrl);
+          await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
           this.workletModuleLoaded = true;
           logger.debug("AudioWorklet module pre-loaded during warmup", {}, "streaming");
         }
@@ -1832,8 +1886,7 @@ class AudioManager {
       this.streamingStream = stream;
 
       if (!this.workletModuleLoaded) {
-        const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-        await audioContext.audioWorklet.addModule(workletUrl);
+        await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
         this.workletModuleLoaded = true;
       }
 
@@ -1890,6 +1943,16 @@ class AudioManager {
           title: "Streaming Error",
           description: error,
         });
+        if (this.isStreaming) {
+          logger.warn("Connection lost during streaming, auto-stopping", {}, "streaming");
+          this.stopStreamingRecording().catch((e) => {
+            logger.error(
+              "Auto-stop after connection loss failed",
+              { error: e.message },
+              "streaming"
+            );
+          });
+        }
       });
 
       const sessionEndCleanup = window.electronAPI.onAssemblyAiSessionEnd((data) => {
@@ -1935,8 +1998,7 @@ class AudioManager {
     this.streamingStream = stream;
 
     if (!this.workletModuleLoaded) {
-      const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-      await audioContext.audioWorklet.addModule(workletUrl);
+      await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
       this.workletModuleLoaded = true;
     }
 
@@ -2014,8 +2076,7 @@ class AudioManager {
     this.streamingStream = stream;
 
     if (!this.workletModuleLoaded) {
-      const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-      await audioContext.audioWorklet.addModule(workletUrl);
+      await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
       this.workletModuleLoaded = true;
     }
 
@@ -2092,8 +2153,7 @@ class AudioManager {
     this.streamingStream = stream;
 
     if (!this.workletModuleLoaded) {
-      const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-      await audioContext.audioWorklet.addModule(workletUrl);
+      await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
       this.workletModuleLoaded = true;
     }
 
@@ -2189,6 +2249,7 @@ class AudioManager {
     // 4. Stop the backend connection based on provider
     const provider = this.streamingProvider || "assemblyai";
 
+    let stopResult;
     if (provider === "deepgram") {
       const result = await window.electronAPI.deepgramStreamingStop().catch((e) => {
         logger.debug("Deepgram disconnect error", { error: e.message }, "streaming");
@@ -2216,20 +2277,27 @@ class AudioManager {
     } else {
       // AssemblyAI (default)
       window.electronAPI.assemblyAiStreamingForceEndpoint?.();
-      await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
+      stopResult = await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
         logger.debug("Streaming disconnect error", { error: e.message }, "streaming");
+        return { success: false };
       });
     }
     const tTerminate = performance.now();
-
-    // 5. Brief wait for any in-transit IPC Turn events to reach the renderer.
-    await new Promise((resolve) => setTimeout(resolve, 200));
 
     finalText = this.streamingFinalText || "";
 
     if (!finalText && this.streamingPartialText) {
       finalText = this.streamingPartialText;
       logger.debug("Using partial text as fallback", { textLength: finalText.length }, "streaming");
+    }
+
+    if (!finalText && stopResult?.text) {
+      finalText = stopResult.text;
+      logger.debug(
+        "Using disconnect result text as fallback",
+        { textLength: finalText.length },
+        "streaming"
+      );
     }
 
     this.cleanupStreamingListeners();
@@ -2284,7 +2352,11 @@ class AudioManager {
         } else {
           const reasoningModel = localStorage.getItem("reasoningModel") || "";
           if (reasoningModel) {
-            const result = await this.processWithReasoningModel(finalText, reasoningModel, agentName);
+            const result = await this.processWithReasoningModel(
+              finalText,
+              reasoningModel,
+              agentName
+            );
             if (result) {
               finalText = result;
             }
@@ -2397,6 +2469,10 @@ class AudioManager {
       this.persistentAudioContext.close().catch(() => {});
       this.persistentAudioContext = null;
       this.workletModuleLoaded = false;
+      if (this.workletBlobUrl) {
+        URL.revokeObjectURL(this.workletBlobUrl);
+        this.workletBlobUrl = null;
+      }
     }
     try {
       window.electronAPI?.assemblyAiStreamingStop?.();
@@ -2407,6 +2483,9 @@ class AudioManager {
     this.onError = null;
     this.onTranscriptionComplete = null;
     this.onPartialTranscript = null;
+    if (this._onApiKeyChanged) {
+      window.removeEventListener("api-key-changed", this._onApiKeyChanged);
+    }
   }
 }
 

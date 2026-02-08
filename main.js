@@ -281,11 +281,15 @@ function initializeManagers() {
   });
 }
 
-// Handle the protocol on macOS
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  if (url.startsWith(`${OAUTH_PROTOCOL}://`)) {
-    handleOAuthDeepLink(url);
+  if (!url.startsWith(`${OAUTH_PROTOCOL}://`)) return;
+
+  handleOAuthDeepLink(url);
+
+  if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
+    windowManager.controlPanelWindow.show();
+    windowManager.controlPanelWindow.focus();
   }
 });
 
@@ -297,19 +301,24 @@ function navigateControlPanelWithVerifier(verifier) {
   if (!isLiveWindow(windowManager?.controlPanelWindow)) return;
 
   const appUrl = DevServerManager.getAppUrl(true);
-  if (!appUrl) return;
 
-  const separator = appUrl.includes('?') ? '&' : '?';
-  const urlWithVerifier = `${appUrl}${separator}neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
+  if (appUrl) {
+    const separator = appUrl.includes('?') ? '&' : '?';
+    const urlWithVerifier = `${appUrl}${separator}neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
+    windowManager.controlPanelWindow.loadURL(urlWithVerifier);
+  } else {
+    const fileInfo = DevServerManager.getAppFilePath(true);
+    if (!fileInfo) return;
+    fileInfo.query.neon_auth_session_verifier = verifier;
+    windowManager.controlPanelWindow.loadFile(fileInfo.path, { query: fileInfo.query });
+  }
+
   if (debugLogger) {
     debugLogger.debug("Navigating control panel with OAuth verifier", {
       appChannel: APP_CHANNEL,
       oauthProtocol: OAUTH_PROTOCOL,
-      devServerUrl: appUrl,
-      authBridgeUrl: `http://${AUTH_BRIDGE_HOST}:${AUTH_BRIDGE_PORT}${AUTH_BRIDGE_PATH}`,
     });
   }
-  windowManager.controlPanelWindow.loadURL(urlWithVerifier);
   windowManager.controlPanelWindow.show();
   windowManager.controlPanelWindow.focus();
 }
@@ -423,7 +432,9 @@ async function startApp() {
   session.defaultSession.webRequest.onBeforeSendHeaders(
     { urls: ["https://*.neon.tech/*"] },
     (details, callback) => {
-      details.requestHeaders["Origin"] = new URL(details.url).origin;
+      try {
+        details.requestHeaders["Origin"] = new URL(details.url).origin;
+      } catch { /* malformed URL — leave Origin as-is */ }
       callback({ requestHeaders: details.requestHeaders });
     }
   );

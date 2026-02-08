@@ -398,6 +398,7 @@ declare global {
       getAudioDiagnostics: () => Promise<AudioDiagnosticsResult>;
 
       // System settings helpers
+      requestMicrophoneAccess?: () => Promise<{ granted: boolean }>;
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;

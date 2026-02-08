@@ -46,10 +46,12 @@ import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
+import LanguageSelector from "./ui/LanguageSelector";
 import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
 import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
+import logger from "../utils/logger";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "./lib/utils";
@@ -417,10 +419,7 @@ function AiModelsSection({
       <SettingsPanel>
         <SettingsPanelRow>
           <SettingsRow label="Enable text cleanup" description="AI improves transcription quality">
-            <Toggle
-              checked={useReasoningModel}
-              onChange={setUseReasoningModel}
-            />
+            <Toggle checked={useReasoningModel} onChange={setUseReasoningModel} />
           </SettingsRow>
         </SettingsPanelRow>
       </SettingsPanel>
@@ -460,7 +459,9 @@ function AiModelsSection({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[12px] font-medium text-foreground">OpenWhispr Cloud</span>
+                      <span className="text-[12px] font-medium text-foreground">
+                        OpenWhispr Cloud
+                      </span>
                       {isCloudMode && (
                         <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
                           Active
@@ -592,6 +593,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     whisperModel,
     localTranscriptionProvider,
     parakeetModel,
+    preferredLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
@@ -748,7 +750,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           const enabled = await window.electronAPI.getAutoStartEnabled();
           setAutoStartEnabled(enabled);
         } catch (error) {
-          console.error("Failed to get auto-start status:", error);
+          logger.error("Failed to get auto-start status", error, "settings");
         }
       }
       setAutoStartLoading(false);
@@ -765,7 +767,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           setAutoStartEnabled(enabled);
         }
       } catch (error) {
-        console.error("Failed to set auto-start:", error);
+        logger.error("Failed to set auto-start", error, "settings");
       } finally {
         setAutoStartLoading(false);
       }
@@ -801,7 +803,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           setActivationMode("tap");
         }
       } catch (error) {
-        console.error("Failed to check hotkey mode:", error);
+        logger.error("Failed to check hotkey mode", error, "settings");
       }
     };
     checkHotkeyMode();
@@ -911,7 +913,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       // Reload the app to show onboarding/auth
       window.location.reload();
     } catch (error) {
-      console.error("Sign out failed:", error);
+      logger.error("Sign out failed", error, "auth");
       showAlertDialog({
         title: "Sign Out Failed",
         description: "Unable to sign out. Please try again.",
@@ -1357,6 +1359,29 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         );
                       })}
                     </div>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Language */}
+            <div>
+              <SectionHeader
+                title="Language"
+                description="Set the language used for transcription"
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Preferred language"
+                    description="Choose the language you speak for more accurate transcription"
+                  >
+                    <LanguageSelector
+                      value={preferredLanguage}
+                      onChange={(value) =>
+                        updateTranscriptionSettings({ preferredLanguage: value })
+                      }
+                    />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>

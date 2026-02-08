@@ -986,6 +986,15 @@ class IPCHandlers {
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
 
+    ipcMain.handle("request-microphone-access", async () => {
+      if (process.platform !== "darwin") {
+        return { granted: true };
+      }
+      const { systemPreferences } = require("electron");
+      const granted = await systemPreferences.askForMediaAccess("microphone");
+      return { granted };
+    });
+
     // Auth: clear all session cookies for sign-out.
     // This clears every cookie in the renderer session rather than targeting
     // individual auth cookies, which is acceptable because the app only sets
@@ -1006,10 +1015,29 @@ class IPCHandlers {
 
     // --- OpenWhispr Cloud API handlers ---
 
-    const getApiUrl = () =>
-      process.env.OPENWHISPR_API_URL || process.env.VITE_OPENWHISPR_API_URL || "";
+    // In production, VITE_* env vars aren't available in the main process because
+    // Vite only inlines them into the renderer bundle at build time. Load the
+    // runtime-env.json that the Vite build writes to src/dist/ as a fallback.
+    const runtimeEnv = (() => {
+      const fs = require("fs");
+      const envPath = path.join(__dirname, "..", "dist", "runtime-env.json");
+      try {
+        if (fs.existsSync(envPath)) return JSON.parse(fs.readFileSync(envPath, "utf8"));
+      } catch {}
+      return {};
+    })();
 
-    const getAuthUrl = () => process.env.NEON_AUTH_URL || process.env.VITE_NEON_AUTH_URL || "";
+    const getApiUrl = () =>
+      process.env.OPENWHISPR_API_URL ||
+      process.env.VITE_OPENWHISPR_API_URL ||
+      runtimeEnv.VITE_OPENWHISPR_API_URL ||
+      "";
+
+    const getAuthUrl = () =>
+      process.env.NEON_AUTH_URL ||
+      process.env.VITE_NEON_AUTH_URL ||
+      runtimeEnv.VITE_NEON_AUTH_URL ||
+      "";
 
     const getSessionCookies = async (event) => {
       const win = BrowserWindow.fromWebContents(event.sender);
@@ -1228,6 +1256,9 @@ class IPCHandlers {
             agentName: opts.agentName,
             customDictionary: opts.customDictionary,
             language: opts.language,
+            sessionId: this.sessionId,
+            clientType: "desktop",
+            appVersion: app.getVersion(),
           }),
         });
         const fetchMs = Date.now() - fetchStart;
@@ -1630,8 +1661,8 @@ class IPCHandlers {
       try {
         let result = { text: "" };
         if (this.assemblyAiStreaming) {
-          // disconnect() now returns the final text from Termination event
           result = await this.assemblyAiStreaming.disconnect(true);
+          this.assemblyAiStreaming.cleanupAll();
           this.assemblyAiStreaming = null;
         }
 
