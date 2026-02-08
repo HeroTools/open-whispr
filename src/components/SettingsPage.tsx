@@ -46,6 +46,7 @@ import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
+import LanguageSelector from "./ui/LanguageSelector";
 import { Skeleton } from "./ui/skeleton";
 import { Progress } from "./ui/progress";
 import { useToast } from "./ui/Toast";
@@ -592,6 +593,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     whisperModel,
     localTranscriptionProvider,
     parakeetModel,
+    preferredLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
@@ -1353,6 +1355,29 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         );
                       })}
                     </div>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Language */}
+            <div>
+              <SectionHeader
+                title="Language"
+                description="Set the language used for transcription"
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Preferred language"
+                    description="Choose the language you speak for more accurate transcription"
+                  >
+                    <LanguageSelector
+                      value={preferredLanguage}
+                      onChange={(value) =>
+                        updateTranscriptionSettings({ preferredLanguage: value })
+                      }
+                    />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>
