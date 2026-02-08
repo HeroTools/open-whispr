@@ -1,6 +1,7 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import AudioManager from "../helpers/audioManager";
 import logger from "../utils/logger";
+import { playStartCue, playStopCue } from "../utils/dictationCues";
 
 export const useAudioRecording = (toast, options = {}) => {
   const [isRecording, setIsRecording] = useState(false);
@@ -10,6 +11,51 @@ export const useAudioRecording = (toast, options = {}) => {
   const [partialTranscript, setPartialTranscript] = useState("");
   const audioManagerRef = useRef(null);
   const { onToggle } = options;
+
+  const performStartRecording = useCallback(async () => {
+    if (!audioManagerRef.current) {
+      return false;
+    }
+
+    const currentState = audioManagerRef.current.getState();
+    if (currentState.isRecording || currentState.isProcessing) {
+      return false;
+    }
+
+    const didStart = audioManagerRef.current.shouldUseStreaming()
+      ? await audioManagerRef.current.startStreamingRecording()
+      : await audioManagerRef.current.startRecording();
+
+    if (didStart) {
+      void playStartCue();
+    }
+
+    return didStart;
+  }, []);
+
+  const performStopRecording = useCallback(async () => {
+    if (!audioManagerRef.current) {
+      return false;
+    }
+
+    const currentState = audioManagerRef.current.getState();
+    if (!currentState.isRecording) {
+      return false;
+    }
+
+    if (currentState.isStreaming) {
+      void playStopCue(); // streaming stop finalization is async, play cue immediately on stop action
+      return await audioManagerRef.current.stopStreamingRecording();
+    }
+
+    const didStop = audioManagerRef.current.stopRecording();
+
+    if (didStop) {
+      void playStopCue();
+    }
+
+    return didStop;
+  }, []);
 
   useEffect(() => {
     audioManagerRef.current = new AudioManager();
@@ -94,43 +140,22 @@ export const useAudioRecording = (toast, options = {}) => {
     audioManagerRef.current.warmupStreamingConnection();
 
     const handleToggle = async () => {
+      if (!audioManagerRef.current) return;
       const currentState = audioManagerRef.current.getState();
 
       if (!currentState.isRecording && !currentState.isProcessing) {
-        if (audioManagerRef.current.shouldUseStreaming()) {
-          await audioManagerRef.current.startStreamingRecording();
-        } else {
-          await audioManagerRef.current.startRecording();
-        }
+        await performStartRecording();
       } else if (currentState.isRecording) {
-        if (currentState.isStreaming) {
-          await audioManagerRef.current.stopStreamingRecording();
-        } else {
-          audioManagerRef.current.stopRecording();
-        }
+        await performStopRecording();
       }
     };
 
     const handleStart = async () => {
-      const currentState = audioManagerRef.current.getState();
-      if (!currentState.isRecording && !currentState.isProcessing) {
-        if (audioManagerRef.current.shouldUseStreaming()) {
-          await audioManagerRef.current.startStreamingRecording();
-        } else {
-          await audioManagerRef.current.startRecording();
-        }
-      }
+      await performStartRecording();
     };
 
     const handleStop = async () => {
-      const currentState = audioManagerRef.current.getState();
-      if (currentState.isRecording) {
-        if (currentState.isStreaming) {
-          await audioManagerRef.current.stopStreamingRecording();
-        } else {
-          audioManagerRef.current.stopRecording();
-        }
-      }
+      await performStopRecording();
     };
 
     const disposeToggle = window.electronAPI.onToggleDictation(() => {
@@ -168,27 +193,14 @@ export const useAudioRecording = (toast, options = {}) => {
         audioManagerRef.current.cleanup();
       }
     };
-  }, [toast, onToggle]);
+  }, [toast, onToggle, performStartRecording, performStopRecording]);
 
   const startRecording = async () => {
-    if (audioManagerRef.current) {
-      if (audioManagerRef.current.shouldUseStreaming()) {
-        return await audioManagerRef.current.startStreamingRecording();
-      }
-      return await audioManagerRef.current.startRecording();
-    }
-    return false;
+    return performStartRecording();
   };
 
   const stopRecording = async () => {
-    if (audioManagerRef.current) {
-      const state = audioManagerRef.current.getState();
-      if (state.isStreaming) {
-        return await audioManagerRef.current.stopStreamingRecording();
-      }
-      return audioManagerRef.current.stopRecording();
-    }
-    return false;
+    return performStopRecording();
   };
 
   const cancelRecording = async () => {
