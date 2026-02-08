@@ -587,7 +587,7 @@ OpenWhispr is designed with privacy and security in mind:
 6. **Text not pasting**:
    - macOS: Check accessibility permissions (System Settings → Privacy & Security → Accessibility)
    - Linux X11: Install `xdotool`
-   - Linux Wayland: Install `wtype` or `ydotool` (ensure `ydotoold` daemon is running)
+   - Linux Wayland: Install `wtype` or `ydotool` for paste simulation (ensure `ydotoold` daemon is running)
    - All platforms: Text is always copied to clipboard - use Ctrl+V (Cmd+V on macOS) to paste manually
 7. **Panel position**: If the panel appears off-screen, restart the app to reset position
 
