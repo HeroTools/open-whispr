@@ -184,27 +184,27 @@ const variantConfig = {
   destructive: {
     icon: AlertCircle,
     containerClass: cn(
-      "bg-destructive/8 dark:bg-destructive/12",
-      "border border-destructive/20 dark:border-destructive/25",
+      "bg-destructive/8 dark:bg-red-950/80",
+      "border border-destructive/20 dark:border-red-400/20",
       "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(220,38,38,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
       "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-4px_rgba(220,38,38,0.25),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
     ),
-    iconClass: "text-destructive",
-    titleClass: "text-destructive dark:text-red-400",
-    descClass: "text-destructive/80 dark:text-red-400/80",
+    iconClass: "text-destructive dark:text-red-400",
+    titleClass: "text-destructive dark:text-red-300",
+    descClass: "text-destructive/80 dark:text-red-300/80",
     progressClass: "bg-destructive/40",
   },
   success: {
     icon: CheckCircle2,
     containerClass: cn(
-      "bg-success/8 dark:bg-success/12",
-      "border border-success/20 dark:border-success/25",
+      "bg-success/8 dark:bg-emerald-950/80",
+      "border border-success/20 dark:border-emerald-400/20",
       "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(22,163,74,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
       "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-4px_rgba(22,163,74,0.25),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
     ),
-    iconClass: "text-success",
-    titleClass: "text-success dark:text-emerald-400",
-    descClass: "text-success/80 dark:text-emerald-400/80",
+    iconClass: "text-success dark:text-emerald-400",
+    titleClass: "text-success dark:text-emerald-300",
+    descClass: "text-success/80 dark:text-emerald-300/80",
     progressClass: "bg-success/40",
   },
 };
