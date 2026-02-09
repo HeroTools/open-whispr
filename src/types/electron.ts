@@ -80,6 +80,10 @@ export interface UpdateResult {
   message: string;
 }
 
+export type ReasoningIpcResult =
+  | { success: true; text: string }
+  | { success: false; error: string };
+
 export interface AppVersionResult {
   version: string;
 }
@@ -277,7 +281,7 @@ declare global {
         modelId: string,
         agentName: string | null,
         config: any
-      ) => Promise<{ success: boolean; text?: string; error?: string }>;
+      ) => Promise<ReasoningIpcResult>;
       checkLocalReasoningAvailable: () => Promise<boolean>;
 
       // Anthropic reasoning
@@ -286,7 +290,7 @@ declare global {
         modelId: string,
         agentName: string | null,
         config: any
-      ) => Promise<{ success: boolean; text?: string; error?: string }>;
+      ) => Promise<ReasoningIpcResult>;
 
       // llama.cpp management
       llamaCppCheck: () => Promise<{ isInstalled: boolean; version?: string }>;
