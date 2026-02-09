@@ -121,7 +121,7 @@ interface TranscriptionSectionProps {
   setCloudTranscriptionProvider: (provider: string) => void;
   cloudTranscriptionModel: string;
   setCloudTranscriptionModel: (model: string) => void;
-  localTranscriptionProvider: string;
+  localTranscriptionProvider: LocalTranscriptionProvider;
   setLocalTranscriptionProvider: (provider: LocalTranscriptionProvider) => void;
   whisperModel: string;
   setWhisperModel: (model: string) => void;
@@ -794,7 +794,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   useEffect(() => {
     const checkHotkeyMode = async () => {
       try {
-        const info = await window.electronAPI?.getHotkeyModeInfo();
+        const info = await window.electronAPI?.getHotkeyModeInfo?.();
         if (info?.isUsingGnome) {
           setIsUsingGnomeHotkeys(true);
           setActivationMode("tap");

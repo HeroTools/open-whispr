@@ -10,6 +10,7 @@ import ApiKeyInput from "./ui/ApiKeyInput";
 import { ConfirmDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload } from "../hooks/useModelDownload";
+import type { LocalTranscriptionProvider } from "../types/electron";
 import {
   getTranscriptionProviders,
   type TranscriptionProviderData,
@@ -185,8 +186,8 @@ interface TranscriptionModelPickerProps {
   onCloudModelSelect: (modelId: string) => void;
   selectedLocalModel: string;
   onLocalModelSelect: (modelId: string) => void;
-  selectedLocalProvider?: string;
-  onLocalProviderSelect?: (providerId: string) => void;
+  selectedLocalProvider?: LocalTranscriptionProvider;
+  onLocalProviderSelect?: (providerId: LocalTranscriptionProvider) => void;
   useLocalWhisper: boolean;
   onModeChange: (useLocal: boolean) => void;
   openaiApiKey: string;
@@ -212,10 +213,17 @@ const CLOUD_PROVIDER_TABS = [
 
 const VALID_CLOUD_PROVIDER_IDS = CLOUD_PROVIDER_TABS.map((p) => p.id);
 
-const LOCAL_PROVIDER_TABS: Array<{ id: string; name: string; disabled?: boolean }> = [
+const LOCAL_PROVIDER_TABS: Array<{
+  id: LocalTranscriptionProvider;
+  name: string;
+  disabled?: boolean;
+}> = [
   { id: "whisper", name: "OpenAI Whisper" },
   { id: "nvidia", name: "NVIDIA Parakeet" },
 ];
+
+const isLocalTranscriptionProvider = (value: string): value is LocalTranscriptionProvider =>
+  value === "whisper" || value === "nvidia";
 
 // Mode toggle component - defined outside to prevent recreation on every render
 interface ModeToggleProps {
@@ -498,6 +506,7 @@ export default function TranscriptionModelPicker({
 
   const handleLocalProviderChange = useCallback(
     (providerId: string) => {
+      if (!isLocalTranscriptionProvider(providerId)) return;
       const tab = LOCAL_PROVIDER_TABS.find((t) => t.id === providerId);
       if (tab?.disabled) return;
       setInternalLocalProvider(providerId);
