@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "./ui/button";
 import {
   Trash2,
@@ -12,7 +12,7 @@ import {
   Cloud,
   X,
 } from "lucide-react";
-import SettingsModal, { SettingsSectionType } from "./SettingsModal";
+import type { SettingsSectionType } from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
 import TranscriptionItem from "./ui/TranscriptionItem";
@@ -31,6 +31,8 @@ import {
   clearTranscriptions as clearStoreTranscriptions,
 } from "../stores/transcriptionStore";
 import { formatHotkeyLabel } from "../utils/hotkeys";
+
+const SettingsModal = React.lazy(() => import("./SettingsModal"));
 
 export default function ControlPanel() {
   const history = useTranscriptions();
@@ -142,25 +144,28 @@ export default function ControlPanel() {
     }
   };
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied!",
-        description: "Text copied to your clipboard",
-        variant: "success",
-        duration: 2000,
-      });
-    } catch (err) {
-      toast({
-        title: "Copy Failed",
-        description: "Failed to copy text to clipboard",
-        variant: "destructive",
-      });
-    }
-  };
+  const copyToClipboard = useCallback(
+    async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast({
+          title: "Copied!",
+          description: "Text copied to your clipboard",
+          variant: "success",
+          duration: 2000,
+        });
+      } catch (err) {
+        toast({
+          title: "Copy Failed",
+          description: "Failed to copy text to clipboard",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast]
+  );
 
-  const clearHistory = async () => {
+  const clearHistory = useCallback(async () => {
     showConfirmDialog({
       title: "Clear History",
       description: "Are you sure you want to clear all transcriptions? This cannot be undone.",
@@ -184,33 +189,36 @@ export default function ControlPanel() {
       },
       variant: "destructive",
     });
-  };
+  }, [showConfirmDialog, toast]);
 
-  const deleteTranscription = async (id: number) => {
-    showConfirmDialog({
-      title: "Delete Transcription",
-      description: "Are you certain you wish to remove this inscription from your records?",
-      onConfirm: async () => {
-        try {
-          const result = await window.electronAPI.deleteTranscription(id);
-          if (result.success) {
-            removeFromStore(id);
-          } else {
+  const deleteTranscription = useCallback(
+    async (id: number) => {
+      showConfirmDialog({
+        title: "Delete Transcription",
+        description: "Are you certain you wish to remove this inscription from your records?",
+        onConfirm: async () => {
+          try {
+            const result = await window.electronAPI.deleteTranscription(id);
+            if (result.success) {
+              removeFromStore(id);
+            } else {
+              showAlertDialog({
+                title: "Delete Failed",
+                description: "Failed to delete transcription. It may have already been removed.",
+              });
+            }
+          } catch (error) {
             showAlertDialog({
               title: "Delete Failed",
-              description: "Failed to delete transcription. It may have already been removed.",
+              description: "Failed to delete transcription. Please try again.",
             });
           }
-        } catch (error) {
-          showAlertDialog({
-            title: "Delete Failed",
-            description: "Failed to delete transcription. Please try again.",
-          });
-        }
-      },
-      variant: "destructive",
-    });
-  };
+        },
+        variant: "destructive",
+      });
+    },
+    [showConfirmDialog, showAlertDialog]
+  );
 
   const handleUpdateClick = async () => {
     if (updateStatus.updateDownloaded) {
@@ -339,14 +347,18 @@ export default function ControlPanel() {
         }
       />
 
-      <SettingsModal
-        open={showSettings}
-        onOpenChange={(open) => {
-          setShowSettings(open);
-          if (!open) setSettingsSection(undefined);
-        }}
-        initialSection={settingsSection}
-      />
+      {showSettings && (
+        <Suspense fallback={null}>
+          <SettingsModal
+            open={showSettings}
+            onOpenChange={(open) => {
+              setShowSettings(open);
+              if (!open) setSettingsSection(undefined);
+            }}
+            initialSection={settingsSection}
+          />
+        </Suspense>
+      )}
 
       <div className="p-4">
         <div className="max-w-3xl mx-auto">

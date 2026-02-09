@@ -210,14 +210,11 @@ function setupProductionPath() {
   }
 }
 
-// Initialize all managers - called after app.whenReady()
-function initializeManagers() {
-  // Set up PATH before initializing managers
+// Phase 1: Initialize managers + IPC handlers before window content loads
+function initializeCoreManagers() {
   setupProductionPath();
 
-  // Now it's safe to call app.getPath() and initialize managers
   debugLogger = require("./src/helpers/debugLogger");
-  // Ensure file logging is initialized now that app is ready
   debugLogger.ensureFileLogging();
 
   environmentManager = new EnvironmentManager();
@@ -227,15 +224,30 @@ function initializeManagers() {
   hotkeyManager = windowManager.hotkeyManager;
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();
-  clipboardManager.preWarmAccessibility();
   whisperManager = new WhisperManager();
   parakeetManager = new ParakeetManager();
-  trayManager = new TrayManager();
   updateManager = new UpdateManager();
-  globeKeyManager = new GlobeKeyManager();
   windowsKeyManager = new WindowsKeyManager();
 
-  // Set up Globe key error handler on macOS
+  // IPC handlers must be registered before window content loads
+  new IPCHandlers({
+    environmentManager,
+    databaseManager,
+    clipboardManager,
+    whisperManager,
+    parakeetManager,
+    windowManager,
+    updateManager,
+    windowsKeyManager,
+  });
+}
+
+// Phase 2: Non-critical setup after windows are visible
+function initializeDeferredManagers() {
+  clipboardManager.preWarmAccessibility();
+  trayManager = new TrayManager();
+  globeKeyManager = new GlobeKeyManager();
+
   if (process.platform === "darwin") {
     globeKeyManager.on("error", (error) => {
       if (globeKeyAlertShown) {
@@ -264,18 +276,6 @@ function initializeManagers() {
       });
     });
   }
-
-  // Initialize IPC handlers with all managers
-  const _ipcHandlers = new IPCHandlers({
-    environmentManager,
-    databaseManager,
-    clipboardManager,
-    whisperManager,
-    parakeetManager,
-    windowManager,
-    updateManager,
-    windowsKeyManager,
-  });
 }
 
 app.on('open-url', (event, url) => {
@@ -420,12 +420,11 @@ function startAuthBridgeServer() {
 
 // Main application startup
 async function startApp() {
-  // Initialize all managers now that app is ready
-  initializeManagers();
+  // Phase 1: Core managers + IPC handlers before windows
+  initializeCoreManagers();
   startAuthBridgeServer();
 
   // Electron's file:// sends no Origin header, which Neon Auth rejects.
-  // Inject the request's own origin at the Chromium network layer.
   session.defaultSession.webRequest.onBeforeSendHeaders(
     { urls: ["https://*.neon.tech/*"] },
     (details, callback) => {
@@ -436,56 +435,46 @@ async function startApp() {
     }
   );
 
-  // Initialize activation mode cache from persisted .env value
   windowManager.setActivationModeCache(environmentManager.getActivationMode());
 
-  // Update cache + persist when renderer changes activation mode (all platforms)
   ipcMain.on("activation-mode-changed", (_event, mode) => {
     windowManager.setActivationModeCache(mode);
     environmentManager.saveActivationMode(mode);
   });
 
-  // In development, add a small delay to let Vite start properly
-  if (process.env.NODE_ENV === "development") {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
-
-  // On macOS, set activation policy to allow dock icon to be shown/hidden dynamically
-  // The dock icon visibility is managed by WindowManager based on control panel state
   if (process.platform === "darwin") {
     app.setActivationPolicy("regular");
   }
 
-  // Initialize Whisper manager at startup (don't await to avoid blocking)
-  // Settings can be provided via environment variables for server pre-warming:
-  // - LOCAL_TRANSCRIPTION_PROVIDER=whisper to enable local whisper mode
-  // - LOCAL_WHISPER_MODEL=base (or tiny, small, medium, large, turbo)
+  // In development, wait for Vite dev server to be ready
+  if (process.env.NODE_ENV === "development") {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  // Create windows FIRST so the user sees UI as soon as possible
+  await windowManager.createMainWindow();
+  await windowManager.createControlPanelWindow();
+
+  // Phase 2: Initialize remaining managers after windows are visible
+  initializeDeferredManagers();
+
+  // Non-blocking server pre-warming
   const whisperSettings = {
     localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
     whisperModel: process.env.LOCAL_WHISPER_MODEL,
   };
   whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
-    // Whisper not being available at startup is not critical
     debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
   });
 
-  // Initialize Parakeet manager at startup (don't await to avoid blocking)
-  // Settings can be provided via environment variables for server pre-warming:
-  // - LOCAL_TRANSCRIPTION_PROVIDER=nvidia to enable parakeet
-  // - PARAKEET_MODEL=parakeet-tdt-0.6b-v3 (model name)
   const parakeetSettings = {
     localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
     parakeetModel: process.env.PARAKEET_MODEL,
   };
   parakeetManager.initializeAtStartup(parakeetSettings).catch((err) => {
-    // Parakeet not being available at startup is not critical
     debugLogger.debug("Parakeet startup init error (non-fatal)", { error: err.message });
   });
 
-  // Pre-warm llama-server if local reasoning is configured
-  // Settings can be provided via environment variables:
-  // - REASONING_PROVIDER=local to enable local reasoning
-  // - LOCAL_REASONING_MODEL=qwen3-8b-q4_k_m (or another model ID)
   if (process.env.REASONING_PROVIDER === "local" && process.env.LOCAL_REASONING_MODEL) {
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.prewarmServer(process.env.LOCAL_REASONING_MODEL).catch((err) => {
@@ -493,25 +482,16 @@ async function startApp() {
     });
   }
 
-  // Log nircmd status on Windows (for debugging bundled dependencies)
   if (process.platform === "win32") {
     const nircmdStatus = clipboardManager.getNircmdStatus();
     debugLogger.debug("Windows paste tool status", nircmdStatus);
   }
 
-  // Create main window
-  await windowManager.createMainWindow();
-
-  // Create control panel window
-  await windowManager.createControlPanelWindow();
-
-  // Set up tray
   trayManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   trayManager.setWindowManager(windowManager);
   trayManager.setCreateControlPanelCallback(() => windowManager.createControlPanelWindow());
   await trayManager.createTray();
 
-  // Set windows for update manager and check for updates
   updateManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   updateManager.checkForUpdatesOnStartup();
 

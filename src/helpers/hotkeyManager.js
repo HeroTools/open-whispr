@@ -238,9 +238,7 @@ class HotkeyManager {
     ) {
       return;
     }
-    const prevAccel = previousHotkey.startsWith("Fn+")
-      ? previousHotkey.slice(3)
-      : previousHotkey;
+    const prevAccel = previousHotkey.startsWith("Fn+") ? previousHotkey.slice(3) : previousHotkey;
     try {
       const restored = globalShortcut.register(prevAccel, callback);
       if (restored) {
@@ -248,9 +246,7 @@ class HotkeyManager {
           `[HotkeyManager] Restored previous hotkey "${previousHotkey}" after failed registration`
         );
       } else {
-        debugLogger.warn(
-          `[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`
-        );
+        debugLogger.warn(`[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`);
       }
     } catch (err) {
       debugLogger.warn(
@@ -421,7 +417,7 @@ class HotkeyManager {
       // Lazy require to avoid circular dependencies
       const EnvironmentManager = require("./environment");
       const envManager = new EnvironmentManager();
-      envManager.saveAllKeysToEnvFile();
+      await envManager.saveAllKeysToEnvFile();
       debugLogger.log(`[HotkeyManager] Saved hotkey "${hotkey}" to .env file`);
     } catch (err) {
       debugLogger.warn("[HotkeyManager] Failed to persist hotkey to .env file:", err.message);

@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
-import ControlPanel from "./components/ControlPanel.tsx";
-import OnboardingFlow from "./components/OnboardingFlow.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
+import { SettingsProvider } from "./hooks/useSettings";
 import { useTheme } from "./hooks/useTheme";
 import "./index.css";
+
+const ControlPanel = React.lazy(() => import("./components/ControlPanel.tsx"));
+const OnboardingFlow = React.lazy(() => import("./components/OnboardingFlow.tsx"));
 
 let root = null;
 
@@ -295,21 +297,35 @@ function AppRouter() {
   };
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading OpenWhispr...</p>
-        </div>
-      </div>
-    );
+    return <LoadingFallback message="Loading OpenWhispr..." />;
   }
 
   if (isControlPanel && showOnboarding) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+    return (
+      <Suspense fallback={<LoadingFallback />}>
+        <OnboardingFlow onComplete={handleOnboardingComplete} />
+      </Suspense>
+    );
   }
 
-  return isControlPanel ? <ControlPanel /> : <App />;
+  return isControlPanel ? (
+    <Suspense fallback={<LoadingFallback />}>
+      <ControlPanel />
+    </Suspense>
+  ) : (
+    <App />
+  );
+}
+
+function LoadingFallback({ message } = {}) {
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        {message && <p className="text-muted-foreground">{message}</p>}
+      </div>
+    </div>
+  );
 }
 
 function mountApp() {
@@ -319,9 +335,11 @@ function mountApp() {
   root.render(
     <React.StrictMode>
       <ErrorBoundary>
-        <ToastProvider>
-          <AppRouter />
-        </ToastProvider>
+        <SettingsProvider>
+          <ToastProvider>
+            <AppRouter />
+          </ToastProvider>
+        </SettingsProvider>
       </ErrorBoundary>
     </React.StrictMode>
   );
