@@ -16,6 +16,29 @@ const LLAMA_CPP_REPO = "ggerganov/llama.cpp";
 // Version can be pinned via environment variable for reproducible builds
 const VERSION_OVERRIDE = process.env.LLAMA_CPP_VERSION || null;
 
+const WINDOWS_BACKENDS = [
+  {
+    id: "cuda",
+    isGpu: true,
+    assetPattern: /^llama-.*-bin-win-cuda.*-x64\.zip$/i,
+  },
+  {
+    id: "vulkan",
+    isGpu: true,
+    assetPattern: /^llama-.*-bin-win-vulkan.*-x64\.zip$/,
+  },
+  {
+    id: "hip",
+    isGpu: true,
+    assetPattern: /^llama-.*-bin-win-hip.*-x64\.zip$/,
+  },
+  {
+    id: "cpu",
+    required: true,
+    assetPattern: /^llama-.*-bin-win-cpu-x64\.zip$/,
+  },
+];
+
 // Asset name patterns to match in the release (version-independent)
 const BINARIES = {
   "darwin-arm64": {
@@ -31,10 +54,10 @@ const BINARIES = {
     libPattern: "*.dylib",
   },
   "win32-x64": {
-    assetPattern: /^llama-.*-bin-win-cpu-x64\.zip$/,
     binaryPath: "build/bin/llama-server.exe",
-    outputName: "llama-server-win32-x64.exe",
+    outputName: "llama-server-win32-x64",
     libPattern: "*.dll",
+    windowsBackends: WINDOWS_BACKENDS,
   },
   "linux-x64": {
     assetPattern: /^llama-.*-bin-ubuntu-x64\.tar\.gz$/,
@@ -60,7 +83,7 @@ async function getRelease() {
   return cachedRelease;
 }
 
-function findAsset(release, pattern) {
+function findAssetByPattern(release, pattern) {
   return release?.assets?.find((a) => pattern.test(a.name));
 }
 
@@ -96,33 +119,38 @@ function matchesPattern(filename, pattern) {
   return false;
 }
 
-async function downloadBinary(platformArch, config, release, isForce = false) {
+async function downloadBinary(platformArch, config, release, isForce = false, backend = null) {
   if (!config) {
     console.log(`  ${platformArch}: Not supported`);
     return false;
   }
 
-  const outputPath = path.join(BIN_DIR, config.outputName);
+  const backendLabel = backend ? ` (${backend.id})` : "";
+  const outputPath = backend
+    ? path.join(BIN_DIR, config.outputName, backend.id)
+    : path.join(BIN_DIR, config.outputName);
 
   if (fs.existsSync(outputPath) && !isForce) {
-    console.log(`  ${platformArch}: Already exists (use --force to re-download)`);
+    console.log(`  ${platformArch}${backendLabel}: Already exists (use --force to re-download)`);
     return true;
   }
 
-  const asset = findAsset(release, config.assetPattern);
+  const asset = backend
+    ? findAssetByPattern(release, backend.assetPattern)
+    : findAssetByPattern(release, config.assetPattern);
   if (!asset) {
-    console.error(`  ${platformArch}: No matching asset found for pattern ${config.assetPattern}`);
+    console.error(`  ${platformArch}${backendLabel}: No matching asset found`);
     return false;
   }
 
-  console.log(`  ${platformArch}: Downloading from ${asset.url}`);
+  console.log(`  ${platformArch}${backendLabel}: Downloading from ${asset.url}`);
 
   const zipPath = path.join(BIN_DIR, asset.name);
 
   try {
     await downloadFile(asset.url, zipPath);
 
-    const extractDir = path.join(BIN_DIR, `temp-llama-${platformArch}`);
+    const extractDir = path.join(BIN_DIR, `temp-llama-${platformArch}${backend ? `-${backend.id}` : ""}`);
     fs.mkdirSync(extractDir, { recursive: true });
     extractArchive(zipPath, extractDir);
 
@@ -134,28 +162,47 @@ async function downloadBinary(platformArch, config, release, isForce = false) {
     }
 
     if (binaryPath && fs.existsSync(binaryPath)) {
-      fs.copyFileSync(binaryPath, outputPath);
-      setExecutable(outputPath);
-      console.log(`  ${platformArch}: Extracted to ${config.outputName}`);
+      if (backend) {
+        fs.rmSync(outputPath, { recursive: true, force: true });
+        fs.mkdirSync(outputPath, { recursive: true });
 
-      // Copy shared libraries (dylib/dll/so files)
-      if (config.libPattern) {
+        const destBinary = path.join(outputPath, path.basename(binaryPath));
+        fs.copyFileSync(binaryPath, destBinary);
+        setExecutable(destBinary);
+        console.log(`  ${platformArch}${backendLabel}: Installed backend`);
+
         const libraries = findLibrariesInDir(extractDir, config.libPattern);
-
         for (const libPath of libraries) {
-          const libName = path.basename(libPath);
-          const destPath = path.join(BIN_DIR, libName);
-
-          // Only copy if not already exists (libraries are shared across architectures on same OS)
+          const destPath = path.join(outputPath, path.basename(libPath));
           if (!fs.existsSync(destPath)) {
             fs.copyFileSync(libPath, destPath);
             setExecutable(destPath);
-            console.log(`  ${platformArch}: Copied library ${libName}`);
+          }
+        }
+      } else {
+        fs.copyFileSync(binaryPath, outputPath);
+        setExecutable(outputPath);
+        console.log(`  ${platformArch}: Extracted to ${config.outputName}`);
+
+        // Copy shared libraries (dylib/dll/so files)
+        if (config.libPattern) {
+          const libraries = findLibrariesInDir(extractDir, config.libPattern);
+
+          for (const libPath of libraries) {
+            const libName = path.basename(libPath);
+            const destPath = path.join(BIN_DIR, libName);
+
+            // Only copy if not already exists (libraries are shared across architectures on same OS)
+            if (!fs.existsSync(destPath)) {
+              fs.copyFileSync(libPath, destPath);
+              setExecutable(destPath);
+              console.log(`  ${platformArch}: Copied library ${libName}`);
+            }
           }
         }
       }
     } else {
-      console.error(`  ${platformArch}: Binary '${binaryName}' not found in archive`);
+      console.error(`  ${platformArch}${backendLabel}: Binary '${binaryName}' not found in archive`);
       return false;
     }
 
@@ -163,10 +210,34 @@ async function downloadBinary(platformArch, config, release, isForce = false) {
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
     return true;
   } catch (error) {
-    console.error(`  ${platformArch}: Failed - ${error.message}`);
+    console.error(`  ${platformArch}${backendLabel}: Failed - ${error.message}`);
     if (fs.existsSync(zipPath)) fs.unlinkSync(zipPath);
     return false;
   }
+}
+
+async function downloadWindowsBackends(platformArch, config, release, isForce) {
+  let downloadedGpu = 0;
+
+  for (const backend of config.windowsBackends) {
+    const ok = await downloadBinary(platformArch, config, release, isForce, backend);
+    if (!ok) {
+      if (backend.required) {
+        return false;
+      }
+      console.warn(`  ${platformArch} (${backend.id}): backend not available, skipping`);
+      continue;
+    }
+
+    if (backend.isGpu) {
+      downloadedGpu++;
+    }
+  }
+
+  if (downloadedGpu === 0) {
+    console.warn(`  ${platformArch}: No GPU backend bundle downloaded; CPU-only fallback will be used`);
+  }
+  return true;
 }
 
 async function main() {
@@ -198,7 +269,11 @@ async function main() {
     }
 
     console.log(`Downloading for target platform (${args.platformArch}):`);
-    const ok = await downloadBinary(args.platformArch, BINARIES[args.platformArch], release, args.isForce);
+    const config = BINARIES[args.platformArch];
+    const ok =
+      args.platformArch === "win32-x64" && config.windowsBackends
+        ? await downloadWindowsBackends(args.platformArch, config, release, args.isForce)
+        : await downloadBinary(args.platformArch, config, release, args.isForce);
     if (!ok) {
       console.error(`Failed to download binaries for ${args.platformArch}`);
       process.exitCode = 1;
@@ -211,18 +286,32 @@ async function main() {
   } else {
     console.log("Downloading binaries for all platforms:");
     for (const platformArch of Object.keys(BINARIES)) {
-      await downloadBinary(platformArch, BINARIES[platformArch], release, args.isForce);
+      const config = BINARIES[platformArch];
+      const ok =
+        platformArch === "win32-x64" && config.windowsBackends
+          ? await downloadWindowsBackends(platformArch, config, release, args.isForce)
+          : await downloadBinary(platformArch, config, release, args.isForce);
+      if (!ok) {
+        console.error(`Failed to download binaries for ${platformArch}`);
+        process.exitCode = 1;
+        return;
+      }
     }
   }
 
   console.log("\n---");
 
-  const files = fs.readdirSync(BIN_DIR).filter((f) => f.startsWith("llama-server"));
-  if (files.length > 0) {
+  const entries = fs.readdirSync(BIN_DIR).filter((f) => f.startsWith("llama-server"));
+  if (entries.length > 0) {
     console.log("Available llama-server binaries:\n");
-    files.forEach((f) => {
-      const stats = fs.statSync(path.join(BIN_DIR, f));
-      console.log(`  - ${f} (${Math.round(stats.size / 1024 / 1024)}MB)`);
+    entries.forEach((entry) => {
+      const fullPath = path.join(BIN_DIR, entry);
+      const stats = fs.statSync(fullPath);
+      if (stats.isDirectory()) {
+        console.log(`  - ${entry}/`);
+      } else {
+        console.log(`  - ${entry} (${Math.round(stats.size / 1024 / 1024)}MB)`);
+      }
     });
   } else {
     console.log("No binaries downloaded yet.");

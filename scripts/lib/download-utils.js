@@ -301,12 +301,17 @@ function setExecutable(filePath) {
 }
 
 function cleanupFiles(binDir, prefix, keepPrefix) {
-  const files = fs.readdirSync(binDir).filter((f) => f.startsWith(prefix));
-  files.forEach((file) => {
-    if (!file.startsWith(keepPrefix)) {
-      const filePath = path.join(binDir, file);
-      console.log(`Removing old binary: ${file}`);
-      fs.unlinkSync(filePath);
+  const entries = fs.readdirSync(binDir).filter((f) => f.startsWith(prefix));
+  entries.forEach((entry) => {
+    if (!entry.startsWith(keepPrefix)) {
+      const filePath = path.join(binDir, entry);
+      console.log(`Removing old binary: ${entry}`);
+      const stats = fs.lstatSync(filePath);
+      if (stats.isDirectory()) {
+        fs.rmSync(filePath, { recursive: true, force: true });
+      } else {
+        fs.unlinkSync(filePath);
+      }
     }
   });
 }
