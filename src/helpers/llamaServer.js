@@ -91,6 +91,11 @@ class LlamaServerManager {
   }
 
   resolveWindowsBackendBinary() {
+    return this.getWindowsBackendCandidates()[0] || null;
+  }
+
+  getWindowsBackendCandidates() {
+    const candidates = [];
     const roots = getWindowsBackendRoots();
     for (const backend of WINDOWS_BACKEND_PRIORITY) {
       for (const root of roots) {
@@ -100,14 +105,15 @@ class LlamaServerManager {
         if (fs.existsSync(binaryPath)) {
           try {
             fs.statSync(binaryPath);
-            return { backend, dir: backendDir, binaryPath };
+            candidates.push({ backend, dir: backendDir, binaryPath });
+            break;
           } catch {
             // Can't access binary
           }
         }
       }
     }
-    return null;
+    return candidates;
   }
 
   isAvailable() {
@@ -157,10 +163,42 @@ class LlamaServerManager {
   }
 
   async _doStart(modelPath, options = {}) {
-    const serverBinary = this.getServerBinaryPath();
-    if (!serverBinary) throw new Error("llama-server binary not found");
     if (!fs.existsSync(modelPath)) throw new Error(`Model file not found: ${modelPath}`);
 
+    if (process.platform === "win32") {
+      const backendCandidates = this.getWindowsBackendCandidates();
+      if (backendCandidates.length > 0) {
+        const failures = [];
+
+        for (const candidate of backendCandidates) {
+          this.cachedServerBinaryPath = candidate.binaryPath;
+          this.selectedBackend = candidate.backend;
+
+          try {
+            await this._startWithBinary(candidate.binaryPath, modelPath, options);
+            return;
+          } catch (error) {
+            failures.push(`${candidate.backend}: ${error.message}`);
+            debugLogger.warn("llama-server backend startup failed, trying next backend", {
+              backend: candidate.backend,
+              error: error.message,
+            });
+            await this.stop();
+          }
+        }
+
+        throw new Error(
+          `llama-server failed to start with available Windows backends: ${failures.join(" | ")}`
+        );
+      }
+    }
+
+    const serverBinary = this.getServerBinaryPath();
+    if (!serverBinary) throw new Error("llama-server binary not found");
+    await this._startWithBinary(serverBinary, modelPath, options);
+  }
+
+  async _startWithBinary(serverBinary, modelPath, options = {}) {
     this.port = await this.findAvailablePort();
     this.modelPath = modelPath;
 
