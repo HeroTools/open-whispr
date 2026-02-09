@@ -515,6 +515,11 @@ function useSettingsInternal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const [audioCuesEnabled, setAudioCuesEnabled] = useLocalStorage("audioCuesEnabled", true, {
+    serialize: String,
+    deserialize: (value) => value !== "false",
+  });
+
   // Microphone settings
   const [preferBuiltInMic, setPreferBuiltInMic] = useLocalStorage("preferBuiltInMic", true, {
     serialize: String,
@@ -686,6 +691,8 @@ function useSettingsInternal() {
     setTheme,
     activationMode,
     setActivationMode,
+    audioCuesEnabled,
+    setAudioCuesEnabled,
     preferBuiltInMic,
     selectedMicDeviceId,
     setPreferBuiltInMic,

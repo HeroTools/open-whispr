@@ -641,6 +641,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudTranscriptionMode,
     cloudReasoningMode,
     setCloudReasoningMode,
+    audioCuesEnabled,
+    setAudioCuesEnabled,
     cloudBackupEnabled,
     setCloudBackupEnabled,
     telemetryEnabled,
@@ -1353,6 +1355,24 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         );
                       })}
                     </div>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Sound Effects */}
+            <div>
+              <SectionHeader title="Sound Effects" />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Dictation sounds"
+                    description="Play a tone when recording starts and stops"
+                  >
+                    <Toggle
+                      checked={audioCuesEnabled}
+                      onChange={setAudioCuesEnabled}
+                    />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>
