@@ -1,4 +1,4 @@
-const { clipboard, app } = require("electron");
+const { clipboard } = require("electron");
 const { spawn, spawnSync } = require("child_process");
 const { killProcess } = require("../utils/process");
 const path = require("path");
@@ -47,6 +47,14 @@ const RESTORE_DELAYS = {
   linux: 200,
 };
 
+function writeClipboardInRenderer(webContents, text) {
+  if (!webContents || !webContents.executeJavaScript) {
+    return Promise.reject(new Error("Invalid webContents for clipboard write"));
+  }
+  const escaped = JSON.stringify(text);
+  return webContents.executeJavaScript(`navigator.clipboard.writeText(${escaped})`);
+}
+
 class ClipboardManager {
   constructor() {
     this.accessibilityCache = { value: null, expiresAt: 0 };
@@ -55,6 +63,30 @@ class ClipboardManager {
     this.nircmdChecked = false;
     this.fastPastePath = null;
     this.fastPasteChecked = false;
+  }
+
+  _isWayland() {
+    if (process.platform !== "linux") return false;
+    const { isWayland } = getLinuxSessionInfo();
+    return isWayland;
+  }
+
+  _writeClipboardWayland(text, webContents) {
+    if (this.commandExists("wl-copy")) {
+      try {
+        const result = spawnSync("wl-copy", ["--", text], { timeout: 2000 });
+        if (result.status === 0) {
+          clipboard.writeText(text);
+          return;
+        }
+      } catch {}
+    }
+
+    if (webContents && !webContents.isDestroyed()) {
+      writeClipboardInRenderer(webContents, text).catch(() => {});
+    }
+
+    clipboard.writeText(text);
   }
 
   getNircmdPath() {
@@ -191,6 +223,7 @@ class ClipboardManager {
     const startTime = Date.now();
     const platform = process.platform;
     let method = "unknown";
+    const webContents = options.webContents;
 
     try {
       const originalClipboard = clipboard.readText();
@@ -199,7 +232,11 @@ class ClipboardManager {
         originalClipboard.substring(0, 50) + "..."
       );
 
-      clipboard.writeText(text);
+      if (platform === "linux" && this._isWayland()) {
+        this._writeClipboardWayland(text, webContents);
+      } else {
+        clipboard.writeText(text);
+      }
       this.safeLog("📋 Text copied to clipboard:", text.substring(0, 50) + "...");
 
       if (platform === "darwin") {
@@ -222,7 +259,7 @@ class ClipboardManager {
         await this.pasteWindows(originalClipboard);
       } else {
         method = "linux-tools";
-        await this.pasteLinux(originalClipboard);
+        await this.pasteLinux(originalClipboard, options);
       }
 
       this.safeLog("✅ Paste operation complete", {
@@ -532,8 +569,9 @@ class ClipboardManager {
     });
   }
 
-  async pasteLinux(originalClipboard) {
+  async pasteLinux(originalClipboard, options = {}) {
     const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
+    const webContents = options.webContents;
     const xdotoolExists = this.commandExists("xdotool");
     const wtypeExists = this.commandExists("wtype");
     const ydotoolExists = this.commandExists("ydotool");
@@ -744,7 +782,13 @@ class ClipboardManager {
 
             if (code === 0) {
               debugLogger.debug("Paste successful", { cmd: tool.cmd }, "clipboard");
-              setTimeout(() => clipboard.writeText(originalClipboard), RESTORE_DELAYS.linux);
+              setTimeout(() => {
+                if (isWayland) {
+                  this._writeClipboardWayland(originalClipboard, webContents);
+                } else {
+                  clipboard.writeText(originalClipboard);
+                }
+              }, RESTORE_DELAYS.linux);
               resolve();
             } else {
               debugLogger.error(
@@ -1048,8 +1092,12 @@ Would you like to open System Settings now?`;
     return clipboard.readText();
   }
 
-  async writeClipboard(text) {
-    clipboard.writeText(text);
+  async writeClipboard(text, webContents = null) {
+    if (process.platform === "linux" && this._isWayland()) {
+      this._writeClipboardWayland(text, webContents);
+    } else {
+      clipboard.writeText(text);
+    }
     return { success: true };
   }
 

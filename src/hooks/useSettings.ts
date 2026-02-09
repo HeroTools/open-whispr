@@ -46,6 +46,7 @@ export interface ApiKeySettings {
   anthropicApiKey: string;
   geminiApiKey: string;
   groqApiKey: string;
+  mistralApiKey: string;
   customTranscriptionApiKey: string;
   customReasoningApiKey: string;
 }
@@ -273,6 +274,11 @@ export function useSettings() {
     deserialize: String,
   });
 
+  const [mistralApiKey, setMistralApiKeyLocal] = useLocalStorage("mistralApiKey", "", {
+    serialize: String,
+    deserialize: String,
+  });
+
   // Theme setting
   const [theme, setTheme] = useLocalStorage<"light" | "dark" | "auto">("theme", "auto", {
     serialize: String,
@@ -338,6 +344,10 @@ export function useSettings() {
         const envKey = await window.electronAPI.getGroqKey?.();
         if (envKey) setGroqApiKeyLocal(envKey);
       }
+      if (!mistralApiKey) {
+        const envKey = await window.electronAPI.getMistralKey?.();
+        if (envKey) setMistralApiKeyLocal(envKey);
+      }
       if (!customTranscriptionApiKey) {
         const envKey = await window.electronAPI.getCustomTranscriptionKey?.();
         if (envKey) setCustomTranscriptionApiKeyLocal(envKey);
@@ -370,82 +380,91 @@ export function useSettings() {
     }
   }, 1000);
 
-  // Wrapped setters that sync to Electron IPC and invalidate cache
+  const invalidateApiKeyCaches = useCallback(
+    (provider?: "openai" | "anthropic" | "gemini" | "groq" | "mistral" | "custom") => {
+      if (provider) {
+        ReasoningService.clearApiKeyCache(provider);
+      }
+      window.dispatchEvent(new Event("api-key-changed"));
+      debouncedPersistToEnv();
+    },
+    [debouncedPersistToEnv]
+  );
+
   const setOpenaiApiKey = useCallback(
     (key: string) => {
       setOpenaiApiKeyLocal(key);
       window.electronAPI?.saveOpenAIKey?.(key);
-      ReasoningService.clearApiKeyCache("openai");
-      debouncedPersistToEnv();
+      invalidateApiKeyCaches("openai");
     },
-    [setOpenaiApiKeyLocal, debouncedPersistToEnv]
+    [setOpenaiApiKeyLocal, invalidateApiKeyCaches]
   );
 
   const setAnthropicApiKey = useCallback(
     (key: string) => {
       setAnthropicApiKeyLocal(key);
       window.electronAPI?.saveAnthropicKey?.(key);
-      ReasoningService.clearApiKeyCache("anthropic");
-      debouncedPersistToEnv();
+      invalidateApiKeyCaches("anthropic");
     },
-    [setAnthropicApiKeyLocal, debouncedPersistToEnv]
+    [setAnthropicApiKeyLocal, invalidateApiKeyCaches]
   );
 
   const setGeminiApiKey = useCallback(
     (key: string) => {
       setGeminiApiKeyLocal(key);
       window.electronAPI?.saveGeminiKey?.(key);
-      ReasoningService.clearApiKeyCache("gemini");
-      debouncedPersistToEnv();
+      invalidateApiKeyCaches("gemini");
     },
-    [setGeminiApiKeyLocal, debouncedPersistToEnv]
+    [setGeminiApiKeyLocal, invalidateApiKeyCaches]
   );
 
   const setGroqApiKey = useCallback(
     (key: string) => {
       setGroqApiKeyLocal(key);
       window.electronAPI?.saveGroqKey?.(key);
-      ReasoningService.clearApiKeyCache("groq");
-      debouncedPersistToEnv();
+      invalidateApiKeyCaches("groq");
     },
-    [setGroqApiKeyLocal, debouncedPersistToEnv]
+    [setGroqApiKeyLocal, invalidateApiKeyCaches]
+  );
+
+  const setMistralApiKey = useCallback(
+    (key: string) => {
+      setMistralApiKeyLocal(key);
+      window.electronAPI?.saveMistralKey?.(key);
+      invalidateApiKeyCaches("mistral");
+    },
+    [setMistralApiKeyLocal, invalidateApiKeyCaches]
   );
 
   const setCustomTranscriptionApiKey = useCallback(
     (key: string) => {
       setCustomTranscriptionApiKeyLocal(key);
       window.electronAPI?.saveCustomTranscriptionKey?.(key);
-      debouncedPersistToEnv();
+      invalidateApiKeyCaches();
     },
-    [setCustomTranscriptionApiKeyLocal, debouncedPersistToEnv]
+    [setCustomTranscriptionApiKeyLocal, invalidateApiKeyCaches]
   );
 
   const setCustomReasoningApiKey = useCallback(
     (key: string) => {
       setCustomReasoningApiKeyLocal(key);
       window.electronAPI?.saveCustomReasoningKey?.(key);
-      ReasoningService.clearApiKeyCache("custom");
-      debouncedPersistToEnv();
+      invalidateApiKeyCaches("custom");
     },
-    [setCustomReasoningApiKeyLocal, debouncedPersistToEnv]
+    [setCustomReasoningApiKeyLocal, invalidateApiKeyCaches]
   );
 
-  // Hotkey
   const [dictationKey, setDictationKeyLocal] = useLocalStorage("dictationKey", "", {
     serialize: String,
     deserialize: String,
   });
 
-  // Wrap setDictationKey to notify main process (for Windows Push-to-Talk)
-  // and persist to file-based storage for reliable startup
   const setDictationKey = useCallback(
     (key: string) => {
       setDictationKeyLocal(key);
-      // Notify main process so Windows key listener can restart with new key
       if (typeof window !== "undefined" && window.electronAPI?.notifyHotkeyChanged) {
         window.electronAPI.notifyHotkeyChanged(key);
       }
-      // Also save to file-based storage for reliable persistence across restarts
       if (typeof window !== "undefined" && window.electronAPI?.saveDictationKey) {
         window.electronAPI.saveDictationKey(key);
       }
@@ -596,8 +615,9 @@ export function useSettings() {
       if (keys.anthropicApiKey !== undefined) setAnthropicApiKey(keys.anthropicApiKey);
       if (keys.geminiApiKey !== undefined) setGeminiApiKey(keys.geminiApiKey);
       if (keys.groqApiKey !== undefined) setGroqApiKey(keys.groqApiKey);
+      if (keys.mistralApiKey !== undefined) setMistralApiKey(keys.mistralApiKey);
     },
-    [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey, setGroqApiKey]
+    [setOpenaiApiKey, setAnthropicApiKey, setGeminiApiKey, setGroqApiKey, setMistralApiKey]
   );
 
   return {
@@ -625,6 +645,7 @@ export function useSettings() {
     anthropicApiKey,
     geminiApiKey,
     groqApiKey,
+    mistralApiKey,
     dictationKey,
     theme,
     setUseLocalWhisper,
@@ -649,6 +670,7 @@ export function useSettings() {
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+    setMistralApiKey,
     customTranscriptionApiKey,
     setCustomTranscriptionApiKey,
     customReasoningApiKey,

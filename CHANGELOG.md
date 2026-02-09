@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.4] - 2026-02-08
+
+### Fixed
+- **AI Enhancement CTA Persistence**: Dismissing the "Enable AI Enhancement" banner now persists to localStorage so it stays hidden across sessions
+
+### Changed
+- **Code Cleanup**: Removed excess comments and section dividers in ControlPanel
+
+## [1.4.3] - 2026-02-08
+
+### Added
+- **Mistral Voxtral Transcription**: Added Mistral as a cloud transcription provider with Voxtral Mini model and custom dictionary support via context_bias
+- **TypeScript Compilation**: Added TypeScript as an explicit dev dependency with project-level `tsconfig.json`
+
+### Fixed
+- **Linux Wayland Clipboard**: Persistent clipboard ownership on Wayland so Ctrl+V works reliably after transcription
+- **Linux Window Flickering**: Fixed transparent window flickering on Wayland and X11 compositors
+- **Windows Modifier-Only Hotkeys**: Support modifier-only hotkeys on Windows via native keyboard hook
+- **Update Installation**: Resolved quitAndInstall hang by removing close listeners that block window shutdown during updates
+- **Custom System Prompts**: Pass custom system prompt to local and Anthropic BYOK reasoning
+- **Audio Cue Audibility**: Improved dictation start/stop audio cue volume
+- **Language Selector**: Fixed dropdown positioning and sizing inside settings modal
+- **Type Safety**: Tightened Electron IPC callback return types, model picker styles, toast variant types, and event handler signatures across the codebase
+
+### Changed
+- **Code Cleanup**: Removed excess comments, section dividers, and redundant JSDoc across components, hooks, and utilities
+
+## [1.4.2] - 2026-02-07
+
+### Fixed
+- **AssemblyAI Streaming Reliability**: Fixed real-time WebSocket going silent after idle periods by adding keep-alive pings, readyState validation, re-warm recovery, and connection death handling
+
+## [1.4.1] - 2026-02-07
+
+### Added
+- **Runtime .env Configuration**: Environment variables now reload at runtime without requiring app restart
+- **Settings Retention on Pro**: Pro subscribers retain their settings when managing their subscription
+
+### Fixed
+- **macOS Microphone Permission**: Resolved hardened-runtime mic permission prompt by routing through main-process IPC and unifying API key cache invalidation with event-based AudioManager sync
+- **AudioWorklet ASAR Loading**: Inlined AudioWorklet as blob URL to fix module loading failure in packaged ASAR builds
+- **Google OAuth Flow**: OAuth now opens in the system browser with deep link callback instead of navigating the Electron window
+- **Auth Security Hardening**: Safe JSON parsing, guarded URL constructor, and fixed error information leaks in auth code
+- **Deep Link Focus**: Control panel now correctly receives focus when opened via deep link
+- **Neon Auth Electron Compatibility**: Routed auth flows through API proxy and fixed Origin header rejection for desktop app
+- **Billing Error Visibility**: Checkout and billing errors now surface as toast notifications instead of failing silently
+- **Hotkey Persistence**: Added file-based hotkey storage for reliable startup persistence (#181)
+- **Email Verification**: Disabled Neon Auth email verification step for smoother onboarding
+
+### Changed
+- **Build Optimization**: Binary dependencies are now cached during build for faster CI
+- **UI Polish**: Fixed scrollbar styling, provider button styling, and voice recorder icon fill
+
 ## [1.4.0] - 2026-02-06
 
 ### Added

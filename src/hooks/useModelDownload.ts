@@ -4,7 +4,7 @@ import { useToast } from "../components/ui/Toast";
 import type { WhisperDownloadProgressData } from "../types/electron";
 import "../types/electron";
 
-const PROGRESS_THROTTLE_MS = 100; // Throttle UI updates to prevent flashing
+const PROGRESS_THROTTLE_MS = 100;
 
 export interface DownloadProgress {
   percentage: number;
@@ -85,8 +85,6 @@ export function useModelDownload({
       } else if (data.type === "installing") {
         setIsInstalling(true);
       } else if (data.type === "complete") {
-        // Cleanup is handled by the finally block in downloadModel;
-        // this handles the IPC progress event for completion
         if (isCancellingRef.current) return;
         setIsInstalling(false);
         setDownloadingModel(null);
@@ -98,10 +96,8 @@ export function useModelDownload({
   );
 
   const handleLLMProgress = useCallback((_event: unknown, data: LLMDownloadProgressData) => {
-    // Skip if cancellation is in progress
     if (isCancellingRef.current) return;
 
-    // Throttle UI updates to prevent flashing (server-side throttling is primary, this is backup)
     const now = Date.now();
     const isComplete = data.progress >= 100;
     if (!isComplete && now - lastProgressUpdateRef.current < PROGRESS_THROTTLE_MS) {
@@ -134,7 +130,6 @@ export function useModelDownload({
 
   const downloadModel = useCallback(
     async (modelId: string, onSelectAfterDownload?: (id: string) => void) => {
-      // Prevent starting a new download if one is already in progress
       if (downloadingModel) {
         toast({
           title: "Download in Progress",
@@ -171,7 +166,7 @@ export function useModelDownload({
             success = result?.success ?? false;
           }
         } else {
-          const result = (await window.electronAPI?.modelDownload?.(modelId)) as
+          const result = (await window.electronAPI?.modelDownload?.(modelId)) as unknown as
             | { success: boolean; error?: string }
             | undefined;
           if (result && !result.success && result.error) {
@@ -190,7 +185,6 @@ export function useModelDownload({
 
         onDownloadCompleteRef.current?.();
       } catch (error: unknown) {
-        // Skip error display if cancellation is in progress
         if (isCancellingRef.current) return;
 
         const errorMessage = error instanceof Error ? error.message : String(error);

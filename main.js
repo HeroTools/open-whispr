@@ -54,9 +54,19 @@ function configureChannelUserDataPath() {
 
 configureChannelUserDataPath();
 
-// Enable native Wayland global shortcuts: https://github.com/electron/electron/pull/45171
+// Fix transparent window flickering on Linux: --enable-transparent-visuals requires
+// the compositor to set up an ARGB visual before any windows are created.
+// --disable-gpu-compositing prevents GPU compositing conflicts with the compositor.
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("enable-transparent-visuals");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+}
+
+// Enable native Wayland support: Ozone platform for native rendering,
+// and GlobalShortcutsPortal for global shortcuts via xdg-desktop-portal
 if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
-  app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal");
+  app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+  app.commandLine.appendSwitch("enable-features", "UseOzonePlatform,WaylandWindowDecorations,GlobalShortcutsPortal");
 }
 
 // Group all windows under single taskbar entry on Windows
@@ -268,11 +278,15 @@ function initializeManagers() {
   });
 }
 
-// Handle the protocol on macOS
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  if (url.startsWith(`${OAUTH_PROTOCOL}://`)) {
-    handleOAuthDeepLink(url);
+  if (!url.startsWith(`${OAUTH_PROTOCOL}://`)) return;
+
+  handleOAuthDeepLink(url);
+
+  if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
+    windowManager.controlPanelWindow.show();
+    windowManager.controlPanelWindow.focus();
   }
 });
 
@@ -611,7 +625,7 @@ async function startApp() {
     globeKeyManager.start();
 
     // Reset native key state when hotkey changes
-    ipcMain.on("hotkey-changed", (_event, newHotkey) => {
+    ipcMain.on("hotkey-changed", (_event, _newHotkey) => {
       globeKeyDownTime = 0;
       globeKeyIsRecording = false;
       rightModDownTime = 0;
@@ -640,11 +654,12 @@ async function startApp() {
     // Right-side single modifiers need the native listener even in tap mode
     const isRightSideMod = (hotkey) => /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
 
-    // Whether native listener is needed (push mode always, tap mode only for right-side modifiers)
+    const { isModifierOnlyHotkey } = require("./src/helpers/hotkeyManager");
+
     const needsNativeListener = (hotkey, mode) => {
       if (!isValidHotkey(hotkey)) return false;
       if (mode === "push") return true;
-      return isRightSideMod(hotkey);
+      return isRightSideMod(hotkey) || isModifierOnlyHotkey(hotkey);
     };
 
     windowsKeyManager.on("key-down", async (key) => {
@@ -666,7 +681,6 @@ async function startApp() {
           }
         }, WIN_MIN_HOLD_DURATION_MS);
       } else if (activationMode === "tap") {
-        // Tap mode with native listener (right-side modifiers)
         windowManager.showDictationPanel();
         windowManager.mainWindow.webContents.send("toggle-dictation");
       }
@@ -807,6 +821,12 @@ if (gotSingleInstanceLock) {
   });
 
   app.whenReady().then(() => {
+    // On Linux, --enable-transparent-visuals requires a short delay before creating
+    // windows to allow the compositor to set up the ARGB visual correctly.
+    // Without this delay, transparent windows flicker on both X11 and Wayland.
+    const delay = process.platform === "linux" ? 300 : 0;
+    return new Promise((resolve) => setTimeout(resolve, delay));
+  }).then(() => {
     startApp().catch((error) => {
       console.error("Failed to start app:", error);
       dialog.showErrorBox(

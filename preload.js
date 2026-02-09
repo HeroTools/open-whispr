@@ -191,6 +191,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
 
+  // Mistral API
+  getMistralKey: () => ipcRenderer.invoke("get-mistral-key"),
+  saveMistralKey: (key) => ipcRenderer.invoke("save-mistral-key", key),
+  proxyMistralTranscription: (data) => ipcRenderer.invoke("proxy-mistral-transcription", data),
+
   // Custom endpoint API keys
   getCustomTranscriptionKey: () => ipcRenderer.invoke("get-custom-transcription-key"),
   saveCustomTranscriptionKey: (key) => ipcRenderer.invoke("save-custom-transcription-key", key),
@@ -237,6 +242,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openLogsFolder: () => ipcRenderer.invoke("open-logs-folder"),
 
   // System settings helpers for microphone/audio permissions
+  requestMicrophoneAccess: () => ipcRenderer.invoke("request-microphone-access"),
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),

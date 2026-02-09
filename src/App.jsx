@@ -99,7 +99,7 @@ export default function App() {
       });
     });
 
-    const unsubscribeFailed = window.electronAPI?.onHotkeyRegistrationFailed?.((data) => {
+    const unsubscribeFailed = window.electronAPI?.onHotkeyRegistrationFailed?.((_data) => {
       toast({
         title: "Hotkey Unavailable",
         description: `Could not register hotkey. Please set a different hotkey in Settings.`,

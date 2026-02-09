@@ -83,6 +83,22 @@
 4. Clear model cache: `rm -rf ~/.cache/openwhispr/whisper-models`
 5. Try cloud transcription as fallback
 
+### Wayland Clipboard Issues (Linux)
+
+**Symptoms:** Paste simulation succeeds but target app shows "clipboard is empty", "no image on clipboard", or "contents not available in the requested format"
+
+**Cause:** Electron's main-process clipboard API uses X11 selections (via XWayland), which native Wayland apps cannot read.
+
+**Fix:**
+1. Install `wl-clipboard` for the most reliable Wayland clipboard support:
+   - Debian/Ubuntu: `sudo apt install wl-clipboard`
+   - Fedora/RHEL: `sudo dnf install wl-clipboard`
+   - Arch: `sudo pacman -S wl-clipboard`
+2. Ensure a paste tool is installed (`wtype`, `ydotool`, or `xdotool`)
+3. Restart OpenWhispr after installing
+
+OpenWhispr tries clipboard methods in order: `wl-copy` (most reliable) → renderer `navigator.clipboard` → X11 fallback.
+
 ### Windows-Specific Issues
 
 See [WINDOWS_TROUBLESHOOTING.md](WINDOWS_TROUBLESHOOTING.md) for:

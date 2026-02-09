@@ -48,7 +48,6 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const startExitAnimation = React.useCallback((id: string) => {
     setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, isExiting: true } : t)));
-    // Remove after exit animation completes
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 200);
@@ -109,10 +108,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [startExitAnimation]
   );
 
-  // Cleanup on unmount
   React.useEffect(() => {
+    const timers = timersRef.current;
     return () => {
-      const timers = timersRef.current;
       for (const id in timers) {
         clearTimeout(timers[id]);
       }
@@ -138,7 +136,6 @@ const ToastViewport: React.FC<{
   onPauseTimer: (id: string) => void;
   onResumeTimer: (id: string, remainingTime: number) => void;
 }> = ({ toasts, onDismiss, onPauseTimer, onResumeTimer }) => {
-  // Detect if we're in the dictation panel (minimal overlay with mic button)
   const isDictationPanel = React.useMemo(() => {
     return (
       window.location.pathname.indexOf("control") === -1 &&
@@ -174,10 +171,8 @@ const variantConfig = {
   default: {
     icon: Info,
     containerClass: cn(
-      // Glass morphism base
       "bg-card/90 dark:bg-surface-2/95",
       "border border-border/60 dark:border-white/10",
-      // Metallic highlight
       "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_4px_12px_-2px_rgba(0,0,0,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
       "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_8px_24px_-4px_rgba(0,0,0,0.4),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
     ),
@@ -189,10 +184,8 @@ const variantConfig = {
   destructive: {
     icon: AlertCircle,
     containerClass: cn(
-      // Subtle red tint with glass
       "bg-destructive/8 dark:bg-destructive/12",
       "border border-destructive/20 dark:border-destructive/25",
-      // Colored glow
       "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(220,38,38,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
       "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-4px_rgba(220,38,38,0.25),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
     ),
@@ -204,10 +197,8 @@ const variantConfig = {
   success: {
     icon: CheckCircle2,
     containerClass: cn(
-      // Subtle green tint with glass
       "bg-success/8 dark:bg-success/12",
       "border border-success/20 dark:border-success/25",
-      // Colored glow
       "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(22,163,74,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
       "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-4px_rgba(22,163,74,0.25),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
     ),
@@ -257,28 +248,21 @@ const Toast: React.FC<
   return (
     <div
       className={cn(
-        // Layout
         "pointer-events-auto relative flex items-start gap-2.5 w-[320px]",
         "px-3 py-2.5 pr-8 overflow-hidden",
-        // Tight radius matching buttons
         "rounded-[6px]",
-        // Glass blur
         "backdrop-blur-xl",
-        // Animation states
         "transition-all duration-200 ease-out",
         isExiting
           ? "opacity-0 translate-x-2 scale-[0.98]"
           : "opacity-100 translate-x-0 scale-100 animate-in slide-in-from-right-4 fade-in-0 duration-300",
-        // Variant styling
         config.containerClass
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Status Icon */}
       <Icon className={cn("size-4 shrink-0 mt-0.5", config.iconClass)} />
 
-      {/* Content */}
       <div className="flex-1 min-w-0">
         {title && (
           <div className={cn("text-[13px] font-medium leading-tight", config.titleClass)}>
@@ -292,10 +276,8 @@ const Toast: React.FC<
         )}
       </div>
 
-      {/* Action slot */}
       {action && <div className="shrink-0 self-center">{action}</div>}
 
-      {/* Close button */}
       {onClose && (
         <button
           onClick={onClose}
@@ -313,7 +295,6 @@ const Toast: React.FC<
         </button>
       )}
 
-      {/* Progress indicator - subtle bottom bar */}
       {duration > 0 && !isExiting && (
         <div className="absolute bottom-0 left-0 right-0 h-[2px] overflow-hidden">
           <div
@@ -328,7 +309,6 @@ const Toast: React.FC<
   );
 };
 
-// Helper function for common toast patterns
 export const toast = {
   success: (message: string) => ({
     title: "Success",

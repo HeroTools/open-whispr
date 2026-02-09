@@ -169,9 +169,9 @@ declare global {
       pasteText: (text: string, options?: { fromStreaming?: boolean }) => Promise<void>;
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
-      onToggleDictation: (callback: () => void) => (() => void) | void;
-      onStartDictation?: (callback: () => void) => (() => void) | void;
-      onStopDictation?: (callback: () => void) => (() => void) | void;
+      onToggleDictation: (callback: () => void) => () => void;
+      onStartDictation?: (callback: () => void) => () => void;
+      onStopDictation?: (callback: () => void) => () => void;
 
       // Database operations
       saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
@@ -184,11 +184,9 @@ declare global {
       setDictionary: (words: string[]) => Promise<{ success: boolean }>;
 
       // Database event listeners
-      onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => (() => void) | void;
-      onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
-      onTranscriptionsCleared?: (
-        callback: (payload: { cleared: number }) => void
-      ) => (() => void) | void;
+      onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => () => void;
+      onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => () => void;
+      onTranscriptionsCleared?: (callback: (payload: { cleared: number }) => void) => () => void;
 
       // API key management
       getOpenAIKey: () => Promise<string>;
@@ -211,7 +209,7 @@ declare global {
       checkPasteTools: () => Promise<PasteToolsResult>;
 
       // Audio
-      onNoAudioDetected: (callback: (event: any, data?: any) => void) => (() => void) | void;
+      onNoAudioDetected: (callback: (event: any, data?: any) => void) => () => void;
 
       // Whisper operations (whisper.cpp)
       transcribeLocalWhisper: (audioBlob: Blob | ArrayBuffer, options?: any) => Promise<any>;
@@ -219,7 +217,7 @@ declare global {
       downloadWhisperModel: (modelName: string) => Promise<WhisperModelResult>;
       onWhisperDownloadProgress: (
         callback: (event: any, data: WhisperDownloadProgressData) => void
-      ) => (() => void) | void;
+      ) => () => void;
       checkModelStatus: (modelName: string) => Promise<WhisperModelResult>;
       listWhisperModels: () => Promise<WhisperModelsListResult>;
       deleteWhisperModel: (modelName: string) => Promise<WhisperModelDeleteResult>;
@@ -245,7 +243,7 @@ declare global {
       downloadParakeetModel: (modelName: string) => Promise<ParakeetModelResult>;
       onParakeetDownloadProgress: (
         callback: (event: any, data: ParakeetDownloadProgressData) => void
-      ) => (() => void) | void;
+      ) => () => void;
       checkParakeetModelStatus: (modelName: string) => Promise<ParakeetModelResult>;
       listParakeetModels: () => Promise<ParakeetModelsListResult>;
       deleteParakeetModel: (modelName: string) => Promise<ParakeetModelDeleteResult>;
@@ -271,7 +269,7 @@ declare global {
       modelDeleteAll: () => Promise<{ success: boolean; error?: string; code?: string }>;
       modelCheckRuntime: () => Promise<boolean>;
       modelCancelDownload: (modelId: string) => Promise<{ success: boolean; error?: string }>;
-      onModelDownloadProgress: (callback: (event: any, data: any) => void) => (() => void) | void;
+      onModelDownloadProgress: (callback: (event: any, data: any) => void) => () => void;
 
       // Local reasoning
       processLocalReasoning: (
@@ -318,16 +316,13 @@ declare global {
       getUpdateInfo: () => Promise<UpdateInfoResult | null>;
 
       // Update event listeners
-      onUpdateAvailable: (callback: (event: any, info: any) => void) => (() => void) | void;
-      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => (() => void) | void;
-      onUpdateDownloaded: (callback: (event: any, info: any) => void) => (() => void) | void;
-      onUpdateDownloadProgress: (
-        callback: (event: any, progressObj: any) => void
-      ) => (() => void) | void;
-      onUpdateError: (callback: (event: any, error: any) => void) => (() => void) | void;
+      onUpdateAvailable: (callback: (event: any, info: any) => void) => () => void;
+      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => () => void;
+      onUpdateDownloaded: (callback: (event: any, info: any) => void) => () => void;
+      onUpdateDownloadProgress: (callback: (event: any, progressObj: any) => void) => () => void;
+      onUpdateError: (callback: (event: any, error: any) => void) => () => void;
 
-      // External URL operations
-      openExternal: (url: string) => Promise<{ success: boolean; error?: string } | void>;
+      openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
@@ -356,6 +351,16 @@ declare global {
       // Groq API key management
       getGroqKey: () => Promise<string | null>;
       saveGroqKey: (key: string) => Promise<void>;
+
+      // Mistral API key management
+      getMistralKey: () => Promise<string | null>;
+      saveMistralKey: (key: string) => Promise<void>;
+      proxyMistralTranscription: (data: {
+        audioBuffer: ArrayBuffer;
+        model?: string;
+        language?: string;
+        contextBias?: string[];
+      }) => Promise<{ text: string }>;
 
       // Custom endpoint API keys
       getCustomTranscriptionKey?: () => Promise<string | null>;
@@ -398,6 +403,7 @@ declare global {
       getAudioDiagnostics: () => Promise<AudioDiagnosticsResult>;
 
       // System settings helpers
+      requestMicrophoneAccess?: () => Promise<{ granted: boolean }>;
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
@@ -469,7 +475,7 @@ declare global {
       notifyLimitReached?: (data: { wordsUsed: number; limit: number }) => void;
       onLimitReached?: (
         callback: (data: { wordsUsed: number; limit: number }) => void
-      ) => (() => void) | void;
+      ) => () => void;
 
       // AssemblyAI Streaming
       assemblyAiStreamingWarmup?: (options?: {

@@ -13,6 +13,28 @@ function isRightSideModifier(hotkey) {
   return RIGHT_SIDE_MODIFIER_PATTERN.test(hotkey);
 }
 
+// Modifier-only combos (e.g. "Control+Super") bypass globalShortcut on Windows
+// and use the native low-level keyboard hook instead.
+const MODIFIER_NAMES = new Set([
+  "control",
+  "ctrl",
+  "alt",
+  "option",
+  "shift",
+  "super",
+  "meta",
+  "win",
+  "command",
+  "cmd",
+  "commandorcontrol",
+  "cmdorctrl",
+]);
+
+function isModifierOnlyHotkey(hotkey) {
+  if (!hotkey || !hotkey.includes("+")) return false;
+  return hotkey.split("+").every((part) => MODIFIER_NAMES.has(part.toLowerCase()));
+}
+
 // Suggested alternative hotkeys when registration fails
 const SUGGESTED_HOTKEYS = {
   single: ["F8", "F9", "F10", "Pause", "ScrollLock"],
@@ -97,6 +119,7 @@ class HotkeyManager {
       hotkey === this.currentHotkey &&
       hotkey !== "GLOBE" &&
       !isRightSideModifier(hotkey) &&
+      !isModifierOnlyHotkey(hotkey) &&
       globalShortcut.isRegistered(checkAccelerator)
     ) {
       debugLogger.log(
@@ -105,17 +128,26 @@ class HotkeyManager {
       return { success: true, hotkey };
     }
 
-    // Unregister the previous hotkey (skip GLOBE and right-side modifiers - they use native listeners)
+    const previousHotkey = this.currentHotkey;
+
+    // Unregister the previous hotkey (skip native-listener-only hotkeys)
     if (
       this.currentHotkey &&
       this.currentHotkey !== "GLOBE" &&
-      !isRightSideModifier(this.currentHotkey)
+      !isRightSideModifier(this.currentHotkey) &&
+      !isModifierOnlyHotkey(this.currentHotkey)
     ) {
       const prevAccelerator = this.currentHotkey.startsWith("Fn+")
         ? this.currentHotkey.slice(3)
         : this.currentHotkey;
-      debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${prevAccelerator}"`);
-      globalShortcut.unregister(prevAccelerator);
+      try {
+        debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${prevAccelerator}"`);
+        globalShortcut.unregister(prevAccelerator);
+      } catch (error) {
+        debugLogger.warn(
+          `[HotkeyManager] Skipping previous hotkey unregister for non-accelerator "${prevAccelerator}": ${error.message}`
+        );
+      }
     }
 
     try {
@@ -137,6 +169,15 @@ class HotkeyManager {
         this.currentHotkey = hotkey;
         debugLogger.log(
           `[HotkeyManager] Right-side modifier "${hotkey}" set - using native listener`
+        );
+        return { success: true, hotkey };
+      }
+
+      // Modifier-only combos use the native keyboard hook on Windows
+      if (isModifierOnlyHotkey(hotkey) && process.platform === "win32") {
+        this.currentHotkey = hotkey;
+        debugLogger.log(
+          `[HotkeyManager] Modifier-only "${hotkey}" set - using Windows native listener`
         );
         return { success: true, hotkey };
       }
@@ -166,6 +207,8 @@ class HotkeyManager {
         console.error(`[HotkeyManager] Failed to register hotkey: ${hotkey}`, failureInfo);
         debugLogger.log(`[HotkeyManager] Registration failed:`, failureInfo);
 
+        this._restorePreviousHotkey(previousHotkey, callback);
+
         let errorMessage = failureInfo.message;
         if (failureInfo.suggestions.length > 0) {
           errorMessage += ` Try: ${failureInfo.suggestions.join(", ")}`;
@@ -181,7 +224,38 @@ class HotkeyManager {
     } catch (error) {
       console.error("[HotkeyManager] Error setting up shortcuts:", error);
       debugLogger.log(`[HotkeyManager] Exception during registration:`, error.message);
+      this._restorePreviousHotkey(previousHotkey, callback);
       return { success: false, error: error.message };
+    }
+  }
+
+  _restorePreviousHotkey(previousHotkey, callback) {
+    if (
+      !previousHotkey ||
+      previousHotkey === "GLOBE" ||
+      isRightSideModifier(previousHotkey) ||
+      isModifierOnlyHotkey(previousHotkey)
+    ) {
+      return;
+    }
+    const prevAccel = previousHotkey.startsWith("Fn+")
+      ? previousHotkey.slice(3)
+      : previousHotkey;
+    try {
+      const restored = globalShortcut.register(prevAccel, callback);
+      if (restored) {
+        debugLogger.log(
+          `[HotkeyManager] Restored previous hotkey "${previousHotkey}" after failed registration`
+        );
+      } else {
+        debugLogger.warn(
+          `[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`
+        );
+      }
+    } catch (err) {
+      debugLogger.warn(
+        `[HotkeyManager] Exception restoring previous hotkey "${previousHotkey}": ${err.message}`
+      );
     }
   }
 
@@ -473,3 +547,5 @@ class HotkeyManager {
 }
 
 module.exports = HotkeyManager;
+module.exports.isModifierOnlyHotkey = isModifierOnlyHotkey;
+module.exports.isRightSideModifier = isRightSideModifier;
