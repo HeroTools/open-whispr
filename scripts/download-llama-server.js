@@ -129,8 +129,11 @@ async function downloadBinary(platformArch, config, release, isForce = false, ba
   const outputPath = backend
     ? path.join(BIN_DIR, config.outputName, backend.id)
     : path.join(BIN_DIR, config.outputName);
+  const expectedBinaryPath = backend
+    ? path.join(outputPath, path.basename(config.binaryPath))
+    : outputPath;
 
-  if (fs.existsSync(outputPath) && !isForce) {
+  if (fs.existsSync(expectedBinaryPath) && !isForce) {
     console.log(`  ${platformArch}${backendLabel}: Already exists (use --force to re-download)`);
     return true;
   }
