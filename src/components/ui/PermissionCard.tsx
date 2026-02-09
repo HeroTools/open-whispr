@@ -1,5 +1,5 @@
 import { Button } from "./button";
-import { Check, LucideIcon, Settings } from "lucide-react";
+import { Check, type LucideIcon, Settings } from "lucide-react";
 import { cn } from "../lib/utils";
 
 interface PermissionCardProps {

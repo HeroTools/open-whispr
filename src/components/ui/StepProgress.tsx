@@ -1,5 +1,5 @@
 import React from "react";
-import { Check, LucideIcon } from "lucide-react";
+import { Check, type LucideIcon } from "lucide-react";
 
 interface Step {
   title: string;

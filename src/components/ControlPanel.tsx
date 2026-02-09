@@ -12,7 +12,7 @@ import {
   Cloud,
   X,
 } from "lucide-react";
-import SettingsModal, { SettingsSectionType } from "./SettingsModal";
+import SettingsModal, { type SettingsSectionType } from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
 import TranscriptionItem from "./ui/TranscriptionItem";

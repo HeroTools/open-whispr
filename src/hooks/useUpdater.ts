@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { UpdateInfoResult } from "../types/electron";
 
 /**
  * Centralized hook for managing app updates.
@@ -12,13 +13,6 @@ interface UpdateStatus {
   isDevelopment: boolean;
 }
 
-interface UpdateInfo {
-  version?: string;
-  releaseDate?: string;
-  releaseNotes?: string;
-  files?: any[];
-}
-
 interface UpdateProgress {
   percent: number;
   transferred: number;
@@ -27,7 +21,7 @@ interface UpdateProgress {
 
 interface UpdateState {
   status: UpdateStatus;
-  info: UpdateInfo | null;
+  info: UpdateInfoResult | null;
   downloadProgress: number;
   isChecking: boolean;
   isDownloading: boolean;
