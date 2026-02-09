@@ -46,7 +46,8 @@ export function useUsage(): UseUsageResult | null {
   const lastFetchRef = useRef<number>(0);
 
   const fetchUsage = useCallback(async () => {
-    if (!window.electronAPI?.cloudUsage) return;
+    const cloudUsage = window.electronAPI?.cloudUsage;
+    if (!cloudUsage) return;
 
     setIsLoading(true);
     setError(null);
@@ -54,7 +55,7 @@ export function useUsage(): UseUsageResult | null {
     try {
       // Use withSessionRefresh to handle AUTH_EXPIRED automatically
       await withSessionRefresh(async () => {
-        const result = await window.electronAPI.cloudUsage();
+        const result = await cloudUsage();
         if (result.success) {
           setData({
             wordsUsed: result.wordsUsed ?? 0,

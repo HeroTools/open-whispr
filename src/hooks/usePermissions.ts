@@ -123,7 +123,7 @@ export const usePermissions = (
   const openSystemSettings = useCallback(
     async (
       settingType: "microphone" | "sound" | "accessibility",
-      apiMethod: () => Promise<{ success: boolean; error?: string } | undefined> | undefined
+      apiMethod?: () => Promise<{ success: boolean; error?: string }>
     ) => {
       const titles = {
         microphone: "Microphone Settings",
