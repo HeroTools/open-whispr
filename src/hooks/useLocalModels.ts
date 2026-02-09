@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { ModelDefinition } from "../models/ModelRegistry";
+import { type ModelDefinition } from "../models/ModelRegistry";
 import "../types/electron";
 
 interface ModelWithStatus extends ModelDefinition {

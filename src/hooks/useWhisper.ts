@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
-import { WhisperCheckResult } from "../types/electron";
+import { type WhisperCheckResult } from "../types/electron";
 
 export interface UseWhisperReturn {
   whisperInstalled: boolean;

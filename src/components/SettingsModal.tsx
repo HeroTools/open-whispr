@@ -11,8 +11,8 @@ import {
   ShieldCheck,
   Lock,
 } from "lucide-react";
-import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
-import SettingsPage, { SettingsSectionType } from "./SettingsPage";
+import SidebarModal, { type SidebarItem } from "./ui/SidebarModal";
+import SettingsPage, { type SettingsSectionType } from "./SettingsPage";
 
 export type { SettingsSectionType };
 
