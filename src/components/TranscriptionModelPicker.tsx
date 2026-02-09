@@ -12,7 +12,7 @@ import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload } from "../hooks/useModelDownload";
 import {
   getTranscriptionProviders,
-  TranscriptionProviderData,
+  type TranscriptionProviderData,
   WHISPER_MODEL_INFO,
   PARAKEET_MODEL_INFO,
 } from "../models/ModelRegistry";

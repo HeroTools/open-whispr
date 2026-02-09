@@ -1,4 +1,4 @@
-import { ReactNode, useRef, useState, useEffect, useCallback } from "react";
+import { type ReactNode, useRef, useState, useEffect, useCallback } from "react";
 import { ProviderIcon } from "./ProviderIcon";
 import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyles";
 

@@ -1,5 +1,5 @@
 import { getModelProvider, getCloudModel } from "../models/ModelRegistry";
-import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
+import { BaseReasoningService, type ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
