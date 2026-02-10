@@ -92,7 +92,8 @@ export default function AuthenticationStep({
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || needsVerificationRef.current || !user?.id || !user?.email) return;
+    if (!isLoaded || !isSignedIn || needsVerificationRef.current || !user?.id || !user?.email)
+      return;
 
     const initAndComplete = async () => {
       if (OPENWHISPR_API_URL) {
@@ -153,7 +154,9 @@ export default function AuthenticationStep({
 
     const localPart = email.trim().split("@")[0];
     if (localPart?.includes("+")) {
-      setError("Email addresses containing \"+\" are not supported. Please use your original email address.");
+      setError(
+        'Email addresses containing "+" are not supported. Please use your original email address.'
+      );
       return;
     }
 
