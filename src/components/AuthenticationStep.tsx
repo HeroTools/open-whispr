@@ -92,21 +92,31 @@ export default function AuthenticationStep({
   }, []);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && !needsVerificationRef.current) {
-      if (OPENWHISPR_API_URL && user?.id && user?.email) {
-        fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            email: user.email,
-            name: user.name || null,
-          }),
-        }).catch((err) => logger.error("Failed to init user", err, "auth"));
+    if (!isLoaded || !isSignedIn || needsVerificationRef.current || !user?.id || !user?.email) return;
+
+    const initAndComplete = async () => {
+      if (OPENWHISPR_API_URL) {
+        try {
+          const res = await fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              email: user.email,
+              name: user.name || null,
+            }),
+          });
+          if (!res.ok) {
+            logger.error("init-user returned non-OK", { status: res.status }, "auth");
+          }
+        } catch (err) {
+          logger.error("Failed to init user", err, "auth");
+        }
       }
       onAuthComplete();
-    }
-  }, [isLoaded, isSignedIn, onAuthComplete]);
+    };
+    initAndComplete();
+  }, [isLoaded, isSignedIn, user, onAuthComplete]);
 
   useEffect(() => {
     if (isSocialLoading === null) return;
