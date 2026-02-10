@@ -151,6 +151,12 @@ export default function AuthenticationStep({
   const handleEmailContinue = useCallback(async () => {
     if (!email.trim() || !authClient) return;
 
+    const localPart = email.trim().split("@")[0];
+    if (localPart?.includes("+")) {
+      setError("Email addresses containing \"+\" are not supported. Please use your original email address.");
+      return;
+    }
+
     setIsCheckingEmail(true);
     setError(null);
 
