@@ -2,9 +2,15 @@ const fs = require("fs");
 const path = require("path");
 const debugLogger = require("./debugLogger");
 const { getModelsDirForService } = require("./modelDirUtils");
-const { getFFmpegPath, isWavFormat, convertToWav, wavToFloat32Samples } = require("./ffmpegUtils");
+const { getFFmpegPath, isWavFormat, convertToWav, wavToFloat32Samples, computeFloat32RMS } = require("./ffmpegUtils");
 const { getSafeTempDir } = require("./safeTempDir");
 const ParakeetWsServer = require("./parakeetWsServer");
+
+const SAMPLE_RATE = 16000;
+const BYTES_PER_SAMPLE = 4; // float32
+const MAX_SEGMENT_SECONDS = 30;
+const MAX_SEGMENT_BYTES = MAX_SEGMENT_SECONDS * SAMPLE_RATE * BYTES_PER_SAMPLE;
+const SILENCE_RMS_THRESHOLD = 0.001;
 
 class ParakeetServerManager {
   constructor() {
@@ -93,9 +99,38 @@ class ParakeetServerManager {
       if (!this.wsServer.ready || this.wsServer.modelName !== modelName) {
         await this.wsServer.start(modelName, modelDir);
       }
+
       const samples = wavToFloat32Samples(wavBuffer);
-      const result = await this.wsServer.transcribe(samples, 16000);
-      return { ...result, language };
+      const durationSeconds = samples.length / BYTES_PER_SAMPLE / SAMPLE_RATE;
+
+      const rms = computeFloat32RMS(samples);
+      debugLogger.debug("Parakeet audio analysis", { durationSeconds, rms });
+      if (rms < SILENCE_RMS_THRESHOLD) {
+        return { text: "", elapsed: 0, language };
+      }
+
+      if (samples.length <= MAX_SEGMENT_BYTES) {
+        const result = await this.wsServer.transcribe(samples, SAMPLE_RATE);
+        return { ...result, language };
+      }
+
+      debugLogger.debug("Parakeet segmenting long audio", {
+        durationSeconds,
+        segmentCount: Math.ceil(samples.length / MAX_SEGMENT_BYTES),
+      });
+
+      const texts = [];
+      let totalElapsed = 0;
+
+      for (let offset = 0; offset < samples.length; offset += MAX_SEGMENT_BYTES) {
+        const end = Math.min(offset + MAX_SEGMENT_BYTES, samples.length);
+        const segment = samples.subarray(offset, end);
+        const result = await this.wsServer.transcribe(segment, SAMPLE_RATE);
+        totalElapsed += result.elapsed || 0;
+        if (result.text) texts.push(result.text);
+      }
+
+      return { text: texts.join(" "), elapsed: totalElapsed, language };
     } finally {
       this._cleanupFiles(filesToCleanup);
     }

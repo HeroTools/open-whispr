@@ -246,6 +246,19 @@ function wavToFloat32Samples(wavBuffer) {
   return float32;
 }
 
+function computeFloat32RMS(float32Buffer) {
+  const numSamples = float32Buffer.length / 4;
+  if (numSamples === 0) return 0;
+
+  let sumSquares = 0;
+  for (let i = 0; i < numSamples; i++) {
+    const val = float32Buffer.readFloatLE(i * 4);
+    sumSquares += val * val;
+  }
+
+  return Math.sqrt(sumSquares / numSamples);
+}
+
 function clearCache() {
   cachedFFmpegPath = null;
 }
@@ -255,5 +268,6 @@ module.exports = {
   isWavFormat,
   convertToWav,
   wavToFloat32Samples,
+  computeFloat32RMS,
   clearCache,
 };
