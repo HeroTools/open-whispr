@@ -11,6 +11,7 @@ import {
   Sparkles,
   Cloud,
   X,
+  AlertTriangle,
 } from "lucide-react";
 import type { SettingsSectionType } from "./SettingsModal";
 import TitleBar from "./TitleBar";
@@ -24,6 +25,7 @@ import { useToast } from "./ui/Toast";
 import { useUpdater } from "../hooks/useUpdater";
 import { useSettings } from "../hooks/useSettings";
 import { useAuth } from "../hooks/useAuth";
+import { useUsage } from "../hooks/useUsage";
 import {
   useTranscriptions,
   initializeTranscriptions,
@@ -51,6 +53,7 @@ export default function ControlPanel() {
   const { toast } = useToast();
   const { useReasoningModel, setUseLocalWhisper, setCloudTranscriptionMode } = useSettings();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
+  const usage = useUsage();
 
   const {
     status: updateStatus,
@@ -78,8 +81,8 @@ export default function ControlPanel() {
   useEffect(() => {
     if (updateStatus.updateDownloaded && !isDownloading) {
       toast({
-        title: "Update Ready",
-        description: "Click 'Install Update' to restart and apply the update.",
+        title: "Update ready to install",
+        description: "Click 'Install Update' to restart with the latest version.",
         variant: "success",
       });
     }
@@ -88,8 +91,8 @@ export default function ControlPanel() {
   useEffect(() => {
     if (updateError) {
       toast({
-        title: "Update Error",
-        description: "Failed to update. Please try again later.",
+        title: "Update ran into a problem",
+        description: "We couldn't complete the update. Please try again later.",
         variant: "destructive",
       });
     }
@@ -104,8 +107,9 @@ export default function ControlPanel() {
           setShowUpgradePrompt(true);
         } else {
           toast({
-            title: "Daily Limit Reached",
-            description: "Resets at midnight UTC. Upgrade to Pro or use your own API key.",
+            title: "Weekly limit reached",
+            description:
+              "Your limit resets on a rolling basis. Upgrade to Pro or use your own API key for unlimited use.",
             duration: 5000,
           });
         }
@@ -116,6 +120,19 @@ export default function ControlPanel() {
       dispose?.();
     };
   }, [toast]);
+
+  useEffect(() => {
+    if (!usage?.isPastDue || !usage.hasLoaded) return;
+    if (sessionStorage.getItem("pastDueNotified")) return;
+    sessionStorage.setItem("pastDueNotified", "true");
+    toast({
+      title: "We couldn't process your payment",
+      description:
+        "Don't worry — you're on the free plan for now. Update your payment in Settings to get back to Pro.",
+      variant: "destructive",
+      duration: 8000,
+    });
+  }, [usage?.isPastDue, usage?.hasLoaded, toast]);
 
   useEffect(() => {
     if (!authLoaded || !isSignedIn || cloudMigrationProcessed.current) return;
@@ -136,8 +153,9 @@ export default function ControlPanel() {
       await initializeTranscriptions();
     } catch (error) {
       showAlertDialog({
-        title: "Unable to load history",
-        description: "Please try again in a moment.",
+        title: "Couldn't load your history",
+        description:
+          "Something went wrong loading your transcriptions. Try closing and reopening the app.",
       });
     } finally {
       setIsLoading(false);
@@ -156,8 +174,8 @@ export default function ControlPanel() {
         });
       } catch (err) {
         toast({
-          title: "Copy Failed",
-          description: "Failed to copy text to clipboard",
+          title: "Couldn't copy",
+          description: "Something went wrong copying to your clipboard. Try again.",
           variant: "destructive",
         });
       }
@@ -168,7 +186,7 @@ export default function ControlPanel() {
   const clearHistory = useCallback(async () => {
     showConfirmDialog({
       title: "Clear History",
-      description: "Are you sure you want to clear all transcriptions? This cannot be undone.",
+      description: "This will remove all your transcriptions. You can't undo this.",
       onConfirm: async () => {
         try {
           const result = await window.electronAPI.clearTranscriptions();
@@ -181,8 +199,8 @@ export default function ControlPanel() {
           });
         } catch (error) {
           toast({
-            title: "Failed to clear",
-            description: "Please try again",
+            title: "Couldn't clear history",
+            description: "Something went wrong. Please try again.",
             variant: "destructive",
           });
         }
@@ -195,7 +213,7 @@ export default function ControlPanel() {
     async (id: number) => {
       showConfirmDialog({
         title: "Delete Transcription",
-        description: "Are you certain you wish to remove this inscription from your records?",
+        description: "This transcription will be permanently removed.",
         onConfirm: async () => {
           try {
             const result = await window.electronAPI.deleteTranscription(id);
@@ -203,14 +221,14 @@ export default function ControlPanel() {
               removeFromStore(id);
             } else {
               showAlertDialog({
-                title: "Delete Failed",
-                description: "Failed to delete transcription. It may have already been removed.",
+                title: "Couldn't delete",
+                description: "This transcription may have already been removed.",
               });
             }
           } catch (error) {
             showAlertDialog({
-              title: "Delete Failed",
-              description: "Failed to delete transcription. Please try again.",
+              title: "Couldn't delete",
+              description: "Something went wrong. Please try again.",
             });
           }
         },
@@ -225,14 +243,14 @@ export default function ControlPanel() {
       showConfirmDialog({
         title: "Install Update",
         description:
-          "The update will be installed and the app will restart. Make sure you've saved any work.",
+          "OpenWhispr will restart to apply the update. Any in-progress work will be saved.",
         onConfirm: async () => {
           try {
             await installUpdate();
           } catch (error) {
             toast({
-              title: "Install Failed",
-              description: "Failed to install update. Please try again.",
+              title: "Couldn't install update",
+              description: "Something went wrong. Please try again.",
               variant: "destructive",
             });
           }
@@ -243,8 +261,8 @@ export default function ControlPanel() {
         await downloadUpdate();
       } catch (error) {
         toast({
-          title: "Download Failed",
-          description: "Failed to download update. Please try again.",
+          title: "Couldn't download update",
+          description: "Check your internet connection and try again.",
           variant: "destructive",
         });
       }
@@ -362,6 +380,36 @@ export default function ControlPanel() {
 
       <div className="p-4">
         <div className="max-w-3xl mx-auto">
+          {usage?.isPastDue && (
+            <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 p-3">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 w-8 h-8 rounded-md bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                  <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200 mb-0.5">
+                    We couldn't process your payment
+                  </p>
+                  <p className="text-[12px] text-amber-700 dark:text-amber-300/80 mb-2">
+                    You're on the free plan for now — you still get {usage.limit.toLocaleString()}{" "}
+                    words per week. Update your payment to get back to Pro.
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 text-[11px]"
+                    onClick={() => {
+                      setSettingsSection("account");
+                      setShowSettings(true);
+                    }}
+                  >
+                    Update Payment
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="flex items-center gap-2">
               <FileText size={14} className="text-primary" />

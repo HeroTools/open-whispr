@@ -197,7 +197,7 @@ export default function AuthenticationStep({
       e.preventDefault();
 
       if (!authClient) {
-        setError("Authentication service is not configured. Please contact support.");
+        setError("Authentication isn't set up yet. Please contact support.");
         return;
       }
 
@@ -221,10 +221,12 @@ export default function AuthenticationStep({
               errorMessageIncludes(result.error.message, ["already exists", "already registered"])
             ) {
               setAuthMode("sign-in");
-              setError("Account exists. Please sign in.");
+              setError("Looks like you already have an account. Sign in instead.");
               setPassword("");
             } else {
-              setError(result.error.message || "Failed to create account");
+              setError(
+                result.error.message || "We couldn't create your account. Please try again."
+              );
             }
           } else {
             updateLastSignInTime();
@@ -256,10 +258,12 @@ export default function AuthenticationStep({
           if (result.error) {
             if (errorMessageIncludes(result.error.message, ["not found", "no user"])) {
               setAuthMode("sign-up");
-              setError("No account found. Let's create one.");
+              setError("We didn't find an account with that email. Let's create one.");
               setPassword("");
             } else {
-              setError(result.error.message || "Invalid email or password");
+              setError(
+                result.error.message || "That email or password doesn't look right. Try again."
+              );
             }
           } else {
             updateLastSignInTime();
@@ -268,7 +272,7 @@ export default function AuthenticationStep({
         }
       } catch (err: unknown) {
         const errorMessage =
-          err instanceof Error ? err.message : "An error occurred. Please try again.";
+          err instanceof Error ? err.message : "Something went wrong. Please try again.";
         setError(errorMessage);
       } finally {
         setIsSubmitting(false);
@@ -326,7 +330,7 @@ export default function AuthenticationStep({
 
         <div className="bg-warning/5 p-2.5 rounded border border-warning/20">
           <p className="text-[10px] text-warning text-center leading-snug">
-            Cloud features not configured. You can still use OpenWhispr locally.
+            Cloud features aren't set up yet. You can still use OpenWhispr locally.
           </p>
         </div>
 

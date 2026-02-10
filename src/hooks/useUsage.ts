@@ -8,6 +8,7 @@ interface UsageData {
   wordsRemaining: number;
   limit: number;
   plan: string;
+  status: string;
   isSubscribed: boolean;
   isTrial: boolean;
   trialDaysLeft: number | null;
@@ -17,6 +18,8 @@ interface UsageData {
 
 interface UseUsageResult {
   plan: string;
+  status: string;
+  isPastDue: boolean;
   wordsUsed: number;
   wordsRemaining: number;
   limit: number;
@@ -55,7 +58,6 @@ export function useUsage(): UseUsageResult | null {
     setError(null);
 
     try {
-      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
       await withSessionRefresh(async () => {
         const result = await window.electronAPI.cloudUsage();
         if (result.success) {
@@ -64,6 +66,7 @@ export function useUsage(): UseUsageResult | null {
             wordsRemaining: result.wordsRemaining ?? 0,
             limit: result.limit ?? 2000,
             plan: result.plan ?? "free",
+            status: result.status ?? "active",
             isSubscribed: result.isSubscribed ?? false,
             isTrial: result.isTrial ?? false,
             trialDaysLeft: result.trialDaysLeft ?? null,
@@ -72,7 +75,6 @@ export function useUsage(): UseUsageResult | null {
           });
           lastFetchRef.current = Date.now();
         } else {
-          // Throw error to trigger withSessionRefresh retry logic if needed
           const error: any = new Error(result.error || "Failed to fetch usage");
           error.code = result.code;
           throw error;
@@ -144,11 +146,15 @@ export function useUsage(): UseUsageResult | null {
   const wordsUsed = data?.wordsUsed ?? 0;
   const limit = data?.limit ?? 2000;
   const isSubscribed = data?.isSubscribed ?? false;
+  const status = data?.status ?? "active";
+  const isPastDue = data?.plan === "pro" && status === "past_due";
   const isOverLimit = !isSubscribed && limit > 0 && wordsUsed >= limit;
   const isApproachingLimit = !isSubscribed && limit > 0 && wordsUsed >= limit * 0.8 && !isOverLimit;
 
   return {
     plan: data?.plan ?? "free",
+    status,
+    isPastDue,
     wordsUsed,
     wordsRemaining: data?.wordsRemaining ?? (limit > 0 ? limit - wordsUsed : -1),
     limit,

@@ -452,6 +452,7 @@ declare global {
         wordsRemaining?: number;
         limit?: number;
         plan?: string;
+        status?: string;
         isSubscribed?: boolean;
         isTrial?: boolean;
         trialDaysLeft?: number | null;

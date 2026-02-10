@@ -45,7 +45,7 @@ export default function ForgotPasswordView({
       <div className="space-y-3">
         <div className="bg-warning/5 p-2.5 rounded border border-warning/20">
           <p className="text-[10px] text-warning text-center leading-snug">
-            Authentication is not configured.
+            Authentication isn't set up yet.
           </p>
         </div>
         <Button onClick={onBack} variant="outline" className="w-full h-9">
