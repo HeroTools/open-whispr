@@ -1155,6 +1155,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     }
   }
 
+  getKeyterms() {
+    return this.getCustomDictionaryArray();
+  }
+
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
     const timings = {};
     const language = getBaseLanguageCode(localStorage.getItem("preferredLanguage"));
@@ -1727,6 +1731,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           const res = await window.electronAPI.assemblyAiStreamingWarmup({
             sampleRate: 16000,
             language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+            keyterms: this.getKeyterms(),
           });
           // Throw error to trigger retry if AUTH_EXPIRED
           if (!res.success && res.code) {
@@ -1823,6 +1828,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           const res = await window.electronAPI.assemblyAiStreamingStart({
             sampleRate: 16000,
             language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+            keyterms: this.getKeyterms(),
           });
 
           if (!res.success) {

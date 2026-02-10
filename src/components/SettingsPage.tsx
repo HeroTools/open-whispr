@@ -677,6 +677,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
+  const [agentNameInput, setAgentNameInput] = useState(agentName);
   const { theme, setTheme } = useTheme();
   const usage = useUsage();
   const hasShownApproachingToast = useRef(false);
@@ -728,9 +729,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const handleRemoveDictionaryWord = useCallback(
     (wordToRemove: string) => {
+      if (wordToRemove === agentName) return;
       setCustomDictionary(customDictionary.filter((word) => word !== wordToRemove));
     },
-    [customDictionary, setCustomDictionary]
+    [customDictionary, setCustomDictionary, agentName]
   );
 
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
@@ -1543,7 +1545,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           "This will remove all words from your custom dictionary. This action cannot be undone.",
                         confirmText: "Clear All",
                         variant: "destructive",
-                        onConfirm: () => setCustomDictionary([]),
+                        onConfirm: () =>
+                          setCustomDictionary(
+                            customDictionary.filter((w) => w === agentName)
+                          ),
                       });
                     }}
                     className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
@@ -1557,31 +1562,41 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <div className="flex flex-wrap gap-1">
-                      {customDictionary.map((word) => (
-                        <span
-                          key={word}
-                          className="group inline-flex items-center gap-0.5 pl-2 pr-1 py-0.5 bg-primary/5 dark:bg-primary/10 text-foreground rounded-[5px] text-[11px] border border-border/30 dark:border-border-subtle transition-all hover:border-destructive/40 hover:bg-destructive/5"
-                        >
-                          {word}
-                          <button
-                            onClick={() => handleRemoveDictionaryWord(word)}
-                            className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
-                            title="Remove word"
+                      {customDictionary.map((word) => {
+                        const isAgentName = word === agentName;
+                        return (
+                          <span
+                            key={word}
+                            className={`group inline-flex items-center gap-0.5 py-0.5 rounded-[5px] text-[11px] border transition-all ${
+                              isAgentName
+                                ? "pl-2 pr-2 bg-primary/10 dark:bg-primary/15 text-primary border-primary/20 dark:border-primary/30"
+                                : "pl-2 pr-1 bg-primary/5 dark:bg-primary/10 text-foreground border-border/30 dark:border-border-subtle hover:border-destructive/40 hover:bg-destructive/5"
+                            }`}
+                            title={isAgentName ? "Agent name (auto-managed)" : undefined}
                           >
-                            <svg
-                              width="9"
-                              height="9"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                            >
-                              <path d="M18 6L6 18M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </span>
-                      ))}
+                            {word}
+                            {!isAgentName && (
+                              <button
+                                onClick={() => handleRemoveDictionaryWord(word)}
+                                className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
+                                title="Remove word"
+                              >
+                                <svg
+                                  width="9"
+                                  height="9"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                >
+                                  <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
                     </div>
                   </SettingsPanelRow>
                 </SettingsPanel>
@@ -1668,19 +1683,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     <div className="flex gap-2">
                       <Input
                         placeholder="e.g. Jarvis, Nova, Atlas..."
-                        value={agentName}
-                        onChange={(e) => setAgentName(e.target.value)}
+                        value={agentNameInput}
+                        onChange={(e) => setAgentNameInput(e.target.value)}
                         className="flex-1 text-center text-base font-mono"
                       />
                       <Button
                         onClick={() => {
-                          setAgentName(agentName.trim());
+                          const trimmed = agentNameInput.trim();
+                          setAgentName(trimmed);
+                          setAgentNameInput(trimmed);
                           showAlertDialog({
                             title: "Agent Name Updated",
-                            description: `Your agent is now named "${agentName.trim()}". Address it by saying "Hey ${agentName.trim()}" followed by your instructions.`,
+                            description: `Your agent is now named "${trimmed}". Address it by saying "Hey ${trimmed}" followed by your instructions.`,
                           });
                         }}
-                        disabled={!agentName.trim()}
+                        disabled={!agentNameInput.trim()}
                         size="sm"
                       >
                         Save

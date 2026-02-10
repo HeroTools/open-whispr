@@ -4,6 +4,7 @@ import { useDebouncedCallback } from "./useDebouncedCallback";
 import { API_ENDPOINTS } from "../config/constants";
 import ReasoningService from "../services/ReasoningService";
 import logger from "../utils/logger";
+import { ensureAgentNameInDictionary } from "../utils/agentName";
 import type { LocalTranscriptionProvider } from "../types/electron";
 
 export interface TranscriptionSettings {
@@ -233,7 +234,10 @@ export function useSettings() {
       }
     };
 
-    syncDictionary();
+    syncDictionary().then(() => {
+      // Ensure agent name is in dictionary for existing users who set it before this feature
+      ensureAgentNameInDictionary();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
