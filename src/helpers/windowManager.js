@@ -64,7 +64,6 @@ class WindowManager {
           validatedURL &&
           validatedURL.includes(`localhost:${DEV_SERVER_PORT}`)
         ) {
-          // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();
             if (isReady) {
@@ -82,7 +81,6 @@ class WindowManager {
       this.enforceMainWindowOnTop();
     });
 
-    // Now load the window content
     await this.loadMainWindow();
     await this.initializeHotkey();
     this.dragManager.setTargetWindow(this.mainWindow);
@@ -132,11 +130,6 @@ class WindowManager {
     return { success: true, bounds: { x: newX, y: newY, ...newSize } };
   }
 
-  /**
-   * Load content into a BrowserWindow, handling both dev server and production file loading.
-   * @param {BrowserWindow} window - The window to load content into
-   * @param {boolean} isControlPanel - Whether this is the control panel
-   */
   async loadWindowContent(window, isControlPanel = false) {
     if (process.env.NODE_ENV === "development") {
       const appUrl = DevServerManager.getAppUrl(isControlPanel);
@@ -198,9 +191,7 @@ class WindowManager {
       }
       lastToggleTime = now;
 
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
-      }
+      this.showDictationPanel();
       this.mainWindow.webContents.send("toggle-dictation");
     };
   }
@@ -221,7 +212,6 @@ class WindowManager {
 
     this.showDictationPanel();
 
-    // Set up safety timeout
     const safetyTimeoutId = setTimeout(() => {
       if (this.macCompoundPushState?.active) {
         console.warn("[WindowManager] Compound PTT safety timeout triggered - stopping recording");
@@ -258,7 +248,6 @@ class WindowManager {
       return;
     }
 
-    // Clear safety timeout
     if (this.macCompoundPushState.safetyTimeoutId) {
       clearTimeout(this.macCompoundPushState.safetyTimeoutId);
     }
@@ -278,7 +267,6 @@ class WindowManager {
       return;
     }
 
-    // Clear safety timeout
     if (this.macCompoundPushState.safetyTimeoutId) {
       clearTimeout(this.macCompoundPushState.safetyTimeoutId);
     }
@@ -291,7 +279,6 @@ class WindowManager {
     }
     this.hideDictationPanel();
 
-    // Notify renderer about forced stop
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send("compound-ptt-force-stopped", { reason });
     }
@@ -337,9 +324,7 @@ class WindowManager {
       return;
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
-      }
+      this.showDictationPanel();
       this.mainWindow.webContents.send("start-dictation");
     }
   }
@@ -458,7 +443,6 @@ class WindowManager {
 
     this.controlPanelWindow.once("ready-to-show", () => {
       clearVisibilityTimer();
-      // Show dock icon on macOS when control panel opens
       if (process.platform === "darwin" && app.dock) {
         app.dock.show();
       }
@@ -482,7 +466,6 @@ class WindowManager {
       this.controlPanelWindow = null;
     });
 
-    // Set up menu for control panel to ensure text input works
     MenuManager.setupControlPanelMenu(this.controlPanelWindow);
 
     this.controlPanelWindow.webContents.on("did-finish-load", () => {
@@ -537,7 +520,6 @@ class WindowManager {
 
     this.controlPanelWindow.hide();
 
-    // Hide dock icon on macOS when control panel is hidden
     if (process.platform === "darwin" && app.dock) {
       app.dock.hide();
     }
@@ -578,7 +560,7 @@ class WindowManager {
         !this.mainWindow.isVisible() &&
         !this._floatingIconAutoHide
       ) {
-        this.mainWindow.show();
+        this.showDictationPanel();
       }
     }, 10000);
 

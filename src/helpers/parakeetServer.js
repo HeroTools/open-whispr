@@ -2,7 +2,13 @@ const fs = require("fs");
 const path = require("path");
 const debugLogger = require("./debugLogger");
 const { getModelsDirForService } = require("./modelDirUtils");
-const { getFFmpegPath, isWavFormat, convertToWav, wavToFloat32Samples, computeFloat32RMS } = require("./ffmpegUtils");
+const {
+  getFFmpegPath,
+  isWavFormat,
+  convertToWav,
+  wavToFloat32Samples,
+  computeFloat32RMS,
+} = require("./ffmpegUtils");
 const { getSafeTempDir } = require("./safeTempDir");
 const ParakeetWsServer = require("./parakeetWsServer");
 

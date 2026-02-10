@@ -5,10 +5,6 @@ const debugLogger = require("./debugLogger");
 
 let cachedFFmpegPath = null;
 
-/**
- * Get the path to FFmpeg binary, checking bundled and system locations
- * @returns {string|null} Path to FFmpeg binary or null if not found
- */
 function getFFmpegPath() {
   if (cachedFFmpegPath) return cachedFFmpegPath;
 
@@ -58,7 +54,6 @@ function getFFmpegPath() {
     debugLogger.debug("Bundled FFmpeg not available", { error: err.message });
   }
 
-  // Try system FFmpeg locations
   const systemCandidates =
     process.platform === "darwin"
       ? ["/opt/homebrew/bin/ffmpeg", "/usr/local/bin/ffmpeg"]
@@ -73,7 +68,6 @@ function getFFmpegPath() {
     }
   }
 
-  // Search PATH environment
   const pathEnv = process.env.PATH || "";
   const pathSep = process.platform === "win32" ? ";" : ":";
   const pathDirs = pathEnv.split(pathSep).map((entry) => entry.replace(/^"|"$/g, ""));
@@ -98,15 +92,9 @@ function getFFmpegPath() {
   return null;
 }
 
-/**
- * Check if a buffer contains WAV audio format by examining the RIFF header
- * @param {Buffer} buffer - Audio buffer to check
- * @returns {boolean} True if buffer is WAV format
- */
 function isWavFormat(buffer) {
   if (!buffer || buffer.length < 12) return false;
 
-  // Check for RIFF header and WAVE format
   return (
     buffer[0] === 0x52 && // R
     buffer[1] === 0x49 && // I
@@ -119,15 +107,6 @@ function isWavFormat(buffer) {
   );
 }
 
-/**
- * Convert audio file to 16kHz mono WAV format using FFmpeg
- * @param {string} inputPath - Path to input audio file
- * @param {string} outputPath - Path to output WAV file
- * @param {Object} options - Conversion options
- * @param {number} options.sampleRate - Output sample rate (default: 16000)
- * @param {number} options.channels - Output channels (default: 1 for mono)
- * @returns {Promise<void>}
- */
 function convertToWav(inputPath, outputPath, options = {}) {
   const { sampleRate = 16000, channels = 1 } = options;
 
@@ -183,7 +162,6 @@ function convertToWav(inputPath, outputPath, options = {}) {
         return;
       }
 
-      // Verify output file exists and has content
       if (!fs.existsSync(outputPath)) {
         reject(new Error("FFmpeg conversion produced no output file"));
         return;
