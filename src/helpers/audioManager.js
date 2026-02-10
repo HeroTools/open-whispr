@@ -1104,6 +1104,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           const res = await window.electronAPI.cloudReason(processedText, {
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
+            customPrompt: this.getCustomPrompt(),
             language: localStorage.getItem("preferredLanguage") || "auto",
           });
           if (!res.success) {
@@ -1152,6 +1153,17 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
+    }
+  }
+
+  getCustomPrompt() {
+    try {
+      const raw = localStorage.getItem("customUnifiedPrompt");
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+      return undefined;
     }
   }
 
@@ -2080,6 +2092,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
             const res = await window.electronAPI.cloudReason(finalText, {
               agentName,
               customDictionary: this.getCustomDictionaryArray(),
+              customPrompt: this.getCustomPrompt(),
               language: localStorage.getItem("preferredLanguage") || "auto",
             });
             if (!res.success) {

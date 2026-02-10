@@ -1038,6 +1038,7 @@ class ReasoningService extends BaseReasoningService {
           model,
           agentName,
           customDictionary,
+          customPrompt: this.getCustomPrompt(),
           language,
         });
 
@@ -1076,6 +1077,17 @@ class ReasoningService extends BaseReasoningService {
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
+    }
+  }
+
+  private getCustomPrompt(): string | undefined {
+    try {
+      const raw = localStorage.getItem("customUnifiedPrompt");
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+      return undefined;
     }
   }
 

@@ -435,7 +435,7 @@ declare global {
       }>;
       cloudReason?: (
         text: string,
-        opts: { model?: string; agentName?: string; customDictionary?: string[] }
+        opts: { model?: string; agentName?: string; customDictionary?: string[]; customPrompt?: string; language?: string }
       ) => Promise<{
         success: boolean;
         text?: string;
