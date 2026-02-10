@@ -515,6 +515,23 @@ function useSettingsInternal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sync dictation key from main process on first mount (handles localStorage cleared)
+  const hasRunDictationKeySync = useRef(false);
+  useEffect(() => {
+    if (hasRunDictationKeySync.current) return;
+    hasRunDictationKeySync.current = true;
+
+    const sync = async () => {
+      if (!window.electronAPI?.getDictationKey) return;
+      const envKey = await window.electronAPI.getDictationKey();
+      if (envKey && envKey !== dictationKey) {
+        setDictationKeyLocal(envKey);
+      }
+    };
+    sync().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const [audioCuesEnabled, setAudioCuesEnabled] = useLocalStorage("audioCuesEnabled", true, {
     serialize: String,
     deserialize: (value) => value !== "false",
