@@ -7,7 +7,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const registerListener = (channel, handlerFactory) => {
   return (callback) => {
     if (typeof callback !== "function") {
-      return () => {};
+      return () => { };
     }
 
     const listener =
@@ -23,7 +23,7 @@ const registerListener = (channel, handlerFactory) => {
 };
 
 contextBridge.exposeInMainWorld("electronAPI", {
-  pasteText: (text) => ipcRenderer.invoke("paste-text", text),
+  pasteText: (text, options) => ipcRenderer.invoke("paste-text", text, options),
   hideWindow: () => ipcRenderer.invoke("hide-window"),
   showDictationPanel: () => ipcRenderer.invoke("show-dictation-panel"),
   onToggleDictation: registerListener(
@@ -146,6 +146,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
     ipcRenderer.invoke("set-main-window-interactivity", interactive),
+  resizeMainWindow: (sizeKey) =>
+    ipcRenderer.invoke("resize-main-window", sizeKey),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
@@ -167,7 +169,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // External link opener
   openExternal: (url) => ipcRenderer.invoke("open-external", url),
-  
+
   // Model management functions
   modelGetAll: () => ipcRenderer.invoke("model-get-all"),
   modelCheck: (modelId) => ipcRenderer.invoke("model-check", modelId),
@@ -177,7 +179,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   modelCheckRuntime: () => ipcRenderer.invoke("model-check-runtime"),
   modelCancelDownload: (modelId) => ipcRenderer.invoke("model-cancel-download", modelId),
   onModelDownloadProgress: registerListener("model-download-progress"),
-  
+
   // Anthropic API
   getAnthropicKey: () => ipcRenderer.invoke("get-anthropic-key"),
   saveAnthropicKey: (key) => ipcRenderer.invoke("save-anthropic-key", key),
@@ -190,25 +192,38 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
 
+  // Mistral API
+  getMistralKey: () => ipcRenderer.invoke("get-mistral-key"),
+  saveMistralKey: (key) => ipcRenderer.invoke("save-mistral-key", key),
+  proxyMistralTranscription: (data) => ipcRenderer.invoke("proxy-mistral-transcription", data),
+
   // Custom endpoint API keys
   getCustomTranscriptionKey: () => ipcRenderer.invoke("get-custom-transcription-key"),
   saveCustomTranscriptionKey: (key) => ipcRenderer.invoke("save-custom-transcription-key", key),
   getCustomReasoningKey: () => ipcRenderer.invoke("get-custom-reasoning-key"),
   saveCustomReasoningKey: (key) => ipcRenderer.invoke("save-custom-reasoning-key", key),
 
+  // Dictation key persistence (file-based for reliable startup)
+  getDictationKey: () => ipcRenderer.invoke("get-dictation-key"),
+  saveDictationKey: (key) => ipcRenderer.invoke("save-dictation-key", key),
+
+  // Activation mode persistence (file-based for reliable startup)
+  getActivationMode: () => ipcRenderer.invoke("get-activation-mode"),
+  saveActivationMode: (mode) => ipcRenderer.invoke("save-activation-mode", mode),
+
   saveAllKeysToEnv: () => ipcRenderer.invoke("save-all-keys-to-env"),
   syncStartupPreferences: (prefs) => ipcRenderer.invoke("sync-startup-preferences", prefs),
 
   // Local reasoning
-  processLocalReasoning: (text, modelId, agentName, config) => 
+  processLocalReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),
-  checkLocalReasoningAvailable: () => 
+  checkLocalReasoningAvailable: () =>
     ipcRenderer.invoke("check-local-reasoning-available"),
-  
+
   // Anthropic reasoning
   processAnthropicReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-anthropic-reasoning", text, modelId, agentName, config),
-  
+
   // llama.cpp
   llamaCppCheck: () => ipcRenderer.invoke("llama-cpp-check"),
   llamaCppInstall: () => ipcRenderer.invoke("llama-cpp-install"),
@@ -228,16 +243,46 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openLogsFolder: () => ipcRenderer.invoke("open-logs-folder"),
 
   // System settings helpers for microphone/audio permissions
+  requestMicrophoneAccess: () => ipcRenderer.invoke("request-microphone-access"),
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
   openWhisperModelsFolder: () => ipcRenderer.invoke("open-whisper-models-folder"),
+  authClearSession: () => ipcRenderer.invoke("auth-clear-session"),
+
+  // OpenWhispr Cloud API
+  cloudTranscribe: (audioBuffer, opts) => ipcRenderer.invoke("cloud-transcribe", audioBuffer, opts),
+  cloudReason: (text, opts) => ipcRenderer.invoke("cloud-reason", text, opts),
+  cloudUsage: () => ipcRenderer.invoke("cloud-usage"),
+  cloudCheckout: () => ipcRenderer.invoke("cloud-checkout"),
+  cloudBillingPortal: () => ipcRenderer.invoke("cloud-billing-portal"),
+
+  // Assembly AI Streaming
+  assemblyAiStreamingWarmup: (options) => ipcRenderer.invoke("assemblyai-streaming-warmup", options),
+  assemblyAiStreamingStart: (options) => ipcRenderer.invoke("assemblyai-streaming-start", options),
+  assemblyAiStreamingSend: (audioBuffer) => ipcRenderer.send("assemblyai-streaming-send", audioBuffer),
+  assemblyAiStreamingForceEndpoint: () => ipcRenderer.send("assemblyai-streaming-force-endpoint"),
+  assemblyAiStreamingStop: () => ipcRenderer.invoke("assemblyai-streaming-stop"),
+  assemblyAiStreamingStatus: () => ipcRenderer.invoke("assemblyai-streaming-status"),
+  onAssemblyAiPartialTranscript: registerListener("assemblyai-partial-transcript", (callback) => (_event, text) => callback(text)),
+  onAssemblyAiFinalTranscript: registerListener("assemblyai-final-transcript", (callback) => (_event, text) => callback(text)),
+  onAssemblyAiError: registerListener("assemblyai-error", (callback) => (_event, error) => callback(error)),
+  onAssemblyAiSessionEnd: registerListener("assemblyai-session-end", (callback) => (_event, data) => callback(data)),
+
+  // Usage limit events (for showing UpgradePrompt in ControlPanel)
+  notifyLimitReached: (data) => ipcRenderer.send("limit-reached", data),
+  onLimitReached: registerListener("limit-reached", (callback) => (_event, data) => callback(data)),
 
   // Globe key listener for hotkey capture (macOS only)
   onGlobeKeyPressed: (callback) => {
     const listener = () => callback?.();
     ipcRenderer.on("globe-key-pressed", listener);
     return () => ipcRenderer.removeListener("globe-key-pressed", listener);
+  },
+  onGlobeKeyReleased: (callback) => {
+    const listener = () => callback?.();
+    ipcRenderer.on("globe-key-released", listener);
+    return () => ipcRenderer.removeListener("globe-key-released", listener);
   },
 
   // Hotkey registration events (for notifying user when hotkey fails)

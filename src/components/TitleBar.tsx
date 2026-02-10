@@ -30,7 +30,7 @@ export default function TitleBar({
     try {
       await window.electronAPI?.appQuit?.();
     } catch {
-      // Silently handle if API not available
+      // noop
     }
   };
 
@@ -38,7 +38,8 @@ export default function TitleBar({
     if (!actions) return null;
 
     if (platform !== "darwin" && React.isValidElement(actions)) {
-      const childrenArray = React.Children.toArray(actions.props.children);
+      const el = actions as React.ReactElement<{ children?: React.ReactNode }>;
+      const childrenArray = React.Children.toArray(el.props.children);
       return <>{[...childrenArray].reverse()}</>;
     }
 
@@ -46,7 +47,7 @@ export default function TitleBar({
   };
 
   return (
-    <div className={`bg-white border-b border-gray-100 select-none ${className}`}>
+    <div className={`bg-background border-b border-border select-none ${className}`}>
       <div
         className="flex items-center justify-between h-12 px-4"
         style={{ WebkitAppRegion: "drag" }}
@@ -58,7 +59,7 @@ export default function TitleBar({
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowQuitConfirm(true)}
-                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
                 title="Quit OpenWhispr"
                 aria-label="Quit OpenWhispr"
               >
@@ -69,7 +70,7 @@ export default function TitleBar({
           ) : (
             <>
               {showTitle && title && (
-                <h1 className="text-sm font-semibold text-gray-900">{title}</h1>
+                <h1 className="text-sm font-semibold text-foreground">{title}</h1>
               )}
               {children}
             </>
@@ -88,7 +89,7 @@ export default function TitleBar({
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowQuitConfirm(true)}
-                className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
                 title="Quit OpenWhispr"
                 aria-label="Quit OpenWhispr"
               >

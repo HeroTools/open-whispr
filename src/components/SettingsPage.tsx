@@ -1,10 +1,30 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
-import { RefreshCw, Download, Command, Mic, Shield, FolderOpen } from "lucide-react";
+import { Badge } from "./ui/badge";
+import {
+  RefreshCw,
+  Download,
+  Command,
+  Mic,
+  Shield,
+  FolderOpen,
+  LogOut,
+  UserCircle,
+  Sun,
+  Moon,
+  Monitor,
+  Cloud,
+  Key,
+  Sparkles,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
+import PermissionCard from "./ui/PermissionCard";
+import PasteToolsInfo from "./ui/PasteToolsInfo";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
@@ -14,27 +34,547 @@ import { useWhisper } from "../hooks/useWhisper";
 import { usePermissions } from "../hooks/usePermissions";
 import { useClipboard } from "../hooks/useClipboard";
 import { useUpdater } from "../hooks/useUpdater";
-import { getTranscriptionProviders } from "../models/ModelRegistry";
-import { formatHotkeyLabel } from "../utils/hotkeys";
+
 import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
-import type { UpdateInfoResult } from "../types/electron";
+
 import { HotkeyInput } from "./ui/HotkeyInput";
+import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { getValidationMessage } from "../utils/hotkeyValidator";
+import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
+import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
+import LanguageSelector from "./ui/LanguageSelector";
+import { Skeleton } from "./ui/skeleton";
+import { Progress } from "./ui/progress";
+import { useToast } from "./ui/Toast";
+import { useTheme } from "../hooks/useTheme";
+import type { LocalTranscriptionProvider } from "../types/electron";
+import logger from "../utils/logger";
+import { SettingsRow } from "./ui/SettingsSection";
+import { useUsage } from "../hooks/useUsage";
+import { cn } from "./lib/utils";
 
 export type SettingsSectionType =
+  | "account"
   | "general"
   | "transcription"
   | "dictionary"
   | "aiModels"
   | "agentConfig"
   | "prompts"
+  | "permissions"
+  | "privacy"
   | "developer";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
+}
+
+function SettingsPanel({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-lg border border-border/50 dark:border-border-subtle/70 bg-card/50 dark:bg-surface-2/50 backdrop-blur-sm divide-y divide-border/30 dark:divide-border-subtle/50 ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SettingsPanelRow({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return <div className={`px-4 py-3 ${className}`}>{children}</div>;
+}
+
+function SectionHeader({ title, description }: { title: string; description?: string }) {
+  return (
+    <div className="mb-3">
+      <h3 className="text-[13px] font-semibold text-foreground tracking-tight">{title}</h3>
+      {description && (
+        <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+      )}
+    </div>
+  );
+}
+
+interface TranscriptionSectionProps {
+  isSignedIn: boolean;
+  cloudTranscriptionMode: string;
+  setCloudTranscriptionMode: (mode: string) => void;
+  useLocalWhisper: boolean;
+  setUseLocalWhisper: (value: boolean) => void;
+  updateTranscriptionSettings: (settings: { useLocalWhisper: boolean }) => void;
+  cloudTranscriptionProvider: string;
+  setCloudTranscriptionProvider: (provider: string) => void;
+  cloudTranscriptionModel: string;
+  setCloudTranscriptionModel: (model: string) => void;
+  localTranscriptionProvider: string;
+  setLocalTranscriptionProvider: (provider: LocalTranscriptionProvider) => void;
+  whisperModel: string;
+  setWhisperModel: (model: string) => void;
+  parakeetModel: string;
+  setParakeetModel: (model: string) => void;
+  openaiApiKey: string;
+  setOpenaiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
+  mistralApiKey: string;
+  setMistralApiKey: (key: string) => void;
+  customTranscriptionApiKey: string;
+  setCustomTranscriptionApiKey: (key: string) => void;
+  cloudTranscriptionBaseUrl?: string;
+  setCloudTranscriptionBaseUrl: (url: string) => void;
+  toast: (opts: {
+    title: string;
+    description: string;
+    variant?: "default" | "destructive" | "success";
+    duration?: number;
+  }) => void;
+}
+
+function TranscriptionSection({
+  isSignedIn,
+  cloudTranscriptionMode,
+  setCloudTranscriptionMode,
+  useLocalWhisper,
+  setUseLocalWhisper,
+  updateTranscriptionSettings,
+  cloudTranscriptionProvider,
+  setCloudTranscriptionProvider,
+  cloudTranscriptionModel,
+  setCloudTranscriptionModel,
+  localTranscriptionProvider,
+  setLocalTranscriptionProvider,
+  whisperModel,
+  setWhisperModel,
+  parakeetModel,
+  setParakeetModel,
+  openaiApiKey,
+  setOpenaiApiKey,
+  groqApiKey,
+  setGroqApiKey,
+  mistralApiKey,
+  setMistralApiKey,
+  customTranscriptionApiKey,
+  setCustomTranscriptionApiKey,
+  cloudTranscriptionBaseUrl,
+  setCloudTranscriptionBaseUrl,
+  toast,
+}: TranscriptionSectionProps) {
+  const isCustomMode = cloudTranscriptionMode === "byok" || useLocalWhisper;
+  const isCloudMode = isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="Speech to Text"
+        description="Choose how OpenWhispr transcribes your voice"
+      />
+
+      {/* Mode selector */}
+      {isSignedIn && (
+        <SettingsPanel>
+          <SettingsPanelRow>
+            <button
+              onClick={() => {
+                if (!isCloudMode) {
+                  setCloudTranscriptionMode("openwhispr");
+                  setUseLocalWhisper(false);
+                  updateTranscriptionSettings({ useLocalWhisper: false });
+                  toast({
+                    title: "Switched to OpenWhispr Cloud",
+                    description: "Transcription will use OpenWhispr's cloud service.",
+                    variant: "success",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  isCloudMode
+                    ? "bg-primary/10 dark:bg-primary/15"
+                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                }`}
+              >
+                <Cloud
+                  className={`w-4 h-4 transition-colors ${
+                    isCloudMode ? "text-primary" : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-foreground">OpenWhispr Cloud</span>
+                  {isCloudMode && (
+                    <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  Just works. No configuration needed.
+                </p>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                  isCloudMode
+                    ? "border-primary bg-primary"
+                    : "border-border-hover dark:border-border-subtle"
+                }`}
+              >
+                {isCloudMode && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                  </div>
+                )}
+              </div>
+            </button>
+          </SettingsPanelRow>
+          <SettingsPanelRow>
+            <button
+              onClick={() => {
+                if (!isCustomMode) {
+                  setCloudTranscriptionMode("byok");
+                  setUseLocalWhisper(false);
+                  updateTranscriptionSettings({ useLocalWhisper: false });
+                  toast({
+                    title: "Switched to Custom Setup",
+                    description: "Configure your own provider and API key.",
+                    variant: "success",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  isCustomMode
+                    ? "bg-accent/10 dark:bg-accent/15"
+                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                }`}
+              >
+                <Key
+                  className={`w-4 h-4 transition-colors ${
+                    isCustomMode ? "text-accent" : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-foreground">Custom Setup</span>
+                  {isCustomMode && (
+                    <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                      Active
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  Use your own provider and API key.
+                </p>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                  isCustomMode
+                    ? "border-accent bg-accent"
+                    : "border-border-hover dark:border-border-subtle"
+                }`}
+              >
+                {isCustomMode && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                  </div>
+                )}
+              </div>
+            </button>
+          </SettingsPanelRow>
+        </SettingsPanel>
+      )}
+
+      {/* Custom Setup model picker — shown when Custom Setup is active or not signed in */}
+      {(isCustomMode || !isSignedIn) && (
+        <TranscriptionModelPicker
+          selectedCloudProvider={cloudTranscriptionProvider}
+          onCloudProviderSelect={setCloudTranscriptionProvider}
+          selectedCloudModel={cloudTranscriptionModel}
+          onCloudModelSelect={setCloudTranscriptionModel}
+          selectedLocalModel={
+            localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+          }
+          onLocalModelSelect={(modelId) => {
+            if (localTranscriptionProvider === "nvidia") {
+              setParakeetModel(modelId);
+            } else {
+              setWhisperModel(modelId);
+            }
+          }}
+          selectedLocalProvider={localTranscriptionProvider}
+          onLocalProviderSelect={setLocalTranscriptionProvider}
+          useLocalWhisper={useLocalWhisper}
+          onModeChange={(isLocal) => {
+            setUseLocalWhisper(isLocal);
+            updateTranscriptionSettings({ useLocalWhisper: isLocal });
+            if (isLocal) {
+              setCloudTranscriptionMode("byok");
+            }
+          }}
+          openaiApiKey={openaiApiKey}
+          setOpenaiApiKey={setOpenaiApiKey}
+          groqApiKey={groqApiKey}
+          setGroqApiKey={setGroqApiKey}
+          mistralApiKey={mistralApiKey}
+          setMistralApiKey={setMistralApiKey}
+          customTranscriptionApiKey={customTranscriptionApiKey}
+          setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+          cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+          setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+          variant="settings"
+        />
+      )}
+    </div>
+  );
+}
+
+interface AiModelsSectionProps {
+  isSignedIn: boolean;
+  cloudReasoningMode: string;
+  setCloudReasoningMode: (mode: string) => void;
+  useReasoningModel: boolean;
+  setUseReasoningModel: (value: boolean) => void;
+  reasoningModel: string;
+  setReasoningModel: (model: string) => void;
+  reasoningProvider: string;
+  setReasoningProvider: (provider: string) => void;
+  cloudReasoningBaseUrl: string;
+  setCloudReasoningBaseUrl: (url: string) => void;
+  openaiApiKey: string;
+  setOpenaiApiKey: (key: string) => void;
+  anthropicApiKey: string;
+  setAnthropicApiKey: (key: string) => void;
+  geminiApiKey: string;
+  setGeminiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
+  customReasoningApiKey: string;
+  setCustomReasoningApiKey: (key: string) => void;
+  showAlertDialog: (dialog: { title: string; description: string }) => void;
+  toast: (opts: {
+    title: string;
+    description: string;
+    variant?: "default" | "destructive" | "success";
+    duration?: number;
+  }) => void;
+}
+
+function AiModelsSection({
+  isSignedIn,
+  cloudReasoningMode,
+  setCloudReasoningMode,
+  useReasoningModel,
+  setUseReasoningModel,
+  reasoningModel,
+  setReasoningModel,
+  reasoningProvider,
+  setReasoningProvider,
+  cloudReasoningBaseUrl,
+  setCloudReasoningBaseUrl,
+  openaiApiKey,
+  setOpenaiApiKey,
+  anthropicApiKey,
+  setAnthropicApiKey,
+  geminiApiKey,
+  setGeminiApiKey,
+  groqApiKey,
+  setGroqApiKey,
+  customReasoningApiKey,
+  setCustomReasoningApiKey,
+  showAlertDialog,
+  toast,
+}: AiModelsSectionProps) {
+  const isCustomMode = cloudReasoningMode === "byok";
+  const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title="AI Text Enhancement"
+        description="Clean up transcriptions, handle commands, and fix errors while preserving your tone."
+      />
+
+      {/* Enable toggle — always at top */}
+      <SettingsPanel>
+        <SettingsPanelRow>
+          <SettingsRow label="Enable text cleanup" description="AI improves transcription quality">
+            <Toggle checked={useReasoningModel} onChange={setUseReasoningModel} />
+          </SettingsRow>
+        </SettingsPanelRow>
+      </SettingsPanel>
+
+      {useReasoningModel && (
+        <>
+          {/* Mode selector */}
+          {isSignedIn && (
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCloudMode) {
+                      setCloudReasoningMode("openwhispr");
+                      toast({
+                        title: "Switched to OpenWhispr Cloud",
+                        description: "AI text enhancement will use OpenWhispr's cloud service.",
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "bg-primary/10 dark:bg-primary/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Cloud
+                      className={`w-4 h-4 transition-colors ${
+                        isCloudMode ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-medium text-foreground">
+                        OpenWhispr Cloud
+                      </span>
+                      {isCloudMode && (
+                        <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      Just works. No configuration needed.
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "border-primary bg-primary"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCloudMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCustomMode) {
+                      setCloudReasoningMode("byok");
+                      toast({
+                        title: "Switched to Custom Setup",
+                        description: "Configure your own provider and API key.",
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "bg-accent/10 dark:bg-accent/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Key
+                      className={`w-4 h-4 transition-colors ${
+                        isCustomMode ? "text-accent" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-medium text-foreground">Custom Setup</span>
+                      {isCustomMode && (
+                        <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      Use your own provider and API key.
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "border-accent bg-accent"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCustomMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+            </SettingsPanel>
+          )}
+
+          {/* Custom Setup model picker — shown when Custom Setup is active or not signed in */}
+          {(isCustomMode || !isSignedIn) && (
+            <ReasoningModelSelector
+              useReasoningModel={useReasoningModel}
+              setUseReasoningModel={setUseReasoningModel}
+              reasoningModel={reasoningModel}
+              setReasoningModel={setReasoningModel}
+              localReasoningProvider={reasoningProvider}
+              setLocalReasoningProvider={setReasoningProvider}
+              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              anthropicApiKey={anthropicApiKey}
+              setAnthropicApiKey={setAnthropicApiKey}
+              geminiApiKey={geminiApiKey}
+              setGeminiApiKey={setGeminiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              customReasoningApiKey={customReasoningApiKey}
+              setCustomReasoningApiKey={setCustomReasoningApiKey}
+              showAlertDialog={showAlertDialog}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
 }
 
 export default function SettingsPage({ activeSection = "general" }: SettingsPageProps) {
@@ -52,7 +592,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     whisperModel,
     localTranscriptionProvider,
     parakeetModel,
-    allowOpenAIFallback,
+    preferredLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
@@ -65,6 +605,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     anthropicApiKey,
     geminiApiKey,
     groqApiKey,
+    mistralApiKey,
     dictationKey,
     activationMode,
     setActivationMode,
@@ -76,7 +617,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setWhisperModel,
     setLocalTranscriptionProvider,
     setParakeetModel,
-    setAllowOpenAIFallback,
     setCloudTranscriptionProvider,
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
@@ -89,6 +629,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+    setMistralApiKey,
     customTranscriptionApiKey,
     setCustomTranscriptionApiKey,
     customReasoningApiKey,
@@ -96,7 +637,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
+    cloudTranscriptionMode,
+    setCloudTranscriptionMode,
+    cloudReasoningMode,
+    setCloudReasoningMode,
+    cloudBackupEnabled,
+    setCloudBackupEnabled,
+    telemetryEnabled,
+    setTelemetryEnabled,
   } = useSettings();
+
+  const { toast } = useToast();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [isRemovingModels, setIsRemovingModels] = useState(false);
@@ -105,7 +656,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       ? "%USERPROFILE%\\.cache\\openwhispr\\whisper-models"
       : "~/.cache/openwhispr/whisper-models";
 
-  // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
     status: updateStatus,
     info: updateInfo,
@@ -123,13 +673,26 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const isUpdateAvailable =
     !updateStatus.isDevelopment && (updateStatus.updateAvailable || updateStatus.updateDownloaded);
 
-  const whisperHook = useWhisper(showAlertDialog);
+  const whisperHook = useWhisper();
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
+  const { theme, setTheme } = useTheme();
+  const usage = useUsage();
+  const hasShownApproachingToast = useRef(false);
+  useEffect(() => {
+    if (usage?.isApproachingLimit && !hasShownApproachingToast.current) {
+      hasShownApproachingToast.current = true;
+      toast({
+        title: "Approaching Weekly Limit",
+        description: `You've used ${usage.wordsUsed.toLocaleString()} of ${usage.limit.toLocaleString()} free words this week.`,
+        duration: 6000,
+      });
+    }
+  }, [usage?.isApproachingLimit, usage?.wordsUsed, usage?.limit, toast]);
+
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Shared hotkey registration hook
   const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
     onSuccess: (registeredHotkey) => {
       setDictationKey(registeredHotkey);
@@ -139,20 +702,20 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showAlert: showAlertDialog,
   });
 
-  const [localReasoningProvider, setLocalReasoningProvider] = useState(() => {
-    return localStorage.getItem("reasoningProvider") || reasoningProvider;
-  });
+  const validateHotkeyForInput = useCallback(
+    (hotkey: string) => getValidationMessage(hotkey, getPlatform()),
+    []
+  );
+
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
-  // Platform detection for conditional features
   const platform = useMemo(() => {
     if (typeof window !== "undefined" && window.electronAPI?.getPlatform) {
       return window.electronAPI.getPlatform();
     }
-    return "linux"; // Safe fallback
+    return "linux";
   }, []);
 
-  // Custom dictionary state
   const [newDictionaryWord, setNewDictionaryWord] = useState("");
 
   const handleAddDictionaryWord = useCallback(() => {
@@ -170,11 +733,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     [customDictionary, setCustomDictionary]
   );
 
-  // Auto-start state
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(true);
 
-  // Load auto-start state on mount (not supported on Linux)
   useEffect(() => {
     if (platform === "linux") {
       setAutoStartLoading(false);
@@ -186,7 +747,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           const enabled = await window.electronAPI.getAutoStartEnabled();
           setAutoStartEnabled(enabled);
         } catch (error) {
-          console.error("Failed to get auto-start status:", error);
+          logger.error("Failed to get auto-start status", error, "settings");
         }
       }
       setAutoStartLoading(false);
@@ -203,7 +764,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           setAutoStartEnabled(enabled);
         }
       } catch (error) {
-        console.error("Failed to set auto-start:", error);
+        logger.error("Failed to set auto-start", error, "settings");
       } finally {
         setAutoStartLoading(false);
       }
@@ -239,13 +800,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           setActivationMode("tap");
         }
       } catch (error) {
-        console.error("Failed to check hotkey mode:", error);
+        logger.error("Failed to check hotkey mode", error, "settings");
       }
     };
     checkHotkeyMode();
   }, [setActivationMode]);
 
-  // Show alert dialog on update errors
   useEffect(() => {
     if (updateError) {
       showAlertDialog({
@@ -283,18 +843,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   }, [installInitiated, showAlertDialog]);
 
   const resetAccessibilityPermissions = () => {
-    const message = `🔄 RESET ACCESSIBILITY PERMISSIONS\n\nIf you've rebuilt or reinstalled OpenWhispr and automatic inscription isn't functioning, you may have obsolete permissions from the previous version.\n\n📋 STEP-BY-STEP RESTORATION:\n\n1️⃣ Open System Settings (or System Preferences)\n   • macOS Ventura+: Apple Menu → System Settings\n   • Older macOS: Apple Menu → System Preferences\n\n2️⃣ Navigate to Privacy & Security → Accessibility\n\n3️⃣ Look for obsolete OpenWhispr entries:\n   • Any entries named "OpenWhispr"\n   • Any entries named "Electron"\n   • Any entries with unclear or generic names\n   • Entries pointing to old application locations\n\n4️⃣ Remove ALL obsolete entries:\n   • Select each old entry\n   • Click the minus (-) button\n   • Enter your password if prompted\n\n5️⃣ Add the current OpenWhispr:\n   • Click the plus (+) button\n   • Navigate to and select the CURRENT OpenWhispr app\n   • Ensure the checkbox is ENABLED\n\n6️⃣ Restart OpenWhispr completely\n\n💡 This is very common during development when rebuilding applications!\n\nClick OK when you're ready to open System Settings.`;
+    const message = `To fix accessibility permissions:\n\n1. Open System Settings > Privacy & Security > Accessibility\n2. Remove any old OpenWhispr or Electron entries\n3. Click (+) and add the current OpenWhispr app\n4. Make sure the checkbox is enabled\n5. Restart OpenWhispr\n\nClick OK to open System Settings.`;
 
     showConfirmDialog({
       title: "Reset Accessibility Permissions",
       description: message,
       onConfirm: () => {
-        showAlertDialog({
-          title: "Opening System Settings",
-          description:
-            "Opening System Settings... Look for the Accessibility section under Privacy & Security.",
-        });
-
         permissionsHook.openAccessibilitySettings();
       },
     });
@@ -343,652 +897,1075 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     });
   }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog]);
 
+  const { isSignedIn, isLoaded, user } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+
+  const handleSignOut = useCallback(async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      // Clear onboarding to show auth screen again
+      localStorage.removeItem("onboardingCompleted");
+      localStorage.removeItem("onboardingCurrentStep");
+      // Reload the app to show onboarding/auth
+      window.location.reload();
+    } catch (error) {
+      logger.error("Sign out failed", error, "auth");
+      showAlertDialog({
+        title: "Sign Out Failed",
+        description: "Unable to sign out. Please try again.",
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [showAlertDialog]);
+
   const renderSectionContent = () => {
     switch (activeSection) {
+      case "account":
+        return (
+          <div className="space-y-5">
+            {!NEON_AUTH_URL ? (
+              <>
+                <SectionHeader title="Account" description="Authentication is not configured" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Account Features Disabled"
+                      description="Set VITE_NEON_AUTH_URL in your .env file to enable account features."
+                    >
+                      <Badge variant="warning">Disabled</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            ) : isLoaded && isSignedIn && user ? (
+              <>
+                <SectionHeader title="Account" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden bg-primary/10 dark:bg-primary/15">
+                        {user.image ? (
+                          <img
+                            src={user.image}
+                            alt={user.name || "User"}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserCircle className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-medium text-foreground truncate">
+                          {user.name || "User"}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <Badge variant="success">Signed in</Badge>
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+
+                <SectionHeader title="Plan" />
+                {!usage || !usage.hasLoaded ? (
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                    </SettingsPanelRow>
+                    <SettingsPanelRow>
+                      <div className="space-y-2">
+                        <Skeleton className="h-3 w-48" />
+                        <Skeleton className="h-8 w-full rounded" />
+                      </div>
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                ) : (
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <SettingsRow
+                        label={usage.isSubscribed ? (usage.isTrial ? "Trial" : "Pro") : "Free"}
+                        description={
+                          usage.isTrial
+                            ? `${usage.trialDaysLeft} ${usage.trialDaysLeft === 1 ? "day" : "days"} remaining \u2014 unlimited transcriptions`
+                            : usage.isSubscribed
+                              ? usage.currentPeriodEnd
+                                ? `Next billing: ${new Date(usage.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                                : "Unlimited transcriptions"
+                              : `${usage.wordsUsed.toLocaleString()} / ${usage.limit.toLocaleString()} words this week`
+                        }
+                      >
+                        {usage.isTrial ? (
+                          <Badge variant="info">Trial</Badge>
+                        ) : usage.isSubscribed ? (
+                          <Badge variant="success">Pro</Badge>
+                        ) : usage.isOverLimit ? (
+                          <Badge variant="warning">Limit reached</Badge>
+                        ) : (
+                          <Badge variant="outline">Free</Badge>
+                        )}
+                      </SettingsRow>
+                    </SettingsPanelRow>
+
+                    {!usage.isSubscribed && !usage.isTrial && (
+                      <SettingsPanelRow>
+                        <div className="space-y-1.5">
+                          <Progress
+                            value={
+                              usage.limit > 0
+                                ? Math.min(100, (usage.wordsUsed / usage.limit) * 100)
+                                : 0
+                            }
+                            className={cn(
+                              "h-1.5",
+                              usage.isOverLimit
+                                ? "[&>div]:bg-destructive"
+                                : usage.isApproachingLimit
+                                  ? "[&>div]:bg-warning"
+                                  : "[&>div]:bg-primary"
+                            )}
+                          />
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span className="tabular-nums">
+                              {usage.wordsUsed.toLocaleString()} / {usage.limit.toLocaleString()}
+                            </span>
+                            {usage.isApproachingLimit && (
+                              <span className="text-warning">
+                                {usage.wordsRemaining.toLocaleString()} remaining
+                              </span>
+                            )}
+                            {!usage.isApproachingLimit && !usage.isOverLimit && (
+                              <span>Rolling weekly limit</span>
+                            )}
+                          </div>
+                        </div>
+                      </SettingsPanelRow>
+                    )}
+
+                    <SettingsPanelRow>
+                      {usage.isSubscribed && !usage.isTrial ? (
+                        <Button
+                          onClick={async () => {
+                            const result = await usage.openBillingPortal();
+                            if (!result.success) {
+                              toast({
+                                title: "Couldn't open billing",
+                                description: result.error,
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                        >
+                          Manage Billing
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={async () => {
+                            const result = await usage.openCheckout();
+                            if (!result.success) {
+                              toast({
+                                title: "Couldn't open checkout",
+                                description: result.error,
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          size="sm"
+                          className="w-full"
+                        >
+                          Upgrade to Pro
+                        </Button>
+                      )}
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                )}
+
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <Button
+                      onClick={handleSignOut}
+                      variant="outline"
+                      disabled={isSigningOut}
+                      size="sm"
+                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
+                    >
+                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                      {isSigningOut ? "Signing out..." : "Sign Out"}
+                    </Button>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            ) : isLoaded ? (
+              <>
+                <SectionHeader title="Account" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Not Signed In"
+                      description="Create an account to unlock premium features."
+                    >
+                      <Badge variant="outline">Offline</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+
+                <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/3 dark:bg-primary/6 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div>
+                        <p className="text-[13px] font-medium text-foreground">
+                          Try Pro free for 7 days
+                        </p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                          Unlimited transcriptions, priority processing, and more.
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          localStorage.setItem("pendingCloudMigration", "true");
+                          localStorage.removeItem("onboardingCompleted");
+                          localStorage.setItem("onboardingCurrentStep", "0");
+                          window.location.reload();
+                        }}
+                        size="sm"
+                        className="w-full"
+                      >
+                        <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                        Create Free Account
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <SectionHeader title="Account" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            )}
+          </div>
+        );
+
       case "general":
         return (
-          <div className="space-y-8">
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">App Updates</h3>
-                <p className="text-sm text-gray-600 mb-4">
-                  Keep OpenWhispr up to date with the latest features and improvements.
-                </p>
-              </div>
-              <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
-                <div>
-                  <p className="text-sm font-medium text-neutral-800">Current Version</p>
-                  <p className="text-xs text-neutral-600">{currentVersion || "Loading..."}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  {updateStatus.isDevelopment ? (
-                    <span className="text-xs text-amber-600 bg-amber-100 px-2 py-1 rounded-full">
-                      Development Mode
-                    </span>
-                  ) : updateStatus.updateAvailable ? (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-1 rounded-full">
-                      Update Available
-                    </span>
-                  ) : (
-                    <span className="text-xs text-neutral-600 bg-neutral-100 px-2 py-1 rounded-full">
-                      Up to Date
-                    </span>
-                  )}
-                </div>
-              </div>
-              <div className="space-y-3">
-                <Button
-                  onClick={async () => {
-                    try {
-                      const result = await checkForUpdates();
-                      if (result?.updateAvailable) {
-                        showAlertDialog({
-                          title: "Update Available",
-                          description: `Update available: v${result.version || "new version"}`,
-                        });
-                      } else {
-                        showAlertDialog({
-                          title: "No Updates",
-                          description: result?.message || "No updates available",
-                        });
-                      }
-                    } catch (error: any) {
-                      showAlertDialog({
-                        title: "Update Check Failed",
-                        description: `Error checking for updates: ${error.message}`,
-                      });
+          <div className="space-y-6">
+            {/* Updates */}
+            <div>
+              <SectionHeader title="Updates" />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Current version"
+                    description={
+                      updateStatus.isDevelopment
+                        ? "Running in development mode"
+                        : isUpdateAvailable
+                          ? "A newer version is available"
+                          : "You're on the latest version"
                     }
-                  }}
-                  disabled={checkingForUpdates || updateStatus.isDevelopment}
-                  className="w-full"
-                >
-                  {checkingForUpdates ? (
-                    <>
-                      <RefreshCw size={16} className="animate-spin mr-2" />
-                      Checking for Updates...
-                    </>
-                  ) : (
-                    <>
-                      <RefreshCw size={16} className="mr-2" />
-                      Check for Updates
-                    </>
-                  )}
-                </Button>
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="text-[13px] tabular-nums text-muted-foreground font-mono">
+                        {currentVersion || "..."}
+                      </span>
+                      {updateStatus.isDevelopment ? (
+                        <Badge variant="warning">Dev</Badge>
+                      ) : isUpdateAvailable ? (
+                        <Badge variant="success">Update</Badge>
+                      ) : (
+                        <Badge variant="outline">Latest</Badge>
+                      )}
+                    </div>
+                  </SettingsRow>
+                </SettingsPanelRow>
 
-                {isUpdateAvailable && !updateStatus.updateDownloaded && (
-                  <div className="space-y-2">
+                <SettingsPanelRow>
+                  <div className="space-y-2.5">
                     <Button
                       onClick={async () => {
                         try {
-                          await downloadUpdate();
+                          const result = await checkForUpdates();
+                          if (result?.updateAvailable) {
+                            showAlertDialog({
+                              title: "Update Available",
+                              description: `Update available: v${result.version || "new version"}`,
+                            });
+                          } else {
+                            showAlertDialog({
+                              title: "No Updates",
+                              description: result?.message || "No updates available",
+                            });
+                          }
                         } catch (error: any) {
                           showAlertDialog({
-                            title: "Download Failed",
-                            description: `Failed to download update: ${error.message}`,
+                            title: "Update Check Failed",
+                            description: `Error checking for updates: ${error.message}`,
                           });
                         }
                       }}
-                      disabled={downloadingUpdate}
-                      className="w-full bg-green-600 hover:bg-green-700"
+                      disabled={checkingForUpdates || updateStatus.isDevelopment}
+                      variant="outline"
+                      className="w-full"
+                      size="sm"
                     >
-                      {downloadingUpdate ? (
-                        <>
-                          <Download size={16} className="animate-pulse mr-2" />
-                          Downloading... {Math.round(updateDownloadProgress)}%
-                        </>
-                      ) : (
-                        <>
-                          <Download size={16} className="mr-2" />
-                          Download Update{updateInfo?.version ? ` v${updateInfo.version}` : ""}
-                        </>
-                      )}
+                      <RefreshCw
+                        size={13}
+                        className={`mr-1.5 ${checkingForUpdates ? "animate-spin" : ""}`}
+                      />
+                      {checkingForUpdates ? "Checking..." : "Check for Updates"}
                     </Button>
 
-                    {downloadingUpdate && (
-                      <div className="space-y-1">
-                        <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200">
-                          <div
-                            className="h-full bg-green-600 transition-all duration-200"
-                            style={{
-                              width: `${Math.min(100, Math.max(0, updateDownloadProgress))}%`,
-                            }}
+                    {isUpdateAvailable && !updateStatus.updateDownloaded && (
+                      <div className="space-y-2">
+                        <Button
+                          onClick={async () => {
+                            try {
+                              await downloadUpdate();
+                            } catch (error: any) {
+                              showAlertDialog({
+                                title: "Download Failed",
+                                description: `Failed to download update: ${error.message}`,
+                              });
+                            }
+                          }}
+                          disabled={downloadingUpdate}
+                          variant="success"
+                          className="w-full"
+                          size="sm"
+                        >
+                          <Download
+                            size={13}
+                            className={`mr-1.5 ${downloadingUpdate ? "animate-pulse" : ""}`}
                           />
-                        </div>
-                        <p className="text-xs text-neutral-600 text-right">
-                          {Math.round(updateDownloadProgress)}% downloaded
-                        </p>
+                          {downloadingUpdate
+                            ? `Downloading... ${Math.round(updateDownloadProgress)}%`
+                            : `Download Update${updateInfo?.version ? ` v${updateInfo.version}` : ""}`}
+                        </Button>
+
+                        {downloadingUpdate && (
+                          <div className="h-1 w-full overflow-hidden rounded-full bg-muted/50">
+                            <div
+                              className="h-full bg-success transition-all duration-200 rounded-full"
+                              style={{
+                                width: `${Math.min(100, Math.max(0, updateDownloadProgress))}%`,
+                              }}
+                            />
+                          </div>
+                        )}
                       </div>
                     )}
+
+                    {updateStatus.updateDownloaded && (
+                      <Button
+                        onClick={() => {
+                          showConfirmDialog({
+                            title: "Install Update",
+                            description: `Ready to install update${updateInfo?.version ? ` v${updateInfo.version}` : ""}. The app will restart to complete installation.`,
+                            confirmText: "Install & Restart",
+                            onConfirm: async () => {
+                              try {
+                                await installUpdateAction();
+                              } catch (error: any) {
+                                showAlertDialog({
+                                  title: "Install Failed",
+                                  description: `Failed to install update: ${error.message}`,
+                                });
+                              }
+                            },
+                          });
+                        }}
+                        disabled={installInitiated}
+                        className="w-full"
+                        size="sm"
+                      >
+                        <RefreshCw
+                          size={14}
+                          className={`mr-2 ${installInitiated ? "animate-spin" : ""}`}
+                        />
+                        {installInitiated ? "Restarting..." : "Install & Restart"}
+                      </Button>
+                    )}
                   </div>
-                )}
 
-                {updateStatus.updateDownloaded && (
-                  <Button
-                    onClick={() => {
-                      showConfirmDialog({
-                        title: "Install Update",
-                        description: `Ready to install update${updateInfo?.version ? ` v${updateInfo.version}` : ""}. The app will restart to complete installation.`,
-                        confirmText: "Install & Restart",
-                        onConfirm: async () => {
-                          try {
-                            await installUpdateAction();
-                            showAlertDialog({
-                              title: "Installing Update",
-                              description:
-                                "OpenWhispr will restart automatically to finish installing the newest version.",
-                            });
-                          } catch (error: any) {
-                            showAlertDialog({
-                              title: "Install Failed",
-                              description: `Failed to install update: ${error.message}`,
-                            });
-                          }
-                        },
-                      });
-                    }}
-                    disabled={installInitiated}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                  >
-                    {installInitiated ? (
-                      <>
-                        <RefreshCw size={16} className="animate-spin mr-2" />
-                        Restarting to Finish Update...
-                      </>
-                    ) : (
-                      <>
-                        <span className="mr-2">🚀</span>
-                        Quit & Install Update
-                      </>
-                    )}
-                  </Button>
-                )}
-
-                {updateInfo?.version && (
-                  <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                    <h4 className="font-medium text-blue-900 mb-2">Update v{updateInfo.version}</h4>
-                    {updateInfo.releaseDate && (
-                      <p className="text-sm text-blue-700 mb-2">
-                        Released: {new Date(updateInfo.releaseDate).toLocaleDateString()}
+                  {updateInfo?.releaseNotes && (
+                    <div className="mt-4 pt-4 border-t border-border/30">
+                      <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                        What's new in v{updateInfo.version}
                       </p>
-                    )}
-                    {updateInfo.releaseNotes && (
-                      <div className="text-sm text-blue-800">
-                        <p className="font-medium mb-1">What's New:</p>
+                      <div className="text-[12px] text-muted-foreground">
                         <MarkdownRenderer content={updateInfo.releaseNotes} />
                       </div>
-                    )}
-                  </div>
-                )}
-              </div>
+                    </div>
+                  )}
+                </SettingsPanelRow>
+              </SettingsPanel>
             </div>
 
-            <div className="border-t pt-8">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Dictation Hotkey</h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  Configure the key or key combination you press to start and stop voice dictation.
-                </p>
-              </div>
-              <HotkeyInput
-                value={dictationKey}
-                onChange={async (newHotkey) => {
-                  await registerHotkey(newHotkey);
-                }}
-                disabled={isHotkeyRegistering}
+            {/* Appearance */}
+            <div>
+              <SectionHeader title="Appearance" description="Control how OpenWhispr looks" />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow label="Theme" description="Choose light, dark, or match your system">
+                    <div className="inline-flex items-center gap-px p-0.5 bg-muted/60 dark:bg-surface-2 rounded-md">
+                      {(
+                        [
+                          { value: "light", icon: Sun, label: "Light" },
+                          { value: "dark", icon: Moon, label: "Dark" },
+                          { value: "auto", icon: Monitor, label: "Auto" },
+                        ] as const
+                      ).map((option) => {
+                        const Icon = option.icon;
+                        const isSelected = theme === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            onClick={() => setTheme(option.value)}
+                            className={`
+                              flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-[11px] font-medium
+                              transition-all duration-100
+                              ${
+                                isSelected
+                                  ? "bg-background dark:bg-surface-raised text-foreground shadow-sm"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }
+                            `}
+                          >
+                            <Icon className={`w-3 h-3 ${isSelected ? "text-primary" : ""}`} />
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Language */}
+            <div>
+              <SectionHeader
+                title="Language"
+                description="Set the language used for transcription"
               />
-
-              {!isUsingGnomeHotkeys && (
-                <div className="mt-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-3">
-                    Activation Mode
-                  </label>
-                  <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
-                </div>
-              )}
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Preferred language"
+                    description="Choose the language you speak for more accurate transcription"
+                  >
+                    <LanguageSelector
+                      value={preferredLanguage}
+                      onChange={(value) =>
+                        updateTranscriptionSettings({ preferredLanguage: value })
+                      }
+                    />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
             </div>
 
-            {/* Auto-start is only supported on macOS and Windows */}
-            {platform !== "linux" && (
-              <div className="border-t pt-8">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Startup</h3>
-                  <p className="text-sm text-gray-600 mb-6">
-                    Control how OpenWhispr starts when you log in.
-                  </p>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">Launch at Login</p>
-                    <p className="text-sm text-gray-600">
-                      Automatically start OpenWhispr when you log in to your computer
+            {/* Dictation Hotkey */}
+            <div>
+              <SectionHeader
+                title="Dictation Hotkey"
+                description="The key combination that starts and stops voice dictation"
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <HotkeyInput
+                    value={dictationKey}
+                    onChange={async (newHotkey) => {
+                      await registerHotkey(newHotkey);
+                    }}
+                    disabled={isHotkeyRegistering}
+                    validate={validateHotkeyForInput}
+                  />
+                </SettingsPanelRow>
+
+                {!isUsingGnomeHotkeys && (
+                  <SettingsPanelRow>
+                    <p className="text-[11px] font-medium text-muted-foreground/80 mb-2">
+                      Activation Mode
                     </p>
-                  </div>
-                  <button
-                    onClick={() => handleAutoStartChange(!autoStartEnabled)}
-                    disabled={autoStartLoading}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 ${
-                      autoStartEnabled ? "bg-indigo-600" : "bg-gray-200"
-                    } ${autoStartLoading ? "opacity-50 cursor-not-allowed" : ""}`}
-                  >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        autoStartEnabled ? "translate-x-6" : "translate-x-1"
-                      }`}
-                    />
-                  </button>
-                </div>
+                    <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+                  </SettingsPanelRow>
+                )}
+              </SettingsPanel>
+            </div>
+
+            {/* Startup */}
+            {platform !== "linux" && (
+              <div>
+                <SectionHeader title="Startup" />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Launch at login"
+                      description="Start OpenWhispr automatically when you log in"
+                    >
+                      <Toggle
+                        checked={autoStartEnabled}
+                        onChange={(checked: boolean) => handleAutoStartChange(checked)}
+                        disabled={autoStartLoading}
+                      />
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
               </div>
             )}
 
-            <div className="border-t pt-8">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Permissions</h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  Test and manage app permissions for microphone and accessibility.
-                </p>
-              </div>
-              <div className="space-y-3">
-                <Button
-                  onClick={permissionsHook.requestMicPermission}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Mic className="mr-2 h-4 w-4" />
-                  Test Microphone Permission
-                </Button>
-                <Button
-                  onClick={permissionsHook.testAccessibilityPermission}
-                  variant="outline"
-                  className="w-full"
-                >
-                  <Shield className="mr-2 h-4 w-4" />
-                  Test Accessibility Permission
-                </Button>
-                <Button
-                  onClick={resetAccessibilityPermissions}
-                  variant="secondary"
-                  className="w-full"
-                >
-                  <span className="mr-2">⚙️</span>
-                  Fix Permission Issues
-                </Button>
-                {!permissionsHook.micPermissionGranted && (
-                  <MicPermissionWarning
-                    error={permissionsHook.micPermissionError}
-                    onOpenSoundSettings={permissionsHook.openSoundInputSettings}
-                    onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
-                  />
-                )}
-              </div>
-            </div>
-
-            <div className="border-t pt-8">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">Microphone Input</h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  Choose which microphone to use for dictation. Enable "Prefer Built-in" to prevent
-                  audio interruptions when using Bluetooth headphones.
-                </p>
-              </div>
-              <MicrophoneSettings
-                preferBuiltInMic={preferBuiltInMic}
-                selectedMicDeviceId={selectedMicDeviceId}
-                onPreferBuiltInChange={setPreferBuiltInMic}
-                onDeviceSelect={setSelectedMicDeviceId}
+            {/* Microphone */}
+            <div>
+              <SectionHeader
+                title="Microphone"
+                description="Select which input device to use for dictation"
               />
-            </div>
-
-            <div className="border-t pt-8">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">About OpenWhispr</h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  OpenWhispr converts your speech to text using AI. Press your hotkey, speak, and
-                  we'll type what you said wherever your cursor is.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm mb-6">
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-indigo-600 rounded-lg flex items-center justify-center">
-                    <Command className="w-4 h-4 text-white" />
-                  </div>
-                  <p className="font-medium text-gray-800 mb-1">Default Hotkey</p>
-                  <p className="text-gray-600 font-mono text-xs">
-                    {formatHotkeyLabel(dictationKey)}
-                  </p>
-                </div>
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-emerald-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">🏷️</span>
-                  </div>
-                  <p className="font-medium text-gray-800 mb-1">Version</p>
-                  <p className="text-gray-600 text-xs">{currentVersion || "0.1.0"}</p>
-                </div>
-                <div className="text-center p-4 border border-gray-200 rounded-xl bg-white">
-                  <div className="w-8 h-8 mx-auto mb-2 bg-green-600 rounded-lg flex items-center justify-center">
-                    <span className="text-white text-sm">✓</span>
-                  </div>
-                  <p className="font-medium text-gray-800 mb-1">Status</p>
-                  <p className="text-green-600 text-xs font-medium">Active</p>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <Button
-                  onClick={() => {
-                    showConfirmDialog({
-                      title: "⚠️ DANGER: Cleanup App Data",
-                      description:
-                        "This will permanently delete ALL OpenWhispr data including:\n\n• Database and transcriptions\n• Local storage settings\n• Downloaded Whisper models\n• Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone. Are you sure?",
-                      onConfirm: () => {
-                        window.electronAPI
-                          ?.cleanupApp()
-                          .then(() => {
-                            showAlertDialog({
-                              title: "Cleanup Completed",
-                              description: "✅ Cleanup completed! All app data has been removed.",
-                            });
-                            setTimeout(() => {
-                              window.location.reload();
-                            }, 1000);
-                          })
-                          .catch((error) => {
-                            showAlertDialog({
-                              title: "Cleanup Failed",
-                              description: `❌ Cleanup failed: ${error.message}`,
-                            });
-                          });
-                      },
-                      variant: "destructive",
-                    });
-                  }}
-                  variant="outline"
-                  className="w-full text-red-600 border-red-300 hover:bg-red-50 hover:border-red-400"
-                >
-                  <span className="mr-2">🗑️</span>
-                  Clean Up All App Data
-                </Button>
-              </div>
-
-              <div className="space-y-3 mt-6 p-4 bg-rose-50 border border-rose-200 rounded-xl">
-                <h4 className="font-medium text-rose-900">Local Model Storage</h4>
-                <p className="text-sm text-rose-800">
-                  Remove all downloaded Whisper models from your cache directory to reclaim disk
-                  space. You can re-download any model later.
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => window.electronAPI?.openWhisperModelsFolder?.()}
-                    className="flex-1"
-                  >
-                    <FolderOpen className="mr-2 h-4 w-4" />
-                    Open Models Folder
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleRemoveModels}
-                    disabled={isRemovingModels}
-                    className="flex-1"
-                  >
-                    {isRemovingModels ? "Removing..." : "Remove All"}
-                  </Button>
-                </div>
-                <p className="text-xs text-rose-700">
-                  Current cache location: <code>{cachePathHint}</code>
-                </p>
-              </div>
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <MicrophoneSettings
+                    preferBuiltInMic={preferBuiltInMic}
+                    selectedMicDeviceId={selectedMicDeviceId}
+                    onPreferBuiltInChange={setPreferBuiltInMic}
+                    onDeviceSelect={setSelectedMicDeviceId}
+                  />
+                </SettingsPanelRow>
+              </SettingsPanel>
             </div>
           </div>
         );
 
       case "transcription":
         return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Speech to Text Processing
-              </h3>
-              <p className="text-sm text-gray-600 mb-4">
-                Choose a cloud provider for fast transcription or use local Whisper models for
-                complete privacy.
-              </p>
-            </div>
-
-            <TranscriptionModelPicker
-              selectedCloudProvider={cloudTranscriptionProvider}
-              onCloudProviderSelect={setCloudTranscriptionProvider}
-              selectedCloudModel={cloudTranscriptionModel}
-              onCloudModelSelect={setCloudTranscriptionModel}
-              selectedLocalModel={
-                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
-              }
-              onLocalModelSelect={(modelId) => {
-                if (localTranscriptionProvider === "nvidia") {
-                  setParakeetModel(modelId);
-                } else {
-                  setWhisperModel(modelId);
-                }
-              }}
-              selectedLocalProvider={localTranscriptionProvider}
-              onLocalProviderSelect={setLocalTranscriptionProvider}
-              useLocalWhisper={useLocalWhisper}
-              onModeChange={(isLocal) => {
-                setUseLocalWhisper(isLocal);
-                updateTranscriptionSettings({ useLocalWhisper: isLocal });
-              }}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
-              customTranscriptionApiKey={customTranscriptionApiKey}
-              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
-              variant="settings"
-            />
-          </div>
+          <TranscriptionSection
+            isSignedIn={isSignedIn ?? false}
+            cloudTranscriptionMode={cloudTranscriptionMode}
+            setCloudTranscriptionMode={setCloudTranscriptionMode}
+            useLocalWhisper={useLocalWhisper}
+            setUseLocalWhisper={setUseLocalWhisper}
+            updateTranscriptionSettings={updateTranscriptionSettings}
+            cloudTranscriptionProvider={cloudTranscriptionProvider}
+            setCloudTranscriptionProvider={setCloudTranscriptionProvider}
+            cloudTranscriptionModel={cloudTranscriptionModel}
+            setCloudTranscriptionModel={setCloudTranscriptionModel}
+            localTranscriptionProvider={localTranscriptionProvider}
+            setLocalTranscriptionProvider={setLocalTranscriptionProvider}
+            whisperModel={whisperModel}
+            setWhisperModel={setWhisperModel}
+            parakeetModel={parakeetModel}
+            setParakeetModel={setParakeetModel}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            mistralApiKey={mistralApiKey}
+            setMistralApiKey={setMistralApiKey}
+            customTranscriptionApiKey={customTranscriptionApiKey}
+            setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+            cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+            setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+            toast={toast}
+          />
         );
 
       case "dictionary":
         return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Custom Dictionary</h3>
-              <p className="text-sm text-gray-600 mb-6">
-                Add words, names, or technical terms that OpenWhispr should recognize during
-                transcription. These words are used as hints to improve accuracy.
-              </p>
-            </div>
+          <div className="space-y-5">
+            <SectionHeader
+              title="Custom Dictionary"
+              description="Add words, names, or technical terms to improve transcription accuracy"
+            />
 
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900">Add Words</h4>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Enter a word or phrase..."
-                  value={newDictionaryWord}
-                  onChange={(e) => setNewDictionaryWord(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      handleAddDictionaryWord();
-                    }
-                  }}
-                  className="flex-1"
-                />
-                <Button onClick={handleAddDictionaryWord} disabled={!newDictionaryWord.trim()}>
-                  Add
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500">
-                Press Enter or click Add to add the word to your dictionary.
-              </p>
-            </div>
-
-            {customDictionary.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="font-medium text-gray-900">
-                  Your Dictionary ({customDictionary.length} words)
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  {customDictionary.map((word) => (
-                    <span
-                      key={word}
-                      className="inline-flex items-center gap-1 px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm"
+            {/* Add Words */}
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <div className="space-y-2">
+                  <p className="text-[12px] font-medium text-foreground">Add a word or phrase</p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="e.g. OpenWhispr, Kubernetes, Dr. Martinez..."
+                      value={newDictionaryWord}
+                      onChange={(e) => setNewDictionaryWord(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddDictionaryWord();
+                        }
+                      }}
+                      className="flex-1 h-8 text-[12px]"
+                    />
+                    <Button
+                      onClick={handleAddDictionaryWord}
+                      disabled={!newDictionaryWord.trim()}
+                      size="sm"
+                      className="h-8"
                     >
-                      {word}
-                      <button
-                        onClick={() => handleRemoveDictionaryWord(word)}
-                        className="ml-1 text-indigo-600 hover:text-indigo-900 font-bold"
-                        title="Remove word"
-                      >
-                        ×
-                      </button>
-                    </span>
-                  ))}
+                      Add
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/50">Press Enter to add</p>
                 </div>
-              </div>
-            )}
+              </SettingsPanelRow>
+            </SettingsPanel>
 
-            <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl">
-              <h4 className="font-medium text-blue-900 mb-2">How it works</h4>
-              <p className="text-sm text-blue-800 mb-3">
-                Words in your custom dictionary are provided as context to the speech recognition
-                model. This helps improve accuracy for uncommon names, technical jargon, brand
-                names, or any words that are frequently misrecognized.
-              </p>
-              <p className="text-sm text-blue-800">
-                <strong>Tip:</strong> For difficult words, try adding context phrases like "The word
-                is Synty" alongside the word itself. Adding related terms (e.g., "Synty" and
-                "SyntyStudios") also helps the model understand the intended spelling.
-              </p>
+            {/* Word List */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[12px] font-medium text-foreground">
+                  Your words
+                  {customDictionary.length > 0 && (
+                    <span className="ml-1.5 text-muted-foreground/50 font-normal text-[11px]">
+                      {customDictionary.length}
+                    </span>
+                  )}
+                </p>
+                {customDictionary.length > 0 && (
+                  <button
+                    onClick={() => {
+                      showConfirmDialog({
+                        title: "Clear dictionary?",
+                        description:
+                          "This will remove all words from your custom dictionary. This action cannot be undone.",
+                        confirmText: "Clear All",
+                        variant: "destructive",
+                        onConfirm: () => setCustomDictionary([]),
+                      });
+                    }}
+                    className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
+                  >
+                    Clear all
+                  </button>
+                )}
+              </div>
+
+              {customDictionary.length > 0 ? (
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex flex-wrap gap-1">
+                      {customDictionary.map((word) => (
+                        <span
+                          key={word}
+                          className="group inline-flex items-center gap-0.5 pl-2 pr-1 py-0.5 bg-primary/5 dark:bg-primary/10 text-foreground rounded-[5px] text-[11px] border border-border/30 dark:border-border-subtle transition-all hover:border-destructive/40 hover:bg-destructive/5"
+                        >
+                          {word}
+                          <button
+                            onClick={() => handleRemoveDictionaryWord(word)}
+                            className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
+                            title="Remove word"
+                          >
+                            <svg
+                              width="9"
+                              height="9"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                            >
+                              <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border/40 dark:border-border-subtle py-6 flex flex-col items-center justify-center text-center">
+                  <p className="text-[11px] text-muted-foreground/50">No words added yet</p>
+                  <p className="text-[10px] text-muted-foreground/40 mt-0.5">
+                    Words you add will appear here
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* How it works */}
+            <div>
+              <SectionHeader title="How it works" />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">
+                    Words in your dictionary are provided as context hints to the speech recognition
+                    model. This helps it correctly identify uncommon names, technical jargon, brand
+                    names, or anything that's frequently misrecognized.
+                  </p>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground">Tip</span> — For difficult words,
+                    add context phrases like "The word is Synty" alongside the word itself. Adding
+                    related terms (e.g. "Synty" and "SyntyStudios") also helps the model understand
+                    the intended spelling.
+                  </p>
+                </SettingsPanelRow>
+              </SettingsPanel>
             </div>
           </div>
         );
 
       case "aiModels":
         return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">AI Text Enhancement</h3>
-              <p className="text-sm text-gray-600 mb-6">
-                Configure how AI models clean up and format your transcriptions. This handles
-                commands like "scratch that", creates proper lists, and fixes obvious errors while
-                preserving your natural tone.
-              </p>
-            </div>
-
-            <ReasoningModelSelector
-              useReasoningModel={useReasoningModel}
-              setUseReasoningModel={(value) => {
-                setUseReasoningModel(value);
-                updateReasoningSettings({ useReasoningModel: value });
-              }}
-              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
-              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
-              reasoningModel={reasoningModel}
-              setReasoningModel={setReasoningModel}
-              localReasoningProvider={localReasoningProvider}
-              setLocalReasoningProvider={setLocalReasoningProvider}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              anthropicApiKey={anthropicApiKey}
-              setAnthropicApiKey={setAnthropicApiKey}
-              geminiApiKey={geminiApiKey}
-              setGeminiApiKey={setGeminiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
-              customReasoningApiKey={customReasoningApiKey}
-              setCustomReasoningApiKey={setCustomReasoningApiKey}
-              showAlertDialog={showAlertDialog}
-            />
-          </div>
+          <AiModelsSection
+            isSignedIn={isSignedIn ?? false}
+            cloudReasoningMode={cloudReasoningMode}
+            setCloudReasoningMode={setCloudReasoningMode}
+            useReasoningModel={useReasoningModel}
+            setUseReasoningModel={(value) => {
+              setUseReasoningModel(value);
+              updateReasoningSettings({ useReasoningModel: value });
+            }}
+            reasoningModel={reasoningModel}
+            setReasoningModel={setReasoningModel}
+            reasoningProvider={reasoningProvider}
+            setReasoningProvider={setReasoningProvider}
+            cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+            setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            anthropicApiKey={anthropicApiKey}
+            setAnthropicApiKey={setAnthropicApiKey}
+            geminiApiKey={geminiApiKey}
+            setGeminiApiKey={setGeminiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            customReasoningApiKey={customReasoningApiKey}
+            setCustomReasoningApiKey={setCustomReasoningApiKey}
+            showAlertDialog={showAlertDialog}
+            toast={toast}
+          />
         );
 
       case "agentConfig":
         return (
-          <div className="space-y-6">
+          <div className="space-y-5">
+            <SectionHeader
+              title="Voice Agent"
+              description="Name your AI assistant so you can address it directly during dictation"
+            />
+
+            {/* Agent Name */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Agent Configuration</h3>
-              <p className="text-sm text-gray-600 mb-6">
-                Customize your AI assistant's name and behavior to make interactions more personal
-                and effective.
-              </p>
+              <p className="text-[13px] font-medium text-foreground mb-3">Agent Name</p>
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="e.g. Jarvis, Nova, Atlas..."
+                        value={agentName}
+                        onChange={(e) => setAgentName(e.target.value)}
+                        className="flex-1 text-center text-base font-mono"
+                      />
+                      <Button
+                        onClick={() => {
+                          setAgentName(agentName.trim());
+                          showAlertDialog({
+                            title: "Agent Name Updated",
+                            description: `Your agent is now named "${agentName.trim()}". Address it by saying "Hey ${agentName.trim()}" followed by your instructions.`,
+                          });
+                        }}
+                        disabled={!agentName.trim()}
+                        size="sm"
+                      >
+                        Save
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/60">
+                      Pick something short and natural to say aloud
+                    </p>
+                  </div>
+                </SettingsPanelRow>
+              </SettingsPanel>
             </div>
 
-            <div className="space-y-4 p-4 bg-linear-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-xl">
-              <h4 className="font-medium text-purple-900 mb-3">💡 How to use agent names:</h4>
-              <ul className="text-sm text-purple-800 space-y-2">
-                <li>• Say "Hey {agentName}, write a formal email" for specific instructions</li>
-                <li>
-                  • Use "Hey {agentName}, format this as a list" for text enhancement commands
-                </li>
-                <li>
-                  • The agent will recognize when you're addressing it directly vs. dictating
-                  content
-                </li>
-                <li>
-                  • Makes conversations feel more natural and helps distinguish commands from
-                  dictation
-                </li>
-              </ul>
+            {/* How it works */}
+            <div>
+              <SectionHeader title="How it works" />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">
+                    When you say{" "}
+                    <span className="font-medium text-foreground">"Hey {agentName}"</span> followed
+                    by an instruction, the AI switches from cleanup mode to instruction mode.
+                    Without the trigger phrase, it simply cleans up your dictation.
+                  </p>
+                </SettingsPanelRow>
+              </SettingsPanel>
             </div>
 
-            <div className="space-y-4 p-4 bg-gray-50 border border-gray-200 rounded-xl">
-              <h4 className="font-medium text-gray-900">Current Agent Name</h4>
-              <div className="flex gap-3">
-                <Input
-                  placeholder="e.g., Assistant, Jarvis, Alex..."
-                  value={agentName}
-                  onChange={(e) => setAgentName(e.target.value)}
-                  className="flex-1 text-center text-lg font-mono"
-                />
-                <Button
-                  onClick={() => {
-                    setAgentName(agentName.trim());
-                    showAlertDialog({
-                      title: "Agent Name Updated",
-                      description: `Your agent is now named "${agentName.trim()}". You can address it by saying "Hey ${agentName.trim()}" followed by your instructions.`,
-                    });
-                  }}
-                  disabled={!agentName.trim()}
-                >
-                  Save
-                </Button>
-              </div>
-              <p className="text-xs text-gray-600 mt-2">
-                Choose a name that feels natural to say and remember
-              </p>
-            </div>
-
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-medium text-blue-900 mb-2">🎯 Example Usage:</h4>
-              <div className="text-sm text-blue-800 space-y-1">
-                <p>• "Hey {agentName}, write an email to my team about the meeting"</p>
-                <p>• "Hey {agentName}, make this more professional" (after dictating text)</p>
-                <p>• "Hey {agentName}, convert this to bullet points"</p>
-                <p>• Regular dictation: "This is just normal text" (no agent name needed)</p>
-              </div>
+            {/* Examples */}
+            <div>
+              <SectionHeader title="Examples" />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <div className="space-y-2.5">
+                    {[
+                      {
+                        input: `Hey ${agentName}, write a formal email about the budget`,
+                        mode: "Instruction",
+                      },
+                      {
+                        input: `Hey ${agentName}, make this more professional`,
+                        mode: "Instruction",
+                      },
+                      {
+                        input: `Hey ${agentName}, convert this to bullet points`,
+                        mode: "Instruction",
+                      },
+                      { input: "We should schedule a meeting for next week", mode: "Cleanup" },
+                    ].map((example, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span
+                          className={`shrink-0 mt-0.5 text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded ${
+                            example.mode === "Instruction"
+                              ? "bg-primary/10 text-primary dark:bg-primary/15"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {example.mode}
+                        </span>
+                        <p className="text-[12px] text-muted-foreground leading-relaxed">
+                          "{example.input}"
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </SettingsPanelRow>
+              </SettingsPanel>
             </div>
           </div>
         );
 
       case "prompts":
         return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">Prompt Studio</h3>
-              <p className="text-sm text-gray-600 mb-6">
-                OpenWhispr uses a single unified system prompt that handles both text cleanup and
-                instruction detection. View, customize, and test the prompt that powers your AI
-                assistant.
-              </p>
-            </div>
+          <div className="space-y-5">
+            <SectionHeader
+              title="Prompt Studio"
+              description="View, customize, and test the unified system prompt that powers text cleanup and instruction detection"
+            />
 
             <PromptStudio />
           </div>
         );
 
+      case "privacy":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">Privacy</h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                Control what data leaves your device. Everything is off by default.
+              </p>
+            </div>
+
+            {isSignedIn && (
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Cloud backup"
+                    description="Save your transcriptions to the cloud so you never lose them."
+                  >
+                    <Toggle checked={cloudBackupEnabled} onChange={setCloudBackupEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            )}
+
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <SettingsRow
+                  label="Usage analytics"
+                  description="Help us improve OpenWhispr by sharing anonymous performance metrics. We never send transcription content — only timing and error data."
+                >
+                  <Toggle checked={telemetryEnabled} onChange={setTelemetryEnabled} />
+                </SettingsRow>
+              </SettingsPanelRow>
+            </SettingsPanel>
+          </div>
+        );
+
+      case "permissions":
+        return (
+          <div className="space-y-5">
+            <SectionHeader
+              title="Permissions"
+              description="Test and manage system permissions required for OpenWhispr to function correctly"
+            />
+
+            {/* Permission Cards - matching onboarding style */}
+            <div className="space-y-3">
+              <PermissionCard
+                icon={Mic}
+                title="Microphone"
+                description="Required for voice recording and dictation"
+                granted={permissionsHook.micPermissionGranted}
+                onRequest={permissionsHook.requestMicPermission}
+                buttonText="Test"
+                onOpenSettings={permissionsHook.openMicPrivacySettings}
+              />
+
+              {platform === "darwin" && (
+                <PermissionCard
+                  icon={Shield}
+                  title="Accessibility"
+                  description="Required for auto-paste to work after transcription"
+                  granted={permissionsHook.accessibilityPermissionGranted}
+                  onRequest={permissionsHook.testAccessibilityPermission}
+                  buttonText="Test & Grant"
+                  onOpenSettings={permissionsHook.openAccessibilitySettings}
+                />
+              )}
+            </div>
+
+            {/* Error state for microphone */}
+            {!permissionsHook.micPermissionGranted && permissionsHook.micPermissionError && (
+              <MicPermissionWarning
+                error={permissionsHook.micPermissionError}
+                onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+              />
+            )}
+
+            {/* Linux paste tools info */}
+            {platform === "linux" &&
+              permissionsHook.pasteToolsInfo &&
+              !permissionsHook.pasteToolsInfo.available && (
+                <PasteToolsInfo
+                  pasteToolsInfo={permissionsHook.pasteToolsInfo}
+                  isChecking={permissionsHook.isCheckingPasteTools}
+                  onCheck={permissionsHook.checkPasteToolsAvailability}
+                />
+              )}
+
+            {/* Troubleshooting section for macOS */}
+            {platform === "darwin" && (
+              <div>
+                <p className="text-[13px] font-medium text-foreground mb-3">Troubleshooting</p>
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Reset accessibility permissions"
+                      description="Fix issues after reinstalling or rebuilding the app by removing and re-adding OpenWhispr in System Settings"
+                    >
+                      <Button
+                        onClick={resetAccessibilityPermissions}
+                        variant="ghost"
+                        size="sm"
+                        className="text-foreground/70 hover:text-foreground"
+                      >
+                        Troubleshoot
+                      </Button>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </div>
+            )}
+          </div>
+        );
+
       case "developer":
-        return <DeveloperSection />;
+        return (
+          <div className="space-y-6">
+            <DeveloperSection />
+
+            {/* Data Management — moved from General */}
+            <div className="border-t border-border/40 pt-8">
+              <SectionHeader
+                title="Data Management"
+                description="Manage cached models and app data"
+              />
+
+              <div className="space-y-4">
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow label="Model cache" description={cachePathHint}>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => window.electronAPI?.openWhisperModelsFolder?.()}
+                        >
+                          <FolderOpen className="mr-1.5 h-3.5 w-3.5" />
+                          Open
+                        </Button>
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          onClick={handleRemoveModels}
+                          disabled={isRemovingModels}
+                        >
+                          {isRemovingModels ? "Removing..." : "Clear Cache"}
+                        </Button>
+                      </div>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label="Reset app data"
+                      description="Permanently delete all settings, transcriptions, and cached data"
+                    >
+                      <Button
+                        onClick={() => {
+                          showConfirmDialog({
+                            title: "Reset All App Data",
+                            description:
+                              "This will permanently delete ALL OpenWhispr data including:\n\n- Database and transcriptions\n- Local storage settings\n- Downloaded models\n- Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone.",
+                            onConfirm: () => {
+                              window.electronAPI
+                                ?.cleanupApp()
+                                .then(() => {
+                                  showAlertDialog({
+                                    title: "Reset Complete",
+                                    description:
+                                      "All app data has been removed. The app will reload.",
+                                  });
+                                  setTimeout(() => {
+                                    window.location.reload();
+                                  }, 1000);
+                                })
+                                .catch((error) => {
+                                  showAlertDialog({
+                                    title: "Reset Failed",
+                                    description: `Failed to reset: ${error.message}`,
+                                  });
+                                });
+                            },
+                            variant: "destructive",
+                            confirmText: "Delete Everything",
+                          });
+                        }}
+                        variant="outline"
+                        size="sm"
+                        className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive"
+                      >
+                        Reset
+                      </Button>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </div>
+            </div>
+          </div>
+        );
 
       default:
         return null;

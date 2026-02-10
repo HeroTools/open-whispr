@@ -1,10 +1,15 @@
-const { app, screen, BrowserWindow, dialog } = require("electron");
+const { app, screen, BrowserWindow, shell, dialog } = require("electron");
 const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
 const { DEV_SERVER_PORT } = DevServerManager;
-const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
+const {
+  MAIN_WINDOW_CONFIG,
+  CONTROL_PANEL_CONFIG,
+  WINDOW_SIZES,
+  WindowPositionUtil,
+} = require("./windowConfig");
 
 class WindowManager {
   constructor() {
@@ -17,6 +22,8 @@ class WindowManager {
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
     this.windowsPushToTalkAvailable = false;
+    this.macCompoundPushState = null;
+    this._cachedActivationMode = "tap";
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -94,6 +101,36 @@ class WindowManager {
     this.isMainWindowInteractive = shouldCapture;
   }
 
+  resizeMainWindow(sizeKey) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return { success: false, message: "Window not available" };
+    }
+
+    const newSize = WINDOW_SIZES[sizeKey] || WINDOW_SIZES.BASE;
+    const currentBounds = this.mainWindow.getBounds();
+
+    const bottomRightX = currentBounds.x + currentBounds.width;
+    const bottomRightY = currentBounds.y + currentBounds.height;
+
+    const display = screen.getDisplayNearestPoint({ x: bottomRightX, y: bottomRightY });
+    const workArea = display.workArea || display.bounds;
+
+    let newX = bottomRightX - newSize.width;
+    let newY = bottomRightY - newSize.height;
+
+    newX = Math.max(workArea.x, Math.min(newX, workArea.x + workArea.width - newSize.width));
+    newY = Math.max(workArea.y, Math.min(newY, workArea.y + workArea.height - newSize.height));
+
+    this.mainWindow.setBounds({
+      x: newX,
+      y: newY,
+      width: newSize.width,
+      height: newSize.height,
+    });
+
+    return { success: true, bounds: { x: newX, y: newY, ...newSize } };
+  }
+
   /**
    * Load content into a BrowserWindow, handling both dev server and production file loading.
    * @param {BrowserWindow} window - The window to load content into
@@ -133,9 +170,22 @@ class WindowManager {
         return;
       }
 
+      const activationMode = await this.getActivationMode();
+      const currentHotkey = this.hotkeyManager.getCurrentHotkey?.();
+
+      if (
+        process.platform === "darwin" &&
+        activationMode === "push" &&
+        currentHotkey &&
+        currentHotkey !== "GLOBE" &&
+        currentHotkey.includes("+")
+      ) {
+        this.startMacCompoundPushToTalk(currentHotkey);
+        return;
+      }
+
       // Windows push mode: defer to windowsKeyManager if available, else fall through to toggle
       if (process.platform === "win32" && this.windowsPushToTalkAvailable) {
-        const activationMode = await this.getActivationMode();
         if (activationMode === "push") {
           return;
         }
@@ -152,6 +202,133 @@ class WindowManager {
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
+  }
+
+  startMacCompoundPushToTalk(hotkey) {
+    if (this.macCompoundPushState?.active) {
+      return;
+    }
+
+    const requiredModifiers = this.getMacRequiredModifiers(hotkey);
+    if (requiredModifiers.size === 0) {
+      return;
+    }
+
+    const MIN_HOLD_DURATION_MS = 150;
+    const MAX_PUSH_DURATION_MS = 300000; // 5 minutes max recording
+    const downTime = Date.now();
+
+    this.showDictationPanel();
+
+    // Set up safety timeout
+    const safetyTimeoutId = setTimeout(() => {
+      if (this.macCompoundPushState?.active) {
+        console.warn("[WindowManager] Compound PTT safety timeout triggered - stopping recording");
+        this.forceStopMacCompoundPush("timeout");
+      }
+    }, MAX_PUSH_DURATION_MS);
+
+    this.macCompoundPushState = {
+      active: true,
+      downTime,
+      isRecording: false,
+      requiredModifiers,
+      safetyTimeoutId,
+    };
+
+    setTimeout(() => {
+      if (!this.macCompoundPushState || this.macCompoundPushState.downTime !== downTime) {
+        return;
+      }
+
+      if (!this.macCompoundPushState.isRecording) {
+        this.macCompoundPushState.isRecording = true;
+        this.sendStartDictation();
+      }
+    }, MIN_HOLD_DURATION_MS);
+  }
+
+  handleMacPushModifierUp(modifier) {
+    if (!this.macCompoundPushState?.active) {
+      return;
+    }
+
+    if (!this.macCompoundPushState.requiredModifiers.has(modifier)) {
+      return;
+    }
+
+    // Clear safety timeout
+    if (this.macCompoundPushState.safetyTimeoutId) {
+      clearTimeout(this.macCompoundPushState.safetyTimeoutId);
+    }
+
+    const wasRecording = this.macCompoundPushState.isRecording;
+    this.macCompoundPushState = null;
+
+    if (wasRecording) {
+      this.sendStopDictation();
+    } else {
+      this.hideDictationPanel();
+    }
+  }
+
+  forceStopMacCompoundPush(reason = "manual") {
+    if (!this.macCompoundPushState) {
+      return;
+    }
+
+    // Clear safety timeout
+    if (this.macCompoundPushState.safetyTimeoutId) {
+      clearTimeout(this.macCompoundPushState.safetyTimeoutId);
+    }
+
+    const wasRecording = this.macCompoundPushState.isRecording;
+    this.macCompoundPushState = null;
+
+    if (wasRecording) {
+      this.sendStopDictation();
+    }
+    this.hideDictationPanel();
+
+    // Notify renderer about forced stop
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send("compound-ptt-force-stopped", { reason });
+    }
+  }
+
+  getMacRequiredModifiers(hotkey) {
+    const required = new Set();
+    const parts = hotkey.split("+").map((part) => part.trim());
+
+    for (const part of parts) {
+      switch (part) {
+        case "Command":
+        case "Cmd":
+        case "CommandOrControl":
+        case "Super":
+        case "Meta":
+          required.add("command");
+          break;
+        case "Control":
+        case "Ctrl":
+          required.add("control");
+          break;
+        case "Alt":
+        case "Option":
+          required.add("option");
+          break;
+        case "Shift":
+          required.add("shift");
+          break;
+        case "Fn":
+          required.add("fn");
+          break;
+        default:
+          break;
+      }
+    }
+
+    return required;
   }
 
   sendStartDictation() {
@@ -175,18 +352,12 @@ class WindowManager {
     }
   }
 
-  async getActivationMode() {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-      return "tap";
-    }
-    try {
-      const mode = await this.mainWindow.webContents.executeJavaScript(
-        `localStorage.getItem("activationMode") || "tap"`
-      );
-      return mode === "push" ? "push" : "tap";
-    } catch {
-      return "tap";
-    }
+  getActivationMode() {
+    return this._cachedActivationMode;
+  }
+
+  setActivationModeCache(mode) {
+    this._cachedActivationMode = mode === "push" ? "push" : "tap";
   }
 
   setHotkeyListeningMode(enabled) {
@@ -213,6 +384,17 @@ class WindowManager {
     return await this.dragManager.stopWindowDrag();
   }
 
+  openExternalUrl(url, showError = true) {
+    shell.openExternal(url).catch((error) => {
+      if (showError) {
+        dialog.showErrorBox(
+          "Unable to Open Link",
+          `Failed to open the link in your browser:\n${url}\n\nError: ${error.message}`
+        );
+      }
+    });
+  }
+
   async createControlPanelWindow() {
     if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
       if (this.controlPanelWindow.isMinimized()) {
@@ -227,12 +409,39 @@ class WindowManager {
 
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
+    this.controlPanelWindow.webContents.on("will-navigate", (event, url) => {
+      const appUrl = DevServerManager.getAppUrl(true);
+      const controlPanelUrl = appUrl.startsWith("http") ? appUrl : `file://${appUrl}`;
+
+      if (
+        url.startsWith(controlPanelUrl) ||
+        url.startsWith("file://") ||
+        url.startsWith("devtools://")
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      this.openExternalUrl(url);
+    });
+
+    this.controlPanelWindow.webContents.setWindowOpenHandler(({ url }) => {
+      this.openExternalUrl(url);
+      return { action: "deny" };
+    });
+
+    this.controlPanelWindow.webContents.on("did-create-window", (childWindow, details) => {
+      childWindow.close();
+      if (details.url && !details.url.startsWith("devtools://")) {
+        this.openExternalUrl(details.url, false);
+      }
+    });
+
     const visibilityTimer = setTimeout(() => {
       if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) {
         return;
       }
       if (!this.controlPanelWindow.isVisible()) {
-        console.warn("Control panel did not become visible in time; forcing show");
         this.controlPanelWindow.show();
         this.controlPanelWindow.focus();
       }
@@ -283,7 +492,6 @@ class WindowManager {
           return;
         }
         clearVisibilityTimer();
-        console.error("Failed to load control panel:", errorCode, errorDescription, validatedURL);
         if (process.env.NODE_ENV !== "development") {
           this.showLoadFailureDialog("Control panel", errorCode, errorDescription, validatedURL);
         }

@@ -5,6 +5,110 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+## [1.4.4] - 2026-02-08
+
+### Fixed
+- **AI Enhancement CTA Persistence**: Dismissing the "Enable AI Enhancement" banner now persists to localStorage so it stays hidden across sessions
+
+### Changed
+- **Code Cleanup**: Removed excess comments and section dividers in ControlPanel
+
+## [1.4.3] - 2026-02-08
+
+### Added
+- **Mistral Voxtral Transcription**: Added Mistral as a cloud transcription provider with Voxtral Mini model and custom dictionary support via context_bias
+- **TypeScript Compilation**: Added TypeScript as an explicit dev dependency with project-level `tsconfig.json`
+
+### Fixed
+- **Linux Wayland Clipboard**: Persistent clipboard ownership on Wayland so Ctrl+V works reliably after transcription
+- **Linux Window Flickering**: Fixed transparent window flickering on Wayland and X11 compositors
+- **Windows Modifier-Only Hotkeys**: Support modifier-only hotkeys on Windows via native keyboard hook
+- **Update Installation**: Resolved quitAndInstall hang by removing close listeners that block window shutdown during updates
+- **Custom System Prompts**: Pass custom system prompt to local and Anthropic BYOK reasoning
+- **Audio Cue Audibility**: Improved dictation start/stop audio cue volume
+- **Language Selector**: Fixed dropdown positioning and sizing inside settings modal
+- **Type Safety**: Tightened Electron IPC callback return types, model picker styles, toast variant types, and event handler signatures across the codebase
+
+### Changed
+- **Code Cleanup**: Removed excess comments, section dividers, and redundant JSDoc across components, hooks, and utilities
+
+## [1.4.2] - 2026-02-07
+
+### Fixed
+- **AssemblyAI Streaming Reliability**: Fixed real-time WebSocket going silent after idle periods by adding keep-alive pings, readyState validation, re-warm recovery, and connection death handling
+
+## [1.4.1] - 2026-02-07
+
+### Added
+- **Runtime .env Configuration**: Environment variables now reload at runtime without requiring app restart
+- **Settings Retention on Pro**: Pro subscribers retain their settings when managing their subscription
+
+### Fixed
+- **macOS Microphone Permission**: Resolved hardened-runtime mic permission prompt by routing through main-process IPC and unifying API key cache invalidation with event-based AudioManager sync
+- **AudioWorklet ASAR Loading**: Inlined AudioWorklet as blob URL to fix module loading failure in packaged ASAR builds
+- **Google OAuth Flow**: OAuth now opens in the system browser with deep link callback instead of navigating the Electron window
+- **Auth Security Hardening**: Safe JSON parsing, guarded URL constructor, and fixed error information leaks in auth code
+- **Deep Link Focus**: Control panel now correctly receives focus when opened via deep link
+- **Neon Auth Electron Compatibility**: Routed auth flows through API proxy and fixed Origin header rejection for desktop app
+- **Billing Error Visibility**: Checkout and billing errors now surface as toast notifications instead of failing silently
+- **Hotkey Persistence**: Added file-based hotkey storage for reliable startup persistence (#181)
+- **Email Verification**: Disabled Neon Auth email verification step for smoother onboarding
+
+### Changed
+- **Build Optimization**: Binary dependencies are now cached during build for faster CI
+- **UI Polish**: Fixed scrollbar styling, provider button styling, and voice recorder icon fill
+
+## [1.4.0] - 2026-02-06
+
+### Added
+- **OpenWhispr Cloud**: Cloud-native transcription service — sign in and transcribe without managing API keys
+  - Google OAuth and email/password authentication via Neon Auth
+  - Email verification flow with polling and resend support
+  - Password reset via email magic links
+- **Subscription & Billing**: Free and Pro plans with Stripe-powered payments
+  - Free plan with rolling weekly word limits (2,000 words/week)
+  - Pro plan with unlimited transcriptions
+  - 7-day free trial for new accounts with countdown display
+  - In-app upgrade prompts when approaching or reaching usage limits
+  - Stripe billing portal access for Pro subscribers
+- **Usage Tracking**: Real-time usage display with progress bar, color-coded thresholds, and next billing date
+- **Account Section in Settings**: Profile display, plan status badge, usage bar, billing management, and sign out
+- **Upgrade Prompt Dialog**: When usage limit is reached, offers three paths — upgrade to Pro, bring your own key, or switch to local
+- **Cancel Processing Button**: Cancel ongoing transcription processing mid-flight
+- **Dynamic Window Resizing**: Window automatically resizes based on command menu and toast visibility
+- **Dark Mode Icon Inversion**: Monochrome provider icons now automatically invert in dark mode for better visibility
+
+### Changed
+- **Onboarding Redesign**: Auth-first onboarding flow
+  - Signed-in users get a streamlined 3-step flow (Welcome → Setup → Activation)
+  - Non-signed-in users get a 4-step flow with transcription mode selection
+  - Permissions merged into Setup step for signed-in users
+- **Transcription Mode Architecture**: Unified mode selection across OpenWhispr Cloud, Bring Your Own Key (BYOK), and Local
+  - Signed-in users default to OpenWhispr Cloud
+  - Non-signed-in users choose between BYOK and Local
+- **Design System Overhaul**: Complete refactor of styling to use design tokens throughout the codebase
+  - Button component now uses `text-foreground`, `bg-muted`, `border-border` instead of hardcoded hex values
+  - Removed hardcoded classes and inline styles across components
+  - Improved button and badge consistency
+- **Settings UI Redesign**: Overhauled all settings pages with unified panel system, redesigned sidebar, and extracted permissions section
+- **Dark Mode Polish**: Premium button styling, glass morphism toasts, and streamlined visuals
+- **App Channel Isolation**: Development, staging, and production channels now use isolated user data directories
+
+### Fixed
+- **Light Mode UI Visibility**: Fixed multiple UI elements that were invisible or hard to see in light mode:
+  - Settings gear icon in permission cards now uses `text-foreground`
+  - Troubleshoot button uses proper foreground color
+  - Reset button in developer settings now correctly shows destructive color
+  - Settings and Help icons in the toolbar are now properly visible
+  - Check for Updates button now renders correctly in light mode
+- **Provider Tab Flashing**: Resolved TranscriptionModelPicker tab flashing by extracting ModeToggle component and syncing internal state with props
+- **Local Reasoning Model Persistence**: Fixed local reasoning model selection not persisting correctly
+- **Parakeet Model Status**: Added dedicated IPC channel for Parakeet model status checks
+- **Groq Qwen3 Models**: Removed thinking tokens from Qwen3 models on Groq provider
+- **OAuth Session Grace Period**: Automatic session refresh with exponential backoff retry during initial OAuth establishment
+
 ## [1.3.3] - 2026-01-28
 
 ### Added

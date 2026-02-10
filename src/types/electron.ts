@@ -169,12 +169,12 @@ declare global {
   interface Window {
     electronAPI: {
       // Basic window operations
-      pasteText: (text: string) => Promise<void>;
+      pasteText: (text: string, options?: { fromStreaming?: boolean }) => Promise<void>;
       hideWindow: () => Promise<void>;
       showDictationPanel: () => Promise<void>;
-      onToggleDictation: (callback: () => void) => (() => void) | void;
-      onStartDictation?: (callback: () => void) => (() => void) | void;
-      onStopDictation?: (callback: () => void) => (() => void) | void;
+      onToggleDictation: (callback: () => void) => () => void;
+      onStartDictation?: (callback: () => void) => () => void;
+      onStopDictation?: (callback: () => void) => () => void;
 
       // Database operations
       saveTranscription: (text: string) => Promise<{ id: number; success: boolean }>;
@@ -187,11 +187,9 @@ declare global {
       setDictionary: (words: string[]) => Promise<{ success: boolean }>;
 
       // Database event listeners
-      onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => (() => void) | void;
-      onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => (() => void) | void;
-      onTranscriptionsCleared?: (
-        callback: (payload: { cleared: number }) => void
-      ) => (() => void) | void;
+      onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => () => void;
+      onTranscriptionDeleted?: (callback: (payload: { id: number }) => void) => () => void;
+      onTranscriptionsCleared?: (callback: (payload: { cleared: number }) => void) => () => void;
 
       // API key management
       getOpenAIKey: () => Promise<string>;
@@ -215,7 +213,7 @@ declare global {
       startYdotoold?: () => Promise<{ success: boolean; error?: string; socketPath?: string }>;
 
       // Audio
-      onNoAudioDetected: (callback: (event: any, data?: any) => void) => (() => void) | void;
+      onNoAudioDetected: (callback: (event: any, data?: any) => void) => () => void;
 
       // Whisper operations (whisper.cpp)
       transcribeLocalWhisper: (audioBlob: Blob | ArrayBuffer, options?: any) => Promise<any>;
@@ -223,7 +221,7 @@ declare global {
       downloadWhisperModel: (modelName: string) => Promise<WhisperModelResult>;
       onWhisperDownloadProgress: (
         callback: (event: any, data: WhisperDownloadProgressData) => void
-      ) => (() => void) | void;
+      ) => () => void;
       checkModelStatus: (modelName: string) => Promise<WhisperModelResult>;
       listWhisperModels: () => Promise<WhisperModelsListResult>;
       deleteWhisperModel: (modelName: string) => Promise<WhisperModelDeleteResult>;
@@ -249,7 +247,7 @@ declare global {
       downloadParakeetModel: (modelName: string) => Promise<ParakeetModelResult>;
       onParakeetDownloadProgress: (
         callback: (event: any, data: ParakeetDownloadProgressData) => void
-      ) => (() => void) | void;
+      ) => () => void;
       checkParakeetModelStatus: (modelName: string) => Promise<ParakeetModelResult>;
       listParakeetModels: () => Promise<ParakeetModelsListResult>;
       deleteParakeetModel: (modelName: string) => Promise<ParakeetModelDeleteResult>;
@@ -275,7 +273,7 @@ declare global {
       modelDeleteAll: () => Promise<{ success: boolean; error?: string; code?: string }>;
       modelCheckRuntime: () => Promise<boolean>;
       modelCancelDownload: (modelId: string) => Promise<{ success: boolean; error?: string }>;
-      onModelDownloadProgress: (callback: (event: any, data: any) => void) => (() => void) | void;
+      onModelDownloadProgress: (callback: (event: any, data: any) => void) => () => void;
 
       // Local reasoning
       processLocalReasoning: (
@@ -322,16 +320,13 @@ declare global {
       getUpdateInfo: () => Promise<UpdateInfoResult | null>;
 
       // Update event listeners
-      onUpdateAvailable: (callback: (event: any, info: any) => void) => (() => void) | void;
-      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => (() => void) | void;
-      onUpdateDownloaded: (callback: (event: any, info: any) => void) => (() => void) | void;
-      onUpdateDownloadProgress: (
-        callback: (event: any, progressObj: any) => void
-      ) => (() => void) | void;
-      onUpdateError: (callback: (event: any, error: any) => void) => (() => void) | void;
+      onUpdateAvailable: (callback: (event: any, info: any) => void) => () => void;
+      onUpdateNotAvailable: (callback: (event: any, info: any) => void) => () => void;
+      onUpdateDownloaded: (callback: (event: any, info: any) => void) => () => void;
+      onUpdateDownloadProgress: (callback: (event: any, progressObj: any) => void) => () => void;
+      onUpdateError: (callback: (event: any, error: any) => void) => () => void;
 
-      // External URL operations
-      openExternal: (url: string) => Promise<{ success: boolean; error?: string } | void>;
+      openExternal: (url: string) => Promise<{ success: boolean; error?: string }>;
 
       // Hotkey management
       updateHotkey: (key: string) => Promise<{ success: boolean; message: string }>;
@@ -343,6 +338,7 @@ declare global {
 
       // Globe key listener for hotkey capture (macOS only)
       onGlobeKeyPressed?: (callback: () => void) => () => void;
+      onGlobeKeyReleased?: (callback: () => void) => () => void;
 
       // Hotkey registration events
       onHotkeyFallbackUsed?: (
@@ -359,6 +355,30 @@ declare global {
       // Groq API key management
       getGroqKey: () => Promise<string | null>;
       saveGroqKey: (key: string) => Promise<void>;
+
+      // Mistral API key management
+      getMistralKey: () => Promise<string | null>;
+      saveMistralKey: (key: string) => Promise<void>;
+      proxyMistralTranscription: (data: {
+        audioBuffer: ArrayBuffer;
+        model?: string;
+        language?: string;
+        contextBias?: string[];
+      }) => Promise<{ text: string }>;
+
+      // Custom endpoint API keys
+      getCustomTranscriptionKey?: () => Promise<string | null>;
+      saveCustomTranscriptionKey?: (key: string) => Promise<void>;
+      getCustomReasoningKey?: () => Promise<string | null>;
+      saveCustomReasoningKey?: (key: string) => Promise<void>;
+
+      // Dictation key persistence (file-based for reliable startup)
+      getDictationKey?: () => Promise<string | null>;
+      saveDictationKey?: (key: string) => Promise<void>;
+
+      // Activation mode persistence (file-based for reliable startup)
+      getActivationMode?: () => Promise<"tap" | "push">;
+      saveActivationMode?: (mode: "tap" | "push") => Promise<void>;
 
       // Debug logging
       getLogLevel?: () => Promise<string>;
@@ -387,6 +407,7 @@ declare global {
       getAudioDiagnostics: () => Promise<AudioDiagnosticsResult>;
 
       // System settings helpers
+      requestMicrophoneAccess?: () => Promise<{ granted: boolean }>;
       openMicrophoneSettings?: () => Promise<{ success: boolean; error?: string }>;
       openSoundInputSettings?: () => Promise<{ success: boolean; error?: string }>;
       openAccessibilitySettings?: () => Promise<{ success: boolean; error?: string }>;
@@ -399,6 +420,103 @@ declare global {
       // Auto-start at login
       getAutoStartEnabled?: () => Promise<boolean>;
       setAutoStartEnabled?: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
+
+      // Auth
+      authClearSession?: () => Promise<void>;
+
+      // OpenWhispr Cloud API
+      cloudTranscribe?: (
+        audioBuffer: ArrayBuffer,
+        opts: { language?: string; prompt?: string }
+      ) => Promise<{
+        success: boolean;
+        text?: string;
+        wordsUsed?: number;
+        wordsRemaining?: number;
+        limitReached?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      cloudReason?: (
+        text: string,
+        opts: { model?: string; agentName?: string; customDictionary?: string[] }
+      ) => Promise<{
+        success: boolean;
+        text?: string;
+        model?: string;
+        provider?: string;
+        error?: string;
+        code?: string;
+      }>;
+      cloudUsage?: () => Promise<{
+        success: boolean;
+        wordsUsed?: number;
+        wordsRemaining?: number;
+        limit?: number;
+        plan?: string;
+        isSubscribed?: boolean;
+        isTrial?: boolean;
+        trialDaysLeft?: number | null;
+        currentPeriodEnd?: string | null;
+        resetAt?: string;
+        error?: string;
+        code?: string;
+      }>;
+      cloudCheckout?: () => Promise<{
+        success: boolean;
+        url?: string;
+        error?: string;
+        code?: string;
+      }>;
+      cloudBillingPortal?: () => Promise<{
+        success: boolean;
+        url?: string;
+        error?: string;
+        code?: string;
+      }>;
+
+      // Usage limit events
+      notifyLimitReached?: (data: { wordsUsed: number; limit: number }) => void;
+      onLimitReached?: (
+        callback: (data: { wordsUsed: number; limit: number }) => void
+      ) => () => void;
+
+      // AssemblyAI Streaming
+      assemblyAiStreamingWarmup?: (options?: {
+        sampleRate?: number;
+        language?: string;
+      }) => Promise<{
+        success: boolean;
+        alreadyWarm?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      assemblyAiStreamingStart?: (options?: { sampleRate?: number; language?: string }) => Promise<{
+        success: boolean;
+        usedWarmConnection?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      assemblyAiStreamingSend?: (audioBuffer: ArrayBuffer) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
+      assemblyAiStreamingForceEndpoint?: () => void;
+      assemblyAiStreamingStop?: () => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
+      assemblyAiStreamingStatus?: () => Promise<{
+        isConnected: boolean;
+        sessionId: string | null;
+      }>;
+      onAssemblyAiPartialTranscript?: (callback: (text: string) => void) => () => void;
+      onAssemblyAiFinalTranscript?: (callback: (text: string) => void) => () => void;
+      onAssemblyAiError?: (callback: (error: string) => void) => () => void;
+      onAssemblyAiSessionEnd?: (
+        callback: (data: { audioDuration?: number; text?: string }) => void
+      ) => () => void;
     };
 
     api?: {

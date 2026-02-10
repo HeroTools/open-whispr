@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import type { PasteToolsResult } from "../types/electron";
+import { useLocalStorage } from "./useLocalStorage";
 
 export interface UsePermissionsReturn {
   // State
@@ -99,9 +100,23 @@ const describeMicError = (error: unknown): string => {
 export const usePermissions = (
   showAlertDialog?: UsePermissionsProps["showAlertDialog"]
 ): UsePermissionsReturn => {
-  const [micPermissionGranted, setMicPermissionGranted] = useState(false);
+  const [micPermissionGranted, setMicPermissionGranted] = useLocalStorage(
+    "micPermissionGranted",
+    false,
+    {
+      serialize: String,
+      deserialize: (value) => value === "true",
+    }
+  );
   const [micPermissionError, setMicPermissionError] = useState<string | null>(null);
-  const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] = useState(false);
+  const [accessibilityPermissionGranted, setAccessibilityPermissionGranted] = useLocalStorage(
+    "accessibilityPermissionGranted",
+    false,
+    {
+      serialize: String,
+      deserialize: (value) => value === "true",
+    }
+  );
   const [pasteToolsInfo, setPasteToolsInfo] = useState<PasteToolsResult | null>(null);
   const [isCheckingPasteTools, setIsCheckingPasteTools] = useState(false);
 
@@ -165,6 +180,15 @@ export const usePermissions = (
     setMicPermissionError(null);
 
     try {
+      // macOS hardened runtime requires main-process mic prompt before getUserMedia works
+      if (window.electronAPI?.requestMicrophoneAccess) {
+        try {
+          await window.electronAPI.requestMicrophoneAccess();
+        } catch {
+          // ignored — getUserMedia below will surface the error
+        }
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       stopTracks(stream);
       setMicPermissionGranted(true);
@@ -206,7 +230,7 @@ export const usePermissions = (
     } finally {
       setIsCheckingPasteTools(false);
     }
-  }, []);
+  }, [setAccessibilityPermissionGranted]);
 
   // Check paste tools on mount
   useEffect(() => {

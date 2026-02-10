@@ -1,6 +1,10 @@
 {
   "appId": "com.herotools.openwispr",
   "productName": "OpenWhispr",
+  "protocols": {
+    "name": "OpenWhispr Protocol",
+    "schemes": ["openwhispr"]
+  },
   "directories": {
     "output": "dist"
   },
@@ -85,6 +89,7 @@
     "src/assets/**/*",
     "resources/macos-globe-listener.swift",
     "resources/bin/macos-globe-listener",
+    "resources/bin/macos-fast-paste",
     {
       "from": "resources/bin/",
       "to": "bin/",
@@ -93,16 +98,7 @@
   ],
   "mac": {
     "category": "public.app-category.productivity",
-    "target": [
-      {
-        "target": "dmg",
-        "arch": ["x64", "arm64"]
-      },
-      {
-        "target": "zip",
-        "arch": ["x64", "arm64"]
-      }
-    ],
+    "target": ["dmg", "zip"],
     "icon": "src/assets/icon.icns",
     "gatekeeperAssess": false,
     "hardenedRuntime": true,
@@ -160,10 +156,10 @@
   },
   "deb": {
     "afterRemove": "resources/linux/after-remove.sh",
-    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype"]
+    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype", "--deb-recommends", "wl-clipboard"]
   },
   "rpm": {
-    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype"]
+    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype", "--rpm-tag", "Recommends: wl-clipboard"]
   },
   "nsis": {
     "oneClick": false,
