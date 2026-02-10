@@ -238,9 +238,7 @@ class HotkeyManager {
     ) {
       return;
     }
-    const prevAccel = previousHotkey.startsWith("Fn+")
-      ? previousHotkey.slice(3)
-      : previousHotkey;
+    const prevAccel = previousHotkey.startsWith("Fn+") ? previousHotkey.slice(3) : previousHotkey;
     try {
       const restored = globalShortcut.register(prevAccel, callback);
       if (restored) {
@@ -248,9 +246,7 @@ class HotkeyManager {
           `[HotkeyManager] Restored previous hotkey "${previousHotkey}" after failed registration`
         );
       } else {
-        debugLogger.warn(
-          `[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`
-        );
+        debugLogger.warn(`[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`);
       }
     } catch (err) {
       debugLogger.warn(

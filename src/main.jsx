@@ -3,9 +3,14 @@ import ReactDOM from "react-dom/client";
 import App from "./App.jsx";
 import ControlPanel from "./components/ControlPanel.tsx";
 import OnboardingFlow from "./components/OnboardingFlow.tsx";
+import AuthenticationStep from "./components/AuthenticationStep.tsx";
+import TitleBar from "./components/TitleBar.tsx";
+import SupportDropdown from "./components/ui/SupportDropdown.tsx";
+import { Card, CardContent } from "./components/ui/card.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
 import { useTheme } from "./hooks/useTheme";
+import { useAuth } from "./hooks/useAuth";
 import "./index.css";
 
 let root = null;
@@ -256,38 +261,50 @@ if (!isOAuthBrowserRedirect()) {
 }
 
 function AppRouter() {
-  // Initialize theme system
   useTheme();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if this is the control panel window
   const isControlPanel =
     window.location.pathname.includes("control") || window.location.search.includes("panel=true");
-
-  // Check if this is the dictation panel (main app)
   const isDictationPanel = !isControlPanel;
 
   useEffect(() => {
-    // Check if onboarding has been completed
-    const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
-    // Clamp step to valid range (0-5) for current 6-step onboarding
-    const rawStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
-    const currentStep = Math.max(0, Math.min(rawStep, 5));
+    if (!authLoaded) return;
 
-    if (isControlPanel && !onboardingCompleted) {
-      // Show onboarding for control panel if not completed
-      setShowOnboarding(true);
+    const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
+    const authSkipped =
+      localStorage.getItem("authenticationSkipped") === "true" ||
+      localStorage.getItem("skipAuth") === "true";
+
+    // Valid session proves prior onboarding — restore flag if localStorage was wiped
+    if (!onboardingCompleted && isSignedIn) {
+      localStorage.setItem("onboardingCompleted", "true");
     }
 
-    // Hide dictation panel window unless onboarding is complete or we're past the permissions step
-    if (isDictationPanel && !onboardingCompleted && currentStep < 4) {
-      window.electronAPI?.hideWindow?.();
+    const resolved = localStorage.getItem("onboardingCompleted") === "true";
+
+    if (isControlPanel) {
+      if (!resolved) {
+        setShowOnboarding(true);
+      } else if (!isSignedIn && !authSkipped) {
+        setNeedsReauth(true);
+      }
+    }
+
+    if (isDictationPanel && !resolved) {
+      const rawStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
+      const currentStep = Math.max(0, Math.min(rawStep, 5));
+      if (currentStep < 4) {
+        window.electronAPI?.hideWindow?.();
+      }
     }
 
     setIsLoading(false);
-  }, [isControlPanel, isDictationPanel]);
+  }, [isControlPanel, isDictationPanel, isSignedIn, authLoaded]);
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
@@ -305,8 +322,44 @@ function AppRouter() {
     );
   }
 
+  // First-time user: full onboarding wizard
   if (isControlPanel && showOnboarding) {
     return <OnboardingFlow onComplete={handleOnboardingComplete} />;
+  }
+
+  // Returning user needs to re-authenticate (signed out, setup already done)
+  if (isControlPanel && needsReauth) {
+    return (
+      <div
+        className="h-screen flex flex-col bg-background"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <div className="shrink-0 z-10">
+          <TitleBar
+            showTitle={true}
+            className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
+            actions={<SupportDropdown />}
+          />
+        </div>
+        <div className="flex-1 px-6 md:px-12 overflow-y-auto flex items-center">
+          <div className="w-full max-w-sm mx-auto">
+            <Card className="bg-card/90 backdrop-blur-2xl border border-border/50 dark:border-white/5 shadow-lg rounded-xl overflow-hidden">
+              <CardContent className="p-6">
+                <AuthenticationStep
+                  onContinueWithoutAccount={() => {
+                    localStorage.setItem("authenticationSkipped", "true");
+                    localStorage.setItem("skipAuth", "true");
+                    setNeedsReauth(false);
+                  }}
+                  onAuthComplete={() => setNeedsReauth(false)}
+                  onNeedsVerification={() => {}}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return isControlPanel ? <ControlPanel /> : <App />;
