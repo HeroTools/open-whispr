@@ -520,6 +520,26 @@ function useSettingsInternal() {
     deserialize: (value) => value !== "false",
   });
 
+  // Floating icon auto-hide setting
+  const [floatingIconAutoHide, setFloatingIconAutoHideLocal] = useLocalStorage(
+    "floatingIconAutoHide",
+    false,
+    {
+      serialize: String,
+      deserialize: (value) => value === "true",
+    }
+  );
+
+  const setFloatingIconAutoHide = useCallback(
+    (enabled: boolean) => {
+      setFloatingIconAutoHideLocal(enabled);
+      if (typeof window !== "undefined" && window.electronAPI?.notifyFloatingIconAutoHideChanged) {
+        window.electronAPI.notifyFloatingIconAutoHideChanged(enabled);
+      }
+    },
+    [setFloatingIconAutoHideLocal]
+  );
+
   // Microphone settings
   const [preferBuiltInMic, setPreferBuiltInMic] = useLocalStorage("preferBuiltInMic", true, {
     serialize: String,
@@ -693,6 +713,8 @@ function useSettingsInternal() {
     setActivationMode,
     audioCuesEnabled,
     setAudioCuesEnabled,
+    floatingIconAutoHide,
+    setFloatingIconAutoHide,
     preferBuiltInMic,
     selectedMicDeviceId,
     setPreferBuiltInMic,

@@ -24,6 +24,7 @@ class WindowManager {
     this.windowsPushToTalkAvailable = false;
     this.macCompoundPushState = null;
     this._cachedActivationMode = "tap";
+    this._floatingIconAutoHide = false;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -360,6 +361,10 @@ class WindowManager {
     this._cachedActivationMode = mode === "push" ? "push" : "tap";
   }
 
+  setFloatingIconAutoHide(enabled) {
+    this._floatingIconAutoHide = Boolean(enabled);
+  }
+
   setHotkeyListeningMode(enabled) {
     this.hotkeyManager.setListeningMode(enabled);
   }
@@ -567,7 +572,12 @@ class WindowManager {
 
     // Safety timeout: force show the window if ready-to-show doesn't fire within 10 seconds
     const showTimeout = setTimeout(() => {
-      if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isVisible()) {
+      if (
+        this.mainWindow &&
+        !this.mainWindow.isDestroyed() &&
+        !this.mainWindow.isVisible() &&
+        !this._floatingIconAutoHide
+      ) {
         this.mainWindow.show();
       }
     }, 10000);
@@ -575,7 +585,7 @@ class WindowManager {
     this.mainWindow.once("ready-to-show", () => {
       clearTimeout(showTimeout);
       this.enforceMainWindowOnTop();
-      if (!this.mainWindow.isVisible()) {
+      if (!this.mainWindow.isVisible() && !this._floatingIconAutoHide) {
         if (typeof this.mainWindow.showInactive === "function") {
           this.mainWindow.showInactive();
         } else {

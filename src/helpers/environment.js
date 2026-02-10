@@ -18,6 +18,7 @@ const PERSISTED_KEYS = [
   "LOCAL_REASONING_MODEL",
   "DICTATION_KEY",
   "ACTIVATION_MODE",
+  "FLOATING_ICON_AUTO_HIDE",
 ];
 
 class EnvironmentManager {
@@ -133,6 +134,16 @@ class EnvironmentManager {
   saveActivationMode(mode) {
     const validMode = mode === "push" ? "push" : "tap";
     const result = this._saveKey("ACTIVATION_MODE", validMode);
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
+  getFloatingIconAutoHide() {
+    return this._getKey("FLOATING_ICON_AUTO_HIDE") === "true";
+  }
+
+  saveFloatingIconAutoHide(enabled) {
+    const result = this._saveKey("FLOATING_ICON_AUTO_HIDE", String(enabled));
     this.saveAllKeysToEnvFile().catch(() => {});
     return result;
   }
