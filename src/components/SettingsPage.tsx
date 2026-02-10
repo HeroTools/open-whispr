@@ -908,10 +908,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setIsSigningOut(true);
     try {
       await signOut();
-      // Clear onboarding to show auth screen again
-      localStorage.removeItem("onboardingCompleted");
-      localStorage.removeItem("onboardingCurrentStep");
-      // Reload the app to show onboarding/auth
       window.location.reload();
     } catch (error) {
       logger.error("Sign out failed", error, "auth");
@@ -1136,8 +1132,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <Button
                         onClick={() => {
                           localStorage.setItem("pendingCloudMigration", "true");
-                          localStorage.removeItem("onboardingCompleted");
                           localStorage.setItem("onboardingCurrentStep", "0");
+                          localStorage.removeItem("onboardingCompleted");
                           window.location.reload();
                         }}
                         size="sm"
