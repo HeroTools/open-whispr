@@ -641,6 +641,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudTranscriptionMode,
     cloudReasoningMode,
     setCloudReasoningMode,
+    audioCuesEnabled,
+    setAudioCuesEnabled,
+    floatingIconAutoHide,
+    setFloatingIconAutoHide,
     cloudBackupEnabled,
     setCloudBackupEnabled,
     telemetryEnabled,
@@ -1349,6 +1353,39 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         );
                       })}
                     </div>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Sound Effects */}
+            <div>
+              <SectionHeader title="Sound Effects" />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Dictation sounds"
+                    description="Play a tone when recording starts and stops"
+                  >
+                    <Toggle checked={audioCuesEnabled} onChange={setAudioCuesEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Floating Icon */}
+            <div>
+              <SectionHeader
+                title="Floating Icon"
+                description="Control when the dictation icon is visible on your screen"
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Auto-hide when idle"
+                    description="Keep the icon hidden until you start dictating"
+                  >
+                    <Toggle checked={floatingIconAutoHide} onChange={setFloatingIconAutoHide} />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>

@@ -44,7 +44,7 @@ class IPCHandlers {
         set: Object.keys(setVars),
         cleared: clearVars.filter((k) => !process.env[k]),
       });
-      this.environmentManager.saveAllKeysToEnvFile();
+      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
     }
   }
 
@@ -406,7 +406,7 @@ class IPCHandlers {
       const result = await this.parakeetManager.startServer(modelName);
       process.env.LOCAL_TRANSCRIPTION_PROVIDER = "nvidia";
       process.env.PARAKEET_MODEL = modelName;
-      this.environmentManager.saveAllKeysToEnvFile();
+      await this.environmentManager.saveAllKeysToEnvFile();
       return result;
     });
 
@@ -414,7 +414,7 @@ class IPCHandlers {
       const result = await this.parakeetManager.stopServer();
       delete process.env.LOCAL_TRANSCRIPTION_PROVIDER;
       delete process.env.PARAKEET_MODEL;
-      this.environmentManager.saveAllKeysToEnvFile();
+      await this.environmentManager.saveAllKeysToEnvFile();
       return result;
     });
 
