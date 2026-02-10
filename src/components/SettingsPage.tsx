@@ -1061,8 +1061,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           variant="outline"
                           size="sm"
                           className="w-full"
+                          disabled={usage.checkoutLoading}
                         >
-                          Manage Billing
+                          {usage.checkoutLoading ? "Opening..." : "Manage Billing"}
                         </Button>
                       ) : (
                         <Button
@@ -1078,8 +1079,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           }}
                           size="sm"
                           className="w-full"
+                          disabled={usage.checkoutLoading}
                         >
-                          Upgrade to Pro
+                          {usage.checkoutLoading ? "Opening..." : "Upgrade to Pro"}
                         </Button>
                       )}
                     </SettingsPanelRow>

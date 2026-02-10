@@ -39,6 +39,7 @@ export default function UpgradePrompt({
               usage?.openCheckout();
             }}
             highlighted
+            disabled={usage?.checkoutLoading}
           />
           <OptionCard
             title="Use your own API key"
@@ -69,16 +70,19 @@ function OptionCard({
   description,
   onClick,
   highlighted = false,
+  disabled = false,
 }: {
   title: string;
   description: string;
   onClick: () => void;
   highlighted?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-4 rounded-lg border transition-shadow duration-150 hover:shadow-md flex items-center justify-between cursor-pointer ${
+      disabled={disabled}
+      className={`w-full text-left p-4 rounded-lg border transition-shadow duration-150 hover:shadow-md flex items-center justify-between cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
         highlighted
           ? "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/15"
           : "bg-muted/50 dark:bg-surface-2 border-border dark:border-border-subtle hover:border-border-hover"
