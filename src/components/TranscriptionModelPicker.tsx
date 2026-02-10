@@ -603,7 +603,7 @@ export default function TranscriptionModelPicker({
       const modelInfo = WHISPER_MODEL_INFO[downloadingModel];
       return (
         <DownloadProgressBar
-          modelName={modelInfo?.name || downloadingModel}
+          modelName={downloadingModel || ""}
           progress={downloadProgress}
           isInstalling={isInstalling}
         />
@@ -651,6 +651,9 @@ export default function TranscriptionModelPicker({
             name: modelId,
             description: "Model",
             size: "Unknown",
+            sizeMb: 0,
+            fileName: "",
+            downloadUrl: "",
             recommended: false,
           };
 
@@ -722,9 +725,13 @@ export default function TranscriptionModelPicker({
           const modelId = model.model;
           const info = PARAKEET_MODEL_INFO[modelId] ?? {
             name: modelId,
-            description: "NVIDIA Parakeet Model",
+            description: "Model",
             size: "Unknown",
-            language: "en",
+            sizeMb: 0,
+            language: "Multilingual",
+            supportedLanguages: [],
+            downloadUrl: "",
+            extractDir: "",
             recommended: false,
           };
 

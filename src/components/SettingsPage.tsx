@@ -324,7 +324,9 @@ function TranscriptionSection({
             }
           }}
           selectedLocalProvider={localTranscriptionProvider}
-          onLocalProviderSelect={setLocalTranscriptionProvider}
+          onLocalProviderSelect={(id) =>
+            setLocalTranscriptionProvider(id as LocalTranscriptionProvider)
+          }
           useLocalWhisper={useLocalWhisper}
           onModeChange={(isLocal) => {
             setUseLocalWhisper(isLocal);
