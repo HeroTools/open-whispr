@@ -199,7 +199,7 @@ class WindowManager {
       lastToggleTime = now;
 
       if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
+        this.showDictationPanel();
       }
       this.mainWindow.webContents.send("toggle-dictation");
     };
