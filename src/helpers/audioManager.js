@@ -1828,16 +1828,16 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
   async startStreamingRecording() {
     try {
-      if (
-        this.isRecording ||
-        this.isStreaming ||
-        this.isProcessing ||
-        this.streamingStartInProgress
-      ) {
+      if (this.streamingStartInProgress) {
+        return false;
+      }
+      this.streamingStartInProgress = true;
+
+      if (this.isRecording || this.isStreaming || this.isProcessing) {
+        this.streamingStartInProgress = false;
         return false;
       }
 
-      this.streamingStartInProgress = true;
       this.stopRequestedDuringStreamingStart = false;
 
       const t0 = performance.now();

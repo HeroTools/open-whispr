@@ -381,10 +381,14 @@
         "rateLimited": "Il server limita le richieste. Attendi qualche minuto e riprova.",
         "server": "Errore server ({{error}}). Riprova più tardi.",
         "generic": "Download non riuscito: {{error}}",
+        "extractionFailed": "Modello scaricato, ma l'installazione non è riuscita. Clicca su scarica per ritentare l'installazione senza riscaricare.",
         "unknown": "Errore sconosciuto"
       },
       "downloadFailed": {
         "title": "Download non riuscito"
+      },
+      "installationFailed": {
+        "title": "Installazione non riuscita"
       },
       "downloadInProgress": {
         "title": "Download in corso",

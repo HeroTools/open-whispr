@@ -125,7 +125,6 @@ class ParakeetManager {
       models: [],
     };
 
-    // Check downloaded models
     for (const modelName of getValidModelNames()) {
       const modelPath = this.getModelPath(modelName);
       if (this.serverManager.isModelDownloaded(modelName)) {
@@ -287,29 +286,57 @@ class ParakeetManager {
     this.currentDownloadProcess = { abort };
 
     try {
-      await downloadFile(modelConfig.url, archivePath, {
-        timeout: 600000,
-        signal,
-        onProgress: (downloadedBytes, totalBytes) => {
-          if (progressCallback) {
-            progressCallback({
-              type: "progress",
-              model: modelName,
-              downloaded_bytes: downloadedBytes,
-              total_bytes: totalBytes,
-              percentage: totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0,
-            });
-          }
-        },
-      });
+      let archiveReady = false;
+      try {
+        await validateFileSize(archivePath, modelConfig.size, 15);
+        archiveReady = true;
+        debugLogger.info("Reusing existing archive from previous attempt", { archivePath });
+      } catch {
+        // Archive missing or too small — need to download
+      }
 
-      await validateFileSize(archivePath, modelConfig.size, 15);
+      if (!archiveReady) {
+        await downloadFile(modelConfig.url, archivePath, {
+          timeout: 600000,
+          signal,
+          onProgress: (downloadedBytes, totalBytes) => {
+            if (progressCallback) {
+              progressCallback({
+                type: "progress",
+                model: modelName,
+                downloaded_bytes: downloadedBytes,
+                total_bytes: totalBytes,
+                percentage: totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0,
+              });
+            }
+          },
+        });
+
+        await validateFileSize(archivePath, modelConfig.size, 15);
+      }
 
       if (progressCallback) {
         progressCallback({ type: "installing", model: modelName, percentage: 100 });
       }
 
-      await this._extractModel(archivePath, modelName);
+      const MAX_EXTRACT_RETRIES = 2;
+      for (let attempt = 1; attempt <= MAX_EXTRACT_RETRIES; attempt++) {
+        try {
+          await this._extractModel(archivePath, modelName);
+          break;
+        } catch (extractError) {
+          debugLogger.warn("Model extraction failed", {
+            attempt,
+            maxAttempts: MAX_EXTRACT_RETRIES,
+            error: extractError.message,
+          });
+          if (attempt >= MAX_EXTRACT_RETRIES) {
+            const err = new Error(`Model installation failed: ${extractError.message}`);
+            err.code = "EXTRACTION_FAILED";
+            throw err;
+          }
+        }
+      }
       await fsPromises.unlink(archivePath).catch(() => {});
 
       if (progressCallback) {
@@ -327,8 +354,8 @@ class ParakeetManager {
 
       return { model: modelName, downloaded: true, path: modelPath, success: true };
     } catch (error) {
-      await fsPromises.unlink(archivePath).catch(() => {});
       if (error.isAbort) {
+        await fsPromises.unlink(archivePath).catch(() => {});
         throw new Error("Download interrupted by user");
       }
       throw error;
@@ -343,26 +370,23 @@ class ParakeetManager {
     const extractDir = path.join(modelsDir, `temp-extract-${modelName}`);
 
     try {
-      // Create temp extract directory
       await fsPromises.mkdir(extractDir, { recursive: true });
-
-      // Extract tar.bz2 asynchronously (tar is available on Windows 10+ and all Unix systems)
       await this._runTarExtract(archivePath, extractDir);
 
-      // Find the extracted directory (usually has a specific name)
       const extractedDir = path.join(extractDir, modelConfig.extractDir);
       const targetDir = this.getModelPath(modelName);
 
-      // Move to final location
       if (fs.existsSync(extractedDir)) {
-        // Remove target if exists
         if (fs.existsSync(targetDir)) {
           await fsPromises.rm(targetDir, { recursive: true, force: true });
         }
         await fsPromises.rename(extractedDir, targetDir);
       } else {
-        // If extracted directory doesn't match expected name, try to find it
         const entries = await fsPromises.readdir(extractDir);
+        debugLogger.warn("Expected extract directory not found, searching alternatives", {
+          expected: modelConfig.extractDir,
+          found: entries,
+        });
         let modelDir = null;
 
         for (const entry of entries) {
@@ -380,7 +404,10 @@ class ParakeetManager {
           }
           await fsPromises.rename(path.join(extractDir, modelDir), targetDir);
         } else {
-          throw new Error("Could not find model directory in extracted archive");
+          throw new Error(
+            `Could not find model directory in extracted archive. ` +
+              `Expected "${modelConfig.extractDir}", found: [${entries.join(", ")}]`
+          );
         }
       }
 
@@ -389,12 +416,10 @@ class ParakeetManager {
         throw new Error("Extracted model is missing required files (encoder.int8.onnx)");
       }
 
-      // Cleanup temp directory
       await fsPromises.rm(extractDir, { recursive: true, force: true });
 
       debugLogger.info("Parakeet model extracted", { modelName, targetDir });
     } catch (error) {
-      // Cleanup on error
       try {
         await fsPromises.rm(extractDir, { recursive: true, force: true });
       } catch {}
@@ -521,7 +546,6 @@ class ParakeetManager {
         if (entry.isDirectory()) {
           const dirPath = path.join(modelsDir, entry.name);
           try {
-            // Estimate size from encoder file
             const encoderPath = path.join(dirPath, "encoder.int8.onnx");
             if (fs.existsSync(encoderPath)) {
               const stats = fs.statSync(encoderPath);
@@ -558,13 +582,11 @@ class ParakeetManager {
       models: [],
     };
 
-    // Check sherpa-onnx
     const binaryPath = this.serverManager.getBinaryPath();
     if (binaryPath) {
       diagnostics.sherpaOnnx = { available: true, path: binaryPath };
     }
 
-    // Check downloaded models
     try {
       const modelsDir = this.getModelsDir();
       if (fs.existsSync(modelsDir)) {

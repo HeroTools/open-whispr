@@ -381,10 +381,14 @@
         "rateLimited": "Download server is rate limiting. Please wait a few minutes and try again.",
         "server": "Server error ({{error}}). Please try again later.",
         "generic": "Download failed: {{error}}",
+        "extractionFailed": "Model downloaded but installation failed. Click download to retry installation without re-downloading.",
         "unknown": "Unknown error"
       },
       "downloadFailed": {
         "title": "Download Failed"
+      },
+      "installationFailed": {
+        "title": "Installation Failed"
       },
       "downloadInProgress": {
         "title": "Download in Progress",

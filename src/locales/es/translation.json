@@ -381,10 +381,14 @@
         "rateLimited": "El servidor está limitando solicitudes. Espera unos minutos e inténtalo de nuevo.",
         "server": "Error del servidor ({{error}}). Inténtalo más tarde.",
         "generic": "Falló la descarga: {{error}}",
+        "extractionFailed": "Modelo descargado, pero la instalación falló. Haz clic en descargar para reintentar la instalación sin volver a descargar.",
         "unknown": "Error desconocido"
       },
       "downloadFailed": {
         "title": "Descarga fallida"
+      },
+      "installationFailed": {
+        "title": "Instalación fallida"
       },
       "downloadInProgress": {
         "title": "Descarga en progreso",

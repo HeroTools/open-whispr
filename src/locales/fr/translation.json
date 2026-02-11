@@ -381,10 +381,14 @@
         "rateLimited": "Le serveur limite les requêtes. Attendez quelques minutes et réessayez.",
         "server": "Erreur serveur ({{error}}). Réessayez plus tard.",
         "generic": "Échec du téléchargement : {{error}}",
+        "extractionFailed": "Modèle téléchargé, mais l'installation a échoué. Cliquez sur télécharger pour relancer l'installation sans retélécharger.",
         "unknown": "Erreur inconnue"
       },
       "downloadFailed": {
         "title": "Échec du téléchargement"
+      },
+      "installationFailed": {
+        "title": "Échec de l'installation"
       },
       "downloadInProgress": {
         "title": "Téléchargement en cours",

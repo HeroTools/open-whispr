@@ -39,6 +39,8 @@ export function formatETA(seconds: number): string {
 }
 
 function getDownloadErrorMessage(t: TFunction, error: string, code?: string): string {
+  if (code === "EXTRACTION_FAILED" || error.includes("installation failed"))
+    return t("hooks.modelDownload.errors.extractionFailed");
   if (code === "ETIMEDOUT" || error.includes("timeout") || error.includes("stalled"))
     return t("hooks.modelDownload.errors.timeout");
   if (code === "ENOTFOUND" || error.includes("ENOTFOUND"))
@@ -121,11 +123,11 @@ export function useModelDownload({
           data.error || t("hooks.modelDownload.errors.unknown"),
           data.code
         );
+        const title = data.code === "EXTRACTION_FAILED"
+          ? t("hooks.modelDownload.installationFailed.title")
+          : t("hooks.modelDownload.downloadFailed.title");
         setDownloadError(msg);
-        showAlertDialogRef.current({
-          title: t("hooks.modelDownload.downloadFailed.title"),
-          description: msg,
-        });
+        showAlertDialogRef.current({ title, description: msg });
         setIsInstalling(false);
         setDownloadingModel(null);
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
@@ -209,11 +211,11 @@ export function useModelDownload({
               result?.error || t("hooks.modelDownload.errors.unknown"),
               result?.code
             );
+            const title = result?.code === "EXTRACTION_FAILED"
+              ? t("hooks.modelDownload.installationFailed.title")
+              : t("hooks.modelDownload.downloadFailed.title");
             setDownloadError(msg);
-            showAlertDialog({
-              title: t("hooks.modelDownload.downloadFailed.title"),
-              description: msg,
-            });
+            showAlertDialog({ title, description: msg });
           } else {
             success = result?.success ?? false;
           }
