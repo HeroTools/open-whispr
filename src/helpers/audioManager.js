@@ -729,6 +729,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     return new Blob([arrayBuffer], { type: "audio/wav" });
   }
 
+  textContainsAgentName(text, agentName) {
+    if (!agentName) return false;
+    return text.toLowerCase().includes(agentName.toLowerCase());
+  }
+
   async processWithReasoningModel(text, model, agentName) {
     logger.logReasoning("CALLING_REASONING_SERVICE", {
       model,
@@ -869,6 +874,14 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     });
 
     if (useReasoning) {
+      if (!this.textContainsAgentName(normalizedText, agentName)) {
+        logger.logReasoning("REASONING_SKIPPED", {
+          reason: "Agent name not detected in transcription",
+          agentName,
+        });
+        return normalizedText;
+      }
+
       try {
         logger.logReasoning("SENDING_TO_REASONING", {
           preparedTextLength: normalizedText.length,
@@ -1099,35 +1112,46 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const agentName = localStorage.getItem("agentName") || "";
       const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
 
+      let reasoningHandled = false;
       if (cloudReasoningMode === "openwhispr") {
-        const reasonResult = await withSessionRefresh(async () => {
-          const res = await window.electronAPI.cloudReason(processedText, {
-            agentName,
-            customDictionary: this.getCustomDictionaryArray(),
-            customPrompt: this.getCustomPrompt(),
-            language: localStorage.getItem("preferredLanguage") || "auto",
+        try {
+          const reasonResult = await withSessionRefresh(async () => {
+            const res = await window.electronAPI.cloudReason(processedText, {
+              agentName,
+              customDictionary: this.getCustomDictionaryArray(),
+              customPrompt: this.getCustomPrompt(),
+              language: localStorage.getItem("preferredLanguage") || "auto",
+            });
+            if (!res.success) {
+              const err = new Error(res.error || "Cloud reasoning failed");
+              err.code = res.code;
+              throw err;
+            }
+            return res;
           });
-          if (!res.success) {
-            const err = new Error(res.error || "Cloud reasoning failed");
-            err.code = res.code;
-            throw err;
-          }
-          return res;
-        });
 
-        if (reasonResult.success) {
-          processedText = reasonResult.text;
+          if (reasonResult.success) {
+            processedText = reasonResult.text;
+          }
+          reasoningHandled = true;
+        } catch (cloudError) {
+          logger.warn("Cloud reasoning failed, falling back to BYOK", { error: cloudError.message }, "reasoning");
         }
-      } else {
-        const reasoningModel = localStorage.getItem("reasoningModel") || "";
-        if (reasoningModel) {
-          const result = await this.processWithReasoningModel(
-            processedText,
-            reasoningModel,
-            agentName
-          );
-          if (result) {
-            processedText = result;
+      }
+      if (!reasoningHandled) {
+        if (!this.textContainsAgentName(processedText, agentName)) {
+          logger.info("BYOK reasoning skipped — agent name not in transcription", { agentName }, "reasoning");
+        } else {
+          const reasoningModel = localStorage.getItem("reasoningModel") || "";
+          if (reasoningModel) {
+            const result = await this.processWithReasoningModel(
+              processedText,
+              reasoningModel,
+              agentName
+            );
+            if (result) {
+              processedText = result;
+            }
           }
         }
       }
@@ -1716,96 +1740,126 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     };
   }
 
-  shouldUseStreaming() {
+  /**
+   * Determine which streaming provider to use, or null if streaming is disabled.
+   * @returns {string|null} Provider name ("assemblyai", "deepgram", "parakeet", "openai-realtime") or null
+   */
+  getStreamingProvider() {
+    const streamingDisabled = localStorage.getItem("assemblyAiStreaming") === "false";
+    if (streamingDisabled) return null;
+
+    const provider = localStorage.getItem("streamingProvider") || "auto";
+    if (provider === "off") return null;
+
     const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
     const isSignedIn = localStorage.getItem("isSignedIn") === "true";
     const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
-    const streamingDisabled = localStorage.getItem("assemblyAiStreaming") === "false";
 
-    return (
-      !useLocalWhisper &&
-      cloudTranscriptionMode === "openwhispr" &&
-      isSignedIn &&
-      !streamingDisabled
-    );
+    if (provider === "deepgram") {
+      // Deepgram works regardless of cloud/local mode — just needs an API key
+      return "deepgram";
+    }
+
+    if (provider === "openai-realtime") {
+      return "openai-realtime";
+    }
+
+    if (provider === "parakeet") {
+      return useLocalWhisper ? "parakeet" : null;
+    }
+
+    // "auto" or "assemblyai" — use AssemblyAI if conditions are met
+    if (!useLocalWhisper && cloudTranscriptionMode === "openwhispr" && isSignedIn) {
+      return "assemblyai";
+    }
+
+    return null;
+  }
+
+  shouldUseStreaming() {
+    return this.getStreamingProvider() !== null;
   }
 
   async warmupStreamingConnection() {
-    if (!this.shouldUseStreaming()) {
+    const provider = this.getStreamingProvider();
+    if (!provider) {
       logger.debug("Streaming warmup skipped - not in streaming mode", {}, "streaming");
       return false;
     }
 
     try {
-      const [, wsResult] = await Promise.all([
-        this.cacheMicrophoneDeviceId(),
-        withSessionRefresh(async () => {
+      // Cache mic device ID for all providers
+      await this.cacheMicrophoneDeviceId();
+
+      // AssemblyAI-specific WebSocket warmup
+      let wsResult = { success: true };
+      if (provider === "assemblyai") {
+        wsResult = await withSessionRefresh(async () => {
           const res = await window.electronAPI.assemblyAiStreamingWarmup({
             sampleRate: 16000,
             language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
             keyterms: this.getKeyterms(),
           });
-          // Throw error to trigger retry if AUTH_EXPIRED
           if (!res.success && res.code) {
             const err = new Error(res.error || "Warmup failed");
             err.code = res.code;
             throw err;
           }
           return res;
-        }),
-      ]);
+        });
 
-      if (wsResult.success) {
-        // Pre-load AudioWorklet module so first recording is faster
-        try {
-          const audioContext = await this.getOrCreateAudioContext();
-          if (!this.workletModuleLoaded) {
-            await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
-            this.workletModuleLoaded = true;
-            logger.debug("AudioWorklet module pre-loaded during warmup", {}, "streaming");
+        if (!wsResult.success) {
+          if (wsResult.code === "NO_API") {
+            logger.debug("Streaming warmup skipped - API not configured", {}, "streaming");
+            return false;
           }
+          logger.warn("AssemblyAI warmup failed", { error: wsResult.error }, "streaming");
+          return false;
+        }
+      }
+
+      // Pre-load AudioWorklet module so first recording is faster (all providers)
+      try {
+        const audioContext = await this.getOrCreateAudioContext();
+        if (!this.workletModuleLoaded) {
+          const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+          await audioContext.audioWorklet.addModule(workletUrl);
+          this.workletModuleLoaded = true;
+          logger.debug("AudioWorklet module pre-loaded during warmup", {}, "streaming");
+        }
+      } catch (e) {
+        logger.debug(
+          "AudioWorklet pre-load failed (will retry on recording)",
+          { error: e.message },
+          "streaming"
+        );
+      }
+
+      // Warm up the OS audio driver by briefly acquiring the mic, then releasing.
+      if (!this.micDriverWarmedUp) {
+        try {
+          const constraints = await this.getAudioConstraints();
+          const tempStream = await navigator.mediaDevices.getUserMedia(constraints);
+          tempStream.getTracks().forEach((track) => track.stop());
+          this.micDriverWarmedUp = true;
+          logger.debug("Microphone driver pre-warmed", {}, "streaming");
         } catch (e) {
           logger.debug(
-            "AudioWorklet pre-load failed (will retry on recording)",
+            "Mic driver warmup failed (non-critical)",
             { error: e.message },
             "streaming"
           );
         }
-
-        // Warm up the OS audio driver by briefly acquiring the mic, then releasing.
-        // This forces macOS to initialize the audio subsystem so subsequent
-        // getUserMedia calls resolve in ~100-200ms instead of ~500-1000ms.
-        if (!this.micDriverWarmedUp) {
-          try {
-            const constraints = await this.getAudioConstraints();
-            const tempStream = await navigator.mediaDevices.getUserMedia(constraints);
-            tempStream.getTracks().forEach((track) => track.stop());
-            this.micDriverWarmedUp = true;
-            logger.debug("Microphone driver pre-warmed", {}, "streaming");
-          } catch (e) {
-            logger.debug(
-              "Mic driver warmup failed (non-critical)",
-              { error: e.message },
-              "streaming"
-            );
-          }
-        }
-
-        logger.info(
-          "AssemblyAI streaming connection warmed up",
-          { alreadyWarm: wsResult.alreadyWarm, micCached: !!this.cachedMicDeviceId },
-          "streaming"
-        );
-        return true;
-      } else if (wsResult.code === "NO_API") {
-        logger.debug("Streaming warmup skipped - API not configured", {}, "streaming");
-        return false;
-      } else {
-        logger.warn("AssemblyAI warmup failed", { error: wsResult.error }, "streaming");
-        return false;
       }
+
+      logger.info(
+        "Streaming connection warmed up",
+        { provider, alreadyWarm: wsResult.alreadyWarm, micCached: !!this.cachedMicDeviceId },
+        "streaming"
+      );
+      return true;
     } catch (error) {
-      logger.error("AssemblyAI warmup error", { error: error.message }, "streaming");
+      logger.error("Streaming warmup error", { provider, error: error.message }, "streaming");
       return false;
     }
   }
@@ -1828,6 +1882,49 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         return false;
       }
 
+      const provider = this.getStreamingProvider();
+
+      // Dispatch to provider-specific start methods
+      if (provider === "deepgram") {
+        return await this._startDeepgramStreaming();
+      }
+      if (provider === "openai-realtime") {
+        return await this._startOpenAIRealtimeStreaming();
+      }
+      if (provider === "parakeet") {
+        return await this._startParakeetStreaming();
+      }
+
+      // Default: AssemblyAI
+      return await this._startAssemblyAiStreaming();
+    } catch (error) {
+      logger.error("Failed to start streaming recording", { error: error.message }, "streaming");
+
+      let errorTitle = "Streaming Error";
+      let errorDescription = `Failed to start streaming: ${error.message}`;
+
+      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
+        errorTitle = "Microphone Access Denied";
+        errorDescription =
+          "Please grant microphone permission in your system settings and try again.";
+      } else if (error.code === "AUTH_EXPIRED" || error.code === "AUTH_REQUIRED") {
+        errorTitle = "Sign-in Required";
+        errorDescription =
+          "Your OpenWhispr Cloud session is unavailable. Please sign in again from Settings.";
+      }
+
+      this.onError?.({
+        title: errorTitle,
+        description: errorDescription,
+      });
+
+      await this.cleanupStreaming();
+      return false;
+    }
+  }
+
+  async _startAssemblyAiStreaming() {
+    try {
       const t0 = performance.now();
       const constraints = await this.getAudioConstraints();
       const tConstraints = performance.now();
@@ -1919,6 +2016,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       this.isStreaming = true;
       this.isRecording = true;
       this.recordingStartTime = Date.now();
+      this.streamingProvider = "assemblyai";
       this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
 
       this.streamingFinalText = "";
@@ -1966,29 +2064,241 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
       return true;
     } catch (error) {
-      logger.error("Failed to start streaming recording", { error: error.message }, "streaming");
-
-      let errorTitle = "Streaming Error";
-      let errorDescription = `Failed to start streaming: ${error.message}`;
-
-      if (error.name === "NotAllowedError" || error.name === "PermissionDeniedError") {
-        errorTitle = "Microphone Access Denied";
-        errorDescription =
-          "Please grant microphone permission in your system settings and try again.";
-      } else if (error.code === "AUTH_EXPIRED" || error.code === "AUTH_REQUIRED") {
-        errorTitle = "Sign-in Required";
-        errorDescription =
-          "Your OpenWhispr Cloud session is unavailable. Please sign in again from Settings.";
-      }
-
-      this.onError?.({
-        title: errorTitle,
-        description: errorDescription,
-      });
-
-      await this.cleanupStreaming();
-      return false;
+      // Re-throw — handled by startStreamingRecording()
+      throw error;
     }
+  }
+
+  async _startDeepgramStreaming() {
+    const t0 = performance.now();
+    const constraints = await this.getAudioConstraints();
+
+    const [stream, result] = await Promise.all([
+      navigator.mediaDevices.getUserMedia(constraints),
+      window.electronAPI.deepgramStreamingStart({
+        sampleRate: 16000,
+        language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+      }),
+    ]);
+
+    if (!result.success) {
+      stream.getTracks().forEach((track) => track.stop());
+      if (result.code === "NO_API") {
+        logger.debug("Deepgram API not configured, falling back to regular recording", {}, "streaming");
+        return this.startRecording();
+      }
+      throw new Error(result.error || "Failed to start Deepgram streaming");
+    }
+
+    const audioContext = await this.getOrCreateAudioContext();
+    this.streamingAudioContext = audioContext;
+    this.streamingSource = audioContext.createMediaStreamSource(stream);
+    this.streamingStream = stream;
+
+    if (!this.workletModuleLoaded) {
+      const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+      await audioContext.audioWorklet.addModule(workletUrl);
+      this.workletModuleLoaded = true;
+    }
+
+    this.streamingProcessor = new AudioWorkletNode(audioContext, "pcm-streaming-processor");
+
+    this.streamingProcessor.port.onmessage = (event) => {
+      if (!this.isStreaming) return;
+      window.electronAPI.deepgramStreamingSend(event.data);
+    };
+
+    this.streamingSource.connect(this.streamingProcessor);
+
+    logger.info(
+      "Deepgram streaming start timing",
+      { totalMs: Math.round(performance.now() - t0) },
+      "streaming"
+    );
+
+    this.isStreaming = true;
+    this.isRecording = true;
+    this.recordingStartTime = Date.now();
+    this.streamingProvider = "deepgram";
+    this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
+
+    this.streamingFinalText = "";
+    this.streamingPartialText = "";
+
+    const partialCleanup = window.electronAPI.onDeepgramPartialTranscript((text) => {
+      this.streamingPartialText = text;
+      this.onPartialTranscript?.(text);
+    });
+
+    const finalCleanup = window.electronAPI.onDeepgramFinalTranscript((text) => {
+      this.streamingFinalText = text;
+      this.streamingPartialText = "";
+      this.onPartialTranscript?.(text);
+    });
+
+    const errorCleanup = window.electronAPI.onDeepgramError((error) => {
+      logger.error("Deepgram streaming error", { error }, "streaming");
+      this.onError?.({
+        title: "Streaming Error",
+        description: error,
+      });
+    });
+
+    this.streamingCleanupFns = [partialCleanup, finalCleanup, errorCleanup];
+
+    return true;
+  }
+
+  async _startOpenAIRealtimeStreaming() {
+    const t0 = performance.now();
+    const constraints = await this.getAudioConstraints();
+
+    const [stream, result] = await Promise.all([
+      navigator.mediaDevices.getUserMedia(constraints),
+      window.electronAPI.openaiRealtimeStreamingStart({
+        language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+      }),
+    ]);
+
+    if (!result.success) {
+      stream.getTracks().forEach((track) => track.stop());
+      if (result.code === "NO_API") {
+        logger.debug("OpenAI API not configured, falling back to regular recording", {}, "streaming");
+        return this.startRecording();
+      }
+      throw new Error(result.error || "Failed to start OpenAI Realtime streaming");
+    }
+
+    const audioContext = await this.getOrCreateAudioContext();
+    this.streamingAudioContext = audioContext;
+    this.streamingSource = audioContext.createMediaStreamSource(stream);
+    this.streamingStream = stream;
+
+    if (!this.workletModuleLoaded) {
+      const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+      await audioContext.audioWorklet.addModule(workletUrl);
+      this.workletModuleLoaded = true;
+    }
+
+    this.streamingProcessor = new AudioWorkletNode(audioContext, "pcm-streaming-processor");
+
+    this.streamingProcessor.port.onmessage = (event) => {
+      if (!this.isStreaming) return;
+      // Main process handles 16kHz→24kHz resampling
+      window.electronAPI.openaiRealtimeStreamingSend(event.data);
+    };
+
+    this.streamingSource.connect(this.streamingProcessor);
+
+    logger.info(
+      "OpenAI Realtime streaming start timing",
+      { totalMs: Math.round(performance.now() - t0) },
+      "streaming"
+    );
+
+    this.isStreaming = true;
+    this.isRecording = true;
+    this.recordingStartTime = Date.now();
+    this.streamingProvider = "openai-realtime";
+    this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
+
+    this.streamingFinalText = "";
+    this.streamingPartialText = "";
+
+    const partialCleanup = window.electronAPI.onOpenaiRealtimePartialTranscript((text) => {
+      this.streamingPartialText = text;
+      this.onPartialTranscript?.(text);
+    });
+
+    const finalCleanup = window.electronAPI.onOpenaiRealtimeFinalTranscript((text) => {
+      this.streamingFinalText = text;
+      this.streamingPartialText = "";
+      this.onPartialTranscript?.(text);
+    });
+
+    const errorCleanup = window.electronAPI.onOpenaiRealtimeError((error) => {
+      logger.error("OpenAI Realtime streaming error", { error }, "streaming");
+      this.onError?.({
+        title: "Streaming Error",
+        description: error,
+      });
+    });
+
+    this.streamingCleanupFns = [partialCleanup, finalCleanup, errorCleanup];
+
+    return true;
+  }
+
+  async _startParakeetStreaming() {
+    const t0 = performance.now();
+    const constraints = await this.getAudioConstraints();
+
+    const [stream, result] = await Promise.all([
+      navigator.mediaDevices.getUserMedia(constraints),
+      window.electronAPI.parakeetStreamingStart(),
+    ]);
+
+    if (!result.success) {
+      stream.getTracks().forEach((track) => track.stop());
+      if (result.code === "NO_SERVER") {
+        logger.debug("Parakeet server not running, falling back to regular recording", {}, "streaming");
+        return this.startRecording();
+      }
+      throw new Error(result.error || "Failed to start Parakeet streaming");
+    }
+
+    const audioContext = await this.getOrCreateAudioContext();
+    this.streamingAudioContext = audioContext;
+    this.streamingSource = audioContext.createMediaStreamSource(stream);
+    this.streamingStream = stream;
+
+    if (!this.workletModuleLoaded) {
+      const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
+      await audioContext.audioWorklet.addModule(workletUrl);
+      this.workletModuleLoaded = true;
+    }
+
+    this.streamingProcessor = new AudioWorkletNode(audioContext, "pcm-streaming-processor");
+
+    this.streamingProcessor.port.onmessage = (event) => {
+      if (!this.isStreaming) return;
+      window.electronAPI.parakeetStreamingSend(event.data);
+    };
+
+    this.streamingSource.connect(this.streamingProcessor);
+
+    logger.info(
+      "Parakeet streaming start timing",
+      { totalMs: Math.round(performance.now() - t0) },
+      "streaming"
+    );
+
+    this.isStreaming = true;
+    this.isRecording = true;
+    this.recordingStartTime = Date.now();
+    this.streamingProvider = "parakeet";
+    this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
+
+    this.streamingFinalText = "";
+    this.streamingPartialText = "";
+
+    const partialCleanup = window.electronAPI.onParakeetPartialTranscript((text) => {
+      this.streamingFinalText = text;
+      this.streamingPartialText = text;
+      this.onPartialTranscript?.(text);
+    });
+
+    const errorCleanup = window.electronAPI.onParakeetError((error) => {
+      logger.error("Parakeet streaming error", { error }, "streaming");
+      this.onError?.({
+        title: "Streaming Error",
+        description: error,
+      });
+    });
+
+    this.streamingCleanupFns = [partialCleanup, errorCleanup];
+
+    return true;
   }
 
   async stopStreamingRecording() {
@@ -2037,16 +2347,42 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     await new Promise((resolve) => setTimeout(resolve, 120));
     this.isStreaming = false;
 
-    // 4. ForceEndpoint finalizes any in-progress turn, then Terminate closes the session.
-    //    The server MUST process ALL remaining audio and send ALL Turn messages before
-    //    responding with Termination — so awaiting this guarantees we get every word.
-    window.electronAPI.assemblyAiStreamingForceEndpoint?.();
-    const tForceEndpoint = performance.now();
+    // 4. Stop the backend connection based on provider
+    const provider = this.streamingProvider || "assemblyai";
 
-    const stopResult = await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
-      logger.debug("Streaming disconnect error", { error: e.message }, "streaming");
-      return { success: false };
-    });
+    let stopResult;
+    if (provider === "deepgram") {
+      const result = await window.electronAPI.deepgramStreamingStop().catch((e) => {
+        logger.debug("Deepgram disconnect error", { error: e.message }, "streaming");
+        return { text: "" };
+      });
+      if (result?.text) {
+        this.streamingFinalText = result.text;
+      }
+    } else if (provider === "parakeet") {
+      const result = await window.electronAPI.parakeetStreamingStop().catch((e) => {
+        logger.debug("Parakeet streaming stop error", { error: e.message }, "streaming");
+        return { text: "" };
+      });
+      if (result?.text) {
+        this.streamingFinalText = result.text;
+      }
+    } else if (provider === "openai-realtime") {
+      const result = await window.electronAPI.openaiRealtimeStreamingStop?.().catch((e) => {
+        logger.debug("OpenAI Realtime disconnect error", { error: e.message }, "streaming");
+        return { text: "" };
+      });
+      if (result?.text) {
+        this.streamingFinalText = result.text;
+      }
+    } else {
+      // AssemblyAI (default)
+      window.electronAPI.assemblyAiStreamingForceEndpoint?.();
+      stopResult = await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
+        logger.debug("Streaming disconnect error", { error: e.message }, "streaming");
+        return { success: false };
+      });
+    }
     const tTerminate = performance.now();
 
     finalText = this.streamingFinalText || "";
@@ -2070,10 +2406,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     logger.info(
       "Streaming stop timing",
       {
+        provider,
         durationSeconds,
         audioCleanupMs: Math.round(tAudioCleanup - t0),
-        flushWaitMs: Math.round(tForceEndpoint - tAudioCleanup),
-        terminateRoundTripMs: Math.round(tTerminate - tForceEndpoint),
+        terminateMs: Math.round(tTerminate - tAudioCleanup),
         totalStopMs: Math.round(tTerminate - t0),
         textLength: finalText.length,
       },
@@ -2087,50 +2423,61 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
 
       try {
+        let reasoningHandled = false;
         if (cloudReasoningMode === "openwhispr") {
-          const reasonResult = await withSessionRefresh(async () => {
-            const res = await window.electronAPI.cloudReason(finalText, {
-              agentName,
-              customDictionary: this.getCustomDictionaryArray(),
-              customPrompt: this.getCustomPrompt(),
-              language: localStorage.getItem("preferredLanguage") || "auto",
+          try {
+            const reasonResult = await withSessionRefresh(async () => {
+              const res = await window.electronAPI.cloudReason(finalText, {
+                agentName,
+                customDictionary: this.getCustomDictionaryArray(),
+                customPrompt: this.getCustomPrompt(),
+                language: localStorage.getItem("preferredLanguage") || "auto",
+              });
+              if (!res.success) {
+                const err = new Error(res.error || "Cloud reasoning failed");
+                err.code = res.code;
+                throw err;
+              }
+              return res;
             });
-            if (!res.success) {
-              const err = new Error(res.error || "Cloud reasoning failed");
-              err.code = res.code;
-              throw err;
-            }
-            return res;
-          });
 
-          if (reasonResult.success && reasonResult.text) {
-            finalText = reasonResult.text;
-          }
-
-          logger.info(
-            "Streaming reasoning complete",
-            {
-              reasoningDurationMs: Math.round(performance.now() - reasoningStart),
-              model: reasonResult.model,
-            },
-            "streaming"
-          );
-        } else {
-          const reasoningModel = localStorage.getItem("reasoningModel") || "";
-          if (reasoningModel) {
-            const result = await this.processWithReasoningModel(
-              finalText,
-              reasoningModel,
-              agentName
-            );
-            if (result) {
-              finalText = result;
+            if (reasonResult.success && reasonResult.text) {
+              finalText = reasonResult.text;
             }
+            reasoningHandled = true;
+
             logger.info(
-              "Streaming BYOK reasoning complete",
-              { reasoningDurationMs: Math.round(performance.now() - reasoningStart) },
+              "Streaming reasoning complete",
+              {
+                reasoningDurationMs: Math.round(performance.now() - reasoningStart),
+                model: reasonResult.model,
+              },
               "streaming"
             );
+          } catch (cloudError) {
+            logger.warn("Streaming cloud reasoning failed, falling back to BYOK", { error: cloudError.message }, "streaming");
+          }
+        }
+        if (!reasoningHandled) {
+          if (!this.textContainsAgentName(finalText, agentName)) {
+            logger.info("Streaming BYOK reasoning skipped — agent name not in transcription", { agentName }, "streaming");
+          } else {
+            const reasoningModel = localStorage.getItem("reasoningModel") || "";
+            if (reasoningModel) {
+              const result = await this.processWithReasoningModel(
+                finalText,
+                reasoningModel,
+                agentName
+              );
+              if (result) {
+                finalText = result;
+              }
+              logger.info(
+                "Streaming BYOK reasoning complete",
+                { reasoningDurationMs: Math.round(performance.now() - reasoningStart) },
+                "streaming"
+              );
+            }
           }
         }
       } catch (reasonError) {
@@ -2147,7 +2494,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       this.onTranscriptionComplete?.({
         success: true,
         text: finalText,
-        source: "assemblyai-streaming",
+        source: `${provider}-streaming`,
       });
 
       logger.info(
@@ -2200,6 +2547,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     }
 
     this.isStreaming = false;
+    this.streamingProvider = null;
   }
 
   cleanupStreamingListeners() {

@@ -268,6 +268,31 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onAssemblyAiError: registerListener("assemblyai-error", (callback) => (_event, error) => callback(error)),
   onAssemblyAiSessionEnd: registerListener("assemblyai-session-end", (callback) => (_event, data) => callback(data)),
 
+  // Deepgram Streaming
+  getDeepgramKey: () => ipcRenderer.invoke("get-deepgram-key"),
+  saveDeepgramKey: (key) => ipcRenderer.invoke("save-deepgram-key", key),
+  deepgramStreamingStart: (options) => ipcRenderer.invoke("deepgram-streaming-start", options),
+  deepgramStreamingSend: (audioBuffer) => ipcRenderer.send("deepgram-streaming-send", audioBuffer),
+  deepgramStreamingStop: () => ipcRenderer.invoke("deepgram-streaming-stop"),
+  onDeepgramPartialTranscript: registerListener("deepgram-partial-transcript", (callback) => (_event, text) => callback(text)),
+  onDeepgramFinalTranscript: registerListener("deepgram-final-transcript", (callback) => (_event, text) => callback(text)),
+  onDeepgramError: registerListener("deepgram-error", (callback) => (_event, error) => callback(error)),
+
+  // Parakeet Chunked Streaming
+  parakeetStreamingStart: () => ipcRenderer.invoke("parakeet-streaming-start"),
+  parakeetStreamingSend: (audioBuffer) => ipcRenderer.send("parakeet-streaming-send", audioBuffer),
+  parakeetStreamingStop: () => ipcRenderer.invoke("parakeet-streaming-stop"),
+  onParakeetPartialTranscript: registerListener("parakeet-partial-transcript", (callback) => (_event, text) => callback(text)),
+  onParakeetError: registerListener("parakeet-error", (callback) => (_event, error) => callback(error)),
+
+  // OpenAI Realtime Streaming
+  openaiRealtimeStreamingStart: (options) => ipcRenderer.invoke("openai-realtime-streaming-start", options),
+  openaiRealtimeStreamingSend: (audioBuffer) => ipcRenderer.send("openai-realtime-streaming-send", audioBuffer),
+  openaiRealtimeStreamingStop: () => ipcRenderer.invoke("openai-realtime-streaming-stop"),
+  onOpenaiRealtimePartialTranscript: registerListener("openai-realtime-partial-transcript", (callback) => (_event, text) => callback(text)),
+  onOpenaiRealtimeFinalTranscript: registerListener("openai-realtime-final-transcript", (callback) => (_event, text) => callback(text)),
+  onOpenaiRealtimeError: registerListener("openai-realtime-error", (callback) => (_event, error) => callback(error)),
+
   // Usage limit events (for showing UpgradePrompt in ControlPanel)
   notifyLimitReached: (data) => ipcRenderer.send("limit-reached", data),
   onLimitReached: registerListener("limit-reached", (callback) => (_event, data) => callback(data)),
