@@ -19,6 +19,7 @@ export interface WhisperModelResult {
   downloaded: boolean;
   size_mb?: number;
   error?: string;
+  code?: string;
 }
 
 export interface WhisperModelDeleteResult {
@@ -85,12 +86,13 @@ export interface AppVersionResult {
 }
 
 export interface WhisperDownloadProgressData {
-  type: string;
+  type: "progress" | "installing" | "complete" | "error";
   model: string;
   percentage?: number;
   downloaded_bytes?: number;
   total_bytes?: number;
   error?: string;
+  code?: string;
   result?: any;
 }
 
@@ -108,6 +110,7 @@ export interface ParakeetModelResult {
   size_bytes?: number;
   size_mb?: number;
   error?: string;
+  code?: string;
 }
 
 export interface ParakeetModelDeleteResult {
@@ -126,12 +129,13 @@ export interface ParakeetModelsListResult {
 }
 
 export interface ParakeetDownloadProgressData {
-  type: string;
+  type: "progress" | "installing" | "complete" | "error";
   model: string;
   percentage?: number;
   downloaded_bytes?: number;
   total_bytes?: number;
   error?: string;
+  code?: string;
 }
 
 export interface ParakeetTranscriptionResult {
@@ -413,6 +417,8 @@ declare global {
       // Windows Push-to-Talk notifications
       notifyActivationModeChanged?: (mode: "tap" | "push") => void;
       notifyHotkeyChanged?: (hotkey: string) => void;
+      notifyFloatingIconAutoHideChanged?: (enabled: boolean) => void;
+      onFloatingIconAutoHideChanged?: (callback: (enabled: boolean) => void) => () => void;
 
       // Auto-start at login
       getAutoStartEnabled?: () => Promise<boolean>;
@@ -436,7 +442,13 @@ declare global {
       }>;
       cloudReason?: (
         text: string,
-        opts: { model?: string; agentName?: string; customDictionary?: string[] }
+        opts: {
+          model?: string;
+          agentName?: string;
+          customDictionary?: string[];
+          customPrompt?: string;
+          language?: string;
+        }
       ) => Promise<{
         success: boolean;
         text?: string;
@@ -451,6 +463,7 @@ declare global {
         wordsRemaining?: number;
         limit?: number;
         plan?: string;
+        status?: string;
         isSubscribed?: boolean;
         isTrial?: boolean;
         trialDaysLeft?: number | null;

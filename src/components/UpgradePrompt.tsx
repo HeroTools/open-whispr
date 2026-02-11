@@ -16,30 +16,55 @@ export default function UpgradePrompt({
   limit = 2000,
 }: UpgradePromptProps) {
   const usage = useUsage();
+  const isPastDue = usage?.isPastDue ?? false;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <div className="text-center space-y-2 pt-2">
           <h2 className="text-xl font-semibold text-foreground">
-            You've reached your weekly limit
+            {isPastDue ? "We couldn't process your payment" : "You've reached your weekly limit"}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {wordsUsed.toLocaleString()} of {limit.toLocaleString()} words used.
-            <br />
-            Your transcription was saved and pasted.
+            {isPastDue ? (
+              <>
+                You're on the free plan for now — don't worry, you still get{" "}
+                {limit.toLocaleString()} words per week.
+                <br />
+                Update your payment method to get back to unlimited Pro.
+              </>
+            ) : (
+              <>
+                {wordsUsed.toLocaleString()} of {limit.toLocaleString()} words used.
+                <br />
+                Your transcription was saved and pasted.
+              </>
+            )}
           </p>
         </div>
 
         <div className="space-y-2 pt-2">
-          <OptionCard
-            title="Upgrade to Pro"
-            description="Unlimited transcriptions. $9/month."
-            onClick={() => {
-              usage?.openCheckout();
-            }}
-            highlighted
-          />
+          {isPastDue ? (
+            <OptionCard
+              title="Update payment method"
+              description="Get back to unlimited Pro transcriptions."
+              onClick={() => {
+                usage?.openBillingPortal();
+              }}
+              highlighted
+              disabled={usage?.checkoutLoading}
+            />
+          ) : (
+            <OptionCard
+              title="Upgrade to Pro"
+              description="Unlimited transcriptions. $9/month."
+              onClick={() => {
+                usage?.openCheckout();
+              }}
+              highlighted
+              disabled={usage?.checkoutLoading}
+            />
+          )}
           <OptionCard
             title="Use your own API key"
             description="Bring your own key for unlimited use."
@@ -69,16 +94,19 @@ function OptionCard({
   description,
   onClick,
   highlighted = false,
+  disabled = false,
 }: {
   title: string;
   description: string;
   onClick: () => void;
   highlighted?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left p-4 rounded-lg border transition-shadow duration-150 hover:shadow-md flex items-center justify-between cursor-pointer ${
+      disabled={disabled}
+      className={`w-full text-left p-4 rounded-lg border transition-shadow duration-150 hover:shadow-md flex items-center justify-between cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
         highlighted
           ? "bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/15"
           : "bg-muted/50 dark:bg-surface-2 border-border dark:border-border-subtle hover:border-border-hover"

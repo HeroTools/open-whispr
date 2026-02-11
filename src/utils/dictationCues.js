@@ -1,10 +1,10 @@
 import logger from "./logger";
 
-const START_NOTES = [880, 1174.66];
-const STOP_NOTES = [1174.66, 880];
-const NOTE_DURATION_SECONDS = 0.06;
-const NOTE_GAP_SECONDS = 0.02;
-const NOTE_ATTACK_SECONDS = 0.008;
+const START_NOTES = [523.25, 659.25];
+const STOP_NOTES = [587.33, 440];
+const NOTE_DURATION_SECONDS = 0.09;
+const NOTE_GAP_SECONDS = 0.025;
+const NOTE_ATTACK_SECONDS = 0.015;
 const MAX_GAIN = 0.2;
 const MIN_GAIN = 0.0001;
 
@@ -68,8 +68,12 @@ const scheduleTone = (context, frequency, startTime) => {
   oscillator.stop(stopTime + 0.01);
 };
 
+const isEnabled = () => localStorage.getItem("audioCuesEnabled") !== "false";
+
 const playCue = async (notes) => {
   try {
+    if (!isEnabled()) return;
+
     const context = await resumeContextIfNeeded();
     if (!context) {
       return;

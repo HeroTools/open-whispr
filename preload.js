@@ -301,6 +301,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   notifyActivationModeChanged: (mode) => ipcRenderer.send("activation-mode-changed", mode),
   notifyHotkeyChanged: (hotkey) => ipcRenderer.send("hotkey-changed", hotkey),
 
+  // Floating icon auto-hide
+  notifyFloatingIconAutoHideChanged: (enabled) => ipcRenderer.send("floating-icon-auto-hide-changed", enabled),
+  onFloatingIconAutoHideChanged: registerListener("floating-icon-auto-hide-changed", (callback) => (_event, enabled) => callback(enabled)),
+
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
   setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
 import { Button } from "./ui/button";
 import {
   Trash2,
@@ -11,8 +11,9 @@ import {
   Sparkles,
   Cloud,
   X,
+  AlertTriangle,
 } from "lucide-react";
-import SettingsModal, { SettingsSectionType } from "./SettingsModal";
+import type { SettingsSectionType } from "./SettingsModal";
 import TitleBar from "./TitleBar";
 import SupportDropdown from "./ui/SupportDropdown";
 import TranscriptionItem from "./ui/TranscriptionItem";
@@ -24,6 +25,7 @@ import { useToast } from "./ui/Toast";
 import { useUpdater } from "../hooks/useUpdater";
 import { useSettings } from "../hooks/useSettings";
 import { useAuth } from "../hooks/useAuth";
+import { useUsage } from "../hooks/useUsage";
 import {
   useTranscriptions,
   initializeTranscriptions,
@@ -31,6 +33,8 @@ import {
   clearTranscriptions as clearStoreTranscriptions,
 } from "../stores/transcriptionStore";
 import { formatHotkeyLabel } from "../utils/hotkeys";
+
+const SettingsModal = React.lazy(() => import("./SettingsModal"));
 
 export default function ControlPanel() {
   const history = useTranscriptions();
@@ -40,15 +44,17 @@ export default function ControlPanel() {
   const [limitData, setLimitData] = useState<{ wordsUsed: number; limit: number } | null>(null);
   const hasShownUpgradePrompt = useRef(false);
   const [settingsSection, setSettingsSection] = useState<SettingsSectionType | undefined>();
-  const [aiCTADismissed, setAiCTADismissed] = useState(false);
+  const [aiCTADismissed, setAiCTADismissed] = useState(
+    () => localStorage.getItem("aiCTADismissed") === "true"
+  );
   const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
   const cloudMigrationProcessed = useRef(false);
   const { hotkey } = useHotkey();
   const { toast } = useToast();
   const { useReasoningModel, setUseLocalWhisper, setCloudTranscriptionMode } = useSettings();
   const { isSignedIn, isLoaded: authLoaded } = useAuth();
+  const usage = useUsage();
 
-  // Use centralized updater hook to prevent EventEmitter memory leaks
   const {
     status: updateStatus,
     downloadProgress,
@@ -72,41 +78,38 @@ export default function ControlPanel() {
     loadTranscriptions();
   }, []);
 
-  // Show toast when update is ready
   useEffect(() => {
     if (updateStatus.updateDownloaded && !isDownloading) {
       toast({
-        title: "Update Ready",
-        description: "Click 'Install Update' to restart and apply the update.",
+        title: "Update ready to install",
+        description: "Click 'Install Update' to restart with the latest version.",
         variant: "success",
       });
     }
   }, [updateStatus.updateDownloaded, isDownloading, toast]);
 
-  // Show toast on update error
   useEffect(() => {
     if (updateError) {
       toast({
-        title: "Update Error",
-        description: "Failed to update. Please try again later.",
+        title: "Update ran into a problem",
+        description: "We couldn't complete the update. Please try again later.",
         variant: "destructive",
       });
     }
   }, [updateError, toast]);
 
-  // Listen for limit-reached events from the dictation overlay
   useEffect(() => {
     const dispose = window.electronAPI?.onLimitReached?.(
       (data: { wordsUsed: number; limit: number }) => {
-        // Show dialog only once per session, then show toast for subsequent hits
         if (!hasShownUpgradePrompt.current) {
           hasShownUpgradePrompt.current = true;
           setLimitData(data);
           setShowUpgradePrompt(true);
         } else {
           toast({
-            title: "Daily Limit Reached",
-            description: "Resets at midnight UTC. Upgrade to Pro or use your own API key.",
+            title: "Weekly limit reached",
+            description:
+              "Your limit resets on a rolling basis. Upgrade to Pro or use your own API key for unlimited use.",
             duration: 5000,
           });
         }
@@ -118,7 +121,19 @@ export default function ControlPanel() {
     };
   }, [toast]);
 
-  // Switch existing users to OpenWhispr Cloud after account creation
+  useEffect(() => {
+    if (!usage?.isPastDue || !usage.hasLoaded) return;
+    if (sessionStorage.getItem("pastDueNotified")) return;
+    sessionStorage.setItem("pastDueNotified", "true");
+    toast({
+      title: "We couldn't process your payment",
+      description:
+        "Don't worry — you're on the free plan for now. Update your payment in Settings to get back to Pro.",
+      variant: "destructive",
+      duration: 8000,
+    });
+  }, [usage?.isPastDue, usage?.hasLoaded, toast]);
+
   useEffect(() => {
     if (!authLoaded || !isSignedIn || cloudMigrationProcessed.current) return;
     const isPending = localStorage.getItem("pendingCloudMigration") === "true";
@@ -138,36 +153,40 @@ export default function ControlPanel() {
       await initializeTranscriptions();
     } catch (error) {
       showAlertDialog({
-        title: "Unable to load history",
-        description: "Please try again in a moment.",
+        title: "Couldn't load your history",
+        description:
+          "Something went wrong loading your transcriptions. Try closing and reopening the app.",
       });
     } finally {
       setIsLoading(false);
     }
   };
 
-  const copyToClipboard = async (text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-      toast({
-        title: "Copied!",
-        description: "Text copied to your clipboard",
-        variant: "success",
-        duration: 2000,
-      });
-    } catch (err) {
-      toast({
-        title: "Copy Failed",
-        description: "Failed to copy text to clipboard",
-        variant: "destructive",
-      });
-    }
-  };
+  const copyToClipboard = useCallback(
+    async (text: string) => {
+      try {
+        await navigator.clipboard.writeText(text);
+        toast({
+          title: "Copied!",
+          description: "Text copied to your clipboard",
+          variant: "success",
+          duration: 2000,
+        });
+      } catch (err) {
+        toast({
+          title: "Couldn't copy",
+          description: "Something went wrong copying to your clipboard. Try again.",
+          variant: "destructive",
+        });
+      }
+    },
+    [toast]
+  );
 
-  const clearHistory = async () => {
+  const clearHistory = useCallback(async () => {
     showConfirmDialog({
       title: "Clear History",
-      description: "Are you sure you want to clear all transcriptions? This cannot be undone.",
+      description: "This will remove all your transcriptions. You can't undo this.",
       onConfirm: async () => {
         try {
           const result = await window.electronAPI.clearTranscriptions();
@@ -180,69 +199,70 @@ export default function ControlPanel() {
           });
         } catch (error) {
           toast({
-            title: "Failed to clear",
-            description: "Please try again",
+            title: "Couldn't clear history",
+            description: "Something went wrong. Please try again.",
             variant: "destructive",
           });
         }
       },
       variant: "destructive",
     });
-  };
+  }, [showConfirmDialog, toast]);
 
-  const deleteTranscription = async (id: number) => {
-    showConfirmDialog({
-      title: "Delete Transcription",
-      description: "Are you certain you wish to remove this inscription from your records?",
-      onConfirm: async () => {
-        try {
-          const result = await window.electronAPI.deleteTranscription(id);
-          if (result.success) {
-            removeFromStore(id);
-          } else {
+  const deleteTranscription = useCallback(
+    async (id: number) => {
+      showConfirmDialog({
+        title: "Delete Transcription",
+        description: "This transcription will be permanently removed.",
+        onConfirm: async () => {
+          try {
+            const result = await window.electronAPI.deleteTranscription(id);
+            if (result.success) {
+              removeFromStore(id);
+            } else {
+              showAlertDialog({
+                title: "Couldn't delete",
+                description: "This transcription may have already been removed.",
+              });
+            }
+          } catch (error) {
             showAlertDialog({
-              title: "Delete Failed",
-              description: "Failed to delete transcription. It may have already been removed.",
+              title: "Couldn't delete",
+              description: "Something went wrong. Please try again.",
             });
           }
-        } catch (error) {
-          showAlertDialog({
-            title: "Delete Failed",
-            description: "Failed to delete transcription. Please try again.",
-          });
-        }
-      },
-      variant: "destructive",
-    });
-  };
+        },
+        variant: "destructive",
+      });
+    },
+    [showConfirmDialog, showAlertDialog]
+  );
 
   const handleUpdateClick = async () => {
     if (updateStatus.updateDownloaded) {
-      // Show confirmation dialog before installing
       showConfirmDialog({
         title: "Install Update",
         description:
-          "The update will be installed and the app will restart. Make sure you've saved any work.",
+          "OpenWhispr will restart to apply the update. Any in-progress work will be saved.",
         onConfirm: async () => {
           try {
             await installUpdate();
           } catch (error) {
             toast({
-              title: "Install Failed",
-              description: "Failed to install update. Please try again.",
+              title: "Couldn't install update",
+              description: "Something went wrong. Please try again.",
               variant: "destructive",
             });
           }
         },
       });
     } else if (updateStatus.updateAvailable && !isDownloading) {
-      // Start download
       try {
         await downloadUpdate();
       } catch (error) {
         toast({
-          title: "Download Failed",
-          description: "Failed to download update. Please try again.",
+          title: "Couldn't download update",
+          description: "Check your internet connection and try again.",
           variant: "destructive",
         });
       }
@@ -314,7 +334,6 @@ export default function ControlPanel() {
       <TitleBar
         actions={
           <>
-            {/* Update button */}
             {!updateStatus.isDevelopment &&
               (updateStatus.updateAvailable ||
                 updateStatus.updateDownloaded ||
@@ -346,19 +365,51 @@ export default function ControlPanel() {
         }
       />
 
-      <SettingsModal
-        open={showSettings}
-        onOpenChange={(open) => {
-          setShowSettings(open);
-          if (!open) setSettingsSection(undefined);
-        }}
-        initialSection={settingsSection}
-      />
+      {showSettings && (
+        <Suspense fallback={null}>
+          <SettingsModal
+            open={showSettings}
+            onOpenChange={(open) => {
+              setShowSettings(open);
+              if (!open) setSettingsSection(undefined);
+            }}
+            initialSection={settingsSection}
+          />
+        </Suspense>
+      )}
 
-      {/* Main content */}
       <div className="p-4">
         <div className="max-w-3xl mx-auto">
-          {/* Header row */}
+          {usage?.isPastDue && (
+            <div className="mb-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 p-3">
+              <div className="flex items-start gap-3">
+                <div className="shrink-0 w-8 h-8 rounded-md bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                  <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200 mb-0.5">
+                    We couldn't process your payment
+                  </p>
+                  <p className="text-[12px] text-amber-700 dark:text-amber-300/80 mb-2">
+                    You're on the free plan for now — you still get {usage.limit.toLocaleString()}{" "}
+                    words per week. Update your payment to get back to Pro.
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 text-[11px]"
+                    onClick={() => {
+                      setSettingsSection("account");
+                      setShowSettings(true);
+                    }}
+                  >
+                    Update Payment
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="flex items-center gap-2">
               <FileText size={14} className="text-primary" />
@@ -382,7 +433,6 @@ export default function ControlPanel() {
             )}
           </div>
 
-          {/* Cloud Migration Notice */}
           {showCloudMigrationBanner && (
             <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
               <button
@@ -425,11 +475,13 @@ export default function ControlPanel() {
             </div>
           )}
 
-          {/* AI Enhancement CTA */}
           {!useReasoningModel && !aiCTADismissed && (
             <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
               <button
-                onClick={() => setAiCTADismissed(true)}
+                onClick={() => {
+                  localStorage.setItem("aiCTADismissed", "true");
+                  setAiCTADismissed(true);
+                }}
                 className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
               >
                 <X size={14} />
@@ -461,7 +513,6 @@ export default function ControlPanel() {
             </div>
           )}
 
-          {/* Content area */}
           <div className="rounded-lg border border-border bg-card/50 dark:bg-card/30 backdrop-blur-sm">
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-8">
