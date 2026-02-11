@@ -381,7 +381,7 @@
         "rateLimited": "Download-Server begrenzt Anfragen. Bitte warten Sie einige Minuten und versuchen Sie es erneut.",
         "server": "Serverfehler ({{error}}). Bitte versuchen Sie es später erneut.",
         "generic": "Download fehlgeschlagen: {{error}}",
-        "extractionFailed": "Modell heruntergeladen, aber Installation fehlgeschlagen. Klicken Sie auf „Herunterladen", um die Installation ohne erneuten Download zu wiederholen.",
+        "extractionFailed": "Modell heruntergeladen, aber Installation fehlgeschlagen. Klicken Sie auf \u201EHerunterladen\u201C, um die Installation ohne erneuten Download zu wiederholen.",
         "unknown": "Unbekannter Fehler"
       },
       "downloadFailed": {
