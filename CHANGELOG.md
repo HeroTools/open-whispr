@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.5] - 2026-02-09
+
+### Added
+- **Dictation Sound Effects Toggle**: New setting to enable/disable dictation audio cues with refined tones (warmer, softer frequencies, gentler attack, distinct start/stop)
+- **Toast Notification Redesign**: Redesigned toast notifications as dark HUD surfaces for a more polished look
+- **Floating Icon Auto-Hide**: New setting to auto-hide the floating dictation icon
+- **Loading Screen Redesign**: Branded loading screen with logo and spinner
+- **Discord Support Link**: Added Discord link to the support menu
+- **Auth-Aware Routing**: Returning signed-out users now see a re-authentication screen instead of a broken state
+
+### Fixed
+- **Dropdown Dark Mode**: Fixed dropdown styling in dark mode
+- **Toast Dark Mode**: Fixed toast colouring in dark mode
+- **Globe Key Persistence**: Globe key now persists to .env and dictation key syncs to localStorage
+- **Globe Listener Cross-Compilation**: Cross-compiled globe listener for x64
+
+### Changed
+- **Startup Performance**: Deferred non-critical manager initialization after window creation, lazy-loaded ControlPanel/OnboardingFlow/SettingsModal, converted env file writes to async, extracted SettingsProvider context, and split Radix/lucide into separate vendor chunks
+- **Scrollbar Styling**: Subtle transparent-track scrollbar with thinner floating thumb
+
 ## [1.4.4] - 2026-02-08
 
 ### Fixed

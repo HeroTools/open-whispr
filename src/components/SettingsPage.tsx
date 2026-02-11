@@ -17,6 +17,8 @@ import {
   Cloud,
   Key,
   Sparkles,
+  AlertTriangle,
+  Loader2,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
@@ -27,6 +29,7 @@ import PermissionCard from "./ui/PermissionCard";
 import PasteToolsInfo from "./ui/PasteToolsInfo";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
 import { useSettings } from "../hooks/useSettings";
 import { useDialogs } from "../hooks/useDialogs";
 import { useAgentName } from "../utils/agentName";
@@ -641,6 +644,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudTranscriptionMode,
     cloudReasoningMode,
     setCloudReasoningMode,
+    audioCuesEnabled,
+    setAudioCuesEnabled,
+    floatingIconAutoHide,
+    setFloatingIconAutoHide,
     cloudBackupEnabled,
     setCloudBackupEnabled,
     telemetryEnabled,
@@ -685,8 +692,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     if (usage?.isApproachingLimit && !hasShownApproachingToast.current) {
       hasShownApproachingToast.current = true;
       toast({
-        title: "Approaching Weekly Limit",
-        description: `You've used ${usage.wordsUsed.toLocaleString()} of ${usage.limit.toLocaleString()} free words this week.`,
+        title: "Getting close to your weekly limit",
+        description: `You've used ${usage.wordsUsed.toLocaleString()} of ${usage.limit.toLocaleString()} free words this week. Upgrade to Pro for unlimited use.`,
         duration: 6000,
       });
     }
@@ -811,10 +818,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   useEffect(() => {
     if (updateError) {
       showAlertDialog({
-        title: "Update Error",
+        title: "Update ran into a problem",
         description:
-          updateError.message ||
-          "The updater encountered a problem. Please try again or download the latest release manually.",
+          "We couldn't complete the update. Please try again, or download the latest version from openwhispr.com.",
       });
     }
   }, [updateError, showAlertDialog]);
@@ -826,9 +832,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       }
       installTimeoutRef.current = setTimeout(() => {
         showAlertDialog({
-          title: "Still Running",
+          title: "Almost there",
           description:
-            "OpenWhispr didn't restart automatically. Please quit the app manually to finish installing the update.",
+            "OpenWhispr didn't restart on its own. Quit and reopen the app to finish installing the update.",
         });
       }, 10000);
     } else if (installTimeoutRef.current) {
@@ -845,7 +851,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   }, [installInitiated, showAlertDialog]);
 
   const resetAccessibilityPermissions = () => {
-    const message = `To fix accessibility permissions:\n\n1. Open System Settings > Privacy & Security > Accessibility\n2. Remove any old OpenWhispr or Electron entries\n3. Click (+) and add the current OpenWhispr app\n4. Make sure the checkbox is enabled\n5. Restart OpenWhispr\n\nClick OK to open System Settings.`;
+    const message = `Here's how to fix accessibility permissions:\n\n1. Open System Settings > Privacy & Security > Accessibility\n2. Remove any old OpenWhispr or Electron entries\n3. Click (+) and add OpenWhispr\n4. Make sure the checkbox is enabled\n5. Restart OpenWhispr\n\nWe'll open System Settings for you.`;
 
     showConfirmDialog({
       title: "Reset Accessibility Permissions",
@@ -871,9 +877,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           .then((result) => {
             if (!result?.success) {
               showAlertDialog({
-                title: "Unable to Remove Models",
+                title: "Couldn't remove models",
                 description:
-                  result?.error || "Something went wrong while deleting the cached models.",
+                  "Something went wrong deleting the cached models. Try again or remove them manually from the folder.",
               });
               return;
             }
@@ -881,15 +887,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             window.dispatchEvent(new Event("openwhispr-models-cleared"));
 
             showAlertDialog({
-              title: "Models Removed",
+              title: "Models removed",
               description:
-                "All downloaded Whisper models were deleted. You can re-download any model from the picker when needed.",
+                "All downloaded models have been cleared. You can re-download them anytime from the model picker.",
             });
           })
-          .catch((error) => {
+          .catch(() => {
             showAlertDialog({
-              title: "Unable to Remove Models",
-              description: error?.message || "An unknown error occurred.",
+              title: "Couldn't remove models",
+              description:
+                "Something went wrong. Try again or remove them manually from the folder.",
             });
           })
           .finally(() => {
@@ -901,21 +908,18 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const { isSignedIn, isLoaded, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isOpeningBilling, setIsOpeningBilling] = useState(false);
 
   const handleSignOut = useCallback(async () => {
     setIsSigningOut(true);
     try {
       await signOut();
-      // Clear onboarding to show auth screen again
-      localStorage.removeItem("onboardingCompleted");
-      localStorage.removeItem("onboardingCurrentStep");
-      // Reload the app to show onboarding/auth
       window.location.reload();
     } catch (error) {
       logger.error("Sign out failed", error, "auth");
       showAlertDialog({
-        title: "Sign Out Failed",
-        description: "Unable to sign out. Please try again.",
+        title: "Couldn't sign out",
+        description: "Something went wrong. Please try again.",
       });
     } finally {
       setIsSigningOut(false);
@@ -987,21 +991,49 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </SettingsPanel>
                 ) : (
                   <SettingsPanel>
+                    {usage.isPastDue && (
+                      <SettingsPanelRow>
+                        <Alert
+                          variant="warning"
+                          className="dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-200 dark:[&>svg]:text-amber-400"
+                        >
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>We couldn't process your payment</AlertTitle>
+                          <AlertDescription>
+                            You're on the free plan for now. Update your payment method to get back
+                            to Pro.
+                          </AlertDescription>
+                        </Alert>
+                      </SettingsPanelRow>
+                    )}
+
                     <SettingsPanelRow>
                       <SettingsRow
-                        label={usage.isSubscribed ? (usage.isTrial ? "Trial" : "Pro") : "Free"}
+                        label={
+                          usage.isTrial
+                            ? "Trial"
+                            : usage.isPastDue
+                              ? "Free"
+                              : usage.isSubscribed
+                                ? "Pro"
+                                : "Free"
+                        }
                         description={
                           usage.isTrial
                             ? `${usage.trialDaysLeft} ${usage.trialDaysLeft === 1 ? "day" : "days"} remaining \u2014 unlimited transcriptions`
-                            : usage.isSubscribed
-                              ? usage.currentPeriodEnd
-                                ? `Next billing: ${new Date(usage.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                                : "Unlimited transcriptions"
-                              : `${usage.wordsUsed.toLocaleString()} / ${usage.limit.toLocaleString()} words this week`
+                            : usage.isPastDue
+                              ? `${usage.wordsUsed.toLocaleString()} / ${usage.limit.toLocaleString()} free words this week \u2014 update payment to restore Pro`
+                              : usage.isSubscribed
+                                ? usage.currentPeriodEnd
+                                  ? `Next billing: ${new Date(usage.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+                                  : "Unlimited transcriptions"
+                                : `${usage.wordsUsed.toLocaleString()} / ${usage.limit.toLocaleString()} words this week`
                         }
                       >
                         {usage.isTrial ? (
                           <Badge variant="info">Trial</Badge>
+                        ) : usage.isPastDue ? (
+                          <Badge variant="destructive">Past due</Badge>
                         ) : usage.isSubscribed ? (
                           <Badge variant="success">Pro</Badge>
                         ) : usage.isOverLimit ? (
@@ -1048,14 +1080,46 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     )}
 
                     <SettingsPanelRow>
-                      {usage.isSubscribed && !usage.isTrial ? (
+                      {usage.isPastDue ? (
+                        <Button
+                          onClick={async () => {
+                            setIsOpeningBilling(true);
+                            try {
+                              const result = await usage.openBillingPortal();
+                              if (!result.success) {
+                                toast({
+                                  title: "Couldn't open billing",
+                                  description:
+                                    "We had trouble opening the billing page. Please try again.",
+                                  variant: "destructive",
+                                });
+                              }
+                            } finally {
+                              setIsOpeningBilling(false);
+                            }
+                          }}
+                          disabled={isOpeningBilling}
+                          size="sm"
+                          className="w-full"
+                        >
+                          {isOpeningBilling ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              Opening...
+                            </>
+                          ) : (
+                            "Update Payment Method"
+                          )}
+                        </Button>
+                      ) : usage.isSubscribed && !usage.isTrial ? (
                         <Button
                           onClick={async () => {
                             const result = await usage.openBillingPortal();
                             if (!result.success) {
                               toast({
                                 title: "Couldn't open billing",
-                                description: result.error,
+                                description:
+                                  "We had trouble opening the billing page. Please try again.",
                                 variant: "destructive",
                               });
                             }
@@ -1063,8 +1127,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           variant="outline"
                           size="sm"
                           className="w-full"
+                          disabled={usage.checkoutLoading}
                         >
-                          Manage Billing
+                          {usage.checkoutLoading ? "Opening..." : "Manage Billing"}
                         </Button>
                       ) : (
                         <Button
@@ -1073,15 +1138,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             if (!result.success) {
                               toast({
                                 title: "Couldn't open checkout",
-                                description: result.error,
+                                description:
+                                  "We had trouble opening the checkout page. Please try again.",
                                 variant: "destructive",
                               });
                             }
                           }}
                           size="sm"
                           className="w-full"
+                          disabled={usage.checkoutLoading}
                         >
-                          Upgrade to Pro
+                          {usage.checkoutLoading ? "Opening..." : "Upgrade to Pro"}
                         </Button>
                       )}
                     </SettingsPanelRow>
@@ -1134,8 +1201,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <Button
                         onClick={() => {
                           localStorage.setItem("pendingCloudMigration", "true");
-                          localStorage.removeItem("onboardingCompleted");
                           localStorage.setItem("onboardingCurrentStep", "0");
+                          localStorage.removeItem("onboardingCompleted");
                           window.location.reload();
                         }}
                         size="sm"
@@ -1216,8 +1283,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           }
                         } catch (error: any) {
                           showAlertDialog({
-                            title: "Update Check Failed",
-                            description: `Error checking for updates: ${error.message}`,
+                            title: "Couldn't check for updates",
+                            description:
+                              "Make sure you're connected to the internet and try again.",
                           });
                         }
                       }}
@@ -1241,8 +1309,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                               await downloadUpdate();
                             } catch (error: any) {
                               showAlertDialog({
-                                title: "Download Failed",
-                                description: `Failed to download update: ${error.message}`,
+                                title: "Couldn't download update",
+                                description: "Check your internet connection and try again.",
                               });
                             }
                           }}
@@ -1285,8 +1353,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                                 await installUpdateAction();
                               } catch (error: any) {
                                 showAlertDialog({
-                                  title: "Install Failed",
-                                  description: `Failed to install update: ${error.message}`,
+                                  title: "Couldn't install update",
+                                  description:
+                                    "Something went wrong. Try downloading the latest version from openwhispr.com.",
                                 });
                               }
                             },
@@ -1355,6 +1424,39 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         );
                       })}
                     </div>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Sound Effects */}
+            <div>
+              <SectionHeader title="Sound Effects" />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Dictation sounds"
+                    description="Play a tone when recording starts and stops"
+                  >
+                    <Toggle checked={audioCuesEnabled} onChange={setAudioCuesEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Floating Icon */}
+            <div>
+              <SectionHeader
+                title="Floating Icon"
+                description="Control when the dictation icon is visible on your screen"
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label="Auto-hide when idle"
+                    description="Keep the icon hidden until you start dictating"
+                  >
+                    <Toggle checked={floatingIconAutoHide} onChange={setFloatingIconAutoHide} />
                   </SettingsRow>
                 </SettingsPanelRow>
               </SettingsPanel>
@@ -1951,18 +2053,19 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                                 ?.cleanupApp()
                                 .then(() => {
                                   showAlertDialog({
-                                    title: "Reset Complete",
+                                    title: "All done",
                                     description:
-                                      "All app data has been removed. The app will reload.",
+                                      "Everything has been reset. The app will reload now.",
                                   });
                                   setTimeout(() => {
                                     window.location.reload();
                                   }, 1000);
                                 })
-                                .catch((error) => {
+                                .catch(() => {
                                   showAlertDialog({
-                                    title: "Reset Failed",
-                                    description: `Failed to reset: ${error.message}`,
+                                    title: "Couldn't reset",
+                                    description:
+                                      "Something went wrong. Please try again or reinstall the app.",
                                   });
                                 });
                             },

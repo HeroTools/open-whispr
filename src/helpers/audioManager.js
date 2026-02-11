@@ -2234,10 +2234,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       this.persistentAudioContext.close().catch(() => {});
       this.persistentAudioContext = null;
       this.workletModuleLoaded = false;
-      if (this.workletBlobUrl) {
-        URL.revokeObjectURL(this.workletBlobUrl);
-        this.workletBlobUrl = null;
-      }
+    }
+    if (this.workletBlobUrl) {
+      URL.revokeObjectURL(this.workletBlobUrl);
+      this.workletBlobUrl = null;
     }
     try {
       window.electronAPI?.assemblyAiStreamingStop?.();

@@ -61,10 +61,10 @@ export default function EmailVerificationStep({ email, onVerified }: EmailVerifi
         setResendCooldown(60);
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to resend email");
+        setError(data.error || "We couldn't resend the email. Please try again.");
       }
     } catch {
-      setError("Network error. Please try again.");
+      setError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setIsResending(false);
     }

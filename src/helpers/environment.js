@@ -1,5 +1,6 @@
 const path = require("path");
 const fs = require("fs");
+const fsPromises = require("fs/promises");
 const { app } = require("electron");
 
 const PERSISTED_KEYS = [
@@ -17,6 +18,7 @@ const PERSISTED_KEYS = [
   "LOCAL_REASONING_MODEL",
   "DICTATION_KEY",
   "ACTIVATION_MODE",
+  "FLOATING_ICON_AUTO_HIDE",
 ];
 
 class EnvironmentManager {
@@ -25,21 +27,27 @@ class EnvironmentManager {
   }
 
   loadEnvironmentVariables() {
-    // Loaded in priority order — dotenv won't override, so first file wins per variable
-    const possibleEnvPaths = [
-      path.join(app.getPath("userData"), ".env"),
+    // Loaded in priority order - dotenv won't override, so first file wins per variable.
+    const userDataEnv = path.join(app.getPath("userData"), ".env");
+    try {
+      if (fs.existsSync(userDataEnv)) {
+        require("dotenv").config({ path: userDataEnv });
+      }
+    } catch {}
+
+    const fallbackPaths = [
       path.join(__dirname, "..", "..", ".env"), // Development
       path.join(process.resourcesPath, ".env"),
       path.join(process.resourcesPath, "app.asar.unpacked", ".env"),
       path.join(process.resourcesPath, "app", ".env"), // Legacy
     ];
 
-    for (const envPath of possibleEnvPaths) {
+    for (const envPath of fallbackPaths) {
       try {
         if (fs.existsSync(envPath)) {
           require("dotenv").config({ path: envPath });
         }
-      } catch (error) {}
+      } catch {}
     }
   }
 
@@ -114,7 +122,7 @@ class EnvironmentManager {
 
   saveDictationKey(key) {
     const result = this._saveKey("DICTATION_KEY", key);
-    this.saveAllKeysToEnvFile();
+    this.saveAllKeysToEnvFile().catch(() => {});
     return result;
   }
 
@@ -126,11 +134,21 @@ class EnvironmentManager {
   saveActivationMode(mode) {
     const validMode = mode === "push" ? "push" : "tap";
     const result = this._saveKey("ACTIVATION_MODE", validMode);
-    this.saveAllKeysToEnvFile();
+    this.saveAllKeysToEnvFile().catch(() => {});
     return result;
   }
 
-  createProductionEnvFile(apiKey) {
+  getFloatingIconAutoHide() {
+    return this._getKey("FLOATING_ICON_AUTO_HIDE") === "true";
+  }
+
+  saveFloatingIconAutoHide(enabled) {
+    const result = this._saveKey("FLOATING_ICON_AUTO_HIDE", String(enabled));
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
+  async createProductionEnvFile(apiKey) {
     const envPath = path.join(app.getPath("userData"), ".env");
 
     const envContent = `# OpenWhispr Environment Variables
@@ -138,13 +156,13 @@ class EnvironmentManager {
 OPENAI_API_KEY=${apiKey}
 `;
 
-    fs.writeFileSync(envPath, envContent, "utf8");
+    await fsPromises.writeFile(envPath, envContent, "utf8");
     require("dotenv").config({ path: envPath });
 
     return { success: true, path: envPath };
   }
 
-  saveAllKeysToEnvFile() {
+  async saveAllKeysToEnvFile() {
     const envPath = path.join(app.getPath("userData"), ".env");
 
     let envContent = "# OpenWhispr Environment Variables\n";
@@ -155,7 +173,7 @@ OPENAI_API_KEY=${apiKey}
       }
     }
 
-    fs.writeFileSync(envPath, envContent, "utf8");
+    await fsPromises.writeFile(envPath, envContent, "utf8");
     require("dotenv").config({ path: envPath });
 
     return { success: true, path: envPath };

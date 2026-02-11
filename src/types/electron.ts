@@ -412,6 +412,8 @@ declare global {
       // Windows Push-to-Talk notifications
       notifyActivationModeChanged?: (mode: "tap" | "push") => void;
       notifyHotkeyChanged?: (hotkey: string) => void;
+      notifyFloatingIconAutoHideChanged?: (enabled: boolean) => void;
+      onFloatingIconAutoHideChanged?: (callback: (enabled: boolean) => void) => () => void;
 
       // Auto-start at login
       getAutoStartEnabled?: () => Promise<boolean>;
@@ -450,6 +452,7 @@ declare global {
         wordsRemaining?: number;
         limit?: number;
         plan?: string;
+        status?: string;
         isSubscribed?: boolean;
         isTrial?: boolean;
         trialDaysLeft?: number | null;
