@@ -8,6 +8,7 @@ const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
 const { i18nMain, changeLanguage } = require("./i18nMain");
+const DeepgramStreaming = require("./deepgramStreaming");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
@@ -24,6 +25,7 @@ class IPCHandlers {
     this.getTrayManager = managers.getTrayManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
+    this.deepgramStreaming = null;
     this.setupHandlers();
   }
 
@@ -177,6 +179,13 @@ class IPCHandlers {
 
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text, options) => {
+      // If the floating dictation panel currently has focus, blur it first so the
+      // paste keystroke lands in the user's target app instead of the overlay.
+      const mainWindow = this.windowManager?.mainWindow;
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused()) {
+        mainWindow.blur();
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
       return this.clipboardManager.pasteText(text, { ...options, webContents: event.sender });
     });
 
@@ -1784,6 +1793,200 @@ class IPCHandlers {
         return { isConnected: false, sessionId: null };
       }
       return this.assemblyAiStreaming.getStatus();
+    });
+
+    // --- Deepgram Streaming handlers ---
+
+    const fetchDeepgramStreamingToken = async (event) => {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) {
+        throw new Error("OpenWhispr API URL not configured");
+      }
+
+      const cookieHeader = await getSessionCookies(event);
+      if (!cookieHeader) {
+        throw new Error("No session cookies available");
+      }
+
+      const tokenResponse = await fetch(`${apiUrl}/api/deepgram-streaming-token`, {
+        method: "POST",
+        headers: {
+          Cookie: cookieHeader,
+        },
+      });
+
+      if (!tokenResponse.ok) {
+        if (tokenResponse.status === 401) {
+          const err = new Error("Session expired");
+          err.code = "AUTH_EXPIRED";
+          throw err;
+        }
+        const errorData = await tokenResponse.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to get Deepgram streaming token: ${tokenResponse.status}`
+        );
+      }
+
+      const { token } = await tokenResponse.json();
+      if (!token) {
+        throw new Error("No token received from API");
+      }
+
+      return token;
+    };
+
+    ipcMain.handle("deepgram-streaming-warmup", async (event, options = {}) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          return { success: false, error: "API not configured", code: "NO_API" };
+        }
+
+        if (!this.deepgramStreaming) {
+          this.deepgramStreaming = new DeepgramStreaming();
+        }
+
+        if (this.deepgramStreaming.hasWarmConnection()) {
+          debugLogger.debug("Deepgram connection already warm", {}, "streaming");
+          return { success: true, alreadyWarm: true };
+        }
+
+        let token = this.deepgramStreaming.getCachedToken();
+        if (!token) {
+          debugLogger.debug("Fetching new Deepgram streaming token for warmup", {}, "streaming");
+          token = await fetchDeepgramStreamingToken(event);
+        }
+
+        await this.deepgramStreaming.warmup({ ...options, token });
+        debugLogger.debug("Deepgram connection warmed up", {}, "streaming");
+
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Deepgram warmup error", { error: error.message });
+        if (error.code === "AUTH_EXPIRED") {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        return { success: false, error: error.message };
+      }
+    });
+
+    let deepgramStreamingStartInProgress = false;
+
+    ipcMain.handle("deepgram-streaming-start", async (event, options = {}) => {
+      if (deepgramStreamingStartInProgress) {
+        debugLogger.debug(
+          "Deepgram streaming start already in progress, ignoring",
+          {},
+          "streaming"
+        );
+        return { success: false, error: "Operation in progress" };
+      }
+
+      deepgramStreamingStartInProgress = true;
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          return { success: false, error: "API not configured", code: "NO_API" };
+        }
+
+        const win = BrowserWindow.fromWebContents(event.sender);
+
+        if (!this.deepgramStreaming) {
+          this.deepgramStreaming = new DeepgramStreaming();
+        }
+
+        if (this.deepgramStreaming.isConnected) {
+          debugLogger.debug("Deepgram cleaning up stale connection before start", {}, "streaming");
+          await this.deepgramStreaming.disconnect(false);
+        }
+
+        const hasWarm = this.deepgramStreaming.hasWarmConnection();
+        debugLogger.debug("Deepgram streaming start", { hasWarmConnection: hasWarm }, "streaming");
+
+        let token = this.deepgramStreaming.getCachedToken();
+        if (!token) {
+          debugLogger.debug("Fetching Deepgram streaming token from API", {}, "streaming");
+          token = await fetchDeepgramStreamingToken(event);
+          this.deepgramStreaming.cacheToken(token);
+        } else {
+          debugLogger.debug("Using cached Deepgram streaming token", {}, "streaming");
+        }
+
+        this.deepgramStreaming.onPartialTranscript = (text) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("deepgram-partial-transcript", text);
+          }
+        };
+
+        this.deepgramStreaming.onFinalTranscript = (text) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("deepgram-final-transcript", text);
+          }
+        };
+
+        this.deepgramStreaming.onError = (error) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("deepgram-error", error.message);
+          }
+        };
+
+        this.deepgramStreaming.onSessionEnd = (data) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("deepgram-session-end", data);
+          }
+        };
+
+        await this.deepgramStreaming.connect({ ...options, token });
+        debugLogger.debug("Deepgram streaming started", {}, "streaming");
+
+        return {
+          success: true,
+          usedWarmConnection: hasWarm,
+        };
+      } catch (error) {
+        debugLogger.error("Deepgram streaming start error", { error: error.message });
+        if (error.code === "AUTH_EXPIRED") {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        return { success: false, error: error.message };
+      } finally {
+        deepgramStreamingStartInProgress = false;
+      }
+    });
+
+    ipcMain.on("deepgram-streaming-send", (event, audioBuffer) => {
+      try {
+        if (!this.deepgramStreaming) return;
+        const buffer = Buffer.from(audioBuffer);
+        this.deepgramStreaming.sendAudio(buffer);
+      } catch (error) {
+        debugLogger.error("Deepgram streaming send error", { error: error.message });
+      }
+    });
+
+    ipcMain.on("deepgram-streaming-finalize", () => {
+      this.deepgramStreaming?.finalize();
+    });
+
+    ipcMain.handle("deepgram-streaming-stop", async () => {
+      try {
+        let result = { text: "" };
+        if (this.deepgramStreaming) {
+          result = await this.deepgramStreaming.disconnect(true);
+        }
+
+        return { success: true, text: result?.text || "" };
+      } catch (error) {
+        debugLogger.error("Deepgram streaming stop error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("deepgram-streaming-status", async () => {
+      if (!this.deepgramStreaming) {
+        return { isConnected: false, sessionId: null };
+      }
+      return this.deepgramStreaming.getStatus();
     });
   }
 

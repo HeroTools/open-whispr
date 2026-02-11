@@ -259,6 +259,18 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, data) => callback(data)
   ),
 
+  // Deepgram Streaming
+  deepgramStreamingWarmup: (options) => ipcRenderer.invoke("deepgram-streaming-warmup", options),
+  deepgramStreamingStart: (options) => ipcRenderer.invoke("deepgram-streaming-start", options),
+  deepgramStreamingSend: (audioBuffer) => ipcRenderer.send("deepgram-streaming-send", audioBuffer),
+  deepgramStreamingFinalize: () => ipcRenderer.send("deepgram-streaming-finalize"),
+  deepgramStreamingStop: () => ipcRenderer.invoke("deepgram-streaming-stop"),
+  deepgramStreamingStatus: () => ipcRenderer.invoke("deepgram-streaming-status"),
+  onDeepgramPartialTranscript: registerListener("deepgram-partial-transcript", (callback) => (_event, text) => callback(text)),
+  onDeepgramFinalTranscript: registerListener("deepgram-final-transcript", (callback) => (_event, text) => callback(text)),
+  onDeepgramError: registerListener("deepgram-error", (callback) => (_event, error) => callback(error)),
+  onDeepgramSessionEnd: registerListener("deepgram-session-end", (callback) => (_event, data) => callback(data)),
+
   // Usage limit events (for showing UpgradePrompt in ControlPanel)
   notifyLimitReached: (data) => ipcRenderer.send("limit-reached", data),
   onLimitReached: registerListener("limit-reached", (callback) => (_event, data) => callback(data)),

@@ -41,11 +41,11 @@ export const useAudioRecording = (toast, options = {}) => {
     }
 
     const currentState = audioManagerRef.current.getState();
-    if (!currentState.isRecording) {
+    if (!currentState.isRecording && !currentState.isStreamingStartInProgress) {
       return false;
     }
 
-    if (currentState.isStreaming) {
+    if (currentState.isStreaming || currentState.isStreamingStartInProgress) {
       void playStopCue(); // streaming stop finalization is async, play cue immediately on stop action
       return await audioManagerRef.current.stopStreamingRecording();
     }
@@ -231,9 +231,9 @@ export const useAudioRecording = (toast, options = {}) => {
     }
   };
 
-  const warmupStreaming = () => {
-    audioManagerRef.current?.warmupStreamingConnection();
-  };
+  const warmupStreaming = useCallback((opts) => {
+    audioManagerRef.current?.warmupStreamingConnection(opts);
+  }, []);
 
   return {
     isRecording,
