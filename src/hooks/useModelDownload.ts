@@ -37,6 +37,8 @@ export function formatETA(seconds: number): string {
 }
 
 function getDownloadErrorMessage(error: string, code?: string): string {
+  if (code === "EXTRACTION_FAILED" || error.includes("installation failed"))
+    return "Model downloaded but installation failed. Click download to retry installation without re-downloading.";
   if (code === "ETIMEDOUT" || error.includes("timeout") || error.includes("stalled"))
     return "Download timed out. Check your internet connection and try again.";
   if (code === "ENOTFOUND" || error.includes("ENOTFOUND"))
@@ -114,8 +116,9 @@ export function useModelDownload({
       } else if (data.type === "error") {
         if (isCancellingRef.current) return;
         const msg = getDownloadErrorMessage(data.error || "Unknown error", data.code);
+        const title = data.code === "EXTRACTION_FAILED" ? "Installation Failed" : "Download Failed";
         setDownloadError(msg);
-        showAlertDialogRef.current({ title: "Download Failed", description: msg });
+        showAlertDialogRef.current({ title, description: msg });
         setIsInstalling(false);
         setDownloadingModel(null);
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
@@ -188,8 +191,10 @@ export function useModelDownload({
           const result = await window.electronAPI?.downloadParakeetModel(modelId);
           if (!result?.success && !result?.error?.includes("interrupted by user")) {
             const msg = getDownloadErrorMessage(result?.error || "Unknown error", result?.code);
+            const title =
+              result?.code === "EXTRACTION_FAILED" ? "Installation Failed" : "Download Failed";
             setDownloadError(msg);
-            showAlertDialog({ title: "Download Failed", description: msg });
+            showAlertDialog({ title, description: msg });
           } else {
             success = result?.success ?? false;
           }
