@@ -1,5 +1,7 @@
 # OpenWhispr
 
+[![Downloads](https://img.shields.io/github/downloads/OpenWhispr/openwhispr/total?style=flat&color=blue)](https://github.com/OpenWhispr/openwhispr/releases)
+
 An open source desktop dictation application that converts speech to text using OpenAI Whisper. Features both local and cloud processing options for maximum flexibility and privacy.
 
 ## Star History
@@ -67,26 +69,32 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    
    **Method A - Environment file**:
    ```bash
-   cp env.example .env
+   cp .env.example .env
    # Edit .env and add your API keys:
    # OPENAI_API_KEY=your_openai_key
    # ANTHROPIC_API_KEY=your_anthropic_key
    # GEMINI_API_KEY=your_gemini_key
    # GROQ_API_KEY=your_groq_key
+   # MISTRAL_API_KEY=your_mistral_key
    ```
    
    **Method B - In-app configuration**:
    - Run the app and configure API keys through the Control Panel
    - Keys are automatically saved and persist across app restarts
 
-4. **Run the application**:
+4. **Build the application**:
+   ```bash
+   npm run build
+   ```
+
+5. **Run the application**:
    ```bash
    npm run dev  # Development mode with hot reload
    # OR
    npm start    # Production mode
    ```
 
-5. **Optional: Local Whisper from source** (only needed if you want local processing):
+6. **Optional: Local Whisper from source** (only needed if you want local processing):
    ```bash
    npm run download:whisper-cpp
    ```
@@ -186,6 +194,13 @@ sudo pacman -S xdotool
 ```
 
 **Wayland (Modern Linux Desktop)**:
+
+**Recommended:** Install `wl-clipboard` for reliable clipboard sharing between Wayland apps:
+```bash
+sudo apt install wl-clipboard    # Debian/Ubuntu
+sudo dnf install wl-clipboard    # Fedora/RHEL
+sudo pacman -S wl-clipboard      # Arch
+```
 
 Choose **one** of the following paste tools:
 
@@ -337,7 +352,7 @@ Improve transcription accuracy for specific words, names, or technical terms:
   - Free plan: 2,000 words/week with 7-day Pro trial for new accounts
   - Pro plan: unlimited transcriptions
 - **Bring Your Own Key (BYOK)**:
-  - Use your own API keys from OpenAI, Groq, AssemblyAI, or custom endpoints
+  - Use your own API keys from OpenAI, Groq, Mistral, AssemblyAI, or custom endpoints
   - Full control over provider and model selection
 - **Local Processing**:
   - Install Whisper or NVIDIA Parakeet through the Control Panel
@@ -485,6 +500,9 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # Optional: Groq API Configuration (ultra-fast inference)
 GROQ_API_KEY=your_groq_api_key_here
 
+# Optional: Mistral API Configuration (Voxtral transcription)
+MISTRAL_API_KEY=your_mistral_api_key_here
+
 # Optional: Debug mode
 DEBUG=false
 ```
@@ -580,7 +598,7 @@ OpenWhispr is designed with privacy and security in mind:
 6. **Text not pasting**:
    - macOS: Check accessibility permissions (System Settings → Privacy & Security → Accessibility)
    - Linux X11: Install `xdotool`
-   - Linux Wayland: Install `wtype` or `ydotool` (ensure `ydotoold` daemon is running)
+   - Linux Wayland: Install `wtype` or `ydotool` for paste simulation (ensure `ydotoold` daemon is running)
    - All platforms: Text is always copied to clipboard - use Ctrl+V (Cmd+V on macOS) to paste manually
 7. **Panel position**: If the panel appears off-screen, restart the app to reset position
 
@@ -621,14 +639,14 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.4.0
+OpenWhispr is actively maintained and ready for production use. Current version: 1.4.5
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support (macOS, Windows, Linux)
 - ✅ OpenWhispr Cloud with account system and usage tracking
 - ✅ Free and Pro plans with Stripe billing
 - ✅ Local and cloud processing
-- ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Local)
+- ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Mistral, Local)
 - ✅ Compound hotkey support
 - ✅ Windows Push-to-Talk with native key listener
 - ✅ Custom dictionary for improved transcription accuracy

@@ -133,7 +133,7 @@ export default function LocalModelPicker({
   );
 
   const currentProvider = providers.find((p) => p.id === selectedProvider);
-  const models = currentProvider?.models || [];
+  const models = useMemo(() => currentProvider?.models || [], [currentProvider?.models]);
 
   const progressDisplay = useMemo(() => {
     if (!downloadingModel) return null;

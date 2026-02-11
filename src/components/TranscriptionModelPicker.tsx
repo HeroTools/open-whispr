@@ -16,7 +16,11 @@ import {
   WHISPER_MODEL_INFO,
   PARAKEET_MODEL_INFO,
 } from "../models/ModelRegistry";
-import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
+import {
+  MODEL_PICKER_COLORS,
+  type ColorScheme,
+  type ModelPickerStyles,
+} from "../utils/modelPickerStyles";
 import { getProviderIcon, isMonochromeProvider } from "../utils/providerIcons";
 import { API_ENDPOINTS } from "../config/constants";
 import { createExternalLinkHandler } from "../utils/externalLinks";
@@ -44,7 +48,7 @@ interface LocalModelCardProps {
   onDelete: () => void;
   onDownload: () => void;
   onCancel: () => void;
-  styles: ReturnType<(typeof MODEL_PICKER_COLORS)[keyof typeof MODEL_PICKER_COLORS]>;
+  styles: ModelPickerStyles;
 }
 
 function LocalModelCard({
@@ -189,6 +193,8 @@ interface TranscriptionModelPickerProps {
   setOpenaiApiKey: (key: string) => void;
   groqApiKey: string;
   setGroqApiKey: (key: string) => void;
+  mistralApiKey: string;
+  setMistralApiKey: (key: string) => void;
   customTranscriptionApiKey?: string;
   setCustomTranscriptionApiKey?: (key: string) => void;
   cloudTranscriptionBaseUrl?: string;
@@ -200,12 +206,13 @@ interface TranscriptionModelPickerProps {
 const CLOUD_PROVIDER_TABS = [
   { id: "openai", name: "OpenAI" },
   { id: "groq", name: "Groq", recommended: true },
+  { id: "mistral", name: "Mistral" },
   { id: "custom", name: "Custom" },
 ];
 
 const VALID_CLOUD_PROVIDER_IDS = CLOUD_PROVIDER_TABS.map((p) => p.id);
 
-const LOCAL_PROVIDER_TABS = [
+const LOCAL_PROVIDER_TABS: Array<{ id: string; name: string; disabled?: boolean }> = [
   { id: "whisper", name: "OpenAI Whisper" },
   { id: "nvidia", name: "NVIDIA Parakeet" },
 ];
@@ -262,6 +269,8 @@ export default function TranscriptionModelPicker({
   setOpenaiApiKey,
   groqApiKey,
   setGroqApiKey,
+  mistralApiKey,
+  setMistralApiKey,
   customTranscriptionApiKey = "",
   setCustomTranscriptionApiKey,
   cloudTranscriptionBaseUrl = "",
@@ -638,10 +647,11 @@ export default function TranscriptionModelPicker({
       <div className="space-y-0.5">
         {modelsToRender.map((model) => {
           const modelId = model.model;
-          const info = WHISPER_MODEL_INFO[modelId] || {
+          const info = WHISPER_MODEL_INFO[modelId] ?? {
             name: modelId,
             description: "Model",
             size: "Unknown",
+            recommended: false,
           };
 
           return (
@@ -710,11 +720,12 @@ export default function TranscriptionModelPicker({
       <div className="space-y-0.5">
         {modelsToRender.map((model) => {
           const modelId = model.model;
-          const info = PARAKEET_MODEL_INFO[modelId] || {
+          const info = PARAKEET_MODEL_INFO[modelId] ?? {
             name: modelId,
             description: "NVIDIA Parakeet Model",
             size: "Unknown",
             language: "en",
+            recommended: false,
           };
 
           return (
@@ -804,9 +815,11 @@ export default function TranscriptionModelPicker({
                     <button
                       type="button"
                       onClick={createExternalLinkHandler(
-                        selectedCloudProvider === "groq"
-                          ? "https://console.groq.com/keys"
-                          : "https://platform.openai.com/api-keys"
+                        {
+                          groq: "https://console.groq.com/keys",
+                          mistral: "https://console.mistral.ai/api-keys",
+                          openai: "https://platform.openai.com/api-keys",
+                        }[selectedCloudProvider] || "https://platform.openai.com/api-keys"
                       )}
                       className="text-[11px] text-white/70 hover:text-white transition-colors cursor-pointer"
                     >
@@ -814,8 +827,16 @@ export default function TranscriptionModelPicker({
                     </button>
                   </div>
                   <ApiKeyInput
-                    apiKey={selectedCloudProvider === "groq" ? groqApiKey : openaiApiKey}
-                    setApiKey={selectedCloudProvider === "groq" ? setGroqApiKey : setOpenaiApiKey}
+                    apiKey={
+                      { groq: groqApiKey, mistral: mistralApiKey, openai: openaiApiKey }[
+                        selectedCloudProvider
+                      ] || openaiApiKey
+                    }
+                    setApiKey={
+                      { groq: setGroqApiKey, mistral: setMistralApiKey, openai: setOpenaiApiKey }[
+                        selectedCloudProvider
+                      ] || setOpenaiApiKey
+                    }
                     label=""
                     helpText=""
                   />

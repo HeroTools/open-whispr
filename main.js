@@ -1,4 +1,4 @@
-const { app, globalShortcut, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, globalShortcut, BrowserWindow, dialog, ipcMain, session } = require("electron");
 const path = require("path");
 const http = require("http");
 require("dotenv").config({ path: path.join(__dirname, ".env") });
@@ -54,9 +54,19 @@ function configureChannelUserDataPath() {
 
 configureChannelUserDataPath();
 
-// Enable native Wayland global shortcuts: https://github.com/electron/electron/pull/45171
+// Fix transparent window flickering on Linux: --enable-transparent-visuals requires
+// the compositor to set up an ARGB visual before any windows are created.
+// --disable-gpu-compositing prevents GPU compositing conflicts with the compositor.
+if (process.platform === "linux") {
+  app.commandLine.appendSwitch("enable-transparent-visuals");
+  app.commandLine.appendSwitch("disable-gpu-compositing");
+}
+
+// Enable native Wayland support: Ozone platform for native rendering,
+// and GlobalShortcutsPortal for global shortcuts via xdg-desktop-portal
 if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
-  app.commandLine.appendSwitch("enable-features", "GlobalShortcutsPortal");
+  app.commandLine.appendSwitch("ozone-platform-hint", "auto");
+  app.commandLine.appendSwitch("enable-features", "UseOzonePlatform,WaylandWindowDecorations,GlobalShortcutsPortal");
 }
 
 // Group all windows under single taskbar entry on Windows
@@ -200,14 +210,11 @@ function setupProductionPath() {
   }
 }
 
-// Initialize all managers - called after app.whenReady()
-function initializeManagers() {
-  // Set up PATH before initializing managers
+// Phase 1: Initialize managers + IPC handlers before window content loads
+function initializeCoreManagers() {
   setupProductionPath();
 
-  // Now it's safe to call app.getPath() and initialize managers
   debugLogger = require("./src/helpers/debugLogger");
-  // Ensure file logging is initialized now that app is ready
   debugLogger.ensureFileLogging();
 
   environmentManager = new EnvironmentManager();
@@ -217,15 +224,30 @@ function initializeManagers() {
   hotkeyManager = windowManager.hotkeyManager;
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();
-  clipboardManager.preWarmAccessibility();
   whisperManager = new WhisperManager();
   parakeetManager = new ParakeetManager();
-  trayManager = new TrayManager();
   updateManager = new UpdateManager();
-  globeKeyManager = new GlobeKeyManager();
   windowsKeyManager = new WindowsKeyManager();
 
-  // Set up Globe key error handler on macOS
+  // IPC handlers must be registered before window content loads
+  new IPCHandlers({
+    environmentManager,
+    databaseManager,
+    clipboardManager,
+    whisperManager,
+    parakeetManager,
+    windowManager,
+    updateManager,
+    windowsKeyManager,
+  });
+}
+
+// Phase 2: Non-critical setup after windows are visible
+function initializeDeferredManagers() {
+  clipboardManager.preWarmAccessibility();
+  trayManager = new TrayManager();
+  globeKeyManager = new GlobeKeyManager();
+
   if (process.platform === "darwin") {
     globeKeyManager.on("error", (error) => {
       if (globeKeyAlertShown) {
@@ -254,25 +276,17 @@ function initializeManagers() {
       });
     });
   }
-
-  // Initialize IPC handlers with all managers
-  const _ipcHandlers = new IPCHandlers({
-    environmentManager,
-    databaseManager,
-    clipboardManager,
-    whisperManager,
-    parakeetManager,
-    windowManager,
-    updateManager,
-    windowsKeyManager,
-  });
 }
 
-// Handle the protocol on macOS
 app.on('open-url', (event, url) => {
   event.preventDefault();
-  if (url.startsWith(`${OAUTH_PROTOCOL}://`)) {
-    handleOAuthDeepLink(url);
+  if (!url.startsWith(`${OAUTH_PROTOCOL}://`)) return;
+
+  handleOAuthDeepLink(url);
+
+  if (windowManager && isLiveWindow(windowManager.controlPanelWindow)) {
+    windowManager.controlPanelWindow.show();
+    windowManager.controlPanelWindow.focus();
   }
 });
 
@@ -284,19 +298,24 @@ function navigateControlPanelWithVerifier(verifier) {
   if (!isLiveWindow(windowManager?.controlPanelWindow)) return;
 
   const appUrl = DevServerManager.getAppUrl(true);
-  if (!appUrl) return;
 
-  const separator = appUrl.includes('?') ? '&' : '?';
-  const urlWithVerifier = `${appUrl}${separator}neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
+  if (appUrl) {
+    const separator = appUrl.includes('?') ? '&' : '?';
+    const urlWithVerifier = `${appUrl}${separator}neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
+    windowManager.controlPanelWindow.loadURL(urlWithVerifier);
+  } else {
+    const fileInfo = DevServerManager.getAppFilePath(true);
+    if (!fileInfo) return;
+    fileInfo.query.neon_auth_session_verifier = verifier;
+    windowManager.controlPanelWindow.loadFile(fileInfo.path, { query: fileInfo.query });
+  }
+
   if (debugLogger) {
     debugLogger.debug("Navigating control panel with OAuth verifier", {
       appChannel: APP_CHANNEL,
       oauthProtocol: OAUTH_PROTOCOL,
-      devServerUrl: appUrl,
-      authBridgeUrl: `http://${AUTH_BRIDGE_HOST}:${AUTH_BRIDGE_PORT}${AUTH_BRIDGE_PATH}`,
     });
   }
-  windowManager.controlPanelWindow.loadURL(urlWithVerifier);
   windowManager.controlPanelWindow.show();
   windowManager.controlPanelWindow.focus();
 }
@@ -402,60 +421,71 @@ function startAuthBridgeServer() {
 
 // Main application startup
 async function startApp() {
-  // Initialize all managers now that app is ready
-  initializeManagers();
+  // Phase 1: Core managers + IPC handlers before windows
+  initializeCoreManagers();
   startAuthBridgeServer();
 
-  // Initialize activation mode cache from persisted .env value
-  windowManager.setActivationModeCache(environmentManager.getActivationMode());
+  // Electron's file:// sends no Origin header, which Neon Auth rejects.
+  session.defaultSession.webRequest.onBeforeSendHeaders(
+    { urls: ["https://*.neon.tech/*"] },
+    (details, callback) => {
+      try {
+        details.requestHeaders["Origin"] = new URL(details.url).origin;
+      } catch { /* malformed URL — leave Origin as-is */ }
+      callback({ requestHeaders: details.requestHeaders });
+    }
+  );
 
-  // Update cache + persist when renderer changes activation mode (all platforms)
+  windowManager.setActivationModeCache(environmentManager.getActivationMode());
+  windowManager.setFloatingIconAutoHide(environmentManager.getFloatingIconAutoHide());
+
   ipcMain.on("activation-mode-changed", (_event, mode) => {
     windowManager.setActivationModeCache(mode);
     environmentManager.saveActivationMode(mode);
   });
 
-  // In development, add a small delay to let Vite start properly
-  if (process.env.NODE_ENV === "development") {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
+  ipcMain.on("floating-icon-auto-hide-changed", (_event, enabled) => {
+    windowManager.setFloatingIconAutoHide(enabled);
+    environmentManager.saveFloatingIconAutoHide(enabled);
+    // Relay to the floating icon window so it can react immediately
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("floating-icon-auto-hide-changed", enabled);
+    }
+  });
 
-  // On macOS, set activation policy to allow dock icon to be shown/hidden dynamically
-  // The dock icon visibility is managed by WindowManager based on control panel state
   if (process.platform === "darwin") {
     app.setActivationPolicy("regular");
   }
 
-  // Initialize Whisper manager at startup (don't await to avoid blocking)
-  // Settings can be provided via environment variables for server pre-warming:
-  // - LOCAL_TRANSCRIPTION_PROVIDER=whisper to enable local whisper mode
-  // - LOCAL_WHISPER_MODEL=base (or tiny, small, medium, large, turbo)
+  // In development, wait for Vite dev server to be ready
+  if (process.env.NODE_ENV === "development") {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  // Create windows FIRST so the user sees UI as soon as possible
+  await windowManager.createMainWindow();
+  await windowManager.createControlPanelWindow();
+
+  // Phase 2: Initialize remaining managers after windows are visible
+  initializeDeferredManagers();
+
+  // Non-blocking server pre-warming
   const whisperSettings = {
     localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
     whisperModel: process.env.LOCAL_WHISPER_MODEL,
   };
   whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
-    // Whisper not being available at startup is not critical
     debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
   });
 
-  // Initialize Parakeet manager at startup (don't await to avoid blocking)
-  // Settings can be provided via environment variables for server pre-warming:
-  // - LOCAL_TRANSCRIPTION_PROVIDER=nvidia to enable parakeet
-  // - PARAKEET_MODEL=parakeet-tdt-0.6b-v3 (model name)
   const parakeetSettings = {
     localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
     parakeetModel: process.env.PARAKEET_MODEL,
   };
   parakeetManager.initializeAtStartup(parakeetSettings).catch((err) => {
-    // Parakeet not being available at startup is not critical
     debugLogger.debug("Parakeet startup init error (non-fatal)", { error: err.message });
   });
 
-  // Pre-warm llama-server if local reasoning is configured
-  // Settings can be provided via environment variables:
-  // - REASONING_PROVIDER=local to enable local reasoning
-  // - LOCAL_REASONING_MODEL=qwen3-8b-q4_k_m (or another model ID)
   if (process.env.REASONING_PROVIDER === "local" && process.env.LOCAL_REASONING_MODEL) {
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.prewarmServer(process.env.LOCAL_REASONING_MODEL).catch((err) => {
@@ -463,25 +493,16 @@ async function startApp() {
     });
   }
 
-  // Log nircmd status on Windows (for debugging bundled dependencies)
   if (process.platform === "win32") {
     const nircmdStatus = clipboardManager.getNircmdStatus();
     debugLogger.debug("Windows paste tool status", nircmdStatus);
   }
 
-  // Create main window
-  await windowManager.createMainWindow();
-
-  // Create control panel window
-  await windowManager.createControlPanelWindow();
-
-  // Set up tray
   trayManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   trayManager.setWindowManager(windowManager);
   trayManager.setCreateControlPanelCallback(() => windowManager.createControlPanelWindow());
   await trayManager.createTray();
 
-  // Set windows for update manager and check for updates
   updateManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   updateManager.checkForUpdatesOnStartup();
 
@@ -595,7 +616,7 @@ async function startApp() {
     globeKeyManager.start();
 
     // Reset native key state when hotkey changes
-    ipcMain.on("hotkey-changed", (_event, newHotkey) => {
+    ipcMain.on("hotkey-changed", (_event, _newHotkey) => {
       globeKeyDownTime = 0;
       globeKeyIsRecording = false;
       rightModDownTime = 0;
@@ -624,11 +645,12 @@ async function startApp() {
     // Right-side single modifiers need the native listener even in tap mode
     const isRightSideMod = (hotkey) => /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
 
-    // Whether native listener is needed (push mode always, tap mode only for right-side modifiers)
+    const { isModifierOnlyHotkey } = require("./src/helpers/hotkeyManager");
+
     const needsNativeListener = (hotkey, mode) => {
       if (!isValidHotkey(hotkey)) return false;
       if (mode === "push") return true;
-      return isRightSideMod(hotkey);
+      return isRightSideMod(hotkey) || isModifierOnlyHotkey(hotkey);
     };
 
     windowsKeyManager.on("key-down", async (key) => {
@@ -650,7 +672,6 @@ async function startApp() {
           }
         }, WIN_MIN_HOLD_DURATION_MS);
       } else if (activationMode === "tap") {
-        // Tap mode with native listener (right-side modifiers)
         windowManager.showDictationPanel();
         windowManager.mainWindow.webContents.send("toggle-dictation");
       }
@@ -791,6 +812,12 @@ if (gotSingleInstanceLock) {
   });
 
   app.whenReady().then(() => {
+    // On Linux, --enable-transparent-visuals requires a short delay before creating
+    // windows to allow the compositor to set up the ARGB visual correctly.
+    // Without this delay, transparent windows flicker on both X11 and Wayland.
+    const delay = process.platform === "linux" ? 300 : 0;
+    return new Promise((resolve) => setTimeout(resolve, delay));
+  }).then(() => {
     startApp().catch((error) => {
       console.error("Failed to start app:", error);
       dialog.showErrorBox(

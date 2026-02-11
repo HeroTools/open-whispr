@@ -81,6 +81,12 @@ export default function App() {
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
 
+  // Floating icon auto-hide setting (read from localStorage, synced via IPC)
+  const [floatingIconAutoHide, setFloatingIconAutoHide] = useState(
+    () => localStorage.getItem("floatingIconAutoHide") === "true"
+  );
+  const prevAutoHideRef = useRef(floatingIconAutoHide);
+
   const setWindowInteractivity = React.useCallback((shouldCapture) => {
     window.electronAPI?.setMainWindowInteractivity?.(shouldCapture);
   }, []);
@@ -99,7 +105,7 @@ export default function App() {
       });
     });
 
-    const unsubscribeFailed = window.electronAPI?.onHotkeyRegistrationFailed?.((data) => {
+    const unsubscribeFailed = window.electronAPI?.onHotkeyRegistrationFailed?.((_data) => {
       toast({
         title: "Hotkey Unavailable",
         description: `Could not register hotkey. Please set a different hotkey in Settings.`,
@@ -158,6 +164,31 @@ export default function App() {
       warmupStreaming();
     }
   }, [isSignedIn]);
+
+  // Listen for auto-hide setting changes relayed from the main process
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onFloatingIconAutoHideChanged?.((enabled) => {
+      setFloatingIconAutoHide(enabled);
+    });
+    return () => unsubscribe?.();
+  }, []);
+
+  // Auto-hide the floating icon when idle (setting enabled or dictation cycle completed)
+  useEffect(() => {
+    let hideTimeout;
+
+    if (floatingIconAutoHide && !isRecording && !isProcessing && toastCount === 0) {
+      // Delay briefly so processing can start after recording stops without a flash
+      hideTimeout = setTimeout(() => {
+        window.electronAPI?.hideWindow?.();
+      }, 500);
+    } else if (!floatingIconAutoHide && prevAutoHideRef.current) {
+      window.electronAPI?.showDictationPanel?.();
+    }
+
+    prevAutoHideRef.current = floatingIconAutoHide;
+    return () => clearTimeout(hideTimeout);
+  }, [isRecording, isProcessing, floatingIconAutoHide, toastCount]);
 
   const handleClose = () => {
     window.electronAPI.hideWindow();

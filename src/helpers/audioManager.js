@@ -12,6 +12,7 @@ const REASONING_CACHE_TTL = 30000; // 30 seconds
 const PLACEHOLDER_KEYS = {
   openai: "your_openai_api_key_here",
   groq: "your_groq_api_key_here",
+  mistral: "your_mistral_api_key_here",
 };
 
 const isValidApiKey = (key, provider = "openai") => {
@@ -32,6 +33,12 @@ class AudioManager {
     this.onPartialTranscript = null;
     this.cachedApiKey = null;
     this.cachedApiKeyProvider = null;
+
+    this._onApiKeyChanged = () => {
+      this.cachedApiKey = null;
+      this.cachedApiKeyProvider = null;
+    };
+    window.addEventListener("api-key-changed", this._onApiKeyChanged);
     this.cachedTranscriptionEndpoint = null;
     this.cachedEndpointProvider = null;
     this.cachedEndpointBaseUrl = null;
@@ -51,6 +58,51 @@ class AudioManager {
     this.cachedMicDeviceId = null;
     this.persistentAudioContext = null;
     this.workletModuleLoaded = false;
+    this.workletBlobUrl = null;
+  }
+
+  getWorkletBlobUrl() {
+    if (this.workletBlobUrl) return this.workletBlobUrl;
+    const code = `
+const BUFFER_SIZE = 800;
+class PCMStreamingProcessor extends AudioWorkletProcessor {
+  constructor() {
+    super();
+    this._buffer = new Int16Array(BUFFER_SIZE);
+    this._offset = 0;
+    this._stopped = false;
+    this.port.onmessage = (event) => {
+      if (event.data === "stop") {
+        if (this._offset > 0) {
+          const partial = this._buffer.slice(0, this._offset);
+          this.port.postMessage(partial.buffer, [partial.buffer]);
+          this._buffer = new Int16Array(BUFFER_SIZE);
+          this._offset = 0;
+        }
+        this._stopped = true;
+      }
+    };
+  }
+  process(inputs) {
+    if (this._stopped) return false;
+    const input = inputs[0]?.[0];
+    if (!input) return true;
+    for (let i = 0; i < input.length; i++) {
+      const s = Math.max(-1, Math.min(1, input[i]));
+      this._buffer[this._offset++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+      if (this._offset >= BUFFER_SIZE) {
+        this.port.postMessage(this._buffer.buffer, [this._buffer.buffer]);
+        this._buffer = new Int16Array(BUFFER_SIZE);
+        this._offset = 0;
+      }
+    }
+    return true;
+  }
+}
+registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
+`;
+    this.workletBlobUrl = URL.createObjectURL(new Blob([code], { type: "application/javascript" }));
+    return this.workletBlobUrl;
   }
 
   getCustomDictionaryPrompt() {
@@ -570,6 +622,14 @@ class AudioManager {
       if (!apiKey) {
         apiKey = null;
       }
+    } else if (provider === "mistral") {
+      apiKey = await window.electronAPI.getMistralKey?.();
+      if (!isValidApiKey(apiKey, "mistral")) {
+        apiKey = localStorage.getItem("mistralApiKey");
+      }
+      if (!isValidApiKey(apiKey, "mistral")) {
+        throw new Error("Mistral API key not found. Please set your API key in the Control Panel.");
+      }
     } else if (provider === "groq") {
       // Try to get Groq API key
       apiKey = await window.electronAPI.getGroqKey?.();
@@ -1037,13 +1097,14 @@ class AudioManager {
     if (useReasoningModel && processedText) {
       const reasoningStart = performance.now();
       const agentName = localStorage.getItem("agentName") || "";
-      const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+      const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
 
-      if (cloudTranscriptionMode === "openwhispr") {
+      if (cloudReasoningMode === "openwhispr") {
         const reasonResult = await withSessionRefresh(async () => {
           const res = await window.electronAPI.cloudReason(processedText, {
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
+            customPrompt: this.getCustomPrompt(),
             language: localStorage.getItem("preferredLanguage") || "auto",
           });
           if (!res.success) {
@@ -1056,6 +1117,18 @@ class AudioManager {
 
         if (reasonResult.success) {
           processedText = reasonResult.text;
+        }
+      } else {
+        const reasoningModel = localStorage.getItem("reasoningModel") || "";
+        if (reasoningModel) {
+          const result = await this.processWithReasoningModel(
+            processedText,
+            reasoningModel,
+            agentName
+          );
+          if (result) {
+            processedText = result;
+          }
         }
       }
       timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
@@ -1081,6 +1154,21 @@ class AudioManager {
     } catch {
       return [];
     }
+  }
+
+  getCustomPrompt() {
+    try {
+      const raw = localStorage.getItem("customUnifiedPrompt");
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  getKeyterms() {
+    return this.getCustomDictionaryArray();
   }
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
@@ -1180,7 +1268,43 @@ class AudioManager {
       const endpoint = this.getTranscriptionEndpoint();
       const isCustomEndpoint =
         provider === "custom" ||
-        (!endpoint.includes("api.openai.com") && !endpoint.includes("api.groq.com"));
+        (!endpoint.includes("api.openai.com") &&
+          !endpoint.includes("api.groq.com") &&
+          !endpoint.includes("api.mistral.ai"));
+
+      const apiCallStart = performance.now();
+
+      // Mistral uses x-api-key auth (not Bearer) and doesn't allow browser CORS — proxy through main process
+      if (provider === "mistral" && window.electronAPI?.proxyMistralTranscription) {
+        const audioBuffer = await optimizedAudio.arrayBuffer();
+        const proxyData = { audioBuffer, model, language };
+
+        if (dictionaryPrompt) {
+          const tokens = dictionaryPrompt
+            .split(",")
+            .flatMap((entry) => entry.trim().split(/\s+/))
+            .filter(Boolean)
+            .slice(0, 100);
+          if (tokens.length > 0) {
+            proxyData.contextBias = tokens;
+          }
+        }
+
+        const result = await window.electronAPI.proxyMistralTranscription(proxyData);
+        const proxyText = result?.text;
+
+        if (proxyText && proxyText.trim().length > 0) {
+          timings.transcriptionProcessingDurationMs = Math.round(performance.now() - apiCallStart);
+          const reasoningStart = performance.now();
+          const text = await this.processTranscription(proxyText, "mistral");
+          timings.reasoningProcessingDurationMs = Math.round(performance.now() - reasoningStart);
+
+          const source = (await this.isReasoningAvailable()) ? "mistral-reasoned" : "mistral";
+          return { success: true, text, source, timings };
+        }
+
+        throw new Error("No text transcribed - Mistral response was empty");
+      }
 
       logger.debug(
         "Making transcription API request",
@@ -1218,7 +1342,6 @@ class AudioManager {
         "transcription"
       );
 
-      const apiCallStart = performance.now();
       const response = await fetch(endpoint, {
         method: "POST",
         headers,
@@ -1407,6 +1530,7 @@ class AudioManager {
       if (trimmedModel) {
         const isGroqModel = trimmedModel.startsWith("whisper-large-v3");
         const isOpenAIModel = trimmedModel.startsWith("gpt-4o") || trimmedModel === "whisper-1";
+        const isMistralModel = trimmedModel.startsWith("voxtral-");
 
         if (provider === "groq" && isGroqModel) {
           return trimmedModel;
@@ -1414,11 +1538,16 @@ class AudioManager {
         if (provider === "openai" && isOpenAIModel) {
           return trimmedModel;
         }
+        if (provider === "mistral" && isMistralModel) {
+          return trimmedModel;
+        }
         // Model doesn't match provider - fall through to default
       }
 
       // Return provider-appropriate default
-      return provider === "groq" ? "whisper-large-v3-turbo" : "gpt-4o-mini-transcribe";
+      if (provider === "groq") return "whisper-large-v3-turbo";
+      if (provider === "mistral") return "voxtral-mini-latest";
+      return "gpt-4o-mini-transcribe";
     } catch (error) {
       return "gpt-4o-mini-transcribe";
     }
@@ -1468,6 +1597,8 @@ class AudioManager {
         base = currentBaseUrl.trim() || API_ENDPOINTS.TRANSCRIPTION_BASE;
       } else if (currentProvider === "groq") {
         base = API_ENDPOINTS.GROQ_BASE;
+      } else if (currentProvider === "mistral") {
+        base = API_ENDPOINTS.MISTRAL_BASE;
       } else {
         // OpenAI or other standard providers
         base = API_ENDPOINTS.TRANSCRIPTION_BASE;
@@ -1557,9 +1688,12 @@ class AudioManager {
       await window.electronAPI.pasteText(text, options);
       return true;
     } catch (error) {
+      const message =
+        error?.message ??
+        (typeof error?.toString === "function" ? error.toString() : String(error));
       this.onError?.({
         title: "Paste Error",
-        description: `Failed to paste text. Please check accessibility permissions. ${error.message}`,
+        description: `Failed to paste text. Please check accessibility permissions. ${message}`,
       });
       return false;
     }
@@ -1609,6 +1743,7 @@ class AudioManager {
           const res = await window.electronAPI.assemblyAiStreamingWarmup({
             sampleRate: 16000,
             language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+            keyterms: this.getKeyterms(),
           });
           // Throw error to trigger retry if AUTH_EXPIRED
           if (!res.success && res.code) {
@@ -1625,8 +1760,7 @@ class AudioManager {
         try {
           const audioContext = await this.getOrCreateAudioContext();
           if (!this.workletModuleLoaded) {
-            const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-            await audioContext.audioWorklet.addModule(workletUrl);
+            await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
             this.workletModuleLoaded = true;
             logger.debug("AudioWorklet module pre-loaded during warmup", {}, "streaming");
           }
@@ -1706,6 +1840,7 @@ class AudioManager {
           const res = await window.electronAPI.assemblyAiStreamingStart({
             sampleRate: 16000,
             language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+            keyterms: this.getKeyterms(),
           });
 
           if (!res.success) {
@@ -1752,8 +1887,7 @@ class AudioManager {
       this.streamingStream = stream;
 
       if (!this.workletModuleLoaded) {
-        const workletUrl = new URL("./pcm-streaming-processor.js", document.baseURI).href;
-        await audioContext.audioWorklet.addModule(workletUrl);
+        await audioContext.audioWorklet.addModule(this.getWorkletBlobUrl());
         this.workletModuleLoaded = true;
       }
 
@@ -1809,6 +1943,16 @@ class AudioManager {
           title: "Streaming Error",
           description: error,
         });
+        if (this.isStreaming) {
+          logger.warn("Connection lost during streaming, auto-stopping", {}, "streaming");
+          this.stopStreamingRecording().catch((e) => {
+            logger.error(
+              "Auto-stop after connection loss failed",
+              { error: e.message },
+              "streaming"
+            );
+          });
+        }
       });
 
       const sessionEndCleanup = window.electronAPI.onAssemblyAiSessionEnd((data) => {
@@ -1899,19 +2043,26 @@ class AudioManager {
     window.electronAPI.assemblyAiStreamingForceEndpoint?.();
     const tForceEndpoint = performance.now();
 
-    await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
+    const stopResult = await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
       logger.debug("Streaming disconnect error", { error: e.message }, "streaming");
+      return { success: false };
     });
     const tTerminate = performance.now();
-
-    // 5. Brief wait for any in-transit IPC Turn events to reach the renderer.
-    await new Promise((resolve) => setTimeout(resolve, 200));
 
     finalText = this.streamingFinalText || "";
 
     if (!finalText && this.streamingPartialText) {
       finalText = this.streamingPartialText;
       logger.debug("Using partial text as fallback", { textLength: finalText.length }, "streaming");
+    }
+
+    if (!finalText && stopResult?.text) {
+      finalText = stopResult.text;
+      logger.debug(
+        "Using disconnect result text as fallback",
+        { textLength: finalText.length },
+        "streaming"
+      );
     }
 
     this.cleanupStreamingListeners();
@@ -1933,34 +2084,55 @@ class AudioManager {
     if (useReasoningModel && finalText) {
       const reasoningStart = performance.now();
       const agentName = localStorage.getItem("agentName") || "";
+      const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
 
       try {
-        const reasonResult = await withSessionRefresh(async () => {
-          const res = await window.electronAPI.cloudReason(finalText, {
-            agentName,
-            customDictionary: this.getCustomDictionaryArray(),
-            language: localStorage.getItem("preferredLanguage") || "auto",
+        if (cloudReasoningMode === "openwhispr") {
+          const reasonResult = await withSessionRefresh(async () => {
+            const res = await window.electronAPI.cloudReason(finalText, {
+              agentName,
+              customDictionary: this.getCustomDictionaryArray(),
+              customPrompt: this.getCustomPrompt(),
+              language: localStorage.getItem("preferredLanguage") || "auto",
+            });
+            if (!res.success) {
+              const err = new Error(res.error || "Cloud reasoning failed");
+              err.code = res.code;
+              throw err;
+            }
+            return res;
           });
-          if (!res.success) {
-            const err = new Error(res.error || "Cloud reasoning failed");
-            err.code = res.code;
-            throw err;
+
+          if (reasonResult.success && reasonResult.text) {
+            finalText = reasonResult.text;
           }
-          return res;
-        });
 
-        if (reasonResult.success && reasonResult.text) {
-          finalText = reasonResult.text;
+          logger.info(
+            "Streaming reasoning complete",
+            {
+              reasoningDurationMs: Math.round(performance.now() - reasoningStart),
+              model: reasonResult.model,
+            },
+            "streaming"
+          );
+        } else {
+          const reasoningModel = localStorage.getItem("reasoningModel") || "";
+          if (reasoningModel) {
+            const result = await this.processWithReasoningModel(
+              finalText,
+              reasoningModel,
+              agentName
+            );
+            if (result) {
+              finalText = result;
+            }
+            logger.info(
+              "Streaming BYOK reasoning complete",
+              { reasoningDurationMs: Math.round(performance.now() - reasoningStart) },
+              "streaming"
+            );
+          }
         }
-
-        logger.info(
-          "Streaming reasoning complete",
-          {
-            reasoningDurationMs: Math.round(performance.now() - reasoningStart),
-            model: reasonResult.model,
-          },
-          "streaming"
-        );
       } catch (reasonError) {
         logger.error(
           "Streaming reasoning failed, using raw text",
@@ -2063,6 +2235,10 @@ class AudioManager {
       this.persistentAudioContext = null;
       this.workletModuleLoaded = false;
     }
+    if (this.workletBlobUrl) {
+      URL.revokeObjectURL(this.workletBlobUrl);
+      this.workletBlobUrl = null;
+    }
     try {
       window.electronAPI?.assemblyAiStreamingStop?.();
     } catch (e) {
@@ -2072,6 +2248,9 @@ class AudioManager {
     this.onError = null;
     this.onTranscriptionComplete = null;
     this.onPartialTranscript = null;
+    if (this._onApiKeyChanged) {
+      window.removeEventListener("api-key-changed", this._onApiKeyChanged);
+    }
   }
 }
 

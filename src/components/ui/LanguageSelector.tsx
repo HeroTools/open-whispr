@@ -24,6 +24,7 @@ export default function LanguageSelector({
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -38,25 +39,43 @@ export default function LanguageSelector({
     setHighlightedIndex(0);
   }, [searchQuery]);
 
+  // Determine the portal container: use the closest dialog if inside one (to stay
+  // within Radix's focus trap), otherwise fall back to document.body.
+  const portalTarget = useRef<HTMLElement>(document.body);
+
   useEffect(() => {
-    if (isOpen) {
-      if (searchInputRef.current) {
-        searchInputRef.current.focus();
-      }
-      // Calculate dropdown position
-      if (triggerRef.current) {
-        const rect = triggerRef.current.getBoundingClientRect();
-        setDropdownPosition({
-          top: rect.bottom + 4, // 4px gap (mt-1)
-          left: rect.left,
-          width: rect.width,
-        });
-      }
+    if (containerRef.current) {
+      const dialog = containerRef.current.closest('[role="dialog"]');
+      portalTarget.current = (dialog as HTMLElement) ?? document.body;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const triggerRect = triggerRef.current.getBoundingClientRect();
+      const target = portalTarget.current;
+      // When portaled into a transformed ancestor (e.g. Radix Dialog),
+      // fixed positioning is relative to that ancestor, not the viewport.
+      const offsetX = target === document.body ? 0 : target.getBoundingClientRect().left;
+      const offsetY = target === document.body ? 0 : target.getBoundingClientRect().top;
+      setDropdownPosition({
+        top: triggerRect.bottom + 4 - offsetY,
+        left: triggerRect.left - offsetX,
+        width: triggerRect.width,
+      });
+      requestAnimationFrame(() => {
+        searchInputRef.current?.focus();
+      });
     }
   }, [isOpen]);
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(target) &&
+        (!dropdownRef.current || !dropdownRef.current.contains(target))
+      ) {
         setIsOpen(false);
         setSearchQuery("");
       }
@@ -111,7 +130,7 @@ export default function LanguageSelector({
   };
 
   return (
-    <div className={`relative ${className}`} ref={dropdownRef}>
+    <div className={`relative ${className}`} ref={containerRef}>
       {/* Trigger button - premium, tight, tactile macOS-style */}
       <button
         ref={triggerRef}
@@ -120,8 +139,8 @@ export default function LanguageSelector({
         onKeyDown={handleKeyDown}
         className={`
           group relative w-full flex items-center justify-between gap-2
-          h-9 px-3 text-left
-          rounded text-sm font-medium
+          h-7 px-2.5 text-left
+          rounded text-xs font-medium
           border shadow-sm backdrop-blur-sm
           transition-all duration-200 ease-out
           focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:ring-offset-1
@@ -227,7 +246,7 @@ export default function LanguageSelector({
               )}
             </div>
           </div>,
-          document.body
+          portalTarget.current
         )}
     </div>
   );

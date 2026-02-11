@@ -191,6 +191,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getGroqKey: () => ipcRenderer.invoke("get-groq-key"),
   saveGroqKey: (key) => ipcRenderer.invoke("save-groq-key", key),
 
+  // Mistral API
+  getMistralKey: () => ipcRenderer.invoke("get-mistral-key"),
+  saveMistralKey: (key) => ipcRenderer.invoke("save-mistral-key", key),
+  proxyMistralTranscription: (data) => ipcRenderer.invoke("proxy-mistral-transcription", data),
+
   // Custom endpoint API keys
   getCustomTranscriptionKey: () => ipcRenderer.invoke("get-custom-transcription-key"),
   saveCustomTranscriptionKey: (key) => ipcRenderer.invoke("save-custom-transcription-key", key),
@@ -237,6 +242,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   openLogsFolder: () => ipcRenderer.invoke("open-logs-folder"),
 
   // System settings helpers for microphone/audio permissions
+  requestMicrophoneAccess: () => ipcRenderer.invoke("request-microphone-access"),
   openMicrophoneSettings: () => ipcRenderer.invoke("open-microphone-settings"),
   openSoundInputSettings: () => ipcRenderer.invoke("open-sound-input-settings"),
   openAccessibilitySettings: () => ipcRenderer.invoke("open-accessibility-settings"),
@@ -299,6 +305,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Notify main process of activation mode changes (for Windows Push-to-Talk)
   notifyActivationModeChanged: (mode) => ipcRenderer.send("activation-mode-changed", mode),
   notifyHotkeyChanged: (hotkey) => ipcRenderer.send("hotkey-changed", hotkey),
+
+  // Floating icon auto-hide
+  notifyFloatingIconAutoHideChanged: (enabled) => ipcRenderer.send("floating-icon-auto-hide-changed", enabled),
+  onFloatingIconAutoHideChanged: registerListener("floating-icon-auto-hide-changed", (callback) => (_event, enabled) => callback(enabled)),
 
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),

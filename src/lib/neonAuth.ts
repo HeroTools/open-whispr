@@ -1,5 +1,8 @@
 import { createAuthClient } from "@neondatabase/auth";
 import { BetterAuthReactAdapter } from "@neondatabase/auth/react";
+import { OPENWHISPR_API_URL } from "../config/constants";
+import { openExternalLink } from "../utils/externalLinks";
+import logger from "../utils/logger";
 
 export const NEON_AUTH_URL = import.meta.env.VITE_NEON_AUTH_URL || "";
 export const authClient = NEON_AUTH_URL
@@ -81,19 +84,12 @@ function markSignedOutState(): void {
   clearLastSignInTime();
 }
 
-/**
- * Updates the last sign-in timestamp. Call this after successful OAuth.
- */
 export function updateLastSignInTime(): void {
   const now = Date.now();
   lastSignInTime = now;
   persistLastSignInTime(now);
 }
 
-/**
- * Check if we're within the grace period after sign-in.
- * Exported so useAuth can also suppress premature sign-outs.
- */
 export function isWithinGracePeriod(): boolean {
   const startedAt = getLastSignInTime();
   if (!startedAt) return false;
@@ -102,11 +98,6 @@ export function isWithinGracePeriod(): boolean {
   return elapsed < GRACE_PERIOD_MS;
 }
 
-/**
- * Attempts to refresh the current session by calling getSession().
- * The Neon Auth SDK automatically refreshes expired tokens when this is called.
- * Returns true if a valid session exists after refresh, false otherwise.
- */
 export async function refreshSession(): Promise<boolean> {
   if (!authClient) {
     return false;
@@ -114,47 +105,26 @@ export async function refreshSession(): Promise<boolean> {
 
   try {
     const result = await authClient.getSession();
-    return Boolean(result.data?.session?.user);
+    return Boolean((result.data?.session as any)?.user);
   } catch {
     return false;
   }
 }
 
-/**
- * Signs out the user and clears all session cookies.
- * This is useful when session refresh fails and we need to fully clear the stale session.
- */
 export async function signOut(): Promise<void> {
   try {
-    // Clear session cookies via IPC
     if (window.electronAPI?.authClearSession) {
       await window.electronAPI.authClearSession();
     }
-
-    // Sign out via auth client if available
     if (authClient) {
       await authClient.signOut();
     }
-
-    // Clear local storage
     markSignedOutState();
   } catch {
-    // Fallback: at minimum clear local storage
     markSignedOutState();
   }
 }
 
-/**
- * Utility to wrap API calls that may fail due to expired session.
- * Automatically retries AUTH_EXPIRED calls during OAuth grace, then attempts a
- * single session refresh before surfacing the auth error to the caller.
- *
- * During the grace period, retries the operation with exponential backoff to wait
- * for session cookies to establish.
- *
- * @param operation - The async operation to perform
- * @returns The result of the operation
- */
 export async function withSessionRefresh<T>(operation: () => Promise<T>): Promise<T> {
   const startedInGracePeriod = isWithinGracePeriod();
   let graceRetriesUsed = 0;
@@ -194,42 +164,84 @@ export async function withSessionRefresh<T>(operation: () => Promise<T>): Promis
   }
 }
 
+function getElectronOAuthCallbackURL(): string {
+  const configuredUrl = (import.meta.env.VITE_OPENWHISPR_OAUTH_CALLBACK_URL || "").trim();
+  if (configuredUrl) return configuredUrl;
+
+  if (window.location.protocol !== "file:") return `${window.location.origin}/?panel=true`;
+
+  const port = import.meta.env.VITE_DEV_SERVER_PORT || "5183";
+  return `http://localhost:${port}/?panel=true`;
+}
+
 export async function signInWithSocial(provider: SocialProvider): Promise<{ error?: Error }> {
   if (!authClient) {
     return { error: new Error("Auth not configured") };
   }
 
   try {
-    // Build an absolute callback URL. Neon Auth redirects here after OAuth.
-    // In the browser, this page detects it's outside Electron and redirects
-    // to the app's custom protocol to hand the verifier back to Electron.
-    const base = window.location.href.split("?")[0].split("#")[0];
-    const callbackURL = `${base}?panel=true`;
+    const isElectron = Boolean((window as any).electronAPI);
 
-    await authClient.signIn.social({
-      provider,
-      callbackURL,
-      newUserCallbackURL: callbackURL,
-    });
+    if (isElectron) {
+      const callbackURL = getElectronOAuthCallbackURL();
 
+      const response = await fetch(`${NEON_AUTH_URL}/sign-in/social`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ provider, callbackURL, disableRedirect: true }),
+      });
+
+      const text = await response.text();
+
+      if (!response.ok) {
+        logger.error(`Social sign-in failed: ${response.status}`, text.slice(0, 200), "auth");
+        return { error: new Error("Failed to initiate sign-in") };
+      }
+
+      let data: { url?: string };
+      try {
+        data = JSON.parse(text);
+      } catch {
+        logger.error("Non-JSON response from auth server", text.slice(0, 200), "auth");
+        return { error: new Error("Unexpected response from auth server") };
+      }
+
+      if (!data.url) return { error: new Error("Failed to get OAuth URL") };
+
+      openExternalLink(data.url);
+      return {};
+    }
+
+    const callbackURL = `${window.location.href.split("?")[0].split("#")[0]}?panel=true`;
+    await authClient.signIn.social({ provider, callbackURL, newUserCallbackURL: callbackURL });
     return {};
   } catch (error) {
     return { error: error instanceof Error ? error : new Error("Social sign-in failed") };
   }
 }
 
-/**
- * Requests a password reset email to be sent to the specified email address.
- * The email contains a link that redirects to the app with a reset token.
- */
 export async function requestPasswordReset(email: string): Promise<{ error?: Error }> {
   if (!authClient) {
     return { error: new Error("Auth not configured") };
   }
 
   try {
-    // Build the redirect URL for the password reset link.
-    // This will redirect back to the app with a token parameter.
+    if (OPENWHISPR_API_URL) {
+      const res = await fetch(`${OPENWHISPR_API_URL}/api/auth/forgot-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to send reset email");
+      }
+
+      return {};
+    }
+
     const base = window.location.href.split("?")[0].split("#")[0];
     const redirectTo = `${base}?panel=true&reset_password=true`;
 
@@ -244,10 +256,6 @@ export async function requestPasswordReset(email: string): Promise<{ error?: Err
   }
 }
 
-/**
- * Resets the user's password using the token from the reset email.
- * After successful reset, the user is automatically signed in.
- */
 export async function resetPassword(
   newPassword: string,
   token: string
@@ -262,7 +270,6 @@ export async function resetPassword(
       token,
     });
 
-    // Mark sign-in time for grace period after password reset
     updateLastSignInTime();
 
     return {};

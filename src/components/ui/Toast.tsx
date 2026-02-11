@@ -1,5 +1,5 @@
 import * as React from "react";
-import { X, CheckCircle2, AlertCircle, Info } from "lucide-react";
+import { X, Copy, Check } from "lucide-react";
 import { cn } from "../lib/utils";
 
 export interface ToastProps {
@@ -48,7 +48,6 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const startExitAnimation = React.useCallback((id: string) => {
     setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, isExiting: true } : t)));
-    // Remove after exit animation completes
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 200);
@@ -61,7 +60,7 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       setToasts((prev) => [...prev, newToast]);
 
-      const duration = props.duration ?? 3500;
+      const duration = props.duration ?? (props.variant === "destructive" ? 6000 : 3500);
       if (duration > 0) {
         const timer = setTimeout(() => {
           startExitAnimation(id);
@@ -109,10 +108,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     [startExitAnimation]
   );
 
-  // Cleanup on unmount
   React.useEffect(() => {
+    const timers = timersRef.current;
     return () => {
-      const timers = timersRef.current;
       for (const id in timers) {
         clearTimeout(timers[id]);
       }
@@ -138,7 +136,6 @@ const ToastViewport: React.FC<{
   onPauseTimer: (id: string) => void;
   onResumeTimer: (id: string, remainingTime: number) => void;
 }> = ({ toasts, onDismiss, onPauseTimer, onResumeTimer }) => {
-  // Detect if we're in the dictation panel (minimal overlay with mic button)
   const isDictationPanel = React.useMemo(() => {
     return (
       window.location.pathname.indexOf("control") === -1 &&
@@ -152,9 +149,7 @@ const ToastViewport: React.FC<{
     <div
       className={cn(
         "fixed z-50 flex flex-col gap-1.5 pointer-events-none",
-        isDictationPanel
-          ? "bottom-20 right-6" // Above mic button in dictation panel
-          : "bottom-5 right-5" // Standard position in control panel
+        isDictationPanel ? "bottom-20 right-6" : "bottom-5 right-5"
       )}
     >
       {toasts.map((toast) => (
@@ -172,49 +167,16 @@ const ToastViewport: React.FC<{
 
 const variantConfig = {
   default: {
-    icon: Info,
-    containerClass: cn(
-      // Glass morphism base
-      "bg-card/90 dark:bg-surface-2/95",
-      "border border-border/60 dark:border-white/10",
-      // Metallic highlight
-      "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_4px_12px_-2px_rgba(0,0,0,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
-      "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05),0_8px_24px_-4px_rgba(0,0,0,0.4),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
-    ),
-    iconClass: "text-muted-foreground",
-    titleClass: "text-card-foreground",
-    descClass: "text-muted-foreground",
-    progressClass: "bg-muted-foreground/30",
+    accentClass: "bg-white/20",
+    progressClass: "bg-white/15",
   },
   destructive: {
-    icon: AlertCircle,
-    containerClass: cn(
-      // Subtle red tint with glass
-      "bg-destructive/8 dark:bg-destructive/12",
-      "border border-destructive/20 dark:border-destructive/25",
-      // Colored glow
-      "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(220,38,38,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
-      "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-4px_rgba(220,38,38,0.25),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
-    ),
-    iconClass: "text-destructive",
-    titleClass: "text-destructive dark:text-red-400",
-    descClass: "text-destructive/80 dark:text-red-400/80",
-    progressClass: "bg-destructive/40",
+    accentClass: "bg-red-400",
+    progressClass: "bg-red-400/30",
   },
   success: {
-    icon: CheckCircle2,
-    containerClass: cn(
-      // Subtle green tint with glass
-      "bg-success/8 dark:bg-success/12",
-      "border border-success/20 dark:border-success/25",
-      // Colored glow
-      "shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04),0_4px_12px_-2px_rgba(22,163,74,0.15),0_2px_4px_-1px_rgba(0,0,0,0.1)]",
-      "dark:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03),0_8px_24px_-4px_rgba(22,163,74,0.25),0_2px_8px_-2px_rgba(0,0,0,0.3)]"
-    ),
-    iconClass: "text-success",
-    titleClass: "text-success dark:text-emerald-400",
-    descClass: "text-success/80 dark:text-emerald-400/80",
-    progressClass: "bg-success/40",
+    accentClass: "bg-emerald-400",
+    progressClass: "bg-emerald-400/30",
   },
 };
 
@@ -237,8 +199,9 @@ const Toast: React.FC<
   onResumeTimer,
 }) => {
   const config = variantConfig[variant];
-  const Icon = config.icon;
   const pausedAtRef = React.useRef<number | null>(null);
+  const [copied, setCopied] = React.useState(false);
+  const isDestructive = variant === "destructive";
 
   const handleMouseEnter = () => {
     pausedAtRef.current = Date.now();
@@ -254,68 +217,91 @@ const Toast: React.FC<
     pausedAtRef.current = null;
   };
 
+  const handleCopyError = async () => {
+    if (!description) return;
+    try {
+      await navigator.clipboard.writeText(description);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Silently fail
+    }
+  };
+
+  const message = title || description;
+  const detail = title && description ? description : undefined;
+
   return (
     <div
       className={cn(
-        // Layout
-        "pointer-events-auto relative flex items-start gap-2.5 w-[320px]",
-        "px-3 py-2.5 pr-8 overflow-hidden",
-        // Tight radius matching buttons
-        "rounded-[6px]",
-        // Glass blur
-        "backdrop-blur-xl",
-        // Animation states
+        "group toast-surface pointer-events-auto relative flex w-75 overflow-hidden",
+        "rounded-[5px]",
         "transition-all duration-200 ease-out",
         isExiting
           ? "opacity-0 translate-x-2 scale-[0.98]"
-          : "opacity-100 translate-x-0 scale-100 animate-in slide-in-from-right-4 fade-in-0 duration-300",
-        // Variant styling
-        config.containerClass
+          : "opacity-100 translate-x-0 scale-100 animate-in slide-in-from-right-4 fade-in-0 duration-300"
       )}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {/* Status Icon */}
-      <Icon className={cn("size-4 shrink-0 mt-0.5", config.iconClass)} />
+      <div className={cn("w-0.5 shrink-0", config.accentClass)} />
 
-      {/* Content */}
-      <div className="flex-1 min-w-0">
-        {title && (
-          <div className={cn("text-[13px] font-medium leading-tight", config.titleClass)}>
-            {title}
-          </div>
-        )}
-        {description && (
-          <div className={cn("text-[12px] leading-snug mt-0.5", config.descClass)}>
-            {description}
-          </div>
-        )}
+      <div className="flex items-start gap-2 flex-1 min-w-0 px-2.5 py-2 pr-7">
+        <div className="flex-1 min-w-0">
+          {message && (
+            <div className="text-[12px] font-medium leading-tight text-white/90">{message}</div>
+          )}
+          {detail &&
+            (isDestructive ? (
+              <div
+                className={cn(
+                  "text-[11px] leading-snug mt-1 px-1.5 py-1 rounded-[3px] font-mono",
+                  "bg-white/4 border border-white/6",
+                  "text-red-300/80"
+                )}
+              >
+                <div className="flex items-start justify-between gap-1.5">
+                  <span className="select-all wrap-break-word min-w-0">{detail}</span>
+                  <button
+                    onClick={handleCopyError}
+                    className={cn(
+                      "shrink-0 p-0.5 rounded-xs mt-px",
+                      "text-white/30 hover:text-white/70",
+                      "hover:bg-white/6",
+                      "transition-all duration-150"
+                    )}
+                    aria-label="Copy error"
+                  >
+                    {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-[11px] leading-snug mt-0.5 text-white/45">{detail}</div>
+            ))}
+        </div>
+
+        {action && <div className="shrink-0 self-center">{action}</div>}
       </div>
 
-      {/* Action slot */}
-      {action && <div className="shrink-0 self-center">{action}</div>}
-
-      {/* Close button */}
       {onClose && (
         <button
           onClick={onClose}
           className={cn(
-            "absolute right-1.5 top-1.5 p-1 rounded-[4px]",
-            "opacity-50 hover:opacity-100",
-            "hover:bg-foreground/5 dark:hover:bg-white/10",
+            "absolute right-1 top-1 p-1 rounded-[3px]",
+            "text-white/0 group-hover:text-white/50 hover:!text-white/80",
+            "hover:bg-white/6",
             "transition-all duration-150",
-            "focus:outline-none focus-visible:ring-1 focus-visible:ring-ring/40",
-            config.iconClass
+            "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
           )}
         >
-          <X className="size-3.5" />
+          <X className="size-3" />
           <span className="sr-only">Close</span>
         </button>
       )}
 
-      {/* Progress indicator - subtle bottom bar */}
       {duration > 0 && !isExiting && (
-        <div className="absolute bottom-0 left-0 right-0 h-[2px] overflow-hidden">
+        <div className="absolute bottom-0 left-0.5 right-0 h-px overflow-hidden">
           <div
             className={cn("h-full", config.progressClass)}
             style={{
@@ -328,20 +314,17 @@ const Toast: React.FC<
   );
 };
 
-// Helper function for common toast patterns
 export const toast = {
   success: (message: string) => ({
-    title: "Success",
-    description: message,
+    title: message,
     variant: "success" as const,
   }),
   error: (message: string) => ({
-    title: "Error",
-    description: message,
+    title: message,
     variant: "destructive" as const,
   }),
   info: (message: string) => ({
-    description: message,
+    title: message,
     variant: "default" as const,
   }),
 };

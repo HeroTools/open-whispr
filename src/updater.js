@@ -220,13 +220,17 @@ class UpdateManager {
       this.isInstalling = true;
       console.log("🔄 Installing update and restarting...");
 
-      const { app } = require("electron");
-      app.emit("before-quit");
+      const { app, BrowserWindow } = require("electron");
 
-      setTimeout(() => {
-        const isSilent = process.platform === "win32";
-        autoUpdater.quitAndInstall(isSilent, true);
-      }, 100);
+      // Remove listeners that prevent windows from closing
+      // so quitAndInstall can shut down cleanly
+      app.removeAllListeners("window-all-closed");
+      BrowserWindow.getAllWindows().forEach((win) => {
+        win.removeAllListeners("close");
+      });
+
+      const isSilent = process.platform === "win32";
+      autoUpdater.quitAndInstall(isSilent, true);
 
       return { success: true, message: "Update installation started" };
     } catch (error) {

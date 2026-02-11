@@ -5,6 +5,7 @@
       "description": "Fast multilingual ASR with auto language detection (25 languages)",
       "size": "680MB",
       "sizeMb": 680,
+      "expectedSizeBytes": 680000000,
       "language": "multilingual",
       "supportedLanguages": [
         "bg",
@@ -44,6 +45,7 @@
       "description": "Fastest, lower quality",
       "size": "75MB",
       "sizeMb": 75,
+      "expectedSizeBytes": 78000000,
       "fileName": "ggml-tiny.bin",
       "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
     },
@@ -52,6 +54,7 @@
       "description": "Good balance",
       "size": "142MB",
       "sizeMb": 142,
+      "expectedSizeBytes": 148000000,
       "fileName": "ggml-base.bin",
       "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
       "recommended": true
@@ -61,6 +64,7 @@
       "description": "Better quality, slower",
       "size": "466MB",
       "sizeMb": 466,
+      "expectedSizeBytes": 488000000,
       "fileName": "ggml-small.bin",
       "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
     },
@@ -69,6 +73,7 @@
       "description": "High quality",
       "size": "1.5GB",
       "sizeMb": 1500,
+      "expectedSizeBytes": 1570000000,
       "fileName": "ggml-medium.bin",
       "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"
     },
@@ -77,6 +82,7 @@
       "description": "Best quality, slowest",
       "size": "3GB",
       "sizeMb": 3000,
+      "expectedSizeBytes": 3140000000,
       "fileName": "ggml-large-v3.bin",
       "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"
     },
@@ -85,6 +91,7 @@
       "description": "Fast with good quality",
       "size": "1.6GB",
       "sizeMb": 1600,
+      "expectedSizeBytes": 1670000000,
       "fileName": "ggml-large-v3-turbo.bin",
       "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin"
     }
@@ -121,6 +128,18 @@
           "id": "whisper-large-v3-turbo",
           "name": "Whisper Large v3 Turbo",
           "description": "216x real-time speed"
+        }
+      ]
+    },
+    {
+      "id": "mistral",
+      "name": "Mistral",
+      "baseUrl": "https://api.mistral.ai/v1",
+      "models": [
+        {
+          "id": "voxtral-mini-latest",
+          "name": "Voxtral Mini",
+          "description": "Fast multilingual transcription"
         }
       ]
     }

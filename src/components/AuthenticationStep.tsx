@@ -12,6 +12,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { AlertCircle, ArrowRight, Check, Loader2, ChevronLeft } from "lucide-react";
 import logoIcon from "../assets/icon.png";
+import logger from "../utils/logger";
 import ForgotPasswordView from "./ForgotPasswordView";
 import ResetPasswordView from "./ResetPasswordView";
 
@@ -24,7 +25,6 @@ interface AuthenticationStepProps {
 type AuthMode = "sign-in" | "sign-up" | null;
 type PasswordResetView = "forgot" | "reset" | null;
 
-// Custom SVG icons for social providers (clean, modern style)
 const GoogleIcon = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path
@@ -63,23 +63,21 @@ export default function AuthenticationStep({
   const [passwordResetView, setPasswordResetView] = useState<PasswordResetView>(null);
   const [resetToken, setResetToken] = useState<string | null>(null);
 
-  // Track if we've already processed the OAuth callback
   const oauthProcessedRef = useRef(false);
   const resetProcessedRef = useRef(false);
+  const needsVerificationRef = useRef(false);
 
-  // Check for OAuth callback verifier or password reset token in URL
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const hasVerifier = params.has("neon_auth_session_verifier");
     const token = params.get("token");
     const isResetPassword = params.has("reset_password");
 
-    // Handle password reset callback (user clicked link in email)
     if (token && isResetPassword && !resetProcessedRef.current) {
       resetProcessedRef.current = true;
       setResetToken(token);
       setPasswordResetView("reset");
-      console.log("[Auth] Password reset token detected, showing reset form");
+      logger.debug("Password reset token detected, showing reset form", undefined, "auth");
       return;
     }
 
@@ -87,29 +85,40 @@ export default function AuthenticationStep({
       oauthProcessedRef.current = true;
       setIsSocialLoading("google");
 
-      // CRITICAL: Activate grace period IMMEDIATELY when OAuth callback starts
-      // Session cookies take 10-15 seconds to establish, so we need protection
-      // from the very beginning, not after the first successful refresh
+      // Grace period: session cookies take ~10-15s to establish after OAuth
       updateLastSignInTime();
-
-      // Don't poll for session - it causes premature session state clearing.
-      // Instead, proceed immediately to onboarding. The session cookies will
-      // establish in the background (10-15 seconds), and withSessionRefresh()
-      // will handle retries automatically when the user tries to use features.
-      // The useEffect below will detect when session is ready via isSignedIn.
-      console.log(
-        "[Auth] OAuth callback detected, grace period active. Proceeding to onboarding..."
-      );
+      logger.debug("OAuth callback detected, grace period active", undefined, "auth");
     }
   }, []);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn) {
-      onAuthComplete();
-    }
-  }, [isLoaded, isSignedIn, onAuthComplete]);
+    if (!isLoaded || !isSignedIn || needsVerificationRef.current || !user?.id || !user?.email)
+      return;
 
-  // Reset social loading state when the window regains focus
+    const initAndComplete = async () => {
+      if (OPENWHISPR_API_URL) {
+        try {
+          const res = await fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              email: user.email,
+              name: user.name || null,
+            }),
+          });
+          if (!res.ok) {
+            logger.error("init-user returned non-OK", { status: res.status }, "auth");
+          }
+        } catch (err) {
+          logger.error("Failed to init user", err, "auth");
+        }
+      }
+      onAuthComplete();
+    };
+    initAndComplete();
+  }, [isLoaded, isSignedIn, user, onAuthComplete]);
+
   useEffect(() => {
     if (isSocialLoading === null) return;
 
@@ -143,6 +152,14 @@ export default function AuthenticationStep({
   const handleEmailContinue = useCallback(async () => {
     if (!email.trim() || !authClient) return;
 
+    const localPart = email.trim().split("@")[0];
+    if (localPart?.includes("+")) {
+      setError(
+        'Email addresses containing "+" are not supported. Please use your original email address.'
+      );
+      return;
+    }
+
     setIsCheckingEmail(true);
     setError(null);
 
@@ -162,10 +179,10 @@ export default function AuthenticationStep({
         throw new Error("Failed to check user existence");
       }
 
-      const data = await response.json();
+      const data = await response.json().catch(() => ({}));
       setAuthMode(data.exists ? "sign-in" : "sign-up");
     } catch (err) {
-      console.error("Error checking user existence:", err);
+      logger.error("Error checking user existence", err, "auth");
       setAuthMode("sign-up");
     } finally {
       setIsCheckingEmail(false);
@@ -183,7 +200,7 @@ export default function AuthenticationStep({
       e.preventDefault();
 
       if (!authClient) {
-        setError("Authentication service is not configured. Please contact support.");
+        setError("Authentication isn't set up yet. Please contact support.");
         return;
       }
 
@@ -192,6 +209,9 @@ export default function AuthenticationStep({
 
       try {
         if (authMode === "sign-up") {
+          // Set before signup — SDK may trigger isSignedIn before returning
+          needsVerificationRef.current = true;
+
           const result = await authClient.signUp.email({
             email: email.trim(),
             password,
@@ -199,17 +219,37 @@ export default function AuthenticationStep({
           });
 
           if (result.error) {
+            needsVerificationRef.current = false;
             if (
               errorMessageIncludes(result.error.message, ["already exists", "already registered"])
             ) {
               setAuthMode("sign-in");
-              setError("Account exists. Please sign in.");
+              setError("Looks like you already have an account. Sign in instead.");
               setPassword("");
             } else {
-              setError(result.error.message || "Failed to create account");
+              setError(
+                result.error.message || "We couldn't create your account. Please try again."
+              );
             }
           } else {
             updateLastSignInTime();
+
+            if (OPENWHISPR_API_URL) {
+              try {
+                await fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    userId: result.data?.user?.id,
+                    email: email.trim(),
+                    name: fullName.trim() || email.trim().split("@")[0],
+                  }),
+                });
+              } catch (initErr) {
+                logger.error("Failed to init user", initErr, "auth");
+              }
+            }
+
             onNeedsVerification(email.trim());
           }
         } else {
@@ -221,20 +261,21 @@ export default function AuthenticationStep({
           if (result.error) {
             if (errorMessageIncludes(result.error.message, ["not found", "no user"])) {
               setAuthMode("sign-up");
-              setError("No account found. Let's create one.");
+              setError("We didn't find an account with that email. Let's create one.");
               setPassword("");
             } else {
-              setError(result.error.message || "Invalid email or password");
+              setError(
+                result.error.message || "That email or password doesn't look right. Try again."
+              );
             }
           } else {
-            // Mark the sign-in time to enable grace period for session establishment
             updateLastSignInTime();
             onAuthComplete();
           }
         }
       } catch (err: unknown) {
         const errorMessage =
-          err instanceof Error ? err.message : "An error occurred. Please try again.";
+          err instanceof Error ? err.message : "Something went wrong. Please try again.";
         setError(errorMessage);
       } finally {
         setIsSubmitting(false);
@@ -259,7 +300,6 @@ export default function AuthenticationStep({
     setPasswordResetView(null);
     setResetToken(null);
     setError(null);
-    // Clear URL params without reload
     const url = new URL(window.location.href);
     url.searchParams.delete("token");
     url.searchParams.delete("reset_password");
@@ -293,7 +333,7 @@ export default function AuthenticationStep({
 
         <div className="bg-warning/5 p-2.5 rounded border border-warning/20">
           <p className="text-[10px] text-warning text-center leading-snug">
-            Cloud features not configured. You can still use OpenWhispr locally.
+            Cloud features aren't set up yet. You can still use OpenWhispr locally.
           </p>
         </div>
 
@@ -353,7 +393,6 @@ export default function AuthenticationStep({
   if (authMode !== null) {
     return (
       <div className="space-y-3">
-        {/* Back button */}
         <button
           type="button"
           onClick={handleBack}
@@ -363,7 +402,6 @@ export default function AuthenticationStep({
           Back
         </button>
 
-        {/* Header — Refined */}
         <div className="text-center mb-4">
           <p className="text-sm text-muted-foreground/70 mb-2 leading-tight">{email}</p>
           <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
@@ -371,7 +409,6 @@ export default function AuthenticationStep({
           </p>
         </div>
 
-        {/* Password Form */}
         <form onSubmit={handleSubmit} className="space-y-2">
           {authMode === "sign-up" && (
             <Input
@@ -413,7 +450,6 @@ export default function AuthenticationStep({
             </button>
           )}
 
-          {/* Error Display */}
           {error && (
             <div className="px-2.5 py-1.5 rounded bg-destructive/5 border border-destructive/20 flex items-center gap-1.5">
               <AlertCircle className="w-3 h-3 text-destructive shrink-0" />
@@ -421,7 +457,6 @@ export default function AuthenticationStep({
             </div>
           )}
 
-          {/* Submit Button */}
           <Button type="submit" disabled={isSubmitting || !password} className="w-full h-9">
             {isSubmitting ? (
               <>
@@ -438,7 +473,6 @@ export default function AuthenticationStep({
           </Button>
         </form>
 
-        {/* Toggle Auth Mode */}
         <div className="text-center">
           <button
             type="button"
@@ -464,7 +498,6 @@ export default function AuthenticationStep({
   // Main welcome view
   return (
     <div className="space-y-3">
-      {/* Logo & Brand Header — Premium, refined */}
       <div className="text-center mb-4">
         <img
           src={logoIcon}
@@ -479,7 +512,6 @@ export default function AuthenticationStep({
         </p>
       </div>
 
-      {/* Google Sign In */}
       <Button
         type="button"
         variant="social"
@@ -488,14 +520,20 @@ export default function AuthenticationStep({
         className="w-full h-9"
       >
         {isSocialLoading === "google" ? (
-          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+          <>
+            <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            <span className="text-sm font-medium text-muted-foreground">
+              Complete sign-in in your browser...
+            </span>
+          </>
         ) : (
-          <GoogleIcon className="w-4 h-4" />
+          <>
+            <GoogleIcon className="w-4 h-4" />
+            <span className="text-sm font-medium">Continue with Google</span>
+          </>
         )}
-        <span className="text-sm font-medium">Continue with Google</span>
       </Button>
 
-      {/* Divider — Minimal */}
       <div className="flex items-center gap-2">
         <div className="flex-1 h-px bg-border/50" />
         <span className="text-[9px] font-medium text-muted-foreground/40 uppercase tracking-widest px-1">
@@ -504,7 +542,6 @@ export default function AuthenticationStep({
         <div className="flex-1 h-px bg-border/50" />
       </div>
 
-      {/* Email Input + Continue */}
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -538,7 +575,6 @@ export default function AuthenticationStep({
         </Button>
       </form>
 
-      {/* Error Display */}
       {error && (
         <div className="px-3 py-2 rounded-md bg-destructive/5 border border-destructive/20 flex items-center gap-2">
           <AlertCircle className="w-3.5 h-3.5 text-destructive shrink-0" />
@@ -546,7 +582,6 @@ export default function AuthenticationStep({
         </div>
       )}
 
-      {/* Skip Option — Subtle, compact */}
       <div className="pt-1">
         <button
           type="button"
@@ -558,7 +593,6 @@ export default function AuthenticationStep({
         </button>
       </div>
 
-      {/* Terms and Privacy Policy */}
       <p className="text-[10px] text-muted-foreground/80 leading-tight text-center">
         By continuing, you agree to our{" "}
         <a

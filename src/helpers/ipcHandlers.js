@@ -5,9 +5,10 @@ const https = require("https");
 const crypto = require("crypto");
 const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
-const { getSystemPrompt } = require("./prompts");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
+
+const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
 class IPCHandlers {
   constructor(managers) {
@@ -22,14 +23,6 @@ class IPCHandlers {
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
     this.setupHandlers();
-  }
-
-  _getDictionarySafe() {
-    try {
-      return this.databaseManager.getDictionary();
-    } catch {
-      return [];
-    }
   }
 
   _syncStartupEnv(setVars, clearVars = []) {
@@ -51,7 +44,7 @@ class IPCHandlers {
         set: Object.keys(setVars),
         cleared: clearVars.filter((k) => !process.env[k]),
       });
-      this.environmentManager.saveAllKeysToEnvFile();
+      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
     }
   }
 
@@ -182,7 +175,7 @@ class IPCHandlers {
 
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text, options) => {
-      return this.clipboardManager.pasteText(text, options);
+      return this.clipboardManager.pasteText(text, { ...options, webContents: event.sender });
     });
 
     ipcMain.handle("read-clipboard", async (event) => {
@@ -190,7 +183,7 @@ class IPCHandlers {
     });
 
     ipcMain.handle("write-clipboard", async (event, text) => {
-      return this.clipboardManager.writeClipboard(text);
+      return this.clipboardManager.writeClipboard(text, event.sender);
     });
 
     ipcMain.handle("check-paste-tools", async () => {
@@ -285,9 +278,28 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
-      return this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
-        event.sender.send("whisper-download-progress", progressData);
-      });
+      try {
+        const result = await this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send("whisper-download-progress", progressData);
+          }
+        });
+        return result;
+      } catch (error) {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("whisper-download-progress", {
+            type: "error",
+            model: modelName,
+            error: error.message,
+            code: error.code || "DOWNLOAD_FAILED",
+          });
+        }
+        return {
+          success: false,
+          error: error.message,
+          code: error.code || "DOWNLOAD_FAILED",
+        };
+      }
     });
 
     ipcMain.handle("check-model-status", async (event, modelName) => {
@@ -379,9 +391,31 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-parakeet-model", async (event, modelName) => {
-      return this.parakeetManager.downloadParakeetModel(modelName, (progressData) => {
-        event.sender.send("parakeet-download-progress", progressData);
-      });
+      try {
+        const result = await this.parakeetManager.downloadParakeetModel(
+          modelName,
+          (progressData) => {
+            if (!event.sender.isDestroyed()) {
+              event.sender.send("parakeet-download-progress", progressData);
+            }
+          }
+        );
+        return result;
+      } catch (error) {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("parakeet-download-progress", {
+            type: "error",
+            model: modelName,
+            error: error.message,
+            code: error.code || "DOWNLOAD_FAILED",
+          });
+        }
+        return {
+          success: false,
+          error: error.message,
+          code: error.code || "DOWNLOAD_FAILED",
+        };
+      }
     });
 
     ipcMain.handle("check-parakeet-model-status", async (_event, modelName) => {
@@ -413,7 +447,7 @@ class IPCHandlers {
       const result = await this.parakeetManager.startServer(modelName);
       process.env.LOCAL_TRANSCRIPTION_PROVIDER = "nvidia";
       process.env.PARAKEET_MODEL = modelName;
-      this.environmentManager.saveAllKeysToEnvFile();
+      await this.environmentManager.saveAllKeysToEnvFile();
       return result;
     });
 
@@ -421,7 +455,7 @@ class IPCHandlers {
       const result = await this.parakeetManager.stopServer();
       delete process.env.LOCAL_TRANSCRIPTION_PROVIDER;
       delete process.env.PARAKEET_MODEL;
-      this.environmentManager.saveAllKeysToEnvFile();
+      await this.environmentManager.saveAllKeysToEnvFile();
       return result;
     });
 
@@ -450,10 +484,17 @@ class IPCHandlers {
       // When exiting capture mode with a new hotkey, use that to avoid reading stale state
       const effectiveHotkey = !enabled && newHotkey ? newHotkey : hotkeyManager.getCurrentHotkey();
 
+      const { isModifierOnlyHotkey, isRightSideModifier } = require("./hotkeyManager");
+      const usesNativeListener = (hotkey) =>
+        !hotkey ||
+        hotkey === "GLOBE" ||
+        isModifierOnlyHotkey(hotkey) ||
+        isRightSideModifier(hotkey);
+
       if (enabled) {
         // Entering capture mode - unregister globalShortcut so it doesn't consume key events
         const currentHotkey = hotkeyManager.getCurrentHotkey();
-        if (currentHotkey && currentHotkey !== "GLOBE") {
+        if (currentHotkey && !usesNativeListener(currentHotkey)) {
           debugLogger.log(
             `[IPC] Unregistering globalShortcut "${currentHotkey}" for hotkey capture mode`
           );
@@ -476,24 +517,35 @@ class IPCHandlers {
         }
       } else {
         // Exiting capture mode - re-register globalShortcut if not already registered
-        if (effectiveHotkey && effectiveHotkey !== "GLOBE") {
+        if (effectiveHotkey && !usesNativeListener(effectiveHotkey)) {
           const { globalShortcut } = require("electron");
-          if (!globalShortcut.isRegistered(effectiveHotkey)) {
+          const accelerator = effectiveHotkey.startsWith("Fn+")
+            ? effectiveHotkey.slice(3)
+            : effectiveHotkey;
+          if (!globalShortcut.isRegistered(accelerator)) {
             debugLogger.log(
-              `[IPC] Re-registering globalShortcut "${effectiveHotkey}" after capture mode`
+              `[IPC] Re-registering globalShortcut "${accelerator}" after capture mode`
             );
             const callback = this.windowManager.createHotkeyCallback();
-            globalShortcut.register(effectiveHotkey, callback);
+            const registered = globalShortcut.register(accelerator, callback);
+            if (!registered) {
+              debugLogger.warn(
+                `[IPC] Failed to re-register globalShortcut "${accelerator}" after capture mode`
+              );
+            }
           }
         }
 
-        // On Windows, restart the listener if in push mode
         if (process.platform === "win32" && this.windowsKeyManager) {
           const activationMode = await this.windowManager.getActivationMode();
           debugLogger.log(
             `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${effectiveHotkey}"`
           );
-          if (activationMode === "push" && effectiveHotkey && effectiveHotkey !== "GLOBE") {
+          const needsListener =
+            effectiveHotkey &&
+            effectiveHotkey !== "GLOBE" &&
+            (activationMode === "push" || isModifierOnlyHotkey(effectiveHotkey));
+          if (needsListener) {
             debugLogger.log(`[IPC] Restarting Windows key listener for hotkey: ${effectiveHotkey}`);
             this.windowsKeyManager.start(effectiveHotkey);
           }
@@ -589,12 +641,14 @@ class IPCHandlers {
         const result = await modelManager.downloadModel(
           modelId,
           (progress, downloadedSize, totalSize) => {
-            event.sender.send("model-download-progress", {
-              modelId,
-              progress,
-              downloadedSize,
-              totalSize,
-            });
+            if (!event.sender.isDestroyed()) {
+              event.sender.send("model-download-progress", {
+                modelId,
+                progress,
+                downloadedSize,
+                totalSize,
+              });
+            }
           }
         );
         return { success: true, path: result };
@@ -686,6 +740,53 @@ class IPCHandlers {
       return this.environmentManager.saveGroqKey(key);
     });
 
+    ipcMain.handle("get-mistral-key", async () => {
+      return this.environmentManager.getMistralKey();
+    });
+
+    ipcMain.handle("save-mistral-key", async (event, key) => {
+      return this.environmentManager.saveMistralKey(key);
+    });
+
+    // Proxy Mistral transcription through main process to avoid CORS
+    ipcMain.handle(
+      "proxy-mistral-transcription",
+      async (event, { audioBuffer, model, language, contextBias }) => {
+        const apiKey = this.environmentManager.getMistralKey();
+        if (!apiKey) {
+          throw new Error("Mistral API key not configured");
+        }
+
+        const formData = new FormData();
+        const audioBlob = new Blob([Buffer.from(audioBuffer)], { type: "audio/webm" });
+        formData.append("file", audioBlob, "audio.webm");
+        formData.append("model", model || "voxtral-mini-latest");
+        if (language && language !== "auto") {
+          formData.append("language", language);
+        }
+        if (contextBias && contextBias.length > 0) {
+          for (const token of contextBias) {
+            formData.append("context_bias", token);
+          }
+        }
+
+        const response = await fetch(MISTRAL_TRANSCRIPTION_URL, {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Mistral API Error: ${response.status} ${errorText}`);
+        }
+
+        return await response.json();
+      }
+    );
+
     ipcMain.handle("get-custom-transcription-key", async () => {
       return this.environmentManager.getCustomTranscriptionKey();
     });
@@ -760,14 +861,10 @@ class IPCHandlers {
     });
 
     // Local reasoning handler
-    ipcMain.handle("process-local-reasoning", async (event, text, modelId, agentName, config) => {
+    ipcMain.handle("process-local-reasoning", async (event, text, modelId, _agentName, config) => {
       try {
         const LocalReasoningService = require("../services/localReasoningBridge").default;
-        const result = await LocalReasoningService.processText(text, modelId, agentName, {
-          ...config,
-          customDictionary: this._getDictionarySafe(),
-          language: config?.language,
-        });
+        const result = await LocalReasoningService.processText(text, modelId, config);
         return { success: true, text: result };
       } catch (error) {
         return { success: false, error: error.message };
@@ -777,7 +874,7 @@ class IPCHandlers {
     // Anthropic reasoning handler
     ipcMain.handle(
       "process-anthropic-reasoning",
-      async (event, text, modelId, agentName, config) => {
+      async (event, text, modelId, _agentName, config) => {
         try {
           const apiKey = this.environmentManager.getAnthropicKey();
 
@@ -785,11 +882,7 @@ class IPCHandlers {
             throw new Error("Anthropic API key not configured");
           }
 
-          const systemPrompt = getSystemPrompt(
-            agentName,
-            this._getDictionarySafe(),
-            config?.language
-          );
+          const systemPrompt = config?.systemPrompt || "";
           const userPrompt = text;
 
           if (!modelId) {
@@ -976,6 +1069,15 @@ class IPCHandlers {
     ipcMain.handle("open-sound-input-settings", () => openSystemSettings("sound"));
     ipcMain.handle("open-accessibility-settings", () => openSystemSettings("accessibility"));
 
+    ipcMain.handle("request-microphone-access", async () => {
+      if (process.platform !== "darwin") {
+        return { granted: true };
+      }
+      const { systemPreferences } = require("electron");
+      const granted = await systemPreferences.askForMediaAccess("microphone");
+      return { granted };
+    });
+
     // Auth: clear all session cookies for sign-out.
     // This clears every cookie in the renderer session rather than targeting
     // individual auth cookies, which is acceptable because the app only sets
@@ -996,10 +1098,29 @@ class IPCHandlers {
 
     // --- OpenWhispr Cloud API handlers ---
 
-    const getApiUrl = () =>
-      process.env.OPENWHISPR_API_URL || process.env.VITE_OPENWHISPR_API_URL || "";
+    // In production, VITE_* env vars aren't available in the main process because
+    // Vite only inlines them into the renderer bundle at build time. Load the
+    // runtime-env.json that the Vite build writes to src/dist/ as a fallback.
+    const runtimeEnv = (() => {
+      const fs = require("fs");
+      const envPath = path.join(__dirname, "..", "dist", "runtime-env.json");
+      try {
+        if (fs.existsSync(envPath)) return JSON.parse(fs.readFileSync(envPath, "utf8"));
+      } catch {}
+      return {};
+    })();
 
-    const getAuthUrl = () => process.env.NEON_AUTH_URL || process.env.VITE_NEON_AUTH_URL || "";
+    const getApiUrl = () =>
+      process.env.OPENWHISPR_API_URL ||
+      process.env.VITE_OPENWHISPR_API_URL ||
+      runtimeEnv.VITE_OPENWHISPR_API_URL ||
+      "";
+
+    const getAuthUrl = () =>
+      process.env.NEON_AUTH_URL ||
+      process.env.VITE_NEON_AUTH_URL ||
+      runtimeEnv.VITE_NEON_AUTH_URL ||
+      "";
 
     const getSessionCookies = async (event) => {
       const win = BrowserWindow.fromWebContents(event.sender);
@@ -1196,6 +1317,7 @@ class IPCHandlers {
           model: opts.model || "(default)",
           agentName: opts.agentName || "(none)",
           language: opts.language || "(auto)",
+          hasCustomPrompt: !!opts.customPrompt,
           textLength: text?.length || 0,
           textPreview: text?.substring(0, 80) || "(empty)",
         });
@@ -1217,7 +1339,11 @@ class IPCHandlers {
             model: opts.model,
             agentName: opts.agentName,
             customDictionary: opts.customDictionary,
+            customPrompt: opts.customPrompt,
             language: opts.language,
+            sessionId: this.sessionId,
+            clientType: "desktop",
+            appVersion: app.getVersion(),
           }),
         });
         const fetchMs = Date.now() - fetchStart;
@@ -1723,8 +1849,8 @@ class IPCHandlers {
       try {
         let result = { text: "" };
         if (this.assemblyAiStreaming) {
-          // disconnect() now returns the final text from Termination event
           result = await this.assemblyAiStreaming.disconnect(true);
+          this.assemblyAiStreaming.cleanupAll();
           this.assemblyAiStreaming = null;
         }
 
