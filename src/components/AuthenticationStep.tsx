@@ -92,7 +92,8 @@ export default function AuthenticationStep({
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !isSignedIn || needsVerificationRef.current || !user?.id || !user?.email) return;
+    if (!isLoaded || !isSignedIn || needsVerificationRef.current || !user?.id || !user?.email)
+      return;
 
     const initAndComplete = async () => {
       if (OPENWHISPR_API_URL) {

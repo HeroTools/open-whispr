@@ -173,6 +173,108 @@ class IPCHandlers {
       return this.databaseManager.setDictionary(words);
     });
 
+    // Note handlers
+    ipcMain.handle(
+      "db-save-note",
+      async (event, title, content, noteType, sourceFile, audioDuration) => {
+        const result = this.databaseManager.saveNote(
+          title,
+          content,
+          noteType,
+          sourceFile,
+          audioDuration
+        );
+        if (result?.success && result?.note) {
+          setImmediate(() => {
+            this.broadcastToWindows("note-added", result.note);
+          });
+        }
+        return result;
+      }
+    );
+
+    ipcMain.handle("db-get-note", async (event, id) => {
+      return this.databaseManager.getNote(id);
+    });
+
+    ipcMain.handle("db-get-notes", async (event, noteType, limit) => {
+      return this.databaseManager.getNotes(noteType, limit);
+    });
+
+    ipcMain.handle("db-update-note", async (event, id, updates) => {
+      const result = this.databaseManager.updateNote(id, updates);
+      if (result?.success && result?.note) {
+        setImmediate(() => {
+          this.broadcastToWindows("note-updated", result.note);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-note", async (event, id) => {
+      const result = this.databaseManager.deleteNote(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("note-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("export-note", async (event, noteId, format) => {
+      try {
+        const note = this.databaseManager.getNote(noteId);
+        if (!note) return { success: false, error: "Note not found" };
+
+        const { dialog } = require("electron");
+        const fs = require("fs");
+        const ext = format === "txt" ? "txt" : "md";
+        const safeName = (note.title || "Untitled").replace(/[/\\?%*:|"<>]/g, "-");
+
+        const result = await dialog.showSaveDialog({
+          defaultPath: `${safeName}.${ext}`,
+          filters: [
+            { name: "Markdown", extensions: ["md"] },
+            { name: "Text", extensions: ["txt"] },
+          ],
+        });
+
+        if (result.canceled || !result.filePath) return { success: false };
+
+        fs.writeFileSync(result.filePath, note.content, "utf-8");
+        return { success: true };
+      } catch (error) {
+        console.error("Error exporting note:", error.message);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("select-audio-file", async () => {
+      const { dialog } = require("electron");
+      const result = await dialog.showOpenDialog({
+        properties: ["openFile"],
+        filters: [
+          { name: "Audio Files", extensions: ["mp3", "wav", "m4a", "webm", "ogg", "flac", "aac"] },
+        ],
+      });
+      if (result.canceled || !result.filePaths.length) {
+        return { canceled: true };
+      }
+      return { canceled: false, filePath: result.filePaths[0] };
+    });
+
+    ipcMain.handle("transcribe-audio-file", async (event, filePath, options = {}) => {
+      const fs = require("fs");
+      try {
+        const audioBuffer = fs.readFileSync(filePath);
+        const result = await this.whisperManager.transcribeLocalWhisper(audioBuffer, options);
+        return result;
+      } catch (error) {
+        debugLogger.error("Audio file transcription error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text, options) => {
       return this.clipboardManager.pasteText(text, { ...options, webContents: event.sender });
