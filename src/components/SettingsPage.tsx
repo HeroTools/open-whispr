@@ -67,7 +67,6 @@ export type SettingsSectionType =
   | "account"
   | "general"
   | "transcription"
-  | "dictionary"
   | "aiModels"
   | "agentConfig"
   | "prompts"
@@ -604,7 +603,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
     cloudReasoningBaseUrl,
-    customDictionary,
     useReasoningModel,
     reasoningModel,
     reasoningProvider,
@@ -628,7 +626,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudTranscriptionModel,
     setCloudTranscriptionBaseUrl,
     setCloudReasoningBaseUrl,
-    setCustomDictionary,
     setUseReasoningModel,
     setReasoningModel,
     setReasoningProvider,
@@ -727,24 +724,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     }
     return "linux";
   }, []);
-
-  const [newDictionaryWord, setNewDictionaryWord] = useState("");
-
-  const handleAddDictionaryWord = useCallback(() => {
-    const word = newDictionaryWord.trim();
-    if (word && !customDictionary.includes(word)) {
-      setCustomDictionary([...customDictionary, word]);
-      setNewDictionaryWord("");
-    }
-  }, [newDictionaryWord, customDictionary, setCustomDictionary]);
-
-  const handleRemoveDictionaryWord = useCallback(
-    (wordToRemove: string) => {
-      if (wordToRemove === agentName) return;
-      setCustomDictionary(customDictionary.filter((word) => word !== wordToRemove));
-    },
-    [customDictionary, setCustomDictionary, agentName]
-  );
 
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
   const [autoStartLoading, setAutoStartLoading] = useState(true);
@@ -1590,152 +1569,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
             toast={toast}
           />
-        );
-
-      case "dictionary":
-        return (
-          <div className="space-y-5">
-            <SectionHeader
-              title="Custom Dictionary"
-              description="Add words, names, or technical terms to improve transcription accuracy"
-            />
-
-            {/* Add Words */}
-            <SettingsPanel>
-              <SettingsPanelRow>
-                <div className="space-y-2">
-                  <p className="text-[12px] font-medium text-foreground">Add a word or phrase</p>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="e.g. OpenWhispr, Kubernetes, Dr. Martinez..."
-                      value={newDictionaryWord}
-                      onChange={(e) => setNewDictionaryWord(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleAddDictionaryWord();
-                        }
-                      }}
-                      className="flex-1 h-8 text-[12px]"
-                    />
-                    <Button
-                      onClick={handleAddDictionaryWord}
-                      disabled={!newDictionaryWord.trim()}
-                      size="sm"
-                      className="h-8"
-                    >
-                      Add
-                    </Button>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground/50">Press Enter to add</p>
-                </div>
-              </SettingsPanelRow>
-            </SettingsPanel>
-
-            {/* Word List */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[12px] font-medium text-foreground">
-                  Your words
-                  {customDictionary.length > 0 && (
-                    <span className="ml-1.5 text-muted-foreground/50 font-normal text-[11px]">
-                      {customDictionary.length}
-                    </span>
-                  )}
-                </p>
-                {customDictionary.length > 0 && (
-                  <button
-                    onClick={() => {
-                      showConfirmDialog({
-                        title: "Clear dictionary?",
-                        description:
-                          "This will remove all words from your custom dictionary. This action cannot be undone.",
-                        confirmText: "Clear All",
-                        variant: "destructive",
-                        onConfirm: () =>
-                          setCustomDictionary(customDictionary.filter((w) => w === agentName)),
-                      });
-                    }}
-                    className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-
-              {customDictionary.length > 0 ? (
-                <SettingsPanel>
-                  <SettingsPanelRow>
-                    <div className="flex flex-wrap gap-1">
-                      {customDictionary.map((word) => {
-                        const isAgentName = word === agentName;
-                        return (
-                          <span
-                            key={word}
-                            className={`group inline-flex items-center gap-0.5 py-0.5 rounded-[5px] text-[11px] border transition-all ${
-                              isAgentName
-                                ? "pl-2 pr-2 bg-primary/10 dark:bg-primary/15 text-primary border-primary/20 dark:border-primary/30"
-                                : "pl-2 pr-1 bg-primary/5 dark:bg-primary/10 text-foreground border-border/30 dark:border-border-subtle hover:border-destructive/40 hover:bg-destructive/5"
-                            }`}
-                            title={isAgentName ? "Agent name (auto-managed)" : undefined}
-                          >
-                            {word}
-                            {!isAgentName && (
-                              <button
-                                onClick={() => handleRemoveDictionaryWord(word)}
-                                className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
-                                title="Remove word"
-                              >
-                                <svg
-                                  width="9"
-                                  height="9"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                >
-                                  <path d="M18 6L6 18M6 6l12 12" />
-                                </svg>
-                              </button>
-                            )}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </SettingsPanelRow>
-                </SettingsPanel>
-              ) : (
-                <div className="rounded-lg border border-dashed border-border/40 dark:border-border-subtle py-6 flex flex-col items-center justify-center text-center">
-                  <p className="text-[11px] text-muted-foreground/50">No words added yet</p>
-                  <p className="text-[10px] text-muted-foreground/40 mt-0.5">
-                    Words you add will appear here
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* How it works */}
-            <div>
-              <SectionHeader title="How it works" />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    Words in your dictionary are provided as context hints to the speech recognition
-                    model. This helps it correctly identify uncommon names, technical jargon, brand
-                    names, or anything that's frequently misrecognized.
-                  </p>
-                </SettingsPanelRow>
-                <SettingsPanelRow>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">Tip</span> — For difficult words,
-                    add context phrases like "The word is Synty" alongside the word itself. Adding
-                    related terms (e.g. "Synty" and "SyntyStudios") also helps the model understand
-                    the intended spelling.
-                  </p>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-          </div>
         );
 
       case "aiModels":

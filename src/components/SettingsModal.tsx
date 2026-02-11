@@ -7,7 +7,6 @@ import {
   Sparkles,
   UserCircle,
   Wrench,
-  BookOpen,
   ShieldCheck,
   Gift,
   Lock,
@@ -51,13 +50,6 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
       label: "Transcription",
       icon: Mic,
       description: "Speech-to-text engine",
-      group: "Speech",
-    },
-    {
-      id: "dictionary",
-      label: "Dictionary",
-      icon: BookOpen,
-      description: "Custom words & phrases",
       group: "Speech",
     },
     {

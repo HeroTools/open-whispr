@@ -7,6 +7,20 @@ export interface TranscriptionItem {
   created_at: string;
 }
 
+export interface NoteItem {
+  id: number;
+  title: string;
+  content: string;
+  enhanced_content: string | null;
+  enhancement_prompt: string | null;
+  enhanced_at_content_hash: string | null;
+  note_type: "personal" | "meeting" | "upload";
+  source_file: string | null;
+  audio_duration_seconds: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WhisperCheckResult {
   installed: boolean;
   working: boolean;
@@ -186,6 +200,45 @@ declare global {
       // Dictionary operations
       getDictionary: () => Promise<string[]>;
       setDictionary: (words: string[]) => Promise<{ success: boolean }>;
+
+      // Note operations
+      saveNote: (
+        title: string,
+        content: string,
+        noteType?: string,
+        sourceFile?: string | null,
+        audioDuration?: number | null
+      ) => Promise<{ success: boolean; note?: NoteItem }>;
+      getNote: (id: number) => Promise<NoteItem | null>;
+      getNotes: (noteType?: string | null, limit?: number) => Promise<NoteItem[]>;
+      updateNote: (
+        id: number,
+        updates: {
+          title?: string;
+          content?: string;
+          enhanced_content?: string | null;
+          enhancement_prompt?: string | null;
+          enhanced_at_content_hash?: string | null;
+        }
+      ) => Promise<{ success: boolean; note?: NoteItem }>;
+      deleteNote: (id: number) => Promise<{ success: boolean }>;
+      exportNote: (
+        noteId: number,
+        format: "txt" | "md"
+      ) => Promise<{ success: boolean; error?: string }>;
+
+      // Audio file operations
+      selectAudioFile: () => Promise<{ canceled: boolean; filePath?: string }>;
+      transcribeAudioFile: (
+        filePath: string,
+        options?: Record<string, unknown>
+      ) => Promise<{ success: boolean; text?: string; error?: string }>;
+      getPathForFile: (file: File) => string;
+
+      // Note event listeners
+      onNoteAdded?: (callback: (note: NoteItem) => void) => () => void;
+      onNoteUpdated?: (callback: (note: NoteItem) => void) => () => void;
+      onNoteDeleted?: (callback: (payload: { id: number }) => void) => () => void;
 
       // Database event listeners
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => () => void;
