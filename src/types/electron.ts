@@ -176,6 +176,15 @@ export interface PasteToolsResult {
   recommendedInstall?: string;
 }
 
+export interface ReferralItem {
+  id: string;
+  email: string;
+  name: string | null;
+  status: "pending" | "completed" | "rewarded";
+  created_at: string;
+  first_payment_at: string | null;
+}
+
 declare global {
   interface Window {
     electronAPI: {
@@ -522,6 +531,45 @@ declare global {
       cloudBillingPortal?: () => Promise<{
         success: boolean;
         url?: string;
+        error?: string;
+        code?: string;
+      }>;
+
+      // Cloud audio file transcription
+      transcribeAudioFileCloud?: (filePath: string) => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+        code?: string;
+      }>;
+
+      // BYOK audio file transcription
+      transcribeAudioFileByok?: (options: {
+        filePath: string;
+        apiKey: string;
+        baseUrl: string;
+        model: string;
+      }) => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
+
+      // Referral system
+      referralStats?: () => Promise<{
+        success: boolean;
+        referralCode?: string;
+        referralLink?: string;
+        totalReferrals?: number;
+        completedReferrals?: number;
+        pendingReferrals?: number;
+        totalMonthsEarned?: number;
+        referrals?: ReferralItem[];
+        error?: string;
+        code?: string;
+      }>;
+      referralSendInvite?: (email: string) => Promise<{
+        success: boolean;
         error?: string;
         code?: string;
       }>;

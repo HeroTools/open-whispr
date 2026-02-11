@@ -287,6 +287,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cloudCheckout: () => ipcRenderer.invoke("cloud-checkout"),
   cloudBillingPortal: () => ipcRenderer.invoke("cloud-billing-portal"),
 
+  // Cloud audio file transcription
+  transcribeAudioFileCloud: (filePath) => ipcRenderer.invoke("transcribe-audio-file-cloud", filePath),
+  transcribeAudioFileByok: (options) => ipcRenderer.invoke("transcribe-audio-file-byok", options),
+
+  // Referral system
+  referralStats: () => ipcRenderer.invoke("referral-stats"),
+  referralSendInvite: (email) => ipcRenderer.invoke("referral-send-invite", email),
+
   // Assembly AI Streaming
   assemblyAiStreamingWarmup: (options) => ipcRenderer.invoke("assemblyai-streaming-warmup", options),
   assemblyAiStreamingStart: (options) => ipcRenderer.invoke("assemblyai-streaming-start", options),

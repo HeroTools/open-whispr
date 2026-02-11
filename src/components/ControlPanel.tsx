@@ -17,12 +17,14 @@ import {
   clearTranscriptions as clearStoreTranscriptions,
 } from "../stores/transcriptionStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
+import { setActiveNoteId } from "../stores/noteStore";
 import HistoryView from "./HistoryView";
 
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
 const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
 const DictionaryView = React.lazy(() => import("./DictionaryView"));
 const UploadAudioView = React.lazy(() => import("./notes/UploadAudioView"));
+const ReferralView = React.lazy(() => import("./ReferralView"));
 
 export default function ControlPanel() {
   const history = useTranscriptions();
@@ -384,7 +386,12 @@ export default function ControlPanel() {
             )}
             {activeView === "upload" && (
               <Suspense fallback={null}>
-                <UploadAudioView onNoteCreated={() => setActiveView("personal-notes")} />
+                <UploadAudioView onNoteCreated={(noteId) => { setActiveNoteId(noteId); setActiveView("personal-notes"); }} />
+              </Suspense>
+            )}
+            {activeView === "referrals" && (
+              <Suspense fallback={null}>
+                <ReferralView />
               </Suspense>
             )}
           </div>
