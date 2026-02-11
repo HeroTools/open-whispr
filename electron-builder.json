@@ -87,7 +87,6 @@
   ],
   "extraResources": [
     "src/assets/**/*",
-    "resources/macos-globe-listener.swift",
     "resources/bin/macos-globe-listener",
     "resources/bin/macos-fast-paste",
     {
@@ -105,6 +104,9 @@
     "entitlements": "resources/mac/entitlements.mac.plist",
     "entitlementsInherit": "resources/mac/entitlements.mac.plist",
     "identity": "HeroTools Inc. (9R85XFMH59)",
+    "notarize": {
+      "teamId": "9R85XFMH59"
+    },
     "extendInfo": {
       "LSUIElement": false,
       "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
