@@ -83,20 +83,20 @@
         "window": "Ventana: {{windowName}}",
         "error": "Error {{errorCode}}: {{errorDescription}}",
         "url": "URL: {{url}}",
-        "hint": "Reinstala la app o inicia con --log-level=debug."
+        "hint": "Intenta reinstalar la app o iniciar con --log-level=debug."
       }
     }
   },
   "startup": {
     "error": {
       "title": "Error de inicio de OpenWhispr",
-      "message": "No se pudo iniciar la aplicación:\n\n{{error}}\n\nInforma este problema."
+      "message": "No se pudo iniciar la aplicación:\n\n{{error}}\n\nPor favor, reporta este problema."
     },
     "globeHotkey": {
       "title": "Atajo Globe no disponible",
       "message": "OpenWhispr no pudo activar el atajo de la tecla Globe.",
       "details": {
-        "unknown": "Ocurrió un error desconocido al iniciar el listener de Globe.",
+        "unknown": "Ocurrió un error desconocido al iniciar el proceso de escucha de Globe.",
         "fallback": "El atajo Globe permanecerá deshabilitado; los atajos actuales seguirán funcionando.",
         "devHint": "Ejecuta `npm run compile:globe` y recompila la app para regenerar el binario.",
         "reinstallHint": "Reinstala OpenWhispr o contacta soporte si el problema persiste."
@@ -147,7 +147,7 @@
     "close": "Cerrar"
   },
   "windows": {
-    "pttUnavailable": "El listener nativo de Push-to-Talk no está disponible"
+    "pttUnavailable": "El módulo nativo de Push-to-Talk no está disponible"
   },
   "common": {
     "back": "Atrás",
@@ -364,7 +364,7 @@
         "error": "Error de atajo"
       },
       "errors": {
-        "enterValidHotkey": "Ingresa un atajo válido",
+        "enterValidHotkey": "Introduce un atajo válido",
         "unsupportedShortcut": "Ese atajo no es compatible.",
         "couldNotRegister": "No se pudo registrar esta tecla. Elige otra.",
         "failedToRegister": "No se pudo registrar el atajo. Inténtalo de nuevo."
@@ -401,7 +401,7 @@
       },
       "downloadCancelled": {
         "title": "Descarga cancelada",
-        "description": "La descarga fue cancelada."
+        "description": "La descarga ha sido cancelada."
       }
     },
     "permissions": {
@@ -461,9 +461,9 @@
       "accessibilityTestText": "Prueba de accesibilidad de OpenWhispr",
       "warning": {
         "messages": {
-          "macos": "Revisa Sonido para elegir tu dispositivo de entrada",
-          "windows": "Revisa Configuración de Windows para elegir tu dispositivo de entrada",
-          "linux": "Revisa la configuración de sonido del sistema para elegir tu dispositivo de entrada"
+          "macos": "Revisa la configuración de Sonido para seleccionar tu dispositivo de entrada",
+          "windows": "Revisa la Configuración de Windows para seleccionar tu dispositivo de entrada",
+          "linux": "Revisa la configuración de sonido del sistema para seleccionar tu dispositivo de entrada"
         },
         "soundLabel": "Sonido",
         "privacyLabel": "Privacidad"
@@ -507,7 +507,7 @@
       "createAccountLink": "Crear cuenta",
       "createPasswordPlaceholder": "Crea una contraseña",
       "creatingAccount": "Creando cuenta...",
-      "enterPasswordPlaceholder": "Ingresa tu contraseña",
+      "enterPasswordPlaceholder": "Introduce tu contraseña",
       "forgotPassword": "¿Olvidaste tu contraseña?",
       "fullNamePlaceholder": "Nombre completo",
       "haveAccount": "¿Ya tienes una cuenta?",
@@ -591,7 +591,7 @@
         "errorDetails": "Detalles de errores",
         "ffmpegOperations": "Operaciones FFmpeg",
         "systemDiagnostics": "Diagnósticos del sistema",
-        "transcriptionPipeline": "Pipeline de transcripción"
+        "transcriptionPipeline": "Flujo de transcripción"
       },
       "title": "Qué se registra"
     }
@@ -618,12 +618,12 @@
   "forgotPassword": {
     "back": "Atrás",
     "backToSignIn": "Volver a iniciar sesión",
-    "emailPlaceholder": "Ingresa tu correo electrónico",
+    "emailPlaceholder": "Introduce tu correo electrónico",
     "goBack": "Volver",
     "notConfigured": "La autenticación aún no está configurada.",
     "sendResetLink": "Enviar enlace de restablecimiento",
     "sending": "Enviando...",
-    "subtitle": "Ingresa tu correo y te enviaremos un enlace de restablecimiento",
+    "subtitle": "Introduce tu correo y te enviaremos un enlace de restablecimiento",
     "success": {
       "description": "Enviamos un enlace de restablecimiento de contraseña a",
       "help": "¿No recibiste el correo? Revisa tu carpeta de spam o inténtalo de nuevo.",
@@ -762,7 +762,7 @@
       "cautionLabel": "Precaución",
       "cautionTextPrefix": "Modificar este prompt puede afectar la calidad de transcripción.",
       "cautionTextSuffix": "Mantén el marcador {{agentName}} para preservar la detección del agente.",
-      "placeholder": "Ingresa tu prompt de sistema personalizado..."
+      "placeholder": "Introduce tu prompt de sistema personalizado..."
     },
     "tabs": {
       "customize": "Personalizar",
@@ -779,7 +779,7 @@
       "disabledReasoning": "La mejora de texto con IA está desactivada. Actívala en Modelos de IA para probar prompts.",
       "failed": "Prueba fallida: {{error}}",
       "inputLabel": "Entrada",
-      "inputPlaceholder": "Ingresa texto para probar...",
+      "inputPlaceholder": "Introduce texto para probar...",
       "instruction": "Instrucción",
       "modelLabel": "Modelo",
       "noModelSelected": "Ningún modelo seleccionado",
@@ -819,7 +819,7 @@
     "passwordMinLength": "La contraseña debe tener al menos 8 caracteres",
     "resetButton": "Restablecer contraseña",
     "resetting": "Restableciendo...",
-    "subtitle": "Ingresa tu nueva contraseña a continuación",
+    "subtitle": "Introduce tu nueva contraseña a continuación",
     "success": {
       "description": "Tu contraseña ha sido actualizada. Ya iniciaste sesión.",
       "title": "Contraseña restablecida"
@@ -936,7 +936,7 @@
       "toasts": {
         "approachingLimit": {
           "description": "Has usado {{used}} de {{limit}} palabras gratis esta semana. Mejora a Pro para uso ilimitado.",
-          "title": "Acercándose al límite semanal"
+          "title": "Cerca del límite semanal"
         }
       },
       "trialCta": {
@@ -1061,11 +1061,11 @@
       },
       "soundEffects": {
         "dictationSounds": "Sonidos de dictado",
-        "dictationSoundsDescription": "Reproduce un tono cuando la grabación inicia y se detiene",
+        "dictationSoundsDescription": "Reproduce un tono al iniciar y detener la grabación",
         "title": "Efectos de sonido"
       },
       "startup": {
-        "launchAtLogin": "Iniciar al encender",
+        "launchAtLogin": "Abrir al iniciar sesión",
         "launchAtLoginDescription": "Inicia OpenWhispr automáticamente al iniciar sesión",
         "title": "Inicio"
       },
@@ -1181,11 +1181,11 @@
         "parakeet_tdt_0_6b_v3": "ASR multilingüe rápido con detección automática de idioma (25 idiomas)"
       },
       "whisper": {
-        "tiny": "Más rápido, menor calidad",
+        "tiny": "El más rápido, menor calidad",
         "base": "Buen equilibrio",
         "small": "Mejor calidad, más lento",
         "medium": "Alta calidad",
-        "large": "Mejor calidad, más lento",
+        "large": "La mejor calidad, el más lento",
         "turbo": "Rápido con buena calidad"
       },
       "transcription": {
@@ -1196,20 +1196,20 @@
         "mistral_voxtral_mini_latest": "Transcripción multilingüe rápida"
       },
       "cloud": {
-        "openai_gpt_5_2": "Último modelo insignia de razonamiento",
-        "openai_gpt_5_mini": "Rápido y eficiente en costos",
+        "openai_gpt_5_2": "Modelo insignia de razonamiento más reciente",
+        "openai_gpt_5_mini": "Rápido y económico",
         "openai_gpt_5_nano": "Ultrarrápido, baja latencia",
         "openai_gpt_4_1": "Base sólida, contexto de 1M",
         "openai_gpt_4_1_mini": "Modelo GPT-4.1 más pequeño",
         "openai_gpt_4_1_nano": "GPT-4.1 de menor latencia",
         "anthropic_claude_sonnet_4_5": "Rendimiento equilibrado",
-        "anthropic_claude_haiku_4_5": "Rápido con inteligencia casi de frontera",
+        "anthropic_claude_haiku_4_5": "Rápido con inteligencia cercana a la frontera",
         "anthropic_claude_opus_4_5": "Modelo Claude más capaz",
         "gemini_gemini_3_pro_preview": "Modelo insignia de nueva generación para razonamiento complejo",
         "gemini_gemini_3_flash_preview": "Modelo de nueva generación ultrarrápido y de alta capacidad",
         "gemini_gemini_2_5_flash_lite": "Menor latencia y costo",
         "groq_qwen_qwen3_32b": "Potente modelo de razonamiento, contexto de 131K",
-        "groq_openai_gpt_oss_120b": "Insignia de código abierto de OpenAI, 500 T/seg",
+        "groq_openai_gpt_oss_120b": "Modelo insignia de código abierto de OpenAI, 500 T/seg",
         "groq_openai_gpt_oss_20b": "Modelo de código abierto rápido, 1000 T/seg",
         "groq_llama_3_3_70b_versatile": "Modelo versátil de Meta, 280 T/seg",
         "groq_llama_3_1_8b_instant": "Ultrarrápido 560 T/seg, contexto de 131K",
@@ -1217,7 +1217,7 @@
         "groq_gemma2_9b_it": "Modelo eficiente de Google"
       },
       "local": {
-        "qwen_qwen3_8b_q4_k_m": "Último Qwen3 con soporte de modo pensamiento",
+        "qwen_qwen3_8b_q4_k_m": "Qwen3 más reciente con soporte de modo pensamiento",
         "qwen_qwen3_8b_q5_k_m": "Qwen3 de mayor calidad con modo pensamiento",
         "qwen_qwen3_4b_q4_k_m": "Qwen3 compacto con capacidades de razonamiento",
         "qwen_qwen3_1_7b_q8_0": "Modelo Qwen3 pequeño pero capaz",

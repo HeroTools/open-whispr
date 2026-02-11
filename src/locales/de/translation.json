@@ -83,7 +83,7 @@
         "window": "Fenster: {{windowName}}",
         "error": "Fehler {{errorCode}}: {{errorDescription}}",
         "url": "URL: {{url}}",
-        "hint": "Versuchen Sie die App neu zu installieren oder mit --log-level=debug zu starten."
+        "hint": "Versuchen Sie, die App neu zu installieren oder mit --log-level=debug zu starten."
       }
     }
   },
@@ -276,7 +276,7 @@
     },
     "aiCta": {
       "title": "Verbessern Sie Ihre Transkriptionen mit KI",
-      "description": "Korrigiert automatisch Grammatik, Zeichensetzung und Formatierung während Sie sprechen.",
+      "description": "Korrigiert automatisch Grammatik, Zeichensetzung und Formatierung, während Sie sprechen.",
       "enable": "KI-Verbesserung aktivieren"
     },
     "loading": "Laden..."
@@ -498,7 +498,7 @@
       "and": "und",
       "prefix": "Durch Fortfahren stimmen Sie unseren",
       "privacy": "Datenschutzrichtlinie",
-      "suffix": "",
+      "suffix": "zu",
       "terms": "Nutzungsbedingungen"
     },
     "passwordForm": {
@@ -572,7 +572,7 @@
         "title": "Debug-Protokollierung aktiviert"
       },
       "loadFailed": {
-        "description": "Etwas ist schiefgelaufen. Versuchen Sie die Einstellungen erneut zu öffnen.",
+        "description": "Etwas ist schiefgelaufen. Versuchen Sie, die Einstellungen erneut zu öffnen.",
         "title": "Debug-Einstellungen konnten nicht geladen werden"
       },
       "openLogsFailed": {
@@ -680,7 +680,7 @@
   "hotkeyInput": {
     "ariaLabel": "Drücken Sie eine Tastenkombination, um den Hotkey festzulegen",
     "clickToChange": "Klicken zum Ändern",
-    "clickToChangeLower": "Klicken zum Ändern",
+    "clickToChangeLower": "klicken zum Ändern",
     "clickToSet": "Klicken, um Hotkey festzulegen",
     "fnCaptureHint": "Drücken Sie eine Taste zum Kombinieren oder loslassen für Globe",
     "fnHeldHint": "+ Taste oder loslassen für Globe",
@@ -770,7 +770,7 @@
       "view": "Ansicht"
     },
     "test": {
-      "addressHint": "Versuchen Sie '{{agentName}}' anzusprechen, um den Anweisungsmodus zu testen",
+      "addressHint": "Versuchen Sie, '{{agentName}}' anzusprechen, um den Anweisungsmodus zu testen",
       "aiModels": "KI-Modelle",
       "baseUrlMissing": "{{provider}} Basis-URL fehlt. Fügen Sie sie in den KI-Modelle-Einstellungen hinzu.",
       "cleanup": "Textbereinigung",
@@ -968,7 +968,7 @@
     "aiModels": {
       "customSetup": "Benutzerdefinierte Einrichtung",
       "customSetupDescription": "Verwenden Sie Ihren eigenen Anbieter und API-Schlüssel.",
-      "description": "Bereinigt Transkriptionen, verarbeitet Befehle und korrigiert Fehler unter Beibehaltung Ihres Tons.",
+      "description": "Bereinigt Transkriptionen, verarbeitet Befehle und korrigiert Fehler unter Beibehaltung Ihres Stils.",
       "enableTextCleanup": "Textbereinigung aktivieren",
       "enableTextCleanupDescription": "KI verbessert die Transkriptionsqualität",
       "openwhisprCloud": "OpenWhispr Cloud",
@@ -1162,7 +1162,7 @@
       "description": "Wählen Sie, wie OpenWhispr Ihre Stimme transkribiert",
       "openwhisprCloud": "OpenWhispr Cloud",
       "openwhisprCloudDescription": "Funktioniert sofort. Keine Konfiguration nötig.",
-      "title": "Sprache zu Text",
+      "title": "Sprache-zu-Text",
       "toasts": {
         "switchedCloud": {
           "description": "Transkription verwendet jetzt den OpenWhispr-Cloud-Dienst.",

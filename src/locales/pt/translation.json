@@ -114,7 +114,7 @@
     }
   },
   "systemSettings": {
-    "microphone": "Abra as configurações do sistema para permissão de microfone.",
+    "microphone": "Abra as configurações do sistema para configurar as permissões de microfone.",
     "sound": "Abra as configurações de som do sistema (por exemplo, pavucontrol).",
     "accessibility": "As configurações de acessibilidade não estão disponíveis nesta plataforma."
   },
@@ -143,7 +143,7 @@
     "less": "Menos",
     "more": "Mais",
     "private": "Privado",
-    "tap": "Tocar"
+    "tap": "Toque"
   },
   "onboarding": {
     "steps": {
@@ -242,7 +242,7 @@
       "toStart": "para iniciar"
     },
     "cloudMigration": {
-      "title": "Bem-vindo ao OpenWhispr Pro",
+      "title": "Boas-vindas ao OpenWhispr Pro",
       "description": "Seu teste grátis de 7 dias está ativo! Mudamos sua transcrição para o OpenWhispr Cloud para resultados mais rápidos e precisos. Suas configurações anteriores foram salvas — volte quando quiser em Configurações.",
       "viewSettings": "Ver configurações"
     },
@@ -315,7 +315,7 @@
       },
       "fallback": {
         "title": "Modo de fallback",
-        "description": "Whisper local falhou. API da OpenAI usada."
+        "description": "O Whisper local falhou. A API da OpenAI foi usada no lugar."
       },
       "noAudio": {
         "title": "Nenhum áudio detectado",
@@ -387,7 +387,7 @@
       "micErrors": {
         "accessFailed": "Falha no acesso ao microfone. Tente novamente.",
         "noMicrophones": "Nenhum microfone detectado. Conecte ou selecione um microfone em {{settingsPath}}.",
-        "permissionDenied": "Permissão negada. Abra {{privacyPath}} e permita OpenWhispr.",
+        "permissionDenied": "Permissão negada. Abra {{privacyPath}} e permita o OpenWhispr.",
         "couldNotStart": "Não foi possível iniciar o microfone selecionado. Escolha um dispositivo em {{settingsPath}} e teste novamente.",
         "noActiveInput": "Nenhuma entrada de áudio ativa encontrada. Escolha um microfone em {{settingsPath}}.",
         "unknown": "Falha no acesso ao microfone: {{error}}. Selecione outro dispositivo e tente novamente.",
@@ -463,7 +463,7 @@
       "failedUserCheck": "Falha ao verificar conta do usuário",
       "generic": "Algo deu errado. Tente novamente.",
       "invalidCredentials": "E-mail ou senha inválidos",
-      "plusAliasUnsupported": "Aliases de e-mail com '+' não são suportados"
+      "plusAliasUnsupported": "Endereços de e-mail com '+' não são aceitos"
     },
     "getStarted": "Começar",
     "legal": {
@@ -488,19 +488,19 @@
       "signIn": "Entrar",
       "signInLink": "Entrar",
       "signingIn": "Entrando...",
-      "welcomeBack": "Bem-vindo de volta"
+      "welcomeBack": "Que bom ter você de volta"
     },
     "signedIn": {
       "ready": "Pronto",
-      "welcomeBack": "Bem-vindo de volta",
-      "welcomeBackName": "Bem-vindo de volta, {{name}}"
+      "welcomeBack": "Que bom ter você de volta",
+      "welcomeBackName": "Que bom ter você de volta, {{name}}"
     },
     "social": {
       "completeInBrowser": "Conclua o login no navegador",
       "continueWithGoogle": "Continuar com o Google"
     },
-    "welcomeSubtitle": "Dite em qualquer lugar usando sua voz",
-    "welcomeTitle": "Bem-vindo ao OpenWhispr"
+    "welcomeSubtitle": "Use sua voz para ditar em qualquer lugar",
+    "welcomeTitle": "Boas-vindas ao OpenWhispr"
   },
   "cleanupPrompt": "Limpeza",
   "developerSection": {
@@ -1168,14 +1168,14 @@
         "mistral_voxtral_mini_latest": "Transcrição multilíngue rápida"
       },
       "cloud": {
-        "openai_gpt_5_2": "Mais recente modelo principal de raciocínio",
+        "openai_gpt_5_2": "Modelo principal de raciocínio mais recente",
         "openai_gpt_5_mini": "Rápido e eficiente em custo",
         "openai_gpt_5_nano": "Ultrarápido, baixa latência",
         "openai_gpt_4_1": "Base sólida, contexto de 1M",
         "openai_gpt_4_1_mini": "Modelo GPT-4.1 menor",
         "openai_gpt_4_1_nano": "GPT-4.1 com menor latência",
         "anthropic_claude_sonnet_4_5": "Desempenho equilibrado",
-        "anthropic_claude_haiku_4_5": "Rápido com inteligência quase de fronteira",
+        "anthropic_claude_haiku_4_5": "Rápido com inteligência quase de ponta",
         "anthropic_claude_opus_4_5": "Modelo Claude mais capaz",
         "gemini_gemini_3_pro_preview": "Modelo principal de nova geração para raciocínio complexo",
         "gemini_gemini_3_flash_preview": "Modelo de nova geração ultrarápido e de alta capacidade",
@@ -1189,7 +1189,7 @@
         "groq_gemma2_9b_it": "Modelo eficiente do Google"
       },
       "local": {
-        "qwen_qwen3_8b_q4_k_m": "Último Qwen3 com suporte ao modo de pensamento",
+        "qwen_qwen3_8b_q4_k_m": "Qwen3 mais recente com suporte ao modo de pensamento",
         "qwen_qwen3_8b_q5_k_m": "Qwen3 de maior qualidade com modo de pensamento",
         "qwen_qwen3_4b_q4_k_m": "Qwen3 compacto com capacidades de raciocínio",
         "qwen_qwen3_1_7b_q8_0": "Modelo Qwen3 pequeno, mas capaz",

@@ -343,7 +343,7 @@
       },
       "fallback": {
         "title": "Modalità fallback",
-        "description": "Whisper locale non riuscito. Usata API OpenAI."
+        "description": "Whisper locale non riuscito. Utilizzata l'API OpenAI."
       },
       "noAudio": {
         "title": "Nessun audio rilevato",
@@ -352,7 +352,7 @@
     },
     "clipboard": {
       "pasteFailed": {
-        "title": "Incolla dagli appunti non riuscito",
+        "title": "Incollaggio dagli appunti non riuscito",
         "description": "Impossibile incollare dagli appunti. Prova a digitare o usa Cmd+V/Ctrl+V."
       }
     },
@@ -370,7 +370,7 @@
         "failedToRegister": "Registrazione scorciatoia non riuscita. Riprova."
       },
       "messages": {
-        "nowUsing": "Ora uso {{hotkey}} per la dettatura"
+        "nowUsing": "{{hotkey}} impostata per la dettatura"
       }
     },
     "modelDownload": {
@@ -490,7 +490,7 @@
       "failedProviderSignIn": "Accesso con {{provider}} non riuscito",
       "failedUserCheck": "Verifica dell'account utente non riuscita",
       "generic": "Qualcosa è andato storto. Riprova.",
-      "invalidCredentials": "E-mail o password non validi",
+      "invalidCredentials": "E-mail o password non valide",
       "plusAliasUnsupported": "Gli alias e-mail con '+' non sono supportati"
     },
     "getStarted": "Inizia",
@@ -968,7 +968,7 @@
     "aiModels": {
       "customSetup": "Configurazione personalizzata",
       "customSetupDescription": "Usa il tuo provider e la tua chiave API.",
-      "description": "Correggi le trascrizioni, gestisci i comandi e sistema gli errori preservando il tuo tono.",
+      "description": "Correggi le trascrizioni, gestisci i comandi e risolvi gli errori preservando il tuo tono.",
       "enableTextCleanup": "Attiva correzione testo",
       "enableTextCleanupDescription": "L'IA migliora la qualità della trascrizione",
       "openwhisprCloud": "OpenWhispr Cloud",

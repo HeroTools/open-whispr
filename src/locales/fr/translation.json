@@ -1,7 +1,7 @@
 {
   "app": {
     "name": "OpenWhispr",
-    "loading": "Chargement de OpenWhispr...",
+    "loading": "Chargement d'OpenWhispr...",
     "oauth": {
       "redirectTitle": "Redirection vers OpenWhispr",
       "closeTab": "Vous pouvez fermer cet onglet"
@@ -77,13 +77,13 @@
       "message": "Impossible d'ouvrir le lien dans votre navigateur :\n{{url}}\n\nErreur : {{error}}"
     },
     "loadFailure": {
-      "title": "Échec du chargement de OpenWhispr",
+      "title": "Échec du chargement d'OpenWhispr",
       "message": "OpenWhispr n'a pas pu charger son interface.",
       "detail": {
         "window": "Fenêtre : {{windowName}}",
         "error": "Erreur {{errorCode}} : {{errorDescription}}",
         "url": "URL : {{url}}",
-        "hint": "Réinstallez l'application ou lancez avec --log-level=debug."
+        "hint": "Essayez de réinstaller l'application ou de la lancer avec --log-level=debug."
       }
     }
   },
@@ -114,8 +114,8 @@
     }
   },
   "systemSettings": {
-    "microphone": "Ouvrez les paramètres système pour configurer les permissions micro.",
-    "sound": "Ouvrez les paramètres son du système (par exemple, pavucontrol).",
+    "microphone": "Veuillez ouvrir les paramètres système pour configurer les permissions du microphone.",
+    "sound": "Veuillez ouvrir les paramètres son du système (par exemple, pavucontrol).",
     "accessibility": "Les paramètres d'accessibilité ne sont pas disponibles sur cette plateforme."
   },
   "titleBar": {
@@ -197,7 +197,7 @@
       "accessibilityTitle": "Accessibilité",
       "accessibilityDescription": "Pour coller du texte dans les applications",
       "testAndGrant": "Tester et autoriser",
-      "requiredForApp": "Nécessaire pour le bon fonctionnement de OpenWhispr",
+      "requiredForApp": "Nécessaire pour le bon fonctionnement d'OpenWhispr",
       "microphoneRequired": "Accès microphone requis"
     },
     "transcription": {
@@ -236,7 +236,7 @@
     },
     "limit": {
       "weeklyTitle": "Limite hebdomadaire atteinte",
-      "weeklyDescription": "Votre limite se réinitialise en continu. Passez à Pro ou utilisez votre propre clé API pour un usage illimité."
+      "weeklyDescription": "Votre limite se renouvelle de manière glissante. Passez à Pro ou utilisez votre propre clé API pour un usage illimité."
     },
     "billing": {
       "pastDueTitle": "Nous n'avons pas pu traiter votre paiement",
@@ -338,12 +338,12 @@
     "audioRecording": {
       "errorTitles": {
         "sessionExpired": "Session expirée",
-        "offline": "Hors ligne",
+        "offline": "Vous êtes hors ligne",
         "dailyLimitReached": "Limite quotidienne atteinte"
       },
       "fallback": {
         "title": "Mode de secours",
-        "description": "Whisper local a échoué. API OpenAI utilisée."
+        "description": "Whisper local a échoué. L'API OpenAI a pris le relais."
       },
       "noAudio": {
         "title": "Aucun audio détecté",
@@ -353,7 +353,7 @@
     "clipboard": {
       "pasteFailed": {
         "title": "Échec du collage depuis le presse-papiers",
-        "description": "Impossible de coller depuis le presse-papiers. Essayez de taper ou utilisez Cmd+V/Ctrl+V."
+        "description": "Impossible de coller depuis le presse-papiers. Essayez de saisir le texte manuellement ou utilisez Cmd+V/Ctrl+V."
       }
     },
     "hotkeyRegistration": {
@@ -413,7 +413,7 @@
         "defaultPrivacy": "Paramètres système -> Confidentialité et sécurité -> Microphone"
       },
       "micErrors": {
-        "accessFailed": "Accès au micro échoué. Réessayez.",
+        "accessFailed": "L'accès au microphone a échoué. Veuillez réessayer.",
         "noMicrophones": "Aucun micro détecté. Connectez ou sélectionnez un micro dans {{settingsPath}}.",
         "permissionDenied": "Autorisation refusée. Ouvrez {{privacyPath}} et autorisez OpenWhispr.",
         "couldNotStart": "Impossible de démarrer le micro sélectionné. Choisissez une entrée dans {{settingsPath}} puis relancez le test.",
@@ -516,12 +516,12 @@
       "signIn": "Se connecter",
       "signInLink": "Se connecter",
       "signingIn": "Connexion en cours...",
-      "welcomeBack": "Content de vous revoir"
+      "welcomeBack": "Bon retour"
     },
     "signedIn": {
       "ready": "Prêt",
-      "welcomeBack": "Content de vous revoir",
-      "welcomeBackName": "Content de vous revoir, {{name}}"
+      "welcomeBack": "Bon retour",
+      "welcomeBackName": "Bon retour, {{name}}"
     },
     "social": {
       "completeInBrowser": "Terminez la connexion dans votre navigateur",
@@ -672,7 +672,7 @@
     "title": "Guide des raccourcis",
     "validationRules": {
       "0": "Doit utiliser au moins un modificateur (Ctrl, Alt, Shift, etc.)",
-      "1": "Impossible d'utiliser les raccourcis système réservés",
+      "1": "Les raccourcis système réservés ne peuvent pas être utilisés",
       "2": "Les touches seules ne sont pas autorisées",
       "3": "Certaines combinaisons peuvent entrer en conflit avec d'autres applications"
     }
@@ -1009,7 +1009,7 @@
         "failedTitle": "Impossible de réinitialiser",
         "successDescription": "Tout a été réinitialisé. L'application va redémarrer.",
         "successTitle": "Terminé",
-        "title": "Réinitialiser toutes les données"
+        "title": "Réinitialiser toutes les données de l'application"
       },
       "resetAppData": "Réinitialiser les données de l'application",
       "resetAppDataDescription": "Supprime définitivement tous les paramètres, transcriptions et données en cache"
@@ -1038,7 +1038,7 @@
       "appearance": {
         "auto": "Auto",
         "dark": "Sombre",
-        "description": "Contrôlez l'apparence de OpenWhispr",
+        "description": "Contrôlez l'apparence d'OpenWhispr",
         "light": "Clair",
         "theme": "Thème",
         "themeDescription": "Choisissez clair, sombre ou suivre le système",
@@ -1129,7 +1129,7 @@
     "permissions": {
       "accessibilityDescription": "Requis pour que le collage automatique fonctionne après la transcription",
       "accessibilityTitle": "Accessibilité",
-      "description": "Testez et gérez les permissions système requises pour le bon fonctionnement de OpenWhispr",
+      "description": "Testez et gérez les permissions système requises pour le bon fonctionnement d'OpenWhispr",
       "microphoneDescription": "Requis pour l'enregistrement vocal et la dictée",
       "microphoneTitle": "Microphone",
       "resetAccessibility": {
@@ -1150,7 +1150,7 @@
       "description": "Contrôlez quelles données quittent votre appareil. Tout est désactivé par défaut.",
       "title": "Confidentialité",
       "usageAnalytics": "Analyse d'utilisation",
-      "usageAnalyticsDescription": "Aidez-nous à améliorer OpenWhispr en partageant des métriques de performance anonymes. Nous n'envoyons jamais le contenu de vos transcriptions — uniquement des données de timing et d'erreurs."
+      "usageAnalyticsDescription": "Aidez-nous à améliorer OpenWhispr en partageant des métriques de performance anonymes. Nous n'envoyons jamais le contenu de vos transcriptions — uniquement des données de performance et d'erreurs."
     },
     "prompts": {
       "description": "Affichez, personnalisez et testez le prompt système unifié qui gère la correction du texte et la détection des instructions",
@@ -1203,7 +1203,7 @@
         "openai_gpt_4_1_mini": "Modèle GPT-4.1 plus petit",
         "openai_gpt_4_1_nano": "GPT-4.1 à la latence la plus faible",
         "anthropic_claude_sonnet_4_5": "Performances équilibrées",
-        "anthropic_claude_haiku_4_5": "Rapide avec une intelligence proche de la frontière",
+        "anthropic_claude_haiku_4_5": "Rapide avec une intelligence de pointe",
         "anthropic_claude_opus_4_5": "Modèle Claude le plus performant",
         "gemini_gemini_3_pro_preview": "Modèle phare nouvelle génération pour le raisonnement complexe",
         "gemini_gemini_3_flash_preview": "Modèle nouvelle génération ultra-rapide et très performant",
