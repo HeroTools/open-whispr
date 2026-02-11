@@ -660,7 +660,7 @@ class ClipboardManager {
 gi.require_version('Atspi','2.0')
 from gi.repository import Atspi
 d=Atspi.get_desktop(0)
-skip={'gnome-shell',''}
+skip={'gnome-shell','open-whispr',''}
 for i in range(d.get_child_count()):
  a=d.get_child_at_index(i)
  if not a:continue
