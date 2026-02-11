@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.6] - 2026-02-10
+
+### Added
+- **Robust Model Downloads**: Hardened download pipeline with stall detection, disk space checks, and file validation for more reliable model installs
+- **Prompt Handling Improvements**: Improved agent name resolution, prompt studio enhancements, and smarter prompt context assembly
+- **Past-Due Subscription Handling**: Users with past-due subscriptions now see clear messaging and recovery options
+
+### Fixed
+- **Parakeet Long Audio**: Fixed empty transcriptions for long audio by segmenting input before sending to Parakeet
+- **Plus-Addressed Emails**: Reject plus-addressed emails (e.g., user+tag@example.com) during authentication
+- **Double-Click Prevention**: Prevent duplicate requests when double-clicking checkout and billing buttons
+- **Auth Initialization Race**: Await init-user before completing auth flow and fix missing user dependency
+
+### Changed
+- **Startup Performance**: Preload lazy chunks during auth initialization for faster page transitions
+- **Code Cleanup**: Removed excess comments and simplified window management logic
+
 ## [1.4.5] - 2026-02-09
 
 ### Added
