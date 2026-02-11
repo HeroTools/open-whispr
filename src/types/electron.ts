@@ -527,6 +527,37 @@ declare global {
       onAssemblyAiSessionEnd?: (
         callback: (data: { audioDuration?: number; text?: string }) => void
       ) => () => void;
+
+      // Deepgram Streaming
+      deepgramStreamingWarmup?: (options?: { sampleRate?: number; language?: string }) => Promise<{
+        success: boolean;
+        alreadyWarm?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      deepgramStreamingStart?: (options?: { sampleRate?: number; language?: string }) => Promise<{
+        success: boolean;
+        usedWarmConnection?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      deepgramStreamingSend?: (audioBuffer: ArrayBuffer) => void;
+      deepgramStreamingFinalize?: () => void;
+      deepgramStreamingStop?: () => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
+      deepgramStreamingStatus?: () => Promise<{
+        isConnected: boolean;
+        sessionId: string | null;
+      }>;
+      onDeepgramPartialTranscript?: (callback: (text: string) => void) => () => void;
+      onDeepgramFinalTranscript?: (callback: (text: string) => void) => () => void;
+      onDeepgramError?: (callback: (error: string) => void) => () => void;
+      onDeepgramSessionEnd?: (
+        callback: (data: { audioDuration?: number; text?: string }) => void
+      ) => () => void;
     };
 
     api?: {
