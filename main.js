@@ -628,11 +628,10 @@ async function startApp() {
     debugLogger.debug("[Push-to-Talk] Windows Push-to-Talk setup starting");
     let winKeyDownTime = 0;
     let winKeyIsRecording = false;
+    let winLastStopTime = 0;
 
-    // Minimum duration (ms) the key must be held before starting recording.
-    // This distinguishes a "tap" (ignored in push mode) from a "hold" (starts recording).
-    // 150ms is short enough to feel instant but long enough to detect intent.
     const WIN_MIN_HOLD_DURATION_MS = 150;
+    const WIN_POST_STOP_COOLDOWN_MS = 300;
 
     // Helper to check if hotkey is valid for Windows key listener
     const isValidHotkey = (hotkey) => {
@@ -659,12 +658,19 @@ async function startApp() {
       const activationMode = await windowManager.getActivationMode();
       debugLogger.debug("[Push-to-Talk] Activation mode check", { activationMode });
       if (activationMode === "push") {
+        const now = Date.now();
+        if (now - winLastStopTime < WIN_POST_STOP_COOLDOWN_MS) {
+          debugLogger.debug("[Push-to-Talk] Ignoring KEY_DOWN during post-stop cooldown");
+          return;
+        }
+
         debugLogger.debug("[Push-to-Talk] Starting recording sequence");
         windowManager.showDictationPanel();
-        winKeyDownTime = Date.now();
+        const pressTime = now;
+        winKeyDownTime = pressTime;
         winKeyIsRecording = false;
         setTimeout(async () => {
-          if (winKeyDownTime > 0 && !winKeyIsRecording) {
+          if (winKeyDownTime === pressTime && !winKeyIsRecording) {
             winKeyIsRecording = true;
             debugLogger.debug("[Push-to-Talk] Sending start dictation command");
             windowManager.sendStartDictation();
@@ -685,6 +691,7 @@ async function startApp() {
         const wasRecording = winKeyIsRecording;
         winKeyDownTime = 0;
         winKeyIsRecording = false;
+        winLastStopTime = Date.now();
         if (wasRecording) {
           debugLogger.debug("[Push-to-Talk] Sending stop dictation command");
           windowManager.sendStopDictation();
