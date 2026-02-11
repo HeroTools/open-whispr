@@ -1,19 +1,7 @@
 import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
-
-import enTranslation from "./locales/en/translation.json";
-import esTranslation from "./locales/es/translation.json";
-import frTranslation from "./locales/fr/translation.json";
-import deTranslation from "./locales/de/translation.json";
-import ptTranslation from "./locales/pt/translation.json";
-import itTranslation from "./locales/it/translation.json";
-
-import enPrompts from "./locales/en/prompts.json";
-import esPrompts from "./locales/es/prompts.json";
-import frPrompts from "./locales/fr/prompts.json";
-import dePrompts from "./locales/de/prompts.json";
-import ptPrompts from "./locales/pt/prompts.json";
-import itPrompts from "./locales/it/prompts.json";
+import { PROMPTS_BY_LOCALE } from "./locales/prompts";
+import { TRANSLATIONS_BY_LOCALE } from "./locales/translations";
 
 export const SUPPORTED_UI_LANGUAGES = ["en", "es", "fr", "de", "pt", "it"] as const;
 export type UiLanguage = (typeof SUPPORTED_UI_LANGUAGES)[number];
@@ -31,28 +19,28 @@ export function normalizeUiLanguage(language: string | null | undefined): UiLang
 
 const resources = {
   en: {
-    translation: enTranslation,
-    prompts: enPrompts,
+    translation: TRANSLATIONS_BY_LOCALE.en,
+    prompts: PROMPTS_BY_LOCALE.en,
   },
   es: {
-    translation: esTranslation,
-    prompts: esPrompts,
+    translation: TRANSLATIONS_BY_LOCALE.es,
+    prompts: PROMPTS_BY_LOCALE.es,
   },
   fr: {
-    translation: frTranslation,
-    prompts: frPrompts,
+    translation: TRANSLATIONS_BY_LOCALE.fr,
+    prompts: PROMPTS_BY_LOCALE.fr,
   },
   de: {
-    translation: deTranslation,
-    prompts: dePrompts,
+    translation: TRANSLATIONS_BY_LOCALE.de,
+    prompts: PROMPTS_BY_LOCALE.de,
   },
   pt: {
-    translation: ptTranslation,
-    prompts: ptPrompts,
+    translation: TRANSLATIONS_BY_LOCALE.pt,
+    prompts: PROMPTS_BY_LOCALE.pt,
   },
   it: {
-    translation: itTranslation,
-    prompts: itPrompts,
+    translation: TRANSLATIONS_BY_LOCALE.it,
+    prompts: PROMPTS_BY_LOCALE.it,
   },
 } as const;
 

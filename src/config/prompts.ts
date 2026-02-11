@@ -1,6 +1,6 @@
 import promptData from "./promptData.json";
 import i18n, { normalizeUiLanguage } from "../i18n";
-import enPrompts from "../locales/en/prompts.json";
+import { en as enPrompts, type PromptBundle } from "../locales/prompts";
 import { getLanguageInstruction } from "../utils/languageSupport";
 
 export const CLEANUP_PROMPT = promptData.CLEANUP_PROMPT;
@@ -8,12 +8,6 @@ export const FULL_PROMPT = promptData.FULL_PROMPT;
 /** @deprecated Use FULL_PROMPT instead — kept for PromptStudio backwards compat */
 export const UNIFIED_SYSTEM_PROMPT = promptData.FULL_PROMPT;
 export const LEGACY_PROMPTS = promptData.LEGACY_PROMPTS;
-
-interface PromptBundle {
-  cleanupPrompt: string;
-  fullPrompt: string;
-  dictionarySuffix: string;
-}
 
 function getPromptBundle(uiLanguage?: string): PromptBundle {
   const locale = normalizeUiLanguage(uiLanguage || "en");
@@ -32,7 +26,6 @@ function detectAgentName(transcript: string, agentName: string): boolean {
 
   if (lower.includes(name)) return true;
 
-  // Add known ASR misspellings here as discovered through real usage.
   const variants: string[] = [];
 
   return variants.some((v) => lower.includes(v));
@@ -48,7 +41,6 @@ export function getSystemPrompt(
   const name = agentName?.trim() || "Assistant";
   const prompts = getPromptBundle(uiLanguage);
 
-  // Check for custom prompt override first
   let promptTemplate: string | null = null;
   if (typeof window !== "undefined" && window.localStorage) {
     const customPrompt = window.localStorage.getItem("customUnifiedPrompt");
@@ -61,8 +53,6 @@ export function getSystemPrompt(
     }
   }
 
-  // If user has a custom prompt, always use it (no tier split — they control the full prompt)
-  // Otherwise, select tier based on agent name detection
   let prompt: string;
   if (promptTemplate) {
     prompt = promptTemplate.replace(/\{\{agentName\}\}/g, name);
