@@ -7,6 +7,7 @@ const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
+const { i18nMain, changeLanguage } = require("./i18nMain");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
@@ -20,6 +21,7 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.getTrayManager = managers.getTrayManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
     this.setupHandlers();
@@ -824,6 +826,23 @@ class IPCHandlers {
       return this.environmentManager.saveAnthropicKey(key);
     });
 
+    ipcMain.handle("get-ui-language", async () => {
+      return this.environmentManager.getUiLanguage();
+    });
+
+    ipcMain.handle("save-ui-language", async (event, language) => {
+      return this.environmentManager.saveUiLanguage(language);
+    });
+
+    ipcMain.handle("set-ui-language", async (event, language) => {
+      const result = this.environmentManager.saveUiLanguage(language);
+      process.env.UI_LANGUAGE = result.language;
+      changeLanguage(result.language);
+      this.windowManager?.refreshLocalizedUi?.();
+      this.getTrayManager?.()?.updateTrayMenu?.();
+      return { success: true, language: result.language };
+    });
+
     ipcMain.handle("save-all-keys-to-env", async () => {
       return this.environmentManager.saveAllKeysToEnvFile();
     });
@@ -1045,9 +1064,9 @@ class IPCHandlers {
       if (!url) {
         // Platform doesn't support this settings URL
         const messages = {
-          microphone: "Please open your system settings to configure microphone permissions.",
-          sound: "Please open your system sound settings (e.g., pavucontrol).",
-          accessibility: "Accessibility settings are not applicable on this platform.",
+          microphone: i18nMain.t("systemSettings.microphone"),
+          sound: i18nMain.t("systemSettings.sound"),
+          accessibility: i18nMain.t("systemSettings.accessibility"),
         };
         return {
           success: false,

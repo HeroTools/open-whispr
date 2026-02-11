@@ -1,4 +1,6 @@
 import promptData from "./promptData.json";
+import i18n, { normalizeUiLanguage } from "../i18n";
+import enPrompts from "../locales/en/prompts.json";
 import { getLanguageInstruction } from "../utils/languageSupport";
 
 export const CLEANUP_PROMPT = promptData.CLEANUP_PROMPT;
@@ -6,7 +8,23 @@ export const FULL_PROMPT = promptData.FULL_PROMPT;
 /** @deprecated Use FULL_PROMPT instead — kept for PromptStudio backwards compat */
 export const UNIFIED_SYSTEM_PROMPT = promptData.FULL_PROMPT;
 export const LEGACY_PROMPTS = promptData.LEGACY_PROMPTS;
-const DICTIONARY_SUFFIX = promptData.DICTIONARY_SUFFIX;
+
+interface PromptBundle {
+  cleanupPrompt: string;
+  fullPrompt: string;
+  dictionarySuffix: string;
+}
+
+function getPromptBundle(uiLanguage?: string): PromptBundle {
+  const locale = normalizeUiLanguage(uiLanguage || "en");
+  const t = i18n.getFixedT(locale, "prompts");
+
+  return {
+    cleanupPrompt: t("cleanupPrompt", { defaultValue: enPrompts.cleanupPrompt }),
+    fullPrompt: t("fullPrompt", { defaultValue: enPrompts.fullPrompt }),
+    dictionarySuffix: t("dictionarySuffix", { defaultValue: enPrompts.dictionarySuffix }),
+  };
+}
 
 function detectAgentName(transcript: string, agentName: string): boolean {
   const lower = transcript.toLowerCase();
@@ -24,9 +42,11 @@ export function getSystemPrompt(
   agentName: string | null,
   customDictionary?: string[],
   language?: string,
-  transcript?: string
+  transcript?: string,
+  uiLanguage?: string
 ): string {
   const name = agentName?.trim() || "Assistant";
+  const prompts = getPromptBundle(uiLanguage);
 
   // Check for custom prompt override first
   let promptTemplate: string | null = null;
@@ -48,7 +68,10 @@ export function getSystemPrompt(
     prompt = promptTemplate.replace(/\{\{agentName\}\}/g, name);
   } else {
     const useFullPrompt = !transcript || detectAgentName(transcript, name);
-    prompt = (useFullPrompt ? FULL_PROMPT : CLEANUP_PROMPT).replace(/\{\{agentName\}\}/g, name);
+    prompt = (useFullPrompt ? prompts.fullPrompt : prompts.cleanupPrompt).replace(
+      /\{\{agentName\}\}/g,
+      name
+    );
   }
 
   const langInstruction = getLanguageInstruction(language);
@@ -57,7 +80,7 @@ export function getSystemPrompt(
   }
 
   if (customDictionary && customDictionary.length > 0) {
-    prompt += DICTIONARY_SUFFIX + customDictionary.join(", ");
+    prompt += prompts.dictionarySuffix + customDictionary.join(", ");
   }
 
   return prompt;

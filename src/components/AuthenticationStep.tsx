@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { useAuth } from "../hooks/useAuth";
 import {
   authClient,
@@ -51,6 +52,7 @@ export default function AuthenticationStep({
   onAuthComplete,
   onNeedsVerification,
 }: AuthenticationStepProps) {
+  const { t } = useTranslation();
   const { isSignedIn, isLoaded, user } = useAuth();
   const [authMode, setAuthMode] = useState<AuthMode>(null);
   const [email, setEmail] = useState("");
@@ -137,26 +139,32 @@ export default function AuthenticationStep({
     };
   }, [isSocialLoading]);
 
-  const handleSocialSignIn = useCallback(async (provider: SocialProvider) => {
-    setIsSocialLoading(provider);
-    setError(null);
+  const handleSocialSignIn = useCallback(
+    async (provider: SocialProvider) => {
+      setIsSocialLoading(provider);
+      setError(null);
 
-    const result = await signInWithSocial(provider);
+      const result = await signInWithSocial(provider);
 
-    if (result.error) {
-      setError(result.error.message || `Failed to sign in with ${provider}`);
-      setIsSocialLoading(null);
-    }
-  }, []);
+      if (result.error) {
+        setError(
+          result.error.message ||
+            t("auth.errors.failedProviderSignIn", {
+              provider: provider.charAt(0).toUpperCase() + provider.slice(1),
+            })
+        );
+        setIsSocialLoading(null);
+      }
+    },
+    [t]
+  );
 
   const handleEmailContinue = useCallback(async () => {
     if (!email.trim() || !authClient) return;
 
     const localPart = email.trim().split("@")[0];
     if (localPart?.includes("+")) {
-      setError(
-        'Email addresses containing "+" are not supported. Please use your original email address.'
-      );
+      setError(t("auth.errors.plusAliasUnsupported"));
       return;
     }
 
@@ -176,7 +184,7 @@ export default function AuthenticationStep({
       });
 
       if (!response.ok) {
-        throw new Error("Failed to check user existence");
+        throw new Error(t("auth.errors.failedUserCheck"));
       }
 
       const data = await response.json().catch(() => ({}));
@@ -187,7 +195,7 @@ export default function AuthenticationStep({
     } finally {
       setIsCheckingEmail(false);
     }
-  }, [email]);
+  }, [email, t]);
 
   const errorMessageIncludes = (message: string | undefined, keywords: string[]): boolean => {
     if (!message) return false;
@@ -200,7 +208,7 @@ export default function AuthenticationStep({
       e.preventDefault();
 
       if (!authClient) {
-        setError("Authentication isn't set up yet. Please contact support.");
+        setError(t("auth.errors.authNotConfigured"));
         return;
       }
 
@@ -224,12 +232,10 @@ export default function AuthenticationStep({
               errorMessageIncludes(result.error.message, ["already exists", "already registered"])
             ) {
               setAuthMode("sign-in");
-              setError("Looks like you already have an account. Sign in instead.");
+              setError(t("auth.errors.accountExistsSignIn"));
               setPassword("");
             } else {
-              setError(
-                result.error.message || "We couldn't create your account. Please try again."
-              );
+              setError(result.error.message || t("auth.errors.createAccountFailed"));
             }
           } else {
             updateLastSignInTime();
@@ -261,12 +267,10 @@ export default function AuthenticationStep({
           if (result.error) {
             if (errorMessageIncludes(result.error.message, ["not found", "no user"])) {
               setAuthMode("sign-up");
-              setError("We didn't find an account with that email. Let's create one.");
+              setError(t("auth.errors.accountNotFoundCreate"));
               setPassword("");
             } else {
-              setError(
-                result.error.message || "That email or password doesn't look right. Try again."
-              );
+              setError(result.error.message || t("auth.errors.invalidCredentials"));
             }
           } else {
             updateLastSignInTime();
@@ -274,14 +278,13 @@ export default function AuthenticationStep({
           }
         }
       } catch (err: unknown) {
-        const errorMessage =
-          err instanceof Error ? err.message : "Something went wrong. Please try again.";
+        const errorMessage = err instanceof Error ? err.message : t("auth.errors.generic");
         setError(errorMessage);
       } finally {
         setIsSubmitting(false);
       }
     },
-    [authMode, email, password, onAuthComplete, onNeedsVerification]
+    [authMode, email, password, onAuthComplete, onNeedsVerification, t]
   );
 
   const handleBack = useCallback(() => {
@@ -324,21 +327,21 @@ export default function AuthenticationStep({
             className="w-12 h-12 mx-auto mb-2.5 rounded-lg shadow-sm"
           />
           <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-            Welcome to OpenWhispr
+            {t("auth.welcomeTitle")}
           </p>
           <p className="text-muted-foreground text-sm mt-1 leading-tight">
-            Dictate anywhere using your voice
+            {t("auth.welcomeSubtitle")}
           </p>
         </div>
 
         <div className="bg-warning/5 p-2.5 rounded border border-warning/20">
           <p className="text-[10px] text-warning text-center leading-snug">
-            Cloud features aren't set up yet. You can still use OpenWhispr locally.
+            {t("auth.cloudNotConfigured")}
           </p>
         </div>
 
         <Button onClick={onContinueWithoutAccount} className="w-full h-9">
-          <span className="text-sm font-medium">Get Started</span>
+          <span className="text-sm font-medium">{t("auth.getStarted")}</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Button>
       </div>
@@ -359,14 +362,16 @@ export default function AuthenticationStep({
             <Check className="w-3 h-3 text-success" />
           </div>
           <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-            Welcome back{user?.name ? `, ${user.name}` : ""}
+            {user?.name
+              ? t("auth.signedIn.welcomeBackName", { name: user.name })
+              : t("auth.signedIn.welcomeBack")}
           </p>
           <p className="text-muted-foreground text-sm mt-1 leading-tight">
-            You're signed in and ready to go.
+            {t("auth.signedIn.ready")}
           </p>
         </div>
         <Button onClick={onAuthComplete} className="w-full h-9">
-          <span className="text-sm font-medium">Continue</span>
+          <span className="text-sm font-medium">{t("auth.common.continue")}</span>
           <ArrowRight className="w-3.5 h-3.5" />
         </Button>
       </div>
@@ -399,13 +404,15 @@ export default function AuthenticationStep({
           className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
         >
           <ChevronLeft className="w-3 h-3" />
-          Back
+          {t("auth.common.back")}
         </button>
 
         <div className="text-center mb-4">
           <p className="text-sm text-muted-foreground/70 mb-2 leading-tight">{email}</p>
           <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-            {authMode === "sign-in" ? "Welcome back" : "Create your account"}
+            {authMode === "sign-in"
+              ? t("auth.passwordForm.welcomeBack")
+              : t("auth.passwordForm.createAccount")}
           </p>
         </div>
 
@@ -413,7 +420,7 @@ export default function AuthenticationStep({
           {authMode === "sign-up" && (
             <Input
               type="text"
-              placeholder="Enter your full name"
+              placeholder={t("auth.passwordForm.fullNamePlaceholder")}
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               className="h-9 text-xs"
@@ -423,7 +430,11 @@ export default function AuthenticationStep({
           )}
           <Input
             type="password"
-            placeholder={authMode === "sign-up" ? "Create a password" : "Enter your password"}
+            placeholder={
+              authMode === "sign-up"
+                ? t("auth.passwordForm.createPasswordPlaceholder")
+                : t("auth.passwordForm.enterPasswordPlaceholder")
+            }
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="h-9 text-xs"
@@ -435,7 +446,7 @@ export default function AuthenticationStep({
 
           {authMode === "sign-up" && (
             <p className="text-[9px] text-muted-foreground/70 leading-tight">
-              Password must be at least 8 characters
+              {t("auth.passwordForm.passwordMinLength")}
             </p>
           )}
 
@@ -446,7 +457,7 @@ export default function AuthenticationStep({
               className="text-[10px] text-primary hover:text-primary/80 transition-colors text-left"
               disabled={isSubmitting}
             >
-              Forgot password?
+              {t("auth.passwordForm.forgotPassword")}
             </button>
           )}
 
@@ -462,12 +473,16 @@ export default function AuthenticationStep({
               <>
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span className="text-sm font-medium">
-                  {authMode === "sign-in" ? "Signing in..." : "Creating account..."}
+                  {authMode === "sign-in"
+                    ? t("auth.passwordForm.signingIn")
+                    : t("auth.passwordForm.creatingAccount")}
                 </span>
               </>
             ) : (
               <span className="text-sm font-medium">
-                {authMode === "sign-in" ? "Sign In" : "Create Account"}
+                {authMode === "sign-in"
+                  ? t("auth.passwordForm.signIn")
+                  : t("auth.passwordForm.createAccountButton")}
               </span>
             )}
           </Button>
@@ -482,11 +497,17 @@ export default function AuthenticationStep({
           >
             {authMode === "sign-in" ? (
               <>
-                New here? <span className="font-medium text-primary">Create account</span>
+                {t("auth.passwordForm.newHere")}{" "}
+                <span className="font-medium text-primary">
+                  {t("auth.passwordForm.createAccountLink")}
+                </span>
               </>
             ) : (
               <>
-                Have an account? <span className="font-medium text-primary">Sign in</span>
+                {t("auth.passwordForm.haveAccount")}{" "}
+                <span className="font-medium text-primary">
+                  {t("auth.passwordForm.signInLink")}
+                </span>
               </>
             )}
           </button>
@@ -505,10 +526,10 @@ export default function AuthenticationStep({
           className="w-12 h-12 mx-auto mb-2.5 rounded-lg shadow-sm"
         />
         <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-          Welcome to OpenWhispr
+          {t("auth.welcomeTitle")}
         </p>
         <p className="text-muted-foreground text-sm mt-1 leading-tight">
-          Dictate anywhere using your voice
+          {t("auth.welcomeSubtitle")}
         </p>
       </div>
 
@@ -523,13 +544,13 @@ export default function AuthenticationStep({
           <>
             <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             <span className="text-sm font-medium text-muted-foreground">
-              Complete sign-in in your browser...
+              {t("auth.social.completeInBrowser")}
             </span>
           </>
         ) : (
           <>
             <GoogleIcon className="w-4 h-4" />
-            <span className="text-sm font-medium">Continue with Google</span>
+            <span className="text-sm font-medium">{t("auth.social.continueWithGoogle")}</span>
           </>
         )}
       </Button>
@@ -537,7 +558,7 @@ export default function AuthenticationStep({
       <div className="flex items-center gap-2">
         <div className="flex-1 h-px bg-border/50" />
         <span className="text-[9px] font-medium text-muted-foreground/40 uppercase tracking-widest px-1">
-          or
+          {t("auth.common.or")}
         </span>
         <div className="flex-1 h-px bg-border/50" />
       </div>
@@ -551,7 +572,7 @@ export default function AuthenticationStep({
       >
         <Input
           type="email"
-          placeholder="Enter your email"
+          placeholder={t("auth.emailStep.emailPlaceholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="h-9 text-sm"
@@ -568,7 +589,7 @@ export default function AuthenticationStep({
             <Loader2 className="w-3.5 h-3.5 animate-spin" />
           ) : (
             <>
-              <span className="text-sm font-medium">Continue with Email</span>
+              <span className="text-sm font-medium">{t("auth.emailStep.continueWithEmail")}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </>
           )}
@@ -589,30 +610,30 @@ export default function AuthenticationStep({
           className="w-full text-center text-xs text-muted-foreground/85 hover:text-foreground transition-colors py-1.5 rounded hover:bg-muted/30"
           disabled={isSocialLoading !== null || isCheckingEmail}
         >
-          Continue without an account
+          {t("auth.emailStep.continueWithoutAccount")}
         </button>
       </div>
 
       <p className="text-[10px] text-muted-foreground/80 leading-tight text-center">
-        By continuing, you agree to our{" "}
+        {t("auth.legal.prefix")}{" "}
         <a
           href="https://openwhispr.com/terms"
           target="_blank"
           rel="noopener noreferrer"
           className="text-link underline decoration-link/30 hover:decoration-link/60 transition-colors"
         >
-          Terms of Service
+          {t("auth.legal.terms")}
         </a>{" "}
-        and{" "}
+        {t("auth.legal.and")}{" "}
         <a
           href="https://openwhispr.com/privacy"
           target="_blank"
           rel="noopener noreferrer"
           className="text-link underline decoration-link/30 hover:decoration-link/60 transition-colors"
         >
-          Privacy Policy
+          {t("auth.legal.privacy")}
         </a>
-        .
+        {t("auth.legal.suffix")}
       </p>
     </div>
   );

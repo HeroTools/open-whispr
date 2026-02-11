@@ -66,15 +66,16 @@ if (process.platform === "linux") {
 // and GlobalShortcutsPortal for global shortcuts via xdg-desktop-portal
 if (process.platform === "linux" && process.env.XDG_SESSION_TYPE === "wayland") {
   app.commandLine.appendSwitch("ozone-platform-hint", "auto");
-  app.commandLine.appendSwitch("enable-features", "UseOzonePlatform,WaylandWindowDecorations,GlobalShortcutsPortal");
+  app.commandLine.appendSwitch(
+    "enable-features",
+    "UseOzonePlatform,WaylandWindowDecorations,GlobalShortcutsPortal"
+  );
 }
 
 // Group all windows under single taskbar entry on Windows
 if (process.platform === "win32") {
   const windowsAppId =
-    APP_CHANNEL === "production"
-      ? BASE_WINDOWS_APP_ID
-      : `${BASE_WINDOWS_APP_ID}.${APP_CHANNEL}`;
+    APP_CHANNEL === "production" ? BASE_WINDOWS_APP_ID : `${BASE_WINDOWS_APP_ID}.${APP_CHANNEL}`;
   app.setAppUserModelId(windowsAppId);
 }
 
@@ -87,7 +88,9 @@ function getOAuthProtocol() {
     return fromEnv;
   }
 
-  return DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL[APP_CHANNEL] || DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL.production;
+  return (
+    DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL[APP_CHANNEL] || DEFAULT_OAUTH_PROTOCOL_BY_CHANNEL.production
+  );
 }
 
 const OAUTH_PROTOCOL = getOAuthProtocol();
@@ -156,6 +159,7 @@ const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const DevServerManager = require("./src/helpers/devServerManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
+const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -218,6 +222,9 @@ function initializeCoreManagers() {
   debugLogger.ensureFileLogging();
 
   environmentManager = new EnvironmentManager();
+  const uiLanguage = environmentManager.getUiLanguage();
+  process.env.UI_LANGUAGE = uiLanguage;
+  changeLanguage(uiLanguage);
   debugLogger.refreshLogLevel();
 
   windowManager = new WindowManager();
@@ -239,6 +246,7 @@ function initializeCoreManagers() {
     windowManager,
     updateManager,
     windowsKeyManager,
+    getTrayManager: () => trayManager,
   });
 }
 
@@ -256,29 +264,27 @@ function initializeDeferredManagers() {
       globeKeyAlertShown = true;
 
       const detailLines = [
-        error?.message || "Unknown error occurred while starting the Globe listener.",
-        "The Globe key shortcut will remain disabled; existing keyboard shortcuts continue to work.",
+        error?.message || i18nMain.t("startup.globeHotkey.details.unknown"),
+        i18nMain.t("startup.globeHotkey.details.fallback"),
       ];
 
       if (process.env.NODE_ENV === "development") {
-        detailLines.push(
-          "Run `npm run compile:globe` and rebuild the app to regenerate the listener binary."
-        );
+        detailLines.push(i18nMain.t("startup.globeHotkey.details.devHint"));
       } else {
-        detailLines.push("Try reinstalling OpenWhispr or contact support if the issue persists.");
+        detailLines.push(i18nMain.t("startup.globeHotkey.details.reinstallHint"));
       }
 
       dialog.showMessageBox({
         type: "warning",
-        title: "Globe Hotkey Unavailable",
-        message: "OpenWhispr could not activate the Globe key hotkey.",
+        title: i18nMain.t("startup.globeHotkey.title"),
+        message: i18nMain.t("startup.globeHotkey.message"),
         detail: detailLines.join("\n\n"),
       });
     });
   }
 }
 
-app.on('open-url', (event, url) => {
+app.on("open-url", (event, url) => {
   event.preventDefault();
   if (!url.startsWith(`${OAUTH_PROTOCOL}://`)) return;
 
@@ -300,7 +306,7 @@ function navigateControlPanelWithVerifier(verifier) {
   const appUrl = DevServerManager.getAppUrl(true);
 
   if (appUrl) {
-    const separator = appUrl.includes('?') ? '&' : '?';
+    const separator = appUrl.includes("?") ? "&" : "?";
     const urlWithVerifier = `${appUrl}${separator}neon_auth_session_verifier=${encodeURIComponent(verifier)}`;
     windowManager.controlPanelWindow.loadURL(urlWithVerifier);
   } else {
@@ -323,11 +329,11 @@ function navigateControlPanelWithVerifier(verifier) {
 function handleOAuthDeepLink(deepLinkUrl) {
   try {
     const parsed = new URL(deepLinkUrl);
-    const verifier = parsed.searchParams.get('neon_auth_session_verifier');
+    const verifier = parsed.searchParams.get("neon_auth_session_verifier");
     if (!verifier) return;
     navigateControlPanelWithVerifier(verifier);
   } catch (err) {
-    if (debugLogger) debugLogger.error('Failed to handle OAuth deep link:', err);
+    if (debugLogger) debugLogger.error("Failed to handle OAuth deep link:", err);
   }
 }
 
@@ -400,7 +406,9 @@ function startAuthBridgeServer() {
     navigateControlPanelWithVerifier(verifier);
 
     res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    res.end("<html><body><h3>OpenWhispr sign-in complete.</h3><p>You can close this tab.</p></body></html>");
+    res.end(
+      "<html><body><h3>OpenWhispr sign-in complete.</h3><p>You can close this tab.</p></body></html>"
+    );
   });
 
   authBridgeServer.on("error", (error) => {
@@ -430,7 +438,9 @@ async function startApp() {
     (details, callback) => {
       try {
         details.requestHeaders["Origin"] = new URL(details.url).origin;
-      } catch { /* malformed URL — leave Origin as-is */ }
+      } catch {
+        /* malformed URL — leave Origin as-is */
+      }
       callback({ requestHeaders: details.requestHeaders });
     }
   );
@@ -642,7 +652,8 @@ async function startApp() {
     };
 
     // Right-side single modifiers need the native listener even in tap mode
-    const isRightSideMod = (hotkey) => /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
+    const isRightSideMod = (hotkey) =>
+      /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
 
     const { isModifierOnlyHotkey } = require("./src/helpers/hotkeyManager");
 
@@ -707,12 +718,14 @@ async function startApp() {
     });
 
     windowsKeyManager.on("unavailable", () => {
-      debugLogger.debug("[Push-to-Talk] Windows key listener not available - falling back to toggle mode");
+      debugLogger.debug(
+        "[Push-to-Talk] Windows key listener not available - falling back to toggle mode"
+      );
       windowManager.setWindowsPushToTalkAvailable(false);
       if (isLiveWindow(windowManager.mainWindow)) {
         windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
           reason: "binary_not_found",
-          message: "Push-to-Talk native listener not available",
+          message: i18nMain.t("windows.pttUnavailable"),
         });
       }
     });
@@ -734,7 +747,9 @@ async function startApp() {
       debugLogger.debug("[Push-to-Talk] Current state", { activationMode, currentHotkey });
 
       if (needsNativeListener(currentHotkey, activationMode)) {
-        debugLogger.debug("[Push-to-Talk] Starting Windows key listener", { hotkey: currentHotkey });
+        debugLogger.debug("[Push-to-Talk] Starting Windows key listener", {
+          hotkey: currentHotkey,
+        });
         windowsKeyManager.start(currentHotkey);
       } else {
         debugLogger.debug("[Push-to-Talk] Native listener not needed for current configuration");
@@ -804,28 +819,31 @@ if (gotSingleInstanceLock) {
     }
 
     // Check for OAuth protocol URL in command line arguments (Windows/Linux)
-    const url = commandLine.find(arg => arg.startsWith(`${OAUTH_PROTOCOL}://`));
+    const url = commandLine.find((arg) => arg.startsWith(`${OAUTH_PROTOCOL}://`));
     if (url) {
       handleOAuthDeepLink(url);
     }
   });
 
-  app.whenReady().then(() => {
-    // On Linux, --enable-transparent-visuals requires a short delay before creating
-    // windows to allow the compositor to set up the ARGB visual correctly.
-    // Without this delay, transparent windows flicker on both X11 and Wayland.
-    const delay = process.platform === "linux" ? 300 : 0;
-    return new Promise((resolve) => setTimeout(resolve, delay));
-  }).then(() => {
-    startApp().catch((error) => {
-      console.error("Failed to start app:", error);
-      dialog.showErrorBox(
-        "OpenWhispr Startup Error",
-        `Failed to start the application:\n\n${error.message}\n\nPlease report this issue.`
-      );
-      app.exit(1);
+  app
+    .whenReady()
+    .then(() => {
+      // On Linux, --enable-transparent-visuals requires a short delay before creating
+      // windows to allow the compositor to set up the ARGB visual correctly.
+      // Without this delay, transparent windows flicker on both X11 and Wayland.
+      const delay = process.platform === "linux" ? 300 : 0;
+      return new Promise((resolve) => setTimeout(resolve, delay));
+    })
+    .then(() => {
+      startApp().catch((error) => {
+        console.error("Failed to start app:", error);
+        dialog.showErrorBox(
+          i18nMain.t("startup.error.title"),
+          i18nMain.t("startup.error.message", { error: error.message })
+        );
+        app.exit(1);
+      });
     });
-  });
 
   app.on("window-all-closed", () => {
     // Don't quit on macOS when all windows are closed

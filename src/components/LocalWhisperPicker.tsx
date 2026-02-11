@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import { ConfirmDialog } from "./ui/dialog";
 import ModelCardList, { type ModelCardOption } from "./ui/ModelCardList";
@@ -29,6 +30,7 @@ export default function LocalWhisperPicker({
   className = "",
   variant = "settings",
 }: LocalWhisperPickerProps) {
+  const { t } = useTranslation();
   const [models, setModels] = useState<WhisperModel[]>([]);
   const hasLoadedRef = useRef(false);
   const downloadingModelRef = useRef<string | null>(null);
@@ -113,9 +115,8 @@ export default function LocalWhisperPicker({
   const handleDelete = useCallback(
     (modelId: string) => {
       showConfirmDialog({
-        title: "Delete Model",
-        description:
-          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        title: t("transcription.deleteModel.title"),
+        description: t("transcription.deleteModel.description"),
         onConfirm: async () => {
           await deleteModel(modelId, async () => {
             const result = await window.electronAPI?.listWhisperModels();
@@ -128,7 +129,7 @@ export default function LocalWhisperPicker({
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteModel, validateAndSelectModel]
+    [showConfirmDialog, deleteModel, validateAndSelectModel, t]
   );
 
   const progressDisplay = useMemo(() => {
@@ -149,15 +150,15 @@ export default function LocalWhisperPicker({
       {progressDisplay}
 
       <div className="p-4">
-        <h5 className={`${styles.header} mb-3`}>Whisper Models</h5>
+        <h5 className={`${styles.header} mb-3`}>{t("transcription.whisperModels")}</h5>
 
         <ModelCardList
           models={models.map((model): ModelCardOption => {
             const modelId = model.model;
             const info = WHISPER_MODEL_INFO[modelId] ?? {
               name: modelId,
-              description: "Model",
-              size: "Unknown",
+              description: t("transcription.fallback.whisperModelDescription"),
+              size: t("common.unknown"),
               recommended: false,
             };
             return {
