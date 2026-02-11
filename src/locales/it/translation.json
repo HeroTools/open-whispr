@@ -34,11 +34,11 @@
   "settings": {
     "language": {
       "sectionTitle": "Lingua",
-      "sectionDescription": "Imposta separatamente lingua interfaccia e lingua trascrizione",
+      "sectionDescription": "Imposta separatamente la lingua dell'interfaccia e quella di trascrizione",
       "uiLabel": "Lingua dell'interfaccia",
       "uiDescription": "Scegli la lingua usata nell'interfaccia di OpenWhispr",
       "transcriptionLabel": "Lingua di trascrizione",
-      "transcriptionDescription": "Scegli la lingua che parli per una trascrizione piu accurata",
+      "transcriptionDescription": "Scegli la lingua che parli per una trascrizione più accurata",
       "uiOption": {
         "en": "English",
         "es": "Espanol",
@@ -63,7 +63,7 @@
     "quit": "Esci da OpenWhispr",
     "speech": "Voce",
     "help": "Aiuto",
-    "learnMore": "Scopri di piu",
+    "learnMore": "Scopri di più",
     "file": "File",
     "closeWindow": "Chiudi finestra"
   },
@@ -77,27 +77,27 @@
       "message": "Impossibile aprire il link nel browser:\n{{url}}\n\nErrore: {{error}}"
     },
     "loadFailure": {
-      "title": "OpenWhispr non e stato caricato",
+      "title": "Caricamento di OpenWhispr non riuscito",
       "message": "OpenWhispr non ha potuto caricare la sua interfaccia.",
       "detail": {
         "window": "Finestra: {{windowName}}",
         "error": "Errore {{errorCode}}: {{errorDescription}}",
         "url": "URL: {{url}}",
-        "hint": "Reinstalla l'app o avviala con --log-level=debug."
+        "hint": "Prova a reinstallare l'app o ad avviarla con --log-level=debug."
       }
     }
   },
   "startup": {
     "error": {
-      "title": "Errore di avvio OpenWhispr",
+      "title": "Errore di avvio di OpenWhispr",
       "message": "Impossibile avviare l'applicazione:\n\n{{error}}\n\nSegnala questo problema."
     },
     "globeHotkey": {
       "title": "Tasto Globe non disponibile",
-      "message": "OpenWhispr non e riuscito ad attivare il tasto Globe.",
+      "message": "OpenWhispr non è riuscito ad attivare il tasto Globe.",
       "details": {
         "unknown": "Errore sconosciuto durante l'avvio del listener Globe.",
-        "fallback": "La scorciatoia Globe restera disabilitata; le scorciatoie esistenti continueranno a funzionare.",
+        "fallback": "La scorciatoia Globe resterà disabilitata; le scorciatoie esistenti continueranno a funzionare.",
         "devHint": "Esegui `npm run compile:globe` e ricompila l'app per rigenerare il binario.",
         "reinstallHint": "Reinstalla OpenWhispr o contatta il supporto se il problema persiste."
       }
@@ -105,10 +105,10 @@
   },
   "hotkey": {
     "errors": {
-      "callbackRequired": "E necessaria una funzione callback per configurare la scorciatoia",
-      "globeOnlyMac": "Il tasto Globe e disponibile solo su macOS.",
-      "alreadyRegistered": "\"{{hotkey}}\" e gia registrata da un'altra applicazione.",
-      "osReserved": "\"{{hotkey}}\" potrebbe essere riservata dal tuo ambiente desktop.",
+      "callbackRequired": "È necessaria una funzione callback per configurare la scorciatoia",
+      "globeOnlyMac": "Il tasto Globe è disponibile solo su macOS.",
+      "alreadyRegistered": "\"{{hotkey}}\" è già registrata da un'altra applicazione.",
+      "osReserved": "\"{{hotkey}}\" potrebbe essere riservata dal sistema operativo.",
       "registrationFailed": "Impossibile registrare \"{{hotkey}}\". Potrebbe essere in uso da un'altra applicazione.",
       "trySuggestions": "Prova: {{suggestions}}"
     }
@@ -116,10 +116,38 @@
   "systemSettings": {
     "microphone": "Apri le impostazioni di sistema per configurare i permessi del microfono.",
     "sound": "Apri le impostazioni audio di sistema (ad esempio, pavucontrol).",
-    "accessibility": "Le impostazioni di accessibilita non sono disponibili su questa piattaforma."
+    "accessibility": "Le impostazioni di accessibilità non sono disponibili su questa piattaforma."
+  },
+  "titleBar": {
+    "quitTitle": "Esci da OpenWhispr",
+    "quitConfirmTitle": "Uscire da OpenWhispr?",
+    "quitConfirmDescription": "Questa operazione chiuderà OpenWhispr e interromperà i processi in background.",
+    "quit": "Esci",
+    "cancel": "Annulla"
+  },
+  "upgradePrompt": {
+    "paymentFailed": "Non siamo riusciti a elaborare il pagamento",
+    "weeklyLimit": "Hai raggiunto il limite settimanale",
+    "pastDueDescription": "Sei nel piano gratuito per ora — nessun problema, hai ancora {{limit}} parole a settimana.\nAggiorna il metodo di pagamento per tornare a Pro illimitato.",
+    "limitDescription": "{{used}} di {{limit}} parole utilizzate.\nLa trascrizione è stata salvata e incollata.",
+    "updatePayment": "Aggiorna metodo di pagamento",
+    "updatePaymentDescription": "Torna alle trascrizioni Pro illimitate.",
+    "upgradeToPro": "Passa a Pro",
+    "upgradeDescription": "Trascrizioni illimitate. $9/mese.",
+    "useApiKey": "Usa la tua chiave API",
+    "useApiKeyDescription": "Porta la tua chiave per un uso illimitato.",
+    "switchToLocal": "Passa a locale",
+    "switchToLocalDescription": "Trascrizione offline. Nessun limite.",
+    "rollingWeeklyLimit": "Limite settimanale progressivo"
+  },
+  "windowControls": {
+    "minimize": "Riduci a icona",
+    "maximize": "Ingrandisci",
+    "restore": "Ripristina",
+    "close": "Chiudi"
   },
   "windows": {
-    "pttUnavailable": "Il listener nativo Push-to-Talk non e disponibile"
+    "pttUnavailable": "Il listener nativo Push-to-Talk non è disponibile"
   },
   "common": {
     "back": "Indietro",
@@ -139,11 +167,11 @@
     "unknown": "Sconosciuto",
     "availableModels": "Modelli disponibili",
     "fast": "Veloce",
-    "hold": "Presa",
+    "hold": "Tieni premuto",
     "less": "Meno",
-    "more": "Di piu",
+    "more": "Di più",
     "private": "Privato",
-    "tap": "Rubinetto"
+    "tap": "Tocca"
   },
   "onboarding": {
     "steps": {
@@ -154,7 +182,7 @@
     },
     "hotkey": {
       "couldNotRegisterTitle": "Impossibile registrare questa scorciatoia",
-      "couldNotRegisterDescription": "Questa combinazione potrebbe essere gia in uso. Prova con un altra."
+      "couldNotRegisterDescription": "Questa combinazione potrebbe essere già in uso. Prova con un'altra."
     },
     "setup": {
       "title": "Configurazione",
@@ -166,7 +194,7 @@
       "microphoneTitle": "Microfono",
       "microphoneDescription": "Per acquisire la tua voce",
       "grant": "Concedi",
-      "accessibilityTitle": "Accessibilita",
+      "accessibilityTitle": "Accessibilità",
       "accessibilityDescription": "Per incollare testo nelle app",
       "testAndGrant": "Testa e concedi",
       "requiredForApp": "Necessario per usare OpenWhispr",
@@ -174,14 +202,14 @@
     },
     "transcription": {
       "title": "Configurazione trascrizione",
-      "description": "Scegli modalita e provider",
+      "description": "Scegli modalità e provider",
       "preferredLanguage": "Lingua preferita"
     },
     "activation": {
       "title": "Configurazione attivazione",
-      "description": "Configura come avviare il dettato",
+      "description": "Configura come avviare la dettatura",
       "hotkey": "Scorciatoia",
-      "mode": "Modalita",
+      "mode": "Modalità",
       "tapDescription": "Premi per avviare/fermare",
       "holdDescription": "Tieni premuto mentre parli",
       "test": "Test",
@@ -193,14 +221,14 @@
   "controlPanel": {
     "update": {
       "readyTitle": "Aggiornamento pronto da installare",
-      "readyDescription": "Fai clic su 'Installa aggiornamento' per riavviare con l ultima versione.",
-      "problemTitle": "Si e verificato un problema con l aggiornamento",
-      "problemDescription": "Non siamo riusciti a completare l aggiornamento. Riprova piu tardi.",
+      "readyDescription": "Fai clic su 'Installa aggiornamento' per riavviare con l'ultima versione.",
+      "problemTitle": "Si è verificato un problema con l'aggiornamento",
+      "problemDescription": "Non siamo riusciti a completare l'aggiornamento. Riprova più tardi.",
       "installTitle": "Installa aggiornamento",
-      "installDescription": "OpenWhispr verra riavviato per applicare l aggiornamento. Il lavoro in corso verra salvato.",
-      "couldNotInstallTitle": "Impossibile installare l aggiornamento",
-      "couldNotInstallDescription": "Qualcosa e andato storto. Riprova.",
-      "couldNotDownloadTitle": "Impossibile scaricare l aggiornamento",
+      "installDescription": "OpenWhispr verrà riavviato per applicare l'aggiornamento. Il lavoro in corso verrà salvato.",
+      "couldNotInstallTitle": "Impossibile installare l'aggiornamento",
+      "couldNotInstallDescription": "Qualcosa è andato storto. Riprova.",
+      "couldNotDownloadTitle": "Impossibile scaricare l'aggiornamento",
       "couldNotDownloadDescription": "Controlla la connessione e riprova.",
       "installing": "Installazione...",
       "installButton": "Installa aggiornamento",
@@ -208,7 +236,7 @@
     },
     "limit": {
       "weeklyTitle": "Limite settimanale raggiunto",
-      "weeklyDescription": "Il limite si rinnova in modo progressivo. Passa a Pro o usa la tua API per uso illimitato."
+      "weeklyDescription": "Il limite si rinnova in modo progressivo. Passa a Pro o usa la tua chiave API per un uso illimitato."
     },
     "billing": {
       "pastDueTitle": "Non siamo riusciti a elaborare il pagamento",
@@ -219,35 +247,35 @@
     "history": {
       "title": "Trascrizioni",
       "couldNotLoadTitle": "Impossibile caricare la cronologia",
-      "couldNotLoadDescription": "Si e verificato un errore nel caricamento delle trascrizioni. Chiudi e riapri l app.",
-      "copiedTitle": "Copiato",
+      "couldNotLoadDescription": "Si è verificato un errore nel caricamento delle trascrizioni. Chiudi e riapri l'app.",
+      "copiedTitle": "Copiato!",
       "copiedDescription": "Testo copiato negli appunti",
       "couldNotCopyTitle": "Impossibile copiare",
-      "couldNotCopyDescription": "Si e verificato un errore durante la copia. Riprova.",
+      "couldNotCopyDescription": "Si è verificato un errore durante la copia. Riprova.",
       "clearTitle": "Cancella cronologia",
-      "clearDescription": "Questo rimuovera tutte le trascrizioni. L azione non puo essere annullata.",
+      "clearDescription": "Questo rimuoverà tutte le trascrizioni. L'azione non può essere annullata.",
       "clearedTitle": "Cronologia cancellata",
       "clearedDescription": "{{count}} trascrizione rimossa",
       "clearedDescription_other": "{{count}} trascrizioni rimosse",
       "couldNotClearTitle": "Impossibile cancellare la cronologia",
-      "couldNotClearDescription": "Qualcosa e andato storto. Riprova.",
+      "couldNotClearDescription": "Qualcosa è andato storto. Riprova.",
       "deleteTitle": "Elimina trascrizione",
-      "deleteDescription": "Questa trascrizione verra rimossa definitivamente.",
+      "deleteDescription": "Questa trascrizione verrà rimossa definitivamente.",
       "couldNotDeleteTitle": "Impossibile eliminare",
-      "couldNotDeleteDescription": "Questa trascrizione potrebbe essere gia stata rimossa.",
-      "couldNotDeleteDescriptionGeneric": "Qualcosa e andato storto. Riprova.",
+      "couldNotDeleteDescription": "Questa trascrizione potrebbe essere già stata rimossa.",
+      "couldNotDeleteDescriptionGeneric": "Qualcosa è andato storto. Riprova.",
       "clear": "Cancella",
-      "empty": "Nessuna trascrizione ancora",
+      "empty": "Nessuna trascrizione",
       "press": "Premi",
       "toStart": "per iniziare"
     },
     "cloudMigration": {
       "title": "Benvenuto in OpenWhispr Pro",
-      "description": "La tua prova gratuita di 7 giorni e attiva! Abbiamo spostato la trascrizione su OpenWhispr Cloud per risultati piu rapidi e accurati. Le impostazioni precedenti sono state salvate: puoi tornare indietro in qualsiasi momento dalle Impostazioni.",
+      "description": "La tua prova gratuita di 7 giorni è attiva! Abbiamo spostato la trascrizione su OpenWhispr Cloud per risultati più rapidi e accurati. Le impostazioni precedenti sono state salvate: puoi tornare indietro in qualsiasi momento dalle Impostazioni.",
       "viewSettings": "Apri impostazioni"
     },
     "aiCta": {
-      "title": "Migliora le tue trascrizioni con l IA",
+      "title": "Migliora le tue trascrizioni con l'IA",
       "description": "Corregge automaticamente grammatica, punteggiatura e formattazione mentre parli.",
       "enable": "Attiva miglioramento IA"
     },
@@ -257,33 +285,33 @@
     "mode": {
       "cloud": "Cloud",
       "local": "Locale",
-      "localDescription": "Funziona sul tuo dispositivo. Privacy completa e offline.",
+      "localDescription": "Funziona sul tuo dispositivo. Privacy completa, funziona offline.",
       "cloudDescription": "Modelli avanzati via API. Veloci e potenti, richiedono internet."
     },
     "enableTitle": "Attiva miglioramento testo con IA",
-    "enableDescription": "Usa l IA per migliorare automaticamente la qualita della trascrizione",
+    "enableDescription": "Usa l'IA per migliorare automaticamente la qualità della trascrizione",
     "custom": {
-      "endpointWithProtocol": "Inserisci un URL base completo di protocollo (es. https://server/v1).",
+      "endpointWithProtocol": "Inserisci un URL base completo di protocollo (ad esempio, https://server/v1).",
       "httpsRequired": "HTTPS richiesto (HTTP consentito solo in rete locale).",
-      "endpointUnauthorized": "L endpoint ha rifiutato la richiesta (401/403). Aggiungi una chiave API o regola l autenticazione del server.",
+      "endpointUnauthorized": "L'endpoint ha rifiutato la richiesta (401/403). Aggiungi una chiave API o modifica le impostazioni di autenticazione del server.",
       "endpointTitle": "URL endpoint",
       "endpointExamples": "Esempi:",
       "ollama": "(Ollama)",
       "localAi": "(LocalAI)",
       "apiKeyOptional": "Chiave API (opzionale)",
-      "apiKeyHelp": "Opzionale. Inviata come token Bearer per l autenticazione. Separata dalla chiave API OpenAI.",
+      "apiKeyHelp": "Opzionale. Inviata come token Bearer per l'autenticazione. Separata dalla chiave API OpenAI.",
       "applyAndRefresh": "Applica e aggiorna",
       "queryPrefix": "Interrogheremo",
       "querySuffix": "per i modelli disponibili.",
       "modelsReloadHint": "I modelli verranno ricaricati quando esci dal campo URL o fai clic su \"Applica e aggiorna\".",
-      "enterEndpoint": "Inserisci sopra un URL endpoint per caricare i modelli.",
-      "fetchingModels": "Recupero elenco modelli dall endpoint...",
-      "noModels": "Nessun modello restituito. Controlla l URL dell endpoint.",
+      "enterEndpoint": "Inserisci un URL endpoint qui sopra per caricare i modelli.",
+      "fetchingModels": "Recupero elenco modelli dall'endpoint...",
+      "noModels": "Nessun modello restituito. Controlla l'URL dell'endpoint.",
       "providerName": "Personalizzato",
       "ownerLabel": "Proprietario: {{owner}}",
       "unableToLoadModels": "Impossibile caricare i modelli dall'endpoint."
     },
-    "getApiKey": "Ottieni chiave API ->",
+    "getApiKey": "Ottieni la chiave API ->",
     "selectModel": "Seleziona modello",
     "availableModels": "Modelli disponibili"
   },
@@ -310,11 +338,11 @@
     "audioRecording": {
       "errorTitles": {
         "sessionExpired": "Sessione scaduta",
-        "offline": "Offline",
+        "offline": "Sei offline",
         "dailyLimitReached": "Limite giornaliero raggiunto"
       },
       "fallback": {
-        "title": "Modalita fallback",
+        "title": "Modalità fallback",
         "description": "Whisper locale non riuscito. Usata API OpenAI."
       },
       "noAudio": {
@@ -324,7 +352,7 @@
     },
     "clipboard": {
       "pasteFailed": {
-        "title": "Incolla da appunti non riuscito",
+        "title": "Incolla dagli appunti non riuscito",
         "description": "Impossibile incollare dagli appunti. Prova a digitare o usa Cmd+V/Ctrl+V."
       }
     },
@@ -337,8 +365,8 @@
       },
       "errors": {
         "enterValidHotkey": "Inserisci una scorciatoia valida",
-        "unsupportedShortcut": "Questa scorciatoia non e supportata.",
-        "couldNotRegister": "Questo tasto non puo essere registrato. Scegline un altro.",
+        "unsupportedShortcut": "Questa scorciatoia non è supportata.",
+        "couldNotRegister": "Questo tasto non può essere registrato. Scegline un altro.",
         "failedToRegister": "Registrazione scorciatoia non riuscita. Riprova."
       },
       "messages": {
@@ -351,7 +379,7 @@
         "notFound": "Impossibile raggiungere il server di download. Controlla la connessione.",
         "corrupted": "Download incompleto o corrotto. Riprova.",
         "rateLimited": "Il server limita le richieste. Attendi qualche minuto e riprova.",
-        "server": "Errore server ({{error}}). Riprova piu tardi.",
+        "server": "Errore server ({{error}}). Riprova più tardi.",
         "generic": "Download non riuscito: {{error}}",
         "unknown": "Errore sconosciuto"
       },
@@ -364,8 +392,8 @@
       },
       "modelDeleted": {
         "title": "Modello eliminato",
-        "descriptionWithSpace": "Modello eliminato con successo. Liberati {{sizeMb}}MB di spazio.",
-        "description": "Modello eliminato con successo."
+        "descriptionWithSpace": "Modello eliminato con successo! Liberati {{sizeMb}}MB di spazio.",
+        "description": "Modello eliminato con successo!"
       },
       "deleteFailed": {
         "title": "Eliminazione non riuscita",
@@ -373,7 +401,7 @@
       },
       "downloadCancelled": {
         "title": "Download annullato",
-        "description": "Il download e stato annullato."
+        "description": "Il download è stato annullato."
       }
     },
     "permissions": {
@@ -389,53 +417,53 @@
         "noMicrophones": "Nessun microfono rilevato. Collega o seleziona un microfono in {{settingsPath}}.",
         "permissionDenied": "Permesso negato. Apri {{privacyPath}} e consenti OpenWhispr.",
         "couldNotStart": "Impossibile avviare il microfono selezionato. Scegli un dispositivo in {{settingsPath}} e ripeti il test.",
-        "noActiveInput": "Nessun input audio attivo trovato. Scegli un microfono in {{settingsPath}}.",
+        "noActiveInput": "Nessun ingresso audio attivo trovato. Scegli un microfono in {{settingsPath}}.",
         "unknown": "Accesso al microfono non riuscito: {{error}}. Seleziona un altro dispositivo e riprova.",
         "unknownFallback": "Errore sconosciuto"
       },
       "settingsTitles": {
         "microphone": "Impostazioni microfono",
         "sound": "Impostazioni audio",
-        "accessibility": "Impostazioni accessibilita"
+        "accessibility": "Impostazioni accessibilità"
       },
       "settingsErrors": {
-        "unableToOpenMicrophone": "Impossibile aprire le impostazioni microfono. Apri manualmente le impostazioni di sistema.",
+        "unableToOpenMicrophone": "Impossibile aprire le impostazioni del microfono. Apri manualmente le impostazioni di sistema.",
         "unableToOpenSound": "Impossibile aprire le impostazioni audio. Apri manualmente le impostazioni di sistema.",
-        "unableToOpenAccessibility": "Impossibile aprire le impostazioni accessibilita. Apri manualmente le impostazioni di sistema."
+        "unableToOpenAccessibility": "Impossibile aprire le impostazioni di accessibilità. Apri manualmente le impostazioni di sistema."
       },
-      "micUnavailable": "Le API del microfono non sono disponibili in questo ambiente. Riavvia l app.",
+      "micUnavailable": "Le API del microfono non sono disponibili in questo ambiente. Riavvia l'app.",
       "titles": {
         "microphoneUnavailable": "Microfono non disponibile",
         "microphonePermissionRequired": "Permesso microfono richiesto",
-        "accessibilityNeeded": "Permessi accessibilita necessari",
-        "readyToGo": "Pronto",
-        "waylandClipboardMode": "Modalita appunti su Wayland",
-        "optionalPasteTool": "Opzionale: installa strumento di incolla"
+        "accessibilityNeeded": "Permessi di accessibilità necessari",
+        "readyToGo": "Tutto pronto!",
+        "waylandClipboardMode": "Modalità appunti su Wayland",
+        "optionalPasteTool": "Opzionale: installa strumento di incollaggio"
       },
       "descriptions": {
-        "accessibilityNeeded": "Concedi i permessi di accessibilita nelle impostazioni di sistema per abilitare l incolla automatico.",
-        "windowsReady": "Windows non richiede permessi speciali per incolla automatico. E tutto pronto.",
-        "linuxReadyWithMethod": "L incolla automatico e disponibile tramite {{method}}. E tutto pronto.",
-        "waylandClipboardMode": "L incolla automatico non e disponibile in questa sessione Wayland. OpenWhispr copiera il testo negli appunti e potrai incollare con Ctrl+V.",
-        "optionalPasteTool": "Per l incolla automatico, installa {{tool}}:\n\n{{installCmd}}{{waylandNote}}\n\nAnche senza questo puoi usare OpenWhispr: il testo verra copiato negli appunti e potrai incollare con Ctrl+V."
+        "accessibilityNeeded": "Concedi i permessi di accessibilità nelle impostazioni di sistema per abilitare l'incollaggio automatico.",
+        "windowsReady": "Windows non richiede permessi speciali per l'incollaggio automatico. È tutto pronto!",
+        "linuxReadyWithMethod": "L'incollaggio automatico è disponibile tramite {{method}}. È tutto pronto!",
+        "waylandClipboardMode": "L'incollaggio automatico non è disponibile in questa sessione Wayland. OpenWhispr copierà il testo negli appunti e potrai incollare con Ctrl+V.",
+        "optionalPasteTool": "Per l'incollaggio automatico, installa {{tool}}:\n\n{{installCmd}}{{waylandNote}}\n\nAnche senza questo puoi usare OpenWhispr: il testo verrà copiato negli appunti e potrai incollare con Ctrl+V."
       },
       "alerts": {
-        "accessibilityNeeded": "Permessi di accessibilita necessari. Concedili nelle impostazioni di sistema."
+        "accessibilityNeeded": "Permessi di accessibilità necessari! Concedili nelle impostazioni di sistema."
       },
       "notes": {
-        "waylandWtype": "\n\nNota: per app XWayland, funziona anche xdotool.",
-        "waylandXwaylandOnly": "\n\nNota: l incolla automatico funziona solo per app XWayland."
+        "waylandWtype": "\n\nNota: per le app XWayland, funziona anche xdotool.",
+        "waylandXwaylandOnly": "\n\nNota: l'incollaggio automatico funziona solo per le app XWayland."
       },
       "labels": {
         "defaultPasteTool": "xdotool",
         "xdotoolXwayland": "xdotool (app XWayland)"
       },
-      "accessibilityTestText": "test accessibilita OpenWhispr",
+      "accessibilityTestText": "Test accessibilità OpenWhispr",
       "warning": {
         "messages": {
-          "macos": "Controlla le impostazioni Audio per selezionare il dispositivo di input",
-          "windows": "Controlla le impostazioni di Windows per selezionare il dispositivo di input",
-          "linux": "Controlla le impostazioni audio di sistema per selezionare il dispositivo di input"
+          "macos": "Controlla le impostazioni Audio per selezionare il dispositivo di ingresso",
+          "windows": "Controlla le impostazioni di Windows per selezionare il dispositivo di ingresso",
+          "linux": "Controlla le impostazioni audio di sistema per selezionare il dispositivo di ingresso"
         },
         "soundLabel": "Audio",
         "privacyLabel": "Privacy"
@@ -446,48 +474,48 @@
     "cloudNotConfigured": "Cloud non configurato",
     "common": {
       "back": "Indietro",
-      "continue": "Continuare",
-      "or": "O"
+      "continue": "Continua",
+      "or": "o"
     },
     "emailStep": {
       "continueWithEmail": "Continua con l'e-mail",
       "continueWithoutAccount": "Continua senza account",
-      "emailPlaceholder": "Segnaposto e-mail"
+      "emailPlaceholder": "tu@esempio.com"
     },
     "errors": {
-      "accountExistsSignIn": "L'account esiste. Accedi",
-      "accountNotFoundCreate": "Account non trovato Crea",
-      "authNotConfigured": "Autenticazione non configurata",
+      "accountExistsSignIn": "Esiste già un account con questa e-mail. Accedi.",
+      "accountNotFoundCreate": "Nessun account trovato con questa e-mail. Crea un account.",
+      "authNotConfigured": "L'autenticazione non è configurata",
       "createAccountFailed": "Creazione account non riuscita",
-      "failedProviderSignIn": "Impossibile accedere con {{provider}}",
-      "failedUserCheck": "Controllo utente non riuscito",
-      "generic": "Generico",
-      "invalidCredentials": "Credenziali non valide",
-      "plusAliasUnsupported": "Inoltre Alias non supportato"
+      "failedProviderSignIn": "Accesso con {{provider}} non riuscito",
+      "failedUserCheck": "Verifica dell'account utente non riuscita",
+      "generic": "Qualcosa è andato storto. Riprova.",
+      "invalidCredentials": "E-mail o password non validi",
+      "plusAliasUnsupported": "Gli alias e-mail con '+' non sono supportati"
     },
     "getStarted": "Inizia",
     "legal": {
-      "and": "E",
-      "prefix": "Prefisso",
-      "privacy": "Privacy",
-      "suffix": "Suffisso",
-      "terms": "Termini"
+      "and": "e",
+      "prefix": "Continuando, accetti i nostri",
+      "privacy": "Informativa sulla privacy",
+      "suffix": "",
+      "terms": "Termini di servizio"
     },
     "passwordForm": {
-      "createAccount": "Creare un account",
-      "createAccountButton": "Pulsante Crea account",
-      "createAccountLink": "Crea collegamento all'account",
-      "createPasswordPlaceholder": "Crea segnaposto password",
-      "creatingAccount": "Creazione dell'account",
-      "enterPasswordPlaceholder": "Inserisci il segnaposto della password",
-      "forgotPassword": "Ha dimenticato la password",
-      "fullNamePlaceholder": "Segnaposto nome completo",
-      "haveAccount": "Avere un conto",
-      "newHere": "Nuovo qui",
-      "passwordMinLength": "Lunghezza minima password",
-      "signIn": "Registrazione",
-      "signInLink": "Collegamento di accesso",
-      "signingIn": "Accesso",
+      "createAccount": "Crea un account",
+      "createAccountButton": "Crea account",
+      "createAccountLink": "Crea account",
+      "createPasswordPlaceholder": "Crea una password",
+      "creatingAccount": "Creazione account...",
+      "enterPasswordPlaceholder": "Inserisci la password",
+      "forgotPassword": "Password dimenticata?",
+      "fullNamePlaceholder": "Nome completo",
+      "haveAccount": "Hai già un account?",
+      "newHere": "Nuovo qui?",
+      "passwordMinLength": "La password deve essere di almeno 8 caratteri",
+      "signIn": "Accedi",
+      "signInLink": "Accedi",
+      "signingIn": "Accesso in corso...",
       "welcomeBack": "Bentornato"
     },
     "signedIn": {
@@ -496,282 +524,282 @@
       "welcomeBackName": "Bentornato, {{name}}"
     },
     "social": {
-      "completeInBrowser": "Completa nel browser",
+      "completeInBrowser": "Completa l'accesso nel browser",
       "continueWithGoogle": "Continua con Google"
     },
     "welcomeSubtitle": "Detta ovunque usando la tua voce",
     "welcomeTitle": "Benvenuto in OpenWhispr"
   },
-  "cleanupPrompt": "Richiesta di pulizia",
+  "cleanupPrompt": "Correzione",
   "developerSection": {
-    "currentLogFile": "File di registro corrente",
+    "currentLogFile": "File di log corrente",
     "debugMode": {
-      "disabledDescription": "Descrizione disabilitata",
-      "enabledDescription": "Abilitato Descrizione",
-      "label": "Etichetta"
+      "disabledDescription": "Attiva per acquisire informazioni diagnostiche dettagliate",
+      "enabledDescription": "Registrazione di elaborazione audio, richieste API e operazioni di sistema",
+      "label": "Modalità debug"
     },
-    "description": "Descrizione",
-    "openLogsFolder": "Apri la cartella Registri",
+    "description": "Acquisisci log dettagliati per diagnosticare i problemi",
+    "openLogsFolder": "Apri cartella log",
     "performanceNote": {
-      "description": "Descrizione",
-      "label": "Etichetta"
+      "description": "Il logging di debug scrive su disco continuamente e potrebbe influire leggermente sulle prestazioni. Disattivalo quando non stai risolvendo problemi.",
+      "label": "Nota"
     },
     "sharing": {
-      "footer": "Pie di pagina",
+      "footer": "I log non contengono chiavi API o dati sensibili",
       "steps": {
-        "0": "Articolo 1",
-        "1": "Articolo 2",
-        "2": "Articolo 3"
+        "0": "Riproduci il problema con la modalità debug attiva",
+        "1": "Fai clic su \"Apri cartella log\" qui sopra",
+        "2": "Allega il file di log più recente alla segnalazione"
       },
-      "title": "Titolo"
+      "title": "Condivisione dei log per il supporto"
     },
-    "title": "Titolo",
+    "title": "Log di debug",
     "toasts": {
       "copied": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Percorso del file di log copiato negli appunti",
+        "title": "Copiato"
       },
       "copyFailed": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Si è verificato un errore durante la copia negli appunti.",
+        "title": "Impossibile copiare"
       },
       "debugDisabled": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Il logging di debug è stato disattivato",
+        "title": "Log di debug disattivato"
       },
       "debugEnabled": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "I log dettagliati vengono ora scritti su disco",
+        "title": "Log di debug attivato"
       },
       "loadFailed": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Qualcosa è andato storto. Prova a riaprire le Impostazioni.",
+        "title": "Impossibile caricare le impostazioni di debug"
       },
       "openLogsFailed": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Si è verificato un errore nell'apertura della cartella dei log.",
+        "title": "Impossibile aprire la cartella dei log"
       },
       "updateFailed": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Qualcosa è andato storto. Riprova.",
+        "title": "Impossibile aggiornare il logging di debug"
       }
     },
     "whatGetsLogged": {
       "items": {
         "apiRequests": "Richieste API",
-        "audioProcessing": "Elaborazione dell'audio",
-        "errorDetails": "Dettagli errore",
-        "ffmpegOperations": "Operazioni Ffmpeg",
-        "systemDiagnostics": "Diagnostica del sistema",
+        "audioProcessing": "Elaborazione audio",
+        "errorDetails": "Dettagli errori",
+        "ffmpegOperations": "Operazioni FFmpeg",
+        "systemDiagnostics": "Diagnostica di sistema",
         "transcriptionPipeline": "Pipeline di trascrizione"
       },
-      "title": "Titolo"
+      "title": "Cosa viene registrato"
     }
   },
-  "dictionarySuffix": "Suffisso del dizionario",
+  "dictionarySuffix": "Suffisso dizionario",
   "emailVerification": {
-    "checkEmailDescription": "Controlla la descrizione dell'e-mail",
-    "checkEmailTitle": "Controlla il titolo dell'e-mail",
+    "checkEmailDescription": "Abbiamo inviato un link di verifica a",
+    "checkEmailTitle": "Controlla la tua e-mail",
     "errors": {
-      "resendFailed": "Nuovo invio non riuscito",
-      "serverUnreachable": "Server irraggiungibile"
+      "resendFailed": "Non è stato possibile reinviare l'e-mail. Riprova.",
+      "serverUnreachable": "Impossibile raggiungere il server. Controlla la connessione e riprova."
     },
-    "resendButton": "Pulsante Reinvia",
-    "resendIn": "Invia di nuovo tra {{seconds}}s",
-    "verifiedDescription": "Descrizione verificata",
-    "verifiedTitle": "Titolo verificato",
-    "waiting": "In attesa"
+    "resendButton": "Reinvia e-mail di verifica",
+    "resendIn": "Reinvia tra {{seconds}}s",
+    "verifiedDescription": "Il tuo account è pronto.",
+    "verifiedTitle": "E-mail verificata",
+    "waiting": "In attesa della verifica..."
   },
   "errorBoundary": {
-    "description": "Descrizione",
-    "reload": "Ricaricare",
-    "title": "Titolo"
+    "description": "Si è verificato un errore imprevisto. Ricarica per riprovare.",
+    "reload": "Ricarica",
+    "title": "Qualcosa è andato storto"
   },
   "forgotPassword": {
     "back": "Indietro",
     "backToSignIn": "Torna all'accesso",
-    "emailPlaceholder": "Segnaposto e-mail",
+    "emailPlaceholder": "Inserisci la tua e-mail",
     "goBack": "Torna indietro",
-    "notConfigured": "Non configurato",
-    "sendResetLink": "Invia collegamento di reimpostazione",
-    "sending": "Invio",
-    "subtitle": "Sottotitolo",
+    "notConfigured": "L'autenticazione non è ancora configurata.",
+    "sendResetLink": "Invia link di reimpostazione",
+    "sending": "Invio...",
+    "subtitle": "Inserisci la tua e-mail e ti invieremo un link di reimpostazione",
     "success": {
-      "description": "Descrizione",
-      "help": "Aiuto",
-      "title": "Titolo",
-      "tryAnother": "Provane un altro"
+      "description": "Abbiamo inviato un link di reimpostazione della password a",
+      "help": "Non hai ricevuto l'e-mail? Controlla la cartella spam o riprova.",
+      "title": "Controlla la tua e-mail",
+      "tryAnother": "Prova con un'altra e-mail"
     },
-    "title": "Titolo"
+    "title": "Reimposta la password"
   },
-  "fullPrompt": "Richiesta completa",
+  "fullPrompt": "Prompt completo",
   "hotkeyGuidance": {
-    "blockedDescription": "Descrizione bloccata",
-    "blockedTitle": "Titolo bloccato",
-    "description": "Descrizione",
-    "examplesTitle": "Titolo degli esempi",
+    "blockedDescription": "Queste scorciatoie sono bloccate perché comunemente usate dal sistema.",
+    "blockedTitle": "Scorciatoie bloccate",
+    "description": "Usa queste regole per scegliere una scorciatoia che non entri in conflitto con il sistema.",
+    "examplesTitle": "Esempi validi",
     "platforms": {
       "linux": "Linux",
-      "macos": "Macos",
-      "windows": "Finestre"
+      "macos": "macOS",
+      "windows": "Windows"
     },
     "recommended": {
       "linux": {
-        "0": "Articolo 1",
-        "1": "Articolo 2",
-        "2": "Articolo 3",
-        "3": "Articolo 4",
-        "4": "Articolo 5"
+        "0": "Ctrl+Alt+Space",
+        "1": "Super+S",
+        "2": "Ctrl+Alt+D",
+        "3": "Ctrl+Shift+J",
+        "4": "Alt+Space"
       },
       "macos": {
-        "0": "Articolo 1",
-        "1": "Articolo 2",
-        "2": "Articolo 3",
-        "3": "Articolo 4",
-        "4": "Articolo 5"
+        "0": "⌥Space",
+        "1": "⌃⌥S",
+        "2": "⌃⌥D",
+        "3": "Fn",
+        "4": "⌘⇧J"
       },
       "windows": {
-        "0": "Articolo 1",
-        "1": "Articolo 2",
-        "2": "Articolo 3",
-        "3": "Articolo 4"
+        "0": "Ctrl+Alt+Space",
+        "1": "Ctrl+Shift+S",
+        "2": "Ctrl+Alt+D",
+        "3": "Win+Alt+K"
       }
     },
-    "recommendedTitle": "Titolo consigliato",
-    "rulesTitle": "Titolo delle regole",
+    "recommendedTitle": "Scorciatoie consigliate",
+    "rulesTitle": "Regole per le scorciatoie",
     "showAll": "Mostra tutto",
     "showFewer": "Mostra meno",
-    "title": "Titolo",
+    "title": "Guida alle scorciatoie",
     "validationRules": {
-      "0": "Articolo 1",
-      "1": "Articolo 2",
-      "2": "Articolo 3",
-      "3": "Articolo 4"
+      "0": "È necessario almeno un tasto modificatore (Ctrl, Alt, Shift, ecc.)",
+      "1": "Non è possibile usare scorciatoie riservate dal sistema",
+      "2": "I tasti singoli non sono consentiti",
+      "3": "Alcune combinazioni potrebbero entrare in conflitto con altre app"
     }
   },
   "hotkeyInput": {
-    "ariaLabel": "Etichetta Aria",
-    "clickToChange": "Fare clic su per modificare",
-    "clickToChangeLower": "Fare clic su per modificare inferiore",
-    "clickToSet": "Fare clic su per impostare",
-    "fnCaptureHint": "Suggerimento di acquisizione Fn",
-    "fnHeldHint": "Fn Suggerimento tenuto premuto",
-    "globe": "Globo",
-    "hotkeyLabel": "Etichetta dei tasti di scelta rapida",
-    "keyHint": "Suggerimento chiave",
-    "listening": "Ascolto",
-    "pressAnyKey": "Premere qualsiasi tasto",
-    "pressAnyKeyMac": "Premi un tasto qualsiasi sul Mac",
+    "ariaLabel": "Premi una combinazione di tasti per impostare la scorciatoia",
+    "clickToChange": "Fai clic per cambiare",
+    "clickToChangeLower": "fai clic per cambiare",
+    "clickToSet": "Fai clic per impostare la scorciatoia",
+    "fnCaptureHint": "Premi un tasto da combinare, o rilascia per Globe",
+    "fnHeldHint": "+ tasto o rilascia per Globe",
+    "globe": "Globe",
+    "hotkeyLabel": "Scorciatoia",
+    "keyHint": "+ tasto",
+    "listening": "In ascolto...",
+    "pressAnyKey": "Premi un tasto qualsiasi o Ctrl+Shift+K",
+    "pressAnyKeyMac": "Premi un tasto qualsiasi o ⌘⇧K",
     "recording": "Registrazione",
-    "tryShortcut": "Prova la scorciatoia",
-    "tryShortcutMac": "Prova Scorciatoia Mac"
+    "tryShortcut": "Prova Ctrl+Shift+K",
+    "tryShortcutMac": "Prova ⌘⇧K"
   },
   "languageSelector": {
     "noLanguagesFound": "Nessuna lingua trovata",
-    "searchPlaceholder": "Cerca segnaposto"
+    "searchPlaceholder": "Cerca..."
   },
   "microphoneSettings": {
-    "builtIn": "Integrato",
+    "builtIn": "(Integrato)",
     "errors": {
-      "unableToAccess": "Impossibile accedere"
+      "unableToAccess": "Impossibile accedere al microfono. Verifica i permessi."
     },
-    "helpText": "Testo di aiuto",
-    "inputDevice": "Dispositivo di input",
-    "noBuiltInDetected": "Nessun integrato rilevato",
+    "helpText": "Seleziona un microfono specifico o usa l'impostazione predefinita di sistema.",
+    "inputDevice": "Dispositivo di ingresso",
+    "noBuiltInDetected": "Nessun microfono integrato rilevato. Verrà usato quello predefinito di sistema.",
     "preferBuiltIn": {
-      "description": "Descrizione",
-      "label": "Etichetta"
+      "description": "I microfoni esterni possono causare latenza o ridurre la qualità della trascrizione",
+      "label": "Preferisci microfono integrato"
     },
-    "selectPlaceholder": "Seleziona Segnaposto",
-    "systemDefault": "Predefinito del sistema",
+    "selectPlaceholder": "Seleziona un microfono",
+    "systemDefault": "Predefinito di sistema",
     "unknownDevice": "Dispositivo sconosciuto",
-    "using": "Utilizzando"
+    "using": "In uso:"
   },
   "pasteToolsInfo": {
-    "checking": "Controllo",
+    "checking": "Verifica delle funzionalità di sistema...",
     "installCommands": {
-      "archLinux": "ArcoLinux",
-      "debianUbuntu": "DebianUbuntu",
-      "debianUbuntuMint": "Debian Ubuntu Mint",
-      "fedoraRhel": "Fedora Rhel"
+      "archLinux": "# Arch Linux",
+      "debianUbuntu": "# Debian / Ubuntu",
+      "debianUbuntuMint": "# Debian / Ubuntu / Mint",
+      "fedoraRhel": "# Fedora / RHEL"
     },
-    "installPrefix": "Installa prefisso",
-    "methodReady": "Metodo pronto",
-    "noteXwaylandAlso": "Nota anche Xwayland",
-    "noteXwaylandOnly": "Nota solo Xwayland",
-    "optionalEnableTitle": "Facoltativo Abilita titolo",
-    "readyTitle": "Titolo pronto",
+    "installPrefix": "Per l'incollaggio automatico del testo, installa",
+    "methodReady": "per l'incollaggio automatico del testo",
+    "noteXwaylandAlso": "Nota: per le app XWayland, funziona anche xdotool.",
+    "noteXwaylandOnly": "Nota: l'incollaggio automatico funziona solo per le app XWayland.",
+    "optionalEnableTitle": "Opzionale: abilita l'incollaggio automatico",
+    "readyTitle": "Incollaggio automatico pronto",
     "recheck": "Ricontrolla",
-    "recheckChecking": "Ricontrolla Controllo",
-    "title": "Titolo",
-    "usingMethodPrefix": "Utilizzo del prefisso del metodo",
-    "waylandClipboardDescription": "Descrizione degli appunti di Wayland",
-    "waylandClipboardTitle": "Titolo degli appunti di Wayland",
-    "windowsReady": "Windows pronto",
-    "withoutToolPrefix": "Senza prefisso strumento",
-    "xwaylandAppsOnly": "Solo app Xwayland"
+    "recheckChecking": "Verifica...",
+    "title": "Incollaggio automatico",
+    "usingMethodPrefix": "In uso",
+    "waylandClipboardDescription": "L'incollaggio automatico non è disponibile in questa sessione Wayland. OpenWhispr copierà il testo negli appunti, così potrai incollare manualmente con Ctrl+V.",
+    "waylandClipboardTitle": "Modalità appunti su Wayland",
+    "windowsReady": "Windows supporta l'incollaggio automatico senza configurazione aggiuntiva!",
+    "withoutToolPrefix": "Senza questo strumento, OpenWhispr copierà il testo negli appunti. Potrai poi incollare manualmente con Ctrl+V.",
+    "xwaylandAppsOnly": "l'incollaggio automatico funziona solo per le app XWayland"
   },
   "promptStudio": {
     "common": {
       "copied": "Copiato",
       "copy": "Copia",
-      "reset": "Reset",
+      "reset": "Reimposta",
       "save": "Salva"
     },
-    "defaultTestInput": "Ingresso di prova predefinito",
+    "defaultTestInput": "Ehi Whispr, che tempo fa oggi?",
     "dialogs": {
       "reset": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Il prompt è stato reimpostato al valore predefinito.",
+        "title": "Reimpostazione completata"
       },
       "saved": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Il tuo prompt personalizzato verrà usato per tutta l'elaborazione IA futura.",
+        "title": "Prompt salvato"
       }
     },
     "edit": {
-      "agentNameLabel": "Etichetta del nome dell'agente",
-      "cautionLabel": "Etichetta di attenzione",
-      "cautionTextPrefix": "Prefisso del testo di attenzione",
-      "cautionTextSuffix": "Suffisso del testo di attenzione",
-      "placeholder": "Segnaposto"
+      "agentNameLabel": "Nome dell'agente:",
+      "cautionLabel": "Attenzione",
+      "cautionTextPrefix": "La modifica di questo prompt potrebbe influire sulla qualità della trascrizione.",
+      "cautionTextSuffix": "Mantieni il segnaposto {{agentName}} per preservare il rilevamento dell'agente.",
+      "placeholder": "Inserisci il tuo prompt di sistema personalizzato..."
     },
     "tabs": {
       "customize": "Personalizza",
       "test": "Test",
-      "view": "Visualizzazione"
+      "view": "Visualizza"
     },
     "test": {
-      "addressHint": "Prova a indirizzare \"{{agentName}}\" per testare la modalita istruzione",
-      "aiModels": "Modelli Ai",
-      "baseUrlMissing": "{{provider}} URL di base mancante. Aggiungilo nelle impostazioni dei modelli AI.",
-      "cleanup": "Ripulire",
-      "disabledInSettingsPrefix": "Disabilitato nel prefisso Impostazioni",
-      "disabledInSettingsSuffix": "Disabilitato nel suffisso Impostazioni",
-      "disabledReasoning": "Ragionamento disabilitato",
+      "addressHint": "Prova a rivolgerti a \"{{agentName}}\" per testare la modalità istruzione",
+      "aiModels": "Modelli IA",
+      "baseUrlMissing": "URL base di {{provider}} mancante. Aggiungilo nelle impostazioni Modelli IA.",
+      "cleanup": "Correzione",
+      "disabledInSettingsPrefix": "Il miglioramento testo con IA è disattivato.",
+      "disabledInSettingsSuffix": "Attivalo in Modelli IA per testare i prompt.",
+      "disabledReasoning": "Il miglioramento testo con IA è disattivato. Attivalo in Modelli IA per testare i prompt.",
       "failed": "Test fallito: {{error}}",
-      "inputLabel": "Etichetta di ingresso",
-      "inputPlaceholder": "Segnaposto di input",
-      "instruction": "Istruzioni",
-      "modelLabel": "Etichetta del modello",
+      "inputLabel": "Input",
+      "inputPlaceholder": "Inserisci il testo da testare...",
+      "instruction": "Istruzione",
+      "modelLabel": "Modello",
       "noModelSelected": "Nessun modello selezionato",
       "none": "Nessuno",
-      "outputLabel": "Etichetta di uscita",
-      "processing": "Elaborazione",
-      "providerLabel": "Etichetta del fornitore",
-      "run": "Correre"
+      "outputLabel": "Output",
+      "processing": "Elaborazione...",
+      "providerLabel": "Provider",
+      "run": "Esegui test"
     },
     "view": {
-      "customPrompt": "Richiesta personalizzata",
+      "customPrompt": "Prompt personalizzato",
       "defaultPrompt": "Prompt predefinito",
       "modes": {
         "agent": {
-          "description": "Attivato da \"{{agentName}}\": esegue comandi, risponde a domande, compone contenuti",
-          "label": "Etichetta"
+          "description": "Attivato da \"{{agentName}}\" — esegue comandi, risponde a domande, compone contenuti",
+          "label": "Agente"
         },
         "cleanup": {
-          "description": "Descrizione",
-          "label": "Etichetta"
+          "description": "Percorso rapido — rimuove parole superflue, corregge grammatica e punteggiatura",
+          "label": "Correzione"
         }
       },
       "modified": "Modificato"
@@ -779,76 +807,76 @@
   },
   "resetPassword": {
     "backToSignIn": "Torna all'accesso",
-    "confirmPasswordPlaceholder": "Conferma segnaposto password",
-    "continue": "Continuare",
+    "confirmPasswordPlaceholder": "Conferma la nuova password",
+    "continue": "Continua",
     "errors": {
-      "passwordMinLength": "Lunghezza minima password",
+      "passwordMinLength": "La password deve essere di almeno 8 caratteri",
       "passwordsDoNotMatch": "Le password non corrispondono"
     },
     "goBack": "Torna indietro",
-    "newPasswordPlaceholder": "Nuovo segnaposto della password",
-    "notConfigured": "Non configurato",
-    "passwordMinLength": "Lunghezza minima password",
-    "resetButton": "Pulsante di ripristino",
-    "resetting": "Ripristino",
-    "subtitle": "Sottotitolo",
+    "newPasswordPlaceholder": "Nuova password",
+    "notConfigured": "L'autenticazione non è configurata.",
+    "passwordMinLength": "La password deve essere di almeno 8 caratteri",
+    "resetButton": "Reimposta password",
+    "resetting": "Reimpostazione...",
+    "subtitle": "Inserisci la nuova password qui sotto",
     "success": {
-      "description": "Descrizione",
-      "title": "Titolo"
+      "description": "La password è stata aggiornata. Hai effettuato l'accesso.",
+      "title": "Password reimpostata con successo"
     },
-    "title": "Titolo"
+    "title": "Crea nuova password"
   },
   "settingsModal": {
     "groups": {
       "app": "App",
       "intelligence": "Intelligenza",
       "profile": "Profilo",
-      "speech": "Discorso",
+      "speech": "Voce",
       "system": "Sistema"
     },
     "sections": {
       "account": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Accesso e utilizzo",
+        "label": "Account"
       },
       "agentConfig": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Configurazione agente vocale",
+        "label": "Agente"
       },
       "aiModels": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Correzione e miglioramento testo",
+        "label": "Modelli IA"
       },
       "developer": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Log, diagnostica e dati",
+        "label": "Sviluppatore"
       },
       "dictionary": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Parole e frasi personalizzate",
+        "label": "Dizionario"
       },
       "general": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Aspetto, scorciatoia e avvio",
+        "label": "Preferenze"
       },
       "permissions": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Microfono e accessibilità",
+        "label": "Permessi"
       },
       "privacy": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Backup cloud e analisi",
+        "label": "Privacy"
       },
       "prompts": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Studio del prompt di sistema",
+        "label": "Prompt"
       },
       "transcription": {
-        "description": "Descrizione",
-        "label": "Etichetta"
+        "description": "Motore di riconoscimento vocale",
+        "label": "Trascrizione"
       }
     },
-    "title": "Titolo"
+    "title": "Impostazioni"
   },
   "settingsPage": {
     "account": {
@@ -860,34 +888,34 @@
         "trial": "Prova"
       },
       "billing": {
-        "couldNotOpenDescription": "Impossibile aprire la descrizione",
-        "couldNotOpenTitle": "Impossibile aprire il titolo",
-        "manageBilling": "Gestisci la fatturazione",
-        "opening": "Apertura",
+        "couldNotOpenDescription": "Si è verificato un problema nell'apertura della pagina di fatturazione. Riprova.",
+        "couldNotOpenTitle": "Impossibile aprire la fatturazione",
+        "manageBilling": "Gestisci fatturazione",
+        "opening": "Apertura...",
         "updatePaymentMethod": "Aggiorna metodo di pagamento"
       },
       "checkout": {
-        "couldNotOpenDescription": "Impossibile aprire la descrizione",
-        "couldNotOpenTitle": "Impossibile aprire il titolo",
-        "opening": "Apertura",
+        "couldNotOpenDescription": "Si è verificato un problema nell'apertura della pagina di pagamento. Riprova.",
+        "couldNotOpenTitle": "Impossibile aprire il pagamento",
+        "opening": "Apertura...",
         "upgradeToPro": "Passa a Pro"
       },
       "disabled": "Disabilitato",
-      "featuresDisabled": "Funzionalita disabilitate",
-      "featuresDisabledDescription": "Caratteristiche Disabilitato Descrizione",
-      "notConfigured": "Non configurato",
-      "notSignedIn": "Non effettuato l'accesso",
-      "notSignedInDescription": "Descrizione dell'accesso non effettuato",
-      "offline": "Non in linea",
+      "featuresDisabled": "Funzionalità account disabilitate",
+      "featuresDisabledDescription": "Imposta VITE_NEON_AUTH_URL nel file .env per abilitare le funzionalità dell'account.",
+      "notConfigured": "L'autenticazione non è configurata",
+      "notSignedIn": "Non hai effettuato l'accesso",
+      "notSignedInDescription": "Crea un account per sbloccare le funzionalità premium.",
+      "offline": "Offline",
       "pastDue": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Sei nel piano gratuito per ora. Aggiorna il metodo di pagamento per tornare a Pro.",
+        "title": "Non siamo riusciti a elaborare il pagamento"
       },
       "planDescriptions": {
         "freeUsage": "{{used}} / {{limit}} parole questa settimana",
         "nextBilling": "Prossima fatturazione: {{date}}",
-        "pastDue": "{{used}} / {{limit}} parole gratis questa settimana: aggiorna il pagamento per ripristinare Pro",
-        "trial": "{{days}} giorni rimanenti: trascrizioni illimitate",
+        "pastDue": "{{used}} / {{limit}} parole gratuite questa settimana — aggiorna il pagamento per ripristinare Pro",
+        "trial": "{{days}} giorni rimanenti — trascrizioni illimitate",
         "unlimited": "Illimitato"
       },
       "planLabels": {
@@ -895,254 +923,254 @@
         "pro": "Pro",
         "trial": "Prova"
       },
-      "planTitle": "Titolo del piano",
-      "rollingWeeklyLimit": "Limite settimanale mobile",
+      "planTitle": "Piano",
+      "rollingWeeklyLimit": "Limite settimanale progressivo",
       "signOut": {
-        "failedDescription": "Descrizione non riuscita",
-        "failedTitle": "Titolo non riuscito",
-        "signOut": "Disconnessione",
-        "signingOut": "Uscita"
+        "failedDescription": "Qualcosa è andato storto durante la disconnessione. Riprova.",
+        "failedTitle": "Impossibile disconnettersi",
+        "signOut": "Disconnetti",
+        "signingOut": "Disconnessione..."
       },
-      "signedIn": "Effettuato l'accesso",
-      "title": "Titolo",
+      "signedIn": "Accesso effettuato",
+      "title": "Account",
       "toasts": {
         "approachingLimit": {
-          "description": "Hai utilizzato {{used}} di {{limit}} parole libere questa settimana. Passa a Pro per un utilizzo illimitato.",
-          "title": "Titolo"
+          "description": "Hai usato {{used}} di {{limit}} parole gratuite questa settimana. Passa a Pro per un uso illimitato.",
+          "title": "Prossimo al limite settimanale"
         }
       },
       "trialCta": {
-        "button": "Pulsante",
-        "description": "Descrizione",
-        "title": "Titolo"
+        "button": "Crea account gratuito",
+        "description": "Trascrizioni illimitate, elaborazione prioritaria e altro ancora.",
+        "title": "Prova Pro gratis per 7 giorni"
       },
       "user": "Utente",
       "wordsRemaining": "{{remaining}} rimanenti"
     },
     "agentConfig": {
       "agentName": "Nome dell'agente",
-      "cleanupExample": "Esempio di pulizia",
-      "cleanupMode": "Modalita di pulizia",
-      "description": "Descrizione",
+      "cleanupExample": "Correzione",
+      "cleanupMode": "Modalità correzione",
+      "description": "Dai un nome al tuo assistente IA per rivolgerti direttamente a lui durante la dettatura",
       "dialogs": {
-        "updatedDescription": "Il tuo agente ora si chiama \"{{name}}\". Affrontalo dicendo \"Ehi {{name}}\" seguito dalle tue istruzioni.",
-        "updatedTitle": "Titolo aggiornato"
+        "updatedDescription": "Il tuo agente ora si chiama \"{{name}}\". Rivolgiti a lui dicendo \"Ehi {{name}}\" seguito dalle tue istruzioni.",
+        "updatedTitle": "Nome dell'agente aggiornato"
       },
-      "examplesTitle": "Titolo degli esempi",
-      "helper": "Aiutante",
-      "howItWorksDescription": "Quando dici \"Ehi {{agentName}}\" seguito da un'istruzione, l'IA passa dalla modalita di pulizia alla modalita di istruzione. Senza la frase trigger, ripulisce semplicemente la tua dettatura.",
-      "howItWorksTitle": "Titolo Come Funziona",
-      "instructionMode": "Modalita di istruzione",
-      "placeholder": "Segnaposto",
+      "examplesTitle": "Esempi",
+      "helper": "Scegli qualcosa di breve e naturale da dire ad alta voce",
+      "howItWorksDescription": "Quando dici \"Ehi {{agentName}}\" seguito da un'istruzione, l'IA passa dalla modalità correzione alla modalità istruzione. Senza la frase di attivazione, si limita a correggere la tua dettatura.",
+      "howItWorksTitle": "Come funziona",
+      "instructionMode": "Istruzione",
+      "placeholder": "es. Jarvis, Nova, Atlas...",
       "save": "Salva",
-      "title": "Titolo"
+      "title": "Agente vocale"
     },
     "aiModels": {
       "customSetup": "Configurazione personalizzata",
-      "customSetupDescription": "Descrizione dell'installazione personalizzata",
-      "description": "Descrizione",
-      "enableTextCleanup": "Abilita la pulizia del testo",
-      "enableTextCleanupDescription": "Abilita la descrizione della pulizia del testo",
+      "customSetupDescription": "Usa il tuo provider e la tua chiave API.",
+      "description": "Correggi le trascrizioni, gestisci i comandi e sistema gli errori preservando il tuo tono.",
+      "enableTextCleanup": "Attiva correzione testo",
+      "enableTextCleanupDescription": "L'IA migliora la qualità della trascrizione",
       "openwhisprCloud": "OpenWhispr Cloud",
-      "openwhisprCloudDescription": "Descrizione del cloud OpenWhispr",
-      "title": "Titolo",
+      "openwhisprCloudDescription": "Funziona subito. Nessuna configurazione necessaria.",
+      "title": "Miglioramento testo con IA",
       "toasts": {
         "switchedCloud": {
-          "description": "Descrizione",
-          "title": "Titolo"
+          "description": "Il miglioramento del testo userà il servizio cloud di OpenWhispr.",
+          "title": "Passato a OpenWhispr Cloud"
         },
         "switchedCustom": {
-          "description": "Descrizione",
-          "title": "Titolo"
+          "description": "Configura il tuo provider e la tua chiave API.",
+          "title": "Passato a configurazione personalizzata"
         }
       }
     },
     "developer": {
-      "clearCache": "Cancella cache",
-      "dataManagementDescription": "Descrizione della gestione dei dati",
-      "dataManagementTitle": "Titolo di gestione dei dati",
-      "modelCache": "Cache del modello",
-      "open": "Aprire",
+      "clearCache": "Svuota cache",
+      "dataManagementDescription": "Gestisci i modelli in cache e i dati dell'app",
+      "dataManagementTitle": "Gestione dati",
+      "modelCache": "Cache dei modelli",
+      "open": "Apri",
       "removeModels": {
-        "confirmText": "Conferma testo",
+        "confirmText": "Elimina modelli",
         "description": "Questa operazione elimina tutti i modelli Whisper memorizzati nella cache locale ({{path}}) e libera spazio su disco. Puoi scaricarli di nuovo dal selettore modelli.",
-        "failedDescription": "Descrizione non riuscita",
-        "failedDescriptionShort": "Descrizione breve non riuscita",
-        "failedTitle": "Titolo non riuscito",
-        "successDescription": "Descrizione del successo",
-        "successTitle": "Titolo di successo",
-        "title": "Titolo"
+        "failedDescription": "Qualcosa è andato storto nella rimozione dei modelli. Riprova.",
+        "failedDescriptionShort": "Impossibile rimuovere i modelli in cache.",
+        "failedTitle": "Impossibile rimuovere i modelli",
+        "successDescription": "Tutti i modelli in cache sono stati rimossi.",
+        "successTitle": "Modelli rimossi",
+        "title": "Rimuovere i modelli scaricati?"
       },
-      "removing": "Rimozione",
+      "removing": "Rimozione...",
       "resetAll": {
-        "confirmText": "Conferma testo",
-        "description": "Descrizione",
-        "failedDescription": "Descrizione non riuscita",
-        "failedTitle": "Titolo non riuscito",
-        "successDescription": "Descrizione del successo",
-        "successTitle": "Titolo di successo",
-        "title": "Titolo"
+        "confirmText": "Elimina tutto",
+        "description": "Questa operazione eliminerà definitivamente tutte le impostazioni, le trascrizioni e i dati in cache. L'app si ricaricherà dopo il ripristino.",
+        "failedDescription": "Qualcosa è andato storto. Riprova o reinstalla l'app.",
+        "failedTitle": "Impossibile reimpostare",
+        "successDescription": "Tutto è stato reimpostato. L'app si ricaricherà ora.",
+        "successTitle": "Tutto fatto",
+        "title": "Reimposta tutti i dati dell'app"
       },
-      "resetAppData": "Reimposta i dati dell'app",
-      "resetAppDataDescription": "Reimposta la descrizione dei dati dell'app"
+      "resetAppData": "Reimposta dati app",
+      "resetAppDataDescription": "Elimina definitivamente tutte le impostazioni, le trascrizioni e i dati in cache"
     },
     "dictionary": {
-      "add": "Aggiungere",
+      "add": "Aggiungi",
       "addWordOrPhrase": "Aggiungi una parola o una frase",
-      "agentNameAutoManaged": "Nome agente gestito automaticamente",
+      "agentNameAutoManaged": "Nome agente (gestito automaticamente)",
       "clearAll": "Cancella tutto",
-      "clearDictionaryDescription": "Descrizione chiara del dizionario",
-      "clearDictionaryTitle": "Cancella il titolo del dizionario",
-      "description": "Descrizione",
-      "howItWorksDescription": "Come funziona Descrizione",
-      "howItWorksTitle": "Titolo Come Funziona",
-      "noWords": "Nessuna parola",
-      "placeholder": "Segnaposto",
-      "pressEnterToAdd": "Premere Invio per aggiungere",
-      "removeWord": "Rimuovi Parola",
-      "tipDescription": "Descrizione del suggerimento",
-      "tipLabel": "Etichetta della punta",
-      "title": "Titolo",
-      "wordsAppearHere": "Le parole appaiono qui",
+      "clearDictionaryDescription": "Questa operazione rimuoverà tutte le parole dal dizionario personalizzato. L'azione non può essere annullata.",
+      "clearDictionaryTitle": "Cancellare il dizionario?",
+      "description": "Aggiungi parole, nomi o termini tecnici per migliorare la precisione della trascrizione",
+      "howItWorksDescription": "Le parole aggiunte vengono incluse nel prompt dell'IA, in modo che il modello sappia cercare e preservare questi termini durante la correzione della trascrizione.",
+      "howItWorksTitle": "Come funziona",
+      "noWords": "Nessuna parola aggiunta",
+      "placeholder": "es. OpenWhispr, Kubernetes, Dr. Martinez...",
+      "pressEnterToAdd": "Premi Invio per aggiungere",
+      "removeWord": "Rimuovi parola",
+      "tipDescription": "Aggiungi nomi propri, termini tecnici o qualsiasi parola che potrebbe essere trascritta in modo errato.",
+      "tipLabel": "Suggerimento",
+      "title": "Dizionario personalizzato",
+      "wordsAppearHere": "Le parole aggiunte appariranno qui",
       "yourWords": "Le tue parole"
     },
     "general": {
       "appearance": {
-        "auto": "Auto",
-        "dark": "Buio",
-        "description": "Descrizione",
-        "light": "Leggero",
+        "auto": "Automatico",
+        "dark": "Scuro",
+        "description": "Personalizza l'aspetto di OpenWhispr",
+        "light": "Chiaro",
         "theme": "Tema",
-        "themeDescription": "Descrizione del tema",
-        "title": "Titolo"
+        "themeDescription": "Scegli chiaro, scuro o in base al sistema",
+        "title": "Aspetto"
       },
       "floatingIcon": {
-        "autoHide": "Nascondi automaticamente",
-        "autoHideDescription": "Nascondi automaticamente la descrizione",
-        "description": "Descrizione",
-        "title": "Titolo"
+        "autoHide": "Nascondi automaticamente quando inattivo",
+        "autoHideDescription": "Mantieni l'icona nascosta finché non inizi a dettare",
+        "description": "Controlla quando l'icona di dettatura è visibile sullo schermo",
+        "title": "Icona flottante"
       },
       "hotkey": {
-        "activationMode": "Modalita di attivazione",
-        "description": "Descrizione",
-        "title": "Titolo"
+        "activationMode": "Modalità di attivazione",
+        "description": "La combinazione di tasti che avvia e ferma la dettatura vocale",
+        "title": "Scorciatoia di dettatura"
       },
       "microphone": {
-        "description": "Descrizione",
-        "title": "Titolo"
+        "description": "Seleziona il dispositivo di ingresso da usare per la dettatura",
+        "title": "Microfono"
       },
       "soundEffects": {
         "dictationSounds": "Suoni di dettatura",
-        "dictationSoundsDescription": "Descrizione dei suoni di dettatura",
-        "title": "Titolo"
+        "dictationSoundsDescription": "Riproduci un tono quando la registrazione inizia e finisce",
+        "title": "Effetti sonori"
       },
       "startup": {
         "launchAtLogin": "Avvia all'accesso",
-        "launchAtLoginDescription": "Avvia alla descrizione dell'accesso",
-        "title": "Titolo"
+        "launchAtLoginDescription": "Avvia OpenWhispr automaticamente all'accesso",
+        "title": "Avvio"
       },
       "updates": {
         "badges": {
           "dev": "Dev",
-          "latest": "Ultimo",
+          "latest": "Aggiornato",
           "update": "Aggiornamento"
         },
-        "checkForUpdates": "Controlla gli aggiornamenti",
-        "checking": "Controllo",
-        "currentVersion": "Versione attuale",
-        "devMode": "Modalita sviluppatore",
+        "checkForUpdates": "Controlla aggiornamenti",
+        "checking": "Verifica...",
+        "currentVersion": "Versione corrente",
+        "devMode": "In esecuzione in modalità sviluppo",
         "dialogs": {
           "almostThere": {
-            "description": "Descrizione",
-            "title": "Titolo"
+            "description": "L'aggiornamento è quasi pronto. Attendi un momento.",
+            "title": "Quasi fatto"
           },
           "checkFailed": {
-            "description": "Descrizione",
-            "title": "Titolo"
+            "description": "Si è verificato un problema durante la verifica degli aggiornamenti. Riprova più tardi.",
+            "title": "Impossibile verificare gli aggiornamenti"
           },
           "downloadFailed": {
-            "description": "Descrizione",
-            "title": "Titolo"
+            "description": "Si è verificato un problema durante il download dell'aggiornamento. Riprova.",
+            "title": "Impossibile scaricare l'aggiornamento"
           },
           "installFailed": {
-            "description": "Descrizione",
-            "title": "Titolo"
+            "description": "Si è verificato un problema durante l'installazione dell'aggiornamento. Riprova.",
+            "title": "Impossibile installare l'aggiornamento"
           },
           "installUpdate": {
-            "confirmText": "Conferma testo",
-            "description": "Descrizione",
-            "title": "Titolo"
+            "confirmText": "Installa e riavvia",
+            "description": "OpenWhispr verrà riavviato per applicare l'aggiornamento.",
+            "title": "Installa aggiornamento"
           },
           "noUpdates": {
-            "description": "Descrizione",
-            "title": "Titolo"
+            "description": "Hai già l'ultima versione.",
+            "title": "Nessun aggiornamento"
           },
           "updateAvailable": {
             "description": "Aggiornamento disponibile: v{{version}}",
-            "title": "Titolo"
+            "title": "Aggiornamento disponibile"
           },
           "updateError": {
-            "description": "Descrizione",
-            "title": "Titolo"
+            "description": "Qualcosa è andato storto con l'aggiornamento. Riprova.",
+            "title": "Errore di aggiornamento"
           }
         },
-        "downloadUpdate": "Scarica l'aggiornamento {{version}}",
+        "downloadUpdate": "Scarica aggiornamento {{version}}",
         "downloading": "Download in corso... {{progress}}%",
         "installAndRestart": "Installa e riavvia",
-        "latestVersion": "Ultima versione",
-        "newVersion": "Nuova versione",
+        "latestVersion": "Hai già l'ultima versione",
+        "newVersion": "È disponibile una versione più recente",
         "newVersionAvailable": "Nuova versione disponibile",
-        "restarting": "Riavvio",
-        "title": "Titolo",
-        "versionPlaceholder": "Segnaposto della versione",
-        "whatsNew": "Novita in v{{version}}"
+        "restarting": "Riavvio...",
+        "title": "Aggiornamenti",
+        "versionPlaceholder": "—",
+        "whatsNew": "Novità nella v{{version}}"
       }
     },
     "permissions": {
-      "accessibilityDescription": "Descrizione dell'accessibilita",
-      "accessibilityTitle": "Titolo di accessibilita",
-      "description": "Descrizione",
-      "microphoneDescription": "Descrizione del microfono",
-      "microphoneTitle": "Titolo del microfono",
+      "accessibilityDescription": "Necessario per l'incollaggio automatico dopo la trascrizione",
+      "accessibilityTitle": "Accessibilità",
+      "description": "Testa e gestisci i permessi di sistema necessari per il corretto funzionamento di OpenWhispr",
+      "microphoneDescription": "Necessario per la registrazione vocale e la dettatura",
+      "microphoneTitle": "Microfono",
       "resetAccessibility": {
-        "description": "Descrizione",
-        "label": "Etichetta",
-        "rowDescription": "Descrizione riga",
-        "title": "Titolo"
+        "description": "Questa operazione rimuoverà OpenWhispr dai permessi di accessibilità. Dovrai concedere nuovamente l'accesso in Impostazioni di sistema > Privacy e sicurezza > Accessibilità.",
+        "label": "Reimposta permessi di accessibilità",
+        "rowDescription": "Risolvi i problemi dopo la reinstallazione o ricompilazione dell'app rimuovendo e riaggiungendo OpenWhispr nelle Impostazioni di sistema",
+        "title": "Reimposta permessi di accessibilità"
       },
       "test": "Test",
-      "testAndGrant": "Testare e concedere",
-      "title": "Titolo",
-      "troubleshoot": "Risoluzione dei problemi",
-      "troubleshootingTitle": "Titolo della risoluzione dei problemi"
+      "testAndGrant": "Testa e concedi",
+      "title": "Permessi",
+      "troubleshoot": "Risoluzione problemi",
+      "troubleshootingTitle": "Risoluzione problemi"
     },
     "privacy": {
-      "cloudBackup": "Backup sul cloud",
-      "cloudBackupDescription": "Descrizione del backup nel cloud",
-      "description": "Descrizione",
-      "title": "Titolo",
+      "cloudBackup": "Backup cloud",
+      "cloudBackupDescription": "Salva le trascrizioni nel cloud per non perderle mai.",
+      "description": "Controlla quali dati escono dal tuo dispositivo. Tutto è disattivato per impostazione predefinita.",
+      "title": "Privacy",
       "usageAnalytics": "Analisi dell'utilizzo",
-      "usageAnalyticsDescription": "Descrizione dell'analisi dell'utilizzo"
+      "usageAnalyticsDescription": "Aiutaci a migliorare OpenWhispr condividendo metriche di prestazione anonime. Non inviamo mai il contenuto delle trascrizioni, solo dati su tempi ed errori."
     },
     "prompts": {
-      "description": "Descrizione",
-      "title": "Titolo"
+      "description": "Visualizza, personalizza e testa il prompt di sistema unificato che gestisce la correzione del testo e il rilevamento delle istruzioni",
+      "title": "Prompt Studio"
     },
     "transcription": {
       "customSetup": "Configurazione personalizzata",
-      "customSetupDescription": "Descrizione dell'installazione personalizzata",
-      "description": "Descrizione",
+      "customSetupDescription": "Usa il tuo provider e la tua chiave API.",
+      "description": "Scegli come OpenWhispr trascrive la tua voce",
       "openwhisprCloud": "OpenWhispr Cloud",
-      "openwhisprCloudDescription": "Descrizione del cloud OpenWhispr",
-      "title": "Titolo",
+      "openwhisprCloudDescription": "Funziona subito. Nessuna configurazione necessaria.",
+      "title": "Riconoscimento vocale",
       "toasts": {
         "switchedCloud": {
-          "description": "Descrizione",
-          "title": "Titolo"
+          "description": "La trascrizione userà il servizio cloud di OpenWhispr.",
+          "title": "Passato a OpenWhispr Cloud"
         },
         "switchedCustom": {
-          "description": "Descrizione",
-          "title": "Titolo"
+          "description": "Configura il tuo provider e la tua chiave API.",
+          "title": "Passato a configurazione personalizzata"
         }
       }
     }
@@ -1153,18 +1181,18 @@
         "parakeet_tdt_0_6b_v3": "ASR multilingue veloce con rilevamento automatico della lingua (25 lingue)"
       },
       "whisper": {
-        "tiny": "Il piu veloce, qualita inferiore",
+        "tiny": "Il più veloce, qualità inferiore",
         "base": "Buon equilibrio",
-        "small": "Qualita migliore, piu lento",
-        "medium": "Alta qualita",
-        "large": "Migliore qualita, il piu lento",
-        "turbo": "Veloce con buona qualita"
+        "small": "Qualità migliore, più lento",
+        "medium": "Alta qualità",
+        "large": "Migliore qualità, il più lento",
+        "turbo": "Veloce con buona qualità"
       },
       "transcription": {
         "openai_gpt_4o_mini_transcribe": "Trascrizione rapida e accurata",
-        "openai_gpt_4o_transcribe": "Trascrizione piu accurata",
+        "openai_gpt_4o_transcribe": "Trascrizione più accurata",
         "openai_whisper_1": "Modello Whisper originale",
-        "groq_whisper_large_v3_turbo": "Velocita 216x in tempo reale",
+        "groq_whisper_large_v3_turbo": "Velocità 216x in tempo reale",
         "mistral_voxtral_mini_latest": "Trascrizione multilingue veloce"
       },
       "cloud": {
@@ -1172,13 +1200,13 @@
         "openai_gpt_5_mini": "Veloce ed efficiente nei costi",
         "openai_gpt_5_nano": "Ultra-veloce, bassa latenza",
         "openai_gpt_4_1": "Base solida, contesto da 1M",
-        "openai_gpt_4_1_mini": "Modello GPT-4.1 piu piccolo",
-        "openai_gpt_4_1_nano": "GPT-4.1 con la latenza piu bassa",
+        "openai_gpt_4_1_mini": "Modello GPT-4.1 più piccolo",
+        "openai_gpt_4_1_nano": "GPT-4.1 con la latenza più bassa",
         "anthropic_claude_sonnet_4_5": "Prestazioni bilanciate",
         "anthropic_claude_haiku_4_5": "Veloce con intelligenza quasi da frontiera",
-        "anthropic_claude_opus_4_5": "Modello Claude piu capace",
+        "anthropic_claude_opus_4_5": "Modello Claude più capace",
         "gemini_gemini_3_pro_preview": "Modello di punta di nuova generazione per ragionamento complesso",
-        "gemini_gemini_3_flash_preview": "Modello di nuova generazione ultra-veloce e ad alta capacita",
+        "gemini_gemini_3_flash_preview": "Modello di nuova generazione ultra-veloce e ad alta capacità",
         "gemini_gemini_2_5_flash_lite": "Latenza e costo minimi",
         "groq_qwen_qwen3_32b": "Potente modello di ragionamento, contesto 131K",
         "groq_openai_gpt_oss_120b": "Ammiraglia open source di OpenAI, 500 T/sec",
@@ -1189,19 +1217,19 @@
         "groq_gemma2_9b_it": "Modello efficiente di Google"
       },
       "local": {
-        "qwen_qwen3_8b_q4_k_m": "Ultimo Qwen3 con supporto alla modalita pensiero",
-        "qwen_qwen3_8b_q5_k_m": "Qwen3 di qualita superiore con modalita pensiero",
-        "qwen_qwen3_4b_q4_k_m": "Qwen3 compatto con capacita di ragionamento",
+        "qwen_qwen3_8b_q4_k_m": "Ultimo Qwen3 con supporto alla modalità pensiero",
+        "qwen_qwen3_8b_q5_k_m": "Qwen3 di qualità superiore con modalità pensiero",
+        "qwen_qwen3_4b_q4_k_m": "Qwen3 compatto con capacità di ragionamento",
         "qwen_qwen3_1_7b_q8_0": "Modello Qwen3 piccolo ma capace",
         "qwen_qwen3_0_6b_q8_0": "Qwen3 minuscolo per dispositivi edge",
-        "qwen_qwen3_32b_q4_k_m": "Il Qwen3 locale piu potente con ragionamento profondo",
-        "qwen_qwen2_5_0_5b_instruct_q5_k_m": "Modello piu piccolo, veloce ma con capacita limitate",
-        "qwen_qwen2_5_1_5b_instruct_q5_k_m": "Modello piccolo, buono per attivita di base",
+        "qwen_qwen3_32b_q4_k_m": "Il Qwen3 locale più potente con ragionamento profondo",
+        "qwen_qwen2_5_0_5b_instruct_q5_k_m": "Modello più piccolo, veloce ma con capacità limitate",
+        "qwen_qwen2_5_1_5b_instruct_q5_k_m": "Modello piccolo, buono per attività di base",
         "qwen_qwen2_5_3b_instruct_q5_k_m": "Modello bilanciato per uso generale",
-        "qwen_qwen2_5_7b_instruct_q4_k_m": "Modello grande con alta qualita (Q4_K_M)",
-        "qwen_qwen2_5_7b_instruct_q5_k_m": "Modello grande, ragionamento di alta qualita (Q5_K_M)",
+        "qwen_qwen2_5_7b_instruct_q4_k_m": "Modello grande con alta qualità (Q4_K_M)",
+        "qwen_qwen2_5_7b_instruct_q5_k_m": "Modello grande, ragionamento di alta qualità (Q5_K_M)",
         "mistral_mistral_7b_instruct_v0_3_q4_k_m": "Modello instruction veloce ed efficiente",
-        "mistral_mistral_7b_instruct_v0_3_q5_k_m": "Modello instruction di qualita superiore",
+        "mistral_mistral_7b_instruct_v0_3_q5_k_m": "Modello instruction di qualità superiore",
         "llama_llama_3_2_1b_instruct_q4_k_m": "Modello minuscolo per dispositivi edge",
         "llama_llama_3_2_3b_instruct_q4_k_m": "Modello multilingue piccolo ma capace",
         "llama_llama_3_1_8b_instruct_q4_k_m": "Modello potente con ottime prestazioni",

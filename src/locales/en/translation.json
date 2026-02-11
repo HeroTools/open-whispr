@@ -118,6 +118,34 @@
     "sound": "Please open your system sound settings (for example, pavucontrol).",
     "accessibility": "Accessibility settings are not available on this platform."
   },
+  "titleBar": {
+    "quitTitle": "Quit OpenWhispr",
+    "quitConfirmTitle": "Quit OpenWhispr?",
+    "quitConfirmDescription": "This will close OpenWhispr and stop background processes.",
+    "quit": "Quit",
+    "cancel": "Cancel"
+  },
+  "upgradePrompt": {
+    "paymentFailed": "We couldn't process your payment",
+    "weeklyLimit": "You've reached your weekly limit",
+    "pastDueDescription": "You're on the free plan for now — don't worry, you still get {{limit}} words per week.\nUpdate your payment method to get back to unlimited Pro.",
+    "limitDescription": "{{used}} of {{limit}} words used.\nYour transcription was saved and pasted.",
+    "updatePayment": "Update payment method",
+    "updatePaymentDescription": "Get back to unlimited Pro transcriptions.",
+    "upgradeToPro": "Upgrade to Pro",
+    "upgradeDescription": "Unlimited transcriptions. $9/month.",
+    "useApiKey": "Use your own API key",
+    "useApiKeyDescription": "Bring your own key for unlimited use.",
+    "switchToLocal": "Switch to local",
+    "switchToLocalDescription": "Offline transcription. No limits.",
+    "rollingWeeklyLimit": "Rolling weekly limit"
+  },
+  "windowControls": {
+    "minimize": "Minimize",
+    "maximize": "Maximize",
+    "restore": "Restore",
+    "close": "Close"
+  },
   "windows": {
     "pttUnavailable": "Push-to-Talk native listener not available"
   },
@@ -450,266 +478,266 @@
       "or": "or"
     },
     "emailStep": {
-      "continueWithEmail": "Continue With Email",
-      "continueWithoutAccount": "Continue Without Account",
-      "emailPlaceholder": "Email Placeholder"
+      "continueWithEmail": "Continue with email",
+      "continueWithoutAccount": "Continue without account",
+      "emailPlaceholder": "you@example.com"
     },
     "errors": {
-      "accountExistsSignIn": "Account Exists Sign In",
-      "accountNotFoundCreate": "Account Not Found Create",
-      "authNotConfigured": "Auth Not Configured",
-      "createAccountFailed": "Create Account Failed",
+      "accountExistsSignIn": "An account with this email already exists. Please sign in.",
+      "accountNotFoundCreate": "No account found with this email. Please create an account.",
+      "authNotConfigured": "Authentication is not configured",
+      "createAccountFailed": "Failed to create account",
       "failedProviderSignIn": "Failed to sign in with {{provider}}",
-      "failedUserCheck": "Failed User Check",
-      "generic": "Generic",
-      "invalidCredentials": "Invalid Credentials",
-      "plusAliasUnsupported": "Plus Alias Unsupported"
+      "failedUserCheck": "Failed to check user account",
+      "generic": "Something went wrong. Please try again.",
+      "invalidCredentials": "Invalid email or password",
+      "plusAliasUnsupported": "Email aliases with '+' are not supported"
     },
     "getStarted": "Get Started",
     "legal": {
-      "and": "And",
-      "prefix": "Prefix",
-      "privacy": "Privacy",
-      "suffix": "Suffix",
-      "terms": "Terms"
+      "and": "and",
+      "prefix": "By continuing, you agree to our",
+      "privacy": "Privacy Policy",
+      "suffix": "",
+      "terms": "Terms of Service"
     },
     "passwordForm": {
-      "createAccount": "Create Account",
-      "createAccountButton": "Create Account Button",
-      "createAccountLink": "Create Account Link",
-      "createPasswordPlaceholder": "Create Password Placeholder",
-      "creatingAccount": "Creating Account",
-      "enterPasswordPlaceholder": "Enter Password Placeholder",
-      "forgotPassword": "Forgot Password",
-      "fullNamePlaceholder": "Full Name Placeholder",
-      "haveAccount": "Have Account",
-      "newHere": "New Here",
-      "passwordMinLength": "Password Min Length",
+      "createAccount": "Create an account",
+      "createAccountButton": "Create Account",
+      "createAccountLink": "Create account",
+      "createPasswordPlaceholder": "Create a password",
+      "creatingAccount": "Creating account...",
+      "enterPasswordPlaceholder": "Enter your password",
+      "forgotPassword": "Forgot password?",
+      "fullNamePlaceholder": "Full name",
+      "haveAccount": "Already have an account?",
+      "newHere": "New here?",
+      "passwordMinLength": "Password must be at least 8 characters",
       "signIn": "Sign In",
-      "signInLink": "Sign In Link",
-      "signingIn": "Signing In",
-      "welcomeBack": "Welcome Back"
+      "signInLink": "Sign in",
+      "signingIn": "Signing in...",
+      "welcomeBack": "Welcome back"
     },
     "signedIn": {
       "ready": "Ready",
-      "welcomeBack": "Welcome Back",
+      "welcomeBack": "Welcome back",
       "welcomeBackName": "Welcome back, {{name}}"
     },
     "social": {
-      "completeInBrowser": "Complete In Browser",
-      "continueWithGoogle": "Continue With Google"
+      "completeInBrowser": "Complete sign-in in your browser",
+      "continueWithGoogle": "Continue with Google"
     },
     "welcomeSubtitle": "Dictate anywhere using your voice",
     "welcomeTitle": "Welcome to OpenWhispr"
   },
-  "cleanupPrompt": "Cleanup Prompt",
+  "cleanupPrompt": "Cleanup",
   "developerSection": {
-    "currentLogFile": "Current Log File",
+    "currentLogFile": "Current log file",
     "debugMode": {
-      "disabledDescription": "Disabled Description",
-      "enabledDescription": "Enabled Description",
-      "label": "Label"
+      "disabledDescription": "Enable to capture detailed diagnostic information",
+      "enabledDescription": "Logging audio processing, API requests, and system operations",
+      "label": "Debug mode"
     },
-    "description": "Description",
+    "description": "Capture detailed logs to help diagnose issues",
     "openLogsFolder": "Open Logs Folder",
     "performanceNote": {
-      "description": "Description",
-      "label": "Label"
+      "description": "Debug logging writes to disk continuously and may slightly affect performance. Disable when not troubleshooting.",
+      "label": "Note"
     },
     "sharing": {
-      "footer": "Footer",
+      "footer": "Logs do not contain API keys or sensitive data",
       "steps": {
-        "0": "Item 1",
-        "1": "Item 2",
-        "2": "Item 3"
+        "0": "Reproduce the issue while debug mode is enabled",
+        "1": "Click \"Open Logs Folder\" above",
+        "2": "Attach the most recent log file to your bug report"
       },
-      "title": "Title"
+      "title": "Sharing logs for support"
     },
-    "title": "Title",
+    "title": "Debug Logging",
     "toasts": {
       "copied": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Log file path copied to clipboard",
+        "title": "Copied"
       },
       "copyFailed": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Something went wrong copying to clipboard.",
+        "title": "Couldn't copy"
       },
       "debugDisabled": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Debug logging has been turned off",
+        "title": "Debug Logging Disabled"
       },
       "debugEnabled": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Detailed logs are now being written to disk",
+        "title": "Debug Logging Enabled"
       },
       "loadFailed": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Something went wrong. Try reopening Settings.",
+        "title": "Couldn't load debug settings"
       },
       "openLogsFailed": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Something went wrong opening the logs directory.",
+        "title": "Couldn't open logs folder"
       },
       "updateFailed": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Something went wrong. Please try again.",
+        "title": "Couldn't update debug logging"
       }
     },
     "whatGetsLogged": {
       "items": {
-        "apiRequests": "Api Requests",
-        "audioProcessing": "Audio Processing",
-        "errorDetails": "Error Details",
-        "ffmpegOperations": "Ffmpeg Operations",
-        "systemDiagnostics": "System Diagnostics",
-        "transcriptionPipeline": "Transcription Pipeline"
+        "apiRequests": "API requests",
+        "audioProcessing": "Audio processing",
+        "errorDetails": "Error details",
+        "ffmpegOperations": "FFmpeg operations",
+        "systemDiagnostics": "System diagnostics",
+        "transcriptionPipeline": "Transcription pipeline"
       },
-      "title": "Title"
+      "title": "What gets logged"
     }
   },
   "dictionarySuffix": "Dictionary Suffix",
   "emailVerification": {
-    "checkEmailDescription": "Check Email Description",
-    "checkEmailTitle": "Check Email Title",
+    "checkEmailDescription": "We sent a verification link to",
+    "checkEmailTitle": "Check your email",
     "errors": {
-      "resendFailed": "Resend Failed",
-      "serverUnreachable": "Server Unreachable"
+      "resendFailed": "We couldn't resend the email. Please try again.",
+      "serverUnreachable": "Couldn't reach the server. Check your connection and try again."
     },
-    "resendButton": "Resend Button",
+    "resendButton": "Resend verification email",
     "resendIn": "Resend in {{seconds}}s",
-    "verifiedDescription": "Verified Description",
-    "verifiedTitle": "Verified Title",
-    "waiting": "Waiting"
+    "verifiedDescription": "Your account is all set.",
+    "verifiedTitle": "Email verified",
+    "waiting": "Waiting for verification..."
   },
   "errorBoundary": {
-    "description": "Description",
+    "description": "An unexpected error occurred. Please reload to try again.",
     "reload": "Reload",
-    "title": "Title"
+    "title": "Something went wrong"
   },
   "forgotPassword": {
     "back": "Back",
-    "backToSignIn": "Back To Sign In",
-    "emailPlaceholder": "Email Placeholder",
+    "backToSignIn": "Back to sign in",
+    "emailPlaceholder": "Enter your email",
     "goBack": "Go Back",
-    "notConfigured": "Not Configured",
+    "notConfigured": "Authentication isn't set up yet.",
     "sendResetLink": "Send Reset Link",
-    "sending": "Sending",
-    "subtitle": "Subtitle",
+    "sending": "Sending...",
+    "subtitle": "Enter your email and we'll send you a reset link",
     "success": {
-      "description": "Description",
-      "help": "Help",
-      "title": "Title",
-      "tryAnother": "Try Another"
+      "description": "We sent a password reset link to",
+      "help": "Didn't receive the email? Check your spam folder or try again.",
+      "title": "Check your email",
+      "tryAnother": "Try another email"
     },
-    "title": "Title"
+    "title": "Reset your password"
   },
   "fullPrompt": "Full Prompt",
   "hotkeyGuidance": {
-    "blockedDescription": "Blocked Description",
-    "blockedTitle": "Blocked Title",
-    "description": "Description",
-    "examplesTitle": "Examples Title",
+    "blockedDescription": "These shortcuts are blocked because they are commonly used by the system.",
+    "blockedTitle": "Blocked shortcuts",
+    "description": "Use these platform rules to choose a shortcut that won't conflict with your system.",
+    "examplesTitle": "Valid examples",
     "platforms": {
       "linux": "Linux",
-      "macos": "Macos",
+      "macos": "macOS",
       "windows": "Windows"
     },
     "recommended": {
       "linux": {
-        "0": "Item 1",
-        "1": "Item 2",
-        "2": "Item 3",
-        "3": "Item 4",
-        "4": "Item 5"
+        "0": "Ctrl+Alt+Space",
+        "1": "Super+S",
+        "2": "Ctrl+Alt+D",
+        "3": "Ctrl+Shift+J",
+        "4": "Alt+Space"
       },
       "macos": {
-        "0": "Item 1",
-        "1": "Item 2",
-        "2": "Item 3",
-        "3": "Item 4",
-        "4": "Item 5"
+        "0": "⌥Space",
+        "1": "⌃⌥S",
+        "2": "⌃⌥D",
+        "3": "Fn",
+        "4": "⌘⇧J"
       },
       "windows": {
-        "0": "Item 1",
-        "1": "Item 2",
-        "2": "Item 3",
-        "3": "Item 4"
+        "0": "Ctrl+Alt+Space",
+        "1": "Ctrl+Shift+S",
+        "2": "Ctrl+Alt+D",
+        "3": "Win+Alt+K"
       }
     },
-    "recommendedTitle": "Recommended Title",
-    "rulesTitle": "Rules Title",
-    "showAll": "Show All",
-    "showFewer": "Show Fewer",
-    "title": "Title",
+    "recommendedTitle": "Recommended shortcuts",
+    "rulesTitle": "Shortcut rules",
+    "showAll": "Show all",
+    "showFewer": "Show fewer",
+    "title": "Shortcut Guide",
     "validationRules": {
-      "0": "Item 1",
-      "1": "Item 2",
-      "2": "Item 3",
-      "3": "Item 4"
+      "0": "Must use at least one modifier (Ctrl, Alt, Shift, etc.)",
+      "1": "Cannot use reserved system shortcuts",
+      "2": "Single keys alone are not allowed",
+      "3": "Some combinations may conflict with other apps"
     }
   },
   "hotkeyInput": {
-    "ariaLabel": "Aria Label",
-    "clickToChange": "Click To Change",
-    "clickToChangeLower": "Click To Change Lower",
-    "clickToSet": "Click To Set",
-    "fnCaptureHint": "Fn Capture Hint",
-    "fnHeldHint": "Fn Held Hint",
+    "ariaLabel": "Press a key combination to set hotkey",
+    "clickToChange": "Click to change",
+    "clickToChangeLower": "click to change",
+    "clickToSet": "Click to set hotkey",
+    "fnCaptureHint": "Press a key to combine, or release for Globe",
+    "fnHeldHint": "+ key or release for Globe",
     "globe": "Globe",
-    "hotkeyLabel": "Hotkey Label",
-    "keyHint": "Key Hint",
-    "listening": "Listening",
-    "pressAnyKey": "Press Any Key",
-    "pressAnyKeyMac": "Press Any Key Mac",
+    "hotkeyLabel": "Hotkey",
+    "keyHint": "+ key",
+    "listening": "Listening...",
+    "pressAnyKey": "Press any key or Ctrl+Shift+K",
+    "pressAnyKeyMac": "Press any key or ⌘⇧K",
     "recording": "Recording",
-    "tryShortcut": "Try Shortcut",
-    "tryShortcutMac": "Try Shortcut Mac"
+    "tryShortcut": "Try Ctrl+Shift+K",
+    "tryShortcutMac": "Try ⌘⇧K"
   },
   "languageSelector": {
-    "noLanguagesFound": "No Languages Found",
-    "searchPlaceholder": "Search Placeholder"
+    "noLanguagesFound": "No languages found",
+    "searchPlaceholder": "Search..."
   },
   "microphoneSettings": {
-    "builtIn": "Built In",
+    "builtIn": "(Built-in)",
     "errors": {
-      "unableToAccess": "Unable To Access"
+      "unableToAccess": "Unable to access microphone. Please check permissions."
     },
-    "helpText": "Help Text",
+    "helpText": "Select a specific microphone or use the system default setting.",
     "inputDevice": "Input Device",
-    "noBuiltInDetected": "No Built In Detected",
+    "noBuiltInDetected": "No built-in microphone detected. Using system default.",
     "preferBuiltIn": {
-      "description": "Description",
-      "label": "Label"
+      "description": "External microphones may cause latency or reduced transcription quality",
+      "label": "Prefer Built-in Microphone"
     },
-    "selectPlaceholder": "Select Placeholder",
+    "selectPlaceholder": "Select a microphone",
     "systemDefault": "System Default",
     "unknownDevice": "Unknown Device",
-    "using": "Using"
+    "using": "Using:"
   },
   "pasteToolsInfo": {
-    "checking": "Checking",
+    "checking": "Checking system capabilities...",
     "installCommands": {
-      "archLinux": "Arch Linux",
-      "debianUbuntu": "Debian Ubuntu",
-      "debianUbuntuMint": "Debian Ubuntu Mint",
-      "fedoraRhel": "Fedora Rhel"
+      "archLinux": "# Arch Linux",
+      "debianUbuntu": "# Debian / Ubuntu",
+      "debianUbuntuMint": "# Debian / Ubuntu / Mint",
+      "fedoraRhel": "# Fedora / RHEL"
     },
-    "installPrefix": "Install Prefix",
-    "methodReady": "Method Ready",
-    "noteXwaylandAlso": "Note Xwayland Also",
-    "noteXwaylandOnly": "Note Xwayland Only",
-    "optionalEnableTitle": "Optional Enable Title",
-    "readyTitle": "Ready Title",
-    "recheck": "Recheck",
-    "recheckChecking": "Recheck Checking",
-    "title": "Title",
-    "usingMethodPrefix": "Using Method Prefix",
-    "waylandClipboardDescription": "Wayland Clipboard Description",
-    "waylandClipboardTitle": "Wayland Clipboard Title",
-    "windowsReady": "Windows Ready",
-    "withoutToolPrefix": "Without Tool Prefix",
-    "xwaylandAppsOnly": "Xwayland Apps Only"
+    "installPrefix": "For automatic text pasting, install",
+    "methodReady": "for automatic text pasting",
+    "noteXwaylandAlso": "Note: For XWayland apps, xdotool also works.",
+    "noteXwaylandOnly": "Note: automatic pasting works for XWayland apps only.",
+    "optionalEnableTitle": "Optional: Enable Automatic Pasting",
+    "readyTitle": "Automatic Pasting Ready",
+    "recheck": "Re-check",
+    "recheckChecking": "Checking...",
+    "title": "Automatic Pasting",
+    "usingMethodPrefix": "Using",
+    "waylandClipboardDescription": "Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text to your clipboard so you can paste manually with Ctrl+V.",
+    "waylandClipboardTitle": "Clipboard Mode on Wayland",
+    "windowsReady": "Windows supports automatic pasting out of the box. No setup required!",
+    "withoutToolPrefix": "Without this tool, OpenWhispr will copy text to your clipboard. You can then paste manually with Ctrl+V.",
+    "xwaylandAppsOnly": "automatic pasting works for XWayland apps only"
   },
   "promptStudio": {
     "common": {
@@ -718,23 +746,23 @@
       "reset": "Reset",
       "save": "Save"
     },
-    "defaultTestInput": "Default Test Input",
+    "defaultTestInput": "Hey Whispr, what's the weather like today?",
     "dialogs": {
       "reset": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Prompt has been reset to the default value.",
+        "title": "Reset Complete"
       },
       "saved": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Your custom prompt will be used for all future AI processing.",
+        "title": "Prompt Saved"
       }
     },
     "edit": {
-      "agentNameLabel": "Agent Name Label",
-      "cautionLabel": "Caution Label",
-      "cautionTextPrefix": "Caution Text Prefix",
-      "cautionTextSuffix": "Caution Text Suffix",
-      "placeholder": "Placeholder"
+      "agentNameLabel": "Agent name:",
+      "cautionLabel": "Caution",
+      "cautionTextPrefix": "Modifying this prompt may affect transcription quality.",
+      "cautionTextSuffix": "Keep the {{agentName}} placeholder to preserve agent detection.",
+      "placeholder": "Enter your custom system prompt..."
     },
     "tabs": {
       "customize": "Customize",
@@ -743,60 +771,60 @@
     },
     "test": {
       "addressHint": "Try addressing \"{{agentName}}\" to test instruction mode",
-      "aiModels": "Ai Models",
+      "aiModels": "AI Models",
       "baseUrlMissing": "{{provider}} base URL missing. Add it in AI Models settings.",
       "cleanup": "Cleanup",
-      "disabledInSettingsPrefix": "Disabled In Settings Prefix",
-      "disabledInSettingsSuffix": "Disabled In Settings Suffix",
-      "disabledReasoning": "Disabled Reasoning",
+      "disabledInSettingsPrefix": "AI text enhancement is disabled.",
+      "disabledInSettingsSuffix": "Enable it in AI Models to test prompts.",
+      "disabledReasoning": "AI text enhancement is disabled. Enable it in AI Models to test prompts.",
       "failed": "Test failed: {{error}}",
-      "inputLabel": "Input Label",
-      "inputPlaceholder": "Input Placeholder",
+      "inputLabel": "Input",
+      "inputPlaceholder": "Enter text to test...",
       "instruction": "Instruction",
-      "modelLabel": "Model Label",
-      "noModelSelected": "No Model Selected",
+      "modelLabel": "Model",
+      "noModelSelected": "No model selected",
       "none": "None",
-      "outputLabel": "Output Label",
-      "processing": "Processing",
-      "providerLabel": "Provider Label",
-      "run": "Run"
+      "outputLabel": "Output",
+      "processing": "Processing...",
+      "providerLabel": "Provider",
+      "run": "Run Test"
     },
     "view": {
-      "customPrompt": "Custom Prompt",
-      "defaultPrompt": "Default Prompt",
+      "customPrompt": "Custom prompt",
+      "defaultPrompt": "Default prompt",
       "modes": {
         "agent": {
           "description": "Triggered by \"{{agentName}}\" - executes commands, answers questions, composes content",
-          "label": "Label"
+          "label": "Agent"
         },
         "cleanup": {
-          "description": "Description",
-          "label": "Label"
+          "description": "Fast path — removes filler words, fixes grammar and punctuation",
+          "label": "Cleanup"
         }
       },
       "modified": "Modified"
     }
   },
   "resetPassword": {
-    "backToSignIn": "Back To Sign In",
-    "confirmPasswordPlaceholder": "Confirm Password Placeholder",
+    "backToSignIn": "Back to sign in",
+    "confirmPasswordPlaceholder": "Confirm new password",
     "continue": "Continue",
     "errors": {
-      "passwordMinLength": "Password Min Length",
-      "passwordsDoNotMatch": "Passwords Do Not Match"
+      "passwordMinLength": "Password must be at least 8 characters",
+      "passwordsDoNotMatch": "Passwords do not match"
     },
     "goBack": "Go Back",
-    "newPasswordPlaceholder": "New Password Placeholder",
-    "notConfigured": "Not Configured",
-    "passwordMinLength": "Password Min Length",
-    "resetButton": "Reset Button",
-    "resetting": "Resetting",
-    "subtitle": "Subtitle",
+    "newPasswordPlaceholder": "New password",
+    "notConfigured": "Authentication is not configured.",
+    "passwordMinLength": "Password must be at least 8 characters",
+    "resetButton": "Reset Password",
+    "resetting": "Resetting...",
+    "subtitle": "Enter your new password below",
     "success": {
-      "description": "Description",
-      "title": "Title"
+      "description": "Your password has been updated. You're now signed in.",
+      "title": "Password reset successful"
     },
-    "title": "Title"
+    "title": "Create new password"
   },
   "settingsModal": {
     "groups": {
@@ -808,80 +836,80 @@
     },
     "sections": {
       "account": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Sign in & usage",
+        "label": "Account"
       },
       "agentConfig": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Voice agent setup",
+        "label": "Agent"
       },
       "aiModels": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Text cleanup & enhancement",
+        "label": "AI Models"
       },
       "developer": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Logs, diagnostics & data",
+        "label": "Developer"
       },
       "dictionary": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Custom words & phrases",
+        "label": "Dictionary"
       },
       "general": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Appearance, hotkey & startup",
+        "label": "Preferences"
       },
       "permissions": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Microphone & accessibility",
+        "label": "Permissions"
       },
       "privacy": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Cloud backup & analytics",
+        "label": "Privacy"
       },
       "prompts": {
-        "description": "Description",
-        "label": "Label"
+        "description": "System prompt studio",
+        "label": "Prompts"
       },
       "transcription": {
-        "description": "Description",
-        "label": "Label"
+        "description": "Speech-to-text engine",
+        "label": "Transcription"
       }
     },
-    "title": "Title"
+    "title": "Settings"
   },
   "settingsPage": {
     "account": {
       "badges": {
         "free": "Free",
-        "limitReached": "Limit Reached",
-        "pastDue": "Past Due",
+        "limitReached": "Limit reached",
+        "pastDue": "Past due",
         "pro": "Pro",
         "trial": "Trial"
       },
       "billing": {
-        "couldNotOpenDescription": "Could Not Open Description",
-        "couldNotOpenTitle": "Could Not Open Title",
+        "couldNotOpenDescription": "We had trouble opening the billing page. Please try again.",
+        "couldNotOpenTitle": "Couldn't open billing",
         "manageBilling": "Manage Billing",
-        "opening": "Opening",
+        "opening": "Opening...",
         "updatePaymentMethod": "Update Payment Method"
       },
       "checkout": {
-        "couldNotOpenDescription": "Could Not Open Description",
-        "couldNotOpenTitle": "Could Not Open Title",
-        "opening": "Opening",
-        "upgradeToPro": "Upgrade To Pro"
+        "couldNotOpenDescription": "We had trouble opening the checkout page. Please try again.",
+        "couldNotOpenTitle": "Couldn't open checkout",
+        "opening": "Opening...",
+        "upgradeToPro": "Upgrade to Pro"
       },
       "disabled": "Disabled",
-      "featuresDisabled": "Features Disabled",
-      "featuresDisabledDescription": "Features Disabled Description",
-      "notConfigured": "Not Configured",
-      "notSignedIn": "Not Signed In",
-      "notSignedInDescription": "Not Signed In Description",
+      "featuresDisabled": "Account Features Disabled",
+      "featuresDisabledDescription": "Set VITE_NEON_AUTH_URL in your .env file to enable account features.",
+      "notConfigured": "Authentication is not configured",
+      "notSignedIn": "Not signed in",
+      "notSignedInDescription": "Create an account to unlock premium features.",
       "offline": "Offline",
       "pastDue": {
-        "description": "Description",
-        "title": "Title"
+        "description": "You're on the free plan for now. Update your payment method to get back to Pro.",
+        "title": "We couldn't process your payment"
       },
       "planDescriptions": {
         "freeUsage": "{{used}} / {{limit}} words this week",
@@ -895,151 +923,151 @@
         "pro": "Pro",
         "trial": "Trial"
       },
-      "planTitle": "Plan Title",
-      "rollingWeeklyLimit": "Rolling Weekly Limit",
+      "planTitle": "Plan",
+      "rollingWeeklyLimit": "Rolling weekly limit",
       "signOut": {
-        "failedDescription": "Failed Description",
-        "failedTitle": "Failed Title",
+        "failedDescription": "Something went wrong signing out. Please try again.",
+        "failedTitle": "Couldn't sign out",
         "signOut": "Sign Out",
-        "signingOut": "Signing Out"
+        "signingOut": "Signing out..."
       },
-      "signedIn": "Signed In",
-      "title": "Title",
+      "signedIn": "Signed in",
+      "title": "Account",
       "toasts": {
         "approachingLimit": {
           "description": "You've used {{used}} of {{limit}} free words this week. Upgrade to Pro for unlimited use.",
-          "title": "Title"
+          "title": "Approaching weekly limit"
         }
       },
       "trialCta": {
-        "button": "Button",
-        "description": "Description",
-        "title": "Title"
+        "button": "Create Free Account",
+        "description": "Unlimited transcriptions, priority processing, and more.",
+        "title": "Try Pro free for 7 days"
       },
       "user": "User",
       "wordsRemaining": "{{remaining}} remaining"
     },
     "agentConfig": {
       "agentName": "Agent Name",
-      "cleanupExample": "Cleanup Example",
+      "cleanupExample": "Cleanup",
       "cleanupMode": "Cleanup Mode",
-      "description": "Description",
+      "description": "Name your AI assistant so you can address it directly during dictation",
       "dialogs": {
         "updatedDescription": "Your agent is now named \"{{name}}\". Address it by saying \"Hey {{name}}\" followed by your instructions.",
-        "updatedTitle": "Updated Title"
+        "updatedTitle": "Agent Name Updated"
       },
-      "examplesTitle": "Examples Title",
-      "helper": "Helper",
+      "examplesTitle": "Examples",
+      "helper": "Pick something short and natural to say aloud",
       "howItWorksDescription": "When you say \"Hey {{agentName}}\" followed by an instruction, the AI switches from cleanup mode to instruction mode. Without the trigger phrase, it simply cleans up your dictation.",
-      "howItWorksTitle": "How It Works Title",
-      "instructionMode": "Instruction Mode",
-      "placeholder": "Placeholder",
+      "howItWorksTitle": "How it works",
+      "instructionMode": "Instruction",
+      "placeholder": "e.g. Jarvis, Nova, Atlas...",
       "save": "Save",
-      "title": "Title"
+      "title": "Voice Agent"
     },
     "aiModels": {
       "customSetup": "Custom Setup",
-      "customSetupDescription": "Custom Setup Description",
-      "description": "Description",
-      "enableTextCleanup": "Enable Text Cleanup",
-      "enableTextCleanupDescription": "Enable Text Cleanup Description",
-      "openwhisprCloud": "Openwhispr Cloud",
-      "openwhisprCloudDescription": "Openwhispr Cloud Description",
-      "title": "Title",
+      "customSetupDescription": "Use your own provider and API key.",
+      "description": "Clean up transcriptions, handle commands, and fix errors while preserving your tone.",
+      "enableTextCleanup": "Enable text cleanup",
+      "enableTextCleanupDescription": "AI improves transcription quality",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Just works. No configuration needed.",
+      "title": "AI Text Enhancement",
       "toasts": {
         "switchedCloud": {
-          "description": "Description",
-          "title": "Title"
+          "description": "Text enhancement will use OpenWhispr's cloud service.",
+          "title": "Switched to OpenWhispr Cloud"
         },
         "switchedCustom": {
-          "description": "Description",
-          "title": "Title"
+          "description": "Configure your own provider and API key.",
+          "title": "Switched to Custom Setup"
         }
       }
     },
     "developer": {
       "clearCache": "Clear Cache",
-      "dataManagementDescription": "Data Management Description",
-      "dataManagementTitle": "Data Management Title",
-      "modelCache": "Model Cache",
+      "dataManagementDescription": "Manage cached models and app data",
+      "dataManagementTitle": "Data Management",
+      "modelCache": "Model cache",
       "open": "Open",
       "removeModels": {
-        "confirmText": "Confirm Text",
+        "confirmText": "Delete Models",
         "description": "This deletes all locally cached Whisper models ({{path}}) and frees disk space. You can download them again from the model picker.",
-        "failedDescription": "Failed Description",
-        "failedDescriptionShort": "Failed Description Short",
-        "failedTitle": "Failed Title",
-        "successDescription": "Success Description",
-        "successTitle": "Success Title",
-        "title": "Title"
+        "failedDescription": "Something went wrong removing the models. Please try again.",
+        "failedDescriptionShort": "Could not remove cached models.",
+        "failedTitle": "Couldn't remove models",
+        "successDescription": "All cached models have been removed.",
+        "successTitle": "Models removed",
+        "title": "Remove downloaded models?"
       },
-      "removing": "Removing",
+      "removing": "Removing...",
       "resetAll": {
-        "confirmText": "Confirm Text",
-        "description": "Description",
-        "failedDescription": "Failed Description",
-        "failedTitle": "Failed Title",
-        "successDescription": "Success Description",
-        "successTitle": "Success Title",
-        "title": "Title"
+        "confirmText": "Delete Everything",
+        "description": "This will permanently delete all settings, transcriptions, and cached data. The app will reload after reset.",
+        "failedDescription": "Something went wrong. Please try again or reinstall the app.",
+        "failedTitle": "Couldn't reset",
+        "successDescription": "Everything has been reset. The app will reload now.",
+        "successTitle": "All done",
+        "title": "Reset All App Data"
       },
-      "resetAppData": "Reset App Data",
-      "resetAppDataDescription": "Reset App Data Description"
+      "resetAppData": "Reset app data",
+      "resetAppDataDescription": "Permanently delete all settings, transcriptions, and cached data"
     },
     "dictionary": {
       "add": "Add",
-      "addWordOrPhrase": "Add Word Or Phrase",
-      "agentNameAutoManaged": "Agent Name Auto Managed",
-      "clearAll": "Clear All",
-      "clearDictionaryDescription": "Clear Dictionary Description",
-      "clearDictionaryTitle": "Clear Dictionary Title",
-      "description": "Description",
-      "howItWorksDescription": "How It Works Description",
-      "howItWorksTitle": "How It Works Title",
-      "noWords": "No Words",
-      "placeholder": "Placeholder",
-      "pressEnterToAdd": "Press Enter To Add",
-      "removeWord": "Remove Word",
-      "tipDescription": "Tip Description",
-      "tipLabel": "Tip Label",
-      "title": "Title",
-      "wordsAppearHere": "Words Appear Here",
-      "yourWords": "Your Words"
+      "addWordOrPhrase": "Add a word or phrase",
+      "agentNameAutoManaged": "Agent name (auto-managed)",
+      "clearAll": "Clear all",
+      "clearDictionaryDescription": "This will remove all words from your custom dictionary. This action cannot be undone.",
+      "clearDictionaryTitle": "Clear dictionary?",
+      "description": "Add words, names, or technical terms to improve transcription accuracy",
+      "howItWorksDescription": "Words you add are included in the AI prompt so the model knows to look for and preserve these terms during transcription cleanup.",
+      "howItWorksTitle": "How it works",
+      "noWords": "No words added yet",
+      "placeholder": "e.g. OpenWhispr, Kubernetes, Dr. Martinez...",
+      "pressEnterToAdd": "Press Enter to add",
+      "removeWord": "Remove word",
+      "tipDescription": "Add proper nouns, technical terms, or any word that might be transcribed incorrectly.",
+      "tipLabel": "Tip",
+      "title": "Custom Dictionary",
+      "wordsAppearHere": "Words you add will appear here",
+      "yourWords": "Your words"
     },
     "general": {
       "appearance": {
         "auto": "Auto",
         "dark": "Dark",
-        "description": "Description",
+        "description": "Control how OpenWhispr looks",
         "light": "Light",
         "theme": "Theme",
-        "themeDescription": "Theme Description",
-        "title": "Title"
+        "themeDescription": "Choose light, dark, or match your system",
+        "title": "Appearance"
       },
       "floatingIcon": {
-        "autoHide": "Auto Hide",
-        "autoHideDescription": "Auto Hide Description",
-        "description": "Description",
-        "title": "Title"
+        "autoHide": "Auto-hide when idle",
+        "autoHideDescription": "Keep the icon hidden until you start dictating",
+        "description": "Control when the dictation icon is visible on your screen",
+        "title": "Floating Icon"
       },
       "hotkey": {
         "activationMode": "Activation Mode",
-        "description": "Description",
-        "title": "Title"
+        "description": "The key combination that starts and stops voice dictation",
+        "title": "Dictation Hotkey"
       },
       "microphone": {
-        "description": "Description",
-        "title": "Title"
+        "description": "Select which input device to use for dictation",
+        "title": "Microphone"
       },
       "soundEffects": {
-        "dictationSounds": "Dictation Sounds",
-        "dictationSoundsDescription": "Dictation Sounds Description",
-        "title": "Title"
+        "dictationSounds": "Dictation sounds",
+        "dictationSoundsDescription": "Play a tone when recording starts and stops",
+        "title": "Sound Effects"
       },
       "startup": {
-        "launchAtLogin": "Launch At Login",
-        "launchAtLoginDescription": "Launch At Login Description",
-        "title": "Title"
+        "launchAtLogin": "Launch at login",
+        "launchAtLoginDescription": "Start OpenWhispr automatically when you log in",
+        "title": "Startup"
       },
       "updates": {
         "badges": {
@@ -1047,102 +1075,102 @@
           "latest": "Latest",
           "update": "Update"
         },
-        "checkForUpdates": "Check For Updates",
-        "checking": "Checking",
-        "currentVersion": "Current Version",
-        "devMode": "Dev Mode",
+        "checkForUpdates": "Check for Updates",
+        "checking": "Checking...",
+        "currentVersion": "Current version",
+        "devMode": "Running in development mode",
         "dialogs": {
           "almostThere": {
-            "description": "Description",
-            "title": "Title"
+            "description": "The update is almost ready. Please wait a moment.",
+            "title": "Almost there"
           },
           "checkFailed": {
-            "description": "Description",
-            "title": "Title"
+            "description": "We had trouble checking for updates. Please try again later.",
+            "title": "Couldn't check for updates"
           },
           "downloadFailed": {
-            "description": "Description",
-            "title": "Title"
+            "description": "We had trouble downloading the update. Please try again.",
+            "title": "Couldn't download update"
           },
           "installFailed": {
-            "description": "Description",
-            "title": "Title"
+            "description": "We had trouble installing the update. Please try again.",
+            "title": "Couldn't install update"
           },
           "installUpdate": {
-            "confirmText": "Confirm Text",
-            "description": "Description",
-            "title": "Title"
+            "confirmText": "Install & Restart",
+            "description": "OpenWhispr will restart to apply the update.",
+            "title": "Install Update"
           },
           "noUpdates": {
-            "description": "Description",
-            "title": "Title"
+            "description": "You're on the latest version.",
+            "title": "No Updates"
           },
           "updateAvailable": {
             "description": "Update available: v{{version}}",
-            "title": "Title"
+            "title": "Update Available"
           },
           "updateError": {
-            "description": "Description",
-            "title": "Title"
+            "description": "Something went wrong with the update. Please try again.",
+            "title": "Update Error"
           }
         },
         "downloadUpdate": "Download Update {{version}}",
         "downloading": "Downloading... {{progress}}%",
-        "installAndRestart": "Install And Restart",
-        "latestVersion": "Latest Version",
-        "newVersion": "New Version",
-        "newVersionAvailable": "New Version Available",
-        "restarting": "Restarting",
-        "title": "Title",
-        "versionPlaceholder": "Version Placeholder",
+        "installAndRestart": "Install & Restart",
+        "latestVersion": "You're on the latest version",
+        "newVersion": "A newer version is available",
+        "newVersionAvailable": "New version available",
+        "restarting": "Restarting...",
+        "title": "Updates",
+        "versionPlaceholder": "—",
         "whatsNew": "What's new in v{{version}}"
       }
     },
     "permissions": {
-      "accessibilityDescription": "Accessibility Description",
-      "accessibilityTitle": "Accessibility Title",
-      "description": "Description",
-      "microphoneDescription": "Microphone Description",
-      "microphoneTitle": "Microphone Title",
+      "accessibilityDescription": "Required for auto-paste to work after transcription",
+      "accessibilityTitle": "Accessibility",
+      "description": "Test and manage system permissions required for OpenWhispr to function correctly",
+      "microphoneDescription": "Required for voice recording and dictation",
+      "microphoneTitle": "Microphone",
       "resetAccessibility": {
-        "description": "Description",
-        "label": "Label",
-        "rowDescription": "Row Description",
-        "title": "Title"
+        "description": "This will remove OpenWhispr from accessibility permissions. You'll need to re-grant access in System Settings > Privacy & Security > Accessibility.",
+        "label": "Reset accessibility permissions",
+        "rowDescription": "Fix issues after reinstalling or rebuilding the app by removing and re-adding OpenWhispr in System Settings",
+        "title": "Reset Accessibility Permissions"
       },
       "test": "Test",
-      "testAndGrant": "Test And Grant",
-      "title": "Title",
+      "testAndGrant": "Test & Grant",
+      "title": "Permissions",
       "troubleshoot": "Troubleshoot",
-      "troubleshootingTitle": "Troubleshooting Title"
+      "troubleshootingTitle": "Troubleshooting"
     },
     "privacy": {
-      "cloudBackup": "Cloud Backup",
-      "cloudBackupDescription": "Cloud Backup Description",
-      "description": "Description",
-      "title": "Title",
-      "usageAnalytics": "Usage Analytics",
-      "usageAnalyticsDescription": "Usage Analytics Description"
+      "cloudBackup": "Cloud backup",
+      "cloudBackupDescription": "Save your transcriptions to the cloud so you never lose them.",
+      "description": "Control what data leaves your device. Everything is off by default.",
+      "title": "Privacy",
+      "usageAnalytics": "Usage analytics",
+      "usageAnalyticsDescription": "Help us improve OpenWhispr by sharing anonymous performance metrics. We never send transcription content — only timing and error data."
     },
     "prompts": {
-      "description": "Description",
-      "title": "Title"
+      "description": "View, customize, and test the unified system prompt that powers text cleanup and instruction detection",
+      "title": "Prompt Studio"
     },
     "transcription": {
       "customSetup": "Custom Setup",
-      "customSetupDescription": "Custom Setup Description",
-      "description": "Description",
-      "openwhisprCloud": "Openwhispr Cloud",
-      "openwhisprCloudDescription": "Openwhispr Cloud Description",
-      "title": "Title",
+      "customSetupDescription": "Use your own provider and API key.",
+      "description": "Choose how OpenWhispr transcribes your voice",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Just works. No configuration needed.",
+      "title": "Speech to Text",
       "toasts": {
         "switchedCloud": {
-          "description": "Description",
-          "title": "Title"
+          "description": "Transcription will use OpenWhispr's cloud service.",
+          "title": "Switched to OpenWhispr Cloud"
         },
         "switchedCustom": {
-          "description": "Description",
-          "title": "Title"
+          "description": "Configure your own provider and API key.",
+          "title": "Switched to Custom Setup"
         }
       }
     }
