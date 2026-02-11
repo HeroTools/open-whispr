@@ -21,6 +21,7 @@ import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSideba
 import HistoryView from "./HistoryView";
 
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
+const ReferralModal = React.lazy(() => import("./ReferralModal"));
 const PersonalNotesView = React.lazy(() => import("./notes/PersonalNotesView"));
 const DictionaryView = React.lazy(() => import("./DictionaryView"));
 const UploadAudioView = React.lazy(() => import("./notes/UploadAudioView"));
@@ -36,6 +37,7 @@ export default function ControlPanel() {
   const [aiCTADismissed, setAiCTADismissed] = useState(
     () => localStorage.getItem("aiCTADismissed") === "true"
   );
+  const [showReferrals, setShowReferrals] = useState(false);
   const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
   const [activeView, setActiveView] = useState<ControlPanelView>("home");
   const cloudMigrationProcessed = useRef(false);
@@ -334,6 +336,12 @@ export default function ControlPanel() {
         </Suspense>
       )}
 
+      {showReferrals && (
+        <Suspense fallback={null}>
+          <ReferralModal open={showReferrals} onOpenChange={setShowReferrals} />
+        </Suspense>
+      )}
+
       <div className="flex flex-1 overflow-hidden">
         <ControlPanelSidebar
           activeView={activeView}
@@ -342,6 +350,7 @@ export default function ControlPanel() {
             setSettingsSection(undefined);
             setShowSettings(true);
           }}
+          onOpenReferrals={() => setShowReferrals(true)}
           userName={user?.name}
           userEmail={user?.email}
           userImage={user?.image}

@@ -8,7 +8,6 @@ import {
   UserCircle,
   Wrench,
   ShieldCheck,
-  Gift,
   Lock,
 } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
@@ -29,13 +28,6 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
       label: "Account",
       icon: UserCircle,
       description: "Sign in & usage",
-      group: "Profile",
-    },
-    {
-      id: "referrals",
-      label: "Referrals",
-      icon: Gift,
-      description: "Earn free months",
       group: "Profile",
     },
     {

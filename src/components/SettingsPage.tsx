@@ -16,7 +16,6 @@ import {
   Monitor,
   Cloud,
   Key,
-  Gift,
   ChevronDown,
   Sparkles,
   AlertTriangle,
@@ -42,8 +41,6 @@ import { useUpdater } from "../hooks/useUpdater";
 
 import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
-import { ReferralDashboard } from "./ReferralDashboard";
-
 import { HotkeyInput } from "./ui/HotkeyInput";
 import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
@@ -71,7 +68,6 @@ export type SettingsSectionType =
   | "agentConfig"
   | "prompts"
   | "permissions"
-  | "referrals"
   | "privacy"
   | "developer";
 
@@ -1832,12 +1828,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             )}
           </div>
         );
-
-      // ───────────────────────────────────────────────────
-      // REFERRALS
-      // ───────────────────────────────────────────────────
-      case "referrals":
-        return <ReferralDashboard />;
 
       // ───────────────────────────────────────────────────
       // DEVELOPER (+ data management moved here)
