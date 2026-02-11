@@ -158,12 +158,14 @@ export default function App() {
     onToggle: handleDictationToggle,
   });
 
-  // Trigger streaming warmup when user signs in (covers first-time account creation)
+  // Trigger streaming warmup when user signs in (covers first-time account creation).
+  // Pass isSignedIn directly to bypass the localStorage race condition where
+  // useAuth's useEffect may not have written localStorage yet.
   useEffect(() => {
     if (isSignedIn) {
-      warmupStreaming();
+      warmupStreaming({ isSignedIn: true });
     }
-  }, [isSignedIn]);
+  }, [isSignedIn, warmupStreaming]);
 
   // Listen for auto-hide setting changes relayed from the main process
   useEffect(() => {

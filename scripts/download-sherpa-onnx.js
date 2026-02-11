@@ -126,14 +126,38 @@ async function downloadBinary(platformArch, config) {
       if (config.libPattern) {
         const libraries = findLibrariesInDir(extractDir, config.libPattern);
 
+        // Separate versioned and unversioned libraries to create symlinks where possible
+        // e.g. libonnxruntime.dylib -> libonnxruntime.1.23.2.dylib (saves ~71MB)
+        const versionedLibs = new Map(); // base name -> versioned file name
+
         for (const libPath of libraries) {
           const libName = path.basename(libPath);
           const destPath = path.join(BIN_DIR, libName);
+
+          // Detect versioned dylib pattern: libFoo.X.Y.Z.dylib
+          const versionMatch = libName.match(/^(lib.+?)\.(\d+\.\d+\.\d+)\.(dylib|so|dll)$/);
+          if (versionMatch) {
+            const baseName = `${versionMatch[1]}.${versionMatch[3]}`; // e.g. libonnxruntime.dylib
+            versionedLibs.set(baseName, libName);
+          }
 
           if (!fs.existsSync(destPath)) {
             fs.copyFileSync(libPath, destPath);
             setExecutable(destPath);
             console.log(`  ${platformArch}: Copied library ${libName}`);
+          }
+        }
+
+        // Replace unversioned copies with symlinks to versioned ones (macOS/Linux only)
+        if (process.platform !== "win32") {
+          for (const [baseName, versionedName] of versionedLibs) {
+            const basePath = path.join(BIN_DIR, baseName);
+            const versionedPath = path.join(BIN_DIR, versionedName);
+            if (fs.existsSync(basePath) && fs.existsSync(versionedPath) && !fs.lstatSync(basePath).isSymbolicLink()) {
+              fs.unlinkSync(basePath);
+              fs.symlinkSync(versionedName, basePath);
+              console.log(`  ${platformArch}: Symlinked ${baseName} -> ${versionedName}`);
+            }
           }
         }
       }
