@@ -92,21 +92,32 @@ export default function AuthenticationStep({
   }, []);
 
   useEffect(() => {
-    if (isLoaded && isSignedIn && !needsVerificationRef.current) {
-      if (OPENWHISPR_API_URL && user?.id && user?.email) {
-        fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: user.id,
-            email: user.email,
-            name: user.name || null,
-          }),
-        }).catch((err) => logger.error("Failed to init user", err, "auth"));
+    if (!isLoaded || !isSignedIn || needsVerificationRef.current || !user?.id || !user?.email)
+      return;
+
+    const initAndComplete = async () => {
+      if (OPENWHISPR_API_URL) {
+        try {
+          const res = await fetch(`${OPENWHISPR_API_URL}/api/auth/init-user`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              userId: user.id,
+              email: user.email,
+              name: user.name || null,
+            }),
+          });
+          if (!res.ok) {
+            logger.error("init-user returned non-OK", { status: res.status }, "auth");
+          }
+        } catch (err) {
+          logger.error("Failed to init user", err, "auth");
+        }
       }
       onAuthComplete();
-    }
-  }, [isLoaded, isSignedIn, onAuthComplete]);
+    };
+    initAndComplete();
+  }, [isLoaded, isSignedIn, user, onAuthComplete]);
 
   useEffect(() => {
     if (isSocialLoading === null) return;
@@ -140,6 +151,14 @@ export default function AuthenticationStep({
 
   const handleEmailContinue = useCallback(async () => {
     if (!email.trim() || !authClient) return;
+
+    const localPart = email.trim().split("@")[0];
+    if (localPart?.includes("+")) {
+      setError(
+        'Email addresses containing "+" are not supported. Please use your original email address.'
+      );
+      return;
+    }
 
     setIsCheckingEmail(true);
     setError(null);
@@ -181,7 +200,7 @@ export default function AuthenticationStep({
       e.preventDefault();
 
       if (!authClient) {
-        setError("Authentication service is not configured. Please contact support.");
+        setError("Authentication isn't set up yet. Please contact support.");
         return;
       }
 
@@ -205,10 +224,12 @@ export default function AuthenticationStep({
               errorMessageIncludes(result.error.message, ["already exists", "already registered"])
             ) {
               setAuthMode("sign-in");
-              setError("Account exists. Please sign in.");
+              setError("Looks like you already have an account. Sign in instead.");
               setPassword("");
             } else {
-              setError(result.error.message || "Failed to create account");
+              setError(
+                result.error.message || "We couldn't create your account. Please try again."
+              );
             }
           } else {
             updateLastSignInTime();
@@ -240,10 +261,12 @@ export default function AuthenticationStep({
           if (result.error) {
             if (errorMessageIncludes(result.error.message, ["not found", "no user"])) {
               setAuthMode("sign-up");
-              setError("No account found. Let's create one.");
+              setError("We didn't find an account with that email. Let's create one.");
               setPassword("");
             } else {
-              setError(result.error.message || "Invalid email or password");
+              setError(
+                result.error.message || "That email or password doesn't look right. Try again."
+              );
             }
           } else {
             updateLastSignInTime();
@@ -252,7 +275,7 @@ export default function AuthenticationStep({
         }
       } catch (err: unknown) {
         const errorMessage =
-          err instanceof Error ? err.message : "An error occurred. Please try again.";
+          err instanceof Error ? err.message : "Something went wrong. Please try again.";
         setError(errorMessage);
       } finally {
         setIsSubmitting(false);
@@ -310,7 +333,7 @@ export default function AuthenticationStep({
 
         <div className="bg-warning/5 p-2.5 rounded border border-warning/20">
           <p className="text-[10px] text-warning text-center leading-snug">
-            Cloud features not configured. You can still use OpenWhispr locally.
+            Cloud features aren't set up yet. You can still use OpenWhispr locally.
           </p>
         </div>
 

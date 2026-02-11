@@ -3,7 +3,13 @@ const fsPromises = require("fs").promises;
 const path = require("path");
 const { spawn } = require("child_process");
 const debugLogger = require("./debugLogger");
-const { downloadFile, createDownloadSignal } = require("./downloadUtils");
+const {
+  downloadFile,
+  createDownloadSignal,
+  validateFileSize,
+  cleanupStaleDownloads,
+  checkDiskSpace,
+} = require("./downloadUtils");
 const ParakeetServerManager = require("./parakeetServer");
 const { getModelsDirForService } = require("./modelDirUtils");
 
@@ -14,7 +20,7 @@ function getParakeetModelConfig(modelName) {
   if (!modelInfo) return null;
   return {
     url: modelInfo.downloadUrl,
-    size: modelInfo.sizeMb * 1_000_000,
+    size: modelInfo.expectedSizeBytes || modelInfo.sizeMb * 1_000_000,
     language: modelInfo.language,
     supportedLanguages: modelInfo.supportedLanguages || [],
     extractDir: modelInfo.extractDir,
@@ -56,6 +62,8 @@ class ParakeetManager {
 
     try {
       this.isInitialized = true;
+
+      await cleanupStaleDownloads(this.getModelsDir());
 
       await this.logDependencyStatus();
 
@@ -266,6 +274,14 @@ class ParakeetManager {
       return { model: modelName, downloaded: true, path: modelPath, success: true };
     }
 
+    const spaceCheck = await checkDiskSpace(modelsDir, modelConfig.size * 2.5);
+    if (!spaceCheck.ok) {
+      throw new Error(
+        `Not enough disk space to download and extract model. Need ~${Math.round((modelConfig.size * 2.5) / 1_000_000)}MB, ` +
+          `only ${Math.round(spaceCheck.availableBytes / 1_000_000)}MB available.`
+      );
+    }
+
     const archivePath = path.join(modelsDir, `${modelName}.tar.bz2`);
     const { signal, abort } = createDownloadSignal();
     this.currentDownloadProcess = { abort };
@@ -286,6 +302,8 @@ class ParakeetManager {
           }
         },
       });
+
+      await validateFileSize(archivePath, modelConfig.size, 15);
 
       if (progressCallback) {
         progressCallback({ type: "installing", model: modelName, percentage: 100 });
@@ -364,6 +382,11 @@ class ParakeetManager {
         } else {
           throw new Error("Could not find model directory in extracted archive");
         }
+      }
+
+      const encoderPath = path.join(targetDir, "encoder.int8.onnx");
+      if (!fs.existsSync(encoderPath)) {
+        throw new Error("Extracted model is missing required files (encoder.int8.onnx)");
       }
 
       // Cleanup temp directory

@@ -287,9 +287,28 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
-      return this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
-        event.sender.send("whisper-download-progress", progressData);
-      });
+      try {
+        const result = await this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send("whisper-download-progress", progressData);
+          }
+        });
+        return result;
+      } catch (error) {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("whisper-download-progress", {
+            type: "error",
+            model: modelName,
+            error: error.message,
+            code: error.code || "DOWNLOAD_FAILED",
+          });
+        }
+        return {
+          success: false,
+          error: error.message,
+          code: error.code || "DOWNLOAD_FAILED",
+        };
+      }
     });
 
     ipcMain.handle("check-model-status", async (event, modelName) => {
@@ -381,9 +400,31 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-parakeet-model", async (event, modelName) => {
-      return this.parakeetManager.downloadParakeetModel(modelName, (progressData) => {
-        event.sender.send("parakeet-download-progress", progressData);
-      });
+      try {
+        const result = await this.parakeetManager.downloadParakeetModel(
+          modelName,
+          (progressData) => {
+            if (!event.sender.isDestroyed()) {
+              event.sender.send("parakeet-download-progress", progressData);
+            }
+          }
+        );
+        return result;
+      } catch (error) {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("parakeet-download-progress", {
+            type: "error",
+            model: modelName,
+            error: error.message,
+            code: error.code || "DOWNLOAD_FAILED",
+          });
+        }
+        return {
+          success: false,
+          error: error.message,
+          code: error.code || "DOWNLOAD_FAILED",
+        };
+      }
     });
 
     ipcMain.handle("check-parakeet-model-status", async (_event, modelName) => {
@@ -609,12 +650,14 @@ class IPCHandlers {
         const result = await modelManager.downloadModel(
           modelId,
           (progress, downloadedSize, totalSize) => {
-            event.sender.send("model-download-progress", {
-              modelId,
-              progress,
-              downloadedSize,
-              totalSize,
-            });
+            if (!event.sender.isDestroyed()) {
+              event.sender.send("model-download-progress", {
+                modelId,
+                progress,
+                downloadedSize,
+                totalSize,
+              });
+            }
           }
         );
         return { success: true, path: result };
@@ -1283,6 +1326,7 @@ class IPCHandlers {
           model: opts.model || "(default)",
           agentName: opts.agentName || "(none)",
           language: opts.language || "(auto)",
+          hasCustomPrompt: !!opts.customPrompt,
           textLength: text?.length || 0,
           textPreview: text?.substring(0, 80) || "(empty)",
         });
@@ -1304,6 +1348,7 @@ class IPCHandlers {
             model: opts.model,
             agentName: opts.agentName,
             customDictionary: opts.customDictionary,
+            customPrompt: opts.customPrompt,
             language: opts.language,
             sessionId: this.sessionId,
             clientType: "desktop",
