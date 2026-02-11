@@ -229,10 +229,13 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             <div className="px-5 py-4">
               <div className="space-y-2">
                 {[
-                  { mode: "Cleanup", desc: "Removes filler words, fixes grammar and punctuation" },
                   {
-                    mode: "Instruction",
-                    desc: `Triggered by "Hey ${agentName}" — executes commands and cleans text`,
+                    mode: "Cleanup",
+                    desc: "Fast path — removes filler words, fixes grammar and punctuation",
+                  },
+                  {
+                    mode: "Agent",
+                    desc: `Triggered by "${agentName}" — executes commands, answers questions, composes content`,
                   },
                 ].map((item) => (
                   <div key={item.mode} className="flex items-start gap-3">

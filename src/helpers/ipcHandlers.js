@@ -1274,6 +1274,7 @@ class IPCHandlers {
           model: opts.model || "(default)",
           agentName: opts.agentName || "(none)",
           language: opts.language || "(auto)",
+          hasCustomPrompt: !!opts.customPrompt,
           textLength: text?.length || 0,
           textPreview: text?.substring(0, 80) || "(empty)",
         });
@@ -1295,6 +1296,7 @@ class IPCHandlers {
             model: opts.model,
             agentName: opts.agentName,
             customDictionary: opts.customDictionary,
+            customPrompt: opts.customPrompt,
             language: opts.language,
             sessionId: this.sessionId,
             clientType: "desktop",

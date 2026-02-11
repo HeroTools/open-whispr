@@ -1104,6 +1104,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           const res = await window.electronAPI.cloudReason(processedText, {
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
+            customPrompt: this.getCustomPrompt(),
             language: localStorage.getItem("preferredLanguage") || "auto",
           });
           if (!res.success) {
@@ -1153,6 +1154,21 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     } catch {
       return [];
     }
+  }
+
+  getCustomPrompt() {
+    try {
+      const raw = localStorage.getItem("customUnifiedPrompt");
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  getKeyterms() {
+    return this.getCustomDictionaryArray();
   }
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
@@ -1727,6 +1743,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           const res = await window.electronAPI.assemblyAiStreamingWarmup({
             sampleRate: 16000,
             language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+            keyterms: this.getKeyterms(),
           });
           // Throw error to trigger retry if AUTH_EXPIRED
           if (!res.success && res.code) {
@@ -1823,6 +1840,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           const res = await window.electronAPI.assemblyAiStreamingStart({
             sampleRate: 16000,
             language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+            keyterms: this.getKeyterms(),
           });
 
           if (!res.success) {
@@ -2074,6 +2092,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
             const res = await window.electronAPI.cloudReason(finalText, {
               agentName,
               customDictionary: this.getCustomDictionaryArray(),
+              customPrompt: this.getCustomPrompt(),
               language: localStorage.getItem("preferredLanguage") || "auto",
             });
             if (!res.success) {
