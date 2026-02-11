@@ -208,7 +208,7 @@
     },
     "limit": {
       "weeklyTitle": "Limite semanal atingido",
-      "weeklyDescription": "Seu limite e redefinido continuamente. Fa\u00e7a upgrade para Pro ou use sua propria API para uso ilimitado."
+      "weeklyDescription": "Seu limite e redefinido continuamente. Faça upgrade para Pro ou use sua propria API para uso ilimitado."
     },
     "billing": {
       "pastDueTitle": "Nao foi possivel processar seu pagamento",
@@ -1144,6 +1144,68 @@
           "description": "Descricao",
           "title": "Titulo"
         }
+      }
+    }
+  },
+  "models": {
+    "descriptions": {
+      "parakeet": {
+        "parakeet_tdt_0_6b_v3": "ASR multilingue rapido com deteccao automatica de idioma (25 idiomas)"
+      },
+      "whisper": {
+        "tiny": "Mais rapido, qualidade inferior",
+        "base": "Bom equilibrio",
+        "small": "Melhor qualidade, mais lento",
+        "medium": "Alta qualidade",
+        "large": "Melhor qualidade, o mais lento",
+        "turbo": "Rapido com boa qualidade"
+      },
+      "transcription": {
+        "openai_gpt_4o_mini_transcribe": "Transcricao rapida e precisa",
+        "openai_gpt_4o_transcribe": "Transcricao mais precisa",
+        "openai_whisper_1": "Modelo Whisper original",
+        "groq_whisper_large_v3_turbo": "Velocidade 216x em tempo real",
+        "mistral_voxtral_mini_latest": "Transcricao multilingue rapida"
+      },
+      "cloud": {
+        "openai_gpt_5_2": "Mais recente modelo principal de raciocinio",
+        "openai_gpt_5_mini": "Rapido e eficiente em custo",
+        "openai_gpt_5_nano": "Ultrarrapido, baixa latencia",
+        "openai_gpt_4_1": "Base solida, contexto de 1M",
+        "openai_gpt_4_1_mini": "Modelo GPT-4.1 menor",
+        "openai_gpt_4_1_nano": "GPT-4.1 com menor latencia",
+        "anthropic_claude_sonnet_4_5": "Desempenho equilibrado",
+        "anthropic_claude_haiku_4_5": "Rapido com inteligencia quase de fronteira",
+        "anthropic_claude_opus_4_5": "Modelo Claude mais capaz",
+        "gemini_gemini_3_pro_preview": "Modelo principal de nova geracao para raciocinio complexo",
+        "gemini_gemini_3_flash_preview": "Modelo de nova geracao ultrarrapido e de alta capacidade",
+        "gemini_gemini_2_5_flash_lite": "Menor latencia e custo",
+        "groq_qwen_qwen3_32b": "Modelo de raciocinio poderoso, contexto de 131K",
+        "groq_openai_gpt_oss_120b": "Modelo principal open source da OpenAI, 500 T/seg",
+        "groq_openai_gpt_oss_20b": "Modelo open source rapido, 1000 T/seg",
+        "groq_llama_3_3_70b_versatile": "Modelo versatil da Meta, 280 T/seg",
+        "groq_llama_3_1_8b_instant": "Ultrarrapido 560 T/seg, contexto de 131K",
+        "groq_mixtral_8x7b_32768": "Contexto de 32K, mistura de especialistas",
+        "groq_gemma2_9b_it": "Modelo eficiente do Google"
+      },
+      "local": {
+        "qwen_qwen3_8b_q4_k_m": "Ultimo Qwen3 com suporte ao modo de pensamento",
+        "qwen_qwen3_8b_q5_k_m": "Qwen3 de maior qualidade com modo de pensamento",
+        "qwen_qwen3_4b_q4_k_m": "Qwen3 compacto com capacidades de raciocinio",
+        "qwen_qwen3_1_7b_q8_0": "Modelo Qwen3 pequeno, mas capaz",
+        "qwen_qwen3_0_6b_q8_0": "Qwen3 minusculo para dispositivos de borda",
+        "qwen_qwen3_32b_q4_k_m": "O Qwen3 local mais poderoso com raciocinio profundo",
+        "qwen_qwen2_5_0_5b_instruct_q5_k_m": "Modelo menor, rapido mas com capacidades limitadas",
+        "qwen_qwen2_5_1_5b_instruct_q5_k_m": "Modelo pequeno, bom para tarefas basicas",
+        "qwen_qwen2_5_3b_instruct_q5_k_m": "Modelo equilibrado para uso geral",
+        "qwen_qwen2_5_7b_instruct_q4_k_m": "Modelo grande com alta qualidade (Q4_K_M)",
+        "qwen_qwen2_5_7b_instruct_q5_k_m": "Modelo grande, raciocinio de alta qualidade (Q5_K_M)",
+        "mistral_mistral_7b_instruct_v0_3_q4_k_m": "Modelo de instrucao rapido e eficiente",
+        "mistral_mistral_7b_instruct_v0_3_q5_k_m": "Modelo de instrucao de maior qualidade",
+        "llama_llama_3_2_1b_instruct_q4_k_m": "Modelo minusculo para dispositivos de borda",
+        "llama_llama_3_2_3b_instruct_q4_k_m": "Modelo multilingue pequeno, mas capaz",
+        "llama_llama_3_1_8b_instruct_q4_k_m": "Modelo poderoso com excelente desempenho",
+        "openai_oss_gpt_oss_20b_mxfp4": "Modelo open-weight da OpenAI para hardware de consumo"
       }
     }
   }

@@ -1146,5 +1146,67 @@
         }
       }
     }
+  },
+  "models": {
+    "descriptions": {
+      "parakeet": {
+        "parakeet_tdt_0_6b_v3": "ASR multilingue rapido con deteccion automatica de idioma (25 idiomas)"
+      },
+      "whisper": {
+        "tiny": "Mas rapido, menor calidad",
+        "base": "Buen equilibrio",
+        "small": "Mejor calidad, mas lento",
+        "medium": "Alta calidad",
+        "large": "Mejor calidad, mas lento",
+        "turbo": "Rapido con buena calidad"
+      },
+      "transcription": {
+        "openai_gpt_4o_mini_transcribe": "Transcripcion rapida y precisa",
+        "openai_gpt_4o_transcribe": "Transcripcion mas precisa",
+        "openai_whisper_1": "Modelo Whisper original",
+        "groq_whisper_large_v3_turbo": "Velocidad 216x en tiempo real",
+        "mistral_voxtral_mini_latest": "Transcripcion multilingue rapida"
+      },
+      "cloud": {
+        "openai_gpt_5_2": "Ultimo modelo insignia de razonamiento",
+        "openai_gpt_5_mini": "Rapido y eficiente en costos",
+        "openai_gpt_5_nano": "Ultrarrapido, baja latencia",
+        "openai_gpt_4_1": "Base solida, contexto de 1M",
+        "openai_gpt_4_1_mini": "Modelo GPT-4.1 mas pequeno",
+        "openai_gpt_4_1_nano": "GPT-4.1 de menor latencia",
+        "anthropic_claude_sonnet_4_5": "Rendimiento equilibrado",
+        "anthropic_claude_haiku_4_5": "Rapido con inteligencia casi de frontera",
+        "anthropic_claude_opus_4_5": "Modelo Claude mas capaz",
+        "gemini_gemini_3_pro_preview": "Modelo insignia de nueva generacion para razonamiento complejo",
+        "gemini_gemini_3_flash_preview": "Modelo de nueva generacion ultrarrapido y de alta capacidad",
+        "gemini_gemini_2_5_flash_lite": "Menor latencia y costo",
+        "groq_qwen_qwen3_32b": "Potente modelo de razonamiento, contexto de 131K",
+        "groq_openai_gpt_oss_120b": "Insignia de codigo abierto de OpenAI, 500 T/seg",
+        "groq_openai_gpt_oss_20b": "Modelo de codigo abierto rapido, 1000 T/seg",
+        "groq_llama_3_3_70b_versatile": "Modelo versatil de Meta, 280 T/seg",
+        "groq_llama_3_1_8b_instant": "Ultrarrapido 560 T/seg, contexto de 131K",
+        "groq_mixtral_8x7b_32768": "Contexto de 32K, mezcla de expertos",
+        "groq_gemma2_9b_it": "Modelo eficiente de Google"
+      },
+      "local": {
+        "qwen_qwen3_8b_q4_k_m": "Ultimo Qwen3 con soporte de modo pensamiento",
+        "qwen_qwen3_8b_q5_k_m": "Qwen3 de mayor calidad con modo pensamiento",
+        "qwen_qwen3_4b_q4_k_m": "Qwen3 compacto con capacidades de razonamiento",
+        "qwen_qwen3_1_7b_q8_0": "Modelo Qwen3 pequeno pero capaz",
+        "qwen_qwen3_0_6b_q8_0": "Qwen3 diminuto para dispositivos edge",
+        "qwen_qwen3_32b_q4_k_m": "El Qwen3 local mas potente con razonamiento profundo",
+        "qwen_qwen2_5_0_5b_instruct_q5_k_m": "Modelo mas pequeno, rapido pero con capacidades limitadas",
+        "qwen_qwen2_5_1_5b_instruct_q5_k_m": "Modelo pequeno, bueno para tareas basicas",
+        "qwen_qwen2_5_3b_instruct_q5_k_m": "Modelo equilibrado para uso general",
+        "qwen_qwen2_5_7b_instruct_q4_k_m": "Modelo grande con alta calidad (Q4_K_M)",
+        "qwen_qwen2_5_7b_instruct_q5_k_m": "Modelo grande, razonamiento de alta calidad (Q5_K_M)",
+        "mistral_mistral_7b_instruct_v0_3_q4_k_m": "Modelo de instrucciones rapido y eficiente",
+        "mistral_mistral_7b_instruct_v0_3_q5_k_m": "Modelo de instrucciones de mayor calidad",
+        "llama_llama_3_2_1b_instruct_q4_k_m": "Modelo diminuto para dispositivos edge",
+        "llama_llama_3_2_3b_instruct_q4_k_m": "Modelo multilingue pequeno pero capaz",
+        "llama_llama_3_1_8b_instruct_q4_k_m": "Modelo potente con gran rendimiento",
+        "openai_oss_gpt_oss_20b_mxfp4": "Modelo open-weight de OpenAI para hardware de consumo"
+      }
+    }
   }
 }

@@ -450,6 +450,7 @@ declare global {
           customDictionary?: string[];
           customPrompt?: string;
           language?: string;
+          locale?: string;
         }
       ) => Promise<{
         success: boolean;

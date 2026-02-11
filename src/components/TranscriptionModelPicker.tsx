@@ -598,11 +598,13 @@ export default function TranscriptionModelPicker({
     return currentCloudProvider.models.map((m) => ({
       value: m.id,
       label: m.name,
-      description: m.description,
+      description: m.descriptionKey
+        ? t(m.descriptionKey, { defaultValue: m.description })
+        : m.description,
       icon: getProviderIcon(selectedCloudProvider),
       invertInDark: isMonochromeProvider(selectedCloudProvider),
     }));
-  }, [currentCloudProvider, selectedCloudProvider]);
+  }, [currentCloudProvider, selectedCloudProvider, t]);
 
   const progressDisplay = useMemo(() => {
     if (!useLocalWhisper) return null;

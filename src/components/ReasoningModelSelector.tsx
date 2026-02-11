@@ -18,6 +18,7 @@ type CloudModelOption = {
   value: string;
   label: string;
   description?: string;
+  descriptionKey?: string;
   icon?: string;
   ownedBy?: string;
   invertInDark?: boolean;
@@ -291,10 +292,13 @@ export default function ReasoningModelSelector({
     const iconUrl = getProviderIcon("openai");
     return REASONING_PROVIDERS.openai.models.map((model) => ({
       ...model,
+      description: model.descriptionKey
+        ? t(model.descriptionKey, { defaultValue: model.description })
+        : model.description,
       icon: iconUrl,
       invertInDark: true,
     }));
-  }, []);
+  }, [t]);
 
   const selectedCloudModels = useMemo<CloudModelOption[]>(() => {
     if (selectedCloudProvider === "openai") return openaiModelOptions;
@@ -307,10 +311,13 @@ export default function ReasoningModelSelector({
     const invertInDark = isMonochromeProvider(selectedCloudProvider);
     return provider.models.map((model) => ({
       ...model,
+      description: model.descriptionKey
+        ? t(model.descriptionKey, { defaultValue: model.description })
+        : model.description,
       icon: iconUrl,
       invertInDark,
     }));
-  }, [selectedCloudProvider, openaiModelOptions, displayedCustomModels]);
+  }, [selectedCloudProvider, openaiModelOptions, displayedCustomModels, t]);
 
   const handleApplyCustomBase = useCallback(() => {
     const trimmedBase = customBaseInput.trim();
