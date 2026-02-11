@@ -177,7 +177,31 @@ class IPCHandlers {
 
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text, options) => {
-      return this.clipboardManager.pasteText(text, { ...options, webContents: event.sender });
+      // On GNOME Wayland, the overlay's show() steals focus from the target window.
+      // ydotool sends keystrokes to the focused window, so we must temporarily hide
+      // the overlay to return focus to the target before pasting.
+      const mainWin = this.windowManager?.mainWindow;
+      const needsHideRestore =
+        process.platform === "linux" &&
+        mainWin &&
+        !mainWin.isDestroyed() &&
+        mainWin.isVisible();
+
+      if (needsHideRestore) {
+        mainWin.hide();
+        await new Promise((r) => setTimeout(r, 200));
+      }
+
+      try {
+        return await this.clipboardManager.pasteText(text, { ...options, webContents: event.sender });
+      } finally {
+        // Re-show the overlay if auto-hide is not enabled
+        if (needsHideRestore && !this.windowManager._floatingIconAutoHide) {
+          if (mainWin && !mainWin.isDestroyed()) {
+            mainWin.show();
+          }
+        }
+      }
     });
 
     ipcMain.handle("read-clipboard", async (event) => {

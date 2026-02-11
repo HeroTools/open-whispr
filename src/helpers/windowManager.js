@@ -500,8 +500,11 @@ class WindowManager {
   showDictationPanel(options = {}) {
     const { focus = false } = options;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      if (!this.mainWindow.isVisible()) {
-        if (typeof this.mainWindow.showInactive === "function") {
+      if (!this.mainWindow.isVisible() || this.mainWindow.isMinimized()) {
+        if (process.platform === "linux") {
+          // showInactive() does not work on GNOME Wayland — use show() instead
+          this.mainWindow.show();
+        } else if (typeof this.mainWindow.showInactive === "function") {
           this.mainWindow.showInactive();
         } else {
           this.mainWindow.show();
@@ -527,11 +530,7 @@ class WindowManager {
 
   hideDictationPanel() {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      if (process.platform === "darwin") {
-        this.mainWindow.hide();
-      } else {
-        this.mainWindow.minimize();
-      }
+      this.mainWindow.hide();
     }
   }
 

@@ -412,6 +412,13 @@ function AiModelsSection({
   const isCustomMode = cloudReasoningMode === "byok";
   const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
 
+  // Auto-switch to BYOK when not signed in but mode is set to cloud
+  useEffect(() => {
+    if (!isSignedIn && cloudReasoningMode === "openwhispr") {
+      setCloudReasoningMode("byok");
+    }
+  }, [isSignedIn, cloudReasoningMode, setCloudReasoningMode]);
+
   return (
     <div className="space-y-4">
       <SectionHeader
