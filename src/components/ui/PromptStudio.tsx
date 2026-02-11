@@ -229,7 +229,10 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
             <div className="px-5 py-4">
               <div className="space-y-2">
                 {[
-                  { mode: "Cleanup", desc: "Fast path — removes filler words, fixes grammar and punctuation" },
+                  {
+                    mode: "Cleanup",
+                    desc: "Fast path — removes filler words, fixes grammar and punctuation",
+                  },
                   {
                     mode: "Agent",
                     desc: `Triggered by "${agentName}" — executes commands, answers questions, composes content`,

@@ -48,10 +48,7 @@ export function getSystemPrompt(
     prompt = promptTemplate.replace(/\{\{agentName\}\}/g, name);
   } else {
     const useFullPrompt = !transcript || detectAgentName(transcript, name);
-    prompt = (useFullPrompt ? FULL_PROMPT : CLEANUP_PROMPT).replace(
-      /\{\{agentName\}\}/g,
-      name
-    );
+    prompt = (useFullPrompt ? FULL_PROMPT : CLEANUP_PROMPT).replace(/\{\{agentName\}\}/g, name);
   }
 
   const langInstruction = getLanguageInstruction(language);
@@ -66,9 +63,7 @@ export function getSystemPrompt(
   return prompt;
 }
 
-export function getWordBoost(
-  customDictionary?: string[]
-): string[] {
+export function getWordBoost(customDictionary?: string[]): string[] {
   if (!customDictionary || customDictionary.length === 0) return [];
   return customDictionary.filter((w) => w.trim());
 }

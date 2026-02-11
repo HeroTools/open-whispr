@@ -1648,9 +1648,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         confirmText: "Clear All",
                         variant: "destructive",
                         onConfirm: () =>
-                          setCustomDictionary(
-                            customDictionary.filter((w) => w === agentName)
-                          ),
+                          setCustomDictionary(customDictionary.filter((w) => w === agentName)),
                       });
                     }}
                     className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
