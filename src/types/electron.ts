@@ -19,6 +19,7 @@ export interface WhisperModelResult {
   downloaded: boolean;
   size_mb?: number;
   error?: string;
+  code?: string;
 }
 
 export interface WhisperModelDeleteResult {
@@ -85,12 +86,13 @@ export interface AppVersionResult {
 }
 
 export interface WhisperDownloadProgressData {
-  type: string;
+  type: "progress" | "installing" | "complete" | "error";
   model: string;
   percentage?: number;
   downloaded_bytes?: number;
   total_bytes?: number;
   error?: string;
+  code?: string;
   result?: any;
 }
 
@@ -108,6 +110,7 @@ export interface ParakeetModelResult {
   size_bytes?: number;
   size_mb?: number;
   error?: string;
+  code?: string;
 }
 
 export interface ParakeetModelDeleteResult {
@@ -126,12 +129,13 @@ export interface ParakeetModelsListResult {
 }
 
 export interface ParakeetDownloadProgressData {
-  type: string;
+  type: "progress" | "installing" | "complete" | "error";
   model: string;
   percentage?: number;
   downloaded_bytes?: number;
   total_bytes?: number;
   error?: string;
+  code?: string;
 }
 
 export interface ParakeetTranscriptionResult {

@@ -1,5 +1,6 @@
 const fs = require("fs");
 const { promises: fsPromises } = require("fs");
+const path = require("path");
 const https = require("https");
 const http = require("http");
 const { pipeline } = require("stream");
@@ -11,6 +12,8 @@ const MAX_REDIRECTS = 5;
 const DEFAULT_TIMEOUT = 60000;
 const DEFAULT_MAX_RETRIES = 3;
 const MAX_BACKOFF_MS = 30000;
+const STALL_TIMEOUT_MS = 30000;
+const STALE_TMP_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 const RETRYABLE_CODES = new Set([
   "ECONNRESET",
@@ -20,6 +23,7 @@ const RETRYABLE_CODES = new Set([
   "ECONNREFUSED",
   "ENOTFOUND",
   "ERR_STREAM_PREMATURE_CLOSE",
+  "ERR_DOWNLOAD_INCOMPLETE",
 ]);
 
 function isRetryable(error) {
@@ -111,8 +115,13 @@ function downloadAttempt(url, tempPath, { timeout, onProgress, signal, startOffs
     let totalSize = 0;
     let lastProgressUpdate = 0;
     let request = null;
+    let stallTimer = null;
 
     const cleanup = () => {
+      if (stallTimer) {
+        clearTimeout(stallTimer);
+        stallTimer = null;
+      }
       if (request) {
         request.destroy();
         request = null;
@@ -165,16 +174,35 @@ function downloadAttempt(url, tempPath, { timeout, onProgress, signal, startOffs
         return;
       }
 
+      const resetStallTimer = () => {
+        if (stallTimer) clearTimeout(stallTimer);
+        stallTimer = setTimeout(() => {
+          cleanup();
+          reject(
+            Object.assign(new Error("Download stalled — no data received for 30s"), {
+              code: "ETIMEDOUT",
+            })
+          );
+        }, STALL_TIMEOUT_MS);
+      };
+
+      resetStallTimer();
+
       response.on("data", (chunk) => {
         if (signal?.aborted) {
           cleanup();
           return;
         }
         downloadedSize += chunk.length;
+        resetStallTimer();
         emitProgress();
       });
 
       pipeline(response, activeFile, (err) => {
+        if (stallTimer) {
+          clearTimeout(stallTimer);
+          stallTimer = null;
+        }
         if (signal) signal.onAbort = null;
         if (err) {
           if (signal?.aborted) {
@@ -182,6 +210,13 @@ function downloadAttempt(url, tempPath, { timeout, onProgress, signal, startOffs
           } else {
             reject(err);
           }
+        } else if (totalSize > 0 && downloadedSize < totalSize) {
+          reject(
+            Object.assign(
+              new Error(`Download incomplete: received ${downloadedSize} of ${totalSize} bytes`),
+              { code: "ERR_DOWNLOAD_INCOMPLETE" }
+            )
+          );
         } else {
           resolve({ downloadedSize, totalSize });
         }
@@ -316,4 +351,63 @@ function createDownloadSignal() {
   };
 }
 
-module.exports = { downloadFile, createDownloadSignal };
+async function validateFileSize(filePath, expectedSizeBytes, tolerancePercent = 10) {
+  const stats = await fsPromises.stat(filePath);
+  const minSize = expectedSizeBytes * (1 - tolerancePercent / 100);
+  if (stats.size < minSize) {
+    await fsPromises.unlink(filePath).catch(() => {});
+    throw Object.assign(
+      new Error(
+        `Download appears corrupted: file is ${Math.round(stats.size / 1_000_000)}MB, ` +
+          `expected at least ${Math.round(minSize / 1_000_000)}MB`
+      ),
+      { code: "ERR_FILE_TOO_SMALL" }
+    );
+  }
+  return stats.size;
+}
+
+async function cleanupStaleDownloads(directory) {
+  try {
+    const entries = await fsPromises.readdir(directory);
+    const now = Date.now();
+    for (const entry of entries) {
+      if (!entry.endsWith(".tmp") && !entry.startsWith("temp-extract-")) continue;
+      const fullPath = path.join(directory, entry);
+      try {
+        const stats = await fsPromises.stat(fullPath);
+        if (now - stats.mtimeMs > STALE_TMP_AGE_MS) {
+          if (stats.isDirectory()) {
+            await fsPromises.rm(fullPath, { recursive: true, force: true });
+          } else {
+            await fsPromises.unlink(fullPath);
+          }
+          debugLogger.info("Cleaned up stale download artifact", { path: fullPath });
+        }
+      } catch {
+        // Skip files we can't stat or delete
+      }
+    }
+  } catch {
+    // Directory may not exist yet
+  }
+}
+
+async function checkDiskSpace(directory, requiredBytes) {
+  try {
+    const stats = await fsPromises.statfs(directory);
+    const availableBytes = stats.bavail * stats.bsize;
+    return { ok: availableBytes >= requiredBytes, availableBytes };
+  } catch {
+    // statfs not supported or directory doesn't exist — skip check
+    return { ok: true, availableBytes: Infinity };
+  }
+}
+
+module.exports = {
+  downloadFile,
+  createDownloadSignal,
+  validateFileSize,
+  cleanupStaleDownloads,
+  checkDiskSpace,
+};
