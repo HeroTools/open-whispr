@@ -508,7 +508,9 @@ async function startApp() {
   if (process.platform === "darwin") {
     let globeKeyDownTime = 0;
     let globeKeyIsRecording = false;
-    const MIN_HOLD_DURATION_MS = 150; // Minimum hold time to trigger push-to-talk
+    let globeLastStopTime = 0;
+    const MIN_HOLD_DURATION_MS = 150;
+    const POST_STOP_COOLDOWN_MS = 300;
 
     globeKeyManager.on("globe-down", async () => {
       // Forward to control panel for hotkey capture
@@ -520,20 +522,21 @@ async function startApp() {
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (isLiveWindow(windowManager.mainWindow)) {
           const activationMode = await windowManager.getActivationMode();
-          windowManager.showDictationPanel();
           if (activationMode === "push") {
-            // Track when key was pressed for push-to-talk
-            globeKeyDownTime = Date.now();
+            const now = Date.now();
+            if (now - globeLastStopTime < POST_STOP_COOLDOWN_MS) return;
+            windowManager.showDictationPanel();
+            const pressTime = now;
+            globeKeyDownTime = pressTime;
             globeKeyIsRecording = false;
-            // Start recording after a brief delay to distinguish tap from hold
             setTimeout(async () => {
-              // Only start if key is still being held
-              if (globeKeyDownTime > 0 && !globeKeyIsRecording) {
+              if (globeKeyDownTime === pressTime && !globeKeyIsRecording) {
                 globeKeyIsRecording = true;
                 windowManager.sendStartDictation();
               }
             }, MIN_HOLD_DURATION_MS);
           } else {
+            windowManager.showDictationPanel();
             windowManager.mainWindow.webContents.send("toggle-dictation");
           }
         }
@@ -551,12 +554,11 @@ async function startApp() {
         const activationMode = await windowManager.getActivationMode();
         if (activationMode === "push") {
           globeKeyDownTime = 0;
-          // Only stop if we actually started recording
+          globeLastStopTime = Date.now();
           if (globeKeyIsRecording) {
             globeKeyIsRecording = false;
             windowManager.sendStopDictation();
           }
-          // If released too quickly, don't do anything (tap is ignored in push mode)
         }
       }
 
@@ -573,6 +575,7 @@ async function startApp() {
     // Right-side single modifier handling (e.g., RightOption as hotkey)
     let rightModDownTime = 0;
     let rightModIsRecording = false;
+    let rightModLastStopTime = 0;
 
     globeKeyManager.on("right-modifier-down", async (modifier) => {
       const currentHotkey = hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey();
@@ -580,17 +583,21 @@ async function startApp() {
       if (!isLiveWindow(windowManager.mainWindow)) return;
 
       const activationMode = await windowManager.getActivationMode();
-      windowManager.showDictationPanel();
       if (activationMode === "push") {
-        rightModDownTime = Date.now();
+        const now = Date.now();
+        if (now - rightModLastStopTime < POST_STOP_COOLDOWN_MS) return;
+        windowManager.showDictationPanel();
+        const pressTime = now;
+        rightModDownTime = pressTime;
         rightModIsRecording = false;
         setTimeout(() => {
-          if (rightModDownTime > 0 && !rightModIsRecording) {
+          if (rightModDownTime === pressTime && !rightModIsRecording) {
             rightModIsRecording = true;
             windowManager.sendStartDictation();
           }
         }, MIN_HOLD_DURATION_MS);
       } else {
+        windowManager.showDictationPanel();
         windowManager.mainWindow.webContents.send("toggle-dictation");
       }
     });
@@ -603,6 +610,7 @@ async function startApp() {
       const activationMode = await windowManager.getActivationMode();
       if (activationMode === "push") {
         rightModDownTime = 0;
+        rightModLastStopTime = Date.now();
         if (rightModIsRecording) {
           rightModIsRecording = false;
           windowManager.sendStopDictation();
@@ -618,8 +626,10 @@ async function startApp() {
     ipcMain.on("hotkey-changed", (_event, _newHotkey) => {
       globeKeyDownTime = 0;
       globeKeyIsRecording = false;
+      globeLastStopTime = 0;
       rightModDownTime = 0;
       rightModIsRecording = false;
+      rightModLastStopTime = 0;
     });
   }
 
