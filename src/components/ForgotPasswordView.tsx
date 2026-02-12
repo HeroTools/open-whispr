@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { requestPasswordReset, NEON_AUTH_URL, authClient } from "../lib/neonAuth";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -13,6 +14,7 @@ export default function ForgotPasswordView({
   email: initialEmail = "",
   onBack,
 }: ForgotPasswordViewProps) {
+  const { t } = useTranslation();
   const [email, setEmail] = useState(initialEmail);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +47,12 @@ export default function ForgotPasswordView({
       <div className="space-y-3">
         <div className="bg-warning/5 p-2.5 rounded border border-warning/20">
           <p className="text-[10px] text-warning text-center leading-snug">
-            Authentication isn't set up yet.
+            {t("forgotPassword.notConfigured")}
           </p>
         </div>
         <Button onClick={onBack} variant="outline" className="w-full h-9">
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span className="text-sm font-medium">Go Back</span>
+          <span className="text-sm font-medium">{t("forgotPassword.goBack")}</span>
         </Button>
       </div>
     );
@@ -64,17 +66,17 @@ export default function ForgotPasswordView({
             <Mail className="w-5 h-5 text-success" />
           </div>
           <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-            Check your email
+            {t("forgotPassword.success.title")}
           </p>
           <p className="text-muted-foreground text-sm mt-1.5 leading-snug">
-            We sent a password reset link to
+            {t("forgotPassword.success.description")}
           </p>
           <p className="text-foreground text-sm font-medium mt-0.5">{email}</p>
         </div>
 
         <div className="bg-muted/50 p-2.5 rounded border border-border/50">
           <p className="text-[10px] text-muted-foreground text-center leading-snug">
-            Didn't receive the email? Check your spam folder or try again.
+            {t("forgotPassword.success.help")}
           </p>
         </div>
 
@@ -87,11 +89,11 @@ export default function ForgotPasswordView({
             variant="outline"
             className="w-full h-9"
           >
-            <span className="text-sm font-medium">Try another email</span>
+            <span className="text-sm font-medium">{t("forgotPassword.success.tryAnother")}</span>
           </Button>
           <Button onClick={onBack} variant="ghost" className="w-full h-9">
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="text-sm font-medium">Back to sign in</span>
+            <span className="text-sm font-medium">{t("forgotPassword.backToSignIn")}</span>
           </Button>
         </div>
       </div>
@@ -106,22 +108,22 @@ export default function ForgotPasswordView({
         className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
       >
         <ArrowLeft className="w-3 h-3" />
-        Back
+        {t("forgotPassword.back")}
       </button>
 
       <div className="text-center mb-4">
         <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-          Reset your password
+          {t("forgotPassword.title")}
         </p>
         <p className="text-muted-foreground text-sm mt-1 leading-tight">
-          Enter your email and we'll send you a reset link
+          {t("forgotPassword.subtitle")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-2">
         <Input
           type="email"
-          placeholder="Enter your email"
+          placeholder={t("forgotPassword.emailPlaceholder")}
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="h-9 text-sm"
@@ -141,10 +143,10 @@ export default function ForgotPasswordView({
           {isSubmitting ? (
             <>
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span className="text-sm font-medium">Sending...</span>
+              <span className="text-sm font-medium">{t("forgotPassword.sending")}</span>
             </>
           ) : (
-            <span className="text-sm font-medium">Send Reset Link</span>
+            <span className="text-sm font-medium">{t("forgotPassword.sendResetLink")}</span>
           )}
         </Button>
       </form>

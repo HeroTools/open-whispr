@@ -1,4 +1,5 @@
 import { MousePointerClick, MicVocal } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 type ActivationMode = "tap" | "push";
 
@@ -16,6 +17,7 @@ export function ActivationModeSelector({
   disabled = false,
   variant = "default",
 }: ActivationModeSelectorProps) {
+  const { t } = useTranslation();
   const isCompact = variant === "compact";
 
   return (
@@ -50,7 +52,9 @@ export function ActivationModeSelector({
         `}
       >
         <MousePointerClick className={isCompact ? "w-3.5 h-3.5" : "w-4 h-4"} />
-        <span className={`font-medium ${isCompact ? "text-xs" : "text-sm"}`}>Tap</span>
+        <span className={`font-medium ${isCompact ? "text-xs" : "text-sm"}`}>
+          {t("common.tap")}
+        </span>
       </button>
 
       <button
@@ -66,7 +70,9 @@ export function ActivationModeSelector({
         `}
       >
         <MicVocal className={isCompact ? "w-3.5 h-3.5" : "w-4 h-4"} />
-        <span className={`font-medium ${isCompact ? "text-xs" : "text-sm"}`}>Hold</span>
+        <span className={`font-medium ${isCompact ? "text-xs" : "text-sm"}`}>
+          {t("common.hold")}
+        </span>
       </button>
     </div>
   );

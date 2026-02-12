@@ -1,4 +1,5 @@
 import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import {
   Trash2,
@@ -37,6 +38,7 @@ import { formatHotkeyLabel } from "../utils/hotkeys";
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
 
 export default function ControlPanel() {
+  const { t } = useTranslation();
   const history = useTranscriptions();
   const [isLoading, setIsLoading] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
@@ -81,22 +83,22 @@ export default function ControlPanel() {
   useEffect(() => {
     if (updateStatus.updateDownloaded && !isDownloading) {
       toast({
-        title: "Update ready to install",
-        description: "Click 'Install Update' to restart with the latest version.",
+        title: t("controlPanel.update.readyTitle"),
+        description: t("controlPanel.update.readyDescription"),
         variant: "success",
       });
     }
-  }, [updateStatus.updateDownloaded, isDownloading, toast]);
+  }, [updateStatus.updateDownloaded, isDownloading, toast, t]);
 
   useEffect(() => {
     if (updateError) {
       toast({
-        title: "Update ran into a problem",
-        description: "We couldn't complete the update. Please try again later.",
+        title: t("controlPanel.update.problemTitle"),
+        description: t("controlPanel.update.problemDescription"),
         variant: "destructive",
       });
     }
-  }, [updateError, toast]);
+  }, [updateError, toast, t]);
 
   useEffect(() => {
     const dispose = window.electronAPI?.onLimitReached?.(
@@ -107,9 +109,8 @@ export default function ControlPanel() {
           setShowUpgradePrompt(true);
         } else {
           toast({
-            title: "Weekly limit reached",
-            description:
-              "Your limit resets on a rolling basis. Upgrade to Pro or use your own API key for unlimited use.",
+            title: t("controlPanel.limit.weeklyTitle"),
+            description: t("controlPanel.limit.weeklyDescription"),
             duration: 5000,
           });
         }
@@ -119,20 +120,19 @@ export default function ControlPanel() {
     return () => {
       dispose?.();
     };
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     if (!usage?.isPastDue || !usage.hasLoaded) return;
     if (sessionStorage.getItem("pastDueNotified")) return;
     sessionStorage.setItem("pastDueNotified", "true");
     toast({
-      title: "We couldn't process your payment",
-      description:
-        "Don't worry — you're on the free plan for now. Update your payment in Settings to get back to Pro.",
+      title: t("controlPanel.billing.pastDueTitle"),
+      description: t("controlPanel.billing.pastDueDescription"),
       variant: "destructive",
       duration: 8000,
     });
-  }, [usage?.isPastDue, usage?.hasLoaded, toast]);
+  }, [usage?.isPastDue, usage?.hasLoaded, toast, t]);
 
   useEffect(() => {
     if (!authLoaded || !isSignedIn || cloudMigrationProcessed.current) return;
@@ -153,9 +153,8 @@ export default function ControlPanel() {
       await initializeTranscriptions();
     } catch (error) {
       showAlertDialog({
-        title: "Couldn't load your history",
-        description:
-          "Something went wrong loading your transcriptions. Try closing and reopening the app.",
+        title: t("controlPanel.history.couldNotLoadTitle"),
+        description: t("controlPanel.history.couldNotLoadDescription"),
       });
     } finally {
       setIsLoading(false);
@@ -167,53 +166,55 @@ export default function ControlPanel() {
       try {
         await navigator.clipboard.writeText(text);
         toast({
-          title: "Copied!",
-          description: "Text copied to your clipboard",
+          title: t("controlPanel.history.copiedTitle"),
+          description: t("controlPanel.history.copiedDescription"),
           variant: "success",
           duration: 2000,
         });
       } catch (err) {
         toast({
-          title: "Couldn't copy",
-          description: "Something went wrong copying to your clipboard. Try again.",
+          title: t("controlPanel.history.couldNotCopyTitle"),
+          description: t("controlPanel.history.couldNotCopyDescription"),
           variant: "destructive",
         });
       }
     },
-    [toast]
+    [toast, t]
   );
 
   const clearHistory = useCallback(async () => {
     showConfirmDialog({
-      title: "Clear History",
-      description: "This will remove all your transcriptions. You can't undo this.",
+      title: t("controlPanel.history.clearTitle"),
+      description: t("controlPanel.history.clearDescription"),
       onConfirm: async () => {
         try {
           const result = await window.electronAPI.clearTranscriptions();
           clearStoreTranscriptions();
           toast({
-            title: "History cleared",
-            description: `${result.cleared} transcription${result.cleared !== 1 ? "s" : ""} removed`,
+            title: t("controlPanel.history.clearedTitle"),
+            description: t("controlPanel.history.clearedDescription", {
+              count: result.cleared,
+            }),
             variant: "success",
             duration: 3000,
           });
         } catch (error) {
           toast({
-            title: "Couldn't clear history",
-            description: "Something went wrong. Please try again.",
+            title: t("controlPanel.history.couldNotClearTitle"),
+            description: t("controlPanel.history.couldNotClearDescription"),
             variant: "destructive",
           });
         }
       },
       variant: "destructive",
     });
-  }, [showConfirmDialog, toast]);
+  }, [showConfirmDialog, toast, t]);
 
   const deleteTranscription = useCallback(
     async (id: number) => {
       showConfirmDialog({
-        title: "Delete Transcription",
-        description: "This transcription will be permanently removed.",
+        title: t("controlPanel.history.deleteTitle"),
+        description: t("controlPanel.history.deleteDescription"),
         onConfirm: async () => {
           try {
             const result = await window.electronAPI.deleteTranscription(id);
@@ -221,36 +222,35 @@ export default function ControlPanel() {
               removeFromStore(id);
             } else {
               showAlertDialog({
-                title: "Couldn't delete",
-                description: "This transcription may have already been removed.",
+                title: t("controlPanel.history.couldNotDeleteTitle"),
+                description: t("controlPanel.history.couldNotDeleteDescription"),
               });
             }
           } catch (error) {
             showAlertDialog({
-              title: "Couldn't delete",
-              description: "Something went wrong. Please try again.",
+              title: t("controlPanel.history.couldNotDeleteTitle"),
+              description: t("controlPanel.history.couldNotDeleteDescriptionGeneric"),
             });
           }
         },
         variant: "destructive",
       });
     },
-    [showConfirmDialog, showAlertDialog]
+    [showConfirmDialog, showAlertDialog, t]
   );
 
   const handleUpdateClick = async () => {
     if (updateStatus.updateDownloaded) {
       showConfirmDialog({
-        title: "Install Update",
-        description:
-          "OpenWhispr will restart to apply the update. Any in-progress work will be saved.",
+        title: t("controlPanel.update.installTitle"),
+        description: t("controlPanel.update.installDescription"),
         onConfirm: async () => {
           try {
             await installUpdate();
           } catch (error) {
             toast({
-              title: "Couldn't install update",
-              description: "Something went wrong. Please try again.",
+              title: t("controlPanel.update.couldNotInstallTitle"),
+              description: t("controlPanel.update.couldNotInstallDescription"),
               variant: "destructive",
             });
           }
@@ -261,8 +261,8 @@ export default function ControlPanel() {
         await downloadUpdate();
       } catch (error) {
         toast({
-          title: "Couldn't download update",
-          description: "Check your internet connection and try again.",
+          title: t("controlPanel.update.couldNotDownloadTitle"),
+          description: t("controlPanel.update.couldNotDownloadDescription"),
           variant: "destructive",
         });
       }
@@ -274,7 +274,7 @@ export default function ControlPanel() {
       return (
         <>
           <Loader2 size={14} className="animate-spin" />
-          <span>Installing...</span>
+          <span>{t("controlPanel.update.installing")}</span>
         </>
       );
     }
@@ -290,7 +290,7 @@ export default function ControlPanel() {
       return (
         <>
           <RefreshCw size={14} />
-          <span>Install Update</span>
+          <span>{t("controlPanel.update.installButton")}</span>
         </>
       );
     }
@@ -298,7 +298,7 @@ export default function ControlPanel() {
       return (
         <>
           <Download size={14} />
-          <span>Update Available</span>
+          <span>{t("controlPanel.update.availableButton")}</span>
         </>
       );
     }
@@ -388,11 +388,12 @@ export default function ControlPanel() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200 mb-0.5">
-                    We couldn't process your payment
+                    {t("controlPanel.billing.pastDueTitle")}
                   </p>
                   <p className="text-[12px] text-amber-700 dark:text-amber-300/80 mb-2">
-                    You're on the free plan for now — you still get {usage.limit.toLocaleString()}{" "}
-                    words per week. Update your payment to get back to Pro.
+                    {t("controlPanel.billing.bannerDescription", {
+                      limit: usage.limit.toLocaleString(),
+                    })}
                   </p>
                   <Button
                     variant="default"
@@ -403,7 +404,7 @@ export default function ControlPanel() {
                       setShowSettings(true);
                     }}
                   >
-                    Update Payment
+                    {t("controlPanel.billing.updatePayment")}
                   </Button>
                 </div>
               </div>
@@ -413,7 +414,9 @@ export default function ControlPanel() {
           <div className="flex items-center justify-between mb-3 px-1">
             <div className="flex items-center gap-2">
               <FileText size={14} className="text-primary" />
-              <h2 className="text-sm font-semibold text-foreground">Transcriptions</h2>
+              <h2 className="text-sm font-semibold text-foreground">
+                {t("controlPanel.history.title")}
+              </h2>
               {history.length > 0 && (
                 <span className="text-[11px] text-muted-foreground tabular-nums">
                   ({history.length})
@@ -428,7 +431,7 @@ export default function ControlPanel() {
                 className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
               >
                 <Trash2 size={12} className="mr-1" />
-                Clear
+                {t("controlPanel.history.clear")}
               </Button>
             )}
           </div>
@@ -450,12 +453,10 @@ export default function ControlPanel() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-foreground mb-0.5">
-                    Welcome to OpenWhispr Pro
+                    {t("controlPanel.cloudMigration.title")}
                   </p>
                   <p className="text-[12px] text-muted-foreground mb-2">
-                    Your 7-day free trial is active! We've switched your transcription to OpenWhispr
-                    Cloud for faster, more accurate results. Your previous settings are saved —
-                    switch back anytime in Settings.
+                    {t("controlPanel.cloudMigration.description")}
                   </p>
                   <Button
                     variant="default"
@@ -468,7 +469,7 @@ export default function ControlPanel() {
                       setShowSettings(true);
                     }}
                   >
-                    View Settings
+                    {t("controlPanel.cloudMigration.viewSettings")}
                   </Button>
                 </div>
               </div>
@@ -492,10 +493,10 @@ export default function ControlPanel() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-[13px] font-medium text-foreground mb-0.5">
-                    Enhance your transcriptions with AI
+                    {t("controlPanel.aiCta.title")}
                   </p>
                   <p className="text-[12px] text-muted-foreground mb-2">
-                    Automatically fix grammar, punctuation, and formatting as you speak.
+                    {t("controlPanel.aiCta.description")}
                   </p>
                   <Button
                     variant="default"
@@ -506,7 +507,7 @@ export default function ControlPanel() {
                       setShowSettings(true);
                     }}
                   >
-                    Enable AI Enhancement
+                    {t("controlPanel.aiCta.enable")}
                   </Button>
                 </div>
               </div>
@@ -517,20 +518,22 @@ export default function ControlPanel() {
             {isLoading ? (
               <div className="flex items-center justify-center gap-2 py-8">
                 <Loader2 size={14} className="animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Loading…</span>
+                <span className="text-sm text-muted-foreground">{t("controlPanel.loading")}</span>
               </div>
             ) : history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 px-4">
                 <div className="w-10 h-10 rounded-md bg-muted/50 dark:bg-white/4 flex items-center justify-center mb-3">
                   <Mic size={18} className="text-muted-foreground" />
                 </div>
-                <p className="text-sm text-muted-foreground mb-3">No transcriptions yet</p>
+                <p className="text-sm text-muted-foreground mb-3">
+                  {t("controlPanel.history.empty")}
+                </p>
                 <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
-                  <span>Press</span>
+                  <span>{t("controlPanel.history.press")}</span>
                   <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border text-[11px] font-mono font-medium">
                     {formatHotkeyLabel(hotkey)}
                   </kbd>
-                  <span>to start</span>
+                  <span>{t("controlPanel.history.toStart")}</span>
                 </div>
               </div>
             ) : (

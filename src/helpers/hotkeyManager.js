@@ -1,6 +1,7 @@
 const { globalShortcut } = require("electron");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
+const { i18nMain } = require("./i18nMain");
 
 // Delay to ensure localStorage is accessible after window load
 const HOTKEY_REGISTRATION_DELAY_MS = 1000;
@@ -64,7 +65,7 @@ class HotkeyManager {
     if (globalShortcut.isRegistered(hotkey)) {
       return {
         reason: "already_registered",
-        message: `"${hotkey}" is already registered by another application.`,
+        message: i18nMain.t("hotkey.errors.alreadyRegistered", { hotkey }),
         suggestions: this.getSuggestions(hotkey),
       };
     }
@@ -74,7 +75,7 @@ class HotkeyManager {
       if (hotkey.includes("Super") || hotkey.includes("Meta")) {
         return {
           reason: "os_reserved",
-          message: `"${hotkey}" may be reserved by your desktop environment.`,
+          message: i18nMain.t("hotkey.errors.osReserved", { hotkey }),
           suggestions: this.getSuggestions(hotkey),
         };
       }
@@ -82,7 +83,7 @@ class HotkeyManager {
 
     return {
       reason: "registration_failed",
-      message: `Could not register "${hotkey}". It may be in use by another application.`,
+      message: i18nMain.t("hotkey.errors.registrationFailed", { hotkey }),
       suggestions: this.getSuggestions(hotkey),
     };
   }
@@ -104,7 +105,7 @@ class HotkeyManager {
 
   setupShortcuts(hotkey = "Control+Super", callback) {
     if (!callback) {
-      throw new Error("Callback function is required for hotkey setup");
+      throw new Error(i18nMain.t("hotkey.errors.callbackRequired"));
     }
 
     debugLogger.log(`[HotkeyManager] Setting up hotkey: "${hotkey}"`);
@@ -156,7 +157,7 @@ class HotkeyManager {
           debugLogger.log("[HotkeyManager] GLOBE key rejected - not on macOS");
           return {
             success: false,
-            error: "The Globe key is only available on macOS.",
+            error: i18nMain.t("hotkey.errors.globeOnlyMac"),
           };
         }
         this.currentHotkey = hotkey;
@@ -211,7 +212,9 @@ class HotkeyManager {
 
         let errorMessage = failureInfo.message;
         if (failureInfo.suggestions.length > 0) {
-          errorMessage += ` Try: ${failureInfo.suggestions.join(", ")}`;
+          errorMessage += ` ${i18nMain.t("hotkey.errors.trySuggestions", {
+            suggestions: failureInfo.suggestions.join(", "),
+          })}`;
         }
 
         return {

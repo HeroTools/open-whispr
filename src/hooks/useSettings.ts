@@ -4,6 +4,7 @@ import { useDebouncedCallback } from "./useDebouncedCallback";
 import { API_ENDPOINTS } from "../config/constants";
 import logger from "../utils/logger";
 import { ensureAgentNameInDictionary } from "../utils/agentName";
+import i18n, { normalizeUiLanguage } from "../i18n";
 import { hasStoredByokKey } from "../utils/byokDetection";
 import type { LocalTranscriptionProvider } from "../types/electron";
 
@@ -16,6 +17,7 @@ function getReasoningService() {
 }
 
 export interface TranscriptionSettings {
+  uiLanguage: string;
   useLocalWhisper: boolean;
   whisperModel: string;
   localTranscriptionProvider: LocalTranscriptionProvider;
@@ -69,7 +71,20 @@ export interface ThemeSettings {
   theme: "light" | "dark" | "auto";
 }
 
+const LANGUAGE_MIGRATIONS: Record<string, string> = { zh: "zh-CN" };
+let _migrated = false;
+function migratePreferredLanguage() {
+  if (_migrated) return;
+  _migrated = true;
+  const stored = localStorage.getItem("preferredLanguage");
+  if (stored && LANGUAGE_MIGRATIONS[stored]) {
+    localStorage.setItem("preferredLanguage", LANGUAGE_MIGRATIONS[stored]);
+  }
+}
+
 function useSettingsInternal() {
+  migratePreferredLanguage();
+
   const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
     serialize: String,
     deserialize: (value) => value === "true",
@@ -118,6 +133,70 @@ function useSettingsInternal() {
     serialize: String,
     deserialize: String,
   });
+
+  const [uiLanguage, setUiLanguageLocal] = useLocalStorage("uiLanguage", "en", {
+    serialize: String,
+    deserialize: (value) => normalizeUiLanguage(value),
+  });
+
+  const setUiLanguage = useCallback(
+    (language: string) => {
+      setUiLanguageLocal(normalizeUiLanguage(language));
+    },
+    [setUiLanguageLocal]
+  );
+
+  const hasRunUiLanguageSync = useRef(false);
+  const uiLanguageSyncReady = useRef(false);
+
+  useEffect(() => {
+    if (hasRunUiLanguageSync.current) return;
+    hasRunUiLanguageSync.current = true;
+
+    const sync = async () => {
+      let resolved = normalizeUiLanguage(uiLanguage);
+
+      if (typeof window !== "undefined" && window.electronAPI?.getUiLanguage) {
+        const envLanguage = await window.electronAPI.getUiLanguage();
+        resolved = normalizeUiLanguage(envLanguage || resolved);
+      }
+
+      if (resolved !== uiLanguage) {
+        setUiLanguageLocal(resolved);
+      }
+
+      await i18n.changeLanguage(resolved);
+      uiLanguageSyncReady.current = true;
+    };
+
+    sync().catch((err) => {
+      logger.warn(
+        "Failed to sync UI language on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
+      uiLanguageSyncReady.current = true;
+      void i18n.changeLanguage(normalizeUiLanguage(uiLanguage));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!uiLanguageSyncReady.current) return;
+
+    const normalized = normalizeUiLanguage(uiLanguage);
+    void i18n.changeLanguage(normalized);
+
+    if (typeof window !== "undefined" && window.electronAPI?.setUiLanguage) {
+      window.electronAPI.setUiLanguage(normalized).catch((err) => {
+        logger.warn(
+          "Failed to sync UI language to main process",
+          { error: (err as Error).message },
+          "settings"
+        );
+      });
+    }
+  }, [uiLanguage]);
 
   const [cloudTranscriptionProvider, setCloudTranscriptionProvider] = useLocalStorage(
     "cloudTranscriptionProvider",
@@ -605,6 +684,7 @@ function useSettingsInternal() {
   const updateTranscriptionSettings = useCallback(
     (settings: Partial<TranscriptionSettings>) => {
       if (settings.useLocalWhisper !== undefined) setUseLocalWhisper(settings.useLocalWhisper);
+      if (settings.uiLanguage !== undefined) setUiLanguage(settings.uiLanguage);
       if (settings.whisperModel !== undefined) setWhisperModel(settings.whisperModel);
       if (settings.localTranscriptionProvider !== undefined)
         setLocalTranscriptionProvider(settings.localTranscriptionProvider);
@@ -627,6 +707,7 @@ function useSettingsInternal() {
     },
     [
       setUseLocalWhisper,
+      setUiLanguage,
       setWhisperModel,
       setLocalTranscriptionProvider,
       setParakeetModel,
@@ -676,6 +757,7 @@ function useSettingsInternal() {
   return {
     useLocalWhisper,
     whisperModel,
+    uiLanguage,
     localTranscriptionProvider,
     parakeetModel,
     allowOpenAIFallback,
@@ -703,6 +785,7 @@ function useSettingsInternal() {
     theme,
     setUseLocalWhisper,
     setWhisperModel,
+    setUiLanguage,
     setLocalTranscriptionProvider,
     setParakeetModel,
     setAllowOpenAIFallback,
