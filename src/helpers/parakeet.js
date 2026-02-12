@@ -299,6 +299,7 @@ class ParakeetManager {
         await downloadFile(modelConfig.url, archivePath, {
           timeout: 600000,
           signal,
+          expectedSize: modelConfig.size,
           onProgress: (downloadedBytes, totalBytes) => {
             if (progressCallback) {
               progressCallback({
@@ -411,9 +412,15 @@ class ParakeetManager {
         }
       }
 
-      const encoderPath = path.join(targetDir, "encoder.int8.onnx");
-      if (!fs.existsSync(encoderPath)) {
-        throw new Error("Extracted model is missing required files (encoder.int8.onnx)");
+      const requiredFiles = [
+        "encoder.int8.onnx",
+        "decoder.int8.onnx",
+        "joiner.int8.onnx",
+        "tokens.txt",
+      ];
+      const missing = requiredFiles.filter((f) => !fs.existsSync(path.join(targetDir, f)));
+      if (missing.length > 0) {
+        throw new Error(`Extracted model is missing required files: ${missing.join(", ")}`);
       }
 
       await fsPromises.rm(extractDir, { recursive: true, force: true });

@@ -421,6 +421,16 @@ a:hover {
   }
 }
 
+/* Indeterminate progress bar sweep */
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
