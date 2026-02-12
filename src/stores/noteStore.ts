@@ -6,6 +6,7 @@ type Listener = () => void;
 const listeners = new Set<Listener>();
 let notes: NoteItem[] = [];
 let activeNoteId: number | null = null;
+let activeFolderId: number | null = null;
 let hasBoundIpcListeners = false;
 const DEFAULT_LIMIT = 50;
 let currentLimit = DEFAULT_LIMIT;
@@ -21,6 +22,7 @@ const subscribe = (listener: Listener) => {
 
 const getNotesSnapshot = () => notes;
 const getActiveNoteIdSnapshot = () => activeNoteId;
+const getActiveFolderIdSnapshot = () => activeFolderId;
 
 function ensureIpcListeners() {
   if (hasBoundIpcListeners || typeof window === "undefined") {
@@ -69,11 +71,12 @@ function ensureIpcListeners() {
 
 export async function initializeNotes(
   noteType?: string | null,
-  limit = DEFAULT_LIMIT
+  limit = DEFAULT_LIMIT,
+  folderId?: number | null
 ): Promise<NoteItem[]> {
   currentLimit = limit;
   ensureIpcListeners();
-  const items = await window.electronAPI.getNotes(noteType, limit);
+  const items = await window.electronAPI.getNotes(noteType, limit, folderId);
   notes = items;
   emit();
   return items;
@@ -81,6 +84,7 @@ export async function initializeNotes(
 
 export function addNote(note: NoteItem): void {
   if (!note) return;
+  if (activeFolderId && note.folder_id !== activeFolderId) return;
   const withoutDuplicate = notes.filter((existing) => existing.id !== note.id);
   notes = [note, ...withoutDuplicate].slice(0, currentLimit);
   emit();
@@ -106,10 +110,24 @@ export function setActiveNoteId(id: number | null): void {
   emit();
 }
 
+export function setActiveFolderId(id: number | null): void {
+  if (activeFolderId === id) return;
+  activeFolderId = id;
+  emit();
+}
+
+export function getActiveFolderIdValue(): number | null {
+  return activeFolderId;
+}
+
 export function useNotes(): NoteItem[] {
   return useSyncExternalStore(subscribe, getNotesSnapshot, getNotesSnapshot);
 }
 
 export function useActiveNoteId(): number | null {
   return useSyncExternalStore(subscribe, getActiveNoteIdSnapshot, getActiveNoteIdSnapshot);
+}
+
+export function useActiveFolderId(): number | null {
+  return useSyncExternalStore(subscribe, getActiveFolderIdSnapshot, getActiveFolderIdSnapshot);
 }

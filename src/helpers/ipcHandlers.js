@@ -244,13 +244,14 @@ class IPCHandlers {
     // Note handlers
     ipcMain.handle(
       "db-save-note",
-      async (event, title, content, noteType, sourceFile, audioDuration) => {
+      async (event, title, content, noteType, sourceFile, audioDuration, folderId) => {
         const result = this.databaseManager.saveNote(
           title,
           content,
           noteType,
           sourceFile,
-          audioDuration
+          audioDuration,
+          folderId
         );
         if (result?.success && result?.note) {
           setImmediate(() => {
@@ -265,8 +266,8 @@ class IPCHandlers {
       return this.databaseManager.getNote(id);
     });
 
-    ipcMain.handle("db-get-notes", async (event, noteType, limit) => {
-      return this.databaseManager.getNotes(noteType, limit);
+    ipcMain.handle("db-get-notes", async (event, noteType, limit, folderId) => {
+      return this.databaseManager.getNotes(noteType, limit, folderId);
     });
 
     ipcMain.handle("db-update-note", async (event, id, updates) => {
@@ -287,6 +288,45 @@ class IPCHandlers {
         });
       }
       return result;
+    });
+
+    // Folder handlers
+    ipcMain.handle("db-get-folders", async () => {
+      return this.databaseManager.getFolders();
+    });
+
+    ipcMain.handle("db-create-folder", async (event, name) => {
+      const result = this.databaseManager.createFolder(name);
+      if (result?.success && result?.folder) {
+        setImmediate(() => {
+          this.broadcastToWindows("folder-created", result.folder);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-folder", async (event, id) => {
+      const result = this.databaseManager.deleteFolder(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("folder-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-rename-folder", async (event, id, name) => {
+      const result = this.databaseManager.renameFolder(id, name);
+      if (result?.success && result?.folder) {
+        setImmediate(() => {
+          this.broadcastToWindows("folder-renamed", result.folder);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-get-folder-note-counts", async () => {
+      return this.databaseManager.getFolderNoteCounts();
     });
 
     ipcMain.handle("export-note", async (event, noteId, format) => {

@@ -1,12 +1,22 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
-import { Upload, FileAudio, X, AlertCircle, Cloud, ChevronRight, Key } from "lucide-react";
+import { Upload, FileAudio, X, AlertCircle, Cloud, ChevronRight, Key, FolderOpen, Plus } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../lib/utils";
+import {
+  Select, SelectContent, SelectItem, SelectSeparator,
+  SelectTrigger, SelectValue,
+} from "../ui/select";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from "../ui/dialog";
+import { Input } from "../ui/input";
+import type { FolderItem } from "../../types/electron";
 import { useAuth } from "../../hooks/useAuth";
 import { useUsage } from "../../hooks/useUsage";
 import { useSettings } from "../../hooks/useSettings";
 import { withSessionRefresh } from "../../lib/neonAuth";
 import reasoningService from "../../services/ReasoningService";
+import { getAllReasoningModels } from "../../models/ModelRegistry";
 
 const TranscriptionModelPicker = React.lazy(() => import("../TranscriptionModelPicker"));
 
@@ -36,6 +46,11 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
   const [isDragOver, setIsDragOver] = useState(false);
   const [progress, setProgress] = useState(0);
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [folders, setFolders] = useState<FolderItem[]>([]);
+  const [selectedFolderId, setSelectedFolderId] = useState<string>("");
+  const [showNewFolderDialog, setShowNewFolderDialog] = useState(false);
+  const [newFolderName, setNewFolderName] = useState("");
 
   const [setupDismissed, setSetupDismissed] = useState(
     () => localStorage.getItem("uploadSetupComplete") === "true"
@@ -74,6 +89,14 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
     };
   }, []);
 
+  useEffect(() => {
+    window.electronAPI.getFolders?.().then((f) => {
+      setFolders(f);
+      const personal = f.find((x) => x.name === "Personal" && x.is_default);
+      if (personal) setSelectedFolderId(String(personal.id));
+    });
+  }, []);
+
   const getActiveModelLabel = (): string => {
     if (isOpenWhisprCloud) return "OpenWhispr Cloud";
     if (useLocalWhisper) {
@@ -97,10 +120,12 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
   };
 
   const generateTitle = async (text: string): Promise<string> => {
-    if (!useReasoningModel || !reasoningModel) return "";
+    if (!useReasoningModel) return "";
+    const model = reasoningModel || getAllReasoningModels()[0]?.value;
+    if (!model) return "";
     try {
       const title = await reasoningService.processText(
-        text.slice(0, 2000), reasoningModel, null,
+        text.slice(0, 2000), model, null,
         { systemPrompt: TITLE_SYSTEM_PROMPT, temperature: 0.3 }
       );
       const cleaned = title.trim().replace(/^["']|["']$/g, "");
@@ -141,6 +166,8 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
     setNoteId(null);
     setError(null);
     setProgress(0);
+    const personal = folders.find((f) => f.name === "Personal" && f.is_default);
+    if (personal) setSelectedFolderId(String(personal.id));
   };
 
   const handleTranscribe = async () => {
@@ -193,7 +220,8 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
         const aiTitle = await generateTitle(res.text);
         const title = aiTitle || fallbackTitle;
 
-        const noteRes = await window.electronAPI.saveNote(title, res.text, "upload", file.name, null);
+        const folderId = selectedFolderId ? Number(selectedFolderId) : null;
+        const noteRes = await window.electronAPI.saveNote(title, res.text, "upload", file.name, null, folderId);
         if (noteRes.success && noteRes.note) setNoteId(noteRes.note.id);
         setState("complete");
       } else {
@@ -212,6 +240,33 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
   const dismissSetup = () => {
     localStorage.setItem("uploadSetupComplete", "true");
     setSetupDismissed(true);
+  };
+
+  const handleCreateFolder = async () => {
+    const trimmed = newFolderName.trim();
+    if (!trimmed) return;
+    const res = await window.electronAPI.createFolder(trimmed);
+    if (res.success && res.folder) {
+      setFolders((prev) => [...prev, res.folder!]);
+      const newId = String(res.folder.id);
+      setSelectedFolderId(newId);
+      if (noteId != null) {
+        window.electronAPI.updateNote(noteId, { folder_id: res.folder.id });
+      }
+    }
+    setNewFolderName("");
+    setShowNewFolderDialog(false);
+  };
+
+  const handleFolderChange = (val: string) => {
+    if (val === "__create_new__") {
+      setShowNewFolderDialog(true);
+      return;
+    }
+    setSelectedFolderId(val);
+    if (noteId != null) {
+      window.electronAPI.updateNote(noteId, { folder_id: Number(val) });
+    }
   };
 
   const getTranscribingLabel = (): string => {
@@ -481,6 +536,49 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                 {result.slice(0, 150)}
               </p>
 
+              {folders.length > 0 && (
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  <FolderOpen size={12} className="text-foreground/20 shrink-0" />
+                  <Select value={selectedFolderId} onValueChange={handleFolderChange}>
+                    <SelectTrigger className="h-7 w-44 text-[11px] rounded-lg px-2.5 [&>svg]:h-3 [&>svg]:w-3">
+                      <SelectValue placeholder="Select folder" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {folders.map((f) => {
+                        const isMeetings = f.name === "Meetings" && !!f.is_default;
+                        return (
+                          <SelectItem
+                            key={f.id}
+                            value={String(f.id)}
+                            disabled={isMeetings}
+                            className="text-[11px] py-1.5 pl-2.5 pr-7 rounded-md"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              {f.name}
+                              {isMeetings && (
+                                <span className="text-[8px] uppercase tracking-wider text-foreground/25 font-medium">
+                                  Soon
+                                </span>
+                              )}
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
+                      <SelectSeparator />
+                      <SelectItem
+                        value="__create_new__"
+                        className="text-[11px] py-1.5 pl-2.5 pr-7 rounded-md"
+                      >
+                        <span className="flex items-center gap-1.5 text-primary/60">
+                          <Plus size={11} />
+                          New Folder
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="flex items-center gap-2">
                 {noteId != null && onNoteCreated && (
                   <Button variant="default" size="sm" onClick={() => onNoteCreated(noteId)} className="h-8 text-[11px]">
@@ -540,6 +638,43 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
           </div>
         )}
       </div>
+
+      <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
+        <DialogContent className="sm:max-w-[320px] p-5 gap-3">
+          <DialogHeader>
+            <DialogTitle className="text-[14px]">New Folder</DialogTitle>
+          </DialogHeader>
+          <Input
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            placeholder="Folder name"
+            className="h-8 text-[12px]"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleCreateFolder();
+            }}
+          />
+          <DialogFooter className="gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setShowNewFolderDialog(false); setNewFolderName(""); }}
+              className="h-7 text-[11px]"
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={handleCreateFolder}
+              disabled={!newFolderName.trim()}
+              className="h-7 text-[11px]"
+            >
+              Create
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

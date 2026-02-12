@@ -52,13 +52,20 @@ contextBridge.exposeInMainWorld("electronAPI", {
   setDictionary: (words) => ipcRenderer.invoke("db-set-dictionary", words),
 
   // Note functions
-  saveNote: (title, content, noteType, sourceFile, audioDuration) =>
-    ipcRenderer.invoke("db-save-note", title, content, noteType, sourceFile, audioDuration),
+  saveNote: (title, content, noteType, sourceFile, audioDuration, folderId) =>
+    ipcRenderer.invoke("db-save-note", title, content, noteType, sourceFile, audioDuration, folderId),
   getNote: (id) => ipcRenderer.invoke("db-get-note", id),
-  getNotes: (noteType, limit) => ipcRenderer.invoke("db-get-notes", noteType, limit),
+  getNotes: (noteType, limit, folderId) => ipcRenderer.invoke("db-get-notes", noteType, limit, folderId),
   updateNote: (id, updates) => ipcRenderer.invoke("db-update-note", id, updates),
   deleteNote: (id) => ipcRenderer.invoke("db-delete-note", id),
   exportNote: (noteId, format) => ipcRenderer.invoke("export-note", noteId, format),
+
+  // Folder functions
+  getFolders: () => ipcRenderer.invoke("db-get-folders"),
+  createFolder: (name) => ipcRenderer.invoke("db-create-folder", name),
+  deleteFolder: (id) => ipcRenderer.invoke("db-delete-folder", id),
+  renameFolder: (id, name) => ipcRenderer.invoke("db-rename-folder", id, name),
+  getFolderNoteCounts: () => ipcRenderer.invoke("db-get-folder-note-counts"),
 
   // Audio file operations
   selectAudioFile: () => ipcRenderer.invoke("select-audio-file"),

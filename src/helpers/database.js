@@ -59,6 +59,38 @@ class DatabaseManager {
         this.db.exec("ALTER TABLE notes ADD COLUMN enhanced_at_content_hash TEXT");
       } catch {}
 
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS folders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL UNIQUE,
+          is_default INTEGER NOT NULL DEFAULT 0,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      const folderCount = this.db.prepare("SELECT COUNT(*) as count FROM folders").get();
+      if (folderCount.count === 0) {
+        const seedFolder = this.db.prepare(
+          "INSERT INTO folders (name, is_default, sort_order) VALUES (?, 1, ?)"
+        );
+        seedFolder.run("Personal", 0);
+        seedFolder.run("Meetings", 1);
+      }
+
+      try {
+        this.db.exec("ALTER TABLE notes ADD COLUMN folder_id INTEGER REFERENCES folders(id)");
+      } catch {}
+
+      const personalFolder = this.db
+        .prepare("SELECT id FROM folders WHERE name = 'Personal' AND is_default = 1")
+        .get();
+      if (personalFolder) {
+        this.db
+          .prepare("UPDATE notes SET folder_id = ? WHERE folder_id IS NULL")
+          .run(personalFolder.id);
+      }
+
       return true;
     } catch (error) {
       console.error("Database initialization failed:", error.message);
@@ -164,15 +196,21 @@ class DatabaseManager {
     }
   }
 
-  saveNote(title, content, noteType = "personal", sourceFile = null, audioDuration = null) {
+  saveNote(title, content, noteType = "personal", sourceFile = null, audioDuration = null, folderId = null) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
+      if (!folderId) {
+        const personal = this.db
+          .prepare("SELECT id FROM folders WHERE name = 'Personal' AND is_default = 1")
+          .get();
+        folderId = personal?.id || null;
+      }
       const stmt = this.db.prepare(
-        "INSERT INTO notes (title, content, note_type, source_file, audio_duration_seconds) VALUES (?, ?, ?, ?, ?)"
+        "INSERT INTO notes (title, content, note_type, source_file, audio_duration_seconds, folder_id) VALUES (?, ?, ?, ?, ?, ?)"
       );
-      const result = stmt.run(title, content, noteType, sourceFile, audioDuration);
+      const result = stmt.run(title, content, noteType, sourceFile, audioDuration, folderId);
 
       const fetchStmt = this.db.prepare("SELECT * FROM notes WHERE id = ?");
       const note = fetchStmt.get(result.lastInsertRowid);
@@ -197,19 +235,27 @@ class DatabaseManager {
     }
   }
 
-  getNotes(noteType = null, limit = 100) {
+  getNotes(noteType = null, limit = 100, folderId = null) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
       }
+      const conditions = [];
+      const params = [];
       if (noteType) {
-        const stmt = this.db.prepare(
-          "SELECT * FROM notes WHERE note_type = ? ORDER BY updated_at DESC LIMIT ?"
-        );
-        return stmt.all(noteType, limit);
+        conditions.push("note_type = ?");
+        params.push(noteType);
       }
-      const stmt = this.db.prepare("SELECT * FROM notes ORDER BY updated_at DESC LIMIT ?");
-      return stmt.all(limit);
+      if (folderId) {
+        conditions.push("folder_id = ?");
+        params.push(folderId);
+      }
+      const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+      const stmt = this.db.prepare(
+        `SELECT * FROM notes ${where} ORDER BY updated_at DESC LIMIT ?`
+      );
+      params.push(limit);
+      return stmt.all(...params);
     } catch (error) {
       console.error("Error getting notes:", error.message);
       throw error;
@@ -225,6 +271,7 @@ class DatabaseManager {
         "enhanced_content",
         "enhancement_prompt",
         "enhanced_at_content_hash",
+        "folder_id",
       ];
       const fields = [];
       const values = [];
@@ -244,6 +291,95 @@ class DatabaseManager {
       return { success: true, note };
     } catch (error) {
       console.error("Error updating note:", error.message);
+      throw error;
+    }
+  }
+
+  getFolders() {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare("SELECT * FROM folders ORDER BY sort_order ASC, created_at ASC")
+        .all();
+    } catch (error) {
+      console.error("Error getting folders:", error.message);
+      throw error;
+    }
+  }
+
+  createFolder(name) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const trimmed = (name || "").trim();
+      if (!trimmed) return { success: false, error: "Folder name is required" };
+      const existing = this.db.prepare("SELECT id FROM folders WHERE name = ?").get(trimmed);
+      if (existing) return { success: false, error: "A folder with that name already exists" };
+      const maxOrder = this.db
+        .prepare("SELECT MAX(sort_order) as max_order FROM folders")
+        .get();
+      const sortOrder = (maxOrder?.max_order ?? 0) + 1;
+      const result = this.db
+        .prepare("INSERT INTO folders (name, sort_order) VALUES (?, ?)")
+        .run(trimmed, sortOrder);
+      const folder = this.db.prepare("SELECT * FROM folders WHERE id = ?").get(result.lastInsertRowid);
+      return { success: true, folder };
+    } catch (error) {
+      console.error("Error creating folder:", error.message);
+      throw error;
+    }
+  }
+
+  deleteFolder(id) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const folder = this.db.prepare("SELECT * FROM folders WHERE id = ?").get(id);
+      if (!folder) return { success: false, error: "Folder not found" };
+      if (folder.is_default) return { success: false, error: "Cannot delete default folders" };
+      const personal = this.db
+        .prepare("SELECT id FROM folders WHERE name = 'Personal' AND is_default = 1")
+        .get();
+      if (personal) {
+        this.db
+          .prepare("UPDATE notes SET folder_id = ? WHERE folder_id = ?")
+          .run(personal.id, id);
+      }
+      this.db.prepare("DELETE FROM folders WHERE id = ?").run(id);
+      return { success: true, id };
+    } catch (error) {
+      console.error("Error deleting folder:", error.message);
+      throw error;
+    }
+  }
+
+  renameFolder(id, name) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const folder = this.db.prepare("SELECT * FROM folders WHERE id = ?").get(id);
+      if (!folder) return { success: false, error: "Folder not found" };
+      if (folder.is_default) return { success: false, error: "Cannot rename default folders" };
+      const trimmed = (name || "").trim();
+      if (!trimmed) return { success: false, error: "Folder name is required" };
+      const existing = this.db
+        .prepare("SELECT id FROM folders WHERE name = ? AND id != ?")
+        .get(trimmed, id);
+      if (existing) return { success: false, error: "A folder with that name already exists" };
+      this.db.prepare("UPDATE folders SET name = ? WHERE id = ?").run(trimmed, id);
+      const updated = this.db.prepare("SELECT * FROM folders WHERE id = ?").get(id);
+      return { success: true, folder: updated };
+    } catch (error) {
+      console.error("Error renaming folder:", error.message);
+      throw error;
+    }
+  }
+
+  getFolderNoteCounts() {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db
+        .prepare("SELECT folder_id, COUNT(*) as count FROM notes GROUP BY folder_id")
+        .all();
+    } catch (error) {
+      console.error("Error getting folder note counts:", error.message);
       throw error;
     }
   }
