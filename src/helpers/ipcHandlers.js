@@ -1200,13 +1200,11 @@ class IPCHandlers {
         parts.push(audioData);
         parts.push("\r\n");
 
-        if (opts.language) {
-          parts.push(
-            `--${boundary}\r\n` +
-              `Content-Disposition: form-data; name="language"\r\n\r\n` +
-              `${opts.language}\r\n`
-          );
-        }
+        parts.push(
+          `--${boundary}\r\n` +
+            `Content-Disposition: form-data; name="language"\r\n\r\n` +
+            `${opts.language || "auto"}\r\n`
+        );
 
         if (opts.prompt) {
           parts.push(

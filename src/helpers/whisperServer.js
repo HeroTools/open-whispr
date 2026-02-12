@@ -233,9 +233,11 @@ class WhisperServerManager {
     }
 
     if (options.threads) args.push("--threads", String(options.threads));
-    if (options.language && options.language !== "auto") {
-      args.push("--language", options.language);
-    }
+
+    args.push(
+      "--language",
+      options.language && options.language !== "auto" ? options.language : "auto"
+    );
 
     debugLogger.debug("Starting whisper-server", {
       port: this.port,
@@ -404,13 +406,12 @@ class WhisperServerManager {
     parts.push(finalBuffer);
     parts.push("\r\n");
 
-    if (language && language !== "auto") {
-      parts.push(
-        `--${boundary}\r\n` +
-          `Content-Disposition: form-data; name="language"\r\n\r\n` +
-          `${language}\r\n`
-      );
-    }
+    // Always send language; whisper.cpp defaults to "en" if omitted
+    parts.push(
+      `--${boundary}\r\n` +
+        `Content-Disposition: form-data; name="language"\r\n\r\n` +
+        `${language && language !== "auto" ? language : "auto"}\r\n`
+    );
 
     // Add initial prompt for custom dictionary words
     if (initialPrompt) {
