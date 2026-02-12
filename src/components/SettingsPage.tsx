@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
@@ -74,6 +75,18 @@ export type SettingsSectionType =
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
 }
+
+const UI_LANGUAGE_OPTIONS: import("./ui/LanguageSelector").LanguageOption[] = [
+  { value: "en", label: "English", flag: "🇺🇸" },
+  { value: "es", label: "Español", flag: "🇪🇸" },
+  { value: "fr", label: "Français", flag: "🇫🇷" },
+  { value: "de", label: "Deutsch", flag: "🇩🇪" },
+  { value: "pt", label: "Português", flag: "🇵🇹" },
+  { value: "it", label: "Italiano", flag: "🇮🇹" },
+  { value: "ru", label: "Русский", flag: "🇷🇺" },
+  { value: "zh-CN", label: "简体中文", flag: "🇨🇳" },
+  { value: "zh-TW", label: "繁體中文", flag: "🇹🇼" },
+];
 
 function SettingsPanel({
   children,
@@ -176,14 +189,15 @@ function TranscriptionSection({
   setCloudTranscriptionBaseUrl,
   toast,
 }: TranscriptionSectionProps) {
+  const { t, i18n } = useTranslation();
   const isCustomMode = cloudTranscriptionMode === "byok" || useLocalWhisper;
   const isCloudMode = isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
 
   return (
     <div className="space-y-4">
       <SectionHeader
-        title="Speech to Text"
-        description="Choose how OpenWhispr transcribes your voice"
+        title={t("settingsPage.transcription.title")}
+        description={t("settingsPage.transcription.description")}
       />
 
       {/* Mode selector */}
@@ -197,8 +211,8 @@ function TranscriptionSection({
                   setUseLocalWhisper(false);
                   updateTranscriptionSettings({ useLocalWhisper: false });
                   toast({
-                    title: "Switched to OpenWhispr Cloud",
-                    description: "Transcription will use OpenWhispr's cloud service.",
+                    title: t("settingsPage.transcription.toasts.switchedCloud.title"),
+                    description: t("settingsPage.transcription.toasts.switchedCloud.description"),
                     variant: "success",
                     duration: 3000,
                   });
@@ -221,15 +235,17 @@ function TranscriptionSection({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-medium text-foreground">OpenWhispr Cloud</span>
+                  <span className="text-[12px] font-medium text-foreground">
+                    {t("settingsPage.transcription.openwhisprCloud")}
+                  </span>
                   {isCloudMode && (
                     <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
-                      Active
+                      {t("common.active")}
                     </span>
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                  Just works. No configuration needed.
+                  {t("settingsPage.transcription.openwhisprCloudDescription")}
                 </p>
               </div>
               <div
@@ -255,8 +271,8 @@ function TranscriptionSection({
                   setUseLocalWhisper(false);
                   updateTranscriptionSettings({ useLocalWhisper: false });
                   toast({
-                    title: "Switched to Custom Setup",
-                    description: "Configure your own provider and API key.",
+                    title: t("settingsPage.transcription.toasts.switchedCustom.title"),
+                    description: t("settingsPage.transcription.toasts.switchedCustom.description"),
                     variant: "success",
                     duration: 3000,
                   });
@@ -279,15 +295,17 @@ function TranscriptionSection({
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="text-[12px] font-medium text-foreground">Custom Setup</span>
+                  <span className="text-[12px] font-medium text-foreground">
+                    {t("settingsPage.transcription.customSetup")}
+                  </span>
                   {isCustomMode && (
                     <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
-                      Active
+                      {t("common.active")}
                     </span>
                   )}
                 </div>
                 <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                  Use your own provider and API key.
+                  {t("settingsPage.transcription.customSetupDescription")}
                 </p>
               </div>
               <div
@@ -408,20 +426,24 @@ function AiModelsSection({
   showAlertDialog,
   toast,
 }: AiModelsSectionProps) {
+  const { t, i18n } = useTranslation();
   const isCustomMode = cloudReasoningMode === "byok";
   const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
 
   return (
     <div className="space-y-4">
       <SectionHeader
-        title="AI Text Enhancement"
-        description="Clean up transcriptions, handle commands, and fix errors while preserving your tone."
+        title={t("settingsPage.aiModels.title")}
+        description={t("settingsPage.aiModels.description")}
       />
 
       {/* Enable toggle — always at top */}
       <SettingsPanel>
         <SettingsPanelRow>
-          <SettingsRow label="Enable text cleanup" description="AI improves transcription quality">
+          <SettingsRow
+            label={t("settingsPage.aiModels.enableTextCleanup")}
+            description={t("settingsPage.aiModels.enableTextCleanupDescription")}
+          >
             <Toggle checked={useReasoningModel} onChange={setUseReasoningModel} />
           </SettingsRow>
         </SettingsPanelRow>
@@ -438,8 +460,8 @@ function AiModelsSection({
                     if (!isCloudMode) {
                       setCloudReasoningMode("openwhispr");
                       toast({
-                        title: "Switched to OpenWhispr Cloud",
-                        description: "AI text enhancement will use OpenWhispr's cloud service.",
+                        title: t("settingsPage.aiModels.toasts.switchedCloud.title"),
+                        description: t("settingsPage.aiModels.toasts.switchedCloud.description"),
                         variant: "success",
                         duration: 3000,
                       });
@@ -463,16 +485,16 @@ function AiModelsSection({
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-[12px] font-medium text-foreground">
-                        OpenWhispr Cloud
+                        {t("settingsPage.aiModels.openwhisprCloud")}
                       </span>
                       {isCloudMode && (
                         <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
-                          Active
+                          {t("common.active")}
                         </span>
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                      Just works. No configuration needed.
+                      {t("settingsPage.aiModels.openwhisprCloudDescription")}
                     </p>
                   </div>
                   <div
@@ -496,8 +518,8 @@ function AiModelsSection({
                     if (!isCustomMode) {
                       setCloudReasoningMode("byok");
                       toast({
-                        title: "Switched to Custom Setup",
-                        description: "Configure your own provider and API key.",
+                        title: t("settingsPage.aiModels.toasts.switchedCustom.title"),
+                        description: t("settingsPage.aiModels.toasts.switchedCustom.description"),
                         variant: "success",
                         duration: 3000,
                       });
@@ -520,15 +542,17 @@ function AiModelsSection({
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="text-[12px] font-medium text-foreground">Custom Setup</span>
+                      <span className="text-[12px] font-medium text-foreground">
+                        {t("settingsPage.aiModels.customSetup")}
+                      </span>
                       {isCustomMode && (
                         <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
-                          Active
+                          {t("common.active")}
                         </span>
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                      Use your own provider and API key.
+                      {t("settingsPage.aiModels.customSetupDescription")}
                     </p>
                   </div>
                   <div
@@ -594,6 +618,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     whisperModel,
     localTranscriptionProvider,
     parakeetModel,
+    uiLanguage,
     preferredLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
@@ -615,6 +640,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
     setUseLocalWhisper,
+    setUiLanguage,
     setWhisperModel,
     setLocalTranscriptionProvider,
     setParakeetModel,
@@ -651,14 +677,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setTelemetryEnabled,
   } = useSettings();
 
+  const { t, i18n } = useTranslation();
   const { toast } = useToast();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [isRemovingModels, setIsRemovingModels] = useState(false);
   const cachePathHint =
     typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)
-      ? "%USERPROFILE%\\.cache\\openwhispr\\whisper-models"
-      : "~/.cache/openwhispr/whisper-models";
+      ? "%USERPROFILE%\\.cache\\openwhispr"
+      : "~/.cache/openwhispr";
 
   const {
     status: updateStatus,
@@ -689,12 +716,15 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     if (usage?.isApproachingLimit && !hasShownApproachingToast.current) {
       hasShownApproachingToast.current = true;
       toast({
-        title: "Getting close to your weekly limit",
-        description: `You've used ${usage.wordsUsed.toLocaleString()} of ${usage.limit.toLocaleString()} free words this week. Upgrade to Pro for unlimited use.`,
+        title: t("settingsPage.account.toasts.approachingLimit.title"),
+        description: t("settingsPage.account.toasts.approachingLimit.description", {
+          used: usage.wordsUsed.toLocaleString(i18n.language),
+          limit: usage.limit.toLocaleString(i18n.language),
+        }),
         duration: 6000,
       });
     }
-  }, [usage?.isApproachingLimit, usage?.wordsUsed, usage?.limit, toast]);
+  }, [usage?.isApproachingLimit, usage?.wordsUsed, usage?.limit, toast, t, i18n.language]);
 
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -797,12 +827,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   useEffect(() => {
     if (updateError) {
       showAlertDialog({
-        title: "Update ran into a problem",
-        description:
-          "We couldn't complete the update. Please try again, or download the latest version from openwhispr.com.",
+        title: t("settingsPage.general.updates.dialogs.updateError.title"),
+        description: t("settingsPage.general.updates.dialogs.updateError.description"),
       });
     }
-  }, [updateError, showAlertDialog]);
+  }, [updateError, showAlertDialog, t]);
 
   useEffect(() => {
     if (installInitiated) {
@@ -811,9 +840,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       }
       installTimeoutRef.current = setTimeout(() => {
         showAlertDialog({
-          title: "Almost there",
-          description:
-            "OpenWhispr didn't restart on its own. Quit and reopen the app to finish installing the update.",
+          title: t("settingsPage.general.updates.dialogs.almostThere.title"),
+          description: t("settingsPage.general.updates.dialogs.almostThere.description"),
         });
       }, 10000);
     } else if (installTimeoutRef.current) {
@@ -827,13 +855,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         installTimeoutRef.current = null;
       }
     };
-  }, [installInitiated, showAlertDialog]);
+  }, [installInitiated, showAlertDialog, t]);
 
   const resetAccessibilityPermissions = () => {
-    const message = `Here's how to fix accessibility permissions:\n\n1. Open System Settings > Privacy & Security > Accessibility\n2. Remove any old OpenWhispr or Electron entries\n3. Click (+) and add OpenWhispr\n4. Make sure the checkbox is enabled\n5. Restart OpenWhispr\n\nWe'll open System Settings for you.`;
+    const message = t("settingsPage.permissions.resetAccessibility.description");
 
     showConfirmDialog({
-      title: "Reset Accessibility Permissions",
+      title: t("settingsPage.permissions.resetAccessibility.title"),
       description: message,
       onConfirm: () => {
         permissionsHook.openAccessibilitySettings();
@@ -845,45 +873,47 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     if (isRemovingModels) return;
 
     showConfirmDialog({
-      title: "Remove downloaded models?",
-      description: `This deletes all locally cached Whisper models (${cachePathHint}) and frees disk space. You can download them again from the model picker.`,
-      confirmText: "Delete Models",
+      title: t("settingsPage.developer.removeModels.title"),
+      description: t("settingsPage.developer.removeModels.description", { path: cachePathHint }),
+      confirmText: t("settingsPage.developer.removeModels.confirmText"),
       variant: "destructive",
-      onConfirm: () => {
+      onConfirm: async () => {
         setIsRemovingModels(true);
-        window.electronAPI
-          ?.deleteAllWhisperModels?.()
-          .then((result) => {
-            if (!result?.success) {
-              showAlertDialog({
-                title: "Couldn't remove models",
-                description:
-                  "Something went wrong deleting the cached models. Try again or remove them manually from the folder.",
-              });
-              return;
-            }
+        try {
+          const results = await Promise.allSettled([
+            window.electronAPI?.deleteAllWhisperModels?.(),
+            window.electronAPI?.deleteAllParakeetModels?.(),
+            window.electronAPI?.modelDeleteAll?.(),
+          ]);
 
+          const anyFailed = results.some(
+            (r) =>
+              r.status === "rejected" || (r.status === "fulfilled" && r.value && !r.value.success)
+          );
+
+          if (anyFailed) {
+            showAlertDialog({
+              title: t("settingsPage.developer.removeModels.failedTitle"),
+              description: t("settingsPage.developer.removeModels.failedDescription"),
+            });
+          } else {
             window.dispatchEvent(new Event("openwhispr-models-cleared"));
-
             showAlertDialog({
-              title: "Models removed",
-              description:
-                "All downloaded models have been cleared. You can re-download them anytime from the model picker.",
+              title: t("settingsPage.developer.removeModels.successTitle"),
+              description: t("settingsPage.developer.removeModels.successDescription"),
             });
-          })
-          .catch(() => {
-            showAlertDialog({
-              title: "Couldn't remove models",
-              description:
-                "Something went wrong. Try again or remove them manually from the folder.",
-            });
-          })
-          .finally(() => {
-            setIsRemovingModels(false);
+          }
+        } catch {
+          showAlertDialog({
+            title: t("settingsPage.developer.removeModels.failedTitle"),
+            description: t("settingsPage.developer.removeModels.failedDescriptionShort"),
           });
+        } finally {
+          setIsRemovingModels(false);
+        }
       },
     });
-  }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog]);
+  }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog, t]);
 
   const { isSignedIn, isLoaded, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -897,13 +927,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     } catch (error) {
       logger.error("Sign out failed", error, "auth");
       showAlertDialog({
-        title: "Couldn't sign out",
-        description: "Something went wrong. Please try again.",
+        title: t("settingsPage.account.signOut.failedTitle"),
+        description: t("settingsPage.account.signOut.failedDescription"),
       });
     } finally {
       setIsSigningOut(false);
     }
-  }, [showAlertDialog]);
+  }, [showAlertDialog, t]);
 
   const renderSectionContent = () => {
     switch (activeSection) {
@@ -912,21 +942,24 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           <div className="space-y-5">
             {!NEON_AUTH_URL ? (
               <>
-                <SectionHeader title="Account" description="Authentication is not configured" />
+                <SectionHeader
+                  title={t("settingsPage.account.title")}
+                  description={t("settingsPage.account.notConfigured")}
+                />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Account Features Disabled"
-                      description="Set VITE_NEON_AUTH_URL in your .env file to enable account features."
+                      label={t("settingsPage.account.featuresDisabled")}
+                      description={t("settingsPage.account.featuresDisabledDescription")}
                     >
-                      <Badge variant="warning">Disabled</Badge>
+                      <Badge variant="warning">{t("settingsPage.account.disabled")}</Badge>
                     </SettingsRow>
                   </SettingsPanelRow>
                 </SettingsPanel>
               </>
             ) : isLoaded && isSignedIn && user ? (
               <>
-                <SectionHeader title="Account" />
+                <SectionHeader title={t("settingsPage.account.title")} />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <div className="flex items-center gap-3">
@@ -934,7 +967,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         {user.image ? (
                           <img
                             src={user.image}
-                            alt={user.name || "User"}
+                            alt={user.name || t("settingsPage.account.user")}
                             className="w-10 h-10 rounded-full object-cover"
                           />
                         ) : (
@@ -943,16 +976,16 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-[13px] font-medium text-foreground truncate">
-                          {user.name || "User"}
+                          {user.name || t("settingsPage.account.user")}
                         </p>
                         <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
                       </div>
-                      <Badge variant="success">Signed in</Badge>
+                      <Badge variant="success">{t("settingsPage.account.signedIn")}</Badge>
                     </div>
                   </SettingsPanelRow>
                 </SettingsPanel>
 
-                <SectionHeader title="Plan" />
+                <SectionHeader title={t("settingsPage.account.planTitle")} />
                 {!usage || !usage.hasLoaded ? (
                   <SettingsPanel>
                     <SettingsPanelRow>
@@ -977,10 +1010,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           className="dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-200 dark:[&>svg]:text-amber-400"
                         >
                           <AlertTriangle className="h-4 w-4" />
-                          <AlertTitle>We couldn't process your payment</AlertTitle>
+                          <AlertTitle>{t("settingsPage.account.pastDue.title")}</AlertTitle>
                           <AlertDescription>
-                            You're on the free plan for now. Update your payment method to get back
-                            to Pro.
+                            {t("settingsPage.account.pastDue.description")}
                           </AlertDescription>
                         </Alert>
                       </SettingsPanelRow>
@@ -990,35 +1022,52 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <SettingsRow
                         label={
                           usage.isTrial
-                            ? "Trial"
+                            ? t("settingsPage.account.planLabels.trial")
                             : usage.isPastDue
-                              ? "Free"
+                              ? t("settingsPage.account.planLabels.free")
                               : usage.isSubscribed
-                                ? "Pro"
-                                : "Free"
+                                ? t("settingsPage.account.planLabels.pro")
+                                : t("settingsPage.account.planLabels.free")
                         }
                         description={
                           usage.isTrial
-                            ? `${usage.trialDaysLeft} ${usage.trialDaysLeft === 1 ? "day" : "days"} remaining \u2014 unlimited transcriptions`
+                            ? t("settingsPage.account.planDescriptions.trial", {
+                                days: usage.trialDaysLeft,
+                              })
                             : usage.isPastDue
-                              ? `${usage.wordsUsed.toLocaleString()} / ${usage.limit.toLocaleString()} free words this week \u2014 update payment to restore Pro`
+                              ? t("settingsPage.account.planDescriptions.pastDue", {
+                                  used: usage.wordsUsed.toLocaleString(i18n.language),
+                                  limit: usage.limit.toLocaleString(i18n.language),
+                                })
                               : usage.isSubscribed
                                 ? usage.currentPeriodEnd
-                                  ? `Next billing: ${new Date(usage.currentPeriodEnd).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
-                                  : "Unlimited transcriptions"
-                                : `${usage.wordsUsed.toLocaleString()} / ${usage.limit.toLocaleString()} words this week`
+                                  ? t("settingsPage.account.planDescriptions.nextBilling", {
+                                      date: new Date(usage.currentPeriodEnd).toLocaleDateString(
+                                        i18n.language,
+                                        { month: "short", day: "numeric", year: "numeric" }
+                                      ),
+                                    })
+                                  : t("settingsPage.account.planDescriptions.unlimited")
+                                : t("settingsPage.account.planDescriptions.freeUsage", {
+                                    used: usage.wordsUsed.toLocaleString(i18n.language),
+                                    limit: usage.limit.toLocaleString(i18n.language),
+                                  })
                         }
                       >
                         {usage.isTrial ? (
-                          <Badge variant="info">Trial</Badge>
+                          <Badge variant="info">{t("settingsPage.account.badges.trial")}</Badge>
                         ) : usage.isPastDue ? (
-                          <Badge variant="destructive">Past due</Badge>
+                          <Badge variant="destructive">
+                            {t("settingsPage.account.badges.pastDue")}
+                          </Badge>
                         ) : usage.isSubscribed ? (
-                          <Badge variant="success">Pro</Badge>
+                          <Badge variant="success">{t("settingsPage.account.badges.pro")}</Badge>
                         ) : usage.isOverLimit ? (
-                          <Badge variant="warning">Limit reached</Badge>
+                          <Badge variant="warning">
+                            {t("settingsPage.account.badges.limitReached")}
+                          </Badge>
                         ) : (
-                          <Badge variant="outline">Free</Badge>
+                          <Badge variant="outline">{t("settingsPage.account.badges.free")}</Badge>
                         )}
                       </SettingsRow>
                     </SettingsPanelRow>
@@ -1043,15 +1092,18 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           />
                           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
                             <span className="tabular-nums">
-                              {usage.wordsUsed.toLocaleString()} / {usage.limit.toLocaleString()}
+                              {usage.wordsUsed.toLocaleString(i18n.language)} /{" "}
+                              {usage.limit.toLocaleString(i18n.language)}
                             </span>
                             {usage.isApproachingLimit && (
                               <span className="text-warning">
-                                {usage.wordsRemaining.toLocaleString()} remaining
+                                {t("settingsPage.account.wordsRemaining", {
+                                  remaining: usage.wordsRemaining.toLocaleString(i18n.language),
+                                })}
                               </span>
                             )}
                             {!usage.isApproachingLimit && !usage.isOverLimit && (
-                              <span>Rolling weekly limit</span>
+                              <span>{t("settingsPage.account.rollingWeeklyLimit")}</span>
                             )}
                           </div>
                         </div>
@@ -1067,9 +1119,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                               const result = await usage.openBillingPortal();
                               if (!result.success) {
                                 toast({
-                                  title: "Couldn't open billing",
-                                  description:
-                                    "We had trouble opening the billing page. Please try again.",
+                                  title: t("settingsPage.account.billing.couldNotOpenTitle"),
+                                  description: t(
+                                    "settingsPage.account.billing.couldNotOpenDescription"
+                                  ),
                                   variant: "destructive",
                                 });
                               }
@@ -1084,10 +1137,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           {isOpeningBilling ? (
                             <>
                               <Loader2 size={14} className="animate-spin" />
-                              Opening...
+                              {t("settingsPage.account.billing.opening")}
                             </>
                           ) : (
-                            "Update Payment Method"
+                            t("settingsPage.account.billing.updatePaymentMethod")
                           )}
                         </Button>
                       ) : usage.isSubscribed && !usage.isTrial ? (
@@ -1096,9 +1149,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             const result = await usage.openBillingPortal();
                             if (!result.success) {
                               toast({
-                                title: "Couldn't open billing",
-                                description:
-                                  "We had trouble opening the billing page. Please try again.",
+                                title: t("settingsPage.account.billing.couldNotOpenTitle"),
+                                description: t(
+                                  "settingsPage.account.billing.couldNotOpenDescription"
+                                ),
                                 variant: "destructive",
                               });
                             }
@@ -1108,7 +1162,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           className="w-full"
                           disabled={usage.checkoutLoading}
                         >
-                          {usage.checkoutLoading ? "Opening..." : "Manage Billing"}
+                          {usage.checkoutLoading
+                            ? t("settingsPage.account.billing.opening")
+                            : t("settingsPage.account.billing.manageBilling")}
                         </Button>
                       ) : (
                         <Button
@@ -1116,9 +1172,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             const result = await usage.openCheckout();
                             if (!result.success) {
                               toast({
-                                title: "Couldn't open checkout",
-                                description:
-                                  "We had trouble opening the checkout page. Please try again.",
+                                title: t("settingsPage.account.checkout.couldNotOpenTitle"),
+                                description: t(
+                                  "settingsPage.account.checkout.couldNotOpenDescription"
+                                ),
                                 variant: "destructive",
                               });
                             }
@@ -1127,7 +1184,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           className="w-full"
                           disabled={usage.checkoutLoading}
                         >
-                          {usage.checkoutLoading ? "Opening..." : "Upgrade to Pro"}
+                          {usage.checkoutLoading
+                            ? t("settingsPage.account.checkout.opening")
+                            : t("settingsPage.account.checkout.upgradeToPro")}
                         </Button>
                       )}
                     </SettingsPanelRow>
@@ -1144,21 +1203,23 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
                     >
                       <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                      {isSigningOut ? "Signing out..." : "Sign Out"}
+                      {isSigningOut
+                        ? t("settingsPage.account.signOut.signingOut")
+                        : t("settingsPage.account.signOut.signOut")}
                     </Button>
                   </SettingsPanelRow>
                 </SettingsPanel>
               </>
             ) : isLoaded ? (
               <>
-                <SectionHeader title="Account" />
+                <SectionHeader title={t("settingsPage.account.title")} />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Not Signed In"
-                      description="Create an account to unlock premium features."
+                      label={t("settingsPage.account.notSignedIn")}
+                      description={t("settingsPage.account.notSignedInDescription")}
                     >
-                      <Badge variant="outline">Offline</Badge>
+                      <Badge variant="outline">{t("settingsPage.account.offline")}</Badge>
                     </SettingsRow>
                   </SettingsPanelRow>
                 </SettingsPanel>
@@ -1171,10 +1232,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     <div className="min-w-0 flex-1 space-y-2.5">
                       <div>
                         <p className="text-[13px] font-medium text-foreground">
-                          Try Pro free for 7 days
+                          {t("settingsPage.account.trialCta.title")}
                         </p>
                         <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
-                          Unlimited transcriptions, priority processing, and more.
+                          {t("settingsPage.account.trialCta.description")}
                         </p>
                       </div>
                       <Button
@@ -1188,7 +1249,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         className="w-full"
                       >
                         <UserCircle className="mr-1.5 h-3.5 w-3.5" />
-                        Create Free Account
+                        {t("settingsPage.account.trialCta.button")}
                       </Button>
                     </div>
                   </div>
@@ -1196,7 +1257,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </>
             ) : (
               <>
-                <SectionHeader title="Account" />
+                <SectionHeader title={t("settingsPage.account.title")} />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <div className="flex items-center justify-between">
@@ -1215,29 +1276,35 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           <div className="space-y-6">
             {/* Updates */}
             <div>
-              <SectionHeader title="Updates" />
+              <SectionHeader title={t("settingsPage.general.updates.title")} />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <SettingsRow
-                    label="Current version"
+                    label={t("settingsPage.general.updates.currentVersion")}
                     description={
                       updateStatus.isDevelopment
-                        ? "Running in development mode"
+                        ? t("settingsPage.general.updates.devMode")
                         : isUpdateAvailable
-                          ? "A newer version is available"
-                          : "You're on the latest version"
+                          ? t("settingsPage.general.updates.newVersionAvailable")
+                          : t("settingsPage.general.updates.latestVersion")
                     }
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-[13px] tabular-nums text-muted-foreground font-mono">
-                        {currentVersion || "..."}
+                        {currentVersion || t("settingsPage.general.updates.versionPlaceholder")}
                       </span>
                       {updateStatus.isDevelopment ? (
-                        <Badge variant="warning">Dev</Badge>
+                        <Badge variant="warning">
+                          {t("settingsPage.general.updates.badges.dev")}
+                        </Badge>
                       ) : isUpdateAvailable ? (
-                        <Badge variant="success">Update</Badge>
+                        <Badge variant="success">
+                          {t("settingsPage.general.updates.badges.update")}
+                        </Badge>
                       ) : (
-                        <Badge variant="outline">Latest</Badge>
+                        <Badge variant="outline">
+                          {t("settingsPage.general.updates.badges.latest")}
+                        </Badge>
                       )}
                     </div>
                   </SettingsRow>
@@ -1251,20 +1318,31 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           const result = await checkForUpdates();
                           if (result?.updateAvailable) {
                             showAlertDialog({
-                              title: "Update Available",
-                              description: `Update available: v${result.version || "new version"}`,
+                              title: t(
+                                "settingsPage.general.updates.dialogs.updateAvailable.title"
+                              ),
+                              description: t(
+                                "settingsPage.general.updates.dialogs.updateAvailable.description",
+                                {
+                                  version:
+                                    result.version || t("settingsPage.general.updates.newVersion"),
+                                }
+                              ),
                             });
                           } else {
                             showAlertDialog({
-                              title: "No Updates",
-                              description: result?.message || "No updates available",
+                              title: t("settingsPage.general.updates.dialogs.noUpdates.title"),
+                              description:
+                                result?.message ||
+                                t("settingsPage.general.updates.dialogs.noUpdates.description"),
                             });
                           }
                         } catch (error: any) {
                           showAlertDialog({
-                            title: "Couldn't check for updates",
-                            description:
-                              "Make sure you're connected to the internet and try again.",
+                            title: t("settingsPage.general.updates.dialogs.checkFailed.title"),
+                            description: t(
+                              "settingsPage.general.updates.dialogs.checkFailed.description"
+                            ),
                           });
                         }
                       }}
@@ -1277,7 +1355,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         size={13}
                         className={`mr-1.5 ${checkingForUpdates ? "animate-spin" : ""}`}
                       />
-                      {checkingForUpdates ? "Checking..." : "Check for Updates"}
+                      {checkingForUpdates
+                        ? t("settingsPage.general.updates.checking")
+                        : t("settingsPage.general.updates.checkForUpdates")}
                     </Button>
 
                     {isUpdateAvailable && !updateStatus.updateDownloaded && (
@@ -1288,8 +1368,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                               await downloadUpdate();
                             } catch (error: any) {
                               showAlertDialog({
-                                title: "Couldn't download update",
-                                description: "Check your internet connection and try again.",
+                                title: t(
+                                  "settingsPage.general.updates.dialogs.downloadFailed.title"
+                                ),
+                                description: t(
+                                  "settingsPage.general.updates.dialogs.downloadFailed.description"
+                                ),
                               });
                             }
                           }}
@@ -1303,8 +1387,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             className={`mr-1.5 ${downloadingUpdate ? "animate-pulse" : ""}`}
                           />
                           {downloadingUpdate
-                            ? `Downloading... ${Math.round(updateDownloadProgress)}%`
-                            : `Download Update${updateInfo?.version ? ` v${updateInfo.version}` : ""}`}
+                            ? t("settingsPage.general.updates.downloading", {
+                                progress: Math.round(updateDownloadProgress),
+                              })
+                            : t("settingsPage.general.updates.downloadUpdate", {
+                                version: updateInfo?.version || "",
+                              })}
                         </Button>
 
                         {downloadingUpdate && (
@@ -1324,17 +1412,25 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <Button
                         onClick={() => {
                           showConfirmDialog({
-                            title: "Install Update",
-                            description: `Ready to install update${updateInfo?.version ? ` v${updateInfo.version}` : ""}. The app will restart to complete installation.`,
-                            confirmText: "Install & Restart",
+                            title: t("settingsPage.general.updates.dialogs.installUpdate.title"),
+                            description: t(
+                              "settingsPage.general.updates.dialogs.installUpdate.description",
+                              { version: updateInfo?.version || "" }
+                            ),
+                            confirmText: t(
+                              "settingsPage.general.updates.dialogs.installUpdate.confirmText"
+                            ),
                             onConfirm: async () => {
                               try {
                                 await installUpdateAction();
                               } catch (error: any) {
                                 showAlertDialog({
-                                  title: "Couldn't install update",
-                                  description:
-                                    "Something went wrong. Try downloading the latest version from openwhispr.com.",
+                                  title: t(
+                                    "settingsPage.general.updates.dialogs.installFailed.title"
+                                  ),
+                                  description: t(
+                                    "settingsPage.general.updates.dialogs.installFailed.description"
+                                  ),
                                 });
                               }
                             },
@@ -1348,7 +1444,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           size={14}
                           className={`mr-2 ${installInitiated ? "animate-spin" : ""}`}
                         />
-                        {installInitiated ? "Restarting..." : "Install & Restart"}
+                        {installInitiated
+                          ? t("settingsPage.general.updates.restarting")
+                          : t("settingsPage.general.updates.installAndRestart")}
                       </Button>
                     )}
                   </div>
@@ -1356,7 +1454,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   {updateInfo?.releaseNotes && (
                     <div className="mt-4 pt-4 border-t border-border/30">
                       <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                        What's new in v{updateInfo.version}
+                        {t("settingsPage.general.updates.whatsNew", {
+                          version: updateInfo.version,
+                        })}
                       </p>
                       <div className="text-[12px] text-muted-foreground">
                         <MarkdownRenderer content={updateInfo.releaseNotes} />
@@ -1369,16 +1469,34 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             {/* Appearance */}
             <div>
-              <SectionHeader title="Appearance" description="Control how OpenWhispr looks" />
+              <SectionHeader
+                title={t("settingsPage.general.appearance.title")}
+                description={t("settingsPage.general.appearance.description")}
+              />
               <SettingsPanel>
                 <SettingsPanelRow>
-                  <SettingsRow label="Theme" description="Choose light, dark, or match your system">
+                  <SettingsRow
+                    label={t("settingsPage.general.appearance.theme")}
+                    description={t("settingsPage.general.appearance.themeDescription")}
+                  >
                     <div className="inline-flex items-center gap-px p-0.5 bg-muted/60 dark:bg-surface-2 rounded-md">
                       {(
                         [
-                          { value: "light", icon: Sun, label: "Light" },
-                          { value: "dark", icon: Moon, label: "Dark" },
-                          { value: "auto", icon: Monitor, label: "Auto" },
+                          {
+                            value: "light",
+                            icon: Sun,
+                            label: t("settingsPage.general.appearance.light"),
+                          },
+                          {
+                            value: "dark",
+                            icon: Moon,
+                            label: t("settingsPage.general.appearance.dark"),
+                          },
+                          {
+                            value: "auto",
+                            icon: Monitor,
+                            label: t("settingsPage.general.appearance.auto"),
+                          },
                         ] as const
                       ).map((option) => {
                         const Icon = option.icon;
@@ -1410,12 +1528,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             {/* Sound Effects */}
             <div>
-              <SectionHeader title="Sound Effects" />
+              <SectionHeader title={t("settingsPage.general.soundEffects.title")} />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <SettingsRow
-                    label="Dictation sounds"
-                    description="Play a tone when recording starts and stops"
+                    label={t("settingsPage.general.soundEffects.dictationSounds")}
+                    description={t("settingsPage.general.soundEffects.dictationSoundsDescription")}
                   >
                     <Toggle checked={audioCuesEnabled} onChange={setAudioCuesEnabled} />
                   </SettingsRow>
@@ -1426,14 +1544,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Floating Icon */}
             <div>
               <SectionHeader
-                title="Floating Icon"
-                description="Control when the dictation icon is visible on your screen"
+                title={t("settingsPage.general.floatingIcon.title")}
+                description={t("settingsPage.general.floatingIcon.description")}
               />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <SettingsRow
-                    label="Auto-hide when idle"
-                    description="Keep the icon hidden until you start dictating"
+                    label={t("settingsPage.general.floatingIcon.autoHide")}
+                    description={t("settingsPage.general.floatingIcon.autoHideDescription")}
                   >
                     <Toggle checked={floatingIconAutoHide} onChange={setFloatingIconAutoHide} />
                   </SettingsRow>
@@ -1444,14 +1562,27 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Language */}
             <div>
               <SectionHeader
-                title="Language"
-                description="Set the language used for transcription"
+                title={t("settings.language.sectionTitle")}
+                description={t("settings.language.sectionDescription")}
               />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <SettingsRow
-                    label="Preferred language"
-                    description="Choose the language you speak for more accurate transcription"
+                    label={t("settings.language.uiLabel")}
+                    description={t("settings.language.uiDescription")}
+                  >
+                    <LanguageSelector
+                      value={uiLanguage}
+                      onChange={setUiLanguage}
+                      options={UI_LANGUAGE_OPTIONS}
+                      className="min-w-32"
+                    />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settings.language.transcriptionLabel")}
+                    description={t("settings.language.transcriptionDescription")}
                   >
                     <LanguageSelector
                       value={preferredLanguage}
@@ -1467,8 +1598,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Dictation Hotkey */}
             <div>
               <SectionHeader
-                title="Dictation Hotkey"
-                description="The key combination that starts and stops voice dictation"
+                title={t("settingsPage.general.hotkey.title")}
+                description={t("settingsPage.general.hotkey.description")}
               />
               <SettingsPanel>
                 <SettingsPanelRow>
@@ -1485,7 +1616,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 {!isUsingGnomeHotkeys && (
                   <SettingsPanelRow>
                     <p className="text-[11px] font-medium text-muted-foreground/80 mb-2">
-                      Activation Mode
+                      {t("settingsPage.general.hotkey.activationMode")}
                     </p>
                     <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
                   </SettingsPanelRow>
@@ -1496,12 +1627,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Startup */}
             {platform !== "linux" && (
               <div>
-                <SectionHeader title="Startup" />
+                <SectionHeader title={t("settingsPage.general.startup.title")} />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Launch at login"
-                      description="Start OpenWhispr automatically when you log in"
+                      label={t("settingsPage.general.startup.launchAtLogin")}
+                      description={t("settingsPage.general.startup.launchAtLoginDescription")}
                     >
                       <Toggle
                         checked={autoStartEnabled}
@@ -1517,8 +1648,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Microphone */}
             <div>
               <SectionHeader
-                title="Microphone"
-                description="Select which input device to use for dictation"
+                title={t("settingsPage.general.microphone.title")}
+                description={t("settingsPage.general.microphone.description")}
               />
               <SettingsPanel>
                 <SettingsPanelRow>
@@ -1567,6 +1698,159 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           />
         );
 
+      case "dictionary":
+        return (
+          <div className="space-y-5">
+            <SectionHeader
+              title={t("settingsPage.dictionary.title")}
+              description={t("settingsPage.dictionary.description")}
+            />
+
+            {/* Add Words */}
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <div className="space-y-2">
+                  <p className="text-[12px] font-medium text-foreground">
+                    {t("settingsPage.dictionary.addWordOrPhrase")}
+                  </p>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder={t("settingsPage.dictionary.placeholder")}
+                      value={newDictionaryWord}
+                      onChange={(e) => setNewDictionaryWord(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddDictionaryWord();
+                        }
+                      }}
+                      className="flex-1 h-8 text-[12px]"
+                    />
+                    <Button
+                      onClick={handleAddDictionaryWord}
+                      disabled={!newDictionaryWord.trim()}
+                      size="sm"
+                      className="h-8"
+                    >
+                      {t("settingsPage.dictionary.add")}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground/50">
+                    {t("settingsPage.dictionary.pressEnterToAdd")}
+                  </p>
+                </div>
+              </SettingsPanelRow>
+            </SettingsPanel>
+
+            {/* Word List */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-[12px] font-medium text-foreground">
+                  {t("settingsPage.dictionary.yourWords")}
+                  {customDictionary.length > 0 && (
+                    <span className="ml-1.5 text-muted-foreground/50 font-normal text-[11px]">
+                      {customDictionary.length}
+                    </span>
+                  )}
+                </p>
+                {customDictionary.length > 0 && (
+                  <button
+                    onClick={() => {
+                      showConfirmDialog({
+                        title: t("settingsPage.dictionary.clearDictionaryTitle"),
+                        description: t("settingsPage.dictionary.clearDictionaryDescription"),
+                        confirmText: t("settingsPage.dictionary.clearAll"),
+                        variant: "destructive",
+                        onConfirm: () =>
+                          setCustomDictionary(customDictionary.filter((w) => w === agentName)),
+                      });
+                    }}
+                    className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
+                  >
+                    {t("settingsPage.dictionary.clearAll")}
+                  </button>
+                )}
+              </div>
+
+              {customDictionary.length > 0 ? (
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex flex-wrap gap-1">
+                      {customDictionary.map((word) => {
+                        const isAgentName = word === agentName;
+                        return (
+                          <span
+                            key={word}
+                            className={`group inline-flex items-center gap-0.5 py-0.5 rounded-[5px] text-[11px] border transition-all ${
+                              isAgentName
+                                ? "pl-2 pr-2 bg-primary/10 dark:bg-primary/15 text-primary border-primary/20 dark:border-primary/30"
+                                : "pl-2 pr-1 bg-primary/5 dark:bg-primary/10 text-foreground border-border/30 dark:border-border-subtle hover:border-destructive/40 hover:bg-destructive/5"
+                            }`}
+                            title={
+                              isAgentName
+                                ? t("settingsPage.dictionary.agentNameAutoManaged")
+                                : undefined
+                            }
+                          >
+                            {word}
+                            {!isAgentName && (
+                              <button
+                                onClick={() => handleRemoveDictionaryWord(word)}
+                                className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
+                                title={t("settingsPage.dictionary.removeWord")}
+                              >
+                                <svg
+                                  width="9"
+                                  height="9"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                >
+                                  <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              ) : (
+                <div className="rounded-lg border border-dashed border-border/40 dark:border-border-subtle py-6 flex flex-col items-center justify-center text-center">
+                  <p className="text-[11px] text-muted-foreground/50">
+                    {t("settingsPage.dictionary.noWords")}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground/40 mt-0.5">
+                    {t("settingsPage.dictionary.wordsAppearHere")}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* How it works */}
+            <div>
+              <SectionHeader title={t("settingsPage.dictionary.howItWorksTitle")} />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">
+                    {t("settingsPage.dictionary.howItWorksDescription")}
+                  </p>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">
+                    <span className="font-medium text-foreground">
+                      {t("settingsPage.dictionary.tipLabel")}
+                    </span>{" "}
+                    {t("settingsPage.dictionary.tipDescription")}
+                  </p>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+          </div>
+        );
+
       case "aiModels":
         return (
           <AiModelsSection
@@ -1603,19 +1887,21 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-5">
             <SectionHeader
-              title="Voice Agent"
-              description="Name your AI assistant so you can address it directly during dictation"
+              title={t("settingsPage.agentConfig.title")}
+              description={t("settingsPage.agentConfig.description")}
             />
 
             {/* Agent Name */}
             <div>
-              <p className="text-[13px] font-medium text-foreground mb-3">Agent Name</p>
+              <p className="text-[13px] font-medium text-foreground mb-3">
+                {t("settingsPage.agentConfig.agentName")}
+              </p>
               <SettingsPanel>
                 <SettingsPanelRow>
                   <div className="space-y-3">
                     <div className="flex gap-2">
                       <Input
-                        placeholder="e.g. Jarvis, Nova, Atlas..."
+                        placeholder={t("settingsPage.agentConfig.placeholder")}
                         value={agentNameInput}
                         onChange={(e) => setAgentNameInput(e.target.value)}
                         className="flex-1 text-center text-base font-mono"
@@ -1626,18 +1912,20 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           setAgentName(trimmed);
                           setAgentNameInput(trimmed);
                           showAlertDialog({
-                            title: "Agent Name Updated",
-                            description: `Your agent is now named "${trimmed}". Address it by saying "Hey ${trimmed}" followed by your instructions.`,
+                            title: t("settingsPage.agentConfig.dialogs.updatedTitle"),
+                            description: t("settingsPage.agentConfig.dialogs.updatedDescription", {
+                              name: trimmed,
+                            }),
                           });
                         }}
                         disabled={!agentNameInput.trim()}
                         size="sm"
                       >
-                        Save
+                        {t("settingsPage.agentConfig.save")}
                       </Button>
                     </div>
                     <p className="text-[11px] text-muted-foreground/60">
-                      Pick something short and natural to say aloud
+                      {t("settingsPage.agentConfig.helper")}
                     </p>
                   </div>
                 </SettingsPanelRow>
@@ -1646,14 +1934,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             {/* How it works */}
             <div>
-              <SectionHeader title="How it works" />
+              <SectionHeader title={t("settingsPage.agentConfig.howItWorksTitle")} />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    When you say{" "}
-                    <span className="font-medium text-foreground">"Hey {agentName}"</span> followed
-                    by an instruction, the AI switches from cleanup mode to instruction mode.
-                    Without the trigger phrase, it simply cleans up your dictation.
+                    {t("settingsPage.agentConfig.howItWorksDescription", { agentName })}
                   </p>
                 </SettingsPanelRow>
               </SettingsPanel>
@@ -1661,29 +1946,32 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             {/* Examples */}
             <div>
-              <SectionHeader title="Examples" />
+              <SectionHeader title={t("settingsPage.agentConfig.examplesTitle")} />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <div className="space-y-2.5">
                     {[
                       {
                         input: `Hey ${agentName}, write a formal email about the budget`,
-                        mode: "Instruction",
+                        mode: t("settingsPage.agentConfig.instructionMode"),
                       },
                       {
                         input: `Hey ${agentName}, make this more professional`,
-                        mode: "Instruction",
+                        mode: t("settingsPage.agentConfig.instructionMode"),
                       },
                       {
                         input: `Hey ${agentName}, convert this to bullet points`,
-                        mode: "Instruction",
+                        mode: t("settingsPage.agentConfig.instructionMode"),
                       },
-                      { input: "We should schedule a meeting for next week", mode: "Cleanup" },
+                      {
+                        input: t("settingsPage.agentConfig.cleanupExample"),
+                        mode: t("settingsPage.agentConfig.cleanupMode"),
+                      },
                     ].map((example, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <span
                           className={`shrink-0 mt-0.5 text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded ${
-                            example.mode === "Instruction"
+                            example.mode === t("settingsPage.agentConfig.instructionMode")
                               ? "bg-primary/10 text-primary dark:bg-primary/15"
                               : "bg-muted text-muted-foreground"
                           }`}
@@ -1706,8 +1994,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-5">
             <SectionHeader
-              title="Prompt Studio"
-              description="View, customize, and test the unified system prompt that powers text cleanup and instruction detection"
+              title={t("settingsPage.prompts.title")}
+              description={t("settingsPage.prompts.description")}
             />
 
             <PromptStudio />
@@ -1718,9 +2006,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-6">
             <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">Privacy</h3>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {t("settingsPage.privacy.title")}
+              </h3>
               <p className="text-sm text-muted-foreground mb-6">
-                Control what data leaves your device. Everything is off by default.
+                {t("settingsPage.privacy.description")}
               </p>
             </div>
 
@@ -1728,8 +2018,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               <SettingsPanel>
                 <SettingsPanelRow>
                   <SettingsRow
-                    label="Cloud backup"
-                    description="Save your transcriptions to the cloud so you never lose them."
+                    label={t("settingsPage.privacy.cloudBackup")}
+                    description={t("settingsPage.privacy.cloudBackupDescription")}
                   >
                     <Toggle checked={cloudBackupEnabled} onChange={setCloudBackupEnabled} />
                   </SettingsRow>
@@ -1740,8 +2030,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             <SettingsPanel>
               <SettingsPanelRow>
                 <SettingsRow
-                  label="Usage analytics"
-                  description="Help us improve OpenWhispr by sharing anonymous performance metrics. We never send transcription content — only timing and error data."
+                  label={t("settingsPage.privacy.usageAnalytics")}
+                  description={t("settingsPage.privacy.usageAnalyticsDescription")}
                 >
                   <Toggle checked={telemetryEnabled} onChange={setTelemetryEnabled} />
                 </SettingsRow>
@@ -1754,30 +2044,30 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         return (
           <div className="space-y-5">
             <SectionHeader
-              title="Permissions"
-              description="Test and manage system permissions required for OpenWhispr to function correctly"
+              title={t("settingsPage.permissions.title")}
+              description={t("settingsPage.permissions.description")}
             />
 
             {/* Permission Cards - matching onboarding style */}
             <div className="space-y-3">
               <PermissionCard
                 icon={Mic}
-                title="Microphone"
-                description="Required for voice recording and dictation"
+                title={t("settingsPage.permissions.microphoneTitle")}
+                description={t("settingsPage.permissions.microphoneDescription")}
                 granted={permissionsHook.micPermissionGranted}
                 onRequest={permissionsHook.requestMicPermission}
-                buttonText="Test"
+                buttonText={t("settingsPage.permissions.test")}
                 onOpenSettings={permissionsHook.openMicPrivacySettings}
               />
 
               {platform === "darwin" && (
                 <PermissionCard
                   icon={Shield}
-                  title="Accessibility"
-                  description="Required for auto-paste to work after transcription"
+                  title={t("settingsPage.permissions.accessibilityTitle")}
+                  description={t("settingsPage.permissions.accessibilityDescription")}
                   granted={permissionsHook.accessibilityPermissionGranted}
                   onRequest={permissionsHook.testAccessibilityPermission}
-                  buttonText="Test & Grant"
+                  buttonText={t("settingsPage.permissions.testAndGrant")}
                   onOpenSettings={permissionsHook.openAccessibilitySettings}
                 />
               )}
@@ -1806,12 +2096,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Troubleshooting section for macOS */}
             {platform === "darwin" && (
               <div>
-                <p className="text-[13px] font-medium text-foreground mb-3">Troubleshooting</p>
+                <p className="text-[13px] font-medium text-foreground mb-3">
+                  {t("settingsPage.permissions.troubleshootingTitle")}
+                </p>
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Reset accessibility permissions"
-                      description="Fix issues after reinstalling or rebuilding the app by removing and re-adding OpenWhispr in System Settings"
+                      label={t("settingsPage.permissions.resetAccessibility.label")}
+                      description={t("settingsPage.permissions.resetAccessibility.rowDescription")}
                     >
                       <Button
                         onClick={resetAccessibilityPermissions}
@@ -1819,7 +2111,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         size="sm"
                         className="text-foreground/70 hover:text-foreground"
                       >
-                        Troubleshoot
+                        {t("settingsPage.permissions.troubleshoot")}
                       </Button>
                     </SettingsRow>
                   </SettingsPanelRow>
@@ -1840,14 +2132,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Data Management — moved from General */}
             <div className="border-t border-border/40 pt-8">
               <SectionHeader
-                title="Data Management"
-                description="Manage cached models and app data"
+                title={t("settingsPage.developer.dataManagementTitle")}
+                description={t("settingsPage.developer.dataManagementDescription")}
               />
 
               <div className="space-y-4">
                 <SettingsPanel>
                   <SettingsPanelRow>
-                    <SettingsRow label="Model cache" description={cachePathHint}>
+                    <SettingsRow
+                      label={t("settingsPage.developer.modelCache")}
+                      description={cachePathHint}
+                    >
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -1855,7 +2150,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           onClick={() => window.electronAPI?.openWhisperModelsFolder?.()}
                         >
                           <FolderOpen className="mr-1.5 h-3.5 w-3.5" />
-                          Open
+                          {t("settingsPage.developer.open")}
                         </Button>
                         <Button
                           variant="destructive"
@@ -1863,7 +2158,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           onClick={handleRemoveModels}
                           disabled={isRemovingModels}
                         >
-                          {isRemovingModels ? "Removing..." : "Clear Cache"}
+                          {isRemovingModels
+                            ? t("settingsPage.developer.removing")
+                            : t("settingsPage.developer.clearCache")}
                         </Button>
                       </div>
                     </SettingsRow>
@@ -1873,23 +2170,23 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Reset app data"
-                      description="Permanently delete all settings, transcriptions, and cached data"
+                      label={t("settingsPage.developer.resetAppData")}
+                      description={t("settingsPage.developer.resetAppDataDescription")}
                     >
                       <Button
                         onClick={() => {
                           showConfirmDialog({
-                            title: "Reset All App Data",
-                            description:
-                              "This will permanently delete ALL OpenWhispr data including:\n\n- Database and transcriptions\n- Local storage settings\n- Downloaded models\n- Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone.",
+                            title: t("settingsPage.developer.resetAll.title"),
+                            description: t("settingsPage.developer.resetAll.description"),
                             onConfirm: () => {
                               window.electronAPI
                                 ?.cleanupApp()
                                 .then(() => {
                                   showAlertDialog({
-                                    title: "All done",
-                                    description:
-                                      "Everything has been reset. The app will reload now.",
+                                    title: t("settingsPage.developer.resetAll.successTitle"),
+                                    description: t(
+                                      "settingsPage.developer.resetAll.successDescription"
+                                    ),
                                   });
                                   setTimeout(() => {
                                     window.location.reload();
@@ -1897,21 +2194,22 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                                 })
                                 .catch(() => {
                                   showAlertDialog({
-                                    title: "Couldn't reset",
-                                    description:
-                                      "Something went wrong. Please try again or reinstall the app.",
+                                    title: t("settingsPage.developer.resetAll.failedTitle"),
+                                    description: t(
+                                      "settingsPage.developer.resetAll.failedDescription"
+                                    ),
                                   });
                                 });
                             },
                             variant: "destructive",
-                            confirmText: "Delete Everything",
+                            confirmText: t("settingsPage.developer.resetAll.confirmText"),
                           });
                         }}
                         variant="outline"
                         size="sm"
                         className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive"
                       >
-                        Reset
+                        {t("common.reset")}
                       </Button>
                     </SettingsRow>
                   </SettingsPanelRow>

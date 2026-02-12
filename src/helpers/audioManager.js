@@ -1116,6 +1116,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
             customDictionary: this.getCustomDictionaryArray(),
             customPrompt: this.getCustomPrompt(),
             language: localStorage.getItem("preferredLanguage") || "auto",
+            locale: localStorage.getItem("uiLanguage") || "en",
           });
           if (!res.success) {
             const err = new Error(res.error || "Cloud reasoning failed");
@@ -1949,6 +1950,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         const res = await window.electronAPI.deepgramStreamingStart({
           sampleRate: 16000,
           language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+          keyterms: this.getKeyterms(),
         });
 
         if (!res.success) {
@@ -2140,6 +2142,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
               customDictionary: this.getCustomDictionaryArray(),
               customPrompt: this.getCustomPrompt(),
               language: localStorage.getItem("preferredLanguage") || "auto",
+              locale: localStorage.getItem("uiLanguage") || "en",
             });
             if (!res.success) {
               const err = new Error(res.error || "Cloud reasoning failed");

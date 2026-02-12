@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import { ConfirmDialog } from "./ui/dialog";
@@ -48,6 +49,7 @@ export default function LocalModelPicker({
   className = "",
   onDownloadComplete,
 }: LocalModelPickerProps) {
+  const { t } = useTranslation();
   const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
@@ -58,6 +60,15 @@ export default function LocalModelPicker({
       let downloaded = new Set<string>();
       if (modelType === "whisper") {
         const result = await window.electronAPI?.listWhisperModels();
+        if (result?.success) {
+          downloaded = new Set(
+            result.models
+              .filter((m: { downloaded?: boolean }) => m.downloaded)
+              .map((m: { model: string }) => m.model)
+          );
+        }
+      } else if (modelType === "parakeet") {
+        const result = await window.electronAPI?.listParakeetModels();
         if (result?.success) {
           downloaded = new Set(
             result.models
@@ -122,14 +133,13 @@ export default function LocalModelPicker({
   const handleDelete = useCallback(
     (modelId: string) => {
       showConfirmDialog({
-        title: "Delete Model",
-        description:
-          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        title: t("transcription.deleteModel.title"),
+        description: t("transcription.deleteModel.description"),
         onConfirm: () => deleteModel(modelId, loadDownloadedModels),
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteModel, loadDownloadedModels]
+    [showConfirmDialog, deleteModel, loadDownloadedModels, t]
   );
 
   const currentProvider = providers.find((p) => p.id === selectedProvider);
@@ -156,7 +166,7 @@ export default function LocalModelPicker({
       {progressDisplay}
 
       <div className="p-3">
-        <h5 className={`${styles.header} mb-2`}>Available Models</h5>
+        <h5 className={`${styles.header} mb-2`}>{t("common.availableModels")}</h5>
 
         <ModelCardList
           models={models.map(

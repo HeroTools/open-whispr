@@ -287,6 +287,9 @@ declare global {
       createProductionEnvFile: (key: string) => Promise<void>;
       getAnthropicKey: () => Promise<string | null>;
       saveAnthropicKey: (key: string) => Promise<void>;
+      getUiLanguage: () => Promise<string>;
+      saveUiLanguage: (language: string) => Promise<{ success: boolean; language: string }>;
+      setUiLanguage: (language: string) => Promise<{ success: boolean; language: string }>;
       saveAllKeysToEnv: () => Promise<{ success: boolean; path: string }>;
       syncStartupPreferences: (prefs: {
         useLocalWhisper: boolean;
@@ -536,6 +539,7 @@ declare global {
           customDictionary?: string[];
           customPrompt?: string;
           language?: string;
+          locale?: string;
         }
       ) => Promise<{
         success: boolean;

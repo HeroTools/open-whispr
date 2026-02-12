@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { useDialogs } from "./useDialogs";
 import { useToast } from "../components/ui/Toast";
 import type { WhisperDownloadProgressData } from "../types/electron";
@@ -36,21 +38,21 @@ export function formatETA(seconds: number): string {
   return `${minutes}m ${remainingSeconds}s`;
 }
 
-function getDownloadErrorMessage(error: string, code?: string): string {
+function getDownloadErrorMessage(t: TFunction, error: string, code?: string): string {
   if (code === "EXTRACTION_FAILED" || error.includes("installation failed"))
-    return "Model downloaded but installation failed. Click download to retry installation without re-downloading.";
+    return t("hooks.modelDownload.errors.extractionFailed");
   if (code === "ETIMEDOUT" || error.includes("timeout") || error.includes("stalled"))
-    return "Download timed out. Check your internet connection and try again.";
+    return t("hooks.modelDownload.errors.timeout");
   if (code === "ENOTFOUND" || error.includes("ENOTFOUND"))
-    return "Could not reach the download server. Check your internet connection.";
+    return t("hooks.modelDownload.errors.notFound");
   if (error.includes("disk space")) return error;
   if (error.includes("corrupted") || error.includes("incomplete") || error.includes("too small"))
-    return "Download was incomplete or corrupted. Please try again.";
+    return t("hooks.modelDownload.errors.corrupted");
   if (error.includes("HTTP 429") || error.includes("rate limit"))
-    return "Download server is rate limiting. Please wait a few minutes and try again.";
+    return t("hooks.modelDownload.errors.rateLimited");
   if (error.includes("HTTP 4") || error.includes("HTTP 5"))
-    return `Server error (${error}). Please try again later.`;
-  return `Download failed: ${error}`;
+    return t("hooks.modelDownload.errors.server", { error });
+  return t("hooks.modelDownload.errors.generic", { error });
 }
 
 export function useModelDownload({
@@ -58,6 +60,7 @@ export function useModelDownload({
   onDownloadComplete,
   onModelsCleared,
 }: UseModelDownloadOptions) {
+  const { t } = useTranslation();
   const [downloadingModel, setDownloadingModel] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<DownloadProgress>({
     percentage: 0,
@@ -110,13 +113,20 @@ export function useModelDownload({
       } else if (data.type === "complete") {
         if (isCancellingRef.current) return;
         setIsInstalling(false);
-        setDownloadingModel(null);
-        setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
-        onDownloadCompleteRef.current?.();
+        // Don't clear downloadingModel/downloadProgress here — let downloadModel's
+        // finally block handle it after the model list has been refreshed.
+        // This prevents a flash where the model appears "not downloaded".
       } else if (data.type === "error") {
         if (isCancellingRef.current) return;
-        const msg = getDownloadErrorMessage(data.error || "Unknown error", data.code);
-        const title = data.code === "EXTRACTION_FAILED" ? "Installation Failed" : "Download Failed";
+        const msg = getDownloadErrorMessage(
+          t,
+          data.error || t("hooks.modelDownload.errors.unknown"),
+          data.code
+        );
+        const title =
+          data.code === "EXTRACTION_FAILED"
+            ? t("hooks.modelDownload.installationFailed.title")
+            : t("hooks.modelDownload.downloadFailed.title");
         setDownloadError(msg);
         showAlertDialogRef.current({ title, description: msg });
         setIsInstalling(false);
@@ -124,7 +134,7 @@ export function useModelDownload({
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
       }
     },
-    []
+    [t]
   );
 
   const handleLLMProgress = useCallback((_event: unknown, data: LLMDownloadProgressData) => {
@@ -164,8 +174,8 @@ export function useModelDownload({
     async (modelId: string, onSelectAfterDownload?: (id: string) => void) => {
       if (downloadingModel) {
         toast({
-          title: "Download in Progress",
-          description: "Please wait for the current download to complete or cancel it first.",
+          title: t("hooks.modelDownload.downloadInProgress.title"),
+          description: t("hooks.modelDownload.downloadInProgress.description"),
         });
         return;
       }
@@ -181,18 +191,31 @@ export function useModelDownload({
         if (modelType === "whisper") {
           const result = await window.electronAPI?.downloadWhisperModel(modelId);
           if (!result?.success && !result?.error?.includes("interrupted by user")) {
-            const msg = getDownloadErrorMessage(result?.error || "Unknown error", result?.code);
+            const msg = getDownloadErrorMessage(
+              t,
+              result?.error || t("hooks.modelDownload.errors.unknown"),
+              result?.code
+            );
             setDownloadError(msg);
-            showAlertDialog({ title: "Download Failed", description: msg });
+            showAlertDialog({
+              title: t("hooks.modelDownload.downloadFailed.title"),
+              description: msg,
+            });
           } else {
             success = result?.success ?? false;
           }
         } else if (modelType === "parakeet") {
           const result = await window.electronAPI?.downloadParakeetModel(modelId);
           if (!result?.success && !result?.error?.includes("interrupted by user")) {
-            const msg = getDownloadErrorMessage(result?.error || "Unknown error", result?.code);
+            const msg = getDownloadErrorMessage(
+              t,
+              result?.error || t("hooks.modelDownload.errors.unknown"),
+              result?.code
+            );
             const title =
-              result?.code === "EXTRACTION_FAILED" ? "Installation Failed" : "Download Failed";
+              result?.code === "EXTRACTION_FAILED"
+                ? t("hooks.modelDownload.installationFailed.title")
+                : t("hooks.modelDownload.downloadFailed.title");
             setDownloadError(msg);
             showAlertDialog({ title, description: msg });
           } else {
@@ -203,9 +226,12 @@ export function useModelDownload({
             | { success: boolean; error?: string; code?: string }
             | undefined;
           if (result && !result.success && result.error) {
-            const msg = getDownloadErrorMessage(result.error, result.code);
+            const msg = getDownloadErrorMessage(t, result.error, result.code);
             setDownloadError(msg);
-            showAlertDialog({ title: "Download Failed", description: msg });
+            showAlertDialog({
+              title: t("hooks.modelDownload.downloadFailed.title"),
+              description: msg,
+            });
           } else {
             success = result?.success ?? false;
           }
@@ -215,7 +241,14 @@ export function useModelDownload({
           onSelectAfterDownload?.(modelId);
         }
 
-        onDownloadCompleteRef.current?.();
+        // Await the refresh so the model list is updated before we clear
+        // the downloading state in `finally`. This prevents a flash where
+        // the model briefly appears "not downloaded".
+        try {
+          await onDownloadCompleteRef.current?.();
+        } catch {
+          // Non-fatal — the model is on disk regardless
+        }
       } catch (error: unknown) {
         if (isCancellingRef.current) return;
 
@@ -225,9 +258,12 @@ export function useModelDownload({
           !errorMessage.includes("cancelled by user") &&
           !errorMessage.includes("DOWNLOAD_CANCELLED")
         ) {
-          const msg = getDownloadErrorMessage(errorMessage);
+          const msg = getDownloadErrorMessage(t, errorMessage);
           setDownloadError(msg);
-          showAlertDialog({ title: "Download Failed", description: msg });
+          showAlertDialog({
+            title: t("hooks.modelDownload.downloadFailed.title"),
+            description: msg,
+          });
         }
       } finally {
         setIsInstalling(false);
@@ -235,7 +271,7 @@ export function useModelDownload({
         setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
       }
     },
-    [downloadingModel, modelType, showAlertDialog, toast]
+    [downloadingModel, modelType, showAlertDialog, toast, t]
   );
 
   const deleteModel = useCallback(
@@ -245,35 +281,39 @@ export function useModelDownload({
           const result = await window.electronAPI?.deleteWhisperModel(modelId);
           if (result?.success) {
             toast({
-              title: "Model Deleted",
-              description: `Model deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
+              title: t("hooks.modelDownload.modelDeleted.title"),
+              description: t("hooks.modelDownload.modelDeleted.descriptionWithSpace", {
+                sizeMb: result.freed_mb,
+              }),
             });
           }
         } else if (modelType === "parakeet") {
           const result = await window.electronAPI?.deleteParakeetModel(modelId);
           if (result?.success) {
             toast({
-              title: "Model Deleted",
-              description: `Model deleted successfully! Freed ${result.freed_mb}MB of disk space.`,
+              title: t("hooks.modelDownload.modelDeleted.title"),
+              description: t("hooks.modelDownload.modelDeleted.descriptionWithSpace", {
+                sizeMb: result.freed_mb,
+              }),
             });
           }
         } else {
           await window.electronAPI?.modelDelete?.(modelId);
           toast({
-            title: "Model Deleted",
-            description: "Model deleted successfully!",
+            title: t("hooks.modelDownload.modelDeleted.title"),
+            description: t("hooks.modelDownload.modelDeleted.description"),
           });
         }
         onComplete?.();
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         showAlertDialog({
-          title: "Delete Failed",
-          description: `Failed to delete model: ${errorMessage}`,
+          title: t("hooks.modelDownload.deleteFailed.title"),
+          description: t("hooks.modelDownload.deleteFailed.description", { error: errorMessage }),
         });
       }
     },
-    [modelType, toast, showAlertDialog]
+    [modelType, toast, showAlertDialog, t]
   );
 
   const cancelDownload = useCallback(async () => {
@@ -290,8 +330,8 @@ export function useModelDownload({
         await window.electronAPI?.modelCancelDownload?.(downloadingModel);
       }
       toast({
-        title: "Download Cancelled",
-        description: "The download has been cancelled.",
+        title: t("hooks.modelDownload.downloadCancelled.title"),
+        description: t("hooks.modelDownload.downloadCancelled.description"),
       });
     } catch (error) {
       console.error("Failed to cancel download:", error);
@@ -302,7 +342,7 @@ export function useModelDownload({
       setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
       onDownloadCompleteRef.current?.();
     }
-  }, [downloadingModel, isCancelling, modelType, toast]);
+  }, [downloadingModel, isCancelling, modelType, toast, t]);
 
   const isDownloading = downloadingModel !== null;
   const isDownloadingModel = useCallback(

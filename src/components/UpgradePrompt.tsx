@@ -1,5 +1,6 @@
 import { Dialog, DialogContent } from "./ui/dialog";
 import { ChevronRight } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useUsage } from "../hooks/useUsage";
 
 interface UpgradePromptProps {
@@ -15,6 +16,7 @@ export default function UpgradePrompt({
   wordsUsed = 2000,
   limit = 2000,
 }: UpgradePromptProps) {
+  const { t } = useTranslation();
   const usage = useUsage();
   const isPastDue = usage?.isPastDue ?? false;
 
@@ -23,31 +25,31 @@ export default function UpgradePrompt({
       <DialogContent className="max-w-md">
         <div className="text-center space-y-2 pt-2">
           <h2 className="text-xl font-semibold text-foreground">
-            {isPastDue ? "We couldn't process your payment" : "You've reached your weekly limit"}
+            {isPastDue ? t("upgradePrompt.paymentFailed") : t("upgradePrompt.weeklyLimit")}
           </h2>
           <p className="text-sm text-muted-foreground">
-            {isPastDue ? (
-              <>
-                You're on the free plan for now — don't worry, you still get{" "}
-                {limit.toLocaleString()} words per week.
-                <br />
-                Update your payment method to get back to unlimited Pro.
-              </>
-            ) : (
-              <>
-                {wordsUsed.toLocaleString()} of {limit.toLocaleString()} words used.
-                <br />
-                Your transcription was saved and pasted.
-              </>
-            )}
+            {(isPastDue
+              ? t("upgradePrompt.pastDueDescription", { limit: limit.toLocaleString() })
+              : t("upgradePrompt.limitDescription", {
+                  used: wordsUsed.toLocaleString(),
+                  limit: limit.toLocaleString(),
+                })
+            )
+              .split("\n")
+              .map((line, i, arr) => (
+                <span key={i}>
+                  {line}
+                  {i < arr.length - 1 && <br />}
+                </span>
+              ))}
           </p>
         </div>
 
         <div className="space-y-2 pt-2">
           {isPastDue ? (
             <OptionCard
-              title="Update payment method"
-              description="Get back to unlimited Pro transcriptions."
+              title={t("upgradePrompt.updatePayment")}
+              description={t("upgradePrompt.updatePaymentDescription")}
               onClick={() => {
                 usage?.openBillingPortal();
               }}
@@ -56,8 +58,8 @@ export default function UpgradePrompt({
             />
           ) : (
             <OptionCard
-              title="Upgrade to Pro"
-              description="Unlimited transcriptions. $9/month."
+              title={t("upgradePrompt.upgradeToPro")}
+              description={t("upgradePrompt.upgradeDescription")}
               onClick={() => {
                 usage?.openCheckout();
               }}
@@ -66,16 +68,16 @@ export default function UpgradePrompt({
             />
           )}
           <OptionCard
-            title="Use your own API key"
-            description="Bring your own key for unlimited use."
+            title={t("upgradePrompt.useApiKey")}
+            description={t("upgradePrompt.useApiKeyDescription")}
             onClick={() => {
               localStorage.setItem("cloudTranscriptionMode", "byok");
               onOpenChange(false);
             }}
           />
           <OptionCard
-            title="Switch to local"
-            description="Offline transcription. No limits."
+            title={t("upgradePrompt.switchToLocal")}
+            description={t("upgradePrompt.switchToLocalDescription")}
             onClick={() => {
               localStorage.setItem("useLocalWhisper", "true");
               onOpenChange(false);
@@ -83,7 +85,9 @@ export default function UpgradePrompt({
           />
         </div>
 
-        <p className="text-xs text-muted-foreground/60 text-center">Rolling weekly limit</p>
+        <p className="text-xs text-muted-foreground/60 text-center">
+          {t("upgradePrompt.rollingWeeklyLimit")}
+        </p>
       </DialogContent>
     </Dialog>
   );

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Download, Trash2, Cloud, Lock, X } from "lucide-react";
@@ -70,7 +71,7 @@ function LocalModelCard({
   onCancel,
   styles: cardStyles,
 }: LocalModelCardProps) {
-  // Click to select if downloaded
+  const { t } = useTranslation();
   const handleClick = () => {
     if (isDownloaded && !isSelected) {
       onSelect();
@@ -84,12 +85,10 @@ function LocalModelCard({
         isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
       } ${isDownloaded && !isSelected ? "cursor-pointer" : ""}`}
     >
-      {/* Left accent bar for selected model */}
       {isSelected && (
         <div className="absolute left-0 top-0 bottom-0 w-1 bg-linear-to-b from-primary via-primary to-primary/80 rounded-l-md" />
       )}
       <div className="flex items-center gap-1.5 p-2 pl-2.5">
-        {/* Status dot with LED glow */}
         <div className="shrink-0">
           {isDownloaded ? (
             <div
@@ -106,7 +105,6 @@ function LocalModelCard({
           )}
         </div>
 
-        {/* Model info - single line, no description */}
         <div className="flex-1 min-w-0 flex items-center gap-1.5">
           <ProviderIcon provider={provider} className="w-3.5 h-3.5 shrink-0" />
           <span className="font-semibold text-sm text-foreground truncate tracking-tight">
@@ -115,7 +113,9 @@ function LocalModelCard({
           <span className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0">
             {actualSizeMb ? `${actualSizeMb}MB` : size}
           </span>
-          {recommended && <span className={cardStyles.badges.recommended}>Recommended</span>}
+          {recommended && (
+            <span className={cardStyles.badges.recommended}>{t("common.recommended")}</span>
+          )}
           {languageLabel && (
             <span className="text-[11px] text-muted-foreground/50 font-medium shrink-0">
               {languageLabel}
@@ -123,13 +123,12 @@ function LocalModelCard({
           )}
         </div>
 
-        {/* Actions */}
         <div className="flex items-center gap-1.5 shrink-0">
           {isDownloaded ? (
             <>
               {isSelected && (
                 <span className="text-[10px] font-medium text-primary px-2 py-0.5 bg-primary/10 rounded-sm">
-                  Active
+                  {t("common.active")}
                 </span>
               )}
               <Button
@@ -156,7 +155,7 @@ function LocalModelCard({
               className="h-6 px-2.5 text-[11px] text-destructive border-destructive/25 hover:bg-destructive/8"
             >
               <X size={11} className="mr-0.5" />
-              {isCancelling ? "..." : "Cancel"}
+              {isCancelling ? "..." : t("common.cancel")}
             </Button>
           ) : (
             <Button
@@ -169,7 +168,7 @@ function LocalModelCard({
               className="h-6 px-2.5 text-[11px]"
             >
               <Download size={11} className="mr-1" />
-              Download
+              {t("common.download")}
             </Button>
           )}
         </div>
@@ -217,16 +216,15 @@ const LOCAL_PROVIDER_TABS: Array<{ id: string; name: string; disabled?: boolean 
   { id: "nvidia", name: "NVIDIA Parakeet" },
 ];
 
-// Mode toggle component - defined outside to prevent recreation on every render
 interface ModeToggleProps {
   useLocalWhisper: boolean;
   onModeChange: (useLocal: boolean) => void;
 }
 
 function ModeToggle({ useLocalWhisper, onModeChange }: ModeToggleProps) {
+  const { t } = useTranslation();
   return (
     <div className="relative flex p-0.5 rounded-lg bg-surface-1/80 backdrop-blur-xl dark:bg-surface-1 border border-border/60 dark:border-white/8 shadow-(--shadow-metallic-light) dark:shadow-(--shadow-metallic-dark)">
-      {/* Sliding indicator */}
       <div
         className={`absolute top-0.5 bottom-0.5 w-[calc(50%-2px)] rounded-md bg-card border border-border/60 dark:border-border-subtle shadow-(--shadow-metallic-light) dark:shadow-(--shadow-metallic-dark) transition-transform duration-200 ease-out ${
           useLocalWhisper ? "translate-x-[calc(100%)]" : "translate-x-0"
@@ -239,7 +237,7 @@ function ModeToggle({ useLocalWhisper, onModeChange }: ModeToggleProps) {
         }`}
       >
         <Cloud className="w-3.5 h-3.5" />
-        <span className="text-xs font-medium">Cloud</span>
+        <span className="text-xs font-medium">{t("common.cloud")}</span>
       </button>
       <button
         onClick={() => onModeChange(true)}
@@ -248,7 +246,7 @@ function ModeToggle({ useLocalWhisper, onModeChange }: ModeToggleProps) {
         }`}
       >
         <Lock className="w-3.5 h-3.5" />
-        <span className="text-xs font-medium">Local</span>
+        <span className="text-xs font-medium">{t("common.local")}</span>
       </button>
     </div>
   );
@@ -278,13 +276,13 @@ export default function TranscriptionModelPicker({
   className = "",
   variant = "settings",
 }: TranscriptionModelPickerProps) {
+  const { t } = useTranslation();
   const [localModels, setLocalModels] = useState<LocalModel[]>([]);
   const [parakeetModels, setParakeetModels] = useState<LocalModel[]>([]);
   const [internalLocalProvider, setInternalLocalProvider] = useState(selectedLocalProvider);
   const hasLoadedRef = useRef(false);
   const hasLoadedParakeetRef = useRef(false);
 
-  // Sync internal state with prop when it changes externally
   useEffect(() => {
     if (selectedLocalProvider !== internalLocalProvider) {
       setInternalLocalProvider(selectedLocalProvider);
@@ -302,6 +300,9 @@ export default function TranscriptionModelPicker({
   const colorScheme: ColorScheme = variant === "settings" ? "purple" : "blue";
   const styles = useMemo(() => MODEL_PICKER_COLORS[colorScheme], [colorScheme]);
   const cloudProviders = useMemo(() => getTranscriptionProviders(), []);
+  const cloudProviderTabs = CLOUD_PROVIDER_TABS.map((provider) =>
+    provider.id === "custom" ? { ...provider, name: t("transcription.customProvider") } : provider
+  );
 
   useEffect(() => {
     selectedLocalModelRef.current = selectedLocalModel;
@@ -363,7 +364,6 @@ export default function TranscriptionModelPicker({
     const isValidProvider = VALID_CLOUD_PROVIDER_IDS.includes(selectedCloudProvider);
 
     if (!isValidProvider) {
-      // Check if we have a custom URL that differs from known providers
       const knownProviderUrls = cloudProviders.map((p) => p.baseUrl);
       const hasCustomUrl =
         cloudTranscriptionBaseUrl &&
@@ -407,7 +407,6 @@ export default function TranscriptionModelPicker({
     ensureValidCloudSelectionRef.current = ensureValidCloudSelection;
   }, [ensureValidCloudSelection]);
 
-  // Handle local model loading when in local mode
   useEffect(() => {
     if (!useLocalWhisper) return;
 
@@ -420,21 +419,22 @@ export default function TranscriptionModelPicker({
     }
   }, [useLocalWhisper, internalLocalProvider]);
 
-  // Handle cloud mode initialization - only when switching to cloud mode
   useEffect(() => {
     if (useLocalWhisper) return;
 
-    // Reset local model load flags when switching to cloud
     hasLoadedRef.current = false;
     hasLoadedParakeetRef.current = false;
     ensureValidCloudSelectionRef.current?.();
   }, [useLocalWhisper]);
 
   useEffect(() => {
-    const handleModelsCleared = () => loadLocalModels();
+    const handleModelsCleared = () => {
+      loadLocalModels();
+      loadParakeetModels();
+    };
     window.addEventListener("openwhispr-models-cleared", handleModelsCleared);
     return () => window.removeEventListener("openwhispr-models-cleared", handleModelsCleared);
-  }, [loadLocalModels]);
+  }, [loadLocalModels, loadParakeetModels]);
 
   const {
     downloadingModel,
@@ -478,15 +478,11 @@ export default function TranscriptionModelPicker({
       const provider = cloudProviders.find((p) => p.id === providerId);
 
       if (providerId === "custom") {
-        // Clear model to whisper-1 (standard fallback) to avoid sending
-        // provider-specific models to custom endpoints
         onCloudModelSelect("whisper-1");
-        // Don't change base URL - user will enter their own
         return;
       }
 
       if (provider) {
-        // Update base URL to the selected provider's default
         setCloudTranscriptionBaseUrl?.(provider.baseUrl);
         if (provider.models?.length) {
           onCloudModelSelect(provider.models[0].id);
@@ -506,7 +502,6 @@ export default function TranscriptionModelPicker({
     [onLocalProviderSelect]
   );
 
-  // Wrapper to set both model and provider when selecting a local model
   const handleWhisperModelSelect = useCallback(
     (modelId: string) => {
       onLocalProviderSelect?.("whisper");
@@ -531,15 +526,12 @@ export default function TranscriptionModelPicker({
     const trimmed = (cloudTranscriptionBaseUrl || "").trim();
     if (!trimmed) return;
 
-    // Normalize the URL using the existing util from constants
     const { normalizeBaseUrl } = require("../config/constants");
     const normalized = normalizeBaseUrl(trimmed);
 
     if (normalized && normalized !== cloudTranscriptionBaseUrl) {
       setCloudTranscriptionBaseUrl(normalized);
     }
-
-    // Auto-detect if this matches a known provider
     if (normalized) {
       for (const provider of cloudProviders) {
         const providerNormalized = normalizeBaseUrl(provider.baseUrl);
@@ -562,9 +554,8 @@ export default function TranscriptionModelPicker({
   const handleDelete = useCallback(
     (modelId: string) => {
       showConfirmDialog({
-        title: "Delete Model",
-        description:
-          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        title: t("transcription.deleteModel.title"),
+        description: t("transcription.deleteModel.description"),
         onConfirm: async () => {
           await deleteModel(modelId, async () => {
             const result = await window.electronAPI?.listWhisperModels();
@@ -577,7 +568,7 @@ export default function TranscriptionModelPicker({
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteModel, validateAndSelectModel]
+    [showConfirmDialog, deleteModel, validateAndSelectModel, t]
   );
 
   const currentCloudProvider = useMemo<TranscriptionProviderData | undefined>(
@@ -590,11 +581,13 @@ export default function TranscriptionModelPicker({
     return currentCloudProvider.models.map((m) => ({
       value: m.id,
       label: m.name,
-      description: m.description,
+      description: m.descriptionKey
+        ? t(m.descriptionKey, { defaultValue: m.description })
+        : m.description,
       icon: getProviderIcon(selectedCloudProvider),
       invertInDark: isMonochromeProvider(selectedCloudProvider),
     }));
-  }, [currentCloudProvider, selectedCloudProvider]);
+  }, [currentCloudProvider, selectedCloudProvider, t]);
 
   const progressDisplay = useMemo(() => {
     if (!useLocalWhisper) return null;
@@ -649,8 +642,8 @@ export default function TranscriptionModelPicker({
           const modelId = model.model;
           const info = WHISPER_MODEL_INFO[modelId] ?? {
             name: modelId,
-            description: "Model",
-            size: "Unknown",
+            description: t("transcription.fallback.whisperModelDescription"),
+            size: t("common.unknown"),
             recommended: false,
           };
 
@@ -670,7 +663,14 @@ export default function TranscriptionModelPicker({
               provider="whisper"
               onSelect={() => handleWhisperModelSelect(modelId)}
               onDelete={() => handleDelete(modelId)}
-              onDownload={() => downloadModel(modelId, handleWhisperModelSelect)}
+              onDownload={() =>
+                downloadModel(modelId, (downloadedId) => {
+                  setLocalModels((prev) =>
+                    prev.map((m) => (m.model === downloadedId ? { ...m, downloaded: true } : m))
+                  );
+                  handleWhisperModelSelect(downloadedId);
+                })
+              }
               onCancel={cancelDownload}
               styles={styles}
             />
@@ -683,9 +683,8 @@ export default function TranscriptionModelPicker({
   const handleParakeetDelete = useCallback(
     (modelId: string) => {
       showConfirmDialog({
-        title: "Delete Model",
-        description:
-          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        title: t("transcription.deleteModel.title"),
+        description: t("transcription.deleteModel.description"),
         onConfirm: async () => {
           await deleteParakeetModel(modelId, async () => {
             const result = await window.electronAPI?.listParakeetModels();
@@ -697,16 +696,16 @@ export default function TranscriptionModelPicker({
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteParakeetModel]
+    [showConfirmDialog, deleteParakeetModel, t]
   );
 
-  // Helper to get language label for Parakeet models
   const getParakeetLanguageLabel = (language: string) => {
-    return language === "multilingual" ? "25 languages" : "English";
+    return language === "multilingual"
+      ? t("transcription.parakeet.multilingual")
+      : t("transcription.parakeet.english");
   };
 
   const renderParakeetModels = () => {
-    // When no models are loaded yet, show all available models from registry
     const modelsToRender =
       parakeetModels.length === 0
         ? Object.entries(PARAKEET_MODEL_INFO).map(([modelId, info]) => ({
@@ -722,8 +721,8 @@ export default function TranscriptionModelPicker({
           const modelId = model.model;
           const info = PARAKEET_MODEL_INFO[modelId] ?? {
             name: modelId,
-            description: "NVIDIA Parakeet Model",
-            size: "Unknown",
+            description: t("transcription.fallback.parakeetModelDescription"),
+            size: t("common.unknown"),
             language: "en",
             recommended: false,
           };
@@ -745,7 +744,14 @@ export default function TranscriptionModelPicker({
               languageLabel={getParakeetLanguageLabel(info.language)}
               onSelect={() => handleParakeetModelSelect(modelId)}
               onDelete={() => handleParakeetDelete(modelId)}
-              onDownload={() => downloadParakeetModel(modelId, handleParakeetModelSelect)}
+              onDownload={() =>
+                downloadParakeetModel(modelId, (downloadedId) => {
+                  setParakeetModels((prev) =>
+                    prev.map((m) => (m.model === downloadedId ? { ...m, downloaded: true } : m))
+                  );
+                  handleParakeetModelSelect(downloadedId);
+                })
+              }
               onCancel={cancelParakeetDownload}
               styles={styles}
             />
@@ -757,14 +763,13 @@ export default function TranscriptionModelPicker({
 
   return (
     <div className={`space-y-2 ${className}`}>
-      {/* Integrated mode toggle - always visible */}
       <ModeToggle useLocalWhisper={useLocalWhisper} onModeChange={handleModeChange} />
 
       {!useLocalWhisper ? (
         <div className={styles.container}>
           <div className="p-2 pb-0">
             <ProviderTabs
-              providers={CLOUD_PROVIDER_TABS}
+              providers={cloudProviderTabs}
               selectedId={selectedCloudProvider}
               onSelect={handleCloudProviderChange}
               colorScheme={colorScheme === "purple" ? "purple" : "indigo"}
@@ -775,9 +780,10 @@ export default function TranscriptionModelPicker({
           <div className="p-2">
             {selectedCloudProvider === "custom" ? (
               <div className="space-y-2">
-                {/* Endpoint URL */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-foreground">Endpoint URL</label>
+                  <label className="block text-xs font-medium text-foreground">
+                    {t("transcription.endpointUrl")}
+                  </label>
                   <Input
                     value={cloudTranscriptionBaseUrl}
                     onChange={(e) => setCloudTranscriptionBaseUrl?.(e.target.value)}
@@ -787,17 +793,17 @@ export default function TranscriptionModelPicker({
                   />
                 </div>
 
-                {/* API Key */}
                 <ApiKeyInput
                   apiKey={customTranscriptionApiKey}
                   setApiKey={setCustomTranscriptionApiKey || (() => {})}
-                  label="API Key (Optional)"
+                  label={t("transcription.apiKeyOptional")}
                   helpText=""
                 />
 
-                {/* Model Name */}
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-medium text-foreground">Model</label>
+                  <label className="block text-xs font-medium text-foreground">
+                    {t("common.model")}
+                  </label>
                   <Input
                     value={selectedCloudModel}
                     onChange={(e) => onCloudModelSelect(e.target.value)}
@@ -808,10 +814,11 @@ export default function TranscriptionModelPicker({
               </div>
             ) : (
               <div className="space-y-2">
-                {/* API Key with inline link */}
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium text-foreground">API Key</label>
+                    <label className="text-xs font-medium text-foreground">
+                      {t("common.apiKey")}
+                    </label>
                     <button
                       type="button"
                       onClick={createExternalLinkHandler(
@@ -823,7 +830,7 @@ export default function TranscriptionModelPicker({
                       )}
                       className="text-[11px] text-white/70 hover:text-white transition-colors cursor-pointer"
                     >
-                      Get key →
+                      {t("transcription.getKey")}
                     </button>
                   </div>
                   <ApiKeyInput
@@ -842,9 +849,8 @@ export default function TranscriptionModelPicker({
                   />
                 </div>
 
-                {/* Model Selection */}
                 <div className="space-y-1.5">
-                  <label className="text-xs font-medium text-foreground">Model</label>
+                  <label className="text-xs font-medium text-foreground">{t("common.model")}</label>
                   <ModelCardList
                     models={cloudModelOptions}
                     selectedModel={selectedCloudModel}

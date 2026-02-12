@@ -1,9 +1,16 @@
 import React, { useState, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { createPortal } from "react-dom";
 import { ChevronDown, Search, X, Check } from "lucide-react";
 import registry from "../../config/languageRegistry.json";
 
-const LANGUAGE_OPTIONS = registry.languages.map(({ code, label, flag }) => ({
+export interface LanguageOption {
+  value: string;
+  label: string;
+  flag: string;
+}
+
+const REGISTRY_OPTIONS: LanguageOption[] = registry.languages.map(({ code, label, flag }) => ({
   value: code,
   label,
   flag,
@@ -12,14 +19,21 @@ const LANGUAGE_OPTIONS = registry.languages.map(({ code, label, flag }) => ({
 interface LanguageSelectorProps {
   value: string;
   onChange: (value: string) => void;
+  options?: LanguageOption[];
   className?: string;
 }
+
+const SEARCH_THRESHOLD = 12;
 
 export default function LanguageSelector({
   value,
   onChange,
+  options,
   className = "",
 }: LanguageSelectorProps) {
+  const { t } = useTranslation();
+  const items = options ?? REGISTRY_OPTIONS;
+  const showSearch = items.length > SEARCH_THRESHOLD;
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -29,11 +43,13 @@ export default function LanguageSelector({
   const triggerRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  const filteredLanguages = LANGUAGE_OPTIONS.filter(
-    (lang) =>
-      lang.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lang.value.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredLanguages = showSearch
+    ? items.filter(
+        (lang) =>
+          lang.label.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          lang.value.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : items;
 
   useEffect(() => {
     setHighlightedIndex(0);
@@ -155,9 +171,9 @@ export default function LanguageSelector({
       >
         <span className="truncate text-foreground">
           <span className="mr-1.5">
-            {LANGUAGE_OPTIONS.find((l) => l.value === value)?.flag ?? "\uD83C\uDF10"}
+            {items.find((l) => l.value === value)?.flag ?? "\uD83C\uDF10"}
           </span>
-          {LANGUAGE_OPTIONS.find((l) => l.value === value)?.label ?? value}
+          {items.find((l) => l.value === value)?.label ?? value}
         </span>
         <ChevronDown
           className={`w-3.5 h-3.5 shrink-0 text-muted-foreground transition-all duration-200 ${
@@ -179,35 +195,38 @@ export default function LanguageSelector({
             }}
             className="z-9999 bg-popover/95 backdrop-blur-xl border border-border/70 rounded shadow-xl overflow-hidden"
           >
-            {/* Inline search - minimal, borderless, integrated */}
-            <div className="px-2 pt-2 pb-1.5 border-b border-border/50">
-              <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
-                <input
-                  ref={searchInputRef}
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Search..."
-                  className="w-full h-7 pl-7 pr-6 text-xs bg-transparent text-foreground border-0 focus:outline-none placeholder:text-muted-foreground/50"
-                />
-                {searchQuery && (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded p-0.5 hover:bg-muted/50"
-                  >
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
+            {showSearch && (
+              <div className="px-2 pt-2 pb-1.5 border-b border-border/50">
+                <div className="relative">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={t("languageSelector.searchPlaceholder")}
+                    className="w-full h-7 pl-7 pr-6 text-xs bg-transparent text-foreground border-0 focus:outline-none placeholder:text-muted-foreground/50"
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={clearSearch}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded p-0.5 hover:bg-muted/50"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Language list - tight, premium with smart scrollbar */}
             <div className="max-h-48 overflow-y-auto px-1 pb-1 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-border">
               {filteredLanguages.length === 0 ? (
-                <div className="px-2.5 py-2 text-xs text-muted-foreground">No languages found</div>
+                <div className="px-2.5 py-2 text-xs text-muted-foreground">
+                  {t("languageSelector.noLanguagesFound")}
+                </div>
               ) : (
                 <div role="listbox" className="space-y-0.5 pt-1">
                   {filteredLanguages.map((language, index) => {

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Cloud, Lock } from "lucide-react";
@@ -17,6 +18,7 @@ type CloudModelOption = {
   value: string;
   label: string;
   description?: string;
+  descriptionKey?: string;
   icon?: string;
   ownedBy?: string;
   invertInDark?: boolean;
@@ -88,6 +90,7 @@ export default function ReasoningModelSelector({
   customReasoningApiKey = "",
   setCustomReasoningApiKey,
 }: ReasoningModelSelectorProps) {
+  const { t } = useTranslation();
   const [selectedMode, setSelectedMode] = useState<"cloud" | "local">("cloud");
   const [selectedCloudProvider, setSelectedCloudProvider] = useState("openai");
   const [selectedLocalProvider, setSelectedLocalProvider] = useState("qwen");
@@ -161,9 +164,7 @@ export default function ReasoningModelSelector({
 
         if (!normalizedBase.includes("://")) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-            setCustomModelsError(
-              "Enter a full base URL including protocol (e.g. https://server/v1)."
-            );
+            setCustomModelsError(t("reasoning.custom.endpointWithProtocol"));
             setCustomModelsLoading(false);
           }
           return;
@@ -171,7 +172,7 @@ export default function ReasoningModelSelector({
 
         if (!isSecureEndpoint(normalizedBase)) {
           if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-            setCustomModelsError("HTTPS required (HTTP allowed for local network only).");
+            setCustomModelsError(t("reasoning.custom.httpsRequired"));
             setCustomModelsLoading(false);
           }
           return;
@@ -210,7 +211,8 @@ export default function ReasoningModelSelector({
               value,
               label: (item?.id || item?.name || value) as string,
               description:
-                (item?.description as string) || (ownedBy ? `Owner: ${ownedBy}` : undefined),
+                (item?.description as string) ||
+                (ownedBy ? t("reasoning.custom.ownerLabel", { owner: ownedBy }) : undefined),
               icon,
               ownedBy,
               invertInDark,
@@ -232,12 +234,10 @@ export default function ReasoningModelSelector({
         }
       } catch (error) {
         if (isMountedRef.current && latestReasoningBaseRef.current === normalizedBase) {
-          const message = (error as Error).message || "Unable to load models from endpoint.";
+          const message = (error as Error).message || t("reasoning.custom.unableToLoadModels");
           const unauthorized = /\b(401|403)\b/.test(message);
           if (unauthorized && !apiKey) {
-            setCustomModelsError(
-              "Endpoint rejected the request (401/403). Add an API key or adjust server auth settings."
-            );
+            setCustomModelsError(t("reasoning.custom.endpointUnauthorized"));
           } else {
             setCustomModelsError(message);
           }
@@ -252,7 +252,7 @@ export default function ReasoningModelSelector({
         }
       }
     },
-    [cloudReasoningBaseUrl, customReasoningApiKey, reasoningModel, setReasoningModel]
+    [cloudReasoningBaseUrl, customReasoningApiKey, reasoningModel, setReasoningModel, t]
   );
 
   const trimmedCustomBase = customBaseInput.trim();
@@ -269,7 +269,7 @@ export default function ReasoningModelSelector({
     id,
     name:
       id === "custom"
-        ? "Custom"
+        ? t("reasoning.custom.providerName")
         : REASONING_PROVIDERS[id as keyof typeof REASONING_PROVIDERS]?.name || id,
   }));
 
@@ -292,10 +292,13 @@ export default function ReasoningModelSelector({
     const iconUrl = getProviderIcon("openai");
     return REASONING_PROVIDERS.openai.models.map((model) => ({
       ...model,
+      description: model.descriptionKey
+        ? t(model.descriptionKey, { defaultValue: model.description })
+        : model.description,
       icon: iconUrl,
       invertInDark: true,
     }));
-  }, []);
+  }, [t]);
 
   const selectedCloudModels = useMemo<CloudModelOption[]>(() => {
     if (selectedCloudProvider === "openai") return openaiModelOptions;
@@ -308,10 +311,13 @@ export default function ReasoningModelSelector({
     const invertInDark = isMonochromeProvider(selectedCloudProvider);
     return provider.models.map((model) => ({
       ...model,
+      description: model.descriptionKey
+        ? t(model.descriptionKey, { defaultValue: model.description })
+        : model.description,
       icon: iconUrl,
       invertInDark,
     }));
-  }, [selectedCloudProvider, openaiModelOptions, displayedCustomModels]);
+  }, [selectedCloudProvider, openaiModelOptions, displayedCustomModels, t]);
 
   const handleApplyCustomBase = useCallback(() => {
     const trimmedBase = customBaseInput.trim();
@@ -482,8 +488,8 @@ export default function ReasoningModelSelector({
   };
 
   const MODE_TABS = [
-    { id: "cloud", name: "Cloud" },
-    { id: "local", name: "Local" },
+    { id: "cloud", name: t("reasoning.mode.cloud") },
+    { id: "local", name: t("reasoning.mode.local") },
   ];
 
   const renderModeIcon = (id: string) => {
@@ -495,10 +501,10 @@ export default function ReasoningModelSelector({
     <div className="space-y-4">
       <div className="flex items-center justify-between p-3 bg-card border border-border rounded-lg">
         <div>
-          <label className="text-sm font-medium text-foreground">Enable AI Text Enhancement</label>
-          <p className="text-xs text-muted-foreground">
-            Use AI to automatically improve transcription quality
-          </p>
+          <label className="text-sm font-medium text-foreground">
+            {t("reasoning.enableTitle")}
+          </label>
+          <p className="text-xs text-muted-foreground">{t("reasoning.enableDescription")}</p>
         </div>
         <button
           onClick={() => setUseReasoningModel(!useReasoningModel)}
@@ -526,8 +532,8 @@ export default function ReasoningModelSelector({
             />
             <p className="text-xs text-muted-foreground text-center">
               {selectedMode === "local"
-                ? "Runs on your device. Complete privacy, works offline."
-                : "Advanced models via API. Fast and capable, requires internet."}
+                ? t("reasoning.mode.localDescription")
+                : t("reasoning.mode.cloudDescription")}
             </p>
           </div>
 
@@ -546,7 +552,9 @@ export default function ReasoningModelSelector({
                     <>
                       {/* 1. Endpoint URL - TOP */}
                       <div className="space-y-2">
-                        <h4 className="font-medium text-foreground">Endpoint URL</h4>
+                        <h4 className="font-medium text-foreground">
+                          {t("reasoning.custom.endpointTitle")}
+                        </h4>
                         <Input
                           value={customBaseInput}
                           onChange={(event) => setCustomBaseInput(event.target.value)}
@@ -555,27 +563,33 @@ export default function ReasoningModelSelector({
                           className="text-sm"
                         />
                         <p className="text-xs text-muted-foreground">
-                          Examples: <code className="text-primary">http://localhost:11434/v1</code>{" "}
-                          (Ollama), <code className="text-primary">http://localhost:8080/v1</code>{" "}
-                          (LocalAI).
+                          {t("reasoning.custom.endpointExamples")}{" "}
+                          <code className="text-primary">http://localhost:11434/v1</code>{" "}
+                          {t("reasoning.custom.ollama")},{" "}
+                          <code className="text-primary">http://localhost:8080/v1</code>{" "}
+                          {t("reasoning.custom.localAi")}.
                         </p>
                       </div>
 
                       {/* 2. API Key - SECOND */}
                       <div className="space-y-2 pt-3">
-                        <h4 className="font-medium text-foreground">API Key (Optional)</h4>
+                        <h4 className="font-medium text-foreground">
+                          {t("reasoning.custom.apiKeyOptional")}
+                        </h4>
                         <ApiKeyInput
                           apiKey={customReasoningApiKey}
                           setApiKey={setCustomReasoningApiKey || (() => {})}
                           label=""
-                          helpText="Optional. Sent as a Bearer token for authentication. This is separate from your OpenAI API key."
+                          helpText={t("reasoning.custom.apiKeyHelp")}
                         />
                       </div>
 
                       {/* 3. Model Selection - THIRD */}
                       <div className="space-y-2 pt-3">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-medium text-foreground">Available Models</h4>
+                          <h4 className="text-sm font-medium text-foreground">
+                            {t("reasoning.availableModels")}
+                          </h4>
                           <div className="flex gap-2">
                             <Button
                               type="button"
@@ -584,7 +598,7 @@ export default function ReasoningModelSelector({
                               onClick={handleResetCustomBase}
                               className="text-xs"
                             >
-                              Reset
+                              {t("common.reset")}
                             </Button>
                             <Button
                               type="button"
@@ -597,38 +611,37 @@ export default function ReasoningModelSelector({
                               className="text-xs"
                             >
                               {customModelsLoading
-                                ? "Loading..."
+                                ? t("common.loading")
                                 : isCustomBaseDirty
-                                  ? "Apply & Refresh"
-                                  : "Refresh"}
+                                  ? t("reasoning.custom.applyAndRefresh")
+                                  : t("common.refresh")}
                             </Button>
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          We'll query{" "}
+                          {t("reasoning.custom.queryPrefix")}{" "}
                           <code>
                             {hasCustomBase
                               ? `${effectiveReasoningBase}/models`
                               : `${defaultOpenAIBase}/models`}
                           </code>{" "}
-                          for available models.
+                          {t("reasoning.custom.querySuffix")}
                         </p>
                         {isCustomBaseDirty && (
                           <p className="text-xs text-primary">
-                            Models will reload when you click away from the URL field or click
-                            "Apply & Refresh".
+                            {t("reasoning.custom.modelsReloadHint")}
                           </p>
                         )}
                         {!hasCustomBase && (
                           <p className="text-xs text-warning">
-                            Enter an endpoint URL above to load models.
+                            {t("reasoning.custom.enterEndpoint")}
                           </p>
                         )}
                         {hasCustomBase && (
                           <>
                             {customModelsLoading && (
                               <p className="text-xs text-primary">
-                                Fetching model list from endpoint...
+                                {t("reasoning.custom.fetchingModels")}
                               </p>
                             )}
                             {customModelsError && (
@@ -638,7 +651,7 @@ export default function ReasoningModelSelector({
                               !customModelsError &&
                               customModelOptions.length === 0 && (
                                 <p className="text-xs text-warning">
-                                  No models returned. Check your endpoint URL.
+                                  {t("reasoning.custom.noModels")}
                                 </p>
                               )}
                           </>
@@ -656,7 +669,7 @@ export default function ReasoningModelSelector({
                       {selectedCloudProvider === "openai" && (
                         <div className="space-y-2">
                           <div className="flex items-baseline justify-between">
-                            <h4 className="font-medium text-foreground">API Key</h4>
+                            <h4 className="font-medium text-foreground">{t("common.apiKey")}</h4>
                             <a
                               href="https://platform.openai.com/api-keys"
                               target="_blank"
@@ -666,7 +679,7 @@ export default function ReasoningModelSelector({
                               )}
                               className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
-                              Get your API key →
+                              {t("reasoning.getApiKey")}
                             </a>
                           </div>
                           <ApiKeyInput
@@ -681,7 +694,7 @@ export default function ReasoningModelSelector({
                       {selectedCloudProvider === "anthropic" && (
                         <div className="space-y-2">
                           <div className="flex items-baseline justify-between">
-                            <h4 className="font-medium text-foreground">API Key</h4>
+                            <h4 className="font-medium text-foreground">{t("common.apiKey")}</h4>
                             <a
                               href="https://console.anthropic.com/settings/keys"
                               target="_blank"
@@ -691,7 +704,7 @@ export default function ReasoningModelSelector({
                               )}
                               className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
-                              Get your API key →
+                              {t("reasoning.getApiKey")}
                             </a>
                           </div>
                           <ApiKeyInput
@@ -707,7 +720,7 @@ export default function ReasoningModelSelector({
                       {selectedCloudProvider === "gemini" && (
                         <div className="space-y-2">
                           <div className="flex items-baseline justify-between">
-                            <h4 className="font-medium text-foreground">API Key</h4>
+                            <h4 className="font-medium text-foreground">{t("common.apiKey")}</h4>
                             <a
                               href="https://aistudio.google.com/app/api-keys"
                               target="_blank"
@@ -717,7 +730,7 @@ export default function ReasoningModelSelector({
                               )}
                               className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
-                              Get your API key →
+                              {t("reasoning.getApiKey")}
                             </a>
                           </div>
                           <ApiKeyInput
@@ -733,7 +746,7 @@ export default function ReasoningModelSelector({
                       {selectedCloudProvider === "groq" && (
                         <div className="space-y-2">
                           <div className="flex items-baseline justify-between">
-                            <h4 className="font-medium text-foreground">API Key</h4>
+                            <h4 className="font-medium text-foreground">{t("common.apiKey")}</h4>
                             <a
                               href="https://console.groq.com/keys"
                               target="_blank"
@@ -741,7 +754,7 @@ export default function ReasoningModelSelector({
                               onClick={createExternalLinkHandler("https://console.groq.com/keys")}
                               className="text-xs text-link underline decoration-link/30 hover:decoration-link/60 cursor-pointer transition-colors"
                             >
-                              Get your API key →
+                              {t("reasoning.getApiKey")}
                             </a>
                           </div>
                           <ApiKeyInput
@@ -756,7 +769,9 @@ export default function ReasoningModelSelector({
 
                       {/* 2. Model Selection - BOTTOM */}
                       <div className="pt-3 space-y-2">
-                        <h4 className="text-sm font-medium text-foreground">Select Model</h4>
+                        <h4 className="text-sm font-medium text-foreground">
+                          {t("reasoning.selectModel")}
+                        </h4>
                         <ModelCardList
                           models={selectedCloudModels}
                           selectedModel={reasoningModel}

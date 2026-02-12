@@ -5,7 +5,6 @@
       "description": "Fast multilingual ASR with auto language detection (25 languages)",
       "size": "680MB",
       "sizeMb": 680,
-      "expectedSizeBytes": 680000000,
       "language": "multilingual",
       "supportedLanguages": [
         "bg",
@@ -36,7 +35,8 @@
       ],
       "recommended": true,
       "downloadUrl": "https://github.com/k2-fsa/sherpa-onnx/releases/download/asr-models/sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8.tar.bz2",
-      "extractDir": "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8"
+      "extractDir": "sherpa-onnx-nemo-parakeet-tdt-0.6b-v3-int8",
+      "descriptionKey": "models.descriptions.parakeet.parakeet_tdt_0_6b_v3"
     }
   },
   "whisperModels": {
@@ -47,7 +47,8 @@
       "sizeMb": 75,
       "expectedSizeBytes": 78000000,
       "fileName": "ggml-tiny.bin",
-      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin"
+      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-tiny.bin",
+      "descriptionKey": "models.descriptions.whisper.tiny"
     },
     "base": {
       "name": "Base",
@@ -57,7 +58,8 @@
       "expectedSizeBytes": 148000000,
       "fileName": "ggml-base.bin",
       "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.bin",
-      "recommended": true
+      "recommended": true,
+      "descriptionKey": "models.descriptions.whisper.base"
     },
     "small": {
       "name": "Small",
@@ -66,7 +68,8 @@
       "sizeMb": 466,
       "expectedSizeBytes": 488000000,
       "fileName": "ggml-small.bin",
-      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin"
+      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin",
+      "descriptionKey": "models.descriptions.whisper.small"
     },
     "medium": {
       "name": "Medium",
@@ -75,7 +78,8 @@
       "sizeMb": 1500,
       "expectedSizeBytes": 1570000000,
       "fileName": "ggml-medium.bin",
-      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin"
+      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-medium.bin",
+      "descriptionKey": "models.descriptions.whisper.medium"
     },
     "large": {
       "name": "Large",
@@ -84,7 +88,8 @@
       "sizeMb": 3000,
       "expectedSizeBytes": 3140000000,
       "fileName": "ggml-large-v3.bin",
-      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin"
+      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3.bin",
+      "descriptionKey": "models.descriptions.whisper.large"
     },
     "turbo": {
       "name": "Turbo",
@@ -93,7 +98,8 @@
       "sizeMb": 1600,
       "expectedSizeBytes": 1670000000,
       "fileName": "ggml-large-v3-turbo.bin",
-      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin"
+      "downloadUrl": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
+      "descriptionKey": "models.descriptions.whisper.turbo"
     }
   },
   "transcriptionProviders": [
@@ -105,17 +111,20 @@
         {
           "id": "gpt-4o-mini-transcribe",
           "name": "GPT-4o Mini Transcribe",
-          "description": "Fast and accurate transcription"
+          "description": "Fast and accurate transcription",
+          "descriptionKey": "models.descriptions.transcription.openai_gpt_4o_mini_transcribe"
         },
         {
           "id": "gpt-4o-transcribe",
           "name": "GPT-4o Transcribe",
-          "description": "Most accurate transcription"
+          "description": "Most accurate transcription",
+          "descriptionKey": "models.descriptions.transcription.openai_gpt_4o_transcribe"
         },
         {
           "id": "whisper-1",
           "name": "Whisper",
-          "description": "Original Whisper model"
+          "description": "Original Whisper model",
+          "descriptionKey": "models.descriptions.transcription.openai_whisper_1"
         }
       ]
     },
@@ -127,7 +136,8 @@
         {
           "id": "whisper-large-v3-turbo",
           "name": "Whisper Large v3 Turbo",
-          "description": "216x real-time speed"
+          "description": "216x real-time speed",
+          "descriptionKey": "models.descriptions.transcription.groq_whisper_large_v3_turbo"
         }
       ]
     },
@@ -139,7 +149,8 @@
         {
           "id": "voxtral-mini-latest",
           "name": "Voxtral Mini",
-          "description": "Fast multilingual transcription"
+          "description": "Fast multilingual transcription",
+          "descriptionKey": "models.descriptions.transcription.mistral_voxtral_mini_latest"
         }
       ]
     }
@@ -152,32 +163,38 @@
         {
           "id": "gpt-5.2",
           "name": "GPT-5.2",
-          "description": "Latest flagship reasoning model"
+          "description": "Latest flagship reasoning model",
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_2"
         },
         {
           "id": "gpt-5-mini",
           "name": "GPT-5 Mini",
-          "description": "Fast and cost-efficient"
+          "description": "Fast and cost-efficient",
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_mini"
         },
         {
           "id": "gpt-5-nano",
           "name": "GPT-5 Nano",
-          "description": "Ultra-fast, low latency"
+          "description": "Ultra-fast, low latency",
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_5_nano"
         },
         {
           "id": "gpt-4.1",
           "name": "GPT-4.1",
-          "description": "Strong baseline, 1M context"
+          "description": "Strong baseline, 1M context",
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1"
         },
         {
           "id": "gpt-4.1-mini",
           "name": "GPT-4.1 Mini",
-          "description": "Smaller GPT-4.1 model"
+          "description": "Smaller GPT-4.1 model",
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1_mini"
         },
         {
           "id": "gpt-4.1-nano",
           "name": "GPT-4.1 Nano",
-          "description": "Lowest latency GPT-4.1"
+          "description": "Lowest latency GPT-4.1",
+          "descriptionKey": "models.descriptions.cloud.openai_gpt_4_1_nano"
         }
       ]
     },
@@ -188,17 +205,20 @@
         {
           "id": "claude-sonnet-4-5",
           "name": "Claude Sonnet 4.5",
-          "description": "Balanced performance"
+          "description": "Balanced performance",
+          "descriptionKey": "models.descriptions.cloud.anthropic_claude_sonnet_4_5"
         },
         {
           "id": "claude-haiku-4-5",
           "name": "Claude Haiku 4.5",
-          "description": "Fast with near-frontier intelligence"
+          "description": "Fast with near-frontier intelligence",
+          "descriptionKey": "models.descriptions.cloud.anthropic_claude_haiku_4_5"
         },
         {
           "id": "claude-opus-4-5",
           "name": "Claude Opus 4.5",
-          "description": "Most capable Claude model"
+          "description": "Most capable Claude model",
+          "descriptionKey": "models.descriptions.cloud.anthropic_claude_opus_4_5"
         }
       ]
     },
@@ -209,17 +229,20 @@
         {
           "id": "gemini-3-pro-preview",
           "name": "Gemini 3 Pro",
-          "description": "Next-gen flagship model for complex reasoning"
+          "description": "Next-gen flagship model for complex reasoning",
+          "descriptionKey": "models.descriptions.cloud.gemini_gemini_3_pro_preview"
         },
         {
           "id": "gemini-3-flash-preview",
           "name": "Gemini 3 Flash",
-          "description": "Ultra-fast, high-capability next-gen model"
+          "description": "Ultra-fast, high-capability next-gen model",
+          "descriptionKey": "models.descriptions.cloud.gemini_gemini_3_flash_preview"
         },
         {
           "id": "gemini-2.5-flash-lite",
           "name": "Gemini 2.5 Flash Lite",
-          "description": "Lowest latency and cost"
+          "description": "Lowest latency and cost",
+          "descriptionKey": "models.descriptions.cloud.gemini_gemini_2_5_flash_lite"
         }
       ]
     },
@@ -231,37 +254,44 @@
           "id": "qwen/qwen3-32b",
           "name": "Qwen3 32B",
           "description": "Powerful reasoning model, 131K context",
-          "disableThinking": true
+          "disableThinking": true,
+          "descriptionKey": "models.descriptions.cloud.groq_qwen_qwen3_32b"
         },
         {
           "id": "openai/gpt-oss-120b",
           "name": "GPT-OSS 120B",
-          "description": "OpenAI's open-source flagship, 500 T/sec"
+          "description": "OpenAI's open-source flagship, 500 T/sec",
+          "descriptionKey": "models.descriptions.cloud.groq_openai_gpt_oss_120b"
         },
         {
           "id": "openai/gpt-oss-20b",
           "name": "GPT-OSS 20B",
-          "description": "Fast open-source model, 1000 T/sec"
+          "description": "Fast open-source model, 1000 T/sec",
+          "descriptionKey": "models.descriptions.cloud.groq_openai_gpt_oss_20b"
         },
         {
           "id": "llama-3.3-70b-versatile",
           "name": "LLaMA 3.3 70B",
-          "description": "Meta's versatile model, 280 T/sec"
+          "description": "Meta's versatile model, 280 T/sec",
+          "descriptionKey": "models.descriptions.cloud.groq_llama_3_3_70b_versatile"
         },
         {
           "id": "llama-3.1-8b-instant",
           "name": "LLaMA 3.1 8B",
-          "description": "Ultra-fast 560 T/sec, 131K context"
+          "description": "Ultra-fast 560 T/sec, 131K context",
+          "descriptionKey": "models.descriptions.cloud.groq_llama_3_1_8b_instant"
         },
         {
           "id": "mixtral-8x7b-32768",
           "name": "Mixtral 8x7B",
-          "description": "32K context, mixture of experts"
+          "description": "32K context, mixture of experts",
+          "descriptionKey": "models.descriptions.cloud.groq_mixtral_8x7b_32768"
         },
         {
           "id": "gemma2-9b-it",
           "name": "Gemma 2 9B",
-          "description": "Google's efficient model"
+          "description": "Google's efficient model",
+          "descriptionKey": "models.descriptions.cloud.groq_gemma2_9b_it"
         }
       ]
     }
@@ -283,7 +313,8 @@
           "quantization": "q4_k_m",
           "contextLength": 131072,
           "hfRepo": "Qwen/Qwen3-8B-GGUF",
-          "recommended": true
+          "recommended": true,
+          "descriptionKey": "models.descriptions.local.qwen_qwen3_8b_q4_k_m"
         },
         {
           "id": "qwen3-8b-q5_k_m",
@@ -294,7 +325,8 @@
           "fileName": "Qwen3-8B-Q5_K_M.gguf",
           "quantization": "q5_k_m",
           "contextLength": 131072,
-          "hfRepo": "Qwen/Qwen3-8B-GGUF"
+          "hfRepo": "Qwen/Qwen3-8B-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen3_8b_q5_k_m"
         },
         {
           "id": "qwen3-4b-q4_k_m",
@@ -305,7 +337,8 @@
           "fileName": "Qwen3-4B-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 131072,
-          "hfRepo": "Qwen/Qwen3-4B-GGUF"
+          "hfRepo": "Qwen/Qwen3-4B-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen3_4b_q4_k_m"
         },
         {
           "id": "qwen3-1.7b-q8_0",
@@ -316,7 +349,8 @@
           "fileName": "Qwen3-1.7B-Q8_0.gguf",
           "quantization": "q8_0",
           "contextLength": 131072,
-          "hfRepo": "Qwen/Qwen3-1.7B-GGUF"
+          "hfRepo": "Qwen/Qwen3-1.7B-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen3_1_7b_q8_0"
         },
         {
           "id": "qwen3-0.6b-q8_0",
@@ -327,7 +361,8 @@
           "fileName": "Qwen3-0.6B-Q8_0.gguf",
           "quantization": "q8_0",
           "contextLength": 131072,
-          "hfRepo": "Qwen/Qwen3-0.6B-GGUF"
+          "hfRepo": "Qwen/Qwen3-0.6B-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen3_0_6b_q8_0"
         },
         {
           "id": "qwen3-32b-q4_k_m",
@@ -338,7 +373,8 @@
           "fileName": "Qwen3-32B-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 131072,
-          "hfRepo": "Qwen/Qwen3-32B-GGUF"
+          "hfRepo": "Qwen/Qwen3-32B-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen3_32b_q4_k_m"
         },
         {
           "id": "qwen2.5-0.5b-instruct-q5_k_m",
@@ -349,7 +385,8 @@
           "fileName": "qwen2.5-0.5b-instruct-q5_k_m.gguf",
           "quantization": "q5_k_m",
           "contextLength": 32768,
-          "hfRepo": "Qwen/Qwen2.5-0.5B-Instruct-GGUF"
+          "hfRepo": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen2_5_0_5b_instruct_q5_k_m"
         },
         {
           "id": "qwen2.5-1.5b-instruct-q5_k_m",
@@ -360,7 +397,8 @@
           "fileName": "qwen2.5-1.5b-instruct-q5_k_m.gguf",
           "quantization": "q5_k_m",
           "contextLength": 32768,
-          "hfRepo": "Qwen/Qwen2.5-1.5B-Instruct-GGUF"
+          "hfRepo": "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen2_5_1_5b_instruct_q5_k_m"
         },
         {
           "id": "qwen2.5-3b-instruct-q5_k_m",
@@ -371,7 +409,8 @@
           "fileName": "qwen2.5-3b-instruct-q5_k_m.gguf",
           "quantization": "q5_k_m",
           "contextLength": 32768,
-          "hfRepo": "Qwen/Qwen2.5-3B-Instruct-GGUF"
+          "hfRepo": "Qwen/Qwen2.5-3B-Instruct-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen2_5_3b_instruct_q5_k_m"
         },
         {
           "id": "qwen2.5-7b-instruct-q4_k_m",
@@ -382,7 +421,8 @@
           "fileName": "Qwen2.5-7B-Instruct-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 128000,
-          "hfRepo": "bartowski/Qwen2.5-7B-Instruct-GGUF"
+          "hfRepo": "bartowski/Qwen2.5-7B-Instruct-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen2_5_7b_instruct_q4_k_m"
         },
         {
           "id": "qwen2.5-7b-instruct-q5_k_m",
@@ -393,7 +433,8 @@
           "fileName": "Qwen2.5-7B-Instruct-Q5_K_M.gguf",
           "quantization": "q5_k_m",
           "contextLength": 128000,
-          "hfRepo": "bartowski/Qwen2.5-7B-Instruct-GGUF"
+          "hfRepo": "bartowski/Qwen2.5-7B-Instruct-GGUF",
+          "descriptionKey": "models.descriptions.local.qwen_qwen2_5_7b_instruct_q5_k_m"
         }
       ]
     },
@@ -413,7 +454,8 @@
           "quantization": "q4_k_m",
           "contextLength": 32768,
           "hfRepo": "bartowski/Mistral-7B-Instruct-v0.3-GGUF",
-          "recommended": true
+          "recommended": true,
+          "descriptionKey": "models.descriptions.local.mistral_mistral_7b_instruct_v0_3_q4_k_m"
         },
         {
           "id": "mistral-7b-instruct-v0.3-q5_k_m",
@@ -424,7 +466,8 @@
           "fileName": "Mistral-7B-Instruct-v0.3-Q5_K_M.gguf",
           "quantization": "q5_k_m",
           "contextLength": 32768,
-          "hfRepo": "bartowski/Mistral-7B-Instruct-v0.3-GGUF"
+          "hfRepo": "bartowski/Mistral-7B-Instruct-v0.3-GGUF",
+          "descriptionKey": "models.descriptions.local.mistral_mistral_7b_instruct_v0_3_q5_k_m"
         }
       ]
     },
@@ -443,7 +486,8 @@
           "fileName": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 131072,
-          "hfRepo": "bartowski/Llama-3.2-1B-Instruct-GGUF"
+          "hfRepo": "bartowski/Llama-3.2-1B-Instruct-GGUF",
+          "descriptionKey": "models.descriptions.local.llama_llama_3_2_1b_instruct_q4_k_m"
         },
         {
           "id": "llama-3.2-3b-instruct-q4_k_m",
@@ -455,7 +499,8 @@
           "quantization": "q4_k_m",
           "contextLength": 131072,
           "hfRepo": "bartowski/Llama-3.2-3B-Instruct-GGUF",
-          "recommended": true
+          "recommended": true,
+          "descriptionKey": "models.descriptions.local.llama_llama_3_2_3b_instruct_q4_k_m"
         },
         {
           "id": "llama-3.1-8b-instruct-q4_k_m",
@@ -466,7 +511,8 @@
           "fileName": "Meta-Llama-3.1-8B-Instruct-Q4_K_M.gguf",
           "quantization": "q4_k_m",
           "contextLength": 131072,
-          "hfRepo": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF"
+          "hfRepo": "bartowski/Meta-Llama-3.1-8B-Instruct-GGUF",
+          "descriptionKey": "models.descriptions.local.llama_llama_3_1_8b_instruct_q4_k_m"
         }
       ]
     },
@@ -486,7 +532,8 @@
           "quantization": "mxfp4",
           "contextLength": 128000,
           "hfRepo": "ggml-org/gpt-oss-20b-GGUF",
-          "recommended": true
+          "recommended": true,
+          "descriptionKey": "models.descriptions.local.openai_oss_gpt_oss_20b_mxfp4"
         }
       ]
     }

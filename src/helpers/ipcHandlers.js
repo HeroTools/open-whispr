@@ -7,6 +7,7 @@ const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
+const { i18nMain, changeLanguage } = require("./i18nMain");
 const DeepgramStreaming = require("./deepgramStreaming");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
@@ -92,6 +93,7 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.getTrayManager = managers.getTrayManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
     this.deepgramStreaming = null;
@@ -1046,6 +1048,23 @@ class IPCHandlers {
       return this.environmentManager.saveAnthropicKey(key);
     });
 
+    ipcMain.handle("get-ui-language", async () => {
+      return this.environmentManager.getUiLanguage();
+    });
+
+    ipcMain.handle("save-ui-language", async (event, language) => {
+      return this.environmentManager.saveUiLanguage(language);
+    });
+
+    ipcMain.handle("set-ui-language", async (event, language) => {
+      const result = this.environmentManager.saveUiLanguage(language);
+      process.env.UI_LANGUAGE = result.language;
+      changeLanguage(result.language);
+      this.windowManager?.refreshLocalizedUi?.();
+      this.getTrayManager?.()?.updateTrayMenu?.();
+      return { success: true, language: result.language };
+    });
+
     ipcMain.handle("save-all-keys-to-env", async () => {
       return this.environmentManager.saveAllKeysToEnvFile();
     });
@@ -1267,9 +1286,9 @@ class IPCHandlers {
       if (!url) {
         // Platform doesn't support this settings URL
         const messages = {
-          microphone: "Please open your system settings to configure microphone permissions.",
-          sound: "Please open your system sound settings (e.g., pavucontrol).",
-          accessibility: "Accessibility settings are not applicable on this platform.",
+          microphone: i18nMain.t("systemSettings.microphone"),
+          sound: i18nMain.t("systemSettings.sound"),
+          accessibility: i18nMain.t("systemSettings.accessibility"),
         };
         return {
           success: false,
@@ -1344,10 +1363,7 @@ class IPCHandlers {
       runtimeEnv.VITE_NEON_AUTH_URL ||
       "";
 
-    const getSessionCookies = async (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
-      if (!win) return "";
-
+    const getSessionCookiesFromWindow = async (win) => {
       const scopedUrls = [getAuthUrl(), getApiUrl()].filter(Boolean);
       const cookiesByName = new Map();
 
@@ -1391,6 +1407,12 @@ class IPCHandlers {
       );
 
       return cookieHeader;
+    };
+
+    const getSessionCookies = async (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return "";
+      return getSessionCookiesFromWindow(win);
     };
 
     ipcMain.handle("cloud-transcribe", async (event, audioBuffer, opts = {}) => {
@@ -1486,6 +1508,7 @@ class IPCHandlers {
             customDictionary: opts.customDictionary,
             customPrompt: opts.customPrompt,
             language: opts.language,
+            locale: opts.locale,
             sessionId: this.sessionId,
             clientType: "desktop",
             appVersion: app.getVersion(),
@@ -2099,6 +2122,37 @@ class IPCHandlers {
 
     // --- Deepgram Streaming handlers ---
 
+    let deepgramTokenWindowId = null;
+
+    const fetchDeepgramStreamingTokenFromWindow = async (windowId) => {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+      const win = BrowserWindow.fromId(windowId);
+      if (!win || win.isDestroyed()) throw new Error("Window not available for token refresh");
+
+      const cookieHeader = await getSessionCookiesFromWindow(win);
+      if (!cookieHeader) throw new Error("No session cookies available");
+
+      const tokenResponse = await fetch(`${apiUrl}/api/deepgram-streaming-token`, {
+        method: "POST",
+        headers: { Cookie: cookieHeader },
+      });
+
+      if (!tokenResponse.ok) {
+        if (tokenResponse.status === 401) {
+          const err = new Error("Session expired");
+          err.code = "AUTH_EXPIRED";
+          throw err;
+        }
+        throw new Error(`Failed to get Deepgram streaming token: ${tokenResponse.status}`);
+      }
+
+      const { token } = await tokenResponse.json();
+      if (!token) throw new Error("No token received from API");
+      return token;
+    };
+
     const fetchDeepgramStreamingToken = async (event) => {
       const apiUrl = getApiUrl();
       if (!apiUrl) {
@@ -2144,9 +2198,19 @@ class IPCHandlers {
           return { success: false, error: "API not configured", code: "NO_API" };
         }
 
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win && !win.isDestroyed()) {
+          deepgramTokenWindowId = win.id;
+        }
+
         if (!this.deepgramStreaming) {
           this.deepgramStreaming = new DeepgramStreaming();
         }
+
+        this.deepgramStreaming.setTokenRefreshFn(async () => {
+          if (!deepgramTokenWindowId) throw new Error("No window reference");
+          return fetchDeepgramStreamingTokenFromWindow(deepgramTokenWindowId);
+        });
 
         if (this.deepgramStreaming.hasWarmConnection()) {
           debugLogger.debug("Deepgram connection already warm", {}, "streaming");
@@ -2192,10 +2256,18 @@ class IPCHandlers {
         }
 
         const win = BrowserWindow.fromWebContents(event.sender);
+        if (win && !win.isDestroyed()) {
+          deepgramTokenWindowId = win.id;
+        }
 
         if (!this.deepgramStreaming) {
           this.deepgramStreaming = new DeepgramStreaming();
         }
+
+        this.deepgramStreaming.setTokenRefreshFn(async () => {
+          if (!deepgramTokenWindowId) throw new Error("No window reference");
+          return fetchDeepgramStreamingTokenFromWindow(deepgramTokenWindowId);
+        });
 
         if (this.deepgramStreaming.isConnected) {
           debugLogger.debug("Deepgram cleaning up stale connection before start", {}, "streaming");

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { OPENWHISPR_API_URL } from "../config/constants";
 import { Button } from "./ui/button";
 import { Mail, Loader2, Check, RefreshCw } from "lucide-react";
@@ -10,6 +11,7 @@ interface EmailVerificationStepProps {
 }
 
 export default function EmailVerificationStep({ email, onVerified }: EmailVerificationStepProps) {
+  const { t } = useTranslation();
   const [resendCooldown, setResendCooldown] = useState(60);
   const [isResending, setIsResending] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -64,14 +66,14 @@ export default function EmailVerificationStep({ email, onVerified }: EmailVerifi
         setResendCooldown(60);
       } else {
         const data = await res.json();
-        setError(data.error || "We couldn't resend the email. Please try again.");
+        setError(data.error || t("emailVerification.errors.resendFailed"));
       }
     } catch {
-      setError("Couldn't reach the server. Check your connection and try again.");
+      setError(t("emailVerification.errors.serverUnreachable"));
     } finally {
       setIsResending(false);
     }
-  }, [resendCooldown, isResending]);
+  }, [resendCooldown, isResending, t]);
 
   if (verified) {
     return (
@@ -86,10 +88,10 @@ export default function EmailVerificationStep({ email, onVerified }: EmailVerifi
             <Check className="w-4 h-4 text-success" />
           </div>
           <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-            Email verified
+            {t("emailVerification.verifiedTitle")}
           </p>
           <p className="text-muted-foreground text-sm mt-1 leading-tight">
-            Your account is all set.
+            {t("emailVerification.verifiedDescription")}
           </p>
         </div>
       </div>
@@ -108,17 +110,17 @@ export default function EmailVerificationStep({ email, onVerified }: EmailVerifi
           <Mail className="w-4 h-4 text-primary" />
         </div>
         <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-          Check your email
+          {t("emailVerification.checkEmailTitle")}
         </p>
         <p className="text-muted-foreground text-sm mt-1 leading-tight">
-          We sent a verification link to
+          {t("emailVerification.checkEmailDescription")}
         </p>
         <p className="text-sm font-medium text-foreground mt-0.5">{email}</p>
       </div>
 
       <div className="flex items-center justify-center gap-1.5 py-1">
         <Loader2 className="w-3 h-3 animate-spin text-muted-foreground/50" />
-        <p className="text-[10px] text-muted-foreground/50">Waiting for verification...</p>
+        <p className="text-[10px] text-muted-foreground/50">{t("emailVerification.waiting")}</p>
       </div>
 
       {error && (
@@ -137,11 +139,13 @@ export default function EmailVerificationStep({ email, onVerified }: EmailVerifi
         {isResending ? (
           <Loader2 className="w-3.5 h-3.5 animate-spin" />
         ) : resendCooldown > 0 ? (
-          <span className="text-sm font-medium">Resend in {resendCooldown}s</span>
+          <span className="text-sm font-medium">
+            {t("emailVerification.resendIn", { seconds: resendCooldown })}
+          </span>
         ) : (
           <>
             <RefreshCw className="w-3.5 h-3.5" />
-            <span className="text-sm font-medium">Resend verification email</span>
+            <span className="text-sm font-medium">{t("emailVerification.resendButton")}</span>
           </>
         )}
       </Button>

@@ -169,7 +169,11 @@ class ClipboardManager {
       try {
         const stats = fs.statSync(candidate);
         if (stats.isFile()) {
-          fs.accessSync(candidate, fs.constants.X_OK);
+          try {
+            fs.accessSync(candidate, fs.constants.X_OK);
+          } catch {
+            fs.chmodSync(candidate, 0o755);
+          }
           this.fastPastePath = candidate;
           return candidate;
         }
@@ -290,7 +294,7 @@ class ClipboardManager {
           ? spawn(fastPasteBinary)
           : spawn("osascript", [
               "-e",
-              'tell application "System Events" to keystroke "v" using command down',
+              'tell application "System Events" to key code 9 using command down',
             ]);
 
         let errorOutput = "";
@@ -359,7 +363,7 @@ class ClipboardManager {
     return new Promise((resolve, reject) => {
       const pasteProcess = spawn("osascript", [
         "-e",
-        'tell application "System Events" to keystroke "v" using command down',
+        'tell application "System Events" to key code 9 using command down',
       ]);
 
       let hasTimedOut = false;

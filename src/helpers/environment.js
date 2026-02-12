@@ -2,6 +2,7 @@ const path = require("path");
 const fs = require("fs");
 const fsPromises = require("fs/promises");
 const { app } = require("electron");
+const { normalizeUiLanguage } = require("./i18nMain");
 
 const PERSISTED_KEYS = [
   "OPENAI_API_KEY",
@@ -19,6 +20,7 @@ const PERSISTED_KEYS = [
   "DICTATION_KEY",
   "ACTIVATION_MODE",
   "FLOATING_ICON_AUTO_HIDE",
+  "UI_LANGUAGE",
 ];
 
 class EnvironmentManager {
@@ -146,6 +148,17 @@ class EnvironmentManager {
     const result = this._saveKey("FLOATING_ICON_AUTO_HIDE", String(enabled));
     this.saveAllKeysToEnvFile().catch(() => {});
     return result;
+  }
+
+  getUiLanguage() {
+    return normalizeUiLanguage(this._getKey("UI_LANGUAGE"));
+  }
+
+  saveUiLanguage(language) {
+    const normalized = normalizeUiLanguage(language);
+    const result = this._saveKey("UI_LANGUAGE", normalized);
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return { ...result, language: normalized };
   }
 
   async createProductionEnvFile(apiKey) {
