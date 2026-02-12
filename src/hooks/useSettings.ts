@@ -69,7 +69,20 @@ export interface ThemeSettings {
   theme: "light" | "dark" | "auto";
 }
 
+const LANGUAGE_MIGRATIONS: Record<string, string> = { zh: "zh-CN" };
+let _migrated = false;
+function migratePreferredLanguage() {
+  if (_migrated) return;
+  _migrated = true;
+  const stored = localStorage.getItem("preferredLanguage");
+  if (stored && LANGUAGE_MIGRATIONS[stored]) {
+    localStorage.setItem("preferredLanguage", LANGUAGE_MIGRATIONS[stored]);
+  }
+}
+
 function useSettingsInternal() {
+  migratePreferredLanguage();
+
   const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
     serialize: String,
     deserialize: (value) => value === "true",
