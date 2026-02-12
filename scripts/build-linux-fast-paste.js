@@ -46,15 +46,36 @@ if (fs.existsSync(outputBinary)) {
   }
 }
 
+function hasUinputHeaders() {
+  for (const compiler of ["gcc", "cc"]) {
+    try {
+      const result = spawnSync(compiler, ["-E", "-x", "c", "-"], {
+        input: "#include <linux/uinput.h>\n",
+        stdio: ["pipe", "pipe", "pipe"],
+        env: process.env,
+      });
+      if (result.status === 0) return true;
+    } catch {}
+  }
+  return false;
+}
+
+const uinputAvailable = hasUinputHeaders();
+
+function computeBuildHash() {
+  const sourceContent = fs.readFileSync(cSource, "utf8");
+  const flags = uinputAvailable ? "uinput" : "nouinput";
+  return crypto.createHash("sha256").update(sourceContent + flags).digest("hex");
+}
+
 if (!needsBuild && fs.existsSync(outputBinary)) {
   try {
-    const sourceContent = fs.readFileSync(cSource, "utf8");
-    const currentHash = crypto.createHash("sha256").update(sourceContent).digest("hex");
+    const currentHash = computeBuildHash();
 
     if (fs.existsSync(hashFile)) {
       const savedHash = fs.readFileSync(hashFile, "utf8").trim();
       if (savedHash !== currentHash) {
-        log("Source hash changed, rebuild needed");
+        log("Source or build flags changed, rebuild needed");
         needsBuild = true;
       }
     } else {
@@ -68,20 +89,6 @@ if (!needsBuild && fs.existsSync(outputBinary)) {
 
 if (!needsBuild) {
   process.exit(0);
-}
-
-function hasUinputHeaders() {
-  for (const compiler of ["gcc", "cc"]) {
-    try {
-      const result = spawnSync(compiler, ["-E", "-x", "c", "-"], {
-        input: "#include <linux/uinput.h>\n",
-        stdio: ["pipe", "pipe", "pipe"],
-        env: process.env,
-      });
-      if (result.status === 0) return true;
-    } catch {}
-  }
-  return false;
 }
 
 function attemptCompile(command, args) {
@@ -101,7 +108,7 @@ const compileArgs = [
   "-lXtst",
 ];
 
-if (hasUinputHeaders()) {
+if (uinputAvailable) {
   log("uinput headers found, enabling uinput support");
   compileArgs.push("-DHAVE_UINPUT");
 } else {
@@ -126,9 +133,7 @@ try {
 }
 
 try {
-  const sourceContent = fs.readFileSync(cSource, "utf8");
-  const hash = crypto.createHash("sha256").update(sourceContent).digest("hex");
-  fs.writeFileSync(hashFile, hash);
+  fs.writeFileSync(hashFile, computeBuildHash());
 } catch (err) {
   log(`Warning: Could not save source hash: ${err.message}`);
 }

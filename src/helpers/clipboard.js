@@ -1341,10 +1341,11 @@ Would you like to open System Settings now?`;
       if (canUseWtype && this.commandExists("wtype")) tools.push("wtype");
     }
 
-    const available = hasNativeBinary || tools.length > 0;
     const hasUinput = this._canAccessUinput();
+    const nativeBinaryUsable = hasNativeBinary && (!isWayland || hasUinput || xwaylandAvailable);
+    const available = nativeBinaryUsable || tools.length > 0;
     let recommendedInstall;
-    if (!hasNativeBinary && tools.length === 0) {
+    if (!nativeBinaryUsable && tools.length === 0) {
       if (!isWayland) {
         recommendedInstall = "xdotool";
       } else if (isWlroots) {
@@ -1359,7 +1360,7 @@ Would you like to open System Settings now?`;
     return {
       platform: "linux",
       available,
-      method: hasNativeBinary
+      method: nativeBinaryUsable
         ? isWayland && hasUinput
           ? "uinput"
           : "xtest"
