@@ -21,6 +21,14 @@ const isValidApiKey = (key, provider = "openai") => {
   return key !== placeholder;
 };
 
+const hasStoredByokKey = () =>
+  !!(
+    localStorage.getItem("openaiApiKey") ||
+    localStorage.getItem("groqApiKey") ||
+    localStorage.getItem("mistralApiKey") ||
+    localStorage.getItem("customTranscriptionApiKey")
+  );
+
 class AudioManager {
   constructor() {
     this.mediaRecorder = null;
@@ -334,18 +342,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const whisperModel = localStorage.getItem("whisperModel") || "base";
       const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
 
-      let cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode");
-      if (!cloudTranscriptionMode) {
-        // For users upgrading from pre-auth versions: if they already have
-        // BYOK API keys configured, default to "byok" instead of "openwhispr"
-        // to avoid routing their transcriptions through the cloud proxy.
-        const hasExistingKey =
-          localStorage.getItem("openaiApiKey") ||
-          localStorage.getItem("groqApiKey") ||
-          localStorage.getItem("mistralApiKey") ||
-          localStorage.getItem("customTranscriptionApiKey");
-        cloudTranscriptionMode = hasExistingKey ? "byok" : "openwhispr";
-      }
+      const cloudTranscriptionMode =
+        localStorage.getItem("cloudTranscriptionMode") ||
+        (hasStoredByokKey() ? "byok" : "openwhispr");
       const isSignedIn = localStorage.getItem("isSignedIn") === "true";
 
       const isOpenWhisprCloudMode = !useLocalWhisper && cloudTranscriptionMode === "openwhispr";
@@ -1736,10 +1735,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
   }
 
   shouldUseStreaming(isSignedInOverride) {
-    const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") ||
-      (localStorage.getItem("openaiApiKey") || localStorage.getItem("groqApiKey") ||
-       localStorage.getItem("mistralApiKey") || localStorage.getItem("customTranscriptionApiKey")
-        ? "byok" : "openwhispr");
+    const cloudTranscriptionMode =
+      localStorage.getItem("cloudTranscriptionMode") ||
+      (hasStoredByokKey() ? "byok" : "openwhispr");
     const isSignedIn = isSignedInOverride ?? localStorage.getItem("isSignedIn") === "true";
     const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
     const streamingDisabled = localStorage.getItem("deepgramStreaming") === "false";
