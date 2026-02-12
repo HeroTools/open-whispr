@@ -44,7 +44,6 @@ const getLinuxSessionInfo = () => {
   return { isWayland, xwaylandAvailable, desktopEnv, isGnome, isKde, isWlroots };
 };
 
-// ms before simulating keystroke
 const PASTE_DELAYS = {
   darwin: 120,
   win32_nircmd: 30,
@@ -52,7 +51,6 @@ const PASTE_DELAYS = {
   linux: 50,
 };
 
-// ms after paste completes before restoring clipboard
 const RESTORE_DELAYS = {
   darwin: 450,
   win32_nircmd: 80,
@@ -128,9 +126,7 @@ class ClipboardManager {
           this.nircmdPath = nircmdPath;
           return nircmdPath;
         }
-      } catch (error) {
-        // Continue checking other paths
-      }
+      } catch (error) {}
     }
 
     this.safeLog("⚠️ nircmd.exe not found, will use PowerShell fallback");
@@ -657,7 +653,6 @@ class ClipboardManager {
       }, RESTORE_DELAYS.linux);
     };
 
-    // --- Try native binary first (uses XTest, handles terminal detection internally) ---
     if (linuxFastPaste) {
       try {
         await new Promise((resolve, reject) => {
@@ -716,7 +711,6 @@ class ClipboardManager {
       }
     }
 
-    // --- System tools fallback ---
     // Capture target window before our window takes focus
     const getXdotoolActiveWindow = () => {
       if (!xdotoolExists || (isWayland && !xwaylandAvailable)) {
@@ -799,16 +793,13 @@ class ClipboardManager {
             }
           }
         }
-      } catch {
-        // Detection failed, assume non-terminal
-      }
+      } catch {}
       return false;
     };
 
     const inTerminal = isTerminal();
     const pasteKeys = inTerminal ? "ctrl+shift+v" : "ctrl+v";
 
-    // Compositor-aware eligibility
     const canUseWtype = isWayland && isWlroots;
     const canUseYdotool = ydotoolDaemonRunning;
     const canUseXdotool = isWayland ? xwaylandAvailable && xdotoolExists : xdotoolExists;
@@ -824,10 +815,10 @@ class ClipboardManager {
       );
     }
 
-    // ydotool key codes: 29=Ctrl, 42=Shift, 47=V; :1=press, :0=release
+    // Use key names for ydotool 0.1.x compat (Ubuntu ships 0.1.8)
     const ydotoolArgs = inTerminal
-      ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"]
-      : ["key", "29:1", "47:1", "47:0", "29:0"];
+      ? ["key", "ctrl+shift+v"]
+      : ["key", "ctrl+v"];
 
     const wtypeEntry = canUseWtype
       ? [
@@ -1265,7 +1256,6 @@ Would you like to open System Settings now?`;
     const canUseYdotool = this.commandExists("ydotool") && this._isYdotoolDaemonRunning();
     const canUseXdotool = !isWayland || xwaylandAvailable;
 
-    // Build tools list in compositor-aware priority order
     if (!isWayland) {
       if (canUseXdotool && this.commandExists("xdotool")) tools.push("xdotool");
       if (canUseYdotool) tools.push("ydotool");
