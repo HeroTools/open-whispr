@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { formatHotkeyLabel } from "../utils/hotkeys";
 import { validateHotkey } from "../utils/hotkeyValidator";
 import { getPlatform } from "../utils/platform";
@@ -68,6 +69,7 @@ export interface UseHotkeyRegistrationResult {
 export function useHotkeyRegistration(
   options: UseHotkeyRegistrationOptions = {}
 ): UseHotkeyRegistrationResult {
+  const { t } = useTranslation();
   const { onSuccess, onError, showSuccessToast = true, showErrorToast = true, showAlert } = options;
 
   const [isRegistering, setIsRegistering] = useState(false);
@@ -89,11 +91,11 @@ export function useHotkeyRegistration(
 
       // Validate hotkey format
       if (!hotkey || hotkey.trim() === "") {
-        const errorMsg = "Please enter a valid hotkey";
+        const errorMsg = t("hooks.hotkeyRegistration.errors.enterValidHotkey");
         setLastError(errorMsg);
         if (showErrorToast && showAlert) {
           showAlert({
-            title: "Invalid Hotkey",
+            title: t("hooks.hotkeyRegistration.titles.invalidHotkey"),
             description: errorMsg,
           });
         }
@@ -104,11 +106,12 @@ export function useHotkeyRegistration(
       const platform = getPlatform();
       const validation = validateHotkey(hotkey, platform);
       if (!validation.valid) {
-        const errorMsg = validation.error || "That shortcut is not supported.";
+        const errorMsg =
+          validation.error || t("hooks.hotkeyRegistration.errors.unsupportedShortcut");
         setLastError(errorMsg);
         if (showErrorToast && showAlert) {
           showAlert({
-            title: "Invalid Hotkey",
+            title: t("hooks.hotkeyRegistration.titles.invalidHotkey"),
             description: errorMsg,
           });
         }
@@ -132,13 +135,12 @@ export function useHotkeyRegistration(
 
         if (!result?.success) {
           // Use the detailed error message from the manager, which includes suggestions
-          const errorMsg =
-            result?.message || "This key could not be registered. Please choose a different key.";
+          const errorMsg = result?.message || t("hooks.hotkeyRegistration.errors.couldNotRegister");
           setLastError(errorMsg);
 
           if (showErrorToast && showAlert) {
             showAlert({
-              title: "Hotkey Not Registered",
+              title: t("hooks.hotkeyRegistration.titles.notRegistered"),
               description: errorMsg,
             });
           }
@@ -151,8 +153,8 @@ export function useHotkeyRegistration(
         if (showSuccessToast && showAlert) {
           const displayLabel = formatHotkeyLabel(hotkey);
           showAlert({
-            title: "Hotkey Saved",
-            description: `Now using ${displayLabel} for dictation`,
+            title: t("hooks.hotkeyRegistration.titles.saved"),
+            description: t("hooks.hotkeyRegistration.messages.nowUsing", { hotkey: displayLabel }),
           });
         }
 
@@ -160,12 +162,14 @@ export function useHotkeyRegistration(
         return true;
       } catch (error) {
         const errorMsg =
-          error instanceof Error ? error.message : "Failed to register hotkey. Please try again.";
+          error instanceof Error
+            ? error.message
+            : t("hooks.hotkeyRegistration.errors.failedToRegister");
         setLastError(errorMsg);
 
         if (showErrorToast && showAlert) {
           showAlert({
-            title: "Hotkey Error",
+            title: t("hooks.hotkeyRegistration.titles.error"),
             description: errorMsg,
           });
         }
@@ -177,7 +181,7 @@ export function useHotkeyRegistration(
         registrationInFlightRef.current = false;
       }
     },
-    [onSuccess, onError, showSuccessToast, showErrorToast, showAlert]
+    [onSuccess, onError, showSuccessToast, showErrorToast, showAlert, t]
   );
 
   return {

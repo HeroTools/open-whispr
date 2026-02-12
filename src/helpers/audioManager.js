@@ -1116,6 +1116,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
             customDictionary: this.getCustomDictionaryArray(),
             customPrompt: this.getCustomPrompt(),
             language: localStorage.getItem("preferredLanguage") || "auto",
+            locale: localStorage.getItem("uiLanguage") || "en",
           });
           if (!res.success) {
             const err = new Error(res.error || "Cloud reasoning failed");
@@ -2140,6 +2141,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
               customDictionary: this.getCustomDictionaryArray(),
               customPrompt: this.getCustomPrompt(),
               language: localStorage.getItem("preferredLanguage") || "auto",
+              locale: localStorage.getItem("uiLanguage") || "en",
             });
             if (!res.success) {
               const err = new Error(res.error || "Cloud reasoning failed");

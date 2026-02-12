@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import "./index.css";
 import { X } from "lucide-react";
 import { useToast } from "./components/ui/Toast";
@@ -74,6 +75,7 @@ export default function App() {
   const commandMenuRef = useRef(null);
   const buttonRef = useRef(null);
   const { toast, toastCount } = useToast();
+  const { t } = useTranslation();
   const { hotkey } = useHotkey();
   const { isDragging, handleMouseDown, handleMouseUp } = useWindowDrag();
   const { isSignedIn } = useAuth();
@@ -99,7 +101,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribeFallback = window.electronAPI?.onHotkeyFallbackUsed?.((data) => {
       toast({
-        title: "Hotkey Changed",
+        title: t("app.toasts.hotkeyChanged.title"),
         description: data.message,
         duration: 8000,
       });
@@ -107,8 +109,8 @@ export default function App() {
 
     const unsubscribeFailed = window.electronAPI?.onHotkeyRegistrationFailed?.((_data) => {
       toast({
-        title: "Hotkey Unavailable",
-        description: `Could not register hotkey. Please set a different hotkey in Settings.`,
+        title: t("app.toasts.hotkeyUnavailable.title"),
+        description: t("app.toasts.hotkeyUnavailable.description"),
         duration: 10000,
       });
     });
@@ -117,7 +119,7 @@ export default function App() {
       unsubscribeFallback?.();
       unsubscribeFailed?.();
     };
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     if (isCommandMenuOpen || toastCount > 0) {
@@ -250,23 +252,23 @@ export default function App() {
       case "hover":
         return {
           className: `${baseClasses} bg-black/50 cursor-pointer`,
-          tooltip: `[${hotkey}] to speak`,
+          tooltip: t("app.mic.hotkeyToSpeak", { hotkey }),
         };
       case "recording":
         return {
           className: `${baseClasses} bg-primary cursor-pointer`,
-          tooltip: "Recording...",
+          tooltip: t("app.mic.recording"),
         };
       case "processing":
         return {
           className: `${baseClasses} bg-accent cursor-not-allowed`,
-          tooltip: "Processing...",
+          tooltip: t("app.mic.processing"),
         };
       default:
         return {
           className: `${baseClasses} bg-black/50 cursor-pointer`,
           style: { transform: "scale(0.8)" },
-          tooltip: "Click to speak",
+          tooltip: t("app.mic.clickToSpeak"),
         };
     }
   };
@@ -292,7 +294,9 @@ export default function App() {
         >
           {(isRecording || isProcessing) && isHovered && (
             <button
-              aria-label={isRecording ? "Cancel recording" : "Cancel processing"}
+              aria-label={
+                isRecording ? t("app.buttons.cancelRecording") : t("app.buttons.cancelProcessing")
+              }
               onClick={(e) => {
                 e.stopPropagation();
                 isRecording ? cancelRecording() : cancelProcessing();
@@ -411,7 +415,9 @@ export default function App() {
                   toggleListening();
                 }}
               >
-                {isRecording ? "Stop listening" : "Start listening"}
+                {isRecording
+                  ? t("app.commandMenu.stopListening")
+                  : t("app.commandMenu.startListening")}
               </button>
               <div className="h-px bg-border" />
               <button
@@ -422,7 +428,7 @@ export default function App() {
                   handleClose();
                 }}
               >
-                Hide this for now
+                {t("app.commandMenu.hideForNow")}
               </button>
             </div>
           )}

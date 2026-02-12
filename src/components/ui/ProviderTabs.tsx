@@ -1,4 +1,5 @@
 import { ReactNode, useRef, useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { ProviderIcon } from "./ProviderIcon";
 import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyles";
 
@@ -28,6 +29,7 @@ export function ProviderTabs({
   colorScheme = "indigo",
   scrollable = false,
 }: ProviderTabsProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({
     opacity: 0,
@@ -94,7 +96,9 @@ export function ProviderTabs({
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
             <span>{provider.name}</span>
             {provider.recommended && (
-              <span className="text-[9px] text-primary/70 font-medium">Recommended</span>
+              <span className="text-[9px] text-primary/70 font-medium">
+                {t("common.recommended")}
+              </span>
             )}
           </button>
         );

@@ -6,6 +6,7 @@ export interface ModelDefinition {
   size: string;
   sizeBytes: number;
   description: string;
+  descriptionKey?: string;
   fileName: string;
   quantization: string;
   contextLength: number;
@@ -34,6 +35,7 @@ export interface CloudModelDefinition {
   id: string;
   name: string;
   description: string;
+  descriptionKey?: string;
   disableThinking?: boolean;
 }
 
@@ -47,6 +49,7 @@ export interface TranscriptionModelDefinition {
   id: string;
   name: string;
   description: string;
+  descriptionKey?: string;
 }
 
 export interface TranscriptionProviderData {
@@ -59,6 +62,7 @@ export interface TranscriptionProviderData {
 export interface WhisperModelInfo {
   name: string;
   description: string;
+  descriptionKey?: string;
   size: string;
   sizeMb: number;
   fileName: string;
@@ -77,6 +81,7 @@ export type WhisperModelsMap = Record<string, WhisperModelInfo>;
 export interface ParakeetModelInfo {
   name: string;
   description: string;
+  descriptionKey?: string;
   size: string;
   sizeMb: number;
   language: string;
@@ -185,6 +190,7 @@ export interface ReasoningModel {
   value: string;
   label: string;
   description: string;
+  descriptionKey?: string;
 }
 
 export interface ReasoningProvider {
@@ -204,6 +210,7 @@ function buildReasoningProviders(): ReasoningProviders {
         value: m.id,
         label: m.name,
         description: m.description,
+        descriptionKey: m.descriptionKey,
       })),
     };
   }
@@ -214,6 +221,7 @@ function buildReasoningProviders(): ReasoningProviders {
       value: model.id,
       label: model.name,
       description: `${model.description} (${model.size})`,
+      descriptionKey: model.descriptionKey,
     })),
   };
 

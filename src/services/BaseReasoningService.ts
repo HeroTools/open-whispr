@@ -26,9 +26,15 @@ export abstract class BaseReasoningService {
     return window.localStorage.getItem("preferredLanguage") || "auto";
   }
 
+  protected getUiLanguage(): string {
+    if (typeof window === "undefined" || !window.localStorage) return "en";
+    return window.localStorage.getItem("uiLanguage") || "en";
+  }
+
   protected getSystemPrompt(agentName: string | null, transcript?: string): string {
     const language = this.getPreferredLanguage();
-    return getSystemPrompt(agentName, this.getCustomDictionary(), language, transcript);
+    const uiLanguage = this.getUiLanguage();
+    return getSystemPrompt(agentName, this.getCustomDictionary(), language, transcript, uiLanguage);
   }
 
   protected calculateMaxTokens(

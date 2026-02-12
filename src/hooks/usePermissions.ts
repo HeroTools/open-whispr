@@ -1,4 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
+import type { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import type { PasteToolsResult } from "../types/electron";
 import { useLocalStorage } from "./useLocalStorage";
 
@@ -32,22 +34,22 @@ const stopTracks = (stream?: MediaStream) => {
   }
 };
 
-const getPlatformSettingsPath = (): string => {
+const getPlatformSettingsPath = (t: TFunction): string => {
   if (typeof navigator !== "undefined") {
     const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes("win")) return "Settings → Privacy → Microphone";
-    if (ua.includes("linux")) return "your system sound settings";
+    if (ua.includes("win")) return t("hooks.permissions.paths.windowsMicrophone");
+    if (ua.includes("linux")) return t("hooks.permissions.paths.linuxSound");
   }
-  return "System Settings → Sound → Input";
+  return t("hooks.permissions.paths.defaultSound");
 };
 
-const getPlatformPrivacyPath = (): string => {
+const getPlatformPrivacyPath = (t: TFunction): string => {
   if (typeof navigator !== "undefined") {
     const ua = navigator.userAgent.toLowerCase();
-    if (ua.includes("win")) return "Settings → Privacy → Microphone";
-    if (ua.includes("linux")) return "your system privacy settings";
+    if (ua.includes("win")) return t("hooks.permissions.paths.windowsMicrophone");
+    if (ua.includes("linux")) return t("hooks.permissions.paths.linuxPrivacy");
   }
-  return "System Settings → Privacy & Security → Microphone";
+  return t("hooks.permissions.paths.defaultPrivacy");
 };
 
 const getPlatform = (): "darwin" | "win32" | "linux" => {
@@ -67,39 +69,42 @@ const getPlatform = (): "darwin" | "win32" | "linux" => {
   return "darwin"; // Default fallback
 };
 
-const describeMicError = (error: unknown): string => {
+const describeMicError = (error: unknown, t: TFunction): string => {
   if (!error || typeof error !== "object") {
-    return "Microphone access failed. Please try again.";
+    return t("hooks.permissions.micErrors.accessFailed");
   }
 
   const err = error as { name?: string; message?: string };
   const name = err.name || "";
   const message = (err.message || "").toLowerCase();
-  const settingsPath = getPlatformSettingsPath();
-  const privacyPath = getPlatformPrivacyPath();
+  const settingsPath = getPlatformSettingsPath(t);
+  const privacyPath = getPlatformPrivacyPath(t);
 
   if (name === "NotFoundError") {
-    return `No microphones were detected. Connect or select a microphone in ${settingsPath}.`;
+    return t("hooks.permissions.micErrors.noMicrophones", { settingsPath });
   }
 
   if (name === "NotAllowedError" || name === "SecurityError") {
-    return `Permission was denied. Open ${privacyPath} and allow OpenWhispr.`;
+    return t("hooks.permissions.micErrors.permissionDenied", { privacyPath });
   }
 
   if (name === "NotReadableError" || name === "AbortError") {
-    return `Could not start the selected microphone. Choose an input device in ${settingsPath}, then rerun the test.`;
+    return t("hooks.permissions.micErrors.couldNotStart", { settingsPath });
   }
 
   if (message.includes("no audio input") || message.includes("not available")) {
-    return `No active audio input was found. Pick a microphone in ${settingsPath}.`;
+    return t("hooks.permissions.micErrors.noActiveInput", { settingsPath });
   }
 
-  return `Microphone access failed: ${err.message || "Unknown error"}. Select a different input device and try again.`;
+  return t("hooks.permissions.micErrors.unknown", {
+    error: err.message || t("hooks.permissions.micErrors.unknownFallback"),
+  });
 };
 
 export const usePermissions = (
   showAlertDialog?: UsePermissionsProps["showAlertDialog"]
 ): UsePermissionsReturn => {
+  const { t } = useTranslation();
   const [micPermissionGranted, setMicPermissionGranted] = useLocalStorage(
     "micPermissionGranted",
     false,
@@ -126,9 +131,14 @@ export const usePermissions = (
       apiMethod: () => Promise<{ success: boolean; error?: string } | undefined> | undefined
     ) => {
       const titles = {
-        microphone: "Microphone Settings",
-        sound: "Sound Settings",
-        accessibility: "Accessibility Settings",
+        microphone: t("hooks.permissions.settingsTitles.microphone"),
+        sound: t("hooks.permissions.settingsTitles.sound"),
+        accessibility: t("hooks.permissions.settingsTitles.accessibility"),
+      };
+      const unableToOpenDescriptions = {
+        microphone: t("hooks.permissions.settingsErrors.unableToOpenMicrophone"),
+        sound: t("hooks.permissions.settingsErrors.unableToOpenSound"),
+        accessibility: t("hooks.permissions.settingsErrors.unableToOpenAccessibility"),
       };
       try {
         const result = await apiMethod?.();
@@ -139,11 +149,11 @@ export const usePermissions = (
         console.error(`Failed to open ${settingType} settings:`, error);
         showAlertDialog?.({
           title: titles[settingType],
-          description: `Unable to open ${settingType} settings. Please open your system settings manually.`,
+          description: unableToOpenDescriptions[settingType],
         });
       }
     },
-    [showAlertDialog]
+    [showAlertDialog, t]
   );
 
   const openMicPrivacySettings = useCallback(
@@ -163,12 +173,11 @@ export const usePermissions = (
 
   const requestMicPermission = useCallback(async () => {
     if (!navigator?.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== "function") {
-      const message =
-        "Microphone APIs are unavailable in this environment. Please restart the app.";
+      const message = t("hooks.permissions.micUnavailable");
       setMicPermissionError(message);
       if (showAlertDialog) {
         showAlertDialog({
-          title: "Microphone Unavailable",
+          title: t("hooks.permissions.titles.microphoneUnavailable"),
           description: message,
         });
       } else {
@@ -195,18 +204,18 @@ export const usePermissions = (
       setMicPermissionError(null);
     } catch (err) {
       console.error("Microphone permission denied:", err);
-      const message = describeMicError(err);
+      const message = describeMicError(err, t);
       setMicPermissionError(message);
       if (showAlertDialog) {
         showAlertDialog({
-          title: "Microphone Permission Required",
+          title: t("hooks.permissions.titles.microphonePermissionRequired"),
           description: message,
         });
       } else {
         alert(message);
       }
     }
-  }, [showAlertDialog]);
+  }, [showAlertDialog, t]);
 
   const checkPasteToolsAvailability = useCallback(async (): Promise<PasteToolsResult | null> => {
     setIsCheckingPasteTools(true);
@@ -243,18 +252,17 @@ export const usePermissions = (
     // On macOS, actually test the accessibility permission
     if (platform === "darwin") {
       try {
-        await window.electronAPI.pasteText("OpenWhispr accessibility test");
+        await window.electronAPI.pasteText(t("hooks.permissions.accessibilityTestText"));
         setAccessibilityPermissionGranted(true);
       } catch (err) {
         console.error("Accessibility permission test failed:", err);
         if (showAlertDialog) {
           showAlertDialog({
-            title: "Accessibility Permissions Needed",
-            description:
-              "Please grant accessibility permissions in System Settings to enable automatic text pasting.",
+            title: t("hooks.permissions.titles.accessibilityNeeded"),
+            description: t("hooks.permissions.descriptions.accessibilityNeeded"),
           });
         } else {
-          alert("Accessibility permissions needed! Please grant them in System Settings.");
+          alert(t("hooks.permissions.alerts.accessibilityNeeded"));
         }
       }
       return;
@@ -265,9 +273,8 @@ export const usePermissions = (
       setAccessibilityPermissionGranted(true);
       if (showAlertDialog) {
         showAlertDialog({
-          title: "Ready to Go!",
-          description:
-            "Windows doesn't require special permissions for automatic pasting. You're all set!",
+          title: t("hooks.permissions.titles.readyToGo"),
+          description: t("hooks.permissions.descriptions.windowsReady"),
         });
       }
       return;
@@ -280,12 +287,16 @@ export const usePermissions = (
       if (result?.available) {
         setAccessibilityPermissionGranted(true);
         if (showAlertDialog) {
-          const method = result.method || "xdotool";
+          const method = result.method || t("hooks.permissions.labels.defaultPasteTool");
           const methodLabel =
-            result.isWayland && method === "xdotool" ? `${method} (XWayland apps)` : method;
+            result.isWayland && method === "xdotool"
+              ? t("hooks.permissions.labels.xdotoolXwayland")
+              : method;
           showAlertDialog({
-            title: "Ready to Go!",
-            description: `Automatic pasting is available using ${methodLabel}. You're all set!`,
+            title: t("hooks.permissions.titles.readyToGo"),
+            description: t("hooks.permissions.descriptions.linuxReadyWithMethod", {
+              method: methodLabel,
+            }),
           });
         }
       } else {
@@ -301,19 +312,22 @@ export const usePermissions = (
         if (showAlertDialog) {
           if (isWayland && !xwaylandAvailable && !recommendedTool) {
             showAlertDialog({
-              title: "Clipboard Mode on Wayland",
-              description:
-                "Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text to your clipboard and you can paste with Ctrl+V.",
+              title: t("hooks.permissions.titles.waylandClipboardMode"),
+              description: t("hooks.permissions.descriptions.waylandClipboardMode"),
             });
           } else {
             const waylandNote = isWayland
               ? recommendedTool === "wtype"
-                ? "\n\nNote: For XWayland apps, xdotool also works."
-                : "\n\nNote: Automatic pasting works for XWayland apps only."
+                ? t("hooks.permissions.notes.waylandWtype")
+                : t("hooks.permissions.notes.waylandXwaylandOnly")
               : "";
             showAlertDialog({
-              title: "Optional: Install Paste Tool",
-              description: `For automatic pasting, install ${recommendedTool || "xdotool"}:\n\n${installCmd}${waylandNote}\n\nWithout this, you can still use OpenWhispr - text will be copied to your clipboard and you can paste with Ctrl+V.`,
+              title: t("hooks.permissions.titles.optionalPasteTool"),
+              description: t("hooks.permissions.descriptions.optionalPasteTool", {
+                tool: recommendedTool || t("hooks.permissions.labels.defaultPasteTool"),
+                installCmd,
+                waylandNote,
+              }),
             });
           }
         }
@@ -321,7 +335,7 @@ export const usePermissions = (
         setAccessibilityPermissionGranted(true);
       }
     }
-  }, [showAlertDialog, checkPasteToolsAvailability]);
+  }, [showAlertDialog, checkPasteToolsAvailability, setAccessibilityPermissionGranted, t]);
 
   return {
     micPermissionGranted,

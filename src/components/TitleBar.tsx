@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import WindowControls from "./WindowControls";
 import { Button } from "./ui/button";
 import { Power } from "lucide-react";
@@ -19,6 +20,7 @@ export default function TitleBar({
   className = "",
   actions,
 }: TitleBarProps) {
+  const { t } = useTranslation();
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   const platform =
@@ -60,8 +62,8 @@ export default function TitleBar({
                 size="icon"
                 onClick={() => setShowQuitConfirm(true)}
                 className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                title="Quit OpenWhispr"
-                aria-label="Quit OpenWhispr"
+                title={t("titleBar.quitTitle")}
+                aria-label={t("titleBar.quitTitle")}
               >
                 <Power size={16} />
               </Button>
@@ -90,8 +92,8 @@ export default function TitleBar({
                 size="icon"
                 onClick={() => setShowQuitConfirm(true)}
                 className="h-8 w-8 text-destructive hover:text-destructive/90 hover:bg-destructive/10"
-                title="Quit OpenWhispr"
-                aria-label="Quit OpenWhispr"
+                title={t("titleBar.quitTitle")}
+                aria-label={t("titleBar.quitTitle")}
               >
                 <Power size={16} />
               </Button>
@@ -102,10 +104,10 @@ export default function TitleBar({
       <ConfirmDialog
         open={showQuitConfirm}
         onOpenChange={setShowQuitConfirm}
-        title="Quit OpenWhispr?"
-        description="This will close OpenWhispr and stop background processes."
-        confirmText="Quit"
-        cancelText="Cancel"
+        title={t("titleBar.quitConfirmTitle")}
+        description={t("titleBar.quitConfirmDescription")}
+        confirmText={t("titleBar.quit")}
+        cancelText={t("titleBar.cancel")}
         onConfirm={handleQuit}
         variant="destructive"
       />

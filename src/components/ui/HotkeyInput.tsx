@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
 import { formatHotkeyLabel } from "../../utils/hotkeys";
 import { getPlatform } from "../../utils/platform";
@@ -188,6 +189,7 @@ export function HotkeyInput({
   variant = "default",
   validate,
 }: HotkeyInputProps & HotkeyInputVariant) {
+  const { t } = useTranslation();
   const [isCapturing, setIsCapturing] = useState(false);
   const [activeModifiers, setActiveModifiers] = useState<Set<string>>(new Set());
   const [validationWarning, setValidationWarning] = useState<string | null>(null);
@@ -463,7 +465,7 @@ export function HotkeyInput({
         ref={containerRef}
         tabIndex={disabled ? -1 : 0}
         role="button"
-        aria-label="Press a key combination to set hotkey"
+        aria-label={t("hotkeyInput.ariaLabel")}
         onKeyDown={handleKeyDown}
         onKeyUp={handleKeyUp}
         onFocus={handleFocus}
@@ -486,7 +488,7 @@ export function HotkeyInput({
           <div className="flex flex-col items-center gap-3">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-              <span className="text-xs font-medium text-primary">Listening...</span>
+              <span className="text-xs font-medium text-primary">{t("hotkeyInput.listening")}</span>
             </div>
             {activeModifiers.size > 0 ? (
               <div className="flex flex-col items-center gap-1.5">
@@ -503,13 +505,13 @@ export function HotkeyInput({
                 </div>
                 {isFnHeld && (
                   <span className="text-[10px] text-muted-foreground">
-                    Press a key to combine, or release for Globe
+                    {t("hotkeyInput.fnHeldHint")}
                   </span>
                 )}
               </div>
             ) : (
               <span className="text-xs text-muted-foreground">
-                {isMac ? "Press any key or ⌘⇧K" : "Press any key or Ctrl+Shift+K"}
+                {isMac ? t("hotkeyInput.pressAnyKeyMac") : t("hotkeyInput.pressAnyKey")}
               </span>
             )}
             {validationWarning && (
@@ -547,13 +549,13 @@ export function HotkeyInput({
               )}
             </div>
             <span className="text-[10px] text-muted-foreground/60 group-hover:text-muted-foreground transition-colors">
-              Click to change
+              {t("hotkeyInput.clickToChange")}
             </span>
           </div>
         ) : (
           /* Empty state */
           <div className="flex flex-col items-center gap-1.5 text-muted-foreground">
-            <span className="text-sm font-medium">Click to set hotkey</span>
+            <span className="text-sm font-medium">{t("hotkeyInput.clickToSet")}</span>
           </div>
         )}
       </div>
@@ -566,7 +568,7 @@ export function HotkeyInput({
       ref={containerRef}
       tabIndex={disabled ? -1 : 0}
       role="button"
-      aria-label="Press a key combination to set hotkey"
+      aria-label={t("hotkeyInput.ariaLabel")}
       onKeyDown={handleKeyDown}
       onKeyUp={handleKeyUp}
       onFocus={handleFocus}
@@ -593,7 +595,9 @@ export function HotkeyInput({
             <div className="flex items-center justify-center gap-3">
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                <span className="text-xs font-medium text-muted-foreground">Recording</span>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {t("hotkeyInput.recording")}
+                </span>
               </div>
               {activeModifiers.size > 0 ? (
                 <div className="flex items-center gap-1">
@@ -606,12 +610,12 @@ export function HotkeyInput({
                     </kbd>
                   ))}
                   <span className="text-primary/40 text-[11px]">
-                    {isFnHeld ? "+ key or release for Globe" : "+ key"}
+                    {isFnHeld ? t("hotkeyInput.fnCaptureHint") : t("hotkeyInput.keyHint")}
                   </span>
                 </div>
               ) : (
                 <span className="text-[11px] text-muted-foreground">
-                  {isMac ? "Try ⌘⇧K" : "Try Ctrl+Shift+K"}
+                  {isMac ? t("hotkeyInput.tryShortcutMac") : t("hotkeyInput.tryShortcut")}
                 </span>
               )}
             </div>
@@ -626,7 +630,9 @@ export function HotkeyInput({
           </>
         ) : value ? (
           <div className="flex items-center justify-between">
-            <span className="text-[11px] font-medium text-muted-foreground">Hotkey</span>
+            <span className="text-[11px] font-medium text-muted-foreground">
+              {t("hotkeyInput.hotkeyLabel")}
+            </span>
             <div className="flex items-center gap-2">
               {hotkeyParts.length > 0 ? (
                 <div className="flex items-center gap-1">
@@ -644,19 +650,23 @@ export function HotkeyInput({
                   <kbd className="px-2 py-0.5 bg-surface-raised border border-border rounded-sm text-base">
                     🌐
                   </kbd>
-                  <span className="text-[11px] text-muted-foreground">Globe</span>
+                  <span className="text-[11px] text-muted-foreground">
+                    {t("hotkeyInput.globe")}
+                  </span>
                 </div>
               ) : (
                 <kbd className="px-2.5 py-1 bg-surface-raised border border-border rounded-sm text-xs font-semibold text-foreground">
                   {displayValue}
                 </kbd>
               )}
-              <span className="text-[10px] text-muted-foreground/50">click to change</span>
+              <span className="text-[10px] text-muted-foreground/50">
+                {t("hotkeyInput.clickToChangeLower")}
+              </span>
             </div>
           </div>
         ) : (
           <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <span className="text-sm font-medium">Click to set hotkey</span>
+            <span className="text-sm font-medium">{t("hotkeyInput.clickToSet")}</span>
           </div>
         )}
       </div>

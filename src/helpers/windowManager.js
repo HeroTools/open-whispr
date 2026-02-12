@@ -3,6 +3,7 @@ const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
+const { i18nMain } = require("./i18nMain");
 const { DEV_SERVER_PORT } = DevServerManager;
 const {
   MAIN_WINDOW_CONFIG,
@@ -77,7 +78,7 @@ class WindowManager {
     );
 
     this.mainWindow.webContents.on("did-finish-load", () => {
-      this.mainWindow.setTitle("Voice Recorder");
+      this.mainWindow.setTitle(i18nMain.t("window.voiceRecorderTitle"));
       this.enforceMainWindowOnTop();
     });
 
@@ -378,8 +379,8 @@ class WindowManager {
     shell.openExternal(url).catch((error) => {
       if (showError) {
         dialog.showErrorBox(
-          "Unable to Open Link",
-          `Failed to open the link in your browser:\n${url}\n\nError: ${error.message}`
+          i18nMain.t("dialog.openLink.title"),
+          i18nMain.t("dialog.openLink.message", { url, error: error.message })
         );
       }
     });
@@ -470,7 +471,7 @@ class WindowManager {
 
     this.controlPanelWindow.webContents.on("did-finish-load", () => {
       clearVisibilityTimer();
-      this.controlPanelWindow.setTitle("Control Panel");
+      this.controlPanelWindow.setTitle(i18nMain.t("window.controlPanelTitle"));
     });
 
     this.controlPanelWindow.webContents.on(
@@ -597,21 +598,34 @@ class WindowManager {
     }
   }
 
+  refreshLocalizedUi() {
+    MenuManager.setupMainMenu();
+
+    if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
+      MenuManager.setupControlPanelMenu(this.controlPanelWindow);
+      this.controlPanelWindow.setTitle(i18nMain.t("window.controlPanelTitle"));
+    }
+
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.setTitle(i18nMain.t("window.voiceRecorderTitle"));
+    }
+  }
+
   showLoadFailureDialog(windowName, errorCode, errorDescription, validatedURL) {
     if (this.loadErrorShown) {
       return;
     }
     this.loadErrorShown = true;
     const detailLines = [
-      `Window: ${windowName}`,
-      `Error ${errorCode}: ${errorDescription}`,
-      validatedURL ? `URL: ${validatedURL}` : null,
-      "Try reinstalling the app or launching with --log-level=debug.",
+      i18nMain.t("dialog.loadFailure.detail.window", { windowName }),
+      i18nMain.t("dialog.loadFailure.detail.error", { errorCode, errorDescription }),
+      validatedURL ? i18nMain.t("dialog.loadFailure.detail.url", { url: validatedURL }) : null,
+      i18nMain.t("dialog.loadFailure.detail.hint"),
     ].filter(Boolean);
     dialog.showMessageBox({
       type: "error",
-      title: "OpenWhispr failed to load",
-      message: "OpenWhispr could not load its UI.",
+      title: i18nMain.t("dialog.loadFailure.title"),
+      message: i18nMain.t("dialog.loadFailure.message"),
       detail: detailLines.join("\n"),
     });
   }

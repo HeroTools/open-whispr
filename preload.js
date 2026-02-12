@@ -7,7 +7,7 @@ const { contextBridge, ipcRenderer } = require("electron");
 const registerListener = (channel, handlerFactory) => {
   return (callback) => {
     if (typeof callback !== "function") {
-      return () => { };
+      return () => {};
     }
 
     const listener =
@@ -26,27 +26,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
   pasteText: (text, options) => ipcRenderer.invoke("paste-text", text, options),
   hideWindow: () => ipcRenderer.invoke("hide-window"),
   showDictationPanel: () => ipcRenderer.invoke("show-dictation-panel"),
-  onToggleDictation: registerListener(
-    "toggle-dictation",
-    (callback) => () => callback()
-  ),
-  onStartDictation: registerListener(
-    "start-dictation",
-    (callback) => () => callback()
-  ),
-  onStopDictation: registerListener(
-    "stop-dictation",
-    (callback) => () => callback()
-  ),
+  onToggleDictation: registerListener("toggle-dictation", (callback) => () => callback()),
+  onStartDictation: registerListener("start-dictation", (callback) => () => callback()),
+  onStopDictation: registerListener("stop-dictation", (callback) => () => callback()),
 
   // Database functions
-  saveTranscription: (text) =>
-    ipcRenderer.invoke("db-save-transcription", text),
-  getTranscriptions: (limit) =>
-    ipcRenderer.invoke("db-get-transcriptions", limit),
+  saveTranscription: (text) => ipcRenderer.invoke("db-save-transcription", text),
+  getTranscriptions: (limit) => ipcRenderer.invoke("db-get-transcriptions", limit),
   clearTranscriptions: () => ipcRenderer.invoke("db-clear-transcriptions"),
-  deleteTranscription: (id) =>
-    ipcRenderer.invoke("db-delete-transcription", id),
+  deleteTranscription: (id) => ipcRenderer.invoke("db-delete-transcription", id),
   // Dictionary functions
   getDictionary: () => ipcRenderer.invoke("db-get-dictionary"),
   setDictionary: (words) => ipcRenderer.invoke("db-set-dictionary", words),
@@ -64,15 +52,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onTranscriptionsCleared: (callback) => {
     const listener = (_event, data) => callback?.(data);
     ipcRenderer.on("transcriptions-cleared", listener);
-    return () =>
-      ipcRenderer.removeListener("transcriptions-cleared", listener);
+    return () => ipcRenderer.removeListener("transcriptions-cleared", listener);
   },
 
   // Environment variables
   getOpenAIKey: () => ipcRenderer.invoke("get-openai-key"),
   saveOpenAIKey: (key) => ipcRenderer.invoke("save-openai-key", key),
-  createProductionEnvFile: (key) =>
-    ipcRenderer.invoke("create-production-env-file", key),
+  createProductionEnvFile: (key) => ipcRenderer.invoke("create-production-env-file", key),
 
   // Clipboard functions
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
@@ -82,48 +68,38 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Local Whisper functions (whisper.cpp)
   transcribeLocalWhisper: (audioBlob, options) =>
     ipcRenderer.invoke("transcribe-local-whisper", audioBlob, options),
-  checkWhisperInstallation: () =>
-    ipcRenderer.invoke("check-whisper-installation"),
-  downloadWhisperModel: (modelName) =>
-    ipcRenderer.invoke("download-whisper-model", modelName),
+  checkWhisperInstallation: () => ipcRenderer.invoke("check-whisper-installation"),
+  downloadWhisperModel: (modelName) => ipcRenderer.invoke("download-whisper-model", modelName),
   onWhisperDownloadProgress: registerListener("whisper-download-progress"),
-  checkModelStatus: (modelName) =>
-    ipcRenderer.invoke("check-model-status", modelName),
+  checkModelStatus: (modelName) => ipcRenderer.invoke("check-model-status", modelName),
   listWhisperModels: () => ipcRenderer.invoke("list-whisper-models"),
-  deleteWhisperModel: (modelName) =>
-    ipcRenderer.invoke("delete-whisper-model", modelName),
+  deleteWhisperModel: (modelName) => ipcRenderer.invoke("delete-whisper-model", modelName),
   deleteAllWhisperModels: () => ipcRenderer.invoke("delete-all-whisper-models"),
   cancelWhisperDownload: () => ipcRenderer.invoke("cancel-whisper-download"),
-  checkFFmpegAvailability: () =>
-    ipcRenderer.invoke("check-ffmpeg-availability"),
+  checkFFmpegAvailability: () => ipcRenderer.invoke("check-ffmpeg-availability"),
   getAudioDiagnostics: () => ipcRenderer.invoke("get-audio-diagnostics"),
 
   // Whisper server functions (faster repeated transcriptions)
-  whisperServerStart: (modelName) =>
-    ipcRenderer.invoke("whisper-server-start", modelName),
+  whisperServerStart: (modelName) => ipcRenderer.invoke("whisper-server-start", modelName),
   whisperServerStop: () => ipcRenderer.invoke("whisper-server-stop"),
   whisperServerStatus: () => ipcRenderer.invoke("whisper-server-status"),
 
   // Local Parakeet (NVIDIA) functions
   transcribeLocalParakeet: (audioBlob, options) =>
     ipcRenderer.invoke("transcribe-local-parakeet", audioBlob, options),
-  checkParakeetInstallation: () =>
-    ipcRenderer.invoke("check-parakeet-installation"),
-  downloadParakeetModel: (modelName) =>
-    ipcRenderer.invoke("download-parakeet-model", modelName),
+  checkParakeetInstallation: () => ipcRenderer.invoke("check-parakeet-installation"),
+  downloadParakeetModel: (modelName) => ipcRenderer.invoke("download-parakeet-model", modelName),
   onParakeetDownloadProgress: registerListener("parakeet-download-progress"),
   checkParakeetModelStatus: (modelName) =>
     ipcRenderer.invoke("check-parakeet-model-status", modelName),
   listParakeetModels: () => ipcRenderer.invoke("list-parakeet-models"),
-  deleteParakeetModel: (modelName) =>
-    ipcRenderer.invoke("delete-parakeet-model", modelName),
+  deleteParakeetModel: (modelName) => ipcRenderer.invoke("delete-parakeet-model", modelName),
   deleteAllParakeetModels: () => ipcRenderer.invoke("delete-all-parakeet-models"),
   cancelParakeetDownload: () => ipcRenderer.invoke("cancel-parakeet-download"),
   getParakeetDiagnostics: () => ipcRenderer.invoke("get-parakeet-diagnostics"),
 
   // Parakeet server functions (faster repeated transcriptions)
-  parakeetServerStart: (modelName) =>
-    ipcRenderer.invoke("parakeet-server-start", modelName),
+  parakeetServerStart: (modelName) => ipcRenderer.invoke("parakeet-server-start", modelName),
   parakeetServerStop: () => ipcRenderer.invoke("parakeet-server-stop"),
   parakeetServerStatus: () => ipcRenderer.invoke("parakeet-server-status"),
 
@@ -145,8 +121,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   stopWindowDrag: () => ipcRenderer.invoke("stop-window-drag"),
   setMainWindowInteractivity: (interactive) =>
     ipcRenderer.invoke("set-main-window-interactivity", interactive),
-  resizeMainWindow: (sizeKey) =>
-    ipcRenderer.invoke("resize-main-window", sizeKey),
+  resizeMainWindow: (sizeKey) => ipcRenderer.invoke("resize-main-window", sizeKey),
 
   // Update functions
   checkForUpdates: () => ipcRenderer.invoke("check-for-updates"),
@@ -182,6 +157,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Anthropic API
   getAnthropicKey: () => ipcRenderer.invoke("get-anthropic-key"),
   saveAnthropicKey: (key) => ipcRenderer.invoke("save-anthropic-key", key),
+  getUiLanguage: () => ipcRenderer.invoke("get-ui-language"),
+  saveUiLanguage: (language) => ipcRenderer.invoke("save-ui-language", language),
+  setUiLanguage: (language) => ipcRenderer.invoke("set-ui-language", language),
 
   // Gemini API
   getGeminiKey: () => ipcRenderer.invoke("get-gemini-key"),
@@ -216,8 +194,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Local reasoning
   processLocalReasoning: (text, modelId, agentName, config) =>
     ipcRenderer.invoke("process-local-reasoning", text, modelId, agentName, config),
-  checkLocalReasoningAvailable: () =>
-    ipcRenderer.invoke("check-local-reasoning-available"),
+  checkLocalReasoningAvailable: () => ipcRenderer.invoke("check-local-reasoning-available"),
 
   // Anthropic reasoning
   processAnthropicReasoning: (text, modelId, agentName, config) =>
@@ -257,16 +234,30 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cloudBillingPortal: () => ipcRenderer.invoke("cloud-billing-portal"),
 
   // Assembly AI Streaming
-  assemblyAiStreamingWarmup: (options) => ipcRenderer.invoke("assemblyai-streaming-warmup", options),
+  assemblyAiStreamingWarmup: (options) =>
+    ipcRenderer.invoke("assemblyai-streaming-warmup", options),
   assemblyAiStreamingStart: (options) => ipcRenderer.invoke("assemblyai-streaming-start", options),
-  assemblyAiStreamingSend: (audioBuffer) => ipcRenderer.send("assemblyai-streaming-send", audioBuffer),
+  assemblyAiStreamingSend: (audioBuffer) =>
+    ipcRenderer.send("assemblyai-streaming-send", audioBuffer),
   assemblyAiStreamingForceEndpoint: () => ipcRenderer.send("assemblyai-streaming-force-endpoint"),
   assemblyAiStreamingStop: () => ipcRenderer.invoke("assemblyai-streaming-stop"),
   assemblyAiStreamingStatus: () => ipcRenderer.invoke("assemblyai-streaming-status"),
-  onAssemblyAiPartialTranscript: registerListener("assemblyai-partial-transcript", (callback) => (_event, text) => callback(text)),
-  onAssemblyAiFinalTranscript: registerListener("assemblyai-final-transcript", (callback) => (_event, text) => callback(text)),
-  onAssemblyAiError: registerListener("assemblyai-error", (callback) => (_event, error) => callback(error)),
-  onAssemblyAiSessionEnd: registerListener("assemblyai-session-end", (callback) => (_event, data) => callback(data)),
+  onAssemblyAiPartialTranscript: registerListener(
+    "assemblyai-partial-transcript",
+    (callback) => (_event, text) => callback(text)
+  ),
+  onAssemblyAiFinalTranscript: registerListener(
+    "assemblyai-final-transcript",
+    (callback) => (_event, text) => callback(text)
+  ),
+  onAssemblyAiError: registerListener(
+    "assemblyai-error",
+    (callback) => (_event, error) => callback(error)
+  ),
+  onAssemblyAiSessionEnd: registerListener(
+    "assemblyai-session-end",
+    (callback) => (_event, data) => callback(data)
+  ),
 
   // Deepgram Streaming
   deepgramStreamingWarmup: (options) => ipcRenderer.invoke("deepgram-streaming-warmup", options),
@@ -314,8 +305,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   notifyHotkeyChanged: (hotkey) => ipcRenderer.send("hotkey-changed", hotkey),
 
   // Floating icon auto-hide
-  notifyFloatingIconAutoHideChanged: (enabled) => ipcRenderer.send("floating-icon-auto-hide-changed", enabled),
-  onFloatingIconAutoHideChanged: registerListener("floating-icon-auto-hide-changed", (callback) => (_event, enabled) => callback(enabled)),
+  notifyFloatingIconAutoHideChanged: (enabled) =>
+    ipcRenderer.send("floating-icon-auto-hide-changed", enabled),
+  onFloatingIconAutoHideChanged: registerListener(
+    "floating-icon-auto-hide-changed",
+    (callback) => (_event, enabled) => callback(enabled)
+  ),
 
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
