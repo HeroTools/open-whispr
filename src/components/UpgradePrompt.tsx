@@ -30,10 +30,18 @@ export default function UpgradePrompt({
           <p className="text-sm text-muted-foreground">
             {(isPastDue
               ? t("upgradePrompt.pastDueDescription", { limit: limit.toLocaleString() })
-              : t("upgradePrompt.limitDescription", { used: wordsUsed.toLocaleString(), limit: limit.toLocaleString() })
-            ).split("\n").map((line, i, arr) => (
-              <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
-            ))}
+              : t("upgradePrompt.limitDescription", {
+                  used: wordsUsed.toLocaleString(),
+                  limit: limit.toLocaleString(),
+                })
+            )
+              .split("\n")
+              .map((line, i, arr) => (
+                <span key={i}>
+                  {line}
+                  {i < arr.length - 1 && <br />}
+                </span>
+              ))}
           </p>
         </div>
 
@@ -77,7 +85,9 @@ export default function UpgradePrompt({
           />
         </div>
 
-        <p className="text-xs text-muted-foreground/60 text-center">{t("upgradePrompt.rollingWeeklyLimit")}</p>
+        <p className="text-xs text-muted-foreground/60 text-center">
+          {t("upgradePrompt.rollingWeeklyLimit")}
+        </p>
       </DialogContent>
     </Dialog>
   );

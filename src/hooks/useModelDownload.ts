@@ -123,9 +123,10 @@ export function useModelDownload({
           data.error || t("hooks.modelDownload.errors.unknown"),
           data.code
         );
-        const title = data.code === "EXTRACTION_FAILED"
-          ? t("hooks.modelDownload.installationFailed.title")
-          : t("hooks.modelDownload.downloadFailed.title");
+        const title =
+          data.code === "EXTRACTION_FAILED"
+            ? t("hooks.modelDownload.installationFailed.title")
+            : t("hooks.modelDownload.downloadFailed.title");
         setDownloadError(msg);
         showAlertDialogRef.current({ title, description: msg });
         setIsInstalling(false);
@@ -211,9 +212,10 @@ export function useModelDownload({
               result?.error || t("hooks.modelDownload.errors.unknown"),
               result?.code
             );
-            const title = result?.code === "EXTRACTION_FAILED"
-              ? t("hooks.modelDownload.installationFailed.title")
-              : t("hooks.modelDownload.downloadFailed.title");
+            const title =
+              result?.code === "EXTRACTION_FAILED"
+                ? t("hooks.modelDownload.installationFailed.title")
+                : t("hooks.modelDownload.downloadFailed.title");
             setDownloadError(msg);
             showAlertDialog({ title, description: msg });
           } else {
