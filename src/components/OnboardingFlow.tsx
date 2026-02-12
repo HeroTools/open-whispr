@@ -333,7 +333,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         );
 
       case 1: // Setup - Choose Mode & Configure (merged with permissions for signed-in users)
-        // Simplified path for signed-in users (cloud-first) with permissions
+        // Simplified path for signed-in users with language and permissions
         if (isSignedIn && !skipAuth) {
           const platform = permissionsHook.pasteToolsInfo?.platform;
           const isMacOS = platform === "darwin";
@@ -345,7 +345,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   <Check className="w-7 h-7 text-emerald-600" />
                 </div>
                 <h2 className="text-2xl font-semibold text-foreground mb-2">Setup</h2>
-                <p className="text-muted-foreground">Choose your language and grant permissions</p>
+                <p className="text-muted-foreground">
+                  Choose your language and grant permissions for local dictation
+                </p>
               </div>
 
               {/* Language Selector */}

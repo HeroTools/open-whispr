@@ -1,48 +1,51 @@
 const fs = require("fs");
+const path = require("path");
 
-console.log("Setting up OpenWhispr...");
+console.log("Setting up OpenWhispr local environment...");
 
-const envTemplate = `# OpenAI API Configuration
-# Get your API key from: https://platform.openai.com/api-keys
-OPENAI_API_KEY=your_openai_api_key_here
+const envPath = path.join(process.cwd(), ".env");
+const envExamplePath = path.join(process.cwd(), ".env.example");
 
-# Optional: Customize the Whisper model
-# Available models: whisper-1 (default), whisper-1-large, whisper-1-large-v2
-WHISPER_MODEL=whisper-1
+const fallbackTemplate = `# Local-first development defaults
+VITE_DEV_SERVER_PORT=5191
+OPENWHISPR_DEV_SERVER_PORT=5191
 
-# Optional: Set language for better transcription accuracy
-# Leave empty for auto-detection, or use language codes like 'en', 'es', 'fr', etc.
-LANGUAGE=
+# Optional cloud provider keys (keep commented unless needed)
+# OPENAI_API_KEY=your_openai_api_key_here
+# ANTHROPIC_API_KEY=your_anthropic_api_key_here
+# GEMINI_API_KEY=your_gemini_api_key_here
+# GROQ_API_KEY=your_groq_api_key_here
+# MISTRAL_API_KEY=your_mistral_api_key_here
 
-# Optional: Debug mode (set to 'true' to enable verbose logging)
-DEBUG=false`;
+# Optional debug logging
+# OPENWHISPR_LOG_LEVEL=debug
+`;
 
-if (!fs.existsSync(".env")) {
-  fs.writeFileSync(".env", envTemplate);
-  console.log("✅ Created .env file template");
+if (!fs.existsSync(envPath)) {
+  if (fs.existsSync(envExamplePath)) {
+    fs.copyFileSync(envExamplePath, envPath);
+    console.log("✅ Created .env from .env.example");
+  } else {
+    fs.writeFileSync(envPath, fallbackTemplate, "utf8");
+    console.log("⚠️  .env.example not found, created fallback .env template");
+  }
 } else {
-  console.log("⚠️  .env file already exists");
+  console.log("⚠️  .env file already exists (left unchanged)");
 }
 
 console.log(`
 🎉 Setup complete!
 
-Next steps:
-1. Add your OpenAI API key to the .env file
-2. Install dependencies: npm install
-3. Run the app: npm start
+Recommended next steps:
+1. Install dependencies: npm ci
+2. Download local binaries:
+   - npm run download:whisper-cpp
+   - npm run download:llama-server
+   - npm run download:sherpa-onnx
+3. Run local preflight checks: npm run doctor:local
+4. Start development: npm run dev
 
-Features:
-- Global hotkey: Customizable (default: backtick \`) - set your own in Control Panel
-- Draggable dictation panel: Click and drag to position anywhere on screen
-- ESC to close the app
-- Automatic text pasting at cursor location
-- FFmpeg bundled (no separate installation needed)
-
-Note: Make sure you have the necessary system permissions for:
-- Microphone access
-- Accessibility permissions (for text pasting)
-
-For local Whisper processing, OpenWhispr uses whisper.cpp (bundled with the app).
-Models are downloaded automatically on first use.
+Notes:
+- This setup is local-first and privacy-focused by default.
+- Cloud keys stay disabled until you uncomment and set them in .env.
 `);

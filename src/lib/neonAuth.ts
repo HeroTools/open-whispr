@@ -170,7 +170,8 @@ function getElectronOAuthCallbackURL(): string {
 
   if (window.location.protocol !== "file:") return `${window.location.origin}/?panel=true`;
 
-  const port = import.meta.env.VITE_DEV_SERVER_PORT || "5183";
+  const port =
+    import.meta.env.VITE_DEV_SERVER_PORT || import.meta.env.OPENWHISPR_DEV_SERVER_PORT || "5191";
   return `http://localhost:${port}/?panel=true`;
 }
 

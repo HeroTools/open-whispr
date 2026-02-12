@@ -37,6 +37,7 @@
     "download:llama-server:all": "node scripts/download-llama-server.js --all",
     "download:sherpa-onnx": "node scripts/download-sherpa-onnx.js --current",
     "download:sherpa-onnx:all": "node scripts/download-sherpa-onnx.js --all",
+    "doctor:local": "node scripts/local-doctor.js",
     "format:js": "eslint . --fix && cd src && eslint . --fix && prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
     "format": "npm run format:js",
     "format:check": "eslint . && cd src && eslint . && prettier --check \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
@@ -44,7 +45,12 @@
     "typecheck": "cd src && tsc --noEmit",
     "quality-check": "npm run format:check && npm run typecheck",
     "preview": "cd src && vite preview",
-    "clean": "node cleanup.js"
+    "clean": "node cleanup.js",
+    "test": "node --test \"tests/**/*.test.cjs\"",
+    "test:watch": "node --test --watch \"tests/**/*.test.cjs\""
+  },
+  "engines": {
+    "node": ">=22 <23"
   },
   "keywords": [
     "dictation",

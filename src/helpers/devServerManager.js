@@ -1,4 +1,4 @@
-const DEFAULT_DEV_SERVER_PORT = 5183;
+const DEFAULT_DEV_SERVER_PORT = 5191;
 const parseDevServerPort = () => {
   const raw =
     process.env.OPENWHISPR_DEV_SERVER_PORT ||

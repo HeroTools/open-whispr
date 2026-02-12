@@ -2,12 +2,12 @@
 
 ## Quick Diagnostics
 
-| Check | Command |
-|-------|---------|
-| Host architecture | `uname -m` |
-| Node architecture | `node -p "process.arch"` |
+| Check               | Command                                |
+| ------------------- | -------------------------------------- |
+| Host architecture   | `uname -m`                             |
+| Node architecture   | `node -p "process.arch"`               |
 | whisper.cpp install | `which whisper` or `which whisper-cpp` |
-| FFmpeg availability | `ffmpeg -version` |
+| FFmpeg availability | `ffmpeg -version`                      |
 
 ## Common Issues
 
@@ -16,6 +16,7 @@
 **Symptoms:** Crashes on launch, "wrong architecture" errors
 
 **Fix:**
+
 1. Check if Node is x86_64 on arm64: `node -p "process.arch"` vs `uname -m`
 2. Uninstall mismatched Node and reinstall native build
 3. Run `rm -rf node_modules package-lock.json && npm ci`
@@ -28,18 +29,21 @@
 **Platform-specific fixes:**
 
 **macOS:**
+
 1. Open System Settings → Privacy & Security → Microphone
 2. Ensure OpenWhispr is listed and enabled
 3. If not listed, click "Grant Access" in the app to trigger the permission prompt
 4. You can also click "Open Microphone Privacy" button in the app
 
 **Windows:**
+
 1. Open Settings → Privacy → Microphone
 2. Ensure "Allow apps to access your microphone" is ON
 3. Ensure OpenWhispr is listed and enabled
 4. You can also click "Open Privacy Settings" button in the app
 
 **Linux:**
+
 1. Check your audio settings (e.g., `pavucontrol`)
 2. Ensure the correct input device is selected
 3. Linux doesn't have app-level microphone permissions like macOS/Windows
@@ -49,12 +53,14 @@
 **Symptoms:** History shows "you" or empty entries
 
 **Causes:**
+
 - Microphone permission revoked mid-session
 - Stale Whisper cache with corrupted clips
 - Hotkey triggering without audio input
 - Wrong audio input device selected
 
 **Fix:**
+
 1. Check microphone permissions (see above)
 2. Open sound settings and verify the correct input device is selected
 3. Clear caches: `rm -rf ~/.cache/whisper`
@@ -66,8 +72,9 @@
 **Symptoms:** "FFmpeg not found" error, transcription fails immediately
 
 **Fix:**
+
 1. Reinstall dependencies: `rm -rf node_modules && npm ci`
-2. Run `npm run setup` to verify FFmpeg
+2. Run `npm run doctor:local` to verify local prerequisites
 3. If using packaged app, try reinstalling
 
 ### whisper.cpp Issues
@@ -75,6 +82,7 @@
 **Symptoms:** Local transcription fails, "whisper.cpp not found"
 
 **Fix:**
+
 1. The whisper.cpp binary is bundled with the app
 2. If running from source, download the current-platform binary: `npm run download:whisper-cpp`
 3. If bundled binary fails, install via package manager:
@@ -90,6 +98,7 @@
 **Cause:** Electron's main-process clipboard API uses X11 selections (via XWayland), which native Wayland apps cannot read.
 
 **Fix:**
+
 1. Install `wl-clipboard` for the most reliable Wayland clipboard support:
    - Debian/Ubuntu: `sudo apt install wl-clipboard`
    - Fedora/RHEL: `sudo dnf install wl-clipboard`
@@ -102,6 +111,7 @@ OpenWhispr tries clipboard methods in order: `wl-copy` (most reliable) → rende
 ### Windows-Specific Issues
 
 See [WINDOWS_TROUBLESHOOTING.md](WINDOWS_TROUBLESHOOTING.md) for:
+
 - Window visibility issues
 - FFmpeg permission problems
 

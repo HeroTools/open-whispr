@@ -70,7 +70,7 @@ export interface ThemeSettings {
 }
 
 function useSettingsInternal() {
-  const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
+  const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", true, {
     serialize: String,
     deserialize: (value) => value === "true",
   });
