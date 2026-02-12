@@ -1,5 +1,6 @@
 import React, { Suspense, useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
+import { I18nextProvider, useTranslation } from "react-i18next";
 import App from "./App.jsx";
 import AuthenticationStep from "./components/AuthenticationStep.tsx";
 import TitleBar from "./components/TitleBar.tsx";
@@ -10,6 +11,7 @@ import { ToastProvider } from "./components/ui/Toast.tsx";
 import { SettingsProvider } from "./hooks/useSettings";
 import { useTheme } from "./hooks/useTheme";
 import { useAuth } from "./hooks/useAuth";
+import i18n from "./i18n";
 import "./index.css";
 
 const controlPanelImport = () => import("./components/ControlPanel.tsx");
@@ -48,6 +50,9 @@ function isOAuthBrowserRedirect() {
   const isInElectron = typeof window.electronAPI !== "undefined";
 
   if (verifier && !isInElectron) {
+    const redirectTitle = i18n.t("app.oauth.redirectTitle");
+    const closeTab = i18n.t("app.oauth.closeTab");
+
     if (OAUTH_AUTH_BRIDGE_URL) {
       try {
         const bridgeUrl = new URL(OAUTH_AUTH_BRIDGE_URL);
@@ -249,8 +254,8 @@ function isOAuthBrowserRedirect() {
           </div>
 
           <div class="content">
-            <h1>Redirecting to OpenWhispr</h1>
-            <p class="subtitle">You can close this tab</p>
+            <h1>${redirectTitle}</h1>
+            <p class="subtitle">${closeTab}</p>
           </div>
         </div>
       </div>
@@ -382,7 +387,10 @@ function AppRouter() {
   );
 }
 
-function LoadingFallback({ message = "Loading OpenWhispr..." }) {
+function LoadingFallback({ message }) {
+  const { t } = useTranslation();
+  const fallbackMessage = message || t("app.loading");
+
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-4 animate-[scale-in_300ms_ease-out]">
@@ -398,9 +406,9 @@ function LoadingFallback({ message = "Loading OpenWhispr..." }) {
           <path d="M397 457V568" stroke="white" strokeWidth="74" strokeLinecap="round" />
         </svg>
         <div className="w-7 h-7 rounded-full border-[2.5px] border-transparent border-t-primary animate-[spinner-rotate_0.8s_cubic-bezier(0.4,0,0.2,1)_infinite] motion-reduce:animate-none motion-reduce:border-t-muted-foreground motion-reduce:opacity-50" />
-        {message && (
+        {fallbackMessage && (
           <p className="text-[13px] font-medium text-muted-foreground dark:text-foreground/60 tracking-[-0.01em]">
-            {message}
+            {fallbackMessage}
           </p>
         )}
       </div>
@@ -415,11 +423,13 @@ function mountApp() {
   root.render(
     <React.StrictMode>
       <ErrorBoundary>
-        <SettingsProvider>
-          <ToastProvider>
-            <AppRouter />
-          </ToastProvider>
-        </SettingsProvider>
+        <I18nextProvider i18n={i18n}>
+          <SettingsProvider>
+            <ToastProvider>
+              <AppRouter />
+            </ToastProvider>
+          </SettingsProvider>
+        </I18nextProvider>
       </ErrorBoundary>
     </React.StrictMode>
   );

@@ -1031,6 +1031,7 @@ class ReasoningService extends BaseReasoningService {
     try {
       const customDictionary = this.getCustomDictionary();
       const language = this.getPreferredLanguage();
+      const locale = this.getUiLanguage();
 
       // Use withSessionRefresh to handle AUTH_EXPIRED automatically
       const result = await withSessionRefresh(async () => {
@@ -1040,6 +1041,7 @@ class ReasoningService extends BaseReasoningService {
           customDictionary,
           customPrompt: this.getCustomPrompt(),
           language,
+          locale,
         });
 
         if (!res.success) {

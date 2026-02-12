@@ -405,6 +405,7 @@ class WhisperManager {
       await downloadFile(modelConfig.url, modelPath, {
         timeout: 600000,
         signal,
+        expectedSize: modelConfig.size,
         onProgress: (downloadedBytes, totalBytes) => {
           if (progressCallback) {
             progressCallback({
