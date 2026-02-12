@@ -3,7 +3,17 @@ import { initReactI18next } from "react-i18next";
 import { PROMPTS_BY_LOCALE } from "./locales/prompts";
 import { TRANSLATIONS_BY_LOCALE } from "./locales/translations";
 
-export const SUPPORTED_UI_LANGUAGES = ["en", "es", "fr", "de", "pt", "it", "ru", "zh-CN", "zh-TW"] as const;
+export const SUPPORTED_UI_LANGUAGES = [
+  "en",
+  "es",
+  "fr",
+  "de",
+  "pt",
+  "it",
+  "ru",
+  "zh-CN",
+  "zh-TW",
+] as const;
 export type UiLanguage = (typeof SUPPORTED_UI_LANGUAGES)[number];
 
 export function normalizeUiLanguage(language: string | null | undefined): UiLanguage {

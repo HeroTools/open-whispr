@@ -908,7 +908,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           ]);
 
           const anyFailed = results.some(
-            (r) => r.status === "rejected" || (r.status === "fulfilled" && r.value && !r.value.success)
+            (r) =>
+              r.status === "rejected" || (r.status === "fulfilled" && r.value && !r.value.success)
           );
 
           if (anyFailed) {
