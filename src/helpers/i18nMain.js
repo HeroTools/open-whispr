@@ -6,6 +6,7 @@ const frTranslation = require("../locales/fr/translation.json");
 const deTranslation = require("../locales/de/translation.json");
 const ptTranslation = require("../locales/pt/translation.json");
 const itTranslation = require("../locales/it/translation.json");
+const ruTranslation = require("../locales/ru/translation.json");
 const zhCNTranslation = require("../locales/zh-CN/translation.json");
 const zhTWTranslation = require("../locales/zh-TW/translation.json");
 
@@ -15,10 +16,11 @@ const frPrompts = require("../locales/fr/prompts.json");
 const dePrompts = require("../locales/de/prompts.json");
 const ptPrompts = require("../locales/pt/prompts.json");
 const itPrompts = require("../locales/it/prompts.json");
+const ruPrompts = require("../locales/ru/prompts.json");
 const zhCNPrompts = require("../locales/zh-CN/prompts.json");
 const zhTWPrompts = require("../locales/zh-TW/prompts.json");
 
-const SUPPORTED_UI_LANGUAGES = ["en", "es", "fr", "de", "pt", "it", "zh-CN", "zh-TW"];
+const SUPPORTED_UI_LANGUAGES = ["en", "es", "fr", "de", "pt", "it", "ru", "zh-CN", "zh-TW"];
 
 function normalizeUiLanguage(language) {
   const candidate = (language || "").trim();
@@ -63,6 +65,10 @@ void i18nMain.init({
     it: {
       translation: itTranslation,
       prompts: itPrompts,
+    },
+    ru: {
+      translation: ruTranslation,
+      prompts: ruPrompts,
     },
     "zh-CN": {
       translation: zhCNTranslation,
