@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   /* OpenWhispr Theme — registers color tokens with Tailwind v4.
      These are the light-mode defaults; .dark overrides them below. */

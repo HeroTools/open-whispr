@@ -15,7 +15,7 @@ import SupportDropdown from "./ui/SupportDropdown";
 import WindowControls from "./WindowControls";
 import { ConfirmDialog } from "./ui/dialog";
 
-export type ControlPanelView = "home" | "personal-notes" | "dictionary" | "upload" | "referrals";
+export type ControlPanelView = "home" | "personal-notes" | "dictionary" | "upload";
 
 interface ControlPanelSidebarProps {
   activeView: ControlPanelView;
@@ -43,7 +43,6 @@ const navItems: {
   { id: "personal-notes", label: "Notes", icon: NotebookPen },
   { id: "upload", label: "Upload", icon: Upload },
   { id: "dictionary", label: "Dictionary", icon: BookOpen },
-  { id: "referrals", label: "Referrals", icon: Gift },
 ];
 
 export default function ControlPanelSidebar({

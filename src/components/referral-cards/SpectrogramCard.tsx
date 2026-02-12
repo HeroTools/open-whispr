@@ -134,7 +134,7 @@ export function SpectrogramCard({ referralCode, copied = false, onCopy }: Spectr
   }, [play]);
 
   return (
-    <div className="relative w-full h-55 rounded-lg border border-foreground/6 overflow-hidden bg-card dark:bg-[oklch(0.07_0.01_270)]">
+    <div className="relative w-full h-55 rounded-lg border overflow-hidden bg-surface-1 dark:bg-[oklch(0.07_0.01_270)] border-border dark:border-foreground/6">
       {/* Noise texture */}
       <div
         className="absolute inset-0 rounded-lg opacity-[0.03] pointer-events-none mix-blend-overlay"
@@ -199,7 +199,6 @@ export function SpectrogramCard({ referralCode, copied = false, onCopy }: Spectr
 
       {/* Bottom content */}
       <div className="absolute bottom-0 inset-x-0 px-5 pb-4 z-10">
-        <div className="h-px bg-linear-to-r from-transparent via-foreground/6 to-transparent mb-3" />
         <div className="flex items-end justify-between">
           <div className="flex items-center gap-3">
             <button
