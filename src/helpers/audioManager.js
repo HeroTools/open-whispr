@@ -1950,6 +1950,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         const res = await window.electronAPI.deepgramStreamingStart({
           sampleRate: 16000,
           language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+          keyterms: this.getKeyterms(),
         });
 
         if (!res.success) {

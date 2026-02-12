@@ -1150,10 +1150,7 @@ class IPCHandlers {
       runtimeEnv.VITE_NEON_AUTH_URL ||
       "";
 
-    const getSessionCookies = async (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
-      if (!win) return "";
-
+    const getSessionCookiesFromWindow = async (win) => {
       const scopedUrls = [getAuthUrl(), getApiUrl()].filter(Boolean);
       const cookiesByName = new Map();
 
@@ -1197,6 +1194,12 @@ class IPCHandlers {
       );
 
       return cookieHeader;
+    };
+
+    const getSessionCookies = async (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return "";
+      return getSessionCookiesFromWindow(win);
     };
 
     ipcMain.handle("cloud-transcribe", async (event, audioBuffer, opts = {}) => {
@@ -1797,6 +1800,37 @@ class IPCHandlers {
 
     // --- Deepgram Streaming handlers ---
 
+    let deepgramTokenWindowId = null;
+
+    const fetchDeepgramStreamingTokenFromWindow = async (windowId) => {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+      const win = BrowserWindow.fromId(windowId);
+      if (!win || win.isDestroyed()) throw new Error("Window not available for token refresh");
+
+      const cookieHeader = await getSessionCookiesFromWindow(win);
+      if (!cookieHeader) throw new Error("No session cookies available");
+
+      const tokenResponse = await fetch(`${apiUrl}/api/deepgram-streaming-token`, {
+        method: "POST",
+        headers: { Cookie: cookieHeader },
+      });
+
+      if (!tokenResponse.ok) {
+        if (tokenResponse.status === 401) {
+          const err = new Error("Session expired");
+          err.code = "AUTH_EXPIRED";
+          throw err;
+        }
+        throw new Error(`Failed to get Deepgram streaming token: ${tokenResponse.status}`);
+      }
+
+      const { token } = await tokenResponse.json();
+      if (!token) throw new Error("No token received from API");
+      return token;
+    };
+
     const fetchDeepgramStreamingToken = async (event) => {
       const apiUrl = getApiUrl();
       if (!apiUrl) {
@@ -1842,9 +1876,19 @@ class IPCHandlers {
           return { success: false, error: "API not configured", code: "NO_API" };
         }
 
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win && !win.isDestroyed()) {
+          deepgramTokenWindowId = win.id;
+        }
+
         if (!this.deepgramStreaming) {
           this.deepgramStreaming = new DeepgramStreaming();
         }
+
+        this.deepgramStreaming.setTokenRefreshFn(async () => {
+          if (!deepgramTokenWindowId) throw new Error("No window reference");
+          return fetchDeepgramStreamingTokenFromWindow(deepgramTokenWindowId);
+        });
 
         if (this.deepgramStreaming.hasWarmConnection()) {
           debugLogger.debug("Deepgram connection already warm", {}, "streaming");
@@ -1890,10 +1934,18 @@ class IPCHandlers {
         }
 
         const win = BrowserWindow.fromWebContents(event.sender);
+        if (win && !win.isDestroyed()) {
+          deepgramTokenWindowId = win.id;
+        }
 
         if (!this.deepgramStreaming) {
           this.deepgramStreaming = new DeepgramStreaming();
         }
+
+        this.deepgramStreaming.setTokenRefreshFn(async () => {
+          if (!deepgramTokenWindowId) throw new Error("No window reference");
+          return fetchDeepgramStreamingTokenFromWindow(deepgramTokenWindowId);
+        });
 
         if (this.deepgramStreaming.isConnected) {
           debugLogger.debug("Deepgram cleaning up stale connection before start", {}, "streaming");
