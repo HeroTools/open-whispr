@@ -169,7 +169,11 @@ class ClipboardManager {
       try {
         const stats = fs.statSync(candidate);
         if (stats.isFile()) {
-          fs.accessSync(candidate, fs.constants.X_OK);
+          try {
+            fs.accessSync(candidate, fs.constants.X_OK);
+          } catch {
+            fs.chmodSync(candidate, 0o755);
+          }
           this.fastPastePath = candidate;
           return candidate;
         }

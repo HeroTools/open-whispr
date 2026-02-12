@@ -440,10 +440,13 @@ export default function TranscriptionModelPicker({
   }, [useLocalWhisper]);
 
   useEffect(() => {
-    const handleModelsCleared = () => loadLocalModels();
+    const handleModelsCleared = () => {
+      loadLocalModels();
+      loadParakeetModels();
+    };
     window.addEventListener("openwhispr-models-cleared", handleModelsCleared);
     return () => window.removeEventListener("openwhispr-models-cleared", handleModelsCleared);
-  }, [loadLocalModels]);
+  }, [loadLocalModels, loadParakeetModels]);
 
   const {
     downloadingModel,
@@ -680,7 +683,16 @@ export default function TranscriptionModelPicker({
               provider="whisper"
               onSelect={() => handleWhisperModelSelect(modelId)}
               onDelete={() => handleDelete(modelId)}
-              onDownload={() => downloadModel(modelId, handleWhisperModelSelect)}
+              onDownload={() =>
+                downloadModel(modelId, (downloadedId) => {
+                  setLocalModels((prev) =>
+                    prev.map((m) =>
+                      m.model === downloadedId ? { ...m, downloaded: true } : m
+                    )
+                  );
+                  handleWhisperModelSelect(downloadedId);
+                })
+              }
               onCancel={cancelDownload}
               styles={styles}
             />
@@ -756,7 +768,17 @@ export default function TranscriptionModelPicker({
               languageLabel={getParakeetLanguageLabel(info.language)}
               onSelect={() => handleParakeetModelSelect(modelId)}
               onDelete={() => handleParakeetDelete(modelId)}
-              onDownload={() => downloadParakeetModel(modelId, handleParakeetModelSelect)}
+              onDownload={() =>
+                downloadParakeetModel(modelId, (downloadedId) => {
+                  // Optimistically mark as downloaded before the async refresh
+                  setParakeetModels((prev) =>
+                    prev.map((m) =>
+                      m.model === downloadedId ? { ...m, downloaded: true } : m
+                    )
+                  );
+                  handleParakeetModelSelect(downloadedId);
+                })
+              }
               onCancel={cancelParakeetDownload}
               styles={styles}
             />

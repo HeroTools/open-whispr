@@ -687,8 +687,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [isRemovingModels, setIsRemovingModels] = useState(false);
   const cachePathHint =
     typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)
-      ? "%USERPROFILE%\\.cache\\openwhispr\\whisper-models"
-      : "~/.cache/openwhispr/whisper-models";
+      ? "%USERPROFILE%\\.cache\\openwhispr"
+      : "~/.cache/openwhispr";
 
   const {
     status: updateStatus,
@@ -898,35 +898,39 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       description: t("settingsPage.developer.removeModels.description", { path: cachePathHint }),
       confirmText: t("settingsPage.developer.removeModels.confirmText"),
       variant: "destructive",
-      onConfirm: () => {
+      onConfirm: async () => {
         setIsRemovingModels(true);
-        window.electronAPI
-          ?.deleteAllWhisperModels?.()
-          .then((result) => {
-            if (!result?.success) {
-              showAlertDialog({
-                title: t("settingsPage.developer.removeModels.failedTitle"),
-                description: t("settingsPage.developer.removeModels.failedDescription"),
-              });
-              return;
-            }
+        try {
+          const results = await Promise.allSettled([
+            window.electronAPI?.deleteAllWhisperModels?.(),
+            window.electronAPI?.deleteAllParakeetModels?.(),
+            window.electronAPI?.modelDeleteAll?.(),
+          ]);
 
+          const anyFailed = results.some(
+            (r) => r.status === "rejected" || (r.status === "fulfilled" && r.value && !r.value.success)
+          );
+
+          if (anyFailed) {
+            showAlertDialog({
+              title: t("settingsPage.developer.removeModels.failedTitle"),
+              description: t("settingsPage.developer.removeModels.failedDescription"),
+            });
+          } else {
             window.dispatchEvent(new Event("openwhispr-models-cleared"));
-
             showAlertDialog({
               title: t("settingsPage.developer.removeModels.successTitle"),
               description: t("settingsPage.developer.removeModels.successDescription"),
             });
-          })
-          .catch(() => {
-            showAlertDialog({
-              title: t("settingsPage.developer.removeModels.failedTitle"),
-              description: t("settingsPage.developer.removeModels.failedDescriptionShort"),
-            });
-          })
-          .finally(() => {
-            setIsRemovingModels(false);
+          }
+        } catch {
+          showAlertDialog({
+            title: t("settingsPage.developer.removeModels.failedTitle"),
+            description: t("settingsPage.developer.removeModels.failedDescriptionShort"),
           });
+        } finally {
+          setIsRemovingModels(false);
+        }
       },
     });
   }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog, t]);
