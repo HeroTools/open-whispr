@@ -60,6 +60,7 @@ export default function PasteToolsInfo({
   // Linux with tools available
   if (pasteToolsInfo.platform === "linux" && pasteToolsInfo.available) {
     const method = pasteToolsInfo.method || "xdotool";
+    const methodLabel = method === "xtest" ? "built-in (XTest)" : method;
     const methodSuffix =
       pasteToolsInfo.isWayland && method === "xdotool" ? " (XWayland apps only)." : ".";
 
@@ -73,8 +74,8 @@ export default function PasteToolsInfo({
                 Automatic Pasting Ready
               </h3>
               <p className="text-sm text-success dark:text-success">
-                Using <code className="bg-success/20 px-1 rounded">{method}</code> for automatic
-                text pasting{methodSuffix}
+                Using <code className="bg-success/20 px-1 rounded">{methodLabel}</code> for
+                automatic text pasting{methodSuffix}
               </p>
             </div>
           </div>
@@ -89,7 +90,6 @@ export default function PasteToolsInfo({
   // Linux without tools - show helpful install instructions
   if (pasteToolsInfo.platform === "linux" && !pasteToolsInfo.available) {
     const isWayland = pasteToolsInfo.isWayland;
-    const xwaylandAvailable = pasteToolsInfo.xwaylandAvailable;
     const recommendedTool = pasteToolsInfo.recommendedInstall;
     const showInstall = !!recommendedTool;
 
@@ -131,15 +131,15 @@ export default function PasteToolsInfo({
                   )}
                 </div>
 
-                {isWayland && recommendedTool === "wtype" && xwaylandAvailable && (
+                {isWayland && recommendedTool === "wtype" && (
                   <p className="text-sm text-warning dark:text-warning mt-3">
-                    Note: For XWayland apps, xdotool also works.
+                    Recommended for wlroots compositors (Sway, Hyprland, etc.).
                   </p>
                 )}
 
-                {isWayland && recommendedTool !== "wtype" && (
+                {isWayland && recommendedTool === "xdotool" && (
                   <p className="text-sm text-warning dark:text-warning mt-3">
-                    Note: automatic pasting works for XWayland apps only.
+                    Works for XWayland apps (most desktop applications on GNOME/KDE).
                   </p>
                 )}
               </>

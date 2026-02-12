@@ -20,6 +20,17 @@ const getLinuxDesktopEnv = () =>
 
 const isGnomeDesktop = (desktopEnv) => desktopEnv.includes("gnome");
 
+const isKdeDesktop = (desktopEnv) => desktopEnv.includes("kde");
+
+const isWlrootsCompositor = (desktopEnv) => {
+  const wlrootsDesktops = ["sway", "hyprland", "wayfire", "river", "dwl", "labwc", "cage"];
+  return (
+    wlrootsDesktops.some((wm) => desktopEnv.includes(wm)) ||
+    !!process.env.SWAYSOCK ||
+    !!process.env.HYPRLAND_INSTANCE_SIGNATURE
+  );
+};
+
 const getLinuxSessionInfo = () => {
   const isWayland =
     (process.env.XDG_SESSION_TYPE || "").toLowerCase() === "wayland" ||
@@ -27,8 +38,10 @@ const getLinuxSessionInfo = () => {
   const xwaylandAvailable = isWayland && !!process.env.DISPLAY;
   const desktopEnv = getLinuxDesktopEnv();
   const isGnome = isWayland && isGnomeDesktop(desktopEnv);
+  const isKde = isWayland && isKdeDesktop(desktopEnv);
+  const isWlroots = isWayland && isWlrootsCompositor(desktopEnv);
 
-  return { isWayland, xwaylandAvailable, desktopEnv, isGnome };
+  return { isWayland, xwaylandAvailable, desktopEnv, isGnome, isKde, isWlroots };
 };
 
 // ms before simulating keystroke
@@ -63,6 +76,8 @@ class ClipboardManager {
     this.nircmdChecked = false;
     this.fastPastePath = null;
     this.fastPasteChecked = false;
+    this.linuxFastPastePath = null;
+    this.linuxFastPasteChecked = false;
   }
 
   _isWayland() {
@@ -133,35 +148,29 @@ class ClipboardManager {
     };
   }
 
-  resolveFastPasteBinary() {
-    if (this.fastPasteChecked) {
-      return this.fastPastePath;
+  _resolveNativeBinary(binaryName, platform, cacheKeyChecked, cacheKeyPath) {
+    if (this[cacheKeyChecked]) {
+      return this[cacheKeyPath];
     }
-    this.fastPasteChecked = true;
+    this[cacheKeyChecked] = true;
 
-    if (process.platform !== "darwin") {
+    if (process.platform !== platform) {
       return null;
     }
 
     const candidates = new Set([
-      path.join(__dirname, "..", "..", "resources", "bin", "macos-fast-paste"),
-      path.join(__dirname, "..", "..", "resources", "macos-fast-paste"),
+      path.join(__dirname, "..", "..", "resources", "bin", binaryName),
+      path.join(__dirname, "..", "..", "resources", binaryName),
     ]);
 
     if (process.resourcesPath) {
       [
-        path.join(process.resourcesPath, "macos-fast-paste"),
-        path.join(process.resourcesPath, "bin", "macos-fast-paste"),
-        path.join(process.resourcesPath, "resources", "macos-fast-paste"),
-        path.join(process.resourcesPath, "resources", "bin", "macos-fast-paste"),
-        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "macos-fast-paste"),
-        path.join(
-          process.resourcesPath,
-          "app.asar.unpacked",
-          "resources",
-          "bin",
-          "macos-fast-paste"
-        ),
+        path.join(process.resourcesPath, binaryName),
+        path.join(process.resourcesPath, "bin", binaryName),
+        path.join(process.resourcesPath, "resources", binaryName),
+        path.join(process.resourcesPath, "resources", "bin", binaryName),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", binaryName),
+        path.join(process.resourcesPath, "app.asar.unpacked", "resources", "bin", binaryName),
       ].forEach((candidate) => candidates.add(candidate));
     }
 
@@ -170,7 +179,7 @@ class ClipboardManager {
         const stats = fs.statSync(candidate);
         if (stats.isFile()) {
           fs.accessSync(candidate, fs.constants.X_OK);
-          this.fastPastePath = candidate;
+          this[cacheKeyPath] = candidate;
           return candidate;
         }
       } catch {
@@ -179,6 +188,45 @@ class ClipboardManager {
     }
 
     return null;
+  }
+
+  resolveFastPasteBinary() {
+    return this._resolveNativeBinary(
+      "macos-fast-paste",
+      "darwin",
+      "fastPasteChecked",
+      "fastPastePath"
+    );
+  }
+
+  resolveLinuxFastPasteBinary() {
+    return this._resolveNativeBinary(
+      "linux-fast-paste",
+      "linux",
+      "linuxFastPasteChecked",
+      "linuxFastPastePath"
+    );
+  }
+
+  _isYdotoolDaemonRunning() {
+    const uid = process.getuid?.();
+    const socketPaths = [
+      process.env.YDOTOOL_SOCKET,
+      uid != null ? `/run/user/${uid}/.ydotool_socket` : null,
+      "/tmp/.ydotool_socket",
+    ].filter(Boolean);
+
+    for (const socketPath of socketPaths) {
+      try {
+        if (fs.statSync(socketPath)) return true;
+      } catch {}
+    }
+
+    try {
+      return spawnSync("pidof", ["ydotoold"], { timeout: 1000 }).status === 0;
+    } catch {
+      return false;
+    }
   }
 
   safeLog(...args) {
@@ -258,7 +306,7 @@ class ClipboardManager {
         method = nircmdPath ? "nircmd" : "powershell";
         await this.pasteWindows(originalClipboard);
       } else {
-        method = "linux-tools";
+        method = this.resolveLinuxFastPasteBinary() ? "linux-xtest" : "linux-tools";
         await this.pasteLinux(originalClipboard, options);
       }
 
@@ -570,11 +618,13 @@ class ClipboardManager {
   }
 
   async pasteLinux(originalClipboard, options = {}) {
-    const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
+    const { isWayland, xwaylandAvailable, isGnome, isKde, isWlroots } = getLinuxSessionInfo();
     const webContents = options.webContents;
     const xdotoolExists = this.commandExists("xdotool");
     const wtypeExists = this.commandExists("wtype");
     const ydotoolExists = this.commandExists("ydotool");
+    const ydotoolDaemonRunning = ydotoolExists && this._isYdotoolDaemonRunning();
+    const linuxFastPaste = this.resolveLinuxFastPasteBinary();
 
     debugLogger.debug(
       "Linux paste environment",
@@ -582,9 +632,13 @@ class ClipboardManager {
         isWayland,
         xwaylandAvailable,
         isGnome,
+        isKde,
+        isWlroots,
+        linuxFastPaste: !!linuxFastPaste,
         xdotoolExists,
         wtypeExists,
         ydotoolExists,
+        ydotoolDaemonRunning,
         display: process.env.DISPLAY,
         waylandDisplay: process.env.WAYLAND_DISPLAY,
         xdgSessionType: process.env.XDG_SESSION_TYPE,
@@ -593,6 +647,76 @@ class ClipboardManager {
       "clipboard"
     );
 
+    const restoreClipboard = () => {
+      setTimeout(() => {
+        if (isWayland) {
+          this._writeClipboardWayland(originalClipboard, webContents);
+        } else {
+          clipboard.writeText(originalClipboard);
+        }
+      }, RESTORE_DELAYS.linux);
+    };
+
+    // --- Try native binary first (uses XTest, handles terminal detection internally) ---
+    if (linuxFastPaste) {
+      try {
+        await new Promise((resolve, reject) => {
+          debugLogger.debug(
+            "Attempting native linux-fast-paste binary",
+            { linuxFastPaste },
+            "clipboard"
+          );
+          const proc = spawn(linuxFastPaste);
+          let stderr = "";
+
+          proc.stderr?.on("data", (data) => {
+            stderr += data.toString();
+          });
+
+          let timedOut = false;
+          const timeoutId = setTimeout(() => {
+            timedOut = true;
+            killProcess(proc, "SIGKILL");
+          }, 2000);
+
+          proc.on("close", (code) => {
+            if (timedOut) return reject(new Error("linux-fast-paste timed out"));
+            clearTimeout(timeoutId);
+            if (code === 0) {
+              resolve();
+            } else {
+              reject(
+                new Error(
+                  `linux-fast-paste exited with code ${code}${stderr ? `: ${stderr.trim()}` : ""}`
+                )
+              );
+            }
+          });
+
+          proc.on("error", (error) => {
+            if (timedOut) return;
+            clearTimeout(timeoutId);
+            reject(error);
+          });
+        });
+
+        this.safeLog("✅ Paste successful using native linux-fast-paste (XTest)");
+        debugLogger.info("Paste successful", { tool: "linux-fast-paste" }, "clipboard");
+        restoreClipboard();
+        return;
+      } catch (error) {
+        this.safeLog(
+          `⚠️ Native linux-fast-paste failed: ${error?.message || error}, falling back to system tools`
+        );
+        debugLogger.warn(
+          "Native linux-fast-paste failed, falling back",
+          { error: error?.message },
+          "clipboard"
+        );
+      }
+    }
+
+    // --- System tools fallback ---
     // Capture target window before our window takes focus
     const getXdotoolActiveWindow = () => {
       if (!xdotoolExists || (isWayland && !xwaylandAvailable)) {
@@ -684,8 +808,9 @@ class ClipboardManager {
     const inTerminal = isTerminal();
     const pasteKeys = inTerminal ? "ctrl+shift+v" : "ctrl+v";
 
-    const canUseWtype = isWayland && !isGnome;
-    const canUseYdotool = isWayland;
+    // Compositor-aware eligibility
+    const canUseWtype = isWayland && isWlroots;
+    const canUseYdotool = ydotoolDaemonRunning;
     const canUseXdotool = isWayland ? xwaylandAvailable && xdotoolExists : xdotoolExists;
 
     // windowactivate ensures the target window (not ours) receives the keystroke
@@ -704,20 +829,31 @@ class ClipboardManager {
       ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"]
       : ["key", "29:1", "47:1", "47:0", "29:0"];
 
-    const candidates = [
-      ...(canUseWtype
-        ? [
-            inTerminal
-              ? {
-                  cmd: "wtype",
-                  args: ["-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"],
-                }
-              : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
-          ]
-        : []),
-      ...(canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : []),
-      ...(canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : []),
-    ];
+    const wtypeEntry = canUseWtype
+      ? [
+          inTerminal
+            ? {
+                cmd: "wtype",
+                args: ["-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"],
+              }
+            : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
+        ]
+      : [];
+    const xdotoolEntry = canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : [];
+    const ydotoolEntry = canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : [];
+
+    // Compositor-aware priority ordering
+    let candidates;
+    if (!isWayland) {
+      // X11: xdotool is native and needs no daemon; ydotool as fallback
+      candidates = [...xdotoolEntry, ...ydotoolEntry];
+    } else if (isWlroots) {
+      // wlroots (Sway, Hyprland, etc.): wtype is native; then xdotool for XWayland; ydotool last
+      candidates = [...wtypeEntry, ...xdotoolEntry, ...ydotoolEntry];
+    } else {
+      // GNOME, KDE, or unknown Wayland: xdotool for XWayland apps first; ydotool fallback; wtype last resort
+      candidates = [...xdotoolEntry, ...ydotoolEntry, ...wtypeEntry];
+    }
 
     const available = candidates.filter((c) => this.commandExists(c.cmd));
 
@@ -782,13 +918,7 @@ class ClipboardManager {
 
             if (code === 0) {
               debugLogger.debug("Paste successful", { cmd: tool.cmd }, "clipboard");
-              setTimeout(() => {
-                if (isWayland) {
-                  this._writeClipboardWayland(originalClipboard, webContents);
-                } else {
-                  clipboard.writeText(originalClipboard);
-                }
-              }, RESTORE_DELAYS.linux);
+              restoreClipboard();
               resolve();
             } else {
               debugLogger.error(
@@ -833,7 +963,7 @@ class ClipboardManager {
         await pasteWith(tool);
         this.safeLog(`✅ Paste successful using ${tool.cmd}`);
         debugLogger.info("Paste successful", { tool: tool.cmd }, "clipboard");
-        return; // Success!
+        return;
       } catch (error) {
         const failureInfo = {
           tool: tool.cmd,
@@ -843,7 +973,6 @@ class ClipboardManager {
         failedAttempts.push(failureInfo);
         this.safeLog(`⚠️ Paste with ${tool.cmd} failed:`, error?.message || error);
         debugLogger.warn("Paste tool failed, trying next", failureInfo, "clipboard");
-        // Continue to next tool
       }
     }
 
@@ -860,7 +989,7 @@ class ClipboardManager {
         "clipboard"
       );
       this.safeLog("🔄 Trying xdotool type fallback for terminal...");
-      const textToType = clipboard.readText(); // Read what we put in clipboard
+      const textToType = clipboard.readText();
       const typeArgs = targetWindowId
         ? ["windowactivate", "--sync", targetWindowId, "type", "--clearmodifiers", "--", textToType]
         : ["type", "--clearmodifiers", "--", textToType];
@@ -889,41 +1018,37 @@ class ClipboardManager {
 
     let errorMsg;
     if (isWayland) {
-      if (isGnome) {
-        if (!xwaylandAvailable) {
+      if (isGnome || isKde) {
+        if (!xwaylandAvailable && !ydotoolDaemonRunning) {
           errorMsg =
-            "Clipboard copied, but GNOME Wayland blocks automatic pasting. Please paste manually with Ctrl+V.";
-        } else if (!xdotoolExists) {
+            "Clipboard copied, but automatic pasting on Wayland requires xdotool (with XWayland) or ydotool (with ydotoold daemon running). Please paste manually with Ctrl+V.";
+        } else if (!xdotoolExists && !ydotoolDaemonRunning) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on GNOME Wayland requires xdotool for XWayland apps. Please install xdotool or paste manually with Ctrl+V.";
-        } else if (!xdotoolWindowClass) {
-          errorMsg =
-            "Clipboard copied, but the active app isn't running under XWayland. Please paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting requires xdotool (recommended) or ydotool. Please install xdotool or paste manually with Ctrl+V.";
         } else {
           errorMsg =
-            "Clipboard copied, but paste simulation failed via XWayland. Please paste manually with Ctrl+V.";
+            "Clipboard copied, but paste simulation failed. Please paste manually with Ctrl+V.";
         }
-      } else if (!wtypeExists && !xdotoolExists) {
-        if (!xwaylandAvailable) {
+      } else if (isWlroots) {
+        if (!wtypeExists && !xdotoolExists && !ydotoolDaemonRunning) {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires wtype or xdotool. Please install one or paste manually with Ctrl+V.";
+            "Clipboard copied, but automatic pasting requires wtype (recommended for your compositor) or xdotool. Please install one or paste manually with Ctrl+V.";
         } else {
           errorMsg =
-            "Clipboard copied, but automatic pasting on Wayland requires xdotool (recommended for Electron/XWayland apps) or wtype. Please install one or paste manually with Ctrl+V.";
+            "Clipboard copied, but paste simulation failed. Please paste manually with Ctrl+V.";
         }
       } else {
-        const xdotoolNote =
-          xwaylandAvailable && !xdotoolExists
-            ? " Consider installing xdotool, which works well with Electron apps running under XWayland."
-            : "";
         errorMsg =
-          "Clipboard copied, but paste simulation failed on Wayland. Your compositor may not support the virtual keyboard protocol." +
-          xdotoolNote +
-          " Alternatively, paste manually with Ctrl+V.";
+          "Clipboard copied, but paste simulation failed on Wayland. Please install xdotool or paste manually with Ctrl+V.";
       }
     } else {
       errorMsg =
         "Clipboard copied, but paste simulation failed on X11. Please install xdotool or paste manually with Ctrl+V.";
+    }
+
+    if (ydotoolExists && !ydotoolDaemonRunning) {
+      errorMsg +=
+        "\n\nNote: ydotool is installed but the ydotoold daemon is not running. Start it with: sudo systemctl enable --now ydotool";
     }
 
     const err = new Error(errorMsg + failureSummary);
@@ -936,6 +1061,8 @@ class ClipboardManager {
         failedAttempts,
         isWayland,
         isGnome,
+        isKde,
+        isWlroots,
       },
       "clipboard"
     );
@@ -1083,6 +1210,10 @@ Would you like to open System Settings now?`;
   }
 
   preWarmAccessibility() {
+    if (process.platform === "linux") {
+      this.resolveLinuxFastPasteBinary();
+      return;
+    }
     if (process.platform !== "darwin") return;
     this.checkAccessibilityPermissions().catch(() => {});
     this.resolveFastPasteBinary();
@@ -1125,41 +1256,49 @@ Would you like to open System Settings now?`;
       };
     }
 
-    const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
+    const { isWayland, xwaylandAvailable, isGnome, isKde, isWlroots } = getLinuxSessionInfo();
+    const linuxFastPaste = this.resolveLinuxFastPasteBinary();
+    const hasNativeBinary = !!linuxFastPaste;
+
     const tools = [];
-    const canUseWtype = isWayland && !isGnome;
-    const canUseYdotool = isWayland;
+    const canUseWtype = isWayland && isWlroots;
+    const canUseYdotool = this.commandExists("ydotool") && this._isYdotoolDaemonRunning();
     const canUseXdotool = !isWayland || xwaylandAvailable;
 
-    if (canUseWtype && this.commandExists("wtype")) {
-      tools.push("wtype");
-    }
-    if (canUseXdotool && this.commandExists("xdotool")) {
-      tools.push("xdotool");
-    }
-    if (canUseYdotool && this.commandExists("ydotool")) {
-      tools.push("ydotool");
+    // Build tools list in compositor-aware priority order
+    if (!isWayland) {
+      if (canUseXdotool && this.commandExists("xdotool")) tools.push("xdotool");
+      if (canUseYdotool) tools.push("ydotool");
+    } else if (isWlroots) {
+      if (canUseWtype && this.commandExists("wtype")) tools.push("wtype");
+      if (canUseXdotool && this.commandExists("xdotool")) tools.push("xdotool");
+      if (canUseYdotool) tools.push("ydotool");
+    } else {
+      if (canUseXdotool && this.commandExists("xdotool")) tools.push("xdotool");
+      if (canUseYdotool) tools.push("ydotool");
+      if (canUseWtype && this.commandExists("wtype")) tools.push("wtype");
     }
 
-    const available = tools.length > 0;
+    const available = hasNativeBinary || tools.length > 0;
     let recommendedInstall;
-    if (!available) {
+    if (!hasNativeBinary && tools.length === 0) {
       if (!isWayland) {
         recommendedInstall = "xdotool";
-      } else if (isGnome) {
-        recommendedInstall = xwaylandAvailable ? "xdotool" : undefined;
+      } else if (isWlroots) {
+        recommendedInstall = "wtype";
       } else {
-        recommendedInstall = xwaylandAvailable ? "xdotool" : "wtype or xdotool";
+        recommendedInstall = "xdotool";
       }
     }
 
     return {
       platform: "linux",
       available,
-      method: available ? tools[0] : null,
+      method: hasNativeBinary ? "xtest" : available ? tools[0] : null,
       requiresPermission: false,
       isWayland,
       xwaylandAvailable,
+      hasNativeBinary,
       tools,
       recommendedInstall,
     };
