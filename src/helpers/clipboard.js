@@ -290,7 +290,7 @@ class ClipboardManager {
           ? spawn(fastPasteBinary)
           : spawn("osascript", [
               "-e",
-              'tell application "System Events" to keystroke "v" using command down',
+              'tell application "System Events" to key code 9 using command down',
             ]);
 
         let errorOutput = "";
@@ -359,7 +359,7 @@ class ClipboardManager {
     return new Promise((resolve, reject) => {
       const pasteProcess = spawn("osascript", [
         "-e",
-        'tell application "System Events" to keystroke "v" using command down',
+        'tell application "System Events" to key code 9 using command down',
       ]);
 
       let hasTimedOut = false;
