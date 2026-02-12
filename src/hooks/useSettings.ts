@@ -5,6 +5,7 @@ import { API_ENDPOINTS } from "../config/constants";
 import logger from "../utils/logger";
 import { ensureAgentNameInDictionary } from "../utils/agentName";
 import i18n, { normalizeUiLanguage } from "../i18n";
+import { hasStoredByokKey } from "../utils/byokDetection";
 import type { LocalTranscriptionProvider } from "../types/electron";
 
 let _ReasoningService: typeof import("../services/ReasoningService").default | null = null;
@@ -220,10 +221,9 @@ function useSettingsInternal() {
     }
   );
 
-  // Cloud transcription mode: "openwhispr" (server-side) or "byok" (bring your own key)
   const [cloudTranscriptionMode, setCloudTranscriptionMode] = useLocalStorage(
     "cloudTranscriptionMode",
-    "openwhispr",
+    hasStoredByokKey() ? "byok" : "openwhispr",
     {
       serialize: String,
       deserialize: String,

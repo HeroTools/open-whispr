@@ -5,6 +5,7 @@ import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
 import { getBaseLanguageCode, validateLanguageForModel } from "../utils/languageSupport";
+import { hasStoredByokKey } from "../utils/byokDetection";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -334,7 +335,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const whisperModel = localStorage.getItem("whisperModel") || "base";
       const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
 
-      const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+      const cloudTranscriptionMode =
+        localStorage.getItem("cloudTranscriptionMode") ||
+        (hasStoredByokKey() ? "byok" : "openwhispr");
       const isSignedIn = localStorage.getItem("isSignedIn") === "true";
 
       const isOpenWhisprCloudMode = !useLocalWhisper && cloudTranscriptionMode === "openwhispr";
@@ -595,17 +598,18 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     let apiKey = null;
 
     if (provider === "custom") {
-      try {
-        apiKey = await window.electronAPI.getCustomTranscriptionKey?.();
-      } catch (err) {
-        logger.debug(
-          "Failed to get custom transcription key via IPC, falling back to localStorage",
-          { error: err?.message },
-          "transcription"
-        );
-      }
-      if (!apiKey || !apiKey.trim()) {
-        apiKey = localStorage.getItem("customTranscriptionApiKey") || "";
+      // Prefer localStorage (user-entered via UI) over main process (.env)
+      apiKey = localStorage.getItem("customTranscriptionApiKey") || "";
+      if (!apiKey.trim()) {
+        try {
+          apiKey = await window.electronAPI.getCustomTranscriptionKey?.();
+        } catch (err) {
+          logger.debug(
+            "Failed to get custom transcription key via IPC",
+            { error: err?.message },
+            "transcription"
+          );
+        }
       }
       apiKey = apiKey?.trim() || "";
 
@@ -625,27 +629,31 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         apiKey = null;
       }
     } else if (provider === "mistral") {
-      apiKey = await window.electronAPI.getMistralKey?.();
+      // Prefer localStorage (user-entered via UI) over main process (.env)
+      // to avoid stale keys in process.env after auth mode transitions
+      apiKey = localStorage.getItem("mistralApiKey");
       if (!isValidApiKey(apiKey, "mistral")) {
-        apiKey = localStorage.getItem("mistralApiKey");
+        apiKey = await window.electronAPI.getMistralKey?.();
       }
       if (!isValidApiKey(apiKey, "mistral")) {
         throw new Error("Mistral API key not found. Please set your API key in the Control Panel.");
       }
     } else if (provider === "groq") {
-      // Try to get Groq API key
-      apiKey = await window.electronAPI.getGroqKey?.();
+      // Prefer localStorage (user-entered via UI) over main process (.env)
+      apiKey = localStorage.getItem("groqApiKey");
       if (!isValidApiKey(apiKey, "groq")) {
-        apiKey = localStorage.getItem("groqApiKey");
+        apiKey = await window.electronAPI.getGroqKey?.();
       }
       if (!isValidApiKey(apiKey, "groq")) {
         throw new Error("Groq API key not found. Please set your API key in the Control Panel.");
       }
     } else {
       // Default to OpenAI
-      apiKey = await window.electronAPI.getOpenAIKey();
+      // Prefer localStorage (user-entered via UI) over main process (.env)
+      // to avoid stale keys in process.env after auth mode transitions
+      apiKey = localStorage.getItem("openaiApiKey");
       if (!isValidApiKey(apiKey, "openai")) {
-        apiKey = localStorage.getItem("openaiApiKey");
+        apiKey = await window.electronAPI.getOpenAIKey();
       }
       if (!isValidApiKey(apiKey, "openai")) {
         throw new Error(
@@ -1721,7 +1729,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
   }
 
   shouldUseStreaming(isSignedInOverride) {
-    const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+    const cloudTranscriptionMode =
+      localStorage.getItem("cloudTranscriptionMode") ||
+      (hasStoredByokKey() ? "byok" : "openwhispr");
     const isSignedIn = isSignedInOverride ?? localStorage.getItem("isSignedIn") === "true";
     const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
     const streamingDisabled = localStorage.getItem("deepgramStreaming") === "false";
