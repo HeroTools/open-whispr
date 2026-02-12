@@ -5,6 +5,7 @@ import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
 import { getBaseLanguageCode, validateLanguageForModel } from "../utils/languageSupport";
+import { hasStoredByokKey } from "../utils/byokDetection";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -20,14 +21,6 @@ const isValidApiKey = (key, provider = "openai") => {
   const placeholder = PLACEHOLDER_KEYS[provider] || PLACEHOLDER_KEYS.openai;
   return key !== placeholder;
 };
-
-const hasStoredByokKey = () =>
-  !!(
-    localStorage.getItem("openaiApiKey") ||
-    localStorage.getItem("groqApiKey") ||
-    localStorage.getItem("mistralApiKey") ||
-    localStorage.getItem("customTranscriptionApiKey")
-  );
 
 class AudioManager {
   constructor() {
