@@ -10,6 +10,13 @@
 #include <X11/keysym.h>
 #include <unistd.h>
 
+#ifdef HAVE_UINPUT
+#include <linux/uinput.h>
+#include <linux/input.h>
+#include <fcntl.h>
+#include <errno.h>
+#endif
+
 static const char *terminal_classes[] = {
     "konsole", "gnome-terminal", "terminal", "kitty", "alacritty",
     "terminator", "xterm", "urxvt", "rxvt", "tilix", "terminology",
@@ -75,16 +82,106 @@ static void activate_window(Display *dpy, Window win) {
     usleep(20000);
 }
 
+#ifdef HAVE_UINPUT
+static void emit(int fd, int type, int code, int val) {
+    struct input_event ie;
+    memset(&ie, 0, sizeof(ie));
+    ie.type = type;
+    ie.code = code;
+    ie.value = val;
+    if (write(fd, &ie, sizeof(ie)) < 0) {
+        /* best-effort: logged by caller via exit code */
+    }
+}
+
+static int paste_via_uinput(int use_shift) {
+    int fd = open("/dev/uinput", O_WRONLY | O_NONBLOCK);
+    if (fd < 0) {
+        fprintf(stderr, "Cannot open /dev/uinput: %s\n", strerror(errno));
+        return 3;
+    }
+
+    if (ioctl(fd, UI_SET_EVBIT, EV_KEY) < 0 ||
+        ioctl(fd, UI_SET_KEYBIT, KEY_LEFTCTRL) < 0 ||
+        ioctl(fd, UI_SET_KEYBIT, KEY_LEFTSHIFT) < 0 ||
+        ioctl(fd, UI_SET_KEYBIT, KEY_V) < 0) {
+        close(fd);
+        return 4;
+    }
+
+    struct uinput_setup usetup;
+    memset(&usetup, 0, sizeof(usetup));
+    usetup.id.bustype = BUS_USB;
+    usetup.id.vendor  = 0x1234;
+    usetup.id.product = 0x5678;
+    snprintf(usetup.name, UINPUT_MAX_NAME_SIZE, "openwhispr-paste");
+
+    if (ioctl(fd, UI_DEV_SETUP, &usetup) < 0 ||
+        ioctl(fd, UI_DEV_CREATE) < 0) {
+        close(fd);
+        return 4;
+    }
+
+    /* Let the kernel register the virtual device */
+    usleep(50000);
+
+    emit(fd, EV_KEY, KEY_LEFTCTRL, 1);
+    emit(fd, EV_SYN, SYN_REPORT, 0);
+
+    if (use_shift) {
+        emit(fd, EV_KEY, KEY_LEFTSHIFT, 1);
+        emit(fd, EV_SYN, SYN_REPORT, 0);
+    }
+
+    usleep(8000);
+
+    emit(fd, EV_KEY, KEY_V, 1);
+    emit(fd, EV_SYN, SYN_REPORT, 0);
+    usleep(8000);
+
+    emit(fd, EV_KEY, KEY_V, 0);
+    emit(fd, EV_SYN, SYN_REPORT, 0);
+
+    usleep(8000);
+
+    if (use_shift) {
+        emit(fd, EV_KEY, KEY_LEFTSHIFT, 0);
+        emit(fd, EV_SYN, SYN_REPORT, 0);
+    }
+
+    emit(fd, EV_KEY, KEY_LEFTCTRL, 0);
+    emit(fd, EV_SYN, SYN_REPORT, 0);
+
+    usleep(20000);
+
+    ioctl(fd, UI_DEV_DESTROY);
+    close(fd);
+    return 0;
+}
+#endif
+
 int main(int argc, char *argv[]) {
     int force_terminal = 0;
+    int use_uinput = 0;
     Window target_window = None;
 
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--terminal") == 0) {
             force_terminal = 1;
+        } else if (strcmp(argv[i], "--uinput") == 0) {
+            use_uinput = 1;
         } else if (strcmp(argv[i], "--window") == 0 && i + 1 < argc) {
             target_window = (Window)strtoul(argv[++i], NULL, 0);
         }
+    }
+
+    if (use_uinput) {
+#ifdef HAVE_UINPUT
+        return paste_via_uinput(force_terminal);
+#else
+        fprintf(stderr, "uinput support not compiled in\n");
+        return 3;
+#endif
     }
 
     Display *dpy = XOpenDisplay(NULL);
@@ -96,7 +193,6 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
-    /* If a target window was supplied, activate it so it receives the keystrokes */
     if (target_window != None) {
         activate_window(dpy, target_window);
     }

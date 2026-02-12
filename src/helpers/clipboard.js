@@ -225,6 +225,21 @@ class ClipboardManager {
     }
   }
 
+  _canAccessUinput() {
+    if (process.platform !== "linux") return false;
+    const now = Date.now();
+    if (this._uinputCache && now < this._uinputCache.expiresAt) {
+      return this._uinputCache.accessible;
+    }
+    let accessible = false;
+    try {
+      fs.accessSync("/dev/uinput", fs.constants.W_OK);
+      accessible = true;
+    } catch {}
+    this._uinputCache = { accessible, expiresAt: now + 30000 };
+    return accessible;
+  }
+
   safeLog(...args) {
     if (process.env.NODE_ENV === "development") {
       try {
@@ -631,6 +646,7 @@ class ClipboardManager {
         isKde,
         isWlroots,
         linuxFastPaste: !!linuxFastPaste,
+        canAccessUinput: this._canAccessUinput(),
         xdotoolExists,
         wtypeExists,
         ydotoolExists,
@@ -654,10 +670,28 @@ class ClipboardManager {
     };
 
     const terminalClasses = [
-      "konsole", "gnome-terminal", "terminal", "kitty", "alacritty",
-      "terminator", "xterm", "urxvt", "rxvt", "tilix", "terminology",
-      "wezterm", "foot", "st", "yakuake", "ghostty", "guake", "tilda",
-      "hyper", "tabby", "sakura", "warp",
+      "konsole",
+      "gnome-terminal",
+      "terminal",
+      "kitty",
+      "alacritty",
+      "terminator",
+      "xterm",
+      "urxvt",
+      "rxvt",
+      "tilix",
+      "terminology",
+      "wezterm",
+      "foot",
+      "st",
+      "yakuake",
+      "ghostty",
+      "guake",
+      "tilda",
+      "hyper",
+      "tabby",
+      "sakura",
+      "warp",
     ];
 
     // Pre-detect the target window BEFORE our window takes focus or blurs,
@@ -667,7 +701,9 @@ class ClipboardManager {
       try {
         const result = spawnSync("xdotool", ["getactivewindow"]);
         return result.status === 0 ? result.stdout.toString().trim() || null : null;
-      } catch { return null; }
+      } catch {
+        return null;
+      }
     };
 
     const preDetectWindowClass = (windowId) => {
@@ -678,35 +714,27 @@ class ClipboardManager {
           : ["getactivewindow", "getwindowclassname"];
         const result = spawnSync("xdotool", args);
         return result.status === 0 ? result.stdout.toString().toLowerCase().trim() || null : null;
-      } catch { return null; }
+      } catch {
+        return null;
+      }
     };
 
     const targetWindowId = preDetectTargetWindow();
     const xdotoolWindowClass = preDetectWindowClass(targetWindowId);
 
     if (linuxFastPaste) {
-      try {
-        // Build args: pass pre-detected window ID and terminal flag so the
-        // binary targets the correct window and uses Ctrl+Shift+V for terminals.
-        const earlyIsTerminal = xdotoolWindowClass
-          ? terminalClasses.some((t) => xdotoolWindowClass.includes(t))
-          : false;
+      const earlyIsTerminal = xdotoolWindowClass
+        ? terminalClasses.some((t) => xdotoolWindowClass.includes(t))
+        : false;
 
-        const fastPasteArgs = [];
-        if (targetWindowId) {
-          fastPasteArgs.push("--window", targetWindowId);
-        }
-        if (earlyIsTerminal) {
-          fastPasteArgs.push("--terminal");
-        }
-
-        await new Promise((resolve, reject) => {
+      const spawnFastPaste = (args, label) =>
+        new Promise((resolve, reject) => {
           debugLogger.debug(
-            "Attempting native linux-fast-paste binary",
-            { linuxFastPaste, args: fastPasteArgs, targetWindowId, xdotoolWindowClass, earlyIsTerminal },
+            `Attempting native linux-fast-paste (${label})`,
+            { linuxFastPaste, args, targetWindowId, xdotoolWindowClass, earlyIsTerminal },
             "clipboard"
           );
-          const proc = spawn(linuxFastPaste, fastPasteArgs);
+          const proc = spawn(linuxFastPaste, args);
           let stderr = "";
 
           proc.stderr?.on("data", (data) => {
@@ -740,19 +768,76 @@ class ClipboardManager {
           });
         });
 
-        this.safeLog("✅ Paste successful using native linux-fast-paste (XTest)");
-        debugLogger.info("Paste successful", { tool: "linux-fast-paste" }, "clipboard");
-        restoreClipboard();
-        return;
-      } catch (error) {
-        this.safeLog(
-          `⚠️ Native linux-fast-paste failed: ${error?.message || error}, falling back to system tools`
-        );
-        debugLogger.warn(
-          "Native linux-fast-paste failed, falling back",
-          { error: error?.message },
-          "clipboard"
-        );
+      if (isWayland) {
+        const uinputArgs = ["--uinput"];
+        if (earlyIsTerminal) uinputArgs.push("--terminal");
+
+        try {
+          await spawnFastPaste(uinputArgs, "uinput");
+          this.safeLog("✅ Paste successful using native linux-fast-paste (uinput)");
+          debugLogger.info(
+            "Paste successful",
+            { tool: "linux-fast-paste", method: "uinput" },
+            "clipboard"
+          );
+          restoreClipboard();
+          return;
+        } catch (uinputError) {
+          debugLogger.warn("uinput paste failed", { error: uinputError?.message }, "clipboard");
+
+          if (xwaylandAvailable) {
+            const xtestArgs = [];
+            if (targetWindowId) xtestArgs.push("--window", targetWindowId);
+            if (earlyIsTerminal) xtestArgs.push("--terminal");
+
+            try {
+              await spawnFastPaste(xtestArgs, "XTest/XWayland fallback");
+              this.safeLog("✅ Paste successful using native linux-fast-paste (XTest/XWayland)");
+              debugLogger.info(
+                "Paste successful",
+                { tool: "linux-fast-paste", method: "xtest-xwayland" },
+                "clipboard"
+              );
+              restoreClipboard();
+              return;
+            } catch (xtestError) {
+              debugLogger.warn(
+                "XTest/XWayland fallback also failed",
+                { error: xtestError?.message },
+                "clipboard"
+              );
+            }
+          }
+
+          this.safeLog(
+            `⚠️ Native linux-fast-paste failed: ${uinputError?.message || uinputError}, falling back to system tools`
+          );
+        }
+      } else {
+        const xtestArgs = [];
+        if (targetWindowId) xtestArgs.push("--window", targetWindowId);
+        if (earlyIsTerminal) xtestArgs.push("--terminal");
+
+        try {
+          await spawnFastPaste(xtestArgs, "XTest");
+          this.safeLog("✅ Paste successful using native linux-fast-paste (XTest)");
+          debugLogger.info(
+            "Paste successful",
+            { tool: "linux-fast-paste", method: "xtest" },
+            "clipboard"
+          );
+          restoreClipboard();
+          return;
+        } catch (error) {
+          this.safeLog(
+            `⚠️ Native linux-fast-paste failed: ${error?.message || error}, falling back to system tools`
+          );
+          debugLogger.warn(
+            "Native linux-fast-paste failed, falling back",
+            { error: error?.message },
+            "clipboard"
+          );
+        }
       }
     }
 
@@ -805,9 +890,7 @@ class ClipboardManager {
     }
 
     // Use key names for ydotool 0.1.x compat (Ubuntu ships 0.1.8)
-    const ydotoolArgs = inTerminal
-      ? ["key", "ctrl+shift+v"]
-      : ["key", "ctrl+v"];
+    const ydotoolArgs = inTerminal ? ["key", "ctrl+shift+v"] : ["key", "ctrl+v"];
 
     const wtypeEntry = canUseWtype
       ? [
@@ -1259,6 +1342,7 @@ Would you like to open System Settings now?`;
     }
 
     const available = hasNativeBinary || tools.length > 0;
+    const hasUinput = this._canAccessUinput();
     let recommendedInstall;
     if (!hasNativeBinary && tools.length === 0) {
       if (!isWayland) {
@@ -1268,16 +1352,25 @@ Would you like to open System Settings now?`;
       } else {
         recommendedInstall = "xdotool";
       }
+    } else if (isWayland && hasNativeBinary && !hasUinput && tools.length === 0) {
+      recommendedInstall = "usermod -aG input $USER";
     }
 
     return {
       platform: "linux",
       available,
-      method: hasNativeBinary ? "xtest" : available ? tools[0] : null,
+      method: hasNativeBinary
+        ? isWayland && hasUinput
+          ? "uinput"
+          : "xtest"
+        : available
+          ? tools[0]
+          : null,
       requiresPermission: false,
       isWayland,
       xwaylandAvailable,
       hasNativeBinary,
+      hasUinput,
       tools,
       recommendedInstall,
     };

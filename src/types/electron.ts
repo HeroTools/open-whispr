@@ -163,6 +163,7 @@ export interface PasteToolsResult {
   isWayland?: boolean;
   xwaylandAvailable?: boolean;
   hasNativeBinary?: boolean;
+  hasUinput?: boolean;
   tools?: string[];
   recommendedInstall?: string;
 }

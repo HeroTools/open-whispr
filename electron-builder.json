@@ -157,9 +157,9 @@
   "deb": {
     "afterRemove": "resources/linux/after-remove.sh",
     "fpm": [
-      "--deb-recommends",
+      "--deb-suggests",
       "xdotool",
-      "--deb-recommends",
+      "--deb-suggests",
       "wtype",
       "--deb-recommends",
       "wl-clipboard"
@@ -168,9 +168,9 @@
   "rpm": {
     "fpm": [
       "--rpm-tag",
-      "Recommends: xdotool",
+      "Suggests: xdotool",
       "--rpm-tag",
-      "Recommends: wtype",
+      "Suggests: wtype",
       "--rpm-tag",
       "Recommends: wl-clipboard"
     ]

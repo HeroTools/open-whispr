@@ -70,6 +70,20 @@ if (!needsBuild) {
   process.exit(0);
 }
 
+function hasUinputHeaders() {
+  for (const compiler of ["gcc", "cc"]) {
+    try {
+      const result = spawnSync(compiler, ["-E", "-x", "c", "-"], {
+        input: "#include <linux/uinput.h>\n",
+        stdio: ["pipe", "pipe", "pipe"],
+        env: process.env,
+      });
+      if (result.status === 0) return true;
+    } catch {}
+  }
+  return false;
+}
+
 function attemptCompile(command, args) {
   log(`Compiling with ${[command, ...args].join(" ")}`);
   return spawnSync(command, args, {
@@ -86,6 +100,13 @@ const compileArgs = [
   "-lX11",
   "-lXtst",
 ];
+
+if (hasUinputHeaders()) {
+  log("uinput headers found, enabling uinput support");
+  compileArgs.push("-DHAVE_UINPUT");
+} else {
+  log("uinput headers not found, building without uinput support");
+}
 
 let result = attemptCompile("gcc", compileArgs);
 
