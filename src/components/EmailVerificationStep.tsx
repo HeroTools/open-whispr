@@ -25,11 +25,11 @@ export default function EmailVerificationStep({ email, onVerified }: EmailVerifi
   useEffect(() => {
     if (!OPENWHISPR_API_URL || verified) return;
 
+    const url = `${OPENWHISPR_API_URL}/api/auth/verification-status?email=${encodeURIComponent(email)}`;
+
     pollRef.current = setInterval(async () => {
       try {
-        const res = await fetch(`${OPENWHISPR_API_URL}/api/auth/verification-status`, {
-          credentials: "include",
-        });
+        const res = await fetch(url, { credentials: "include" });
         if (res.ok) {
           const data = await res.json();
           if (data.verified) {
@@ -37,16 +37,19 @@ export default function EmailVerificationStep({ email, onVerified }: EmailVerifi
             if (pollRef.current) clearInterval(pollRef.current);
             setTimeout(() => onVerified(), 1200);
           }
+        } else if (res.status === 401 || res.status === 400) {
+          if (pollRef.current) clearInterval(pollRef.current);
+          setError("Session expired. Please restart the sign-up process.");
         }
       } catch {
-        // Silently retry on next poll
+        // Network error — silently retry on next poll
       }
     }, 5000);
 
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
     };
-  }, [verified, onVerified]);
+  }, [email, verified, onVerified]);
 
   const handleResend = useCallback(async () => {
     if (resendCooldown > 0 || isResending || !OPENWHISPR_API_URL) return;
@@ -61,10 +64,10 @@ export default function EmailVerificationStep({ email, onVerified }: EmailVerifi
         setResendCooldown(60);
       } else {
         const data = await res.json();
-        setError(data.error || "Failed to resend email");
+        setError(data.error || "We couldn't resend the email. Please try again.");
       }
     } catch {
-      setError("Network error. Please try again.");
+      setError("Couldn't reach the server. Check your connection and try again.");
     } finally {
       setIsResending(false);
     }

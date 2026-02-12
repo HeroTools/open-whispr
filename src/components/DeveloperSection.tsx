@@ -25,8 +25,8 @@ export default function DeveloperSection() {
     } catch (error) {
       console.error("Failed to load debug state:", error);
       toast({
-        title: "Error loading debug state",
-        description: "Could not retrieve debug logging status",
+        title: "Couldn't load debug settings",
+        description: "Something went wrong. Try reopening Settings.",
         variant: "destructive",
       });
     } finally {
@@ -58,8 +58,8 @@ export default function DeveloperSection() {
       });
     } catch (error) {
       toast({
-        title: "Error",
-        description: `Failed to toggle debug logging: ${error}`,
+        title: "Couldn't update debug logging",
+        description: "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -75,8 +75,8 @@ export default function DeveloperSection() {
       }
     } catch (error) {
       toast({
-        title: "Error",
-        description: `Failed to open logs folder: ${error}`,
+        title: "Couldn't open logs folder",
+        description: "The folder might not exist yet. Try enabling debug mode first.",
         variant: "destructive",
       });
     }
@@ -97,8 +97,8 @@ export default function DeveloperSection() {
       setTimeout(() => setCopiedPath(false), 2000);
     } catch (error) {
       toast({
-        title: "Copy Failed",
-        description: "Could not copy path to clipboard",
+        title: "Couldn't copy",
+        description: "Something went wrong copying to your clipboard.",
         variant: "destructive",
       });
     }

@@ -40,30 +40,24 @@ export function useReferrals(): UseReferralsResult | null {
   const lastFetchRef = useRef<number>(0);
 
   const fetchStats = useCallback(async () => {
-    if (!window.electronAPI?.referralStats) return;
+    if (!window.electronAPI?.getReferralStats) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
       await withSessionRefresh(async () => {
-        const result = await window.electronAPI.referralStats!();
-        if (result.success) {
-          setData({
-            referralCode: result.referralCode ?? "",
-            referralLink: result.referralLink ?? "",
-            totalReferrals: result.totalReferrals ?? 0,
-            completedReferrals: result.completedReferrals ?? 0,
-            pendingReferrals: result.pendingReferrals ?? 0,
-            totalMonthsEarned: result.totalMonthsEarned ?? 0,
-            referrals: result.referrals ?? [],
-          });
-          lastFetchRef.current = Date.now();
-        } else {
-          const err = new Error(result.error || "Failed to fetch referral stats");
-          (err as any).code = result.code;
-          throw err;
-        }
+        const result = await window.electronAPI.getReferralStats!();
+        setData({
+          referralCode: result.referralCode ?? "",
+          referralLink: result.referralLink ?? "",
+          totalReferrals: result.totalReferrals ?? 0,
+          completedReferrals: result.completedReferrals ?? 0,
+          pendingReferrals: result.pendingReferrals ?? 0,
+          totalMonthsEarned: result.totalMonthsEarned ?? 0,
+          referrals: result.referrals ?? [],
+        });
+        lastFetchRef.current = Date.now();
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch referral stats");
@@ -87,19 +81,13 @@ export function useReferrals(): UseReferralsResult | null {
 
   const sendInvite = useCallback(
     async (email: string): Promise<{ success: boolean; error?: string }> => {
-      if (!window.electronAPI?.referralSendInvite) {
+      if (!window.electronAPI?.sendReferralInvite) {
         return { success: false, error: "App not ready" };
       }
 
       try {
         await withSessionRefresh(async () => {
-          const res = await window.electronAPI.referralSendInvite!(email);
-          if (!res.success) {
-            const err = new Error(res.error || "Failed to send invite");
-            (err as any).code = res.code;
-            throw err;
-          }
-          return res;
+          await window.electronAPI.sendReferralInvite!(email);
         });
         await fetchStats();
         return { success: true };

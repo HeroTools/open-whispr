@@ -232,9 +232,9 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       const result = await window.electronAPI.updateHotkey(hotkey);
       if (result && !result.success) {
         showAlertDialog({
-          title: "Hotkey Not Registered",
+          title: "Couldn't register that hotkey",
           description:
-            result.message || "We couldn't register that key. Please choose another hotkey.",
+            result.message || "That key combination might already be in use. Try a different one.",
         });
         return false;
       }
@@ -242,8 +242,8 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     } catch (error) {
       console.error("Failed to register onboarding hotkey", error);
       showAlertDialog({
-        title: "Hotkey Error",
-        description: "We couldn't register that key. Please choose another hotkey.",
+        title: "Couldn't register that hotkey",
+        description: "That key combination might already be in use. Try a different one.",
       });
       return false;
     }

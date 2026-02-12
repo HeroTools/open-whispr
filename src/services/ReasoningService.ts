@@ -3,16 +3,9 @@ import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
-import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../config/prompts";
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
-
-/**
- * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
- * Kept for backwards compatibility with PromptStudio UI
- */
-export const DEFAULT_PROMPTS = LEGACY_PROMPTS;
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
@@ -266,7 +259,7 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName);
+    const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
     const userPrompt = text;
 
     const messages = [
@@ -503,7 +496,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const userPrompt = text;
 
       const messages = [
@@ -719,7 +712,7 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
         ...config,
         systemPrompt,
@@ -770,7 +763,7 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
         ...config,
         systemPrompt,
@@ -827,7 +820,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const userPrompt = text;
 
       const requestBody = {
@@ -1045,6 +1038,7 @@ class ReasoningService extends BaseReasoningService {
           model,
           agentName,
           customDictionary,
+          customPrompt: this.getCustomPrompt(),
           language,
         });
 
@@ -1083,6 +1077,17 @@ class ReasoningService extends BaseReasoningService {
       return Array.isArray(parsed) ? parsed : [];
     } catch {
       return [];
+    }
+  }
+
+  private getCustomPrompt(): string | undefined {
+    try {
+      const raw = localStorage.getItem("customUnifiedPrompt");
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+      return undefined;
     }
   }
 

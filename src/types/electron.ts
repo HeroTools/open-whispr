@@ -33,6 +33,7 @@ export interface WhisperModelResult {
   downloaded: boolean;
   size_mb?: number;
   error?: string;
+  code?: string;
 }
 
 export interface WhisperModelDeleteResult {
@@ -99,12 +100,13 @@ export interface AppVersionResult {
 }
 
 export interface WhisperDownloadProgressData {
-  type: string;
+  type: "progress" | "installing" | "complete" | "error";
   model: string;
   percentage?: number;
   downloaded_bytes?: number;
   total_bytes?: number;
   error?: string;
+  code?: string;
   result?: any;
 }
 
@@ -122,6 +124,7 @@ export interface ParakeetModelResult {
   size_bytes?: number;
   size_mb?: number;
   error?: string;
+  code?: string;
 }
 
 export interface ParakeetModelDeleteResult {
@@ -140,12 +143,13 @@ export interface ParakeetModelsListResult {
 }
 
 export interface ParakeetDownloadProgressData {
-  type: string;
+  type: "progress" | "installing" | "complete" | "error";
   model: string;
   percentage?: number;
   downloaded_bytes?: number;
   total_bytes?: number;
   error?: string;
+  code?: string;
 }
 
 export interface ParakeetTranscriptionResult {
@@ -499,7 +503,13 @@ declare global {
       }>;
       cloudReason?: (
         text: string,
-        opts: { model?: string; agentName?: string; customDictionary?: string[] }
+        opts: {
+          model?: string;
+          agentName?: string;
+          customDictionary?: string[];
+          customPrompt?: string;
+          language?: string;
+        }
       ) => Promise<{
         success: boolean;
         text?: string;
@@ -514,6 +524,7 @@ declare global {
         wordsRemaining?: number;
         limit?: number;
         plan?: string;
+        status?: string;
         isSubscribed?: boolean;
         isTrial?: boolean;
         trialDaysLeft?: number | null;
@@ -553,25 +564,6 @@ declare global {
         success: boolean;
         text?: string;
         error?: string;
-      }>;
-
-      // Referral system
-      referralStats?: () => Promise<{
-        success: boolean;
-        referralCode?: string;
-        referralLink?: string;
-        totalReferrals?: number;
-        completedReferrals?: number;
-        pendingReferrals?: number;
-        totalMonthsEarned?: number;
-        referrals?: ReferralItem[];
-        error?: string;
-        code?: string;
-      }>;
-      referralSendInvite?: (email: string) => Promise<{
-        success: boolean;
-        error?: string;
-        code?: string;
       }>;
 
       // Usage limit events
@@ -614,6 +606,76 @@ declare global {
       onAssemblyAiFinalTranscript?: (callback: (text: string) => void) => () => void;
       onAssemblyAiError?: (callback: (error: string) => void) => () => void;
       onAssemblyAiSessionEnd?: (
+        callback: (data: { audioDuration?: number; text?: string }) => void
+      ) => () => void;
+
+      // Referral stats
+      getReferralStats?: () => Promise<{
+        referralCode: string;
+        referralLink: string;
+        totalReferrals: number;
+        completedReferrals: number;
+        pendingReferrals: number;
+        totalMonthsEarned: number;
+        referrals: Array<{
+          id: string;
+          email: string;
+          name: string;
+          status: "pending" | "completed" | "rewarded";
+          created_at: string;
+          first_payment_at: string | null;
+        }>;
+      }>;
+
+      sendReferralInvite?: (email: string) => Promise<{
+        success: boolean;
+        invite: {
+          id: string;
+          recipientEmail: string;
+          status: "sent" | "failed" | "opened" | "converted";
+          sentAt: string;
+        };
+      }>;
+
+      getReferralInvites?: () => Promise<{
+        invites: Array<{
+          id: string;
+          recipientEmail: string;
+          status: "sent" | "failed" | "opened" | "converted";
+          sentAt: string;
+          openedAt?: string;
+          convertedAt?: string;
+        }>;
+      }>;
+
+      // Deepgram Streaming
+      deepgramStreamingWarmup?: (options?: { sampleRate?: number; language?: string }) => Promise<{
+        success: boolean;
+        alreadyWarm?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      deepgramStreamingStart?: (options?: { sampleRate?: number; language?: string }) => Promise<{
+        success: boolean;
+        usedWarmConnection?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      deepgramStreamingSend?: (audioBuffer: ArrayBuffer) => void;
+      deepgramStreamingFinalize?: () => void;
+      deepgramStreamingStop?: () => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
+      deepgramStreamingStatus?: () => Promise<{
+        isConnected: boolean;
+        sessionId: string | null;
+      }>;
+      onDeepgramPartialTranscript?: (callback: (text: string) => void) => () => void;
+      onDeepgramFinalTranscript?: (callback: (text: string) => void) => () => void;
+      onDeepgramError?: (callback: (error: string) => void) => () => void;
+      onDeepgramSessionEnd?: (
         callback: (data: { audioDuration?: number; text?: string }) => void
       ) => () => void;
     };

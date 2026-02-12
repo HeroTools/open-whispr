@@ -1,6 +1,6 @@
 {
   "name": "open-whispr",
-  "version": "1.4.5",
+  "version": "1.4.6",
   "description": "A desktop dictation application using whisper.cpp for speech-to-text transcription",
   "main": "main.js",
   "private": true,
@@ -83,6 +83,7 @@
     "vite": "^6.3.5"
   },
   "dependencies": {
+    "@neondatabase/auth": "^0.1.0-beta.21",
     "@neondatabase/neon-js": "^0.1.0-beta.22",
     "@radix-ui/react-accordion": "^1.1.2",
     "@radix-ui/react-dialog": "^1.1.14",

@@ -27,9 +27,9 @@ export abstract class BaseReasoningService {
     return window.localStorage.getItem("preferredLanguage") || "auto";
   }
 
-  protected getSystemPrompt(agentName: string | null): string {
+  protected getSystemPrompt(agentName: string | null, transcript?: string): string {
     const language = this.getPreferredLanguage();
-    return getSystemPrompt(agentName, this.getCustomDictionary(), language);
+    return getSystemPrompt(agentName, this.getCustomDictionary(), language, transcript);
   }
 
   protected calculateMaxTokens(

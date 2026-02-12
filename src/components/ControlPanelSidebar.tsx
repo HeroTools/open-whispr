@@ -21,6 +21,7 @@ interface ControlPanelSidebarProps {
   activeView: ControlPanelView;
   onViewChange: (view: ControlPanelView) => void;
   onOpenSettings: () => void;
+  onOpenReferrals?: () => void;
   userName?: string | null;
   userEmail?: string | null;
   userImage?: string | null;
@@ -49,6 +50,7 @@ export default function ControlPanelSidebar({
   activeView,
   onViewChange,
   onOpenSettings,
+  onOpenReferrals,
   userName,
   userEmail,
   userImage,
@@ -142,6 +144,20 @@ export default function ControlPanelSidebar({
           <div className="px-1 pb-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
             {updateAction}
           </div>
+        )}
+
+        {isSignedIn && onOpenReferrals && (
+          <button
+            onClick={onOpenReferrals}
+            className="group flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left transition-all duration-200 bg-success/[0.04] dark:bg-success/[0.06] border border-success/[0.08] dark:border-success/[0.10] hover:bg-success/[0.07] dark:hover:bg-success/[0.10] hover:border-success/[0.14] dark:hover:border-success/[0.16]"
+          >
+            <div className="flex items-center justify-center h-5 w-5 rounded bg-success/10 dark:bg-success/15 shrink-0">
+              <Gift size={11} className="text-success" />
+            </div>
+            <span className="text-[11px] text-success/70 dark:text-success/60 group-hover:text-success/90 dark:group-hover:text-success/80 font-medium transition-colors duration-150">
+              Get 1 month free
+            </span>
+          </button>
         )}
 
         <button

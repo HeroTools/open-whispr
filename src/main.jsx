@@ -12,8 +12,10 @@ import { useTheme } from "./hooks/useTheme";
 import { useAuth } from "./hooks/useAuth";
 import "./index.css";
 
-const ControlPanel = React.lazy(() => import("./components/ControlPanel.tsx"));
-const OnboardingFlow = React.lazy(() => import("./components/OnboardingFlow.tsx"));
+const controlPanelImport = () => import("./components/ControlPanel.tsx");
+const onboardingFlowImport = () => import("./components/OnboardingFlow.tsx");
+const ControlPanel = React.lazy(controlPanelImport);
+const OnboardingFlow = React.lazy(onboardingFlowImport);
 
 let root = null;
 
@@ -274,6 +276,16 @@ function AppRouter() {
     window.location.pathname.includes("control") || window.location.search.includes("panel=true");
   const isDictationPanel = !isControlPanel;
 
+  // Preload lazy chunks while waiting for auth so Suspense resolves instantly
+  useEffect(() => {
+    if (isControlPanel) {
+      controlPanelImport().catch(() => {});
+      if (!localStorage.getItem("onboardingCompleted")) {
+        onboardingFlowImport().catch(() => {});
+      }
+    }
+  }, [isControlPanel]);
+
   useEffect(() => {
     if (!authLoaded) return;
 
@@ -314,7 +326,7 @@ function AppRouter() {
   };
 
   if (isLoading) {
-    return <LoadingFallback message="Loading OpenWhispr..." />;
+    return <LoadingFallback />;
   }
 
   // First-time user: full onboarding wizard
@@ -370,7 +382,7 @@ function AppRouter() {
   );
 }
 
-function LoadingFallback({ message }) {
+function LoadingFallback({ message = "Loading OpenWhispr..." }) {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-4 animate-[scale-in_300ms_ease-out]">

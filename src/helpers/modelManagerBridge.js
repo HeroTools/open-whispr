@@ -2,7 +2,12 @@ const path = require("path");
 const fs = require("fs");
 const { promises: fsPromises } = require("fs");
 const { app } = require("electron");
-const { downloadFile: sharedDownloadFile, createDownloadSignal } = require("./downloadUtils");
+const {
+  downloadFile: sharedDownloadFile,
+  createDownloadSignal,
+  cleanupStaleDownloads,
+  checkDiskSpace,
+} = require("./downloadUtils");
 
 const modelRegistryData = require("../models/modelRegistryData.json");
 const LlamaServerManager = require("./llamaServer");
@@ -63,6 +68,7 @@ class ModelManager {
     this._initialized = true;
     // Don't await - let this run in background
     this.ensureModelsDirExists();
+    cleanupStaleDownloads(this.modelsDir);
   }
 
   getModelsDir() {
@@ -187,6 +193,20 @@ class ModelManager {
 
     try {
       await this.ensureModelsDirExists();
+
+      const requiredBytes = model.sizeBytes || model.sizeMb * 1_000_000 || 0;
+      if (requiredBytes > 0) {
+        const spaceCheck = await checkDiskSpace(this.modelsDir, requiredBytes * 1.2);
+        if (!spaceCheck.ok) {
+          throw new ModelError(
+            `Not enough disk space. Need ~${Math.round((requiredBytes * 1.2) / 1_000_000)}MB, ` +
+              `only ${Math.round(spaceCheck.availableBytes / 1_000_000)}MB available.`,
+            "INSUFFICIENT_DISK_SPACE",
+            { required: requiredBytes, available: spaceCheck.availableBytes }
+          );
+        }
+      }
+
       const downloadUrl = this.getDownloadUrl(provider, model);
 
       await sharedDownloadFile(downloadUrl, modelPath, {
