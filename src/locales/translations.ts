@@ -4,6 +4,8 @@ import esTranslation from "./es/translation.json";
 import frTranslation from "./fr/translation.json";
 import itTranslation from "./it/translation.json";
 import ptTranslation from "./pt/translation.json";
+import zhCNTranslation from "./zh-CN/translation.json";
+import zhTWTranslation from "./zh-TW/translation.json";
 
 export const TRANSLATIONS_BY_LOCALE = {
   en: enTranslation,
@@ -12,4 +14,6 @@ export const TRANSLATIONS_BY_LOCALE = {
   de: deTranslation,
   pt: ptTranslation,
   it: itTranslation,
+  "zh-CN": zhCNTranslation,
+  "zh-TW": zhTWTranslation,
 } as const;

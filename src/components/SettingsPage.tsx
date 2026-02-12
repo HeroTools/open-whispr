@@ -57,7 +57,6 @@ import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
 import type { LocalTranscriptionProvider } from "../types/electron";
 import logger from "../utils/logger";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { SettingsRow } from "./ui/SettingsSection";
 import { useUsage } from "../hooks/useUsage";
 import { cn } from "./lib/utils";
@@ -78,7 +77,16 @@ interface SettingsPageProps {
   activeSection?: SettingsSectionType;
 }
 
-const UI_LANGUAGE_CODES = ["en", "es", "fr", "de", "pt", "it"] as const;
+const UI_LANGUAGE_OPTIONS: import("./ui/LanguageSelector").LanguageOption[] = [
+  { value: "en", label: "English", flag: "🇺🇸" },
+  { value: "es", label: "Español", flag: "🇪🇸" },
+  { value: "fr", label: "Français", flag: "🇫🇷" },
+  { value: "de", label: "Deutsch", flag: "🇩🇪" },
+  { value: "pt", label: "Português", flag: "🇵🇹" },
+  { value: "it", label: "Italiano", flag: "🇮🇹" },
+  { value: "zh-CN", label: "简体中文", flag: "🇨🇳" },
+  { value: "zh-TW", label: "繁體中文", flag: "🇹🇼" },
+];
 
 function SettingsPanel({
   children,
@@ -1578,18 +1586,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     label={t("settings.language.uiLabel")}
                     description={t("settings.language.uiDescription")}
                   >
-                    <Select value={uiLanguage} onValueChange={setUiLanguage}>
-                      <SelectTrigger className="w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {UI_LANGUAGE_CODES.map((code) => (
-                          <SelectItem key={code} value={code}>
-                            {t(`settings.language.uiOption.${code}`)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <LanguageSelector
+                      value={uiLanguage}
+                      onChange={setUiLanguage}
+                      options={UI_LANGUAGE_OPTIONS}
+                      className="min-w-32"
+                    />
                   </SettingsRow>
                 </SettingsPanelRow>
                 <SettingsPanelRow>

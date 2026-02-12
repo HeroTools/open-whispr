@@ -6,6 +6,8 @@ const frTranslation = require("../locales/fr/translation.json");
 const deTranslation = require("../locales/de/translation.json");
 const ptTranslation = require("../locales/pt/translation.json");
 const itTranslation = require("../locales/it/translation.json");
+const zhCNTranslation = require("../locales/zh-CN/translation.json");
+const zhTWTranslation = require("../locales/zh-TW/translation.json");
 
 const enPrompts = require("../locales/en/prompts.json");
 const esPrompts = require("../locales/es/prompts.json");
@@ -13,13 +15,23 @@ const frPrompts = require("../locales/fr/prompts.json");
 const dePrompts = require("../locales/de/prompts.json");
 const ptPrompts = require("../locales/pt/prompts.json");
 const itPrompts = require("../locales/it/prompts.json");
+const zhCNPrompts = require("../locales/zh-CN/prompts.json");
+const zhTWPrompts = require("../locales/zh-TW/prompts.json");
 
-const SUPPORTED_UI_LANGUAGES = ["en", "es", "fr", "de", "pt", "it"];
+const SUPPORTED_UI_LANGUAGES = ["en", "es", "fr", "de", "pt", "it", "zh-CN", "zh-TW"];
 
 function normalizeUiLanguage(language) {
-  const candidate = (language || "").trim().toLowerCase();
-  const base = candidate.split("-")[0];
+  const candidate = (language || "").trim();
 
+  // Check full language-region code first (e.g. "zh-CN", "zh-TW")
+  const normalized = candidate.replace("_", "-");
+  const fullMatch = SUPPORTED_UI_LANGUAGES.find(
+    (lang) => lang.toLowerCase() === normalized.toLowerCase()
+  );
+  if (fullMatch) return fullMatch;
+
+  // Fall back to base language code (e.g. "en" from "en-US")
+  const base = candidate.split("-")[0].split("_")[0].toLowerCase();
   return SUPPORTED_UI_LANGUAGES.includes(base) ? base : "en";
 }
 
@@ -51,6 +63,14 @@ void i18nMain.init({
     it: {
       translation: itTranslation,
       prompts: itPrompts,
+    },
+    "zh-CN": {
+      translation: zhCNTranslation,
+      prompts: zhCNPrompts,
+    },
+    "zh-TW": {
+      translation: zhTWTranslation,
+      prompts: zhTWPrompts,
     },
   },
   lng: normalizeUiLanguage(process.env.UI_LANGUAGE),

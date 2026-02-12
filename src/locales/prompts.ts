@@ -4,6 +4,8 @@ import esPrompts from "./es/prompts.json";
 import frPrompts from "./fr/prompts.json";
 import itPrompts from "./it/prompts.json";
 import ptPrompts from "./pt/prompts.json";
+import zhCNPrompts from "./zh-CN/prompts.json";
+import zhTWPrompts from "./zh-TW/prompts.json";
 
 export interface PromptBundle {
   cleanupPrompt: string;
@@ -17,6 +19,8 @@ export const fr: PromptBundle = frPrompts;
 export const de: PromptBundle = dePrompts;
 export const pt: PromptBundle = ptPrompts;
 export const it: PromptBundle = itPrompts;
+export const zhCN: PromptBundle = zhCNPrompts;
+export const zhTW: PromptBundle = zhTWPrompts;
 
 export const PROMPTS_BY_LOCALE = {
   en,
@@ -25,4 +29,6 @@ export const PROMPTS_BY_LOCALE = {
   de,
   pt,
   it,
+  "zh-CN": zhCN,
+  "zh-TW": zhTW,
 } as const;
