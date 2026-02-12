@@ -75,9 +75,7 @@ export default defineConfig(({ mode }) => {
           'zlib',
           'tar',
           'unzipper',
-          '@aws-sdk/client-s3',
-          '@neondatabase/auth',
-          '@neondatabase/auth/react'
+          '@aws-sdk/client-s3'
         ],
         output: {
           manualChunks: {
