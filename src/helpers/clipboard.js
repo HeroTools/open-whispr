@@ -653,15 +653,60 @@ class ClipboardManager {
       }, RESTORE_DELAYS.linux);
     };
 
+    const terminalClasses = [
+      "konsole", "gnome-terminal", "terminal", "kitty", "alacritty",
+      "terminator", "xterm", "urxvt", "rxvt", "tilix", "terminology",
+      "wezterm", "foot", "st", "yakuake", "ghostty", "guake", "tilda",
+      "hyper", "tabby", "sakura", "warp",
+    ];
+
+    // Pre-detect the target window BEFORE our window takes focus or blurs,
+    // so the fast-paste binary and fallback tools know where to send keystrokes.
+    const preDetectTargetWindow = () => {
+      if (!xdotoolExists || (isWayland && !xwaylandAvailable)) return null;
+      try {
+        const result = spawnSync("xdotool", ["getactivewindow"]);
+        return result.status === 0 ? result.stdout.toString().trim() || null : null;
+      } catch { return null; }
+    };
+
+    const preDetectWindowClass = (windowId) => {
+      if (!xdotoolExists || (isWayland && !xwaylandAvailable)) return null;
+      try {
+        const args = windowId
+          ? ["getwindowclassname", windowId]
+          : ["getactivewindow", "getwindowclassname"];
+        const result = spawnSync("xdotool", args);
+        return result.status === 0 ? result.stdout.toString().toLowerCase().trim() || null : null;
+      } catch { return null; }
+    };
+
+    const targetWindowId = preDetectTargetWindow();
+    const xdotoolWindowClass = preDetectWindowClass(targetWindowId);
+
     if (linuxFastPaste) {
       try {
+        // Build args: pass pre-detected window ID and terminal flag so the
+        // binary targets the correct window and uses Ctrl+Shift+V for terminals.
+        const earlyIsTerminal = xdotoolWindowClass
+          ? terminalClasses.some((t) => xdotoolWindowClass.includes(t))
+          : false;
+
+        const fastPasteArgs = [];
+        if (targetWindowId) {
+          fastPasteArgs.push("--window", targetWindowId);
+        }
+        if (earlyIsTerminal) {
+          fastPasteArgs.push("--terminal");
+        }
+
         await new Promise((resolve, reject) => {
           debugLogger.debug(
             "Attempting native linux-fast-paste binary",
-            { linuxFastPaste },
+            { linuxFastPaste, args: fastPasteArgs, targetWindowId, xdotoolWindowClass, earlyIsTerminal },
             "clipboard"
           );
-          const proc = spawn(linuxFastPaste);
+          const proc = spawn(linuxFastPaste, fastPasteArgs);
           let stderr = "";
 
           proc.stderr?.on("data", (data) => {
@@ -711,64 +756,8 @@ class ClipboardManager {
       }
     }
 
-    // Capture target window before our window takes focus
-    const getXdotoolActiveWindow = () => {
-      if (!xdotoolExists || (isWayland && !xwaylandAvailable)) {
-        return null;
-      }
-      try {
-        const result = spawnSync("xdotool", ["getactivewindow"]);
-        if (result.status !== 0) {
-          return null;
-        }
-        return result.stdout.toString().trim() || null;
-      } catch {
-        return null;
-      }
-    };
-
-    const getXdotoolWindowClass = (windowId) => {
-      if (!xdotoolExists || (isWayland && !xwaylandAvailable)) {
-        return null;
-      }
-      try {
-        const args = windowId
-          ? ["getwindowclassname", windowId]
-          : ["getactivewindow", "getwindowclassname"];
-        const result = spawnSync("xdotool", args);
-        if (result.status !== 0) {
-          return null;
-        }
-        const className = result.stdout.toString().toLowerCase().trim();
-        return className || null;
-      } catch {
-        return null;
-      }
-    };
-
-    const targetWindowId = getXdotoolActiveWindow();
-    const xdotoolWindowClass = getXdotoolWindowClass(targetWindowId);
-
     // Terminals use Ctrl+Shift+V instead of Ctrl+V
     const isTerminal = () => {
-      const terminalClasses = [
-        "konsole",
-        "gnome-terminal",
-        "terminal",
-        "kitty",
-        "alacritty",
-        "terminator",
-        "xterm",
-        "urxvt",
-        "rxvt",
-        "tilix",
-        "terminology",
-        "wezterm",
-        "foot",
-        "st",
-        "yakuake",
-      ];
-
       if (xdotoolWindowClass) {
         const isTerminalWindow = terminalClasses.some((term) => xdotoolWindowClass.includes(term));
         if (isTerminalWindow) {

@@ -13,7 +13,8 @@
 static const char *terminal_classes[] = {
     "konsole", "gnome-terminal", "terminal", "kitty", "alacritty",
     "terminator", "xterm", "urxvt", "rxvt", "tilix", "terminology",
-    "wezterm", "foot", "st", "yakuake", NULL
+    "wezterm", "foot", "st", "yakuake", "ghostty", "guake", "tilda",
+    "hyper", "tabby", "sakura", "warp", NULL
 };
 
 static int is_terminal(const char *wm_class) {
@@ -48,11 +49,42 @@ static Window get_active_window(Display *dpy) {
     return focused;
 }
 
+/* Send _NET_ACTIVE_WINDOW client message then fall back to XSetInputFocus */
+static void activate_window(Display *dpy, Window win) {
+    Atom net_active = XInternAtom(dpy, "_NET_ACTIVE_WINDOW", False);
+    XEvent ev;
+    memset(&ev, 0, sizeof(ev));
+    ev.xclient.type         = ClientMessage;
+    ev.xclient.window       = win;
+    ev.xclient.message_type = net_active;
+    ev.xclient.format       = 32;
+    ev.xclient.data.l[0]    = 2; /* source: pager / direct call */
+    ev.xclient.data.l[1]    = CurrentTime;
+    ev.xclient.data.l[2]    = 0;
+
+    XSendEvent(dpy, DefaultRootWindow(dpy), False,
+               SubstructureNotifyMask | SubstructureRedirectMask, &ev);
+    XFlush(dpy);
+
+    /* Give the WM time to process the activation request */
+    usleep(50000);
+
+    /* Fallback: also set X input focus directly */
+    XSetInputFocus(dpy, win, RevertToParent, CurrentTime);
+    XFlush(dpy);
+    usleep(20000);
+}
+
 int main(int argc, char *argv[]) {
     int force_terminal = 0;
+    Window target_window = None;
+
     for (int i = 1; i < argc; i++) {
-        if (strcmp(argv[i], "--terminal") == 0)
+        if (strcmp(argv[i], "--terminal") == 0) {
             force_terminal = 1;
+        } else if (strcmp(argv[i], "--window") == 0 && i + 1 < argc) {
+            target_window = (Window)strtoul(argv[++i], NULL, 0);
+        }
     }
 
     Display *dpy = XOpenDisplay(NULL);
@@ -64,16 +96,20 @@ int main(int argc, char *argv[]) {
         return 2;
     }
 
+    /* If a target window was supplied, activate it so it receives the keystrokes */
+    if (target_window != None) {
+        activate_window(dpy, target_window);
+    }
+
+    Window win = (target_window != None) ? target_window : get_active_window(dpy);
+
     int use_shift = force_terminal;
-    if (!use_shift) {
-        Window win = get_active_window(dpy);
-        if (win != None) {
-            XClassHint hint;
-            if (XGetClassHint(dpy, win, &hint)) {
-                use_shift = is_terminal(hint.res_class) || is_terminal(hint.res_name);
-                XFree(hint.res_name);
-                XFree(hint.res_class);
-            }
+    if (!use_shift && win != None) {
+        XClassHint hint;
+        if (XGetClassHint(dpy, win, &hint)) {
+            use_shift = is_terminal(hint.res_class) || is_terminal(hint.res_name);
+            XFree(hint.res_name);
+            XFree(hint.res_class);
         }
     }
 
