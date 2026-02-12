@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.7] - 2026-02-11
+
+### Added
+- **Deepgram Streaming Transcription**: Migrated real-time streaming transcription from AssemblyAI to Deepgram for improved reliability and accuracy (#249)
+
+### Fixed
+- **BYOK After Upgrade**: Prefer localStorage API keys over process.env so Bring Your Own Key mode works correctly after upgrading (#263)
+- **PTT Double-Fire Prevention**: Applied post-stop cooldown and press-identity checks to both macOS and Windows push-to-talk handlers
+- **Archive Extraction Retry**: Reuse existing archive on extraction retry with improved error handling
+- **Email Verification Polling**: Pass email param in verification polling and stop on 401 responses
+- **Auth Build Bundling**: Added @neondatabase/auth packages to rollup externals for correct production bundling (#256)
+
+### Changed
+- **Build System**: Bumped Node version in build files
+
 ## [1.4.6] - 2026-02-10
 
 ### Added
