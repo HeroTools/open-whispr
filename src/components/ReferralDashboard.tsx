@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Send, Mail, ChevronRight } from "lucide-react";
+import { Send, Mail, Copy, Check, Link, UserPlus, Gift } from "lucide-react";
 import { Badge } from "./ui/badge";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { useToast } from "./ui/Toast";
 import { cn } from "./lib/utils";
 import { SpectrogramCard } from "./referral-cards/SpectrogramCard";
@@ -177,7 +178,6 @@ export function ReferralDashboard() {
   const [error, setError] = useState<string | null>(null);
   const [emailInput, setEmailInput] = useState("");
   const [sendingInvite, setSendingInvite] = useState(false);
-  const [showInvites, setShowInvites] = useState(false);
   const { toast } = useToast();
 
   const fetchStats = useCallback(async () => {
@@ -326,114 +326,165 @@ export function ReferralDashboard() {
         />
       </div>
 
-      <div className="relative z-10 px-7 pt-9 pb-6">
+      <div className="relative z-10 px-7 pt-7 pb-6">
         <h2 className="text-[20px] font-bold tracking-tight leading-tight text-foreground">
-          Share OpenWhispr
+          Refer and earn rewards
         </h2>
         <p className="text-[12px] text-foreground/30 mt-1">Give a month. Get a month.</p>
 
-        {/* Share card */}
-        <div className="mt-5">
-          <TiltCard>
-            <SpectrogramCard referralCode={stats.referralCode} copied={copied} onCopy={copyLink} />
-          </TiltCard>
-        </div>
-
-        {/* Stat Gauges */}
-        <div className="mt-5 grid grid-cols-3 gap-2.5">
-          <StatGauge value={stats.totalReferrals} label="Referred" delay={0} />
-          <StatGauge value={stats.completedReferrals} label="Converted" delay={150} />
-          <StatGauge
-            value={stats.totalMonthsEarned}
-            label="Months earned"
-            delay={300}
-            highlight={stats.totalMonthsEarned > 0}
-          />
-        </div>
-
-        <div className="mt-5 h-px bg-linear-to-r from-transparent via-foreground/6 to-transparent" />
-
-        {/* Email Invite */}
-        <div className="mt-5 space-y-2">
-          <h4 className="text-[10px] font-medium text-foreground/25 uppercase tracking-wider">
-            Invite by email
-          </h4>
-          <div className="flex items-center gap-2">
-            <input
-              type="email"
-              placeholder="friend@example.com"
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              onKeyDown={handleKeyDown}
-              disabled={sendingInvite}
-              className="flex-1 h-8 px-3 text-[12px] rounded-md bg-foreground/4 border border-foreground/7 text-foreground/70 placeholder:text-foreground/20 focus:outline-none focus:border-foreground/15 focus:ring-1 focus:ring-foreground/10 disabled:opacity-50"
-            />
-            <button
-              onClick={sendInvite}
-              disabled={sendingInvite || !emailInput.trim()}
-              className="shrink-0 h-8 px-3.5 rounded-md text-[11px] font-medium flex items-center gap-1.5 transition-all duration-200 bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none"
+        <Tabs defaultValue="refer" className="mt-4">
+          <TabsList className="w-full justify-start bg-transparent! p-0! h-auto! gap-4 rounded-none! border-b border-foreground/6">
+            <TabsTrigger
+              value="refer"
+              className="rounded-none! bg-transparent! shadow-none! px-0! pb-2! pt-0! text-[12px] border-b-2 border-transparent text-foreground/30 hover:text-foreground/50 data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:border-foreground/50 data-[state=active]:text-foreground"
             >
-              {sendingInvite ? (
-                <div className="w-3 h-3 border-1.5 border-current border-r-transparent rounded-full animate-spin" />
-              ) : (
-                <Send className="w-3 h-3" />
-              )}
-              {sendingInvite ? "Sending" : "Send"}
-            </button>
-          </div>
-        </div>
-
-        {/* Past invites */}
-        {invites.length > 0 && (
-          <div className="mt-4">
-            <button
-              onClick={() => setShowInvites(!showInvites)}
-              className="flex items-center gap-1.5 py-1 text-[11px] text-foreground/25 hover:text-foreground/50 transition-colors"
+              Refer
+            </TabsTrigger>
+            <TabsTrigger
+              value="history"
+              className="rounded-none! bg-transparent! shadow-none! px-0! pb-2! pt-0! text-[12px] border-b-2 border-transparent text-foreground/30 hover:text-foreground/50 data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:border-foreground/50 data-[state=active]:text-foreground"
             >
-              <ChevronRight
-                className={cn(
-                  "w-3 h-3 transition-transform duration-200",
-                  showInvites && "rotate-90"
-                )}
-              />
-              <span>Past invites</span>
-              <span className="text-foreground/15" aria-hidden>
-                ·
-              </span>
-              <span className="text-foreground/15">{invites.length}</span>
-            </button>
-            <div className="invites-expand" data-open={showInvites}>
-              <div>
-                <div className="space-y-1 pt-1.5">
-                  {invites.map((invite) => {
-                    const { label, variant } = statusConfig[invite.status] ?? statusConfig.sent;
-                    return (
-                      <div
-                        key={invite.id}
-                        className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-foreground/3 border border-foreground/5 hover:border-foreground/8 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 min-w-0 flex-1">
-                          <Mail className="w-3 h-3 text-foreground/20 shrink-0" />
-                          <span className="text-[11px] text-foreground/60 truncate">
-                            {invite.recipientEmail}
-                          </span>
-                          <span className="text-[10px] text-foreground/15 shrink-0">
-                            {formatDate(invite.sentAt)}
-                          </span>
-                        </div>
-                        <Badge variant={variant} className="ml-2 text-[9px] shrink-0">
-                          {label}
-                        </Badge>
-                      </div>
-                    );
-                  })}
+              Past invites ({invites.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="refer" className="mt-5">
+            <div className="space-y-5">
+              <TiltCard>
+                <SpectrogramCard referralCode={stats.referralCode} />
+              </TiltCard>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded bg-foreground/4 flex items-center justify-center shrink-0">
+                    <Link className="w-2.5 h-2.5 text-foreground/30" />
+                  </div>
+                  <span className="text-[11px] text-foreground/40">Share your invite link</span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded bg-foreground/4 flex items-center justify-center shrink-0">
+                    <UserPlus className="w-2.5 h-2.5 text-foreground/30" />
+                  </div>
+                  <span className="text-[11px] text-foreground/40">
+                    They sign up and get a <strong className="text-foreground/60">free month of Pro</strong>
+                  </span>
+                </div>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-5 h-5 rounded bg-foreground/4 flex items-center justify-center shrink-0">
+                    <Gift className="w-2.5 h-2.5 text-foreground/30" />
+                  </div>
+                  <span className="text-[11px] text-foreground/40">
+                    You get a <strong className="text-foreground/60">free month</strong> when they dictate 2,000 words
+                  </span>
                 </div>
               </div>
-            </div>
-          </div>
-        )}
 
-        <p className="text-[9px] text-foreground/12 text-center mt-5">No cap on referrals</p>
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-medium text-foreground/25 uppercase tracking-wider">
+                  Your invite link
+                </h4>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 h-8 px-3 rounded-md bg-foreground/4 border border-foreground/7 overflow-hidden">
+                    <Link className="w-3 h-3 text-foreground/20 shrink-0" />
+                    <span className="text-[12px] text-foreground/50 font-mono truncate select-all">
+                      {stats.referralLink}
+                    </span>
+                  </div>
+                  <button
+                    onClick={copyLink}
+                    className={cn(
+                      "shrink-0 h-8 px-3.5 rounded-md text-[11px] font-medium flex items-center gap-1.5 transition-all duration-200 active:scale-[0.97]",
+                      copied
+                        ? "bg-emerald-500/15 text-emerald-400/80"
+                        : "bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90"
+                    )}
+                  >
+                    {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                    {copied ? "Copied" : "Copy"}
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <h4 className="text-[10px] font-medium text-foreground/25 uppercase tracking-wider">
+                  Send invites
+                </h4>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="email"
+                    placeholder="friend@example.com"
+                    value={emailInput}
+                    onChange={(e) => setEmailInput(e.target.value)}
+                    onKeyDown={handleKeyDown}
+                    disabled={sendingInvite}
+                    className="flex-1 h-8 px-3 text-[12px] rounded-md bg-foreground/4 border border-foreground/7 text-foreground/70 placeholder:text-foreground/20 focus:outline-none focus:border-foreground/15 focus:ring-1 focus:ring-foreground/10 disabled:opacity-50"
+                  />
+                  <button
+                    onClick={sendInvite}
+                    disabled={sendingInvite || !emailInput.trim()}
+                    className="shrink-0 h-8 px-3.5 rounded-md text-[11px] font-medium flex items-center gap-1.5 transition-all duration-200 bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none"
+                  >
+                    {sendingInvite ? (
+                      <div className="w-3 h-3 border-1.5 border-current border-r-transparent rounded-full animate-spin" />
+                    ) : (
+                      <Send className="w-3 h-3" />
+                    )}
+                    {sendingInvite ? "Sending" : "Send"}
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-5">
+            <div className="grid grid-cols-3 gap-2.5">
+              <StatGauge value={stats.totalReferrals} label="Referred" delay={0} />
+              <StatGauge value={stats.completedReferrals} label="Converted" delay={150} />
+              <StatGauge
+                value={stats.totalMonthsEarned}
+                label="Months earned"
+                delay={300}
+                highlight={stats.totalMonthsEarned > 0}
+              />
+            </div>
+
+            {invites.length > 0 ? (
+              <div className="space-y-1 mt-4">
+                {invites.map((invite) => {
+                  const { label, variant } = statusConfig[invite.status] ?? statusConfig.sent;
+                  return (
+                    <div
+                      key={invite.id}
+                      className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-foreground/3 border border-foreground/5 hover:border-foreground/8 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <Mail className="w-3 h-3 text-foreground/20 shrink-0" />
+                        <span className="text-[11px] text-foreground/60 truncate">
+                          {invite.recipientEmail}
+                        </span>
+                        <span className="text-[10px] text-foreground/15 shrink-0">
+                          {formatDate(invite.sentAt)}
+                        </span>
+                      </div>
+                      <Badge variant={variant} className="ml-2 text-[9px] shrink-0">
+                        {label}
+                      </Badge>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <Mail className="w-5 h-5 text-foreground/10 mb-2" />
+                <p className="text-[12px] text-foreground/25">No invites sent yet</p>
+                <p className="text-[10px] text-foreground/15 mt-0.5">
+                  Share your link or send an invite to get started
+                </p>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

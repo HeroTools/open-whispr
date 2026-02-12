@@ -22,7 +22,7 @@ export default function ReferralModal({ open, onOpenChange }: ReferralModalProps
         />
         <DialogPrimitive.Content
           className={cn(
-            "fixed left-[50%] top-[50%] z-50 w-full max-w-[500px]",
+            "fixed left-[50%] top-[50%] z-50 w-full max-w-[500px] min-h-130",
             "translate-x-[-50%] translate-y-[-50%]",
             "rounded-xl border overflow-hidden shadow-2xl duration-200",
             "bg-card border-border",

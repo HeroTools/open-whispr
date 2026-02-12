@@ -1,12 +1,9 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
-import { Copy, Check } from "lucide-react";
 import { cn } from "../lib/utils";
 import { generateSpectrogramData } from "./generateWaveform";
 
 interface SpectrogramCardProps {
   referralCode: string;
-  copied?: boolean;
-  onCopy?: () => void;
 }
 
 const COLS = 48;
@@ -36,66 +33,77 @@ function spectrogramColor(value: number): string {
   return `rgba(70, 120, 220, ${a})`;
 }
 
-function createAudio(data: number[][]): { stop: () => void } {
-  const ctx = new AudioContext();
-  const master = ctx.createGain();
-  const lpf = ctx.createBiquadFilter();
+function createAudio(data: number[][]): { stop: () => void } | null {
+  try {
+    const ctx = new AudioContext();
+    ctx.resume().catch(() => {});
 
-  lpf.type = "lowpass";
-  lpf.frequency.value = 3500;
-  lpf.Q.value = 0.7;
-  lpf.connect(master);
-  master.connect(ctx.destination);
+    const now = ctx.currentTime;
+    const master = ctx.createGain();
+    const lpf = ctx.createBiquadFilter();
 
-  master.gain.setValueAtTime(0, ctx.currentTime);
-  master.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.08);
-  master.gain.setValueAtTime(0.15, ctx.currentTime + DURATION - 0.15);
-  master.gain.linearRampToValueAtTime(0, ctx.currentTime + DURATION);
+    lpf.type = "lowpass";
+    lpf.frequency.value = 3500;
+    lpf.Q.value = 0.7;
+    lpf.connect(master);
+    master.connect(ctx.destination);
 
-  const oscillators: OscillatorNode[] = [];
+    master.gain.setValueAtTime(0, now);
+    master.gain.linearRampToValueAtTime(0.15, now + 0.08);
+    master.gain.setValueAtTime(0.15, now + DURATION - 0.15);
+    master.gain.linearRampToValueAtTime(0, now + DURATION);
 
-  for (let band = 0; band < ROWS; band++) {
-    const osc = ctx.createOscillator();
-    const bandGain = ctx.createGain();
+    const oscillators: OscillatorNode[] = [];
 
-    osc.type = "sine";
-    osc.frequency.value = FREQUENCIES[band];
-    osc.detune.value = (Math.random() - 0.5) * 4;
+    for (let band = 0; band < ROWS; band++) {
+      const osc = ctx.createOscillator();
+      const bandGain = ctx.createGain();
 
-    const row = data[band];
-    bandGain.gain.setValueAtTime(0, ctx.currentTime);
-    for (let col = 0; col < COLS; col++) {
-      const t = ctx.currentTime + (col / (COLS - 1)) * DURATION;
-      bandGain.gain.linearRampToValueAtTime(row[col] * 0.08, t);
-    }
-    bandGain.gain.linearRampToValueAtTime(0, ctx.currentTime + DURATION);
+      osc.type = "sine";
+      osc.frequency.value = FREQUENCIES[band];
+      osc.detune.value = (Math.random() - 0.5) * 4;
 
-    osc.connect(bandGain);
-    bandGain.connect(lpf);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + DURATION);
-    oscillators.push(osc);
-  }
-
-  return {
-    stop() {
-      oscillators.forEach((o) => {
-        try {
-          o.stop();
-        } catch {
-          /* already stopped */
+      const row = data[band];
+      if (!row) continue;
+      bandGain.gain.setValueAtTime(0, now);
+      for (let col = 0; col < row.length; col++) {
+        const t = now + (col / (row.length - 1)) * DURATION;
+        const val = (row[col] ?? 0) * 0.08;
+        if (Number.isFinite(t) && Number.isFinite(val)) {
+          bandGain.gain.linearRampToValueAtTime(val, t);
         }
-      });
-      ctx.close().catch(() => {});
-    },
-  };
+      }
+      bandGain.gain.linearRampToValueAtTime(0, now + DURATION);
+
+      osc.connect(bandGain);
+      bandGain.connect(lpf);
+      osc.start(now);
+      osc.stop(now + DURATION);
+      oscillators.push(osc);
+    }
+
+    return {
+      stop() {
+        oscillators.forEach((o) => {
+          try {
+            o.stop();
+          } catch {
+            /* already stopped */
+          }
+        });
+        ctx.close().catch(() => {});
+      },
+    };
+  } catch {
+    return null;
+  }
 }
 
-export function SpectrogramCard({ referralCode, copied = false, onCopy }: SpectrogramCardProps) {
+export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
   const data = useMemo(() => generateSpectrogramData(referralCode, COLS, ROWS), [referralCode]);
   const [playing, setPlaying] = useState(false);
   const [playKey, setPlayKey] = useState(0);
-  const audioRef = useRef<{ stop: () => void } | null>(null);
+  const audioRef = useRef<{ stop(): void } | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasAutoPlayed = useRef(false);
 
@@ -223,26 +231,11 @@ export function SpectrogramCard({ referralCode, copied = false, onCopy }: Spectr
               )}
             </button>
             <div>
-              <span className="text-[17px] font-semibold text-foreground leading-tight block">
-                1 Month Free
-              </span>
-              <span className="text-[10px] text-foreground/20 mt-0.5 block select-none">
-                Your unique audio signature
+              <span className="text-[13px] font-medium text-foreground/70 leading-tight block">
+                Your audio signature
               </span>
             </div>
           </div>
-          <button
-            onClick={onCopy}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-medium transition-all duration-200",
-              copied
-                ? "bg-emerald-500/15 text-emerald-400/80"
-                : "bg-foreground/7 text-foreground/50 hover:bg-foreground/12 hover:text-foreground/80 active:scale-[0.97]"
-            )}
-          >
-            {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-            {copied ? "Copied" : "Copy"}
-          </button>
         </div>
       </div>
     </div>

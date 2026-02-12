@@ -658,21 +658,6 @@ a:hover {
   animation: spectrogram-play linear both;
 }
 
-/* Past invites slide-down */
-.invites-expand {
-  display: grid;
-  grid-template-rows: 0fr;
-  transition: grid-template-rows 250ms ease-out;
-}
-
-.invites-expand[data-open="true"] {
-  grid-template-rows: 1fr;
-}
-
-.invites-expand > div {
-  overflow: hidden;
-}
-
 /* Reduced motion: disable all referral effects */
 @media (prefers-reduced-motion: reduce) {
   .referral-mesh-bg::before,
@@ -693,10 +678,6 @@ a:hover {
   .stat-gauge::after {
     transition: none;
     transform: scaleX(1);
-  }
-
-  .invites-expand {
-    transition: none;
   }
 
   .spectrogram-play {

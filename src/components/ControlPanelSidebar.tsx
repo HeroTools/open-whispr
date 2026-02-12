@@ -154,7 +154,7 @@ export default function ControlPanelSidebar({
               <Gift size={11} className="text-success" />
             </div>
             <span className="text-[11px] text-success/70 dark:text-success/60 group-hover:text-success/90 dark:group-hover:text-success/80 font-medium transition-colors duration-150">
-              Get 1 month free
+              Get a free month
             </span>
           </button>
         )}
