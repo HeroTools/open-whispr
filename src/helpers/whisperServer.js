@@ -406,7 +406,6 @@ class WhisperServerManager {
     parts.push(finalBuffer);
     parts.push("\r\n");
 
-    // Always send language; whisper.cpp defaults to "en" if omitted
     parts.push(
       `--${boundary}\r\n` +
         `Content-Disposition: form-data; name="language"\r\n\r\n` +
