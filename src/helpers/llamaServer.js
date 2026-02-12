@@ -7,6 +7,17 @@ const debugLogger = require("./debugLogger");
 const { killProcess } = require("../utils/process");
 const { getSafeTempDir } = require("./safeTempDir");
 
+const WINDOWS_BACKEND_PRIORITY = ["cuda", "vulkan", "hip", "cpu"];
+
+function getWindowsBackendRoots() {
+  const roots = [];
+  if (process.resourcesPath) {
+    roots.push(path.join(process.resourcesPath, "bin", "llama-server-win32-x64"));
+  }
+  roots.push(path.join(__dirname, "..", "..", "resources", "bin", "llama-server-win32-x64"));
+  return roots;
+}
+
 const PORT_RANGE_START = 8200;
 const PORT_RANGE_END = 8220;
 const STARTUP_TIMEOUT_MS = 60000;
@@ -25,10 +36,12 @@ class LlamaServerManager {
     this.healthCheckInterval = null;
     this.healthCheckFailures = 0;
     this.cachedServerBinaryPath = null;
+    this.selectedBackend = null;
   }
 
   getServerBinaryPath() {
     if (this.cachedServerBinaryPath) return this.cachedServerBinaryPath;
+    this.selectedBackend = null;
 
     const platform = process.platform;
     const arch = process.arch;
@@ -36,6 +49,15 @@ class LlamaServerManager {
     const binaryName =
       platform === "win32" ? `llama-server-${platformArch}.exe` : `llama-server-${platformArch}`;
     const genericName = platform === "win32" ? "llama-server.exe" : "llama-server";
+
+    if (platform === "win32") {
+      const backendSelection = this.resolveWindowsBackendBinary();
+      if (backendSelection) {
+        this.cachedServerBinaryPath = backendSelection.binaryPath;
+        this.selectedBackend = backendSelection.backend;
+        return backendSelection.binaryPath;
+      }
+    }
 
     const candidates = [];
 
@@ -68,8 +90,38 @@ class LlamaServerManager {
     return null;
   }
 
+  resolveWindowsBackendBinary() {
+    return this.getWindowsBackendCandidates()[0] || null;
+  }
+
+  getWindowsBackendCandidates() {
+    const candidates = [];
+    const roots = getWindowsBackendRoots();
+    for (const backend of WINDOWS_BACKEND_PRIORITY) {
+      for (const root of roots) {
+        if (!fs.existsSync(root)) continue;
+        const backendDir = path.join(root, backend);
+        const binaryPath = path.join(backendDir, "llama-server.exe");
+        if (fs.existsSync(binaryPath)) {
+          try {
+            fs.statSync(binaryPath);
+            candidates.push({ backend, dir: backendDir, binaryPath });
+            break;
+          } catch {
+            // Can't access binary
+          }
+        }
+      }
+    }
+    return candidates;
+  }
+
   isAvailable() {
-    return this.getServerBinaryPath() !== null;
+    try {
+      return this.getServerBinaryPath() !== null;
+    } catch {
+      return false;
+    }
   }
 
   async findAvailablePort() {
@@ -111,10 +163,42 @@ class LlamaServerManager {
   }
 
   async _doStart(modelPath, options = {}) {
-    const serverBinary = this.getServerBinaryPath();
-    if (!serverBinary) throw new Error("llama-server binary not found");
     if (!fs.existsSync(modelPath)) throw new Error(`Model file not found: ${modelPath}`);
 
+    if (process.platform === "win32") {
+      const backendCandidates = this.getWindowsBackendCandidates();
+      if (backendCandidates.length > 0) {
+        const failures = [];
+
+        for (const candidate of backendCandidates) {
+          this.cachedServerBinaryPath = candidate.binaryPath;
+          this.selectedBackend = candidate.backend;
+
+          try {
+            await this._startWithBinary(candidate.binaryPath, modelPath, options);
+            return;
+          } catch (error) {
+            failures.push(`${candidate.backend}: ${error.message}`);
+            debugLogger.warn("llama-server backend startup failed, trying next backend", {
+              backend: candidate.backend,
+              error: error.message,
+            });
+            await this.stop();
+          }
+        }
+
+        throw new Error(
+          `llama-server failed to start with available Windows backends: ${failures.join(" | ")}`
+        );
+      }
+    }
+
+    const serverBinary = this.getServerBinaryPath();
+    if (!serverBinary) throw new Error("llama-server binary not found");
+    await this._startWithBinary(serverBinary, modelPath, options);
+  }
+
+  async _startWithBinary(serverBinary, modelPath, options = {}) {
     this.port = await this.findAvailablePort();
     this.modelPath = modelPath;
 
@@ -148,6 +232,8 @@ class LlamaServerManager {
     } else if (process.platform === "linux") {
       // Linux: Set LD_LIBRARY_PATH to find .so files
       env.LD_LIBRARY_PATH = binDir + (env.LD_LIBRARY_PATH ? `:${env.LD_LIBRARY_PATH}` : "");
+    } else if (process.platform === "win32" && this.selectedBackend) {
+      env.PATH = `${binDir}${path.delimiter}${env.PATH || ""}`;
     }
 
     this.process = spawn(serverBinary, args, {
@@ -188,6 +274,7 @@ class LlamaServerManager {
     debugLogger.info("llama-server started successfully", {
       port: this.port,
       model: path.basename(modelPath),
+      backend: this.selectedBackend,
     });
   }
 
