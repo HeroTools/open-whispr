@@ -320,6 +320,7 @@ function navigateControlPanelWithVerifier(verifier) {
   windowManager.controlPanelWindow.focus();
 }
 
+
 function handleOAuthDeepLink(deepLinkUrl) {
   try {
     const parsed = new URL(deepLinkUrl);
