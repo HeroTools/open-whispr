@@ -366,7 +366,8 @@ export function ReferralDashboard() {
                     <UserPlus className="w-2.5 h-2.5 text-foreground/30" />
                   </div>
                   <span className="text-[11px] text-foreground/40">
-                    They sign up and get a <strong className="text-foreground/60">free month of Pro</strong>
+                    They sign up and get a{" "}
+                    <strong className="text-foreground/60">free month of Pro</strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -374,7 +375,8 @@ export function ReferralDashboard() {
                     <Gift className="w-2.5 h-2.5 text-foreground/30" />
                   </div>
                   <span className="text-[11px] text-foreground/40">
-                    You get a <strong className="text-foreground/60">free month</strong> when they dictate 2,000 words
+                    You get a <strong className="text-foreground/60">free month</strong> when they
+                    dictate 2,000 words
                   </span>
                 </div>
               </div>
@@ -433,7 +435,6 @@ export function ReferralDashboard() {
                   </button>
                 </div>
               </div>
-
             </div>
           </TabsContent>
 

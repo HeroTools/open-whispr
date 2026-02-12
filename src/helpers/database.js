@@ -196,7 +196,14 @@ class DatabaseManager {
     }
   }
 
-  saveNote(title, content, noteType = "personal", sourceFile = null, audioDuration = null, folderId = null) {
+  saveNote(
+    title,
+    content,
+    noteType = "personal",
+    sourceFile = null,
+    audioDuration = null,
+    folderId = null
+  ) {
     try {
       if (!this.db) {
         throw new Error("Database not initialized");
@@ -251,9 +258,7 @@ class DatabaseManager {
         params.push(folderId);
       }
       const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-      const stmt = this.db.prepare(
-        `SELECT * FROM notes ${where} ORDER BY updated_at DESC LIMIT ?`
-      );
+      const stmt = this.db.prepare(`SELECT * FROM notes ${where} ORDER BY updated_at DESC LIMIT ?`);
       params.push(limit);
       return stmt.all(...params);
     } catch (error) {
@@ -298,9 +303,7 @@ class DatabaseManager {
   getFolders() {
     try {
       if (!this.db) throw new Error("Database not initialized");
-      return this.db
-        .prepare("SELECT * FROM folders ORDER BY sort_order ASC, created_at ASC")
-        .all();
+      return this.db.prepare("SELECT * FROM folders ORDER BY sort_order ASC, created_at ASC").all();
     } catch (error) {
       console.error("Error getting folders:", error.message);
       throw error;
@@ -314,14 +317,14 @@ class DatabaseManager {
       if (!trimmed) return { success: false, error: "Folder name is required" };
       const existing = this.db.prepare("SELECT id FROM folders WHERE name = ?").get(trimmed);
       if (existing) return { success: false, error: "A folder with that name already exists" };
-      const maxOrder = this.db
-        .prepare("SELECT MAX(sort_order) as max_order FROM folders")
-        .get();
+      const maxOrder = this.db.prepare("SELECT MAX(sort_order) as max_order FROM folders").get();
       const sortOrder = (maxOrder?.max_order ?? 0) + 1;
       const result = this.db
         .prepare("INSERT INTO folders (name, sort_order) VALUES (?, ?)")
         .run(trimmed, sortOrder);
-      const folder = this.db.prepare("SELECT * FROM folders WHERE id = ?").get(result.lastInsertRowid);
+      const folder = this.db
+        .prepare("SELECT * FROM folders WHERE id = ?")
+        .get(result.lastInsertRowid);
       return { success: true, folder };
     } catch (error) {
       console.error("Error creating folder:", error.message);
@@ -339,9 +342,7 @@ class DatabaseManager {
         .prepare("SELECT id FROM folders WHERE name = 'Personal' AND is_default = 1")
         .get();
       if (personal) {
-        this.db
-          .prepare("UPDATE notes SET folder_id = ? WHERE folder_id = ?")
-          .run(personal.id, id);
+        this.db.prepare("UPDATE notes SET folder_id = ? WHERE folder_id = ?").run(personal.id, id);
       }
       this.db.prepare("DELETE FROM folders WHERE id = ?").run(id);
       return { success: true, id };

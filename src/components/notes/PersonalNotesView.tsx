@@ -154,7 +154,12 @@ export default function PersonalNotesView() {
   const handleNewNote = useCallback(async () => {
     if (!activeFolderId || isMeetingsFolder) return;
     const result = await window.electronAPI.saveNote(
-      "Untitled Note", "", "personal", null, null, activeFolderId
+      "Untitled Note",
+      "",
+      "personal",
+      null,
+      null,
+      activeFolderId
     );
     if (result.success && result.note) {
       setActiveNoteId(result.note.id);
@@ -254,7 +259,11 @@ export default function PersonalNotesView() {
         }
         await loadFolders();
       } else if (result.error) {
-        toast({ title: "Couldn't delete folder", description: result.error, variant: "destructive" });
+        toast({
+          title: "Couldn't delete folder",
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     [folders, activeFolderId, loadFolders, toast]
@@ -368,7 +377,9 @@ export default function PersonalNotesView() {
                   <span
                     className={cn(
                       "text-[9px] tabular-nums shrink-0 transition-colors",
-                      isActive ? "text-foreground/30" : "text-foreground/15 group-hover:text-foreground/25"
+                      isActive
+                        ? "text-foreground/30"
+                        : "text-foreground/15 group-hover:text-foreground/25"
                     )}
                   >
                     {count > 0 ? count : ""}

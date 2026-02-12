@@ -1,14 +1,26 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
-import { Upload, FileAudio, X, AlertCircle, Cloud, ChevronRight, Key, FolderOpen, Plus } from "lucide-react";
+import {
+  Upload,
+  FileAudio,
+  X,
+  AlertCircle,
+  Cloud,
+  ChevronRight,
+  Key,
+  FolderOpen,
+  Plus,
+} from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../lib/utils";
 import {
-  Select, SelectContent, SelectItem, SelectSeparator,
-  SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
 } from "../ui/select";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
-} from "../ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
 import { Input } from "../ui/input";
 import type { FolderItem } from "../../types/electron";
 import { useAuth } from "../../hooks/useAuth";
@@ -62,23 +74,37 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
   const isProUser = usage?.isSubscribed || usage?.isTrial;
 
   const {
-    useLocalWhisper, setUseLocalWhisper,
-    whisperModel, setWhisperModel,
-    localTranscriptionProvider, setLocalTranscriptionProvider,
-    parakeetModel, setParakeetModel,
-    cloudTranscriptionProvider, setCloudTranscriptionProvider,
-    cloudTranscriptionModel, setCloudTranscriptionModel,
-    cloudTranscriptionBaseUrl, setCloudTranscriptionBaseUrl,
-    cloudTranscriptionMode, setCloudTranscriptionMode,
-    openaiApiKey, setOpenaiApiKey,
-    groqApiKey, setGroqApiKey,
-    mistralApiKey, setMistralApiKey,
-    customTranscriptionApiKey, setCustomTranscriptionApiKey,
+    useLocalWhisper,
+    setUseLocalWhisper,
+    whisperModel,
+    setWhisperModel,
+    localTranscriptionProvider,
+    setLocalTranscriptionProvider,
+    parakeetModel,
+    setParakeetModel,
+    cloudTranscriptionProvider,
+    setCloudTranscriptionProvider,
+    cloudTranscriptionModel,
+    setCloudTranscriptionModel,
+    cloudTranscriptionBaseUrl,
+    setCloudTranscriptionBaseUrl,
+    cloudTranscriptionMode,
+    setCloudTranscriptionMode,
+    openaiApiKey,
+    setOpenaiApiKey,
+    groqApiKey,
+    setGroqApiKey,
+    mistralApiKey,
+    setMistralApiKey,
+    customTranscriptionApiKey,
+    setCustomTranscriptionApiKey,
     updateTranscriptionSettings,
-    useReasoningModel, reasoningModel,
+    useReasoningModel,
+    reasoningModel,
   } = useSettings();
 
-  const isOpenWhisprCloud = isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
+  const isOpenWhisprCloud =
+    isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
   const showSetup = !isProUser && !setupDismissed && state === "idle";
   const showModelPicker = !isSignedIn || cloudTranscriptionMode === "byok" || useLocalWhisper;
   const shouldCenter = !showSetup && !advancedOpen;
@@ -100,22 +126,29 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
   const getActiveModelLabel = (): string => {
     if (isOpenWhisprCloud) return "OpenWhispr Cloud";
     if (useLocalWhisper) {
-      if (localTranscriptionProvider === "nvidia") return `Parakeet · ${parakeetModel || "default"}`;
+      if (localTranscriptionProvider === "nvidia")
+        return `Parakeet · ${parakeetModel || "default"}`;
       return `Whisper · ${whisperModel || "base"}`;
     }
-    const name = cloudTranscriptionProvider === "custom"
-      ? "Custom"
-      : cloudTranscriptionProvider.charAt(0).toUpperCase() + cloudTranscriptionProvider.slice(1);
+    const name =
+      cloudTranscriptionProvider === "custom"
+        ? "Custom"
+        : cloudTranscriptionProvider.charAt(0).toUpperCase() + cloudTranscriptionProvider.slice(1);
     return `${name} · ${cloudTranscriptionModel}`;
   };
 
   const getActiveApiKey = (): string => {
     switch (cloudTranscriptionProvider) {
-      case "openai": return openaiApiKey;
-      case "groq": return groqApiKey;
-      case "mistral": return mistralApiKey;
-      case "custom": return customTranscriptionApiKey || "";
-      default: return "";
+      case "openai":
+        return openaiApiKey;
+      case "groq":
+        return groqApiKey;
+      case "mistral":
+        return mistralApiKey;
+      case "custom":
+        return customTranscriptionApiKey || "";
+      default:
+        return "";
     }
   };
 
@@ -124,13 +157,15 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
     const model = reasoningModel || getAllReasoningModels()[0]?.value;
     if (!model) return "";
     try {
-      const title = await reasoningService.processText(
-        text.slice(0, 2000), model, null,
-        { systemPrompt: TITLE_SYSTEM_PROMPT, temperature: 0.3 }
-      );
+      const title = await reasoningService.processText(text.slice(0, 2000), model, null, {
+        systemPrompt: TITLE_SYSTEM_PROMPT,
+        temperature: 0.3,
+      });
       const cleaned = title.trim().replace(/^["']|["']$/g, "");
       return cleaned.length > 0 && cleaned.length < 100 ? cleaned : "";
-    } catch { return ""; }
+    } catch {
+      return "";
+    }
   };
 
   const handleBrowse = async () => {
@@ -221,7 +256,14 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
         const title = aiTitle || fallbackTitle;
 
         const folderId = selectedFolderId ? Number(selectedFolderId) : null;
-        const noteRes = await window.electronAPI.saveNote(title, res.text, "upload", file.name, null, folderId);
+        const noteRes = await window.electronAPI.saveNote(
+          title,
+          res.text,
+          "upload",
+          file.name,
+          null,
+          folderId
+        );
         if (noteRes.success && noteRes.note) setNoteId(noteRes.note.id);
         setState("complete");
       } else {
@@ -315,9 +357,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
         onCloudProviderSelect={setCloudTranscriptionProvider}
         selectedCloudModel={cloudTranscriptionModel}
         onCloudModelSelect={setCloudTranscriptionModel}
-        selectedLocalModel={
-          localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
-        }
+        selectedLocalModel={localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel}
         onLocalModelSelect={(modelId) => {
           if (localTranscriptionProvider === "nvidia") {
             setParakeetModel(modelId);
@@ -326,7 +366,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
           }
         }}
         selectedLocalProvider={localTranscriptionProvider}
-        onLocalProviderSelect={setLocalTranscriptionProvider}
+        onLocalProviderSelect={(id) => setLocalTranscriptionProvider(id as "whisper" | "nvidia")}
         useLocalWhisper={useLocalWhisper}
         onModeChange={(isLocal) => {
           setUseLocalWhisper(isLocal);
@@ -391,27 +431,38 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
             <>
               <div className="flex flex-col items-center mb-5">
                 <div className="w-10 h-10 rounded-[10px] bg-gradient-to-b from-foreground/5 to-foreground/[0.02] dark:from-white/8 dark:to-white/3 border border-foreground/8 dark:border-white/8 flex items-center justify-center mb-4">
-                  <Upload size={17} strokeWidth={1.5} className="text-foreground/25 dark:text-foreground/35" />
+                  <Upload
+                    size={17}
+                    strokeWidth={1.5}
+                    className="text-foreground/25 dark:text-foreground/35"
+                  />
                 </div>
                 <h2 className="text-[13px] font-semibold text-foreground mb-1">Upload Audio</h2>
-                <p className="text-[10px] text-foreground/25">
-                  Using {getActiveModelLabel()}
-                </p>
+                <p className="text-[10px] text-foreground/25">Using {getActiveModelLabel()}</p>
               </div>
 
               <div
                 onDrop={handleDrop}
-                onDragOver={(e) => { e.preventDefault(); setIsDragOver(true); }}
-                onDragLeave={(e) => { e.preventDefault(); setIsDragOver(false); }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(false);
+                }}
                 onClick={handleBrowse}
                 className={cn(
                   "relative rounded-lg p-8 text-center cursor-pointer transition-all duration-300 group",
                   "bg-surface-1/40 dark:bg-white/[0.03] backdrop-blur-sm",
                   "border border-foreground/6 dark:border-white/6",
                   "hover:bg-surface-1/60 dark:hover:bg-white/[0.05] hover:border-foreground/12 dark:hover:border-white/10",
-                  isDragOver && "border-primary/30 bg-primary/[0.04] dark:bg-primary/[0.06] scale-[1.01]"
+                  isDragOver &&
+                    "border-primary/30 bg-primary/[0.04] dark:bg-primary/[0.06] scale-[1.01]"
                 )}
-                style={isDragOver ? { animation: "drag-pulse 1.5s ease-in-out infinite" } : undefined}
+                style={
+                  isDragOver ? { animation: "drag-pulse 1.5s ease-in-out infinite" } : undefined
+                }
               >
                 <div className="absolute inset-0 rounded-lg overflow-hidden pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-500">
                   <div
@@ -423,7 +474,10 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                 {!isDragOver ? (
                   <div className="flex flex-col items-center gap-2 relative">
                     <div className="w-8 h-8 rounded-full bg-foreground/[0.03] dark:bg-white/[0.04] flex items-center justify-center mb-1">
-                      <Upload size={14} className="text-foreground/20 dark:text-foreground/30 group-hover:text-foreground/40 transition-colors" />
+                      <Upload
+                        size={14}
+                        className="text-foreground/20 dark:text-foreground/30 group-hover:text-foreground/40 transition-colors"
+                      />
                     </div>
                     <p className="text-[11px] text-foreground/35 group-hover:text-foreground/50 transition-colors">
                       Drop audio file or click to browse
@@ -450,13 +504,13 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                     <FileAudio size={15} className="text-primary/60" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="text-[12px] text-foreground/70 truncate font-medium">{file.name}</p>
+                    <p className="text-[12px] text-foreground/70 truncate font-medium">
+                      {file.name}
+                    </p>
                     {file.size && (
                       <p className="text-[10px] text-foreground/25 mt-0.5">{file.size}</p>
                     )}
-                    <p className="text-[9px] text-foreground/20 mt-0.5">
-                      {getActiveModelLabel()}
-                    </p>
+                    <p className="text-[9px] text-foreground/20 mt-0.5">{getActiveModelLabel()}</p>
                   </div>
                   <button
                     onClick={reset}
@@ -468,10 +522,20 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
               </div>
 
               <div className="flex items-center gap-2 justify-center">
-                <Button variant="default" size="sm" onClick={handleTranscribe} className="h-8 text-[11px] px-5">
+                <Button
+                  variant="default"
+                  size="sm"
+                  onClick={handleTranscribe}
+                  className="h-8 text-[11px] px-5"
+                >
                   Transcribe
                 </Button>
-                <Button variant="ghost" size="sm" onClick={reset} className="h-8 text-[11px] text-foreground/35">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={reset}
+                  className="h-8 text-[11px] text-foreground/35"
+                >
                   Cancel
                 </Button>
               </div>
@@ -479,7 +543,10 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
           )}
 
           {state === "transcribing" && (
-            <div className="flex flex-col items-center" style={{ animation: "float-up 0.3s ease-out" }}>
+            <div
+              className="flex flex-col items-center"
+              style={{ animation: "float-up 0.3s ease-out" }}
+            >
               <div className="flex items-end justify-center gap-[3px] h-10 mb-5">
                 {[0, 1, 2, 3, 4, 5, 6].map((i) => (
                   <div
@@ -503,35 +570,59 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
 
               <p className="text-[11px] text-foreground/50 font-medium">{getTranscribingLabel()}</p>
               {file && (
-                <p className="text-[9px] text-foreground/20 mt-1 truncate max-w-[200px]">{file.name}</p>
+                <p className="text-[9px] text-foreground/20 mt-1 truncate max-w-[200px]">
+                  {file.name}
+                </p>
               )}
             </div>
           )}
 
           {state === "complete" && result && (
-            <div className="flex flex-col items-center" style={{ animation: "float-up 0.3s ease-out" }}>
+            <div
+              className="flex flex-col items-center"
+              style={{ animation: "float-up 0.3s ease-out" }}
+            >
               <div className="relative w-12 h-12 mb-4">
                 <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
-                  <circle cx="18" cy="18" r="15" fill="none" strokeWidth="1.5" className="stroke-success/15" />
                   <circle
-                    cx="18" cy="18" r="15" fill="none" strokeWidth="1.5"
-                    className="stroke-success/60" strokeDasharray="94.25" strokeLinecap="round"
+                    cx="18"
+                    cy="18"
+                    r="15"
+                    fill="none"
+                    strokeWidth="1.5"
+                    className="stroke-success/15"
+                  />
+                  <circle
+                    cx="18"
+                    cy="18"
+                    r="15"
+                    fill="none"
+                    strokeWidth="1.5"
+                    className="stroke-success/60"
+                    strokeDasharray="94.25"
+                    strokeLinecap="round"
                     style={{ animation: "ring-fill 0.8s ease-out forwards" }}
                   />
                 </svg>
                 <div className="absolute inset-0 flex items-center justify-center">
                   <svg className="w-5 h-5 text-success/70" viewBox="0 0 24 24" fill="none">
                     <path
-                      d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5"
-                      strokeLinecap="round" strokeLinejoin="round"
-                      strokeDasharray="24" strokeDashoffset="24"
+                      d="M5 13l4 4L19 7"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeDasharray="24"
+                      strokeDashoffset="24"
                       style={{ animation: "draw-check 0.4s ease-out 0.5s forwards" }}
                     />
                   </svg>
                 </div>
               </div>
 
-              <p className="text-[12px] text-foreground/60 font-medium mb-1">Transcription complete</p>
+              <p className="text-[12px] text-foreground/60 font-medium mb-1">
+                Transcription complete
+              </p>
               <p className="text-[9px] text-foreground/25 max-w-[240px] text-center line-clamp-2 mb-4">
                 {result.slice(0, 150)}
               </p>
@@ -581,11 +672,21 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
 
               <div className="flex items-center gap-2">
                 {noteId != null && onNoteCreated && (
-                  <Button variant="default" size="sm" onClick={() => onNoteCreated(noteId)} className="h-8 text-[11px]">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => onNoteCreated(noteId)}
+                    className="h-8 text-[11px]"
+                  >
                     Open Note
                   </Button>
                 )}
-                <Button variant="ghost" size="sm" onClick={reset} className="h-8 text-[11px] text-foreground/35">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={reset}
+                  className="h-8 text-[11px] text-foreground/35"
+                >
                   Upload Another
                 </Button>
               </div>
@@ -598,17 +699,30 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                 <div className="flex items-start gap-2.5">
                   <AlertCircle size={14} className="text-destructive/50 shrink-0 mt-0.5" />
                   <p className="flex-1 text-[11px] text-destructive/70 leading-relaxed">{error}</p>
-                  <button onClick={reset} className="text-foreground/15 hover:text-foreground/30 transition-colors shrink-0 p-0.5 rounded">
+                  <button
+                    onClick={reset}
+                    className="text-foreground/15 hover:text-foreground/30 transition-colors shrink-0 p-0.5 rounded"
+                  >
                     <X size={11} />
                   </button>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 justify-center">
-                <Button variant="ghost" size="sm" onClick={handleTranscribe} className="h-7 text-[10px] text-foreground/40">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleTranscribe}
+                  className="h-7 text-[10px] text-foreground/40"
+                >
                   Retry
                 </Button>
-                <Button variant="ghost" size="sm" onClick={reset} className="h-7 text-[10px] text-foreground/25">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={reset}
+                  className="h-7 text-[10px] text-foreground/25"
+                >
                   Start Over
                 </Button>
               </div>
@@ -658,7 +772,10 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setShowNewFolderDialog(false); setNewFolderName(""); }}
+              onClick={() => {
+                setShowNewFolderDialog(false);
+                setNewFolderName("");
+              }}
               className="h-7 text-[11px]"
             >
               Cancel

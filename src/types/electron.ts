@@ -229,7 +229,11 @@ declare global {
         folderId?: number | null
       ) => Promise<{ success: boolean; note?: NoteItem }>;
       getNote: (id: number) => Promise<NoteItem | null>;
-      getNotes: (noteType?: string | null, limit?: number, folderId?: number | null) => Promise<NoteItem[]>;
+      getNotes: (
+        noteType?: string | null,
+        limit?: number,
+        folderId?: number | null
+      ) => Promise<NoteItem[]>;
       updateNote: (
         id: number,
         updates: {
@@ -249,9 +253,14 @@ declare global {
 
       // Folder operations
       getFolders: () => Promise<FolderItem[]>;
-      createFolder: (name: string) => Promise<{ success: boolean; folder?: FolderItem; error?: string }>;
+      createFolder: (
+        name: string
+      ) => Promise<{ success: boolean; folder?: FolderItem; error?: string }>;
       deleteFolder: (id: number) => Promise<{ success: boolean; error?: string }>;
-      renameFolder: (id: number, name: string) => Promise<{ success: boolean; folder?: FolderItem; error?: string }>;
+      renameFolder: (
+        id: number,
+        name: string
+      ) => Promise<{ success: boolean; folder?: FolderItem; error?: string }>;
       getFolderNoteCounts: () => Promise<Array<{ folder_id: number; count: number }>>;
 
       // Audio file operations

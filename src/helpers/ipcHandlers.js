@@ -12,8 +12,13 @@ const DeepgramStreaming = require("./deepgramStreaming");
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
 const AUDIO_MIME_TYPES = {
-  mp3: "audio/mpeg", wav: "audio/wav", m4a: "audio/mp4",
-  webm: "audio/webm", ogg: "audio/ogg", flac: "audio/flac", aac: "audio/aac",
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  m4a: "audio/mp4",
+  webm: "audio/webm",
+  ogg: "audio/ogg",
+  flac: "audio/flac",
+  aac: "audio/aac",
 };
 
 function buildMultipartBody(fileBuffer, fileName, contentType, fields = {}) {
@@ -1458,11 +1463,15 @@ class IPCHandlers {
         const cookieHeader = await getSessionCookies(event);
         if (!cookieHeader) throw new Error("No session cookies available");
 
-        debugLogger.debug("Cloud reason request", {
-          model: opts.model || "(default)",
-          agentName: opts.agentName || "(none)",
-          textLength: text?.length || 0,
-        }, "cloud-api");
+        debugLogger.debug(
+          "Cloud reason request",
+          {
+            model: opts.model || "(default)",
+            agentName: opts.agentName || "(none)",
+            textLength: text?.length || 0,
+          },
+          "cloud-api"
+        );
 
         const response = await fetch(`${apiUrl}/api/reason`, {
           method: "POST",
@@ -1492,11 +1501,15 @@ class IPCHandlers {
         }
 
         const data = await response.json();
-        debugLogger.debug("Cloud reason response", {
-          model: data.model,
-          provider: data.provider,
-          resultLength: data.text?.length || 0,
-        }, "cloud-api");
+        debugLogger.debug(
+          "Cloud reason response",
+          {
+            model: data.model,
+            provider: data.provider,
+            resultLength: data.text?.length || 0,
+          },
+          "cloud-api"
+        );
         return { success: true, text: data.text, model: data.model, provider: data.provider };
       } catch (error) {
         debugLogger.error("Cloud reasoning error:", error);
@@ -1595,7 +1608,12 @@ class IPCHandlers {
           return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
         }
         if (data.statusCode === 429) {
-          return { success: false, error: "Daily word limit reached", code: "LIMIT_REACHED", ...data.data };
+          return {
+            success: false,
+            error: "Daily word limit reached",
+            code: "LIMIT_REACHED",
+            ...data.data,
+          };
         }
         if (data.statusCode !== 200) {
           throw new Error(data.data?.error || `API error: ${data.statusCode}`);
@@ -1608,45 +1626,52 @@ class IPCHandlers {
       }
     });
 
-    ipcMain.handle("transcribe-audio-file-byok", async (event, { filePath, apiKey, baseUrl, model }) => {
-      const fs = require("fs");
-      try {
-        if (!apiKey) throw new Error("No API key configured. Add your key in Settings.");
-        if (!baseUrl) throw new Error("No transcription endpoint configured.");
+    ipcMain.handle(
+      "transcribe-audio-file-byok",
+      async (event, { filePath, apiKey, baseUrl, model }) => {
+        const fs = require("fs");
+        try {
+          if (!apiKey) throw new Error("No API key configured. Add your key in Settings.");
+          if (!baseUrl) throw new Error("No transcription endpoint configured.");
 
-        const audioBuffer = fs.readFileSync(filePath);
-        const ext = path.extname(filePath).toLowerCase().replace(".", "");
-        const contentType = AUDIO_MIME_TYPES[ext] || "audio/mpeg";
-        const fileName = path.basename(filePath);
+          const audioBuffer = fs.readFileSync(filePath);
+          const ext = path.extname(filePath).toLowerCase().replace(".", "");
+          const contentType = AUDIO_MIME_TYPES[ext] || "audio/mpeg";
+          const fileName = path.basename(filePath);
 
-        let transcriptionUrl = baseUrl.replace(/\/+$/, "");
-        if (!transcriptionUrl.endsWith("/audio/transcriptions")) {
-          transcriptionUrl += "/audio/transcriptions";
+          let transcriptionUrl = baseUrl.replace(/\/+$/, "");
+          if (!transcriptionUrl.endsWith("/audio/transcriptions")) {
+            transcriptionUrl += "/audio/transcriptions";
+          }
+
+          const { body, boundary } = buildMultipartBody(audioBuffer, fileName, contentType, {
+            model: model || "whisper-1",
+          });
+
+          const url = new URL(transcriptionUrl);
+          const data = await postMultipart(url, body, boundary, {
+            Authorization: `Bearer ${apiKey}`,
+          });
+
+          if (data.statusCode === 401) {
+            return { success: false, error: "Invalid API key. Check your key in Settings." };
+          }
+          if (data.statusCode === 429) {
+            return { success: false, error: "Rate limit exceeded. Please try again later." };
+          }
+          if (data.statusCode !== 200) {
+            throw new Error(
+              data.data?.error?.message || data.data?.error || `API error: ${data.statusCode}`
+            );
+          }
+
+          return { success: true, text: data.data.text };
+        } catch (error) {
+          debugLogger.error("BYOK audio file transcription error", { error: error.message });
+          return { success: false, error: error.message };
         }
-
-        const { body, boundary } = buildMultipartBody(audioBuffer, fileName, contentType, {
-          model: model || "whisper-1",
-        });
-
-        const url = new URL(transcriptionUrl);
-        const data = await postMultipart(url, body, boundary, { Authorization: `Bearer ${apiKey}` });
-
-        if (data.statusCode === 401) {
-          return { success: false, error: "Invalid API key. Check your key in Settings." };
-        }
-        if (data.statusCode === 429) {
-          return { success: false, error: "Rate limit exceeded. Please try again later." };
-        }
-        if (data.statusCode !== 200) {
-          throw new Error(data.data?.error?.message || data.data?.error || `API error: ${data.statusCode}`);
-        }
-
-        return { success: true, text: data.data.text };
-      } catch (error) {
-        debugLogger.error("BYOK audio file transcription error", { error: error.message });
-        return { success: false, error: error.message };
       }
-    });
+    );
 
     // Referral stats handler
     ipcMain.handle("get-referral-stats", async (event) => {

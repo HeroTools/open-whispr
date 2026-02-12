@@ -440,7 +440,12 @@ export default function ControlPanel() {
             )}
             {activeView === "upload" && (
               <Suspense fallback={null}>
-                <UploadAudioView onNoteCreated={(noteId) => { setActiveNoteId(noteId); setActiveView("personal-notes"); }} />
+                <UploadAudioView
+                  onNoteCreated={(noteId) => {
+                    setActiveNoteId(noteId);
+                    setActiveView("personal-notes");
+                  }}
+                />
               </Suspense>
             )}
           </div>
