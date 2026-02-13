@@ -25,6 +25,7 @@ static const char* TERMINAL_CLASSES[] = {
     "org.wezfurlong.wezterm",
     "Hyper",
     "TMobaXterm",
+    "kitty",
     NULL
 };
 

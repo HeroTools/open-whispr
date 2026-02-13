@@ -548,7 +548,7 @@ class IPCHandlers {
         }
 
         if (process.platform === "win32" && this.windowsKeyManager) {
-          const activationMode = await this.windowManager.getActivationMode();
+          const activationMode = this.windowManager.getActivationMode();
           debugLogger.log(
             `[IPC] Exiting hotkey capture mode, activationMode="${activationMode}", hotkey="${effectiveHotkey}"`
           );

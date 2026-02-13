@@ -531,7 +531,7 @@ async function startApp() {
       // Handle dictation if Globe is the current hotkey
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (isLiveWindow(windowManager.mainWindow)) {
-          const activationMode = await windowManager.getActivationMode();
+          const activationMode = windowManager.getActivationMode();
           if (activationMode === "push") {
             const now = Date.now();
             if (now - globeLastStopTime < POST_STOP_COOLDOWN_MS) return;
@@ -561,7 +561,7 @@ async function startApp() {
 
       // Handle push-to-talk release if Globe is the current hotkey
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
-        const activationMode = await windowManager.getActivationMode();
+        const activationMode = windowManager.getActivationMode();
         if (activationMode === "push") {
           globeKeyDownTime = 0;
           globeLastStopTime = Date.now();
@@ -592,7 +592,7 @@ async function startApp() {
       if (currentHotkey !== modifier) return;
       if (!isLiveWindow(windowManager.mainWindow)) return;
 
-      const activationMode = await windowManager.getActivationMode();
+      const activationMode = windowManager.getActivationMode();
       if (activationMode === "push") {
         const now = Date.now();
         if (now - rightModLastStopTime < POST_STOP_COOLDOWN_MS) return;
@@ -617,7 +617,7 @@ async function startApp() {
       if (currentHotkey !== modifier) return;
       if (!isLiveWindow(windowManager.mainWindow)) return;
 
-      const activationMode = await windowManager.getActivationMode();
+      const activationMode = windowManager.getActivationMode();
       if (activationMode === "push") {
         rightModDownTime = 0;
         rightModLastStopTime = Date.now();
@@ -646,21 +646,9 @@ async function startApp() {
   // Set up Windows Push-to-Talk handling
   if (process.platform === "win32") {
     debugLogger.debug("[Push-to-Talk] Windows Push-to-Talk setup starting");
-    let winKeyDownTime = 0;
-    let winKeyIsRecording = false;
-    let winLastStopTime = 0;
 
-    const WIN_MIN_HOLD_DURATION_MS = 150;
-    const WIN_POST_STOP_COOLDOWN_MS = 300;
+    const isValidHotkey = (hotkey) => hotkey && hotkey !== "GLOBE";
 
-    // Helper to check if hotkey is valid for Windows key listener
-    const isValidHotkey = (hotkey) => {
-      if (!hotkey) return false;
-      if (hotkey === "GLOBE") return false;
-      return true;
-    };
-
-    // Right-side single modifiers need the native listener even in tap mode
     const isRightSideMod = (hotkey) =>
       /^Right(Control|Ctrl|Alt|Option|Shift|Super|Win|Meta|Command|Cmd)$/i.test(hotkey);
 
@@ -672,60 +660,29 @@ async function startApp() {
       return isRightSideMod(hotkey) || isModifierOnlyHotkey(hotkey);
     };
 
-    windowsKeyManager.on("key-down", async (key) => {
-      debugLogger.debug("[Push-to-Talk] Key DOWN received", { key });
+    windowsKeyManager.on("key-down", (_key) => {
       if (!isLiveWindow(windowManager.mainWindow)) return;
 
-      const activationMode = await windowManager.getActivationMode();
-      debugLogger.debug("[Push-to-Talk] Activation mode check", { activationMode });
+      const activationMode = windowManager.getActivationMode();
       if (activationMode === "push") {
-        const now = Date.now();
-        if (now - winLastStopTime < WIN_POST_STOP_COOLDOWN_MS) {
-          debugLogger.debug("[Push-to-Talk] Ignoring KEY_DOWN during post-stop cooldown");
-          return;
-        }
-
-        debugLogger.debug("[Push-to-Talk] Starting recording sequence");
-        windowManager.showDictationPanel();
-        const pressTime = now;
-        winKeyDownTime = pressTime;
-        winKeyIsRecording = false;
-        setTimeout(async () => {
-          if (winKeyDownTime === pressTime && !winKeyIsRecording) {
-            winKeyIsRecording = true;
-            debugLogger.debug("[Push-to-Talk] Sending start dictation command");
-            windowManager.sendStartDictation();
-          }
-        }, WIN_MIN_HOLD_DURATION_MS);
+        windowManager.startWindowsPushToTalk();
       } else if (activationMode === "tap") {
         windowManager.showDictationPanel();
         windowManager.mainWindow.webContents.send("toggle-dictation");
       }
     });
 
-    windowsKeyManager.on("key-up", async () => {
-      debugLogger.debug("[Push-to-Talk] Key UP received");
+    windowsKeyManager.on("key-up", () => {
       if (!isLiveWindow(windowManager.mainWindow)) return;
 
-      const activationMode = await windowManager.getActivationMode();
+      const activationMode = windowManager.getActivationMode();
       if (activationMode === "push") {
-        const wasRecording = winKeyIsRecording;
-        winKeyDownTime = 0;
-        winKeyIsRecording = false;
-        winLastStopTime = Date.now();
-        if (wasRecording) {
-          debugLogger.debug("[Push-to-Talk] Sending stop dictation command");
-          windowManager.sendStopDictation();
-        } else {
-          debugLogger.debug("[Push-to-Talk] Short tap detected, hiding panel");
-          windowManager.hideDictationPanel();
-        }
+        windowManager.handleWindowsPushKeyUp();
       }
     });
 
     windowsKeyManager.on("error", (error) => {
       debugLogger.warn("[Push-to-Talk] Windows key listener error", { error: error.message });
-      windowManager.setWindowsPushToTalkAvailable(false);
       if (isLiveWindow(windowManager.mainWindow)) {
         windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
           reason: "error",
@@ -738,7 +695,6 @@ async function startApp() {
       debugLogger.debug(
         "[Push-to-Talk] Windows key listener not available - falling back to toggle mode"
       );
-      windowManager.setWindowsPushToTalkAvailable(false);
       if (isLiveWindow(windowManager.mainWindow)) {
         windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
           reason: "binary_not_found",
@@ -749,55 +705,37 @@ async function startApp() {
 
     windowsKeyManager.on("ready", () => {
       debugLogger.debug("[Push-to-Talk] WindowsKeyManager is ready and listening");
-      windowManager.setWindowsPushToTalkAvailable(true);
     });
 
-    // Start the Windows key listener with the current hotkey
-    const startWindowsKeyListener = async () => {
-      debugLogger.debug("[Push-to-Talk] Checking if should start Windows key listener");
-      if (!isLiveWindow(windowManager.mainWindow)) {
-        debugLogger.debug("[Push-to-Talk] Main window not live, skipping");
-        return;
-      }
-      const activationMode = await windowManager.getActivationMode();
+    const startWindowsKeyListener = () => {
+      if (!isLiveWindow(windowManager.mainWindow)) return;
+      const activationMode = windowManager.getActivationMode();
       const currentHotkey = hotkeyManager.getCurrentHotkey();
-      debugLogger.debug("[Push-to-Talk] Current state", { activationMode, currentHotkey });
 
       if (needsNativeListener(currentHotkey, activationMode)) {
-        debugLogger.debug("[Push-to-Talk] Starting Windows key listener", {
-          hotkey: currentHotkey,
-        });
         windowsKeyManager.start(currentHotkey);
-      } else {
-        debugLogger.debug("[Push-to-Talk] Native listener not needed for current configuration");
       }
     };
 
     const STARTUP_DELAY_MS = 3000;
-    debugLogger.debug("[Push-to-Talk] Scheduling listener start", { delayMs: STARTUP_DELAY_MS });
     setTimeout(startWindowsKeyListener, STARTUP_DELAY_MS);
 
-    // Listen for activation mode changes from renderer
-    ipcMain.on("activation-mode-changed", async (_event, mode) => {
-      debugLogger.debug("[Push-to-Talk] IPC: Activation mode changed", { mode });
+    ipcMain.on("activation-mode-changed", (_event, mode) => {
+      windowManager.resetWindowsPushState();
       const currentHotkey = hotkeyManager.getCurrentHotkey();
       if (needsNativeListener(currentHotkey, mode)) {
-        debugLogger.debug("[Push-to-Talk] Starting listener", { hotkey: currentHotkey });
         windowsKeyManager.start(currentHotkey);
       } else {
-        debugLogger.debug("[Push-to-Talk] Stopping listener");
         windowsKeyManager.stop();
       }
     });
 
-    // Listen for hotkey changes from renderer
-    ipcMain.on("hotkey-changed", async (_event, hotkey) => {
-      debugLogger.debug("[Push-to-Talk] IPC: Hotkey changed", { hotkey });
+    ipcMain.on("hotkey-changed", (_event, hotkey) => {
       if (!isLiveWindow(windowManager.mainWindow)) return;
-      const activationMode = await windowManager.getActivationMode();
+      windowManager.resetWindowsPushState();
+      const activationMode = windowManager.getActivationMode();
       windowsKeyManager.stop();
       if (needsNativeListener(hotkey, activationMode)) {
-        debugLogger.debug("[Push-to-Talk] Starting listener for new hotkey", { hotkey });
         windowsKeyManager.start(hotkey);
       }
     });
