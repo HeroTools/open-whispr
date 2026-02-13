@@ -640,6 +640,25 @@ function useSettingsInternal() {
     [setFloatingIconAutoHideLocal]
   );
 
+  const [minimizeToTray, setMinimizeToTrayLocal] = useLocalStorage(
+    "minimizeToTray",
+    true,
+    {
+      serialize: String,
+      deserialize: (value) => value === "true",
+    }
+  );
+
+  const setMinimizeToTray = useCallback(
+    (enabled: boolean) => {
+      setMinimizeToTrayLocal(enabled);
+      if (typeof window !== "undefined" && window.electronAPI?.notifyMinimizeToTrayChanged) {
+        window.electronAPI.notifyMinimizeToTrayChanged(enabled);
+      }
+    },
+    [setMinimizeToTrayLocal]
+  );
+
   // Microphone settings
   const [preferBuiltInMic, setPreferBuiltInMic] = useLocalStorage("preferBuiltInMic", true, {
     serialize: String,
@@ -819,6 +838,8 @@ function useSettingsInternal() {
     setAudioCuesEnabled,
     floatingIconAutoHide,
     setFloatingIconAutoHide,
+    minimizeToTray,
+    setMinimizeToTray,
     preferBuiltInMic,
     selectedMicDeviceId,
     setPreferBuiltInMic,

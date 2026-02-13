@@ -312,6 +312,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, enabled) => callback(enabled)
   ),
 
+  notifyMinimizeToTrayChanged: (enabled) =>
+    ipcRenderer.send("minimize-to-tray-changed", enabled),
+  getMinimizeToTray: () => ipcRenderer.invoke("get-minimize-to-tray"),
+
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
   setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),

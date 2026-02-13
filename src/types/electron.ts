@@ -425,6 +425,9 @@ declare global {
       notifyFloatingIconAutoHideChanged?: (enabled: boolean) => void;
       onFloatingIconAutoHideChanged?: (callback: (enabled: boolean) => void) => () => void;
 
+      notifyMinimizeToTrayChanged?: (enabled: boolean) => void;
+      getMinimizeToTray?: () => Promise<boolean>;
+
       // Auto-start at login
       getAutoStartEnabled?: () => Promise<boolean>;
       setAutoStartEnabled?: (enabled: boolean) => Promise<{ success: boolean; error?: string }>;
