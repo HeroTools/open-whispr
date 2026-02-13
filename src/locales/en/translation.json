@@ -1059,6 +1059,10 @@
         "description": "Control when the dictation icon is visible on your screen",
         "title": "Floating Icon"
       },
+      "minimizeToTray": {
+        "label": "Minimize to system tray",
+        "description": "When enabled, closing the Control Panel hides it to the system tray. When disabled, it minimizes to the taskbar instead."
+      },
       "hotkey": {
         "activationMode": "Activation Mode",
         "description": "The key combination that starts and stops voice dictation",

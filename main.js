@@ -462,6 +462,14 @@ async function startApp() {
     }
   });
 
+  ipcMain.on("minimize-to-tray-changed", (_event, enabled) => {
+    windowManager.setMinimizeToTray(enabled);
+  });
+
+  ipcMain.handle("get-minimize-to-tray", () => {
+    return windowManager.getMinimizeToTray();
+  });
+
   if (process.platform === "darwin") {
     app.setActivationPolicy("regular");
   }

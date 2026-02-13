@@ -26,6 +26,7 @@ class WindowManager {
     this.winPushState = null;
     this._cachedActivationMode = "tap";
     this._floatingIconAutoHide = false;
+    this._minimizeToTray = true;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -392,6 +393,14 @@ class WindowManager {
     this._floatingIconAutoHide = Boolean(enabled);
   }
 
+  setMinimizeToTray(enabled) {
+    this._minimizeToTray = Boolean(enabled);
+  }
+
+  getMinimizeToTray() {
+    return this._minimizeToTray;
+  }
+
   setHotkeyListeningMode(enabled) {
     this.hotkeyManager.setListeningMode(enabled);
   }
@@ -495,7 +504,7 @@ class WindowManager {
     this.controlPanelWindow.on("close", (event) => {
       if (!this.isQuitting) {
         event.preventDefault();
-        if (process.platform === "darwin") {
+        if (this._minimizeToTray) {
           this.hideControlPanelToTray();
         } else {
           this.controlPanelWindow.minimize();
