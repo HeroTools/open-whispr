@@ -27,6 +27,8 @@ const BINARIES = {
     outputName: "whisper-server-darwin-x64",
   },
   "win32-x64": {
+    // Windows builds usually include CUDA support dynamically or via separate DLLs
+    // For now keeping as is, but could be updated if specific CUDA binaries exist
     zipName: "whisper-server-win32-x64-cpu.zip",
     binaryName: "whisper-server-win32-x64-cpu.exe",
     outputName: "whisper-server-win32-x64.exe",
@@ -39,6 +41,26 @@ const BINARIES = {
 };
 
 const BIN_DIR = path.join(__dirname, "..", "resources", "bin");
+
+// Helper to detect NVIDIA GPU
+function hasNvidiaGpu() {
+  try {
+    require("child_process").execSync("nvidia-smi", { stdio: "ignore" });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Update linux-x64 binary targets if GPU detected
+if (process.platform === "linux" && process.arch === "x64" && hasNvidiaGpu()) {
+  console.log("\n[whisper-server] NVIDIA GPU detected! Switching to CUDA-enabled binaries.");
+  BINARIES["linux-x64"] = {
+    zipName: "whisper-server-linux-x64-cuda.zip",
+    binaryName: "whisper-server-linux-x64-cuda",
+    outputName: "whisper-server-linux-x64",
+  };
+}
 
 // Cache the release info to avoid multiple API calls
 let cachedRelease = null;
@@ -137,7 +159,12 @@ async function main() {
     }
 
     console.log(`Downloading for target platform (${args.platformArch}):`);
-    const ok = await downloadBinary(args.platformArch, BINARIES[args.platformArch], release, args.isForce);
+    const ok = await downloadBinary(
+      args.platformArch,
+      BINARIES[args.platformArch],
+      release,
+      args.isForce
+    );
     if (!ok) {
       console.error(`Failed to download binaries for ${args.platformArch}`);
       process.exitCode = 1;

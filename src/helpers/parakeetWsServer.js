@@ -81,9 +81,20 @@ class ParakeetWsServer {
 
     debugLogger.debug("Starting parakeet WS server", { port: this.port, modelName, args });
 
+    const wsBinaryDir = path.dirname(wsBinary);
+
+    // Prepare environment to ensure libonnxruntime.so is found
+    const spawnEnv = { ...process.env };
+    if (process.platform === "linux") {
+      const currentLdPath = spawnEnv.LD_LIBRARY_PATH || "";
+      // Prepend binary dir to find bundled libonnxruntime.so
+      spawnEnv.LD_LIBRARY_PATH = wsBinaryDir + path.delimiter + currentLdPath;
+    }
+
     this.process = spawn(wsBinary, args, {
       stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
+      env: spawnEnv,
       cwd: getSafeTempDir(),
     });
 

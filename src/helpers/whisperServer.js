@@ -221,7 +221,33 @@ class WhisperServerManager {
     const serverBinaryDir = path.dirname(serverBinary);
     spawnEnv.PATH = serverBinaryDir + pathSep + (process.env.PATH || "");
 
+    // Check for NVIDIA GPU to enable hardware acceleration
+    let hasGpu = false;
+    try {
+      require("child_process").execSync("nvidia-smi", { stdio: "ignore" });
+      hasGpu = true;
+    } catch (e) {
+      // No GPU detected or nvidia-smi not available
+    }
+
+    if (process.platform === "linux" && hasGpu) {
+      const cudaPaths = ["/usr/local/cuda/lib64", "/usr/lib/x86_64-linux-gnu"].filter((p) =>
+        fs.existsSync(p)
+      );
+      const currentLdPath = spawnEnv.LD_LIBRARY_PATH || "";
+      // Prepend both the server binary directory (for bundled libs) and CUDA paths
+      spawnEnv.LD_LIBRARY_PATH =
+        serverBinaryDir + pathSep + cudaPaths.join(pathSep) + pathSep + currentLdPath;
+    }
+
     const args = ["--model", modelPath, "--host", "127.0.0.1", "--port", String(this.port)];
+
+    if (hasGpu) {
+      debugLogger.info("NVIDIA GPU detected, using CUDA binary defaults");
+      // Note: The CUDA-enabled whisper-server binary automatically uses the GPU
+      // and does not support the --n-gpu-layers flag found in the CLI version.
+      // The presence of --no-gpu in the help text confirms GPU support is enabled by default.
+    }
 
     // FFmpeg is required for pre-converting audio to 16kHz mono WAV
     this.canConvert = !!ffmpegPath;
