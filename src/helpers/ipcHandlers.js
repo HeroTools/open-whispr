@@ -201,6 +201,23 @@ class IPCHandlers {
       return this.clipboardManager.checkPasteTools();
     });
 
+    ipcMain.handle("begin-paste-session", async (event) => {
+      const mainWindow = this.windowManager?.mainWindow;
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused()) {
+        mainWindow.blur();
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
+      return this.clipboardManager.beginPasteSession();
+    });
+
+    ipcMain.handle("paste-chunk", async (event, text) => {
+      return this.clipboardManager.pasteChunk(text);
+    });
+
+    ipcMain.handle("end-paste-session", async (event) => {
+      return this.clipboardManager.endPasteSession();
+    });
+
     // Whisper handlers
     ipcMain.handle("transcribe-local-whisper", async (event, audioBlob, options = {}) => {
       debugLogger.log("transcribe-local-whisper called", {

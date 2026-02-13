@@ -930,7 +930,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     return normalized.startsWith("gpt-4o-mini-transcribe");
   }
 
-  async readTranscriptionStream(response) {
+  async readTranscriptionStream(response, { progressivePaste = false } = {}) {
     const reader = response.body?.getReader();
     if (!reader) {
       logger.error("Streaming response body not available", {}, "transcription");
@@ -942,6 +942,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     let collectedText = "";
     let finalText = null;
     let eventCount = 0;
+    let pastedAny = false;
     const eventTypes = {};
 
     const handleEvent = (payload) => {
@@ -970,6 +971,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       if (payload.type === "transcript.text.segment" && typeof payload.text === "string") {
         collectedText += payload.text;
         this.onPartialTranscript?.(collectedText);
+        if (progressivePaste) {
+          window.electronAPI.pasteChunk?.(payload.text);
+          pastedAny = true;
+        }
         return;
       }
       if (payload.type === "transcript.text.done" && typeof payload.text === "string") {
@@ -984,93 +989,104 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       }
     };
 
-    logger.debug("Starting to read transcription stream", {}, "transcription");
+    logger.debug("Starting to read transcription stream", { progressivePaste }, "transcription");
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) {
-        logger.debug(
-          "Stream reading complete",
-          {
-            eventCount,
-            eventTypes,
-            collectedTextLength: collectedText.length,
-            hasFinalText: finalText !== null,
-          },
-          "transcription"
-        );
-        break;
-      }
-      const chunk = decoder.decode(value, { stream: true });
-      buffer += chunk;
-
-      // Log first chunk to see format
-      if (eventCount === 0 && chunk.length > 0) {
-        logger.debug(
-          "First stream chunk received",
-          {
-            chunkLength: chunk.length,
-            chunkPreview: chunk.substring(0, 500),
-          },
-          "transcription"
-        );
-      }
-
-      // Process complete lines from the buffer
-      // Each SSE event is "data: <json>\n" followed by empty line
-      const lines = buffer.split("\n");
-      buffer = "";
-
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-
-        // Skip empty lines
-        if (!trimmedLine) {
-          continue;
-        }
-
-        // Extract data from "data: " prefix
-        let data = "";
-        if (trimmedLine.startsWith("data: ")) {
-          data = trimmedLine.slice(6);
-        } else if (trimmedLine.startsWith("data:")) {
-          data = trimmedLine.slice(5).trim();
-        } else {
-          // Not a data line, could be leftover - keep in buffer
-          buffer += line + "\n";
-          continue;
-        }
-
-        // Handle [DONE] marker
-        if (data === "[DONE]") {
-          finalText = finalText ?? collectedText;
-          continue;
-        }
-
-        // Try to parse JSON
-        try {
-          const parsed = JSON.parse(data);
-          handleEvent(parsed);
-        } catch (error) {
-          // Incomplete JSON - put back in buffer for next iteration
-          buffer += line + "\n";
-        }
-      }
+    if (progressivePaste) {
+      await window.electronAPI.beginPasteSession?.();
     }
 
-    const result = finalText ?? collectedText;
-    logger.debug(
-      "Stream processing complete",
-      {
-        resultLength: result.length,
-        usedFinalText: finalText !== null,
-        eventCount,
-        eventTypes,
-      },
-      "transcription"
-    );
+    try {
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          logger.debug(
+            "Stream reading complete",
+            {
+              eventCount,
+              eventTypes,
+              collectedTextLength: collectedText.length,
+              hasFinalText: finalText !== null,
+            },
+            "transcription"
+          );
+          break;
+        }
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
 
-    return result;
+        // Log first chunk to see format
+        if (eventCount === 0 && chunk.length > 0) {
+          logger.debug(
+            "First stream chunk received",
+            {
+              chunkLength: chunk.length,
+              chunkPreview: chunk.substring(0, 500),
+            },
+            "transcription"
+          );
+        }
+
+        // Process complete lines from the buffer
+        // Each SSE event is "data: <json>\n" followed by empty line
+        const lines = buffer.split("\n");
+        buffer = "";
+
+        for (const line of lines) {
+          const trimmedLine = line.trim();
+
+          // Skip empty lines
+          if (!trimmedLine) {
+            continue;
+          }
+
+          // Extract data from "data: " prefix
+          let data = "";
+          if (trimmedLine.startsWith("data: ")) {
+            data = trimmedLine.slice(6);
+          } else if (trimmedLine.startsWith("data:")) {
+            data = trimmedLine.slice(5).trim();
+          } else {
+            // Not a data line, could be leftover - keep in buffer
+            buffer += line + "\n";
+            continue;
+          }
+
+          // Handle [DONE] marker
+          if (data === "[DONE]") {
+            finalText = finalText ?? collectedText;
+            continue;
+          }
+
+          // Try to parse JSON
+          try {
+            const parsed = JSON.parse(data);
+            handleEvent(parsed);
+          } catch (error) {
+            // Incomplete JSON - put back in buffer for next iteration
+            buffer += line + "\n";
+          }
+        }
+      }
+
+      const result = finalText ?? collectedText;
+      logger.debug(
+        "Stream processing complete",
+        {
+          resultLength: result.length,
+          usedFinalText: finalText !== null,
+          eventCount,
+          eventTypes,
+          progressivePaste,
+        },
+        "transcription"
+      );
+
+      return { text: result, alreadyPasted: pastedAny };
+    } finally {
+      if (progressivePaste) {
+        await window.electronAPI.endPasteSession?.();
+      }
+    }
   }
 
   async processWithOpenWhisprCloud(audioBlob, metadata = {}) {
@@ -1184,6 +1200,14 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     return this.getCustomDictionaryArray();
   }
 
+  _isDictionaryLeak(text) {
+    const terms = this.getCustomDictionaryArray();
+    if (terms.length === 0) return false;
+    const normalized = text.trim().toLowerCase();
+    const dictString = terms.join(", ").toLowerCase();
+    return normalized === dictString || terms.some((t) => normalized === t.toLowerCase());
+  }
+
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
     const timings = {};
     const language = getBaseLanguageCode(localStorage.getItem("preferredLanguage"));
@@ -1270,7 +1294,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       // Add custom dictionary as prompt hint for cloud transcription
       const dictionaryPrompt = this.getCustomDictionaryPrompt();
       if (dictionaryPrompt) {
-        formData.append("prompt", dictionaryPrompt);
+        const prompt = this.shouldStreamTranscription(model, provider)
+          ? `Vocabulary for accurate transcription (only include if actually spoken): ${dictionaryPrompt}`
+          : dictionaryPrompt;
+        formData.append("prompt", prompt);
       }
 
       const shouldStream = this.shouldStreamTranscription(model, provider);
@@ -1391,14 +1418,23 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const contentType = responseContentType;
 
       if (shouldStream && contentType.includes("text/event-stream")) {
-        logger.debug("Processing streaming response", { contentType }, "transcription");
-        const streamedText = await this.readTranscriptionStream(response);
-        result = { text: streamedText };
+        const progressivePaste = !(await this.isReasoningAvailable());
+        logger.debug(
+          "Processing streaming response",
+          { contentType, progressivePaste },
+          "transcription"
+        );
+        const streamResult = await this.readTranscriptionStream(response, { progressivePaste });
+        result = { text: streamResult.text };
+        if (streamResult.alreadyPasted) {
+          result.alreadyPasted = true;
+        }
         logger.debug(
           "Streaming response parsed",
           {
-            hasText: !!streamedText,
-            textLength: streamedText?.length,
+            hasText: !!streamResult.text,
+            textLength: streamResult.text?.length,
+            alreadyPasted: !!streamResult.alreadyPasted,
           },
           "transcription"
         );
@@ -1442,6 +1478,34 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       // Check for text - handle both empty string and missing field
       if (result.text && result.text.trim().length > 0) {
         timings.transcriptionProcessingDurationMs = Math.round(performance.now() - apiCallStart);
+
+        if (result.alreadyPasted) {
+          logger.debug(
+            "Transcription already pasted progressively",
+            {
+              textLength: result.text.length,
+            },
+            "transcription"
+          );
+          return {
+            success: true,
+            text: result.text,
+            source: "openai",
+            alreadyPasted: true,
+            timings,
+          };
+        }
+
+        if (this._isDictionaryLeak(result.text)) {
+          logger.info(
+            "Dictionary prompt leak detected, treating as empty audio",
+            { text: result.text.substring(0, 200), model },
+            "transcription"
+          );
+          throw new Error(
+            "No text transcribed - audio may be too short, silent, or in an unsupported format"
+          );
+        }
 
         const reasoningStart = performance.now();
         const text = await this.processTranscription(result.text, "openai");
@@ -1904,6 +1968,12 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       this.streamingPartialText = "";
       this.streamingTextResolve = null;
       this.streamingTextDebounce = null;
+      this._progressivePasteActive = !(await this.isReasoningAvailable());
+      this._lastPastedFinalLength = 0;
+
+      if (this._progressivePasteActive) {
+        await window.electronAPI.beginPasteSession?.();
+      }
 
       const partialCleanup = window.electronAPI.onDeepgramPartialTranscript((text) => {
         this.streamingPartialText = text;
@@ -1914,6 +1984,13 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         this.streamingFinalText = text;
         this.streamingPartialText = "";
         this.onPartialTranscript?.(text);
+        if (this._progressivePasteActive) {
+          const delta = text.substring(this._lastPastedFinalLength);
+          if (delta) {
+            window.electronAPI.pasteChunk?.(delta);
+          }
+          this._lastPastedFinalLength = text.length;
+        }
       });
 
       const errorCleanup = window.electronAPI.onDeepgramError((error) => {
@@ -1971,6 +2048,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         this.isRecording = false;
         this.recordingStartTime = null;
         this.stopRequestedDuringStreamingStart = false;
+        if (this._progressivePasteActive) {
+          await window.electronAPI.endPasteSession?.();
+        }
         await this.cleanupStreaming();
         this.onStateChange?.({ isRecording: false, isProcessing: false, isStreaming: false });
         this.streamingStartInProgress = false;
@@ -2026,6 +2106,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         description: errorDescription,
       });
 
+      if (this._progressivePasteActive) {
+        await window.electronAPI.endPasteSession?.();
+      }
       await this.cleanupStreaming();
       this.isRecording = false;
       this.recordingStartTime = null;
@@ -2115,6 +2198,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       );
     }
 
+    if (this._progressivePasteActive) {
+      await window.electronAPI.endPasteSession?.();
+    }
+
     this.cleanupStreamingListeners();
 
     logger.info(
@@ -2130,7 +2217,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       "streaming"
     );
 
-    const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+    const useReasoningModel =
+      !this._progressivePasteActive && localStorage.getItem("useReasoningModel") === "true";
     if (useReasoningModel && finalText) {
       const reasoningStart = performance.now();
       const agentName = localStorage.getItem("agentName") || "";
@@ -2199,6 +2287,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         success: true,
         text: finalText,
         source: "deepgram-streaming",
+        alreadyPasted: this._progressivePasteActive,
       });
 
       logger.info(
@@ -2267,6 +2356,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     this.streamingTextResolve = null;
     clearTimeout(this.streamingTextDebounce);
     this.streamingTextDebounce = null;
+    this._progressivePasteActive = false;
+    this._lastPastedFinalLength = 0;
   }
 
   async cleanupStreaming() {

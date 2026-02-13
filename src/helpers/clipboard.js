@@ -1286,6 +1286,476 @@ Would you like to open System Settings now?`;
     this.resolveFastPasteBinary();
   }
 
+  /**
+   * Simulate a paste keystroke (Cmd+V / Ctrl+V) without any clipboard
+   * save/restore logic.  Used by both pasteText() and pasteChunk().
+   *
+   * @param {object} [options]
+   * @param {object} [options.webContents] - Renderer webContents (for Wayland clipboard writes)
+   * @returns {Promise<void>}
+   */
+  async _simulatePasteKeystroke(options = {}) {
+    const platform = process.platform;
+
+    if (platform === "darwin") {
+      return this._simulatePasteKeystrokeMacOS();
+    } else if (platform === "win32") {
+      return this._simulatePasteKeystrokeWindows();
+    } else {
+      return this._simulatePasteKeystrokeLinux(options);
+    }
+  }
+
+  /** macOS: spawn CGEvent binary or osascript to press Cmd+V */
+  _simulatePasteKeystrokeMacOS() {
+    const fastPasteBinary = this.resolveFastPasteBinary();
+    const useFastPaste = !!fastPasteBinary;
+
+    return new Promise((resolve, reject) => {
+      const pasteProcess = useFastPaste
+        ? spawn(fastPasteBinary)
+        : spawn("osascript", [
+            "-e",
+            'tell application "System Events" to key code 9 using command down',
+          ]);
+
+      let errorOutput = "";
+      let hasTimedOut = false;
+
+      pasteProcess.stderr.on("data", (data) => {
+        errorOutput += data.toString();
+      });
+
+      pasteProcess.on("close", (code) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
+        pasteProcess.removeAllListeners();
+
+        if (code === 0) {
+          resolve();
+        } else if (useFastPaste) {
+          this.safeLog(
+            code === 2
+              ? "CGEvent binary lacks accessibility trust, falling back to osascript"
+              : `CGEvent paste failed (code ${code}), falling back to osascript`
+          );
+          this.fastPasteChecked = true;
+          this.fastPastePath = null;
+          const fallback = spawn("osascript", [
+            "-e",
+            'tell application "System Events" to key code 9 using command down',
+          ]);
+          let fbTimedOut = false;
+          const fbTimeout = setTimeout(() => {
+            fbTimedOut = true;
+            killProcess(fallback, "SIGKILL");
+            fallback.removeAllListeners();
+            reject(new Error("osascript fallback timed out"));
+          }, 3000);
+          fallback.on("close", (fbCode) => {
+            if (fbTimedOut) return;
+            clearTimeout(fbTimeout);
+            fallback.removeAllListeners();
+            fbCode === 0
+              ? resolve()
+              : reject(new Error(`osascript fallback failed (code ${fbCode})`));
+          });
+          fallback.on("error", (err) => {
+            if (fbTimedOut) return;
+            clearTimeout(fbTimeout);
+            fallback.removeAllListeners();
+            reject(err);
+          });
+        } else {
+          this.accessibilityCache = { value: null, expiresAt: 0 };
+          reject(new Error(`Paste failed (code ${code}).`));
+        }
+      });
+
+      pasteProcess.on("error", (error) => {
+        if (hasTimedOut) return;
+        clearTimeout(timeoutId);
+        pasteProcess.removeAllListeners();
+
+        if (useFastPaste) {
+          this.safeLog("CGEvent paste error, falling back to osascript");
+          this.fastPasteChecked = true;
+          this.fastPastePath = null;
+          const fallback = spawn("osascript", [
+            "-e",
+            'tell application "System Events" to key code 9 using command down',
+          ]);
+          let fbTimedOut = false;
+          const fbTimeout = setTimeout(() => {
+            fbTimedOut = true;
+            killProcess(fallback, "SIGKILL");
+            fallback.removeAllListeners();
+            reject(new Error("osascript fallback timed out"));
+          }, 3000);
+          fallback.on("close", (fbCode) => {
+            if (fbTimedOut) return;
+            clearTimeout(fbTimeout);
+            fallback.removeAllListeners();
+            fbCode === 0
+              ? resolve()
+              : reject(new Error(`osascript fallback failed (code ${fbCode})`));
+          });
+          fallback.on("error", (err) => {
+            if (fbTimedOut) return;
+            clearTimeout(fbTimeout);
+            fallback.removeAllListeners();
+            reject(err);
+          });
+        } else {
+          reject(new Error(`Paste command failed: ${error.message}`));
+        }
+      });
+
+      const timeoutId = setTimeout(() => {
+        hasTimedOut = true;
+        killProcess(pasteProcess, "SIGKILL");
+        pasteProcess.removeAllListeners();
+        reject(new Error("Paste operation timed out."));
+      }, 3000);
+    });
+  }
+
+  /** Windows: spawn nircmd or PowerShell to press Ctrl+V */
+  _simulatePasteKeystrokeWindows() {
+    const nircmdPath = this.getNircmdPath();
+
+    if (nircmdPath) {
+      return this._spawnKeystroke(nircmdPath, ["sendkeypress", "ctrl+v"], "nircmd", 2000);
+    }
+    return this._spawnKeystroke(
+      "powershell.exe",
+      [
+        "-NoProfile",
+        "-NonInteractive",
+        "-WindowStyle",
+        "Hidden",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "[void][System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms');[System.Windows.Forms.SendKeys]::SendWait('^v')",
+      ],
+      "powershell",
+      5000
+    );
+  }
+
+  /** Linux: try native binary, then system tools, to press Ctrl+V */
+  async _simulatePasteKeystrokeLinux(options = {}) {
+    const { isWayland, xwaylandAvailable, isGnome, isKde, isWlroots } = getLinuxSessionInfo();
+    const xdotoolExists = this.commandExists("xdotool");
+    const wtypeExists = this.commandExists("wtype");
+    const ydotoolExists = this.commandExists("ydotool");
+    const ydotoolDaemonRunning = ydotoolExists && this._isYdotoolDaemonRunning();
+    const linuxFastPaste = this.resolveLinuxFastPasteBinary();
+
+    const terminalClasses = [
+      "konsole",
+      "gnome-terminal",
+      "terminal",
+      "kitty",
+      "alacritty",
+      "terminator",
+      "xterm",
+      "urxvt",
+      "rxvt",
+      "tilix",
+      "terminology",
+      "wezterm",
+      "foot",
+      "st",
+      "yakuake",
+      "ghostty",
+      "guake",
+      "tilda",
+      "hyper",
+      "tabby",
+      "sakura",
+      "warp",
+    ];
+
+    const preDetectTargetWindow = () => {
+      if (!xdotoolExists || (isWayland && !xwaylandAvailable)) return null;
+      try {
+        const result = spawnSync("xdotool", ["getactivewindow"]);
+        return result.status === 0 ? result.stdout.toString().trim() || null : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const preDetectWindowClass = (windowId) => {
+      if (!xdotoolExists || (isWayland && !xwaylandAvailable)) return null;
+      try {
+        const args = windowId
+          ? ["getwindowclassname", windowId]
+          : ["getactivewindow", "getwindowclassname"];
+        const result = spawnSync("xdotool", args);
+        return result.status === 0 ? result.stdout.toString().toLowerCase().trim() || null : null;
+      } catch {
+        return null;
+      }
+    };
+
+    const targetWindowId = preDetectTargetWindow();
+    const xdotoolWindowClass = preDetectWindowClass(targetWindowId);
+
+    // Try native linux-fast-paste binary first
+    if (linuxFastPaste) {
+      const earlyIsTerminal = xdotoolWindowClass
+        ? terminalClasses.some((t) => xdotoolWindowClass.includes(t))
+        : false;
+
+      const spawnFastPaste = (args, label) =>
+        new Promise((resolve, reject) => {
+          const proc = spawn(linuxFastPaste, args);
+          let stderr = "";
+          proc.stderr?.on("data", (data) => {
+            stderr += data.toString();
+          });
+          let timedOut = false;
+          const tid = setTimeout(() => {
+            timedOut = true;
+            killProcess(proc, "SIGKILL");
+          }, 2000);
+          proc.on("close", (code) => {
+            if (timedOut) return reject(new Error("linux-fast-paste timed out"));
+            clearTimeout(tid);
+            code === 0
+              ? resolve()
+              : reject(
+                  new Error(`linux-fast-paste exited ${code}${stderr ? `: ${stderr.trim()}` : ""}`)
+                );
+          });
+          proc.on("error", (err) => {
+            if (!timedOut) {
+              clearTimeout(tid);
+              reject(err);
+            }
+          });
+        });
+
+      if (isWayland) {
+        const uinputArgs = ["--uinput"];
+        if (earlyIsTerminal) uinputArgs.push("--terminal");
+        try {
+          await spawnFastPaste(uinputArgs, "uinput");
+          return;
+        } catch {}
+        if (xwaylandAvailable) {
+          const xtestArgs = [];
+          if (targetWindowId) xtestArgs.push("--window", targetWindowId);
+          if (earlyIsTerminal) xtestArgs.push("--terminal");
+          try {
+            await spawnFastPaste(xtestArgs, "XTest/XWayland");
+            return;
+          } catch {}
+        }
+      } else {
+        const xtestArgs = [];
+        if (targetWindowId) xtestArgs.push("--window", targetWindowId);
+        if (earlyIsTerminal) xtestArgs.push("--terminal");
+        try {
+          await spawnFastPaste(xtestArgs, "XTest");
+          return;
+        } catch {}
+      }
+    }
+
+    // Fallback to system tools
+    const inTerminal = xdotoolWindowClass
+      ? terminalClasses.some((t) => xdotoolWindowClass.includes(t))
+      : false;
+    const pasteKeys = inTerminal ? "ctrl+shift+v" : "ctrl+v";
+
+    const canUseWtype = isWayland && isWlroots;
+    const canUseYdotool = ydotoolDaemonRunning;
+    const canUseXdotool = isWayland ? xwaylandAvailable && xdotoolExists : xdotoolExists;
+
+    const xdotoolArgs = targetWindowId
+      ? ["windowactivate", "--sync", targetWindowId, "key", pasteKeys]
+      : ["key", pasteKeys];
+    const ydotoolArgs = inTerminal ? ["key", "ctrl+shift+v"] : ["key", "ctrl+v"];
+
+    const wtypeEntry = canUseWtype
+      ? [
+          inTerminal
+            ? {
+                cmd: "wtype",
+                args: ["-M", "ctrl", "-M", "shift", "-k", "v", "-m", "shift", "-m", "ctrl"],
+              }
+            : { cmd: "wtype", args: ["-M", "ctrl", "-k", "v", "-m", "ctrl"] },
+        ]
+      : [];
+    const xdotoolEntry = canUseXdotool ? [{ cmd: "xdotool", args: xdotoolArgs }] : [];
+    const ydotoolEntry = canUseYdotool ? [{ cmd: "ydotool", args: ydotoolArgs }] : [];
+
+    let candidates;
+    if (!isWayland) {
+      candidates = [...xdotoolEntry, ...ydotoolEntry];
+    } else if (isWlroots) {
+      candidates = [...wtypeEntry, ...xdotoolEntry, ...ydotoolEntry];
+    } else {
+      candidates = [...xdotoolEntry, ...ydotoolEntry, ...wtypeEntry];
+    }
+
+    const available = candidates.filter((c) => this.commandExists(c.cmd));
+
+    for (const tool of available) {
+      try {
+        await this._spawnKeystroke(tool.cmd, tool.args, tool.cmd, 2000);
+        return;
+      } catch {}
+    }
+
+    throw new Error("No paste tool available on this Linux system.");
+  }
+
+  /** Generic helper: spawn a process and resolve/reject on close/error/timeout */
+  _spawnKeystroke(cmd, args, label, timeoutMs) {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(cmd, args);
+      let stderr = "";
+      let timedOut = false;
+
+      proc.stderr?.on("data", (data) => {
+        stderr += data.toString();
+      });
+
+      const tid = setTimeout(() => {
+        timedOut = true;
+        killProcess(proc, "SIGKILL");
+        proc.removeAllListeners();
+        reject(new Error(`${label} timed out`));
+      }, timeoutMs);
+
+      proc.on("close", (code) => {
+        if (timedOut) return;
+        clearTimeout(tid);
+        proc.removeAllListeners();
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(
+            new Error(`${label} exited with code ${code}${stderr ? `: ${stderr.trim()}` : ""}`)
+          );
+        }
+      });
+
+      proc.on("error", (error) => {
+        if (timedOut) return;
+        clearTimeout(tid);
+        proc.removeAllListeners();
+        reject(error);
+      });
+    });
+  }
+
+  // ── Paste session methods (for progressive/streaming paste) ──────────
+
+  async beginPasteSession() {
+    this._sessionClipboard = clipboard.readText();
+    this._pasteSessionActive = true;
+
+    if (process.platform === "darwin") {
+      const hasPermissions = await this.checkAccessibilityPermissions();
+      if (!hasPermissions) {
+        this._pasteSessionActive = false;
+        this._sessionClipboard = null;
+        throw new Error(
+          "Accessibility permissions required for automatic pasting. Text has been copied to clipboard - please paste manually with Cmd+V."
+        );
+      }
+    }
+
+    this.safeLog("Paste session started");
+    return { success: true };
+  }
+
+  pasteChunk(text) {
+    if (!this._pasteSessionActive) {
+      return this.pasteText(text, { fromStreaming: true });
+    }
+
+    // Accumulate rapid chunks and flush after a short pause.
+    // This batches many small SSE deltas into fewer paste operations,
+    // reducing keystroke overhead and clipboard churn.
+    this._chunkBuffer = (this._chunkBuffer || "") + text;
+    clearTimeout(this._chunkFlushTimer);
+    this._chunkFlushTimer = setTimeout(() => this._flushChunkBuffer(), 50);
+  }
+
+  _flushChunkBuffer() {
+    this._chunkFlushTimer = null;
+    const text = this._chunkBuffer;
+    this._chunkBuffer = "";
+    if (!text) return;
+
+    const prev = this._pasteQueue ?? Promise.resolve();
+    const work = prev.then(() => this._doPasteChunk(text));
+    this._pasteQueue = work.catch(() => {});
+  }
+
+  async _doPasteChunk(text) {
+    const platform = process.platform;
+
+    if (platform === "linux" && this._isWayland()) {
+      this._writeClipboardWayland(text);
+    } else {
+      clipboard.writeText(text);
+    }
+
+    const fastPasteBinary = platform === "darwin" ? this.resolveFastPasteBinary() : null;
+    const nircmdPath = platform === "win32" ? this.getNircmdPath() : null;
+    let delay;
+    if (platform === "darwin") {
+      delay = fastPasteBinary ? 15 : 50;
+    } else if (platform === "win32") {
+      delay = nircmdPath ? 30 : 40;
+    } else {
+      delay = 50;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    await this._simulatePasteKeystroke();
+  }
+
+  async endPasteSession() {
+    if (!this._pasteSessionActive) return;
+
+    // Flush any buffered text
+    clearTimeout(this._chunkFlushTimer);
+    this._chunkFlushTimer = null;
+    const remaining = this._chunkBuffer;
+    this._chunkBuffer = "";
+    if (remaining) {
+      const prev = this._pasteQueue ?? Promise.resolve();
+      const work = prev.then(() => this._doPasteChunk(remaining));
+      this._pasteQueue = work.catch(() => {});
+    }
+
+    // Wait for all pastes (including the flush above) to complete
+    if (this._pasteQueue) {
+      await this._pasteQueue;
+      this._pasteQueue = null;
+    }
+
+    // Short delay so the last keystroke has time to land
+    await new Promise((resolve) => setTimeout(resolve, 120));
+
+    if (this._sessionClipboard != null) {
+      clipboard.writeText(this._sessionClipboard);
+    }
+
+    this._sessionClipboard = null;
+    this._pasteSessionActive = false;
+    this.safeLog("Paste session ended");
+  }
+
   async readClipboard() {
     return clipboard.readText();
   }

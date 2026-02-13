@@ -11,8 +11,6 @@ export const useAudioRecording = (toast, options = {}) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [transcript, setTranscript] = useState("");
   const [partialTranscript, setPartialTranscript] = useState("");
-  const partialTranscriptRef = useRef("");
-  const rafIdRef = useRef(null);
   const audioManagerRef = useRef(null);
   const { onToggle } = options;
 
@@ -64,36 +62,17 @@ export const useAudioRecording = (toast, options = {}) => {
   useEffect(() => {
     audioManagerRef.current = new AudioManager();
 
-    const clearPartialTranscript = () => {
-      partialTranscriptRef.current = "";
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      setPartialTranscript("");
-    };
-
-    const schedulePartialTranscriptUpdate = () => {
-      if (rafIdRef.current !== null) {
-        return;
-      }
-      rafIdRef.current = requestAnimationFrame(() => {
-        rafIdRef.current = null;
-        setPartialTranscript(partialTranscriptRef.current);
-      });
-    };
-
     audioManagerRef.current.setCallbacks({
       onStateChange: ({ isRecording, isProcessing, isStreaming }) => {
         setIsRecording(isRecording);
         setIsProcessing(isProcessing);
         setIsStreaming(isStreaming ?? false);
         if (isRecording) {
-          clearPartialTranscript();
+          setPartialTranscript("");
         }
       },
       onError: (error) => {
-        clearPartialTranscript();
+        setPartialTranscript("");
         // Provide specific titles for cloud error codes
         const title =
           error.code === "AUTH_EXPIRED"
@@ -112,29 +91,30 @@ export const useAudioRecording = (toast, options = {}) => {
         });
       },
       onPartialTranscript: (text) => {
-        partialTranscriptRef.current = text;
-        schedulePartialTranscriptUpdate();
+        setPartialTranscript(text);
       },
       onTranscriptionComplete: async (result) => {
-        clearPartialTranscript();
+        setPartialTranscript("");
         if (result.success) {
           setTranscript(result.text);
 
-          const isStreaming = result.source?.includes("streaming");
-          const pasteStart = performance.now();
-          await audioManagerRef.current.safePaste(
-            result.text,
-            isStreaming ? { fromStreaming: true } : {}
-          );
-          logger.info(
-            "Paste timing",
-            {
-              pasteMs: Math.round(performance.now() - pasteStart),
-              source: result.source,
-              textLength: result.text.length,
-            },
-            "streaming"
-          );
+          if (!result.alreadyPasted) {
+            const isStreaming = result.source?.includes("streaming");
+            const pasteStart = performance.now();
+            await audioManagerRef.current.safePaste(
+              result.text,
+              isStreaming ? { fromStreaming: true } : {}
+            );
+            logger.info(
+              "Paste timing",
+              {
+                pasteMs: Math.round(performance.now() - pasteStart),
+                source: result.source,
+                textLength: result.text.length,
+              },
+              "streaming"
+            );
+          }
 
           audioManagerRef.current.saveTranscription(result.text);
 
@@ -217,10 +197,6 @@ export const useAudioRecording = (toast, options = {}) => {
       disposeNoAudio?.();
       if (audioManagerRef.current) {
         audioManagerRef.current.cleanup();
-      }
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
       }
     };
   }, [toast, onToggle, performStartRecording, performStopRecording, t]);
