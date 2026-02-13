@@ -305,6 +305,8 @@ class TextEditMonitor extends EventEmitter {
     const platform = process.platform;
 
     if (platform === "linux") {
+      const nativePath = this._findFile("linux-text-monitor");
+      if (nativePath) return { command: nativePath, args: [] };
       const scriptPath = this._findFile("linux-text-monitor.py");
       return scriptPath ? { command: "python3", args: [scriptPath] } : null;
     }
