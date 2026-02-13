@@ -5,6 +5,7 @@ const {
   downloadFile,
   extractZip,
   fetchLatestRelease,
+  findBinaryInDir,
   parseArgs,
   setExecutable,
   cleanupFiles,
@@ -88,13 +89,13 @@ async function downloadBinary(platformArch, config, release, isForce = false) {
     fs.mkdirSync(extractDir, { recursive: true });
     extractZip(zipPath, extractDir);
 
-    const binaryPath = path.join(extractDir, config.binaryName);
-    if (fs.existsSync(binaryPath)) {
+    const binaryPath = findBinaryInDir(extractDir, config.binaryName);
+    if (binaryPath) {
       fs.copyFileSync(binaryPath, outputPath);
       setExecutable(outputPath);
       console.log(`  [server] ${platformArch}: Extracted to ${config.outputName}`);
     } else {
-      console.error(`  [server] ${platformArch}: Binary not found in archive`);
+      console.error(`  [server] ${platformArch}: Binary "${config.binaryName}" not found in archive`);
       return false;
     }
 
