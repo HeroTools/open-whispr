@@ -1335,7 +1335,7 @@
       "untitled": "Sem título",
       "noteTitle": "Título da nota",
       "stop": "Parar",
-      "dictate": "Ditar",
+      "transcribe": "Transcrever",
       "recording": "Gravando",
       "processing": "Processando...",
       "edit": "Editar",
@@ -1395,6 +1395,14 @@
       "title": "Notas de reunião",
       "description": "Identificação de falantes e resumos estruturados",
       "comingSoon": "Em breve"
+    },
+    "context": {
+      "moveToFolder": "Mover para pasta",
+      "delete": "Excluir",
+      "rename": "Renomear",
+      "searchFolders": "Pesquisar pastas...",
+      "noResults": "Nenhuma pasta encontrada",
+      "newFolder": "Nova pasta"
     }
   }
 }

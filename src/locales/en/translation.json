@@ -1335,7 +1335,7 @@
       "untitled": "Untitled",
       "noteTitle": "Note title",
       "stop": "Stop",
-      "dictate": "Dictate",
+      "transcribe": "Transcribe",
       "recording": "Recording",
       "processing": "Processing...",
       "edit": "Edit",
@@ -1411,6 +1411,14 @@
       "addCount": "Add {{count}} notes",
       "noResults": "No matching notes",
       "noNotesAvailable": "No other notes available"
+    },
+    "context": {
+      "moveToFolder": "Move to folder",
+      "delete": "Delete",
+      "rename": "Rename",
+      "searchFolders": "Search folders...",
+      "noResults": "No folders found",
+      "newFolder": "New folder"
     }
   }
 }

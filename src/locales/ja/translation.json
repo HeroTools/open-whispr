@@ -1246,5 +1246,18 @@
         "openai_oss_gpt_oss_20b_mxfp4": "一般消費者向けハードウェア用 OpenAI オープンウェイトモデル"
       }
     }
+  },
+  "notes": {
+    "editor": {
+      "transcribe": "文字起こし"
+    },
+    "context": {
+      "moveToFolder": "フォルダに移動",
+      "delete": "削除",
+      "rename": "名前を変更",
+      "searchFolders": "フォルダを検索...",
+      "noResults": "フォルダが見つかりません",
+      "newFolder": "新しいフォルダ"
+    }
   }
 }

@@ -33,10 +33,10 @@ export default function DictationWidget({ isRecording, isProcessing, onStart, on
       {isRecording ? (
         <div
           className={cn(
-            "flex items-center gap-4 h-11 px-4 rounded-xl pointer-events-auto",
-            "bg-background/80 dark:bg-surface-2/80",
+            "flex items-center gap-4 h-12 px-5 rounded-xl pointer-events-auto",
+            "bg-primary/6 dark:bg-primary/10",
             "backdrop-blur-xl",
-            "border border-destructive/15 dark:border-destructive/20",
+            "border border-primary/20 dark:border-primary/25",
             "shadow-elevated"
           )}
           style={{ animation: "float-up 0.2s ease-out" }}
@@ -45,7 +45,7 @@ export default function DictationWidget({ isRecording, isProcessing, onStart, on
             {Array.from({ length: BAR_COUNT }, (_, i) => (
               <div
                 key={i}
-                className="w-0.75 rounded-full bg-destructive/60 dark:bg-destructive/70 origin-bottom"
+                className="w-0.75 rounded-full bg-primary/60 dark:bg-primary/70 origin-bottom"
                 style={{
                   height: "100%",
                   animation: `waveform-bar ${0.6 + i * 0.08}s ease-in-out infinite`,
@@ -55,7 +55,7 @@ export default function DictationWidget({ isRecording, isProcessing, onStart, on
             ))}
           </div>
 
-          <span className="text-[11px] font-medium tabular-nums text-foreground/50 min-w-9">
+          <span className="text-[11px] font-medium tabular-nums text-primary/60 dark:text-primary/70 min-w-9">
             {minutes}:{seconds}
           </span>
 
@@ -63,8 +63,8 @@ export default function DictationWidget({ isRecording, isProcessing, onStart, on
             onClick={onStop}
             className={cn(
               "flex items-center justify-center w-7 h-7 rounded-lg",
-              "bg-destructive/10 hover:bg-destructive/18 active:bg-destructive/25",
-              "text-destructive",
+              "bg-primary/10 hover:bg-primary/18 active:bg-primary/25",
+              "text-primary",
               "transition-colors duration-150"
             )}
             aria-label={t("notes.editor.stop")}
@@ -75,15 +75,15 @@ export default function DictationWidget({ isRecording, isProcessing, onStart, on
       ) : isProcessing ? (
         <div
           className={cn(
-            "flex items-center gap-3 h-11 px-5 rounded-xl pointer-events-auto",
-            "bg-background/80 dark:bg-surface-2/80",
+            "flex items-center gap-3 h-12 px-5 rounded-xl pointer-events-auto",
+            "bg-primary/6 dark:bg-primary/10",
             "backdrop-blur-xl",
-            "border border-border/50 dark:border-white/8",
+            "border border-primary/15 dark:border-primary/20",
             "shadow-elevated"
           )}
         >
-          <Loader2 size={14} className="animate-spin text-foreground/30" />
-          <span className="text-[11px] font-medium text-foreground/40">
+          <Loader2 size={14} className="animate-spin text-primary/50" />
+          <span className="text-[11px] font-medium text-primary/50">
             {t("notes.editor.processing")}
           </span>
         </div>
@@ -91,20 +91,20 @@ export default function DictationWidget({ isRecording, isProcessing, onStart, on
         <button
           onClick={onStart}
           className={cn(
-            "flex items-center gap-2.5 h-10 px-5 rounded-xl pointer-events-auto",
-            "bg-background/70 dark:bg-surface-2/70",
+            "flex items-center gap-2.5 h-11 px-6 rounded-xl pointer-events-auto",
+            "bg-primary/8 dark:bg-primary/12",
             "backdrop-blur-xl",
-            "border border-border/40 dark:border-white/6",
+            "border border-primary/15 dark:border-primary/20",
             "shadow-sm hover:shadow-md",
-            "text-foreground/35 hover:text-foreground/55",
+            "text-primary/70 hover:text-primary",
             "transition-all duration-200",
-            "hover:bg-background/90 dark:hover:bg-surface-2/90",
+            "hover:bg-primary/12 dark:hover:bg-primary/18",
             "active:scale-[0.98]"
           )}
         >
-          <Mic size={14} />
-          <span className="text-[11px] font-medium">
-            {t("notes.editor.dictate")}
+          <Mic size={15} />
+          <span className="text-[12px] font-semibold tracking-tight">
+            {t("notes.editor.transcribe")}
           </span>
         </button>
       )}

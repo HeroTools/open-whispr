@@ -1335,7 +1335,7 @@
       "untitled": "Senza titolo",
       "noteTitle": "Titolo della nota",
       "stop": "Ferma",
-      "dictate": "Detta",
+      "transcribe": "Trascrivi",
       "recording": "Registrazione",
       "processing": "Elaborazione...",
       "edit": "Modifica",
@@ -1395,6 +1395,14 @@
       "title": "Note delle riunioni",
       "description": "Identificazione degli interlocutori e riassunti strutturati",
       "comingSoon": "Prossimamente"
+    },
+    "context": {
+      "moveToFolder": "Sposta nella cartella",
+      "delete": "Elimina",
+      "rename": "Rinomina",
+      "searchFolders": "Cerca cartelle...",
+      "noResults": "Nessuna cartella trovata",
+      "newFolder": "Nuova cartella"
     }
   }
 }

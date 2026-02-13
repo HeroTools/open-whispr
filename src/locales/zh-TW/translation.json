@@ -1335,7 +1335,7 @@
       "untitled": "未命名",
       "noteTitle": "筆記標題",
       "stop": "停止",
-      "dictate": "聽寫",
+      "transcribe": "轉錄",
       "recording": "錄音中",
       "processing": "處理中...",
       "edit": "編輯",
@@ -1395,6 +1395,14 @@
       "title": "會議筆記",
       "description": "說話者辨識與結構化摘要",
       "comingSoon": "即將推出"
+    },
+    "context": {
+      "moveToFolder": "移動到資料夾",
+      "delete": "刪除",
+      "rename": "重新命名",
+      "searchFolders": "搜尋資料夾...",
+      "noResults": "找不到資料夾",
+      "newFolder": "新增資料夾"
     }
   }
 }

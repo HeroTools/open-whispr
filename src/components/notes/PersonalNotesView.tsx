@@ -1,7 +1,14 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Loader2, FolderOpen, Pencil, Trash2 } from "lucide-react";
+import { Plus, Loader2, FolderOpen, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from "../ui/dropdown-menu";
 import { useToast } from "../ui/Toast";
 import NoteListItem from "./NoteListItem";
 import NoteEditor from "./NoteEditor";
@@ -202,6 +209,29 @@ export default function PersonalNotesView() {
       loadFolders();
     },
     [activeNoteId, notes, loadFolders]
+  );
+
+  const handleMoveToFolder = useCallback(
+    async (noteId: number, folderId: number) => {
+      await window.electronAPI.updateNote(noteId, { folder_id: folderId });
+      if (activeFolderId) await initializeNotes(null, 50, activeFolderId);
+      loadFolders();
+    },
+    [activeFolderId, loadFolders]
+  );
+
+  const handleCreateFolderAndMove = useCallback(
+    async (noteId: number, folderName: string) => {
+      const result = await window.electronAPI.createFolder(folderName);
+      if (result.success && result.folder) {
+        await window.electronAPI.updateNote(noteId, { folder_id: result.folder.id });
+        if (activeFolderId) await initializeNotes(null, 50, activeFolderId);
+        await loadFolders();
+      } else if (result.error) {
+        toast({ title: t("notes.folders.couldNotCreate"), description: result.error, variant: "destructive" });
+      }
+    },
+    [activeFolderId, loadFolders, toast, t]
   );
 
   const handleApplyEnhancement = useCallback(
@@ -407,40 +437,54 @@ export default function PersonalNotesView() {
                     {t("notes.folders.soon")}
                   </span>
                 ) : (
-                  <span
-                    className={cn(
-                      "text-[9px] tabular-nums shrink-0 transition-colors",
-                      isActive
-                        ? "text-foreground/30"
-                        : "text-foreground/15 group-hover:text-foreground/25"
+                  <>
+                    <span
+                      className={cn(
+                        "text-[9px] tabular-nums shrink-0 transition-colors group-hover:opacity-0",
+                        isActive
+                          ? "text-foreground/30"
+                          : "text-foreground/15"
+                      )}
+                    >
+                      {count > 0 ? count : ""}
+                    </span>
+                    {!folder.is_default && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            onClick={(e) => e.stopPropagation()}
+                            className="h-4 w-4 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity absolute right-1.5 text-foreground/25 hover:text-foreground/50"
+                          >
+                            <MoreHorizontal size={11} />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" sideOffset={4} className="min-w-32">
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenamingFolderId(folder.id);
+                              setRenameValue(folder.name);
+                            }}
+                            className="text-[11px] gap-2 rounded-md px-2 py-1"
+                          >
+                            <Pencil size={11} className="text-muted-foreground/60" />
+                            {t("notes.context.rename")}
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteFolder(folder.id);
+                            }}
+                            className="text-[11px] gap-2 rounded-md px-2 py-1 text-destructive focus:text-destructive focus:bg-destructive/10"
+                          >
+                            <Trash2 size={11} />
+                            {t("notes.context.delete")}
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     )}
-                  >
-                    {count > 0 ? count : ""}
-                  </span>
-                )}
-
-                {!folder.is_default && (
-                  <div className="hidden group-hover:flex items-center gap-0.5 absolute right-1.5">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setRenamingFolderId(folder.id);
-                        setRenameValue(folder.name);
-                      }}
-                      className="p-0.5 rounded text-foreground/20 hover:text-foreground/50 transition-colors"
-                    >
-                      <Pencil size={9} />
-                    </button>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteFolder(folder.id);
-                      }}
-                      className="p-0.5 rounded text-foreground/20 hover:text-destructive/60 transition-colors"
-                    >
-                      <Trash2 size={9} />
-                    </button>
-                  </div>
+                  </>
                 )}
               </div>
             );
@@ -554,6 +598,10 @@ export default function PersonalNotesView() {
                     isActive={note.id === activeNoteId}
                     onClick={() => setActiveNoteId(note.id)}
                     onDelete={handleDelete}
+                    folders={folders}
+                    currentFolderId={activeFolderId}
+                    onMoveToFolder={handleMoveToFolder}
+                    onCreateFolderAndMove={handleCreateFolderAndMove}
                   />
                 ))
               )}

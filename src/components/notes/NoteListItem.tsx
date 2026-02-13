@@ -1,14 +1,29 @@
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Trash2 } from "lucide-react";
+import { MoreHorizontal, FolderOpen, Trash2, Check, Plus, Search } from "lucide-react";
 import { Button } from "../ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
+  DropdownMenuSeparator,
+} from "../ui/dropdown-menu";
 import { cn } from "../lib/utils";
-import type { NoteItem } from "../../types/electron";
+import type { NoteItem, FolderItem } from "../../types/electron";
 
 interface NoteListItemProps {
   note: NoteItem;
   isActive: boolean;
   onClick: () => void;
   onDelete: (id: number) => void;
+  folders: FolderItem[];
+  currentFolderId: number | null;
+  onMoveToFolder: (noteId: number, folderId: number) => void;
+  onCreateFolderAndMove: (noteId: number, folderName: string) => void;
 }
 
 function stripMarkdown(text: string): string {
@@ -39,9 +54,17 @@ function relativeTime(dateStr: string): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export default function NoteListItem({ note, isActive, onClick, onDelete }: NoteListItemProps) {
+export default function NoteListItem({ note, isActive, onClick, onDelete, folders, currentFolderId, onMoveToFolder, onCreateFolderAndMove }: NoteListItemProps) {
   const { t } = useTranslation();
   const preview = stripMarkdown(note.content);
+  const [folderSearch, setFolderSearch] = useState("");
+  const [newFolderName, setNewFolderName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
+  const filteredFolders = useMemo(
+    () => folderSearch ? folders.filter((f) => f.name.toLowerCase().includes(folderSearch.toLowerCase())) : folders,
+    [folders, folderSearch]
+  );
 
   return (
     <div
@@ -73,17 +96,117 @@ export default function NoteListItem({ note, isActive, onClick, onDelete }: Note
             <span className="text-[9px] text-muted-foreground/30 tabular-nums group-hover:opacity-0 transition-opacity">
               {relativeTime(note.updated_at)}
             </span>
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(note.id);
-              }}
-              className="h-5 w-5 rounded-sm opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 size={10} />
-            </Button>
+            <DropdownMenu onOpenChange={(open) => {
+              if (!open) { setFolderSearch(""); setIsCreating(false); setNewFolderName(""); }
+            }}>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={(e) => e.stopPropagation()}
+                  className="h-5 w-5 rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity absolute right-2 text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/5"
+                >
+                  <MoreHorizontal size={12} />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={4} className="min-w-40">
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger className="text-[11px] gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer focus:bg-foreground/5 data-[state=open]:bg-foreground/5">
+                    <FolderOpen size={12} className="text-muted-foreground/60" />
+                    {t("notes.context.moveToFolder")}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent
+                    sideOffset={4}
+                    className="min-w-36 rounded-xl border border-border p-1"
+                  >
+                    {folders.length > 5 && (
+                      <>
+                        <div className="relative px-2 py-1.5">
+                          <Search size={9} className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/15 pointer-events-none" />
+                          <input
+                            value={folderSearch}
+                            onChange={(e) => setFolderSearch(e.target.value)}
+                            onKeyDown={(e) => e.stopPropagation()}
+                            placeholder={t("notes.context.searchFolders")}
+                            style={{ background: "none" }}
+                            className="w-full pl-5 pr-1 py-0.5 text-[11px] text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
+                          />
+                        </div>
+                        <DropdownMenuSeparator />
+                      </>
+                    )}
+                    <div className="overflow-y-auto max-h-40">
+                      {filteredFolders.map((folder) => {
+                        const isCurrent = folder.id === currentFolderId;
+                        return (
+                          <DropdownMenuItem
+                            key={folder.id}
+                            disabled={isCurrent}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onMoveToFolder(note.id, folder.id);
+                            }}
+                            className="text-[11px] gap-2 rounded-md px-2 py-1"
+                          >
+                            <span className="truncate flex-1">{folder.name}</span>
+                            {isCurrent && <Check size={9} className="text-primary shrink-0" />}
+                          </DropdownMenuItem>
+                        );
+                      })}
+                      {folderSearch && filteredFolders.length === 0 && (
+                        <p className="text-[10px] text-foreground/20 text-center py-1.5">{t("notes.context.noResults")}</p>
+                      )}
+                    </div>
+                    <DropdownMenuSeparator />
+                    {isCreating ? (
+                      <div className="px-2 py-1">
+                        <input
+                          autoFocus
+                          value={newFolderName}
+                          onChange={(e) => setNewFolderName(e.target.value)}
+                          onKeyDown={(e) => {
+                            e.stopPropagation();
+                            if (e.key === "Enter" && newFolderName.trim()) {
+                              onCreateFolderAndMove(note.id, newFolderName.trim());
+                              setNewFolderName("");
+                              setIsCreating(false);
+                            }
+                            if (e.key === "Escape") {
+                              setIsCreating(false);
+                              setNewFolderName("");
+                            }
+                          }}
+                          placeholder={t("notes.folders.folderName")}
+                          className="w-full bg-transparent text-[11px] text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
+                        />
+                      </div>
+                    ) : (
+                      <DropdownMenuItem
+                        onSelect={(e) => {
+                          e.preventDefault();
+                          setIsCreating(true);
+                        }}
+                        className="text-[11px] gap-2 rounded-md px-2 py-1 text-foreground/40"
+                      >
+                        <Plus size={10} />
+                        {t("notes.context.newFolder")}
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(note.id);
+                  }}
+                  className="text-[11px] gap-2 rounded-lg px-2.5 py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
+                >
+                  <Trash2 size={12} />
+                  {t("notes.context.delete")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         {preview && (

@@ -1335,7 +1335,7 @@
       "untitled": "Sans titre",
       "noteTitle": "Titre de la note",
       "stop": "Arrêter",
-      "dictate": "Dicter",
+      "transcribe": "Transcrire",
       "recording": "Enregistrement",
       "processing": "Traitement...",
       "edit": "Modifier",
@@ -1395,6 +1395,14 @@
       "title": "Notes de réunion",
       "description": "Identification des intervenants et résumés structurés",
       "comingSoon": "Bientôt disponible"
+    },
+    "context": {
+      "moveToFolder": "Déplacer vers un dossier",
+      "delete": "Supprimer",
+      "rename": "Renommer",
+      "searchFolders": "Rechercher des dossiers...",
+      "noResults": "Aucun dossier trouvé",
+      "newFolder": "Nouveau dossier"
     }
   }
 }
