@@ -188,6 +188,9 @@ declare global {
       // Dictionary operations
       getDictionary: () => Promise<string[]>;
       setDictionary: (words: string[]) => Promise<{ success: boolean }>;
+      onDictionaryUpdated?: (callback: (words: string[]) => void) => () => void;
+      setAutoLearnEnabled?: (enabled: boolean) => void;
+      onCorrectionsLearned?: (callback: (words: string[]) => void) => () => void;
 
       // Database event listeners
       onTranscriptionAdded?: (callback: (item: TranscriptionItem) => void) => () => void;

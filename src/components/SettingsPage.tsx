@@ -664,6 +664,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     customReasoningApiKey,
     setCustomReasoningApiKey,
     setDictationKey,
+    autoLearnCorrections,
+    setAutoLearnCorrections,
     updateTranscriptionSettings,
     updateReasoningSettings,
     cloudTranscriptionMode,
@@ -1761,6 +1763,36 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </div>
               </SettingsPanelRow>
             </SettingsPanel>
+
+            {/* Auto-learn from corrections */}
+            <div>
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <div className="flex items-center justify-between w-full">
+                    <div>
+                      <p className="text-[12px] font-medium text-foreground">
+                        {t("settingsPage.dictionary.autoLearnTitle", { defaultValue: "Auto-learn from corrections" })}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                        {t("settingsPage.dictionary.autoLearnDescription", { defaultValue: "When you correct a transcription in the target app, the corrected word is automatically added to your dictionary." })}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setAutoLearnCorrections(!autoLearnCorrections)}
+                      className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors ${
+                        autoLearnCorrections ? "bg-primary" : "bg-muted-foreground/20"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                          autoLearnCorrections ? "translate-x-[18px]" : "translate-x-[3px]"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
 
             {/* Word List */}
             <div>

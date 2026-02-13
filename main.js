@@ -159,6 +159,7 @@ const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const DevServerManager = require("./src/helpers/devServerManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
+const TextEditMonitor = require("./src/helpers/textEditMonitor");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 
 // Manager instances - initialized after app.whenReady()
@@ -174,6 +175,8 @@ let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
 let windowsKeyManager = null;
+let textEditMonitor = null;
+let ipcHandlers = null;
 let globeKeyAlertShown = false;
 let authBridgeServer = null;
 
@@ -235,9 +238,11 @@ function initializeCoreManagers() {
   parakeetManager = new ParakeetManager();
   updateManager = new UpdateManager();
   windowsKeyManager = new WindowsKeyManager();
+  textEditMonitor = new TextEditMonitor();
+  windowManager.textEditMonitor = textEditMonitor;
 
   // IPC handlers must be registered before window content loads
-  new IPCHandlers({
+  ipcHandlers = new IPCHandlers({
     environmentManager,
     databaseManager,
     clipboardManager,
@@ -246,6 +251,7 @@ function initializeCoreManagers() {
     windowManager,
     updateManager,
     windowsKeyManager,
+    textEditMonitor,
     getTrayManager: () => trayManager,
   });
 }
@@ -531,6 +537,8 @@ async function startApp() {
       // Handle dictation if Globe is the current hotkey
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (isLiveWindow(windowManager.mainWindow)) {
+          // Capture target app PID BEFORE showing the overlay
+          if (textEditMonitor) textEditMonitor.captureTargetPid();
           const activationMode = await windowManager.getActivationMode();
           if (activationMode === "push") {
             const now = Date.now();
@@ -930,6 +938,12 @@ if (gotSingleInstanceLock) {
     }
     if (windowsKeyManager) {
       windowsKeyManager.stop();
+    }
+    if (ipcHandlers) {
+      ipcHandlers._cleanupTextEditMonitor();
+    }
+    if (textEditMonitor) {
+      textEditMonitor.stopMonitoring();
     }
     if (updateManager) {
       updateManager.cleanup();

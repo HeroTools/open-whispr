@@ -192,6 +192,9 @@ class WindowManager {
       }
       lastToggleTime = now;
 
+      // Capture target app PID before the window might steal focus
+      if (this.textEditMonitor) this.textEditMonitor.captureTargetPid();
+
       this.showDictationPanel();
       this.mainWindow.webContents.send("toggle-dictation");
     };
