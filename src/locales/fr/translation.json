@@ -45,7 +45,10 @@
         "fr": "Francais",
         "de": "Deutsch",
         "pt": "Portugues",
-        "it": "Italiano"
+        "it": "Italiano",
+        "zh-CN": "简体中文",
+        "zh-TW": "繁體中文",
+        "ru": "Русский"
       }
     }
   },
@@ -790,6 +793,7 @@
       "none": "Aucun",
       "outputLabel": "Sortie",
       "processing": "Traitement...",
+      "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Fournisseur",
       "run": "Lancer le test"
     },

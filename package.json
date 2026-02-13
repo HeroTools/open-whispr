@@ -1,6 +1,6 @@
 {
   "name": "open-whispr",
-  "version": "1.4.7",
+  "version": "1.4.10",
   "description": "A desktop dictation application using whisper.cpp for speech-to-text transcription",
   "main": "main.js",
   "private": true,
@@ -9,7 +9,8 @@
     "compile:fast-paste": "node scripts/build-macos-fast-paste.js",
     "compile:winkeys": "node scripts/build-windows-key-listener.js",
     "compile:winpaste": "node scripts/build-windows-fast-paste.js",
-    "compile:native": "npm run compile:globe && npm run compile:fast-paste && npm run compile:winkeys && npm run compile:winpaste",
+    "compile:linux-paste": "node scripts/build-linux-fast-paste.js",
+    "compile:native": "npm run compile:globe && npm run compile:fast-paste && npm run compile:winkeys && npm run compile:winpaste && npm run compile:linux-paste",
     "prestart": "npm run compile:native",
     "start": "electron .",
     "predev": "npm run compile:native",

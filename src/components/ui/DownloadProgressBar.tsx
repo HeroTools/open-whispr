@@ -1,3 +1,4 @@
+import { Loader2 } from "lucide-react";
 import { formatETA, type DownloadProgress } from "../../hooks/useModelDownload";
 interface DownloadProgressBarProps {
   modelName: string;
@@ -25,14 +26,17 @@ export function DownloadProgressBar({
   return (
     <div className="px-2.5 py-2 border-b border-white/5 dark:border-border-subtle">
       <div className="flex items-center gap-2 mb-2">
-        {/* Compact percentage with LED glow */}
         <div className="relative flex items-center justify-center w-6 h-6">
           <div
             className={`absolute inset-0 rounded-md bg-primary/15 ${isInstalling || indeterminate ? "animate-pulse" : ""}`}
           />
-          <span className="relative text-[10px] font-bold text-primary tabular-nums">
-            {isInstalling ? "..." : indeterminate ? "···" : `${pct}%`}
-          </span>
+          {isInstalling ? (
+            <Loader2 className="relative w-3.5 h-3.5 text-primary animate-spin" />
+          ) : (
+            <span className="relative text-[10px] font-bold text-primary tabular-nums">
+              {indeterminate ? "···" : `${pct}%`}
+            </span>
+          )}
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium text-foreground truncate">
@@ -63,7 +67,6 @@ export function DownloadProgressBar({
         </div>
       </div>
 
-      {/* Progress bar */}
       <div
         className="w-full rounded-full overflow-hidden bg-white/5 dark:bg-white/3"
         style={{ height: 4 }}

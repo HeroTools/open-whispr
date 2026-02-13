@@ -113,9 +113,9 @@ export function useModelDownload({
       } else if (data.type === "complete") {
         if (isCancellingRef.current) return;
         setIsInstalling(false);
-        setDownloadingModel(null);
-        setDownloadProgress({ percentage: 0, downloadedBytes: 0, totalBytes: 0 });
-        onDownloadCompleteRef.current?.();
+        // Don't clear downloadingModel/downloadProgress here — let downloadModel's
+        // finally block handle it after the model list has been refreshed.
+        // This prevents a flash where the model appears "not downloaded".
       } else if (data.type === "error") {
         if (isCancellingRef.current) return;
         const msg = getDownloadErrorMessage(
@@ -241,7 +241,14 @@ export function useModelDownload({
           onSelectAfterDownload?.(modelId);
         }
 
-        onDownloadCompleteRef.current?.();
+        // Await the refresh so the model list is updated before we clear
+        // the downloading state in `finally`. This prevents a flash where
+        // the model briefly appears "not downloaded".
+        try {
+          await onDownloadCompleteRef.current?.();
+        } catch {
+          // Non-fatal — the model is on disk regardless
+        }
       } catch (error: unknown) {
         if (isCancellingRef.current) return;
 

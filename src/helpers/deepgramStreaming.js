@@ -10,6 +10,59 @@ const REWARM_DELAY_MS = 2000;
 const MAX_REWARM_ATTEMPTS = 10;
 const KEEPALIVE_INTERVAL_MS = 3000;
 const COLD_START_BUFFER_MAX = 3 * SAMPLE_RATE * 2; // 3 seconds of 16-bit PCM
+const LIVENESS_TIMEOUT_MS = 2500; // Max wait for first Results from a warm connection
+
+// Languages supported by Nova-3 (base codes). If a language isn't here, fall back to Nova-2.
+const NOVA3_LANGUAGES = new Set([
+  "ar",
+  "be",
+  "bn",
+  "bs",
+  "bg",
+  "ca",
+  "hr",
+  "cs",
+  "da",
+  "nl",
+  "en",
+  "et",
+  "fi",
+  "fr",
+  "de",
+  "el",
+  "he",
+  "hi",
+  "hu",
+  "id",
+  "it",
+  "ja",
+  "kn",
+  "ko",
+  "lv",
+  "lt",
+  "mk",
+  "ms",
+  "mr",
+  "no",
+  "fa",
+  "pl",
+  "pt",
+  "ro",
+  "ru",
+  "sr",
+  "sk",
+  "sl",
+  "es",
+  "sv",
+  "tl",
+  "ta",
+  "te",
+  "tr",
+  "uk",
+  "ur",
+  "vi",
+  "multi",
+]);
 
 // 100ms of silence at 16kHz 16-bit mono — sent to warm connections to prevent
 // Deepgram's net0001 idle timeout (which only resets on audio data, not KeepAlive).
@@ -42,23 +95,49 @@ class DeepgramStreaming {
     this.isDisconnecting = false;
     this.coldStartBuffer = [];
     this.coldStartBufferSize = 0;
+    this.tokenRefreshFn = null;
+    this.proactiveRefreshTimer = null;
+    this._generation = 0;
+    this.audioBytesSent = 0;
+    this.resultsReceived = 0;
+    this.livenessTimer = null;
+    this.replayBuffer = [];
+    this.replayBufferSize = 0;
+    this.connectionOptions = null;
+  }
+
+  setTokenRefreshFn(fn) {
+    this.tokenRefreshFn = fn;
   }
 
   buildWebSocketUrl(options) {
     const sampleRate = options.sampleRate || SAMPLE_RATE;
+    const lang = options.language && options.language !== "auto" ? options.language : null;
+    const baseLang = lang ? lang.split("-")[0].toLowerCase() : null;
+    const useNova3 = !lang || NOVA3_LANGUAGES.has(lang) || NOVA3_LANGUAGES.has(baseLang);
+    const model = useNova3 ? "nova-3" : "nova-2";
+
+    if (!useNova3) {
+      debugLogger.debug("Deepgram falling back to nova-2", { language: lang });
+    }
+
     const params = new URLSearchParams({
       encoding: "linear16",
       sample_rate: String(sampleRate),
       channels: "1",
-      model: "nova-3",
-      smart_format: "true",
+      model,
       punctuate: "true",
       interim_results: "true",
-      utterance_end_ms: "1000",
-      vad_events: "true",
     });
-    if (options.language && options.language !== "auto") {
-      params.set("language", options.language);
+    if (lang) {
+      params.set("language", lang);
+    }
+    if (Array.isArray(options.keyterms)) {
+      // Nova-3 uses "keyterm", Nova-2 uses "keywords"
+      const paramName = useNova3 ? "keyterm" : "keywords";
+      for (const term of options.keyterms) {
+        if (term) params.append(paramName, term);
+      }
     }
     return `wss://api.deepgram.com/v1/listen?${params.toString()}`;
   }
@@ -132,8 +211,12 @@ class DeepgramStreaming {
 
     this.warmConnectionReady = false;
     this.warmSessionId = null;
-    this.cachedToken = token;
-    this.tokenFetchedAt = Date.now();
+    // Only update tokenFetchedAt when the token actually changes —
+    // re-warming with the same token must not reset the expiry clock.
+    if (token !== this.cachedToken) {
+      this.cachedToken = token;
+      this.tokenFetchedAt = Date.now();
+    }
     this.warmConnectionOptions = options;
     this.rewarmAttempts = 0;
 
@@ -158,6 +241,7 @@ class DeepgramStreaming {
           // Ignore
         }
         this.startKeepAlive();
+        this.scheduleProactiveRefresh();
         debugLogger.debug("Deepgram connection warmed up", {
           sessionId: this.warmSessionId,
           via: meta.via || "unknown",
@@ -196,6 +280,11 @@ class DeepgramStreaming {
       this.warmConnection.on("error", (error) => {
         clearTimeout(warmupTimeout);
         debugLogger.error("Deepgram warmup connection error", { error: error.message });
+        // Invalidate cached token on auth failure so next attempt fetches fresh
+        if (error.message && error.message.includes("401")) {
+          this.cachedToken = null;
+          this.tokenFetchedAt = null;
+        }
         this.cleanupWarmConnection();
         if (!settled) {
           settled = true;
@@ -235,9 +324,8 @@ class DeepgramStreaming {
     if (this.isConnected) {
       return;
     }
-    const token = this.getCachedToken();
-    if (!token || !this.warmConnectionOptions) {
-      debugLogger.debug("Deepgram cannot re-warm: no valid token or options");
+    if (!this.warmConnectionOptions) {
+      debugLogger.debug("Deepgram cannot re-warm: no saved options");
       return;
     }
 
@@ -248,13 +336,61 @@ class DeepgramStreaming {
       delayMs: delay,
     });
     clearTimeout(this.rewarmTimer);
-    this.rewarmTimer = setTimeout(() => {
+    this.rewarmTimer = setTimeout(async () => {
       this.rewarmTimer = null;
       if (this.hasWarmConnection() || this.isConnected) return;
+
+      let token = this.getCachedToken();
+      if (!token && this.tokenRefreshFn) {
+        try {
+          token = await this.tokenRefreshFn();
+          if (token) this.cacheToken(token);
+        } catch (err) {
+          debugLogger.debug("Deepgram token refresh for re-warm failed", {
+            error: err.message,
+          });
+        }
+      }
+      if (!token) {
+        debugLogger.debug("Deepgram cannot re-warm: no valid token");
+        return;
+      }
+
       this.warmup({ ...this.warmConnectionOptions, token }).catch((err) => {
         debugLogger.debug("Deepgram auto re-warm failed", { error: err.message });
       });
     }, delay);
+  }
+
+  scheduleProactiveRefresh() {
+    clearTimeout(this.proactiveRefreshTimer);
+    const refreshDelay = TOKEN_EXPIRY_MS - TOKEN_REFRESH_BUFFER_MS * 2;
+    this.proactiveRefreshTimer = setTimeout(async () => {
+      this.proactiveRefreshTimer = null;
+      if (!this.hasWarmConnection() || this.isConnected) return;
+
+      const savedOptions = this.warmConnectionOptions ? { ...this.warmConnectionOptions } : null;
+      if (!savedOptions || !this.tokenRefreshFn) return;
+
+      let newToken;
+      try {
+        newToken = await this.tokenRefreshFn();
+      } catch (err) {
+        debugLogger.debug("Deepgram proactive token refresh failed", {
+          error: err.message,
+        });
+        return;
+      }
+      if (!newToken || this.isConnected) return;
+
+      debugLogger.debug("Deepgram rotating warm connection with fresh token");
+      this.cleanupWarmConnection();
+      this.cacheToken(newToken);
+      this.rewarmAttempts = 0;
+      this.warmup({ ...savedOptions, token: newToken }).catch((err) => {
+        debugLogger.debug("Deepgram proactive re-warm failed", { error: err.message });
+      });
+    }, refreshDelay);
   }
 
   useWarmConnection() {
@@ -271,6 +407,8 @@ class DeepgramStreaming {
     }
 
     this.stopKeepAlive();
+    clearTimeout(this.proactiveRefreshTimer);
+    this.proactiveRefreshTimer = null;
 
     this.ws = this.warmConnection;
     this.isConnected = true;
@@ -315,6 +453,8 @@ class DeepgramStreaming {
 
   cleanupWarmConnection() {
     this.stopKeepAlive();
+    clearTimeout(this.proactiveRefreshTimer);
+    this.proactiveRefreshTimer = null;
     if (this.warmConnection) {
       try {
         this.warmConnection.close();
@@ -344,8 +484,59 @@ class DeepgramStreaming {
     return result;
   }
 
+  startLivenessCheck() {
+    clearTimeout(this.livenessTimer);
+    this.livenessTimer = setTimeout(() => {
+      this.handleLivenessTimeout().catch((err) => {
+        debugLogger.error("Deepgram liveness reconnect error", { error: err.message });
+      });
+    }, LIVENESS_TIMEOUT_MS);
+  }
+
+  async handleLivenessTimeout() {
+    if (this.resultsReceived > 0 || !this.isConnected) return;
+
+    const gen = this._generation;
+    const savedReplay = this.replayBuffer;
+
+    debugLogger.warn("Deepgram warm connection unresponsive, reconnecting", {
+      audioBytesSent: this.audioBytesSent,
+    });
+
+    this.isDisconnecting = true;
+    this.cleanup();
+    this.isDisconnecting = false;
+
+    if (gen !== this._generation) return;
+
+    let token = this.getCachedToken();
+    if (!token && this.tokenRefreshFn) {
+      try {
+        token = await this.tokenRefreshFn();
+        if (token) this.cacheToken(token);
+      } catch (err) {
+        debugLogger.error("Deepgram reconnect token refresh failed", { error: err.message });
+        return;
+      }
+    }
+    if (!token) return;
+    if (gen !== this._generation) return;
+
+    try {
+      await this.connect({
+        ...this.connectionOptions,
+        token,
+        replayBuffer: savedReplay,
+        forceNew: true,
+      });
+      debugLogger.debug("Deepgram liveness reconnect succeeded");
+    } catch (err) {
+      debugLogger.error("Deepgram liveness reconnect failed", { error: err.message });
+    }
+  }
+
   async connect(options = {}) {
-    const { token } = options;
+    const { token, replayBuffer, forceNew } = options;
     if (!token) {
       throw new Error("Streaming token is required");
     }
@@ -355,13 +546,31 @@ class DeepgramStreaming {
       return;
     }
 
+    this.connectionOptions = {
+      sampleRate: options.sampleRate,
+      language: options.language,
+      keyterms: options.keyterms,
+    };
     this.accumulatedText = "";
     this.finalSegments = [];
-    this.coldStartBuffer = [];
-    this.coldStartBufferSize = 0;
+    this.audioBytesSent = 0;
+    this.resultsReceived = 0;
 
-    if (this.hasWarmConnection()) {
+    if (replayBuffer && replayBuffer.length > 0) {
+      this.coldStartBuffer = replayBuffer;
+      this.coldStartBufferSize = replayBuffer.reduce((sum, b) => sum + b.length, 0);
+      debugLogger.debug("Deepgram replaying buffered audio", {
+        chunks: replayBuffer.length,
+        bytes: this.coldStartBufferSize,
+      });
+    } else {
+      this.coldStartBuffer = [];
+      this.coldStartBufferSize = 0;
+    }
+
+    if (!forceNew && this.hasWarmConnection()) {
       if (this.useWarmConnection()) {
+        this.startLivenessCheck();
         debugLogger.debug("Deepgram using warm connection - instant start");
         return;
       }
@@ -393,6 +602,11 @@ class DeepgramStreaming {
 
       this.ws.on("error", (error) => {
         debugLogger.error("Deepgram WebSocket error", { error: error.message });
+        // Invalidate cached token on auth failure so next attempt fetches fresh
+        if (error.message && error.message.includes("401")) {
+          this.cachedToken = null;
+          this.tokenFetchedAt = null;
+        }
         this.cleanup();
         if (this.pendingReject) {
           this.pendingReject(error);
@@ -409,6 +623,11 @@ class DeepgramStreaming {
           reason: reason?.toString(),
           wasActive,
         });
+        if (this.pendingReject) {
+          this.pendingReject(new Error(`WebSocket closed before ready (code: ${code})`));
+          this.pendingReject = null;
+          this.pendingResolve = null;
+        }
         if (this.closeResolve) {
           this.closeResolve({ text: this.accumulatedText });
         }
@@ -449,6 +668,13 @@ class DeepgramStreaming {
           break;
 
         case "Results": {
+          this.resultsReceived++;
+          if (this.livenessTimer) {
+            clearTimeout(this.livenessTimer);
+            this.livenessTimer = null;
+            this.replayBuffer = [];
+            this.replayBufferSize = 0;
+          }
           const transcript = message.channel?.alternatives?.[0]?.transcript;
           if (!transcript) break;
 
@@ -523,6 +749,13 @@ class DeepgramStreaming {
       this.coldStartBufferSize = 0;
     }
 
+    if (this.livenessTimer) {
+      const copy = Buffer.from(pcmBuffer);
+      this.replayBuffer.push(copy);
+      this.replayBufferSize += copy.length;
+    }
+
+    this.audioBytesSent += pcmBuffer.length;
     this.ws.send(pcmBuffer);
     return true;
   }
@@ -538,6 +771,16 @@ class DeepgramStreaming {
   }
 
   async disconnect(closeStream = true) {
+    this._generation++;
+    clearTimeout(this.livenessTimer);
+    this.livenessTimer = null;
+
+    debugLogger.debug("Deepgram disconnect", {
+      audioBytesSent: this.audioBytesSent,
+      resultsReceived: this.resultsReceived,
+      textLength: this.accumulatedText.length,
+    });
+
     if (!this.ws) return { text: this.accumulatedText };
 
     this.isDisconnecting = true;
@@ -579,6 +822,10 @@ class DeepgramStreaming {
     this.stopKeepAlive();
     clearTimeout(this.connectionTimeout);
     this.connectionTimeout = null;
+    clearTimeout(this.livenessTimer);
+    this.livenessTimer = null;
+    this.replayBuffer = [];
+    this.replayBufferSize = 0;
 
     if (this.ws) {
       try {
@@ -599,6 +846,8 @@ class DeepgramStreaming {
     this.cleanupWarmConnection();
     clearTimeout(this.rewarmTimer);
     this.rewarmTimer = null;
+    clearTimeout(this.proactiveRefreshTimer);
+    this.proactiveRefreshTimer = null;
     this.cachedToken = null;
     this.tokenFetchedAt = null;
     this.warmConnectionOptions = null;

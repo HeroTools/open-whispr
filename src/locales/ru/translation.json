@@ -1,0 +1,1249 @@
+{
+  "app": {
+    "name": "OpenWhispr",
+    "loading": "Загрузка OpenWhispr...",
+    "oauth": {
+      "redirectTitle": "Перенаправление в OpenWhispr",
+      "closeTab": "Можете закрыть эту вкладку"
+    },
+    "buttons": {
+      "cancelRecording": "Отменить запись",
+      "cancelProcessing": "Отменить обработку"
+    },
+    "mic": {
+      "hotkeyToSpeak": "[{{hotkey}}] для диктовки",
+      "recording": "Запись...",
+      "processing": "Обработка...",
+      "clickToSpeak": "Нажмите для диктовки"
+    },
+    "toasts": {
+      "hotkeyChanged": {
+        "title": "Горячая клавиша изменена"
+      },
+      "hotkeyUnavailable": {
+        "title": "Горячая клавиша недоступна",
+        "description": "Не удалось зарегистрировать горячую клавишу. Выберите другую в настройках."
+      }
+    },
+    "commandMenu": {
+      "startListening": "Начать прослушивание",
+      "stopListening": "Остановить прослушивание",
+      "hideForNow": "Скрыть"
+    }
+  },
+  "settings": {
+    "language": {
+      "sectionTitle": "Язык",
+      "sectionDescription": "Настройте язык интерфейса и транскрипции независимо друг от друга",
+      "uiLabel": "Язык интерфейса",
+      "uiDescription": "Выберите язык интерфейса OpenWhispr",
+      "transcriptionLabel": "Язык транскрипции",
+      "transcriptionDescription": "Выберите язык, на котором вы говорите, для более точной транскрипции",
+      "uiOption": {
+        "en": "English",
+        "es": "Espanol",
+        "fr": "Francais",
+        "de": "Deutsch",
+        "pt": "Portugues",
+        "it": "Italiano",
+        "zh-CN": "简体中文",
+        "zh-TW": "繁體中文",
+        "ru": "Русский"
+      }
+    }
+  },
+  "tray": {
+    "toggleDictation": {
+      "show": "Показать панель диктовки",
+      "hide": "Скрыть панель диктовки"
+    },
+    "openControlPanel": "Открыть панель управления",
+    "quit": "Закрыть OpenWhispr",
+    "tooltip": "OpenWhispr — голосовая диктовка"
+  },
+  "menu": {
+    "appLabel": "OpenWhispr",
+    "quit": "Закрыть OpenWhispr",
+    "speech": "Речь",
+    "help": "Справка",
+    "learnMore": "Узнать больше",
+    "file": "Файл",
+    "closeWindow": "Закрыть окно"
+  },
+  "window": {
+    "voiceRecorderTitle": "Диктофон",
+    "controlPanelTitle": "Панель управления"
+  },
+  "dialog": {
+    "openLink": {
+      "title": "Не удалось открыть ссылку",
+      "message": "Не удалось открыть ссылку в браузере:\n{{url}}\n\nОшибка: {{error}}"
+    },
+    "loadFailure": {
+      "title": "OpenWhispr не удалось загрузить",
+      "message": "OpenWhispr не смог загрузить интерфейс.",
+      "detail": {
+        "window": "Окно: {{windowName}}",
+        "error": "Ошибка {{errorCode}}: {{errorDescription}}",
+        "url": "URL: {{url}}",
+        "hint": "Попробуйте переустановить приложение или запустить с флагом --log-level=debug."
+      }
+    }
+  },
+  "startup": {
+    "error": {
+      "title": "Ошибка запуска OpenWhispr",
+      "message": "Не удалось запустить приложение:\n\n{{error}}\n\nПожалуйста, сообщите об этой проблеме."
+    },
+    "globeHotkey": {
+      "title": "Клавиша Globe недоступна",
+      "message": "OpenWhispr не смог активировать горячую клавишу Globe.",
+      "details": {
+        "unknown": "Неизвестная ошибка при запуске слушателя клавиши Globe.",
+        "fallback": "Сочетание с клавишей Globe будет отключено; остальные горячие клавиши продолжат работать.",
+        "devHint": "Выполните `npm run compile:globe` и пересоберите приложение для генерации бинарного файла слушателя.",
+        "reinstallHint": "Попробуйте переустановить OpenWhispr или обратитесь в поддержку, если проблема сохраняется."
+      }
+    }
+  },
+  "hotkey": {
+    "errors": {
+      "callbackRequired": "Для настройки горячей клавиши необходима функция обратного вызова",
+      "globeOnlyMac": "Клавиша Globe доступна только на macOS.",
+      "alreadyRegistered": "«{{hotkey}}» уже зарегистрирована другим приложением.",
+      "osReserved": "«{{hotkey}}» может быть зарезервирована вашей операционной системой.",
+      "registrationFailed": "Не удалось зарегистрировать «{{hotkey}}». Возможно, она используется другим приложением.",
+      "trySuggestions": "Попробуйте: {{suggestions}}"
+    }
+  },
+  "systemSettings": {
+    "microphone": "Откройте системные настройки для настройки разрешений микрофона.",
+    "sound": "Откройте системные настройки звука (например, pavucontrol).",
+    "accessibility": "Настройки универсального доступа недоступны на этой платформе."
+  },
+  "titleBar": {
+    "quitTitle": "Закрыть OpenWhispr",
+    "quitConfirmTitle": "Закрыть OpenWhispr?",
+    "quitConfirmDescription": "Это закроет OpenWhispr и остановит фоновые процессы.",
+    "quit": "Закрыть",
+    "cancel": "Отмена"
+  },
+  "upgradePrompt": {
+    "paymentFailed": "Не удалось обработать платёж",
+    "weeklyLimit": "Вы достигли недельного лимита",
+    "pastDueDescription": "Сейчас вы на бесплатном плане — не волнуйтесь, у вас есть {{limit}} слов в неделю.\nОбновите способ оплаты, чтобы вернуться к безлимитному Pro.",
+    "limitDescription": "Использовано {{used}} из {{limit}} слов.\nВаша транскрипция сохранена и вставлена.",
+    "updatePayment": "Обновить способ оплаты",
+    "updatePaymentDescription": "Вернитесь к безлимитным Pro-транскрипциям.",
+    "upgradeToPro": "Перейти на Pro",
+    "upgradeDescription": "Безлимитные транскрипции. $9/мес.",
+    "useApiKey": "Использовать свой API-ключ",
+    "useApiKeyDescription": "Свой ключ — без ограничений.",
+    "switchToLocal": "Перейти на локальный режим",
+    "switchToLocalDescription": "Офлайн-транскрипция. Без ограничений.",
+    "rollingWeeklyLimit": "Скользящий недельный лимит"
+  },
+  "windowControls": {
+    "minimize": "Свернуть",
+    "maximize": "Развернуть",
+    "restore": "Восстановить",
+    "close": "Закрыть"
+  },
+  "windows": {
+    "pttUnavailable": "Нативный слушатель Push-to-Talk недоступен"
+  },
+  "common": {
+    "back": "Назад",
+    "next": "Далее",
+    "complete": "Готово",
+    "reset": "Сбросить",
+    "refresh": "Обновить",
+    "download": "Скачать",
+    "cancel": "Отмена",
+    "recommended": "Рекомендуется",
+    "active": "Активно",
+    "cloud": "Облако",
+    "local": "Локально",
+    "apiKey": "API-ключ",
+    "model": "Модель",
+    "loading": "Загрузка...",
+    "unknown": "Неизвестно",
+    "availableModels": "Доступные модели",
+    "fast": "Быстрый",
+    "hold": "Удержание",
+    "less": "Меньше",
+    "more": "Больше",
+    "private": "Приватный",
+    "tap": "Нажатие"
+  },
+  "onboarding": {
+    "steps": {
+      "welcome": "Приветствие",
+      "setup": "Настройка",
+      "permissions": "Разрешения",
+      "activation": "Активация"
+    },
+    "hotkey": {
+      "couldNotRegisterTitle": "Не удалось зарегистрировать горячую клавишу",
+      "couldNotRegisterDescription": "Эта комбинация клавиш, возможно, уже используется. Попробуйте другую."
+    },
+    "setup": {
+      "title": "Настройка",
+      "description": "Выберите язык и предоставьте разрешения",
+      "language": "Язык"
+    },
+    "permissions": {
+      "title": "Разрешения",
+      "microphoneTitle": "Микрофон",
+      "microphoneDescription": "Для записи голоса",
+      "grant": "Предоставить",
+      "accessibilityTitle": "Универсальный доступ",
+      "accessibilityDescription": "Для вставки текста в приложения",
+      "testAndGrant": "Проверить и предоставить",
+      "requiredForApp": "Необходимо для работы OpenWhispr",
+      "microphoneRequired": "Требуется доступ к микрофону"
+    },
+    "transcription": {
+      "title": "Настройка транскрипции",
+      "description": "Выберите режим и провайдера",
+      "preferredLanguage": "Предпочитаемый язык"
+    },
+    "activation": {
+      "title": "Настройка активации",
+      "description": "Настройте способ запуска диктовки",
+      "hotkey": "Горячая клавиша",
+      "mode": "Режим",
+      "tapDescription": "Нажмите для старта/остановки",
+      "holdDescription": "Удерживайте во время речи",
+      "test": "Тест",
+      "hotkeyToStartStop": "{{hotkey}} для старта/остановки",
+      "holdHotkey": "Удерживайте {{hotkey}}",
+      "textareaPlaceholder": "Нажмите сюда и используйте горячую клавишу для диктовки..."
+    }
+  },
+  "controlPanel": {
+    "update": {
+      "readyTitle": "Обновление готово к установке",
+      "readyDescription": "Нажмите «Установить обновление», чтобы перезапустить приложение с новой версией.",
+      "problemTitle": "Проблема с обновлением",
+      "problemDescription": "Не удалось завершить обновление. Попробуйте позже.",
+      "installTitle": "Установить обновление",
+      "installDescription": "OpenWhispr перезапустится для применения обновления. Текущая работа будет сохранена.",
+      "couldNotInstallTitle": "Не удалось установить обновление",
+      "couldNotInstallDescription": "Что-то пошло не так. Попробуйте ещё раз.",
+      "couldNotDownloadTitle": "Не удалось скачать обновление",
+      "couldNotDownloadDescription": "Проверьте подключение к интернету и попробуйте снова.",
+      "installing": "Установка...",
+      "installButton": "Установить обновление",
+      "availableButton": "Доступно обновление"
+    },
+    "limit": {
+      "weeklyTitle": "Недельный лимит достигнут",
+      "weeklyDescription": "Ваш лимит обновляется на скользящей основе. Перейдите на Pro или используйте свой API-ключ для безлимитного использования."
+    },
+    "billing": {
+      "pastDueTitle": "Не удалось обработать платёж",
+      "pastDueDescription": "Не волнуйтесь — сейчас вы на бесплатном плане. Обновите способ оплаты в настройках, чтобы вернуться к Pro.",
+      "bannerDescription": "Сейчас вы на бесплатном плане — у вас есть {{limit}} слов в неделю. Обновите способ оплаты, чтобы вернуться к Pro.",
+      "updatePayment": "Обновить платёж"
+    },
+    "history": {
+      "title": "Транскрипции",
+      "couldNotLoadTitle": "Не удалось загрузить историю",
+      "couldNotLoadDescription": "Произошла ошибка при загрузке транскрипций. Попробуйте закрыть и снова открыть приложение.",
+      "copiedTitle": "Скопировано!",
+      "copiedDescription": "Текст скопирован в буфер обмена",
+      "couldNotCopyTitle": "Не удалось скопировать",
+      "couldNotCopyDescription": "Произошла ошибка при копировании в буфер обмена. Попробуйте снова.",
+      "clearTitle": "Очистить историю",
+      "clearDescription": "Все ваши транскрипции будут удалены. Это действие нельзя отменить.",
+      "clearedTitle": "История очищена",
+      "clearedDescription_one": "{{count}} транскрипция удалена",
+      "clearedDescription_few": "{{count}} транскрипции удалены",
+      "clearedDescription_many": "{{count}} транскрипций удалено",
+      "couldNotClearTitle": "Не удалось очистить историю",
+      "couldNotClearDescription": "Что-то пошло не так. Попробуйте снова.",
+      "deleteTitle": "Удалить транскрипцию",
+      "deleteDescription": "Эта транскрипция будет удалена безвозвратно.",
+      "couldNotDeleteTitle": "Не удалось удалить",
+      "couldNotDeleteDescription": "Эта транскрипция, возможно, уже была удалена.",
+      "couldNotDeleteDescriptionGeneric": "Что-то пошло не так. Попробуйте снова.",
+      "clear": "Очистить",
+      "empty": "Транскрипций пока нет",
+      "press": "Нажмите",
+      "toStart": "чтобы начать"
+    },
+    "cloudMigration": {
+      "title": "Добро пожаловать в OpenWhispr Pro",
+      "description": "Ваш 7-дневный бесплатный пробный период активирован! Мы переключили транскрипцию на OpenWhispr Cloud для более быстрых и точных результатов. Ваши предыдущие настройки сохранены — вы можете вернуться к ним в любой момент в настройках.",
+      "viewSettings": "Открыть настройки"
+    },
+    "aiCta": {
+      "title": "Улучшите транскрипции с помощью ИИ",
+      "description": "Автоматически исправляйте грамматику, пунктуацию и форматирование прямо во время диктовки.",
+      "enable": "Включить ИИ-улучшение"
+    },
+    "loading": "Загрузка..."
+  },
+  "reasoning": {
+    "mode": {
+      "cloud": "Облако",
+      "local": "Локально",
+      "localDescription": "Работает на вашем устройстве. Полная приватность, работает офлайн.",
+      "cloudDescription": "Продвинутые модели через API. Быстро и мощно, требуется интернет."
+    },
+    "enableTitle": "Включить ИИ-улучшение текста",
+    "enableDescription": "Используйте ИИ для автоматического повышения качества транскрипций",
+    "custom": {
+      "endpointWithProtocol": "Введите полный базовый URL, включая протокол (например, https://server/v1).",
+      "httpsRequired": "Требуется HTTPS (HTTP допускается только для локальной сети).",
+      "endpointUnauthorized": "Конечная точка отклонила запрос (401/403). Добавьте API-ключ или измените настройки авторизации сервера.",
+      "endpointTitle": "URL конечной точки",
+      "endpointExamples": "Примеры:",
+      "ollama": "(Ollama)",
+      "localAi": "(LocalAI)",
+      "apiKeyOptional": "API-ключ (необязательно)",
+      "apiKeyHelp": "Необязательно. Отправляется как Bearer-токен для аутентификации. Это не ваш API-ключ OpenAI.",
+      "applyAndRefresh": "Применить и обновить",
+      "queryPrefix": "Мы запросим",
+      "querySuffix": "для получения списка доступных моделей.",
+      "modelsReloadHint": "Модели перезагрузятся, когда вы покинете поле URL или нажмёте «Применить и обновить».",
+      "enterEndpoint": "Введите URL конечной точки выше для загрузки моделей.",
+      "fetchingModels": "Получение списка моделей с конечной точки...",
+      "noModels": "Модели не найдены. Проверьте URL конечной точки.",
+      "providerName": "Пользовательский",
+      "ownerLabel": "Автор: {{owner}}",
+      "unableToLoadModels": "Не удалось загрузить модели с конечной точки."
+    },
+    "getApiKey": "Получить API-ключ ->",
+    "selectModel": "Выберите модель",
+    "availableModels": "Доступные модели"
+  },
+  "transcription": {
+    "deleteModel": {
+      "title": "Удалить модель",
+      "description": "Вы уверены, что хотите удалить эту модель? Для повторного использования её нужно будет скачать заново."
+    },
+    "parakeet": {
+      "multilingual": "25 языков",
+      "english": "Английский"
+    },
+    "apiKeyOptional": "API-ключ (необязательно)",
+    "getKey": "Получить ключ ->",
+    "endpointUrl": "URL конечной точки",
+    "customProvider": "Пользовательский",
+    "fallback": {
+      "whisperModelDescription": "Модель",
+      "parakeetModelDescription": "Модель NVIDIA Parakeet"
+    },
+    "whisperModels": "Модели Whisper"
+  },
+  "hooks": {
+    "audioRecording": {
+      "errorTitles": {
+        "sessionExpired": "Сессия истекла",
+        "offline": "Нет подключения к интернету",
+        "dailyLimitReached": "Дневной лимит достигнут"
+      },
+      "fallback": {
+        "title": "Резервный режим",
+        "description": "Локальный Whisper не сработал. Использован OpenAI API."
+      },
+      "noAudio": {
+        "title": "Звук не обнаружен",
+        "description": "В записи не обнаружен звук. Попробуйте ещё раз."
+      }
+    },
+    "clipboard": {
+      "pasteFailed": {
+        "title": "Ошибка вставки из буфера обмена",
+        "description": "Не удалось вставить из буфера обмена. Попробуйте ввести текст вручную или использовать Cmd+V/Ctrl+V."
+      }
+    },
+    "hotkeyRegistration": {
+      "titles": {
+        "invalidHotkey": "Недопустимая горячая клавиша",
+        "notRegistered": "Горячая клавиша не зарегистрирована",
+        "saved": "Горячая клавиша сохранена",
+        "error": "Ошибка горячей клавиши"
+      },
+      "errors": {
+        "enterValidHotkey": "Введите допустимую горячую клавишу",
+        "unsupportedShortcut": "Это сочетание клавиш не поддерживается.",
+        "couldNotRegister": "Не удалось зарегистрировать эту клавишу. Выберите другую.",
+        "failedToRegister": "Не удалось зарегистрировать горячую клавишу. Попробуйте ещё раз."
+      },
+      "messages": {
+        "nowUsing": "Теперь для диктовки используется {{hotkey}}"
+      }
+    },
+    "modelDownload": {
+      "errors": {
+        "timeout": "Превышено время ожидания загрузки. Проверьте подключение к интернету и попробуйте снова.",
+        "notFound": "Не удалось подключиться к серверу загрузки. Проверьте подключение к интернету.",
+        "corrupted": "Загрузка не завершена или файл повреждён. Попробуйте ещё раз.",
+        "rateLimited": "Сервер загрузки ограничивает количество запросов. Подождите несколько минут и попробуйте снова.",
+        "server": "Ошибка сервера ({{error}}). Попробуйте позже.",
+        "generic": "Ошибка загрузки: {{error}}",
+        "extractionFailed": "Модель скачана, но установка не удалась. Нажмите «Скачать» для повторной установки без повторной загрузки.",
+        "unknown": "Неизвестная ошибка"
+      },
+      "downloadFailed": {
+        "title": "Ошибка загрузки"
+      },
+      "installationFailed": {
+        "title": "Ошибка установки"
+      },
+      "downloadInProgress": {
+        "title": "Загрузка в процессе",
+        "description": "Дождитесь завершения текущей загрузки или отмените её."
+      },
+      "modelDeleted": {
+        "title": "Модель удалена",
+        "descriptionWithSpace": "Модель успешно удалена! Освобождено {{sizeMb}} МБ дискового пространства.",
+        "description": "Модель успешно удалена!"
+      },
+      "deleteFailed": {
+        "title": "Ошибка удаления",
+        "description": "Не удалось удалить модель: {{error}}"
+      },
+      "downloadCancelled": {
+        "title": "Загрузка отменена",
+        "description": "Загрузка была отменена."
+      }
+    },
+    "permissions": {
+      "paths": {
+        "windowsMicrophone": "Параметры -> Конфиденциальность -> Микрофон",
+        "linuxSound": "системные настройки звука",
+        "defaultSound": "Системные настройки -> Звук -> Вход",
+        "linuxPrivacy": "системные настройки конфиденциальности",
+        "defaultPrivacy": "Системные настройки -> Конфиденциальность и безопасность -> Микрофон"
+      },
+      "micErrors": {
+        "accessFailed": "Не удалось получить доступ к микрофону. Попробуйте ещё раз.",
+        "noMicrophones": "Микрофоны не обнаружены. Подключите микрофон или выберите его в {{settingsPath}}.",
+        "permissionDenied": "Разрешение отклонено. Откройте {{privacyPath}} и разрешите доступ для OpenWhispr.",
+        "couldNotStart": "Не удалось запустить выбранный микрофон. Выберите устройство ввода в {{settingsPath}} и повторите тест.",
+        "noActiveInput": "Активное устройство ввода звука не найдено. Выберите микрофон в {{settingsPath}}.",
+        "unknown": "Ошибка доступа к микрофону: {{error}}. Выберите другое устройство ввода и попробуйте снова.",
+        "unknownFallback": "Неизвестная ошибка"
+      },
+      "settingsTitles": {
+        "microphone": "Настройки микрофона",
+        "sound": "Настройки звука",
+        "accessibility": "Настройки универсального доступа"
+      },
+      "settingsErrors": {
+        "unableToOpenMicrophone": "Не удалось открыть настройки микрофона. Откройте системные настройки вручную.",
+        "unableToOpenSound": "Не удалось открыть настройки звука. Откройте системные настройки вручную.",
+        "unableToOpenAccessibility": "Не удалось открыть настройки универсального доступа. Откройте системные настройки вручную."
+      },
+      "micUnavailable": "API микрофона недоступны в этой среде. Перезапустите приложение.",
+      "titles": {
+        "microphoneUnavailable": "Микрофон недоступен",
+        "microphonePermissionRequired": "Требуется разрешение на использование микрофона",
+        "accessibilityNeeded": "Требуются разрешения универсального доступа",
+        "readyToGo": "Всё готово!",
+        "waylandClipboardMode": "Режим буфера обмена в Wayland",
+        "optionalPasteTool": "Дополнительно: установите утилиту вставки"
+      },
+      "descriptions": {
+        "accessibilityNeeded": "Предоставьте разрешения универсального доступа в системных настройках для автоматической вставки текста.",
+        "windowsReady": "Windows не требует специальных разрешений для автоматической вставки. Всё готово!",
+        "linuxReadyWithMethod": "Автоматическая вставка доступна через {{method}}. Всё готово!",
+        "waylandClipboardMode": "Автоматическая вставка недоступна в этой сессии Wayland. OpenWhispr скопирует текст в буфер обмена, и вы сможете вставить его с помощью Ctrl+V.",
+        "optionalPasteTool": "Для автоматической вставки установите {{tool}}:\n\n{{installCmd}}{{waylandNote}}\n\nБез этого инструмента OpenWhispr будет копировать текст в буфер обмена, и вы сможете вставить его с помощью Ctrl+V."
+      },
+      "alerts": {
+        "accessibilityNeeded": "Требуются разрешения универсального доступа! Предоставьте их в системных настройках."
+      },
+      "notes": {
+        "waylandWtype": "\n\nПримечание: для приложений XWayland также работает xdotool.",
+        "waylandXwaylandOnly": "\n\nПримечание: автоматическая вставка работает только для приложений XWayland."
+      },
+      "labels": {
+        "defaultPasteTool": "xdotool",
+        "xdotoolXwayland": "xdotool (приложения XWayland)"
+      },
+      "accessibilityTestText": "Тест универсального доступа OpenWhispr",
+      "warning": {
+        "messages": {
+          "macos": "Проверьте настройки звука, чтобы выбрать устройство ввода",
+          "windows": "Проверьте настройки Windows, чтобы выбрать устройство ввода",
+          "linux": "Проверьте системные настройки звука, чтобы выбрать устройство ввода"
+        },
+        "soundLabel": "Звук",
+        "privacyLabel": "Конфиденциальность"
+      }
+    }
+  },
+  "auth": {
+    "cloudNotConfigured": "Облако не настроено",
+    "common": {
+      "back": "Назад",
+      "continue": "Продолжить",
+      "or": "или"
+    },
+    "emailStep": {
+      "continueWithEmail": "Продолжить с электронной почтой",
+      "continueWithoutAccount": "Продолжить без аккаунта",
+      "emailPlaceholder": "you@example.com"
+    },
+    "errors": {
+      "accountExistsSignIn": "Аккаунт с этой электронной почтой уже существует. Войдите в систему.",
+      "accountNotFoundCreate": "Аккаунт с этой электронной почтой не найден. Создайте аккаунт.",
+      "authNotConfigured": "Аутентификация не настроена",
+      "createAccountFailed": "Не удалось создать аккаунт",
+      "failedProviderSignIn": "Не удалось войти через {{provider}}",
+      "failedUserCheck": "Не удалось проверить аккаунт пользователя",
+      "generic": "Что-то пошло не так. Попробуйте ещё раз.",
+      "invalidCredentials": "Неверный адрес электронной почты или пароль",
+      "plusAliasUnsupported": "Алиасы электронной почты с символом «+» не поддерживаются"
+    },
+    "getStarted": "Начать",
+    "legal": {
+      "and": "и",
+      "prefix": "Продолжая, вы соглашаетесь с нашими",
+      "privacy": "Политикой конфиденциальности",
+      "suffix": "",
+      "terms": "Условиями использования"
+    },
+    "passwordForm": {
+      "createAccount": "Создать аккаунт",
+      "createAccountButton": "Создать аккаунт",
+      "createAccountLink": "Создать аккаунт",
+      "createPasswordPlaceholder": "Придумайте пароль",
+      "creatingAccount": "Создание аккаунта...",
+      "enterPasswordPlaceholder": "Введите пароль",
+      "forgotPassword": "Забыли пароль?",
+      "fullNamePlaceholder": "Полное имя",
+      "haveAccount": "Уже есть аккаунт?",
+      "newHere": "Впервые здесь?",
+      "passwordMinLength": "Пароль должен содержать не менее 8 символов",
+      "signIn": "Войти",
+      "signInLink": "Войти",
+      "signingIn": "Вход...",
+      "welcomeBack": "С возвращением"
+    },
+    "signedIn": {
+      "ready": "Готово",
+      "welcomeBack": "С возвращением",
+      "welcomeBackName": "С возвращением, {{name}}"
+    },
+    "social": {
+      "completeInBrowser": "Завершите вход в браузере",
+      "continueWithGoogle": "Продолжить с Google"
+    },
+    "welcomeSubtitle": "Диктуйте где угодно голосом",
+    "welcomeTitle": "Добро пожаловать в OpenWhispr"
+  },
+  "cleanupPrompt": "Очистка",
+  "developerSection": {
+    "currentLogFile": "Текущий файл логов",
+    "debugMode": {
+      "disabledDescription": "Включите для сбора подробной диагностической информации",
+      "enabledDescription": "Ведётся запись обработки аудио, API-запросов и системных операций",
+      "label": "Режим отладки"
+    },
+    "description": "Собирайте подробные логи для диагностики проблем",
+    "openLogsFolder": "Открыть папку логов",
+    "performanceNote": {
+      "description": "Отладочное логирование непрерывно записывает данные на диск и может незначительно влиять на производительность. Отключайте, когда не занимаетесь устранением неполадок.",
+      "label": "Примечание"
+    },
+    "sharing": {
+      "footer": "Логи не содержат API-ключей и конфиденциальных данных",
+      "steps": {
+        "0": "Воспроизведите проблему при включённом режиме отладки",
+        "1": "Нажмите «Открыть папку логов» выше",
+        "2": "Прикрепите последний файл логов к отчёту об ошибке"
+      },
+      "title": "Отправка логов в поддержку"
+    },
+    "title": "Отладочное логирование",
+    "toasts": {
+      "copied": {
+        "description": "Путь к файлу логов скопирован в буфер обмена",
+        "title": "Скопировано"
+      },
+      "copyFailed": {
+        "description": "Произошла ошибка при копировании в буфер обмена.",
+        "title": "Не удалось скопировать"
+      },
+      "debugDisabled": {
+        "description": "Отладочное логирование отключено",
+        "title": "Отладочное логирование отключено"
+      },
+      "debugEnabled": {
+        "description": "Подробные логи записываются на диск",
+        "title": "Отладочное логирование включено"
+      },
+      "loadFailed": {
+        "description": "Что-то пошло не так. Попробуйте повторно открыть настройки.",
+        "title": "Не удалось загрузить настройки отладки"
+      },
+      "openLogsFailed": {
+        "description": "Произошла ошибка при открытии папки логов.",
+        "title": "Не удалось открыть папку логов"
+      },
+      "updateFailed": {
+        "description": "Что-то пошло не так. Попробуйте ещё раз.",
+        "title": "Не удалось обновить отладочное логирование"
+      }
+    },
+    "whatGetsLogged": {
+      "items": {
+        "apiRequests": "API-запросы",
+        "audioProcessing": "Обработка аудио",
+        "errorDetails": "Детали ошибок",
+        "ffmpegOperations": "Операции FFmpeg",
+        "systemDiagnostics": "Системная диагностика",
+        "transcriptionPipeline": "Конвейер транскрипции"
+      },
+      "title": "Что записывается в логи"
+    }
+  },
+  "dictionarySuffix": "Суффикс словаря",
+  "emailVerification": {
+    "checkEmailDescription": "Мы отправили ссылку для подтверждения на",
+    "checkEmailTitle": "Проверьте почту",
+    "errors": {
+      "resendFailed": "Не удалось повторно отправить письмо. Попробуйте ещё раз.",
+      "serverUnreachable": "Не удалось подключиться к серверу. Проверьте соединение и попробуйте снова."
+    },
+    "resendButton": "Отправить письмо повторно",
+    "resendIn": "Повторная отправка через {{seconds}} с",
+    "verifiedDescription": "Ваш аккаунт настроен.",
+    "verifiedTitle": "Электронная почта подтверждена",
+    "waiting": "Ожидание подтверждения..."
+  },
+  "errorBoundary": {
+    "description": "Произошла непредвиденная ошибка. Перезагрузите, чтобы попробовать снова.",
+    "reload": "Перезагрузить",
+    "title": "Что-то пошло не так"
+  },
+  "forgotPassword": {
+    "back": "Назад",
+    "backToSignIn": "Вернуться к входу",
+    "emailPlaceholder": "Введите вашу электронную почту",
+    "goBack": "Вернуться",
+    "notConfigured": "Аутентификация ещё не настроена.",
+    "sendResetLink": "Отправить ссылку для сброса",
+    "sending": "Отправка...",
+    "subtitle": "Введите вашу электронную почту, и мы отправим вам ссылку для сброса пароля",
+    "success": {
+      "description": "Мы отправили ссылку для сброса пароля на",
+      "help": "Не получили письмо? Проверьте папку «Спам» или попробуйте снова.",
+      "title": "Проверьте почту",
+      "tryAnother": "Попробовать другой адрес"
+    },
+    "title": "Сброс пароля"
+  },
+  "fullPrompt": "Полный промпт",
+  "hotkeyGuidance": {
+    "blockedDescription": "Эти сочетания заблокированы, так как часто используются системой.",
+    "blockedTitle": "Заблокированные сочетания",
+    "description": "Используйте эти правила для выбора сочетания клавиш, которое не будет конфликтовать с системой.",
+    "examplesTitle": "Допустимые примеры",
+    "platforms": {
+      "linux": "Linux",
+      "macos": "macOS",
+      "windows": "Windows"
+    },
+    "recommended": {
+      "linux": {
+        "0": "Ctrl+Alt+Space",
+        "1": "Super+S",
+        "2": "Ctrl+Alt+D",
+        "3": "Ctrl+Shift+J",
+        "4": "Alt+Space"
+      },
+      "macos": {
+        "0": "⌥Space",
+        "1": "⌃⌥S",
+        "2": "⌃⌥D",
+        "3": "Fn",
+        "4": "⌘⇧J"
+      },
+      "windows": {
+        "0": "Ctrl+Alt+Space",
+        "1": "Ctrl+Shift+S",
+        "2": "Ctrl+Alt+D",
+        "3": "Win+Alt+K"
+      }
+    },
+    "recommendedTitle": "Рекомендуемые сочетания",
+    "rulesTitle": "Правила сочетаний",
+    "showAll": "Показать все",
+    "showFewer": "Показать меньше",
+    "title": "Справка по сочетаниям клавиш",
+    "validationRules": {
+      "0": "Необходимо использовать хотя бы один модификатор (Ctrl, Alt, Shift и т.д.)",
+      "1": "Нельзя использовать зарезервированные системные сочетания",
+      "2": "Одиночные клавиши без модификаторов не допускаются",
+      "3": "Некоторые сочетания могут конфликтовать с другими приложениями"
+    }
+  },
+  "hotkeyInput": {
+    "ariaLabel": "Нажмите комбинацию клавиш для назначения горячей клавиши",
+    "clickToChange": "Нажмите для изменения",
+    "clickToChangeLower": "нажмите для изменения",
+    "clickToSet": "Нажмите для назначения горячей клавиши",
+    "fnCaptureHint": "Нажмите клавишу для комбинации или отпустите для Globe",
+    "fnHeldHint": "+ клавиша или отпустите для Globe",
+    "globe": "Globe",
+    "hotkeyLabel": "Горячая клавиша",
+    "keyHint": "+ клавиша",
+    "listening": "Ожидание...",
+    "pressAnyKey": "Нажмите любую клавишу или Ctrl+Shift+K",
+    "pressAnyKeyMac": "Нажмите любую клавишу или ⌘⇧K",
+    "recording": "Запись",
+    "tryShortcut": "Попробуйте Ctrl+Shift+K",
+    "tryShortcutMac": "Попробуйте ⌘⇧K"
+  },
+  "languageSelector": {
+    "noLanguagesFound": "Языки не найдены",
+    "searchPlaceholder": "Поиск..."
+  },
+  "microphoneSettings": {
+    "builtIn": "(Встроенный)",
+    "errors": {
+      "unableToAccess": "Не удалось получить доступ к микрофону. Проверьте разрешения."
+    },
+    "helpText": "Выберите конкретный микрофон или используйте системные настройки по умолчанию.",
+    "inputDevice": "Устройство ввода",
+    "noBuiltInDetected": "Встроенный микрофон не обнаружен. Используется системный по умолчанию.",
+    "preferBuiltIn": {
+      "description": "Внешние микрофоны могут вызывать задержку или снижение качества транскрипции",
+      "label": "Предпочитать встроенный микрофон"
+    },
+    "selectPlaceholder": "Выберите микрофон",
+    "systemDefault": "Системный по умолчанию",
+    "unknownDevice": "Неизвестное устройство",
+    "using": "Используется:"
+  },
+  "pasteToolsInfo": {
+    "checking": "Проверка системных возможностей...",
+    "installCommands": {
+      "archLinux": "# Arch Linux",
+      "debianUbuntu": "# Debian / Ubuntu",
+      "debianUbuntuMint": "# Debian / Ubuntu / Mint",
+      "fedoraRhel": "# Fedora / RHEL"
+    },
+    "installPrefix": "Для автоматической вставки текста установите",
+    "methodReady": "для автоматической вставки текста",
+    "noteXwaylandAlso": "Примечание: для приложений XWayland также работает xdotool.",
+    "noteXwaylandOnly": "Примечание: автоматическая вставка работает только для приложений XWayland.",
+    "optionalEnableTitle": "Дополнительно: включите автоматическую вставку",
+    "readyTitle": "Автоматическая вставка готова",
+    "recheck": "Проверить снова",
+    "recheckChecking": "Проверка...",
+    "title": "Автоматическая вставка",
+    "usingMethodPrefix": "Используется",
+    "waylandClipboardDescription": "Автоматическая вставка недоступна в этой сессии Wayland. OpenWhispr скопирует текст в буфер обмена, и вы сможете вставить его вручную с помощью Ctrl+V.",
+    "waylandClipboardTitle": "Режим буфера обмена в Wayland",
+    "windowsReady": "Windows поддерживает автоматическую вставку из коробки. Настройка не требуется!",
+    "withoutToolPrefix": "Без этого инструмента OpenWhispr скопирует текст в буфер обмена. Вы сможете вставить его вручную с помощью Ctrl+V.",
+    "xwaylandAppsOnly": "автоматическая вставка работает только для приложений XWayland"
+  },
+  "promptStudio": {
+    "common": {
+      "copied": "Скопировано",
+      "copy": "Копировать",
+      "reset": "Сбросить",
+      "save": "Сохранить"
+    },
+    "defaultTestInput": "Привет, Whispr, какая сегодня погода?",
+    "dialogs": {
+      "reset": {
+        "description": "Промпт сброшен до значения по умолчанию.",
+        "title": "Сброс завершён"
+      },
+      "saved": {
+        "description": "Ваш пользовательский промпт будет использоваться для всей последующей обработки ИИ.",
+        "title": "Промпт сохранён"
+      }
+    },
+    "edit": {
+      "agentNameLabel": "Имя агента:",
+      "cautionLabel": "Внимание",
+      "cautionTextPrefix": "Изменение этого промпта может повлиять на качество транскрипции.",
+      "cautionTextSuffix": "Сохраняйте заполнитель {{agentName}}, чтобы обнаружение агента работало корректно.",
+      "placeholder": "Введите пользовательский системный промпт..."
+    },
+    "tabs": {
+      "customize": "Настроить",
+      "test": "Тест",
+      "view": "Просмотр"
+    },
+    "test": {
+      "addressHint": "Попробуйте обратиться к «{{agentName}}» для проверки режима инструкций",
+      "aiModels": "ИИ-модели",
+      "baseUrlMissing": "Базовый URL для {{provider}} не указан. Добавьте его в настройках ИИ-моделей.",
+      "cleanup": "Очистка",
+      "disabledInSettingsPrefix": "ИИ-улучшение текста отключено.",
+      "disabledInSettingsSuffix": "Включите его в ИИ-моделях для тестирования промптов.",
+      "disabledReasoning": "ИИ-улучшение текста отключено. Включите его в ИИ-моделях для тестирования промптов.",
+      "failed": "Тест не пройден: {{error}}",
+      "inputLabel": "Ввод",
+      "inputPlaceholder": "Введите текст для тестирования...",
+      "instruction": "Инструкция",
+      "modelLabel": "Модель",
+      "noModelSelected": "Модель не выбрана",
+      "none": "Нет",
+      "outputLabel": "Результат",
+      "processing": "Обработка...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "providerLabel": "Провайдер",
+      "run": "Запустить тест"
+    },
+    "view": {
+      "customPrompt": "Пользовательский промпт",
+      "defaultPrompt": "Промпт по умолчанию",
+      "modes": {
+        "agent": {
+          "description": "Активируется фразой «{{agentName}}» — выполняет команды, отвечает на вопросы, создаёт контент",
+          "label": "Агент"
+        },
+        "cleanup": {
+          "description": "Быстрый режим — убирает слова-паразиты, исправляет грамматику и пунктуацию",
+          "label": "Очистка"
+        }
+      },
+      "modified": "Изменён"
+    }
+  },
+  "resetPassword": {
+    "backToSignIn": "Вернуться к входу",
+    "confirmPasswordPlaceholder": "Подтвердите новый пароль",
+    "continue": "Продолжить",
+    "errors": {
+      "passwordMinLength": "Пароль должен содержать не менее 8 символов",
+      "passwordsDoNotMatch": "Пароли не совпадают"
+    },
+    "goBack": "Вернуться",
+    "newPasswordPlaceholder": "Новый пароль",
+    "notConfigured": "Аутентификация не настроена.",
+    "passwordMinLength": "Пароль должен содержать не менее 8 символов",
+    "resetButton": "Сбросить пароль",
+    "resetting": "Сброс...",
+    "subtitle": "Введите новый пароль ниже",
+    "success": {
+      "description": "Ваш пароль обновлён. Вы вошли в систему.",
+      "title": "Пароль успешно сброшен"
+    },
+    "title": "Создание нового пароля"
+  },
+  "settingsModal": {
+    "groups": {
+      "app": "Приложение",
+      "intelligence": "Интеллект",
+      "profile": "Профиль",
+      "speech": "Речь",
+      "system": "Система"
+    },
+    "sections": {
+      "account": {
+        "description": "Вход и использование",
+        "label": "Аккаунт"
+      },
+      "agentConfig": {
+        "description": "Настройка голосового агента",
+        "label": "Агент"
+      },
+      "aiModels": {
+        "description": "Очистка и улучшение текста",
+        "label": "ИИ-модели"
+      },
+      "developer": {
+        "description": "Логи, диагностика и данные",
+        "label": "Разработчик"
+      },
+      "dictionary": {
+        "description": "Пользовательские слова и фразы",
+        "label": "Словарь"
+      },
+      "general": {
+        "description": "Внешний вид, горячая клавиша и автозапуск",
+        "label": "Настройки"
+      },
+      "permissions": {
+        "description": "Микрофон и универсальный доступ",
+        "label": "Разрешения"
+      },
+      "privacy": {
+        "description": "Облачное резервное копирование и аналитика",
+        "label": "Конфиденциальность"
+      },
+      "prompts": {
+        "description": "Студия системных промптов",
+        "label": "Промпты"
+      },
+      "transcription": {
+        "description": "Движок распознавания речи",
+        "label": "Транскрипция"
+      }
+    },
+    "title": "Настройки"
+  },
+  "settingsPage": {
+    "account": {
+      "badges": {
+        "free": "Бесплатный",
+        "limitReached": "Лимит достигнут",
+        "pastDue": "Просрочен",
+        "pro": "Pro",
+        "trial": "Пробный"
+      },
+      "billing": {
+        "couldNotOpenDescription": "Не удалось открыть страницу оплаты. Попробуйте ещё раз.",
+        "couldNotOpenTitle": "Не удалось открыть оплату",
+        "manageBilling": "Управление оплатой",
+        "opening": "Открытие...",
+        "updatePaymentMethod": "Обновить способ оплаты"
+      },
+      "checkout": {
+        "couldNotOpenDescription": "Не удалось открыть страницу оформления. Попробуйте ещё раз.",
+        "couldNotOpenTitle": "Не удалось открыть оформление",
+        "opening": "Открытие...",
+        "upgradeToPro": "Перейти на Pro"
+      },
+      "disabled": "Отключено",
+      "featuresDisabled": "Функции аккаунта отключены",
+      "featuresDisabledDescription": "Установите VITE_NEON_AUTH_URL в файле .env для включения функций аккаунта.",
+      "notConfigured": "Аутентификация не настроена",
+      "notSignedIn": "Вы не вошли в систему",
+      "notSignedInDescription": "Создайте аккаунт, чтобы разблокировать премиум-функции.",
+      "offline": "Нет сети",
+      "pastDue": {
+        "description": "Сейчас вы на бесплатном плане. Обновите способ оплаты, чтобы вернуться к Pro.",
+        "title": "Не удалось обработать платёж"
+      },
+      "planDescriptions": {
+        "freeUsage": "{{used}} / {{limit}} слов на этой неделе",
+        "nextBilling": "Следующее списание: {{date}}",
+        "pastDue": "{{used}} / {{limit}} бесплатных слов на этой неделе — обновите платёж для восстановления Pro",
+        "trial": "Осталось {{days}} дней — безлимитные транскрипции",
+        "unlimited": "Без ограничений"
+      },
+      "planLabels": {
+        "free": "Бесплатный",
+        "pro": "Pro",
+        "trial": "Пробный"
+      },
+      "planTitle": "Тариф",
+      "rollingWeeklyLimit": "Скользящий недельный лимит",
+      "signOut": {
+        "failedDescription": "Произошла ошибка при выходе. Попробуйте ещё раз.",
+        "failedTitle": "Не удалось выйти",
+        "signOut": "Выйти",
+        "signingOut": "Выход..."
+      },
+      "signedIn": "Вы вошли",
+      "title": "Аккаунт",
+      "toasts": {
+        "approachingLimit": {
+          "description": "Вы использовали {{used}} из {{limit}} бесплатных слов на этой неделе. Перейдите на Pro для безлимитного использования.",
+          "title": "Приближение к недельному лимиту"
+        }
+      },
+      "trialCta": {
+        "button": "Создать бесплатный аккаунт",
+        "description": "Безлимитные транскрипции, приоритетная обработка и многое другое.",
+        "title": "Попробуйте Pro бесплатно на 7 дней"
+      },
+      "user": "Пользователь",
+      "wordsRemaining": "Осталось {{remaining}}"
+    },
+    "agentConfig": {
+      "agentName": "Имя агента",
+      "cleanupExample": "Очистка",
+      "cleanupMode": "Режим очистки",
+      "description": "Назовите вашего ИИ-помощника, чтобы обращаться к нему во время диктовки",
+      "dialogs": {
+        "updatedDescription": "Ваш агент теперь называется «{{name}}». Обращайтесь к нему, говоря «Привет, {{name}}», а затем давайте инструкции.",
+        "updatedTitle": "Имя агента обновлено"
+      },
+      "examplesTitle": "Примеры",
+      "helper": "Выберите что-то короткое и естественное для произношения",
+      "howItWorksDescription": "Когда вы говорите «Привет, {{agentName}}» и затем даёте инструкцию, ИИ переключается из режима очистки в режим инструкций. Без триггерной фразы он просто очищает вашу диктовку.",
+      "howItWorksTitle": "Как это работает",
+      "instructionMode": "Инструкция",
+      "placeholder": "например, Джарвис, Нова, Атлас...",
+      "save": "Сохранить",
+      "title": "Голосовой агент"
+    },
+    "aiModels": {
+      "customSetup": "Пользовательская настройка",
+      "customSetupDescription": "Используйте собственного провайдера и API-ключ.",
+      "description": "Очищайте транскрипции, обрабатывайте команды и исправляйте ошибки, сохраняя вашу манеру речи.",
+      "enableTextCleanup": "Включить очистку текста",
+      "enableTextCleanupDescription": "ИИ улучшает качество транскрипции",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Просто работает. Настройка не требуется.",
+      "title": "ИИ-улучшение текста",
+      "toasts": {
+        "switchedCloud": {
+          "description": "Улучшение текста будет использовать облачный сервис OpenWhispr.",
+          "title": "Переключено на OpenWhispr Cloud"
+        },
+        "switchedCustom": {
+          "description": "Настройте собственного провайдера и API-ключ.",
+          "title": "Переключено на пользовательскую настройку"
+        }
+      }
+    },
+    "developer": {
+      "clearCache": "Очистить кеш",
+      "dataManagementDescription": "Управляйте кешированными моделями и данными приложения",
+      "dataManagementTitle": "Управление данными",
+      "modelCache": "Кеш моделей",
+      "open": "Открыть",
+      "removeModels": {
+        "confirmText": "Удалить модели",
+        "description": "Будут удалены все локально кешированные модели Whisper ({{path}}), что освободит дисковое пространство. Вы сможете скачать их снова в выборе моделей.",
+        "failedDescription": "Произошла ошибка при удалении моделей. Попробуйте ещё раз.",
+        "failedDescriptionShort": "Не удалось удалить кешированные модели.",
+        "failedTitle": "Не удалось удалить модели",
+        "successDescription": "Все кешированные модели удалены.",
+        "successTitle": "Модели удалены",
+        "title": "Удалить скачанные модели?"
+      },
+      "removing": "Удаление...",
+      "resetAll": {
+        "confirmText": "Удалить всё",
+        "description": "Все настройки, транскрипции и кешированные данные будут безвозвратно удалены. Приложение перезагрузится после сброса.",
+        "failedDescription": "Что-то пошло не так. Попробуйте ещё раз или переустановите приложение.",
+        "failedTitle": "Не удалось сбросить",
+        "successDescription": "Всё сброшено. Приложение сейчас перезагрузится.",
+        "successTitle": "Готово",
+        "title": "Сбросить все данные приложения"
+      },
+      "resetAppData": "Сбросить данные приложения",
+      "resetAppDataDescription": "Безвозвратно удалить все настройки, транскрипции и кешированные данные"
+    },
+    "dictionary": {
+      "add": "Добавить",
+      "addWordOrPhrase": "Добавить слово или фразу",
+      "agentNameAutoManaged": "Имя агента (управляется автоматически)",
+      "clearAll": "Очистить всё",
+      "clearDictionaryDescription": "Все слова из пользовательского словаря будут удалены. Это действие нельзя отменить.",
+      "clearDictionaryTitle": "Очистить словарь?",
+      "description": "Добавляйте слова, имена или технические термины для повышения точности транскрипции",
+      "howItWorksDescription": "Добавленные слова включаются в промпт ИИ, чтобы модель распознавала и сохраняла эти термины при очистке транскрипции.",
+      "howItWorksTitle": "Как это работает",
+      "noWords": "Слова ещё не добавлены",
+      "placeholder": "например, OpenWhispr, Kubernetes, Др. Мартинез...",
+      "pressEnterToAdd": "Нажмите Enter для добавления",
+      "removeWord": "Удалить слово",
+      "tipDescription": "Добавляйте имена собственные, технические термины или любые слова, которые могут быть распознаны неправильно.",
+      "tipLabel": "Совет",
+      "title": "Пользовательский словарь",
+      "wordsAppearHere": "Добавленные слова появятся здесь",
+      "yourWords": "Ваши слова"
+    },
+    "general": {
+      "appearance": {
+        "auto": "Авто",
+        "dark": "Тёмная",
+        "description": "Управляйте внешним видом OpenWhispr",
+        "light": "Светлая",
+        "theme": "Тема",
+        "themeDescription": "Выберите светлую, тёмную тему или следуйте системным настройкам",
+        "title": "Внешний вид"
+      },
+      "floatingIcon": {
+        "autoHide": "Скрывать при бездействии",
+        "autoHideDescription": "Значок будет скрыт, пока вы не начнёте диктовку",
+        "description": "Управляйте видимостью значка диктовки на экране",
+        "title": "Плавающий значок"
+      },
+      "hotkey": {
+        "activationMode": "Режим активации",
+        "description": "Комбинация клавиш для запуска и остановки голосовой диктовки",
+        "title": "Горячая клавиша диктовки"
+      },
+      "microphone": {
+        "description": "Выберите устройство ввода для диктовки",
+        "title": "Микрофон"
+      },
+      "soundEffects": {
+        "dictationSounds": "Звуки диктовки",
+        "dictationSoundsDescription": "Воспроизводить звуковой сигнал при начале и окончании записи",
+        "title": "Звуковые эффекты"
+      },
+      "startup": {
+        "launchAtLogin": "Запускать при входе",
+        "launchAtLoginDescription": "Автоматически запускать OpenWhispr при входе в систему",
+        "title": "Автозапуск"
+      },
+      "updates": {
+        "badges": {
+          "dev": "Dev",
+          "latest": "Последняя",
+          "update": "Обновление"
+        },
+        "checkForUpdates": "Проверить обновления",
+        "checking": "Проверка...",
+        "currentVersion": "Текущая версия",
+        "devMode": "Запущено в режиме разработки",
+        "dialogs": {
+          "almostThere": {
+            "description": "Обновление почти готово. Подождите немного.",
+            "title": "Почти готово"
+          },
+          "checkFailed": {
+            "description": "Не удалось проверить наличие обновлений. Попробуйте позже.",
+            "title": "Не удалось проверить обновления"
+          },
+          "downloadFailed": {
+            "description": "Не удалось скачать обновление. Попробуйте ещё раз.",
+            "title": "Не удалось скачать обновление"
+          },
+          "installFailed": {
+            "description": "Не удалось установить обновление. Попробуйте ещё раз.",
+            "title": "Не удалось установить обновление"
+          },
+          "installUpdate": {
+            "confirmText": "Установить и перезапустить",
+            "description": "OpenWhispr перезапустится для применения обновления.",
+            "title": "Установить обновление"
+          },
+          "noUpdates": {
+            "description": "У вас установлена последняя версия.",
+            "title": "Обновлений нет"
+          },
+          "updateAvailable": {
+            "description": "Доступно обновление: v{{version}}",
+            "title": "Доступно обновление"
+          },
+          "updateError": {
+            "description": "Произошла ошибка при обновлении. Попробуйте ещё раз.",
+            "title": "Ошибка обновления"
+          }
+        },
+        "downloadUpdate": "Скачать обновление {{version}}",
+        "downloading": "Загрузка... {{progress}}%",
+        "installAndRestart": "Установить и перезапустить",
+        "latestVersion": "У вас установлена последняя версия",
+        "newVersion": "Доступна новая версия",
+        "newVersionAvailable": "Доступна новая версия",
+        "restarting": "Перезапуск...",
+        "title": "Обновления",
+        "versionPlaceholder": "—",
+        "whatsNew": "Что нового в v{{version}}"
+      }
+    },
+    "permissions": {
+      "accessibilityDescription": "Необходимо для автоматической вставки после транскрипции",
+      "accessibilityTitle": "Универсальный доступ",
+      "description": "Проверяйте и управляйте системными разрешениями, необходимыми для работы OpenWhispr",
+      "microphoneDescription": "Необходимо для записи голоса и диктовки",
+      "microphoneTitle": "Микрофон",
+      "resetAccessibility": {
+        "description": "OpenWhispr будет удалён из разрешений универсального доступа. Вам потребуется повторно предоставить доступ в Системные настройки > Конфиденциальность и безопасность > Универсальный доступ.",
+        "label": "Сбросить разрешения универсального доступа",
+        "rowDescription": "Исправьте проблемы после переустановки или пересборки приложения, удалив и повторно добавив OpenWhispr в системных настройках",
+        "title": "Сбросить разрешения универсального доступа"
+      },
+      "test": "Тест",
+      "testAndGrant": "Проверить и предоставить",
+      "title": "Разрешения",
+      "troubleshoot": "Диагностика",
+      "troubleshootingTitle": "Устранение неполадок"
+    },
+    "privacy": {
+      "cloudBackup": "Облачное резервное копирование",
+      "cloudBackupDescription": "Сохраняйте транскрипции в облаке, чтобы никогда их не потерять.",
+      "description": "Контролируйте, какие данные покидают ваше устройство. По умолчанию всё отключено.",
+      "title": "Конфиденциальность",
+      "usageAnalytics": "Аналитика использования",
+      "usageAnalyticsDescription": "Помогите нам улучшить OpenWhispr, делясь анонимными метриками производительности. Мы никогда не отправляем содержимое транскрипций — только данные о времени и ошибках."
+    },
+    "prompts": {
+      "description": "Просматривайте, настраивайте и тестируйте единый системный промпт, который управляет очисткой текста и обнаружением инструкций",
+      "title": "Студия промптов"
+    },
+    "transcription": {
+      "customSetup": "Пользовательская настройка",
+      "customSetupDescription": "Используйте собственного провайдера и API-ключ.",
+      "description": "Выберите, как OpenWhispr будет транскрибировать вашу речь",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "openwhisprCloudDescription": "Просто работает. Настройка не требуется.",
+      "title": "Распознавание речи",
+      "toasts": {
+        "switchedCloud": {
+          "description": "Транскрипция будет использовать облачный сервис OpenWhispr.",
+          "title": "Переключено на OpenWhispr Cloud"
+        },
+        "switchedCustom": {
+          "description": "Настройте собственного провайдера и API-ключ.",
+          "title": "Переключено на пользовательскую настройку"
+        }
+      }
+    }
+  },
+  "models": {
+    "descriptions": {
+      "parakeet": {
+        "parakeet_tdt_0_6b_v3": "Быстрое многоязычное распознавание с автоопределением языка (25 языков)"
+      },
+      "whisper": {
+        "tiny": "Самый быстрый, низкое качество",
+        "base": "Хороший баланс",
+        "small": "Лучше качество, медленнее",
+        "medium": "Высокое качество",
+        "large": "Лучшее качество, самый медленный",
+        "turbo": "Быстрый с хорошим качеством"
+      },
+      "transcription": {
+        "openai_gpt_4o_mini_transcribe": "Быстрая и точная транскрипция",
+        "openai_gpt_4o_transcribe": "Максимально точная транскрипция",
+        "openai_whisper_1": "Оригинальная модель Whisper",
+        "groq_whisper_large_v3_turbo": "Скорость в 216 раз быстрее реального времени",
+        "mistral_voxtral_mini_latest": "Быстрая многоязычная транскрипция"
+      },
+      "cloud": {
+        "openai_gpt_5_2": "Новейшая флагманская модель с рассуждением",
+        "openai_gpt_5_mini": "Быстрая и экономичная",
+        "openai_gpt_5_nano": "Сверхбыстрая, низкая задержка",
+        "openai_gpt_4_1": "Надёжная базовая модель, контекст 1M",
+        "openai_gpt_4_1_mini": "Компактная версия GPT-4.1",
+        "openai_gpt_4_1_nano": "Минимальная задержка GPT-4.1",
+        "anthropic_claude_sonnet_4_5": "Сбалансированная производительность",
+        "anthropic_claude_haiku_4_5": "Быстрая с почти передовым интеллектом",
+        "anthropic_claude_opus_4_5": "Самая мощная модель Claude",
+        "gemini_gemini_3_pro_preview": "Флагманская модель нового поколения для сложных рассуждений",
+        "gemini_gemini_3_flash_preview": "Сверхбыстрая высокопроизводительная модель нового поколения",
+        "gemini_gemini_2_5_flash_lite": "Минимальная задержка и стоимость",
+        "groq_qwen_qwen3_32b": "Мощная модель с рассуждением, контекст 131K",
+        "groq_openai_gpt_oss_120b": "Открытая флагманская модель OpenAI, 500 т/с",
+        "groq_openai_gpt_oss_20b": "Быстрая открытая модель, 1000 т/с",
+        "groq_llama_3_3_70b_versatile": "Универсальная модель Meta, 280 т/с",
+        "groq_llama_3_1_8b_instant": "Сверхбыстрая 560 т/с, контекст 131K",
+        "groq_mixtral_8x7b_32768": "Контекст 32K, смесь экспертов",
+        "groq_gemma2_9b_it": "Эффективная модель Google"
+      },
+      "local": {
+        "qwen_qwen3_8b_q4_k_m": "Новейшая Qwen3 с поддержкой режима размышления",
+        "qwen_qwen3_8b_q5_k_m": "Более качественная Qwen3 с режимом размышления",
+        "qwen_qwen3_4b_q4_k_m": "Компактная Qwen3 со способностью к рассуждению",
+        "qwen_qwen3_1_7b_q8_0": "Маленькая, но способная модель Qwen3",
+        "qwen_qwen3_0_6b_q8_0": "Миниатюрная Qwen3 для маломощных устройств",
+        "qwen_qwen3_32b_q4_k_m": "Самая мощная локальная Qwen3 с глубоким рассуждением",
+        "qwen_qwen2_5_0_5b_instruct_q5_k_m": "Самая маленькая модель, быстрая, но с ограничениями",
+        "qwen_qwen2_5_1_5b_instruct_q5_k_m": "Маленькая модель для базовых задач",
+        "qwen_qwen2_5_3b_instruct_q5_k_m": "Сбалансированная модель общего назначения",
+        "qwen_qwen2_5_7b_instruct_q4_k_m": "Большая модель высокого качества (Q4_K_M)",
+        "qwen_qwen2_5_7b_instruct_q5_k_m": "Большая модель, качественное рассуждение (Q5_K_M)",
+        "mistral_mistral_7b_instruct_v0_3_q4_k_m": "Быстрая и эффективная модель для инструкций",
+        "mistral_mistral_7b_instruct_v0_3_q5_k_m": "Более качественная модель для инструкций",
+        "llama_llama_3_2_1b_instruct_q4_k_m": "Миниатюрная модель для маломощных устройств",
+        "llama_llama_3_2_3b_instruct_q4_k_m": "Маленькая, но способная многоязычная модель",
+        "llama_llama_3_1_8b_instruct_q4_k_m": "Мощная модель с отличной производительностью",
+        "openai_oss_gpt_oss_20b_mxfp4": "Открытая модель OpenAI для потребительского оборудования"
+      }
+    }
+  }
+}

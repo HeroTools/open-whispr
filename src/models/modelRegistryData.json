@@ -5,7 +5,6 @@
       "description": "Fast multilingual ASR with auto language detection (25 languages)",
       "size": "680MB",
       "sizeMb": 680,
-      "expectedSizeBytes": 680000000,
       "language": "multilingual",
       "supportedLanguages": [
         "bg",
