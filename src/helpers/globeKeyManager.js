@@ -2,6 +2,7 @@ const { spawn } = require("child_process");
 const path = require("path");
 const EventEmitter = require("events");
 const fs = require("fs");
+const debugLogger = require("./debugLogger");
 
 class GlobeKeyManager extends EventEmitter {
   constructor() {
@@ -12,12 +13,18 @@ class GlobeKeyManager extends EventEmitter {
   }
 
   start() {
-    if (!this.isSupported || this.process) {
+    if (!this.isSupported) {
+      debugLogger.info("[GlobeKeyManager] Skipped — not macOS");
+      return;
+    }
+    if (this.process) {
+      debugLogger.info("[GlobeKeyManager] Skipped — already running");
       return;
     }
 
     const listenerPath = this.resolveListenerBinary();
     if (!listenerPath) {
+      debugLogger.info("[GlobeKeyManager] Binary not found in any candidate path");
       this.reportError(
         new Error(
           "macOS Globe listener binary not found. Run `npm run compile:globe` before packaging."
@@ -26,9 +33,12 @@ class GlobeKeyManager extends EventEmitter {
       return;
     }
 
+    debugLogger.info("[GlobeKeyManager] Binary found", { path: listenerPath });
+
     try {
       fs.accessSync(listenerPath, fs.constants.X_OK);
     } catch {
+      debugLogger.info("[GlobeKeyManager] Binary not executable, attempting chmod");
       try {
         fs.chmodSync(listenerPath, 0o755);
       } catch {
@@ -41,6 +51,7 @@ class GlobeKeyManager extends EventEmitter {
 
     this.hasReportedError = false;
     this.process = spawn(listenerPath);
+    debugLogger.info("[GlobeKeyManager] Process spawned", { pid: this.process.pid });
 
     this.process.stdout.setEncoding("utf8");
     this.process.stdout.on("data", (chunk) => {
@@ -76,17 +87,19 @@ class GlobeKeyManager extends EventEmitter {
     this.process.stderr.on("data", (data) => {
       const message = data.toString().trim();
       if (message.length > 0) {
-        console.error("GlobeKeyManager stderr:", message);
+        debugLogger.info("[GlobeKeyManager] stderr", { message });
         this.reportError(new Error(message));
       }
     });
 
     this.process.on("error", (error) => {
+      debugLogger.info("[GlobeKeyManager] Process error", { error: error.message });
       this.reportError(error);
       this.process = null;
     });
 
     this.process.on("exit", (code, signal) => {
+      debugLogger.info("[GlobeKeyManager] Process exited", { code, signal });
       this.process = null;
       if (code !== 0 && signal !== "SIGINT" && signal !== "SIGTERM") {
         const error = new Error(
