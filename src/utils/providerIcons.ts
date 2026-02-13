@@ -1,4 +1,3 @@
-// Import SVG icons as URLs for proper Vite bundling
 import openaiIcon from "@/assets/icons/providers/openai.svg";
 import anthropicIcon from "@/assets/icons/providers/anthropic.svg";
 import geminiIcon from "@/assets/icons/providers/gemini.svg";
@@ -26,10 +25,8 @@ export function getProviderIcon(provider: string): string | undefined {
   return PROVIDER_ICONS[provider];
 }
 
-/** Providers with monochrome icons that should invert in dark mode */
 export const MONOCHROME_PROVIDERS = ["openai", "whisper", "anthropic", "openai-oss"] as const;
 
-/** Check if a provider has a monochrome icon that needs dark mode inversion */
 export function isMonochromeProvider(provider: string): boolean {
   return (MONOCHROME_PROVIDERS as readonly string[]).includes(provider);
 }

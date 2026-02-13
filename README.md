@@ -1,5 +1,7 @@
 # OpenWhispr
 
+[![Downloads](https://img.shields.io/github/downloads/OpenWhispr/openwhispr/total?style=flat&color=blue)](https://github.com/OpenWhispr/openwhispr/releases)
+
 An open source desktop dictation application that converts speech to text using OpenAI Whisper. Features both local and cloud processing options for maximum flexibility and privacy.
 
 ## Star History
@@ -12,6 +14,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Features
 
+- ☁️ **OpenWhispr Cloud**: Sign in and transcribe instantly — no API keys needed, with free and Pro plans
+- 🔐 **Account System**: Google OAuth and email/password sign-in with email verification
+- 💳 **Subscription Management**: Free tier (2,000 words/week), Pro tier (unlimited), 7-day free trial
 - 🎤 **Global Hotkey**: Customizable hotkey to start/stop dictation from anywhere (default: backtick `)
 - 🤖 **Multi-Provider AI Processing**: Choose between OpenAI, Anthropic Claude, Google Gemini, or local models
 - 🎯 **Agent Naming**: Personalize your AI assistant with a custom name for natural interactions
@@ -64,26 +69,32 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
    
    **Method A - Environment file**:
    ```bash
-   cp env.example .env
+   cp .env.example .env
    # Edit .env and add your API keys:
    # OPENAI_API_KEY=your_openai_key
    # ANTHROPIC_API_KEY=your_anthropic_key
    # GEMINI_API_KEY=your_gemini_key
    # GROQ_API_KEY=your_groq_key
+   # MISTRAL_API_KEY=your_mistral_key
    ```
    
    **Method B - In-app configuration**:
    - Run the app and configure API keys through the Control Panel
    - Keys are automatically saved and persist across app restarts
 
-4. **Run the application**:
+4. **Build the application**:
+   ```bash
+   npm run build
+   ```
+
+5. **Run the application**:
    ```bash
    npm run dev  # Development mode with hot reload
    # OR
    npm start    # Production mode
    ```
 
-5. **Optional: Local Whisper from source** (only needed if you want local processing):
+6. **Optional: Local Whisper from source** (only needed if you want local processing):
    ```bash
    npm run download:whisper-cpp
    ```
@@ -184,6 +195,13 @@ sudo pacman -S xdotool
 
 **Wayland (Modern Linux Desktop)**:
 
+**Recommended:** Install `wl-clipboard` for reliable clipboard sharing between Wayland apps:
+```bash
+sudo apt install wl-clipboard    # Debian/Ubuntu
+sudo dnf install wl-clipboard    # Fedora/RHEL
+sudo pacman -S wl-clipboard      # Arch
+```
+
 Choose **one** of the following paste tools:
 
 **Option 1: wtype** (requires virtual keyboard protocol support)
@@ -254,8 +272,9 @@ npm run build:linux  # Linux
 ### First Time Setup
 
 1. **Choose Processing Method**:
-   - **Local Processing**: Download Whisper models for completely private transcription
-   - **Cloud Processing**: Use OpenAI's API for faster transcription (requires API key)
+   - **OpenWhispr Cloud**: Sign in for instant cloud transcription with free and Pro plans
+   - **Bring Your Own Key**: Use your own OpenAI/Groq/AssemblyAI API keys
+   - **Local Processing**: Download Whisper or Parakeet models for completely private transcription
 
 2. **Grant Permissions**:
    - **Microphone Access**: Required for voice recording
@@ -328,14 +347,17 @@ Improve transcription accuracy for specific words, names, or technical terms:
 - Domain-specific terms (e.g., "amortization", "polymerase")
 
 ### Processing Options
+- **OpenWhispr Cloud**:
+  - Sign in with Google or email — no API keys needed
+  - Free plan: 2,000 words/week with 7-day Pro trial for new accounts
+  - Pro plan: unlimited transcriptions
+- **Bring Your Own Key (BYOK)**:
+  - Use your own API keys from OpenAI, Groq, Mistral, AssemblyAI, or custom endpoints
+  - Full control over provider and model selection
 - **Local Processing**:
-  - Install Whisper automatically through the Control Panel
+  - Install Whisper or NVIDIA Parakeet through the Control Panel
   - Download models: tiny (fastest), base (recommended), small, medium, large (best quality)
   - Complete privacy - audio never leaves your device
-- **Cloud Processing**:
-  - Requires OpenAI API key
-  - Faster processing
-  - Uses OpenAI's Whisper API
 
 ## Project Structure
 
@@ -478,6 +500,9 @@ GEMINI_API_KEY=your_gemini_api_key_here
 # Optional: Groq API Configuration (ultra-fast inference)
 GROQ_API_KEY=your_groq_api_key_here
 
+# Optional: Mistral API Configuration (Voxtral transcription)
+MISTRAL_API_KEY=your_mistral_api_key_here
+
 # Optional: Debug mode
 DEBUG=false
 ```
@@ -573,7 +598,7 @@ OpenWhispr is designed with privacy and security in mind:
 6. **Text not pasting**:
    - macOS: Check accessibility permissions (System Settings → Privacy & Security → Accessibility)
    - Linux X11: Install `xdotool`
-   - Linux Wayland: Install `wtype` or `ydotool` (ensure `ydotoold` daemon is running)
+   - Linux Wayland: Install `wtype` or `ydotool` for paste simulation (ensure `ydotoold` daemon is running)
    - All platforms: Text is always copied to clipboard - use Ctrl+V (Cmd+V on macOS) to paste manually
 7. **Panel position**: If the panel appears off-screen, restart the app to reset position
 
@@ -595,7 +620,7 @@ OpenWhispr is designed with privacy and security in mind:
 ## FAQ
 
 **Q: Is OpenWhispr really free?**
-A: Yes! OpenWhispr is open source and free to use. You only pay for OpenAI API usage if you choose cloud processing.
+A: Yes! OpenWhispr is open source and free to use. The free plan includes 2,000 words/week of cloud transcription, and local processing is completely free with no limits. Pro plan ($9/month) offers unlimited cloud transcription.
 
 **Q: Which processing method should I use?**
 A: Use local processing for privacy and offline use. Use cloud processing for speed and convenience.
@@ -614,12 +639,14 @@ A: OpenWhispr supports 58 languages including English, Spanish, French, German, 
 
 ## Project Status
 
-OpenWhispr is actively maintained and ready for production use. Current version: 1.3.3
+OpenWhispr is actively maintained and ready for production use. Current version: 1.4.9
 
 - ✅ Core functionality complete
 - ✅ Cross-platform support (macOS, Windows, Linux)
+- ✅ OpenWhispr Cloud with account system and usage tracking
+- ✅ Free and Pro plans with Stripe billing
 - ✅ Local and cloud processing
-- ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Local)
+- ✅ Multi-provider AI (OpenAI, Anthropic, Gemini, Groq, Mistral, Local)
 - ✅ Compound hotkey support
 - ✅ Windows Push-to-Talk with native key listener
 - ✅ Custom dictionary for improved transcription accuracy

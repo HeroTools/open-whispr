@@ -1,0 +1,1248 @@
+{
+  "app": {
+    "name": "OpenWhispr",
+    "loading": "正在加载 OpenWhispr...",
+    "oauth": {
+      "redirectTitle": "正在跳转到 OpenWhispr",
+      "closeTab": "你可以关闭此标签页"
+    },
+    "buttons": {
+      "cancelRecording": "取消录音",
+      "cancelProcessing": "取消处理"
+    },
+    "mic": {
+      "hotkeyToSpeak": "[{{hotkey}}] 开始说话",
+      "recording": "录音中...",
+      "processing": "处理中...",
+      "clickToSpeak": "点击开始说话"
+    },
+    "toasts": {
+      "hotkeyChanged": {
+        "title": "快捷键已更改"
+      },
+      "hotkeyUnavailable": {
+        "title": "快捷键不可用",
+        "description": "无法注册快捷键，请在设置中选择其他快捷键。"
+      }
+    },
+    "commandMenu": {
+      "startListening": "开始听写",
+      "stopListening": "停止听写",
+      "hideForNow": "暂时隐藏"
+    }
+  },
+  "settings": {
+    "language": {
+      "sectionTitle": "语言",
+      "sectionDescription": "分别设置界面语言和转录语言",
+      "uiLabel": "界面语言",
+      "uiDescription": "选择 OpenWhispr 界面使用的语言",
+      "transcriptionLabel": "转录语言",
+      "transcriptionDescription": "选择你说话的语言，以提高转录准确率",
+      "uiOption": {
+        "en": "English",
+        "es": "Espanol",
+        "fr": "Francais",
+        "de": "Deutsch",
+        "pt": "Portugues",
+        "it": "Italiano",
+        "zh-CN": "简体中文",
+        "zh-TW": "繁體中文",
+        "ru": "Русский"
+      }
+    }
+  },
+  "tray": {
+    "toggleDictation": {
+      "show": "显示听写面板",
+      "hide": "隐藏听写面板"
+    },
+    "openControlPanel": "打开控制面板",
+    "quit": "退出 OpenWhispr",
+    "tooltip": "OpenWhispr - 语音听写"
+  },
+  "menu": {
+    "appLabel": "OpenWhispr",
+    "quit": "退出 OpenWhispr",
+    "speech": "语音",
+    "help": "帮助",
+    "learnMore": "了解更多",
+    "file": "文件",
+    "closeWindow": "关闭窗口"
+  },
+  "window": {
+    "voiceRecorderTitle": "录音器",
+    "controlPanelTitle": "控制面板"
+  },
+  "dialog": {
+    "openLink": {
+      "title": "无法打开链接",
+      "message": "无法在浏览器中打开该链接：\n{{url}}\n\n错误：{{error}}"
+    },
+    "loadFailure": {
+      "title": "OpenWhispr 加载失败",
+      "message": "OpenWhispr 无法加载其界面。",
+      "detail": {
+        "window": "窗口：{{windowName}}",
+        "error": "错误 {{errorCode}}：{{errorDescription}}",
+        "url": "URL：{{url}}",
+        "hint": "请尝试重新安装应用或使用 --log-level=debug 参数启动。"
+      }
+    }
+  },
+  "startup": {
+    "error": {
+      "title": "OpenWhispr 启动错误",
+      "message": "应用启动失败：\n\n{{error}}\n\n请反馈此问题。"
+    },
+    "globeHotkey": {
+      "title": "Globe 快捷键不可用",
+      "message": "OpenWhispr 无法激活 Globe 键快捷键。",
+      "details": {
+        "unknown": "启动 Globe 监听器时发生未知错误。",
+        "fallback": "Globe 键快捷键将保持禁用状态；现有的键盘快捷键仍可正常使用。",
+        "devHint": "运行 `npm run compile:globe` 并重新构建应用以重新生成监听器。",
+        "reinstallHint": "请尝试重新安装 OpenWhispr，如果问题仍然存在请联系技术支持。"
+      }
+    }
+  },
+  "hotkey": {
+    "errors": {
+      "callbackRequired": "设置快捷键需要回调函数",
+      "globeOnlyMac": "Globe 键仅在 macOS 上可用。",
+      "alreadyRegistered": "\"{{hotkey}}\" 已被其他应用注册。",
+      "osReserved": "\"{{hotkey}}\" 可能被系统保留。",
+      "registrationFailed": "无法注册 \"{{hotkey}}\"，该快捷键可能已被其他应用占用。",
+      "trySuggestions": "建议尝试：{{suggestions}}"
+    }
+  },
+  "systemSettings": {
+    "microphone": "请打开系统设置以配置麦克风权限。",
+    "sound": "请打开系统声音设置（例如 pavucontrol）。",
+    "accessibility": "此平台不支持辅助功能设置。"
+  },
+  "titleBar": {
+    "quitTitle": "退出 OpenWhispr",
+    "quitConfirmTitle": "确定退出 OpenWhispr？",
+    "quitConfirmDescription": "这将关闭 OpenWhispr 并停止后台进程。",
+    "quit": "退出",
+    "cancel": "取消"
+  },
+  "upgradePrompt": {
+    "paymentFailed": "我们无法处理你的付款",
+    "weeklyLimit": "你已达到本周的使用上限",
+    "pastDueDescription": "你目前使用的是免费版——别担心，每周仍有 {{limit}} 个词的额度。\n更新支付方式即可恢复无限制的 Pro 版。",
+    "limitDescription": "已使用 {{used}} / {{limit}} 个词。\n你的转录已保存并粘贴。",
+    "updatePayment": "更新支付方式",
+    "updatePaymentDescription": "恢复无限制的 Pro 版转录。",
+    "upgradeToPro": "升级到 Pro",
+    "upgradeDescription": "无限转录，每月 $9。",
+    "useApiKey": "使用自己的 API Key",
+    "useApiKeyDescription": "使用你自己的密钥，无限制使用。",
+    "switchToLocal": "切换到本地模式",
+    "switchToLocalDescription": "离线转录，无使用限制。",
+    "rollingWeeklyLimit": "滚动周限额"
+  },
+  "windowControls": {
+    "minimize": "最小化",
+    "maximize": "最大化",
+    "restore": "还原",
+    "close": "关闭"
+  },
+  "windows": {
+    "pttUnavailable": "按住说话原生监听器不可用"
+  },
+  "common": {
+    "back": "返回",
+    "next": "下一步",
+    "complete": "完成",
+    "reset": "重置",
+    "refresh": "刷新",
+    "download": "下载",
+    "cancel": "取消",
+    "recommended": "推荐",
+    "active": "已激活",
+    "cloud": "云端",
+    "local": "本地",
+    "apiKey": "API Key",
+    "model": "模型",
+    "loading": "加载中...",
+    "unknown": "未知",
+    "availableModels": "可用模型",
+    "fast": "快速",
+    "hold": "按住",
+    "less": "收起",
+    "more": "展开",
+    "private": "隐私",
+    "tap": "点按"
+  },
+  "onboarding": {
+    "steps": {
+      "welcome": "欢迎",
+      "setup": "设置",
+      "permissions": "权限",
+      "activation": "激活"
+    },
+    "hotkey": {
+      "couldNotRegisterTitle": "无法注册该快捷键",
+      "couldNotRegisterDescription": "该组合键可能已被占用，请尝试其他组合。"
+    },
+    "setup": {
+      "title": "设置",
+      "description": "选择语言并授予权限",
+      "language": "语言"
+    },
+    "permissions": {
+      "title": "权限",
+      "microphoneTitle": "麦克风",
+      "microphoneDescription": "用于捕捉你的声音",
+      "grant": "授权",
+      "accessibilityTitle": "辅助功能",
+      "accessibilityDescription": "用于将文本粘贴到应用中",
+      "testAndGrant": "测试并授权",
+      "requiredForApp": "OpenWhispr 运行所必需的权限",
+      "microphoneRequired": "需要麦克风访问权限"
+    },
+    "transcription": {
+      "title": "转录设置",
+      "description": "选择模式和服务商",
+      "preferredLanguage": "首选语言"
+    },
+    "activation": {
+      "title": "激活设置",
+      "description": "配置触发听写的方式",
+      "hotkey": "快捷键",
+      "mode": "模式",
+      "tapDescription": "按下开始/停止",
+      "holdDescription": "按住说话",
+      "test": "测试",
+      "hotkeyToStartStop": "{{hotkey}} 开始/停止",
+      "holdHotkey": "按住 {{hotkey}}",
+      "textareaPlaceholder": "点击此处，然后使用快捷键进行听写..."
+    }
+  },
+  "controlPanel": {
+    "update": {
+      "readyTitle": "更新已准备就绪",
+      "readyDescription": "点击\u201c安装更新\u201d以重启并安装最新版本。",
+      "problemTitle": "更新遇到问题",
+      "problemDescription": "无法完成更新，请稍后再试。",
+      "installTitle": "安装更新",
+      "installDescription": "OpenWhispr 将重启以应用更新。当前进行中的工作将被保存。",
+      "couldNotInstallTitle": "无法安装更新",
+      "couldNotInstallDescription": "出了点问题，请重试。",
+      "couldNotDownloadTitle": "无法下载更新",
+      "couldNotDownloadDescription": "请检查网络连接后重试。",
+      "installing": "正在安装...",
+      "installButton": "安装更新",
+      "availableButton": "有可用更新"
+    },
+    "limit": {
+      "weeklyTitle": "已达到周限额",
+      "weeklyDescription": "你的额度按滚动方式重置。升级到 Pro 或使用自己的 API Key 可不受限制。"
+    },
+    "billing": {
+      "pastDueTitle": "我们无法处理你的付款",
+      "pastDueDescription": "别担心——你目前使用的是免费版。在设置中更新支付方式即可恢复 Pro 版。",
+      "bannerDescription": "你目前使用的是免费版——每周仍有 {{limit}} 个词的额度。更新支付方式即可恢复 Pro 版。",
+      "updatePayment": "更新支付方式"
+    },
+    "history": {
+      "title": "转录记录",
+      "couldNotLoadTitle": "无法加载历史记录",
+      "couldNotLoadDescription": "加载转录记录时出错，请尝试关闭并重新打开应用。",
+      "copiedTitle": "已复制！",
+      "copiedDescription": "文本已复制到剪贴板",
+      "couldNotCopyTitle": "无法复制",
+      "couldNotCopyDescription": "复制到剪贴板时出错，请重试。",
+      "clearTitle": "清除历史记录",
+      "clearDescription": "这将删除你的所有转录记录，此操作无法撤销。",
+      "clearedTitle": "历史记录已清除",
+      "clearedDescription": "已删除 {{count}} 条转录记录",
+      "clearedDescription_other": "已删除 {{count}} 条转录记录",
+      "couldNotClearTitle": "无法清除历史记录",
+      "couldNotClearDescription": "出了点问题，请重试。",
+      "deleteTitle": "删除转录记录",
+      "deleteDescription": "此转录记录将被永久删除。",
+      "couldNotDeleteTitle": "无法删除",
+      "couldNotDeleteDescription": "此转录记录可能已被删除。",
+      "couldNotDeleteDescriptionGeneric": "出了点问题，请重试。",
+      "clear": "清除",
+      "empty": "暂无转录记录",
+      "press": "按下",
+      "toStart": "开始"
+    },
+    "cloudMigration": {
+      "title": "欢迎使用 OpenWhispr Pro",
+      "description": "你的 7 天免费试用已激活！我们已将转录切换到 OpenWhispr 云端，以获得更快、更准确的结果。你之前的设置已保存——随时可以在设置中切换回去。",
+      "viewSettings": "查看设置"
+    },
+    "aiCta": {
+      "title": "用 AI 提升你的转录质量",
+      "description": "在你说话的同时，自动修正语法、标点和格式。",
+      "enable": "启用 AI 增强"
+    },
+    "loading": "加载中..."
+  },
+  "reasoning": {
+    "mode": {
+      "cloud": "云端",
+      "local": "本地",
+      "localDescription": "在你的设备上运行，完全隐私，离线可用。",
+      "cloudDescription": "通过 API 使用高级模型，快速且强大，需要联网。"
+    },
+    "enableTitle": "启用 AI 文本增强",
+    "enableDescription": "使用 AI 自动提升转录质量",
+    "custom": {
+      "endpointWithProtocol": "请输入包含协议的完整 URL（例如 https://server/v1）。",
+      "httpsRequired": "需要 HTTPS（仅本地网络允许 HTTP）。",
+      "endpointUnauthorized": "端点拒绝了请求（401/403）。请添加 API Key 或调整服务器认证设置。",
+      "endpointTitle": "端点 URL",
+      "endpointExamples": "示例：",
+      "ollama": "（Ollama）",
+      "localAi": "（LocalAI）",
+      "apiKeyOptional": "API Key（可选）",
+      "apiKeyHelp": "可选。作为 Bearer token 用于身份验证，与 OpenAI API Key 无关。",
+      "applyAndRefresh": "应用并刷新",
+      "queryPrefix": "我们将查询",
+      "querySuffix": "获取可用模型。",
+      "modelsReloadHint": "当你离开 URL 输入框或点击\u201c应用并刷新\u201d时，模型列表将重新加载。",
+      "enterEndpoint": "请在上方输入端点 URL 以加载模型。",
+      "fetchingModels": "正在从端点获取模型列表...",
+      "noModels": "未返回任何模型，请检查端点 URL。",
+      "providerName": "自定义",
+      "ownerLabel": "所有者：{{owner}}",
+      "unableToLoadModels": "无法从端点加载模型。"
+    },
+    "getApiKey": "获取你的 API Key ->",
+    "selectModel": "选择模型",
+    "availableModels": "可用模型"
+  },
+  "transcription": {
+    "deleteModel": {
+      "title": "删除模型",
+      "description": "确定要删除此模型吗？如果需要再次使用，你需要重新下载。"
+    },
+    "parakeet": {
+      "multilingual": "25 种语言",
+      "english": "英语"
+    },
+    "apiKeyOptional": "API Key（可选）",
+    "getKey": "获取密钥 ->",
+    "endpointUrl": "端点 URL",
+    "customProvider": "自定义",
+    "fallback": {
+      "whisperModelDescription": "模型",
+      "parakeetModelDescription": "NVIDIA Parakeet 模型"
+    },
+    "whisperModels": "Whisper 模型"
+  },
+  "hooks": {
+    "audioRecording": {
+      "errorTitles": {
+        "sessionExpired": "会话已过期",
+        "offline": "你已离线",
+        "dailyLimitReached": "已达到每日上限"
+      },
+      "fallback": {
+        "title": "回退模式",
+        "description": "本地 Whisper 失败，已改用 OpenAI API。"
+      },
+      "noAudio": {
+        "title": "未检测到音频",
+        "description": "录音中未检测到音频，请重试。"
+      }
+    },
+    "clipboard": {
+      "pasteFailed": {
+        "title": "剪贴板粘贴失败",
+        "description": "无法从剪贴板粘贴，请尝试手动输入或使用 Cmd+V / Ctrl+V。"
+      }
+    },
+    "hotkeyRegistration": {
+      "titles": {
+        "invalidHotkey": "无效的快捷键",
+        "notRegistered": "快捷键未注册",
+        "saved": "快捷键已保存",
+        "error": "快捷键错误"
+      },
+      "errors": {
+        "enterValidHotkey": "请输入有效的快捷键",
+        "unsupportedShortcut": "不支持该快捷方式。",
+        "couldNotRegister": "无法注册此按键，请选择其他按键。",
+        "failedToRegister": "注册快捷键失败，请重试。"
+      },
+      "messages": {
+        "nowUsing": "现在使用 {{hotkey}} 进行听写"
+      }
+    },
+    "modelDownload": {
+      "errors": {
+        "timeout": "下载超时，请检查网络连接后重试。",
+        "notFound": "无法连接到下载服务器，请检查网络连接。",
+        "corrupted": "下载不完整或已损坏，请重试。",
+        "rateLimited": "下载服务器正在限流，请等待几分钟后重试。",
+        "server": "服务器错误（{{error}}），请稍后重试。",
+        "generic": "下载失败：{{error}}",
+        "extractionFailed": "模型已下载但安装失败。点击下载以重新安装，无需重新下载。",
+        "unknown": "未知错误"
+      },
+      "downloadFailed": {
+        "title": "下载失败"
+      },
+      "installationFailed": {
+        "title": "安装失败"
+      },
+      "downloadInProgress": {
+        "title": "下载进行中",
+        "description": "请等待当前下载完成或先取消它。"
+      },
+      "modelDeleted": {
+        "title": "模型已删除",
+        "descriptionWithSpace": "模型删除成功！释放了 {{sizeMb}}MB 磁盘空间。",
+        "description": "模型删除成功！"
+      },
+      "deleteFailed": {
+        "title": "删除失败",
+        "description": "删除模型失败：{{error}}"
+      },
+      "downloadCancelled": {
+        "title": "下载已取消",
+        "description": "下载已被取消。"
+      }
+    },
+    "permissions": {
+      "paths": {
+        "windowsMicrophone": "设置 -> 隐私 -> 麦克风",
+        "linuxSound": "系统声音设置",
+        "defaultSound": "系统设置 -> 声音 -> 输入",
+        "linuxPrivacy": "系统隐私设置",
+        "defaultPrivacy": "系统设置 -> 隐私与安全 -> 麦克风"
+      },
+      "micErrors": {
+        "accessFailed": "麦克风访问失败，请重试。",
+        "noMicrophones": "未检测到麦克风。请在 {{settingsPath}} 中连接或选择麦克风。",
+        "permissionDenied": "权限被拒绝。请打开 {{privacyPath}} 并允许 OpenWhispr。",
+        "couldNotStart": "无法启动所选麦克风。请在 {{settingsPath}} 中选择输入设备，然后重新测试。",
+        "noActiveInput": "未找到活跃的音频输入。请在 {{settingsPath}} 中选择麦克风。",
+        "unknown": "麦克风访问失败：{{error}}。请选择其他输入设备后重试。",
+        "unknownFallback": "未知错误"
+      },
+      "settingsTitles": {
+        "microphone": "麦克风设置",
+        "sound": "声音设置",
+        "accessibility": "辅助功能设置"
+      },
+      "settingsErrors": {
+        "unableToOpenMicrophone": "无法打开麦克风设置，请手动打开系统设置。",
+        "unableToOpenSound": "无法打开声音设置，请手动打开系统设置。",
+        "unableToOpenAccessibility": "无法打开辅助功能设置，请手动打开系统设置。"
+      },
+      "micUnavailable": "此环境中麦克风 API 不可用，请重启应用。",
+      "titles": {
+        "microphoneUnavailable": "麦克风不可用",
+        "microphonePermissionRequired": "需要麦克风权限",
+        "accessibilityNeeded": "需要辅助功能权限",
+        "readyToGo": "准备就绪！",
+        "waylandClipboardMode": "Wayland 上的剪贴板模式",
+        "optionalPasteTool": "可选：安装粘贴工具"
+      },
+      "descriptions": {
+        "accessibilityNeeded": "请在系统设置中授予辅助功能权限，以启用自动粘贴。",
+        "windowsReady": "Windows 无需特殊权限即可自动粘贴，一切就绪！",
+        "linuxReadyWithMethod": "可使用 {{method}} 进行自动粘贴，一切就绪！",
+        "waylandClipboardMode": "此 Wayland 会话不支持自动粘贴。OpenWhispr 会将文本复制到剪贴板，你可以使用 Ctrl+V 粘贴。",
+        "optionalPasteTool": "如需自动粘贴功能，请安装 {{tool}}：\n\n{{installCmd}}{{waylandNote}}\n\n即使不安装，你仍然可以使用 OpenWhispr——文本会被复制到剪贴板，你可以使用 Ctrl+V 粘贴。"
+      },
+      "alerts": {
+        "accessibilityNeeded": "需要辅助功能权限！请在系统设置中授权。"
+      },
+      "notes": {
+        "waylandWtype": "\n\n注意：对于 XWayland 应用，xdotool 也适用。",
+        "waylandXwaylandOnly": "\n\n注意：自动粘贴仅适用于 XWayland 应用。"
+      },
+      "labels": {
+        "defaultPasteTool": "xdotool",
+        "xdotoolXwayland": "xdotool（XWayland 应用）"
+      },
+      "accessibilityTestText": "OpenWhispr 辅助功能测试",
+      "warning": {
+        "messages": {
+          "macos": "请检查声音设置以选择输入设备",
+          "windows": "请检查 Windows 设置以选择输入设备",
+          "linux": "请检查系统声音设置以选择输入设备"
+        },
+        "soundLabel": "声音",
+        "privacyLabel": "隐私"
+      }
+    }
+  },
+  "auth": {
+    "cloudNotConfigured": "云端未配置",
+    "common": {
+      "back": "返回",
+      "continue": "继续",
+      "or": "或"
+    },
+    "emailStep": {
+      "continueWithEmail": "使用邮箱继续",
+      "continueWithoutAccount": "不登录继续",
+      "emailPlaceholder": "you@example.com"
+    },
+    "errors": {
+      "accountExistsSignIn": "此邮箱已注册账户，请直接登录。",
+      "accountNotFoundCreate": "未找到此邮箱的账户，请先注册。",
+      "authNotConfigured": "身份验证未配置",
+      "createAccountFailed": "创建账户失败",
+      "failedProviderSignIn": "使用 {{provider}} 登录失败",
+      "failedUserCheck": "检查用户账户失败",
+      "generic": "出了点问题，请重试。",
+      "invalidCredentials": "邮箱或密码无效",
+      "plusAliasUnsupported": "不支持包含\u201c+\u201d的邮箱别名"
+    },
+    "getStarted": "开始使用",
+    "legal": {
+      "and": "和",
+      "prefix": "继续即表示你同意我们的",
+      "privacy": "隐私政策",
+      "suffix": "",
+      "terms": "服务条款"
+    },
+    "passwordForm": {
+      "createAccount": "创建账户",
+      "createAccountButton": "创建账户",
+      "createAccountLink": "创建账户",
+      "createPasswordPlaceholder": "创建密码",
+      "creatingAccount": "正在创建账户...",
+      "enterPasswordPlaceholder": "输入密码",
+      "forgotPassword": "忘记密码？",
+      "fullNamePlaceholder": "姓名",
+      "haveAccount": "已有账户？",
+      "newHere": "新用户？",
+      "passwordMinLength": "密码至少需要 8 个字符",
+      "signIn": "登录",
+      "signInLink": "登录",
+      "signingIn": "正在登录...",
+      "welcomeBack": "欢迎回来"
+    },
+    "signedIn": {
+      "ready": "就绪",
+      "welcomeBack": "欢迎回来",
+      "welcomeBackName": "欢迎回来，{{name}}"
+    },
+    "social": {
+      "completeInBrowser": "在浏览器中完成登录",
+      "continueWithGoogle": "使用 Google 继续"
+    },
+    "welcomeSubtitle": "随时随地用语音输入",
+    "welcomeTitle": "欢迎使用 OpenWhispr"
+  },
+  "cleanupPrompt": "文本整理",
+  "developerSection": {
+    "currentLogFile": "当前日志文件",
+    "debugMode": {
+      "disabledDescription": "启用以捕获详细的诊断信息",
+      "enabledDescription": "正在记录音频处理、API 请求和系统操作",
+      "label": "Debug 模式"
+    },
+    "description": "捕获详细日志以帮助诊断问题",
+    "openLogsFolder": "打开日志文件夹",
+    "performanceNote": {
+      "description": "Debug 日志会持续写入磁盘，可能略微影响性能。不排查问题时请关闭。",
+      "label": "注意"
+    },
+    "sharing": {
+      "footer": "日志不包含 API Key 或敏感数据",
+      "steps": {
+        "0": "在启用 Debug 模式的情况下重现问题",
+        "1": "点击上方的\u201c打开日志文件夹\u201d",
+        "2": "将最新的日志文件附加到你的 Bug 报告中"
+      },
+      "title": "为技术支持分享日志"
+    },
+    "title": "Debug 日志",
+    "toasts": {
+      "copied": {
+        "description": "日志文件路径已复制到剪贴板",
+        "title": "已复制"
+      },
+      "copyFailed": {
+        "description": "复制到剪贴板时出错。",
+        "title": "无法复制"
+      },
+      "debugDisabled": {
+        "description": "Debug 日志已关闭",
+        "title": "Debug 日志已禁用"
+      },
+      "debugEnabled": {
+        "description": "详细日志正在写入磁盘",
+        "title": "Debug 日志已启用"
+      },
+      "loadFailed": {
+        "description": "出了点问题，请尝试重新打开设置。",
+        "title": "无法加载 Debug 设置"
+      },
+      "openLogsFailed": {
+        "description": "打开日志目录时出错。",
+        "title": "无法打开日志文件夹"
+      },
+      "updateFailed": {
+        "description": "出了点问题，请重试。",
+        "title": "无法更新 Debug 日志设置"
+      }
+    },
+    "whatGetsLogged": {
+      "items": {
+        "apiRequests": "API 请求",
+        "audioProcessing": "音频处理",
+        "errorDetails": "错误详情",
+        "ffmpegOperations": "FFmpeg 操作",
+        "systemDiagnostics": "系统诊断",
+        "transcriptionPipeline": "转录管道"
+      },
+      "title": "记录的内容"
+    }
+  },
+  "dictionarySuffix": "词典后缀",
+  "emailVerification": {
+    "checkEmailDescription": "我们已向以下邮箱发送了验证链接",
+    "checkEmailTitle": "查看你的邮箱",
+    "errors": {
+      "resendFailed": "无法重新发送邮件，请重试。",
+      "serverUnreachable": "无法连接到服务器，请检查网络连接后重试。"
+    },
+    "resendButton": "重新发送验证邮件",
+    "resendIn": "{{seconds}} 秒后可重新发送",
+    "verifiedDescription": "你的账户已准备就绪。",
+    "verifiedTitle": "邮箱已验证",
+    "waiting": "正在等待验证..."
+  },
+  "errorBoundary": {
+    "description": "发生了意外错误，请重新加载后重试。",
+    "reload": "重新加载",
+    "title": "出了点问题"
+  },
+  "forgotPassword": {
+    "back": "返回",
+    "backToSignIn": "返回登录",
+    "emailPlaceholder": "输入你的邮箱",
+    "goBack": "返回",
+    "notConfigured": "身份验证尚未配置。",
+    "sendResetLink": "发送重置链接",
+    "sending": "正在发送...",
+    "subtitle": "输入你的邮箱，我们将发送重置链接",
+    "success": {
+      "description": "我们已将密码重置链接发送至",
+      "help": "没有收到邮件？请检查垃圾邮件文件夹或重试。",
+      "title": "查看你的邮箱",
+      "tryAnother": "尝试其他邮箱"
+    },
+    "title": "重置密码"
+  },
+  "fullPrompt": "完整提示词",
+  "hotkeyGuidance": {
+    "blockedDescription": "以下快捷方式已被屏蔽，因为它们是常用的系统快捷键。",
+    "blockedTitle": "被屏蔽的快捷方式",
+    "description": "使用以下平台规则来选择不会与系统冲突的快捷键。",
+    "examplesTitle": "有效示例",
+    "platforms": {
+      "linux": "Linux",
+      "macos": "macOS",
+      "windows": "Windows"
+    },
+    "recommended": {
+      "linux": {
+        "0": "Ctrl+Alt+Space",
+        "1": "Super+S",
+        "2": "Ctrl+Alt+D",
+        "3": "Ctrl+Shift+J",
+        "4": "Alt+Space"
+      },
+      "macos": {
+        "0": "⌥Space",
+        "1": "⌃⌥S",
+        "2": "⌃⌥D",
+        "3": "Fn",
+        "4": "⌘⇧J"
+      },
+      "windows": {
+        "0": "Ctrl+Alt+Space",
+        "1": "Ctrl+Shift+S",
+        "2": "Ctrl+Alt+D",
+        "3": "Win+Alt+K"
+      }
+    },
+    "recommendedTitle": "推荐快捷键",
+    "rulesTitle": "快捷键规则",
+    "showAll": "显示全部",
+    "showFewer": "收起",
+    "title": "快捷键指南",
+    "validationRules": {
+      "0": "必须使用至少一个修饰键（Ctrl、Alt、Shift 等）",
+      "1": "不能使用系统保留的快捷键",
+      "2": "不允许单独使用单个按键",
+      "3": "某些组合可能与其他应用冲突"
+    }
+  },
+  "hotkeyInput": {
+    "ariaLabel": "按下组合键以设置快捷键",
+    "clickToChange": "点击更改",
+    "clickToChangeLower": "点击更改",
+    "clickToSet": "点击设置快捷键",
+    "fnCaptureHint": "按下一个键进行组合，或松开以使用 Globe",
+    "fnHeldHint": "+ 按键，或松开以使用 Globe",
+    "globe": "Globe",
+    "hotkeyLabel": "快捷键",
+    "keyHint": "+ 按键",
+    "listening": "正在监听...",
+    "pressAnyKey": "按任意键或 Ctrl+Shift+K",
+    "pressAnyKeyMac": "按任意键或 ⌘⇧K",
+    "recording": "录制中",
+    "tryShortcut": "试试 Ctrl+Shift+K",
+    "tryShortcutMac": "试试 ⌘⇧K"
+  },
+  "languageSelector": {
+    "noLanguagesFound": "未找到匹配的语言",
+    "searchPlaceholder": "搜索..."
+  },
+  "microphoneSettings": {
+    "builtIn": "（内置）",
+    "errors": {
+      "unableToAccess": "无法访问麦克风，请检查权限设置。"
+    },
+    "helpText": "选择特定的麦克风或使用系统默认设置。",
+    "inputDevice": "输入设备",
+    "noBuiltInDetected": "未检测到内置麦克风，正在使用系统默认设备。",
+    "preferBuiltIn": {
+      "description": "外接麦克风可能导致延迟或降低转录质量",
+      "label": "优先使用内置麦克风"
+    },
+    "selectPlaceholder": "选择麦克风",
+    "systemDefault": "系统默认",
+    "unknownDevice": "未知设备",
+    "using": "当前使用："
+  },
+  "pasteToolsInfo": {
+    "checking": "正在检查系统功能...",
+    "installCommands": {
+      "archLinux": "# Arch Linux",
+      "debianUbuntu": "# Debian / Ubuntu",
+      "debianUbuntuMint": "# Debian / Ubuntu / Mint",
+      "fedoraRhel": "# Fedora / RHEL"
+    },
+    "installPrefix": "如需自动粘贴文本，请安装",
+    "methodReady": "用于自动粘贴文本",
+    "noteXwaylandAlso": "注意：对于 XWayland 应用，xdotool 也适用。",
+    "noteXwaylandOnly": "注意：自动粘贴仅适用于 XWayland 应用。",
+    "optionalEnableTitle": "可选：启用自动粘贴",
+    "readyTitle": "自动粘贴已就绪",
+    "recheck": "重新检查",
+    "recheckChecking": "检查中...",
+    "title": "自动粘贴",
+    "usingMethodPrefix": "使用",
+    "waylandClipboardDescription": "此 Wayland 会话不支持自动粘贴。OpenWhispr 会将文本复制到剪贴板，你可以使用 Ctrl+V 手动粘贴。",
+    "waylandClipboardTitle": "Wayland 上的剪贴板模式",
+    "windowsReady": "Windows 原生支持自动粘贴，无需额外设置！",
+    "withoutToolPrefix": "如果不安装此工具，OpenWhispr 会将文本复制到剪贴板，你可以使用 Ctrl+V 手动粘贴。",
+    "xwaylandAppsOnly": "自动粘贴仅适用于 XWayland 应用"
+  },
+  "promptStudio": {
+    "common": {
+      "copied": "已复制",
+      "copy": "复制",
+      "reset": "重置",
+      "save": "保存"
+    },
+    "defaultTestInput": "你好 Whispr，今天天气怎么样？",
+    "dialogs": {
+      "reset": {
+        "description": "提示词已重置为默认值。",
+        "title": "重置完成"
+      },
+      "saved": {
+        "description": "你的自定义提示词将用于所有后续的 AI 处理。",
+        "title": "提示词已保存"
+      }
+    },
+    "edit": {
+      "agentNameLabel": "助手名称：",
+      "cautionLabel": "注意",
+      "cautionTextPrefix": "修改此提示词可能影响转录质量。",
+      "cautionTextSuffix": "保留 {{agentName}} 占位符以确保助手识别功能正常。",
+      "placeholder": "输入你的自定义系统提示词..."
+    },
+    "tabs": {
+      "customize": "自定义",
+      "test": "测试",
+      "view": "查看"
+    },
+    "test": {
+      "addressHint": "试试说\u201c{{agentName}}\u201d来测试指令模式",
+      "aiModels": "AI 模型",
+      "baseUrlMissing": "{{provider}} 的 URL 缺失，请在 AI 模型设置中添加。",
+      "cleanup": "文本整理",
+      "disabledInSettingsPrefix": "AI 文本增强已禁用。",
+      "disabledInSettingsSuffix": "请在 AI 模型中启用以测试提示词。",
+      "disabledReasoning": "AI 文本增强已禁用，请在 AI 模型中启用以测试提示词。",
+      "failed": "测试失败：{{error}}",
+      "inputLabel": "输入",
+      "inputPlaceholder": "输入要测试的文本...",
+      "instruction": "指令",
+      "modelLabel": "模型",
+      "noModelSelected": "未选择模型",
+      "none": "无",
+      "outputLabel": "输出",
+      "processing": "处理中...",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "providerLabel": "服务商",
+      "run": "运行测试"
+    },
+    "view": {
+      "customPrompt": "自定义提示词",
+      "defaultPrompt": "默认提示词",
+      "modes": {
+        "agent": {
+          "description": "通过\u201c{{agentName}}\u201d触发——执行命令、回答问题、撰写内容",
+          "label": "语音助手"
+        },
+        "cleanup": {
+          "description": "快速通道——去除语气词，修正语法和标点",
+          "label": "文本整理"
+        }
+      },
+      "modified": "已修改"
+    }
+  },
+  "resetPassword": {
+    "backToSignIn": "返回登录",
+    "confirmPasswordPlaceholder": "确认新密码",
+    "continue": "继续",
+    "errors": {
+      "passwordMinLength": "密码至少需要 8 个字符",
+      "passwordsDoNotMatch": "两次输入的密码不一致"
+    },
+    "goBack": "返回",
+    "newPasswordPlaceholder": "新密码",
+    "notConfigured": "身份验证未配置。",
+    "passwordMinLength": "密码至少需要 8 个字符",
+    "resetButton": "重置密码",
+    "resetting": "正在重置...",
+    "subtitle": "在下方输入你的新密码",
+    "success": {
+      "description": "密码已更新，你现在已登录。",
+      "title": "密码重置成功"
+    },
+    "title": "创建新密码"
+  },
+  "settingsModal": {
+    "groups": {
+      "app": "应用",
+      "intelligence": "智能",
+      "profile": "个人资料",
+      "speech": "语音",
+      "system": "系统"
+    },
+    "sections": {
+      "account": {
+        "description": "登录与用量",
+        "label": "账户"
+      },
+      "agentConfig": {
+        "description": "语音助手设置",
+        "label": "语音助手"
+      },
+      "aiModels": {
+        "description": "文本整理与增强",
+        "label": "AI 模型"
+      },
+      "developer": {
+        "description": "日志、诊断与数据",
+        "label": "开发者"
+      },
+      "dictionary": {
+        "description": "自定义词汇和短语",
+        "label": "词典"
+      },
+      "general": {
+        "description": "外观、快捷键与启动",
+        "label": "偏好设置"
+      },
+      "permissions": {
+        "description": "麦克风与辅助功能",
+        "label": "权限"
+      },
+      "privacy": {
+        "description": "云端备份与分析",
+        "label": "隐私"
+      },
+      "prompts": {
+        "description": "系统提示词工作室",
+        "label": "提示词"
+      },
+      "transcription": {
+        "description": "语音转文字引擎",
+        "label": "转录"
+      }
+    },
+    "title": "设置"
+  },
+  "settingsPage": {
+    "account": {
+      "badges": {
+        "free": "免费版",
+        "limitReached": "已达上限",
+        "pastDue": "逾期未付",
+        "pro": "Pro",
+        "trial": "试用"
+      },
+      "billing": {
+        "couldNotOpenDescription": "打开账单页面时出错，请重试。",
+        "couldNotOpenTitle": "无法打开账单",
+        "manageBilling": "管理账单",
+        "opening": "正在打开...",
+        "updatePaymentMethod": "更新支付方式"
+      },
+      "checkout": {
+        "couldNotOpenDescription": "打开结账页面时出错，请重试。",
+        "couldNotOpenTitle": "无法打开结账页",
+        "opening": "正在打开...",
+        "upgradeToPro": "升级到 Pro"
+      },
+      "disabled": "已禁用",
+      "featuresDisabled": "账户功能已禁用",
+      "featuresDisabledDescription": "在 .env 文件中设置 VITE_NEON_AUTH_URL 以启用账户功能。",
+      "notConfigured": "身份验证未配置",
+      "notSignedIn": "未登录",
+      "notSignedInDescription": "创建账户以解锁高级功能。",
+      "offline": "离线",
+      "pastDue": {
+        "description": "你目前使用的是免费版。更新支付方式即可恢复 Pro 版。",
+        "title": "我们无法处理你的付款"
+      },
+      "planDescriptions": {
+        "freeUsage": "本周已使用 {{used}} / {{limit}} 个词",
+        "nextBilling": "下次扣费：{{date}}",
+        "pastDue": "本周 {{used}} / {{limit}} 免费词数——更新支付方式以恢复 Pro",
+        "trial": "剩余 {{days}} 天——无限转录",
+        "unlimited": "无限制"
+      },
+      "planLabels": {
+        "free": "免费版",
+        "pro": "Pro",
+        "trial": "试用"
+      },
+      "planTitle": "套餐",
+      "rollingWeeklyLimit": "滚动周限额",
+      "signOut": {
+        "failedDescription": "退出登录时出错，请重试。",
+        "failedTitle": "无法退出登录",
+        "signOut": "退出登录",
+        "signingOut": "正在退出..."
+      },
+      "signedIn": "已登录",
+      "title": "账户",
+      "toasts": {
+        "approachingLimit": {
+          "description": "本周已使用 {{used}} / {{limit}} 个免费词数。升级到 Pro 可享受无限使用。",
+          "title": "即将达到周限额"
+        }
+      },
+      "trialCta": {
+        "button": "免费创建账户",
+        "description": "无限转录、优先处理等更多功能。",
+        "title": "免费试用 Pro 版 7 天"
+      },
+      "user": "用户",
+      "wordsRemaining": "剩余 {{remaining}} 个词"
+    },
+    "agentConfig": {
+      "agentName": "助手名称",
+      "cleanupExample": "文本整理",
+      "cleanupMode": "整理模式",
+      "description": "为你的 AI 助手取个名字，这样你就能在听写时直接呼唤它",
+      "dialogs": {
+        "updatedDescription": "你的助手已命名为\u201c{{name}}\u201d。说\u201cHey {{name}}\u201d然后说出指令即可使用。",
+        "updatedTitle": "助手名称已更新"
+      },
+      "examplesTitle": "示例",
+      "helper": "选一个简短、说起来自然的名字",
+      "howItWorksDescription": "当你说\u201cHey {{agentName}}\u201d并跟上指令时，AI 会从整理模式切换到指令模式。没有触发短语时，它只会整理你的听写内容。",
+      "howItWorksTitle": "工作原理",
+      "instructionMode": "指令",
+      "placeholder": "例如 Jarvis、Nova、Atlas...",
+      "save": "保存",
+      "title": "语音助手"
+    },
+    "aiModels": {
+      "customSetup": "自定义设置",
+      "customSetupDescription": "使用你自己的服务商和 API Key。",
+      "description": "整理转录文本、处理指令、修正错误，同时保留你的语气风格。",
+      "enableTextCleanup": "启用文本整理",
+      "enableTextCleanupDescription": "AI 提升转录质量",
+      "openwhisprCloud": "OpenWhispr 云端",
+      "openwhisprCloudDescription": "开箱即用，无需配置。",
+      "title": "AI 文本增强",
+      "toasts": {
+        "switchedCloud": {
+          "description": "文本增强将使用 OpenWhispr 云端服务。",
+          "title": "已切换到 OpenWhispr 云端"
+        },
+        "switchedCustom": {
+          "description": "请配置你的服务商和 API Key。",
+          "title": "已切换到自定义设置"
+        }
+      }
+    },
+    "developer": {
+      "clearCache": "清除缓存",
+      "dataManagementDescription": "管理缓存模型和应用数据",
+      "dataManagementTitle": "数据管理",
+      "modelCache": "模型缓存",
+      "open": "打开",
+      "removeModels": {
+        "confirmText": "删除模型",
+        "description": "这将删除所有本地缓存的 Whisper 模型（{{path}}）并释放磁盘空间。你可以从模型选择器中重新下载。",
+        "failedDescription": "删除模型时出错，请重试。",
+        "failedDescriptionShort": "无法删除缓存的模型。",
+        "failedTitle": "无法删除模型",
+        "successDescription": "所有缓存的模型已删除。",
+        "successTitle": "模型已删除",
+        "title": "删除已下载的模型？"
+      },
+      "removing": "正在删除...",
+      "resetAll": {
+        "confirmText": "删除所有数据",
+        "description": "这将永久删除所有设置、转录记录和缓存数据。重置后应用将重新加载。",
+        "failedDescription": "出了点问题，请重试或重新安装应用。",
+        "failedTitle": "无法重置",
+        "successDescription": "所有数据已重置，应用将立即重新加载。",
+        "successTitle": "全部完成",
+        "title": "重置所有应用数据"
+      },
+      "resetAppData": "重置应用数据",
+      "resetAppDataDescription": "永久删除所有设置、转录记录和缓存数据"
+    },
+    "dictionary": {
+      "add": "添加",
+      "addWordOrPhrase": "添加词汇或短语",
+      "agentNameAutoManaged": "助手名称（自动管理）",
+      "clearAll": "全部清除",
+      "clearDictionaryDescription": "这将删除自定义词典中的所有词汇，此操作无法撤销。",
+      "clearDictionaryTitle": "清除词典？",
+      "description": "添加词汇、姓名或专业术语以提高转录准确率",
+      "howItWorksDescription": "你添加的词汇会被包含在 AI 提示词中，以便模型在转录整理时能够识别并保留这些词汇。",
+      "howItWorksTitle": "工作原理",
+      "noWords": "尚未添加任何词汇",
+      "placeholder": "例如 OpenWhispr、Kubernetes、张医生...",
+      "pressEnterToAdd": "按回车键添加",
+      "removeWord": "删除词汇",
+      "tipDescription": "添加专有名词、专业术语或任何可能被错误转录的词汇。",
+      "tipLabel": "提示",
+      "title": "自定义词典",
+      "wordsAppearHere": "你添加的词汇将显示在这里",
+      "yourWords": "你的词汇"
+    },
+    "general": {
+      "appearance": {
+        "auto": "自动",
+        "dark": "深色",
+        "description": "控制 OpenWhispr 的外观",
+        "light": "浅色",
+        "theme": "主题",
+        "themeDescription": "选择浅色、深色或跟随系统",
+        "title": "外观"
+      },
+      "floatingIcon": {
+        "autoHide": "空闲时自动隐藏",
+        "autoHideDescription": "在开始听写前保持图标隐藏",
+        "description": "控制听写图标在屏幕上的显示",
+        "title": "悬浮图标"
+      },
+      "hotkey": {
+        "activationMode": "激活模式",
+        "description": "用于开始和停止语音听写的组合键",
+        "title": "听写快捷键"
+      },
+      "microphone": {
+        "description": "选择用于听写的输入设备",
+        "title": "麦克风"
+      },
+      "soundEffects": {
+        "dictationSounds": "听写音效",
+        "dictationSoundsDescription": "在录音开始和停止时播放提示音",
+        "title": "音效"
+      },
+      "startup": {
+        "launchAtLogin": "登录时启动",
+        "launchAtLoginDescription": "登录时自动启动 OpenWhispr",
+        "title": "启动"
+      },
+      "updates": {
+        "badges": {
+          "dev": "开发版",
+          "latest": "最新",
+          "update": "更新"
+        },
+        "checkForUpdates": "检查更新",
+        "checking": "检查中...",
+        "currentVersion": "当前版本",
+        "devMode": "正在开发模式下运行",
+        "dialogs": {
+          "almostThere": {
+            "description": "更新即将就绪，请稍候。",
+            "title": "即将完成"
+          },
+          "checkFailed": {
+            "description": "检查更新时出错，请稍后重试。",
+            "title": "无法检查更新"
+          },
+          "downloadFailed": {
+            "description": "下载更新时出错，请重试。",
+            "title": "无法下载更新"
+          },
+          "installFailed": {
+            "description": "安装更新时出错，请重试。",
+            "title": "无法安装更新"
+          },
+          "installUpdate": {
+            "confirmText": "安装并重启",
+            "description": "OpenWhispr 将重启以应用更新。",
+            "title": "安装更新"
+          },
+          "noUpdates": {
+            "description": "你已经是最新版本。",
+            "title": "无可用更新"
+          },
+          "updateAvailable": {
+            "description": "有可用更新：v{{version}}",
+            "title": "有可用更新"
+          },
+          "updateError": {
+            "description": "更新出错，请重试。",
+            "title": "更新错误"
+          }
+        },
+        "downloadUpdate": "下载更新 {{version}}",
+        "downloading": "下载中... {{progress}}%",
+        "installAndRestart": "安装并重启",
+        "latestVersion": "你已经是最新版本",
+        "newVersion": "有更新的版本可用",
+        "newVersionAvailable": "有新版本可用",
+        "restarting": "正在重启...",
+        "title": "更新",
+        "versionPlaceholder": "—",
+        "whatsNew": "v{{version}} 更新内容"
+      }
+    },
+    "permissions": {
+      "accessibilityDescription": "转录后自动粘贴需要此权限",
+      "accessibilityTitle": "辅助功能",
+      "description": "测试和管理 OpenWhispr 正常运行所需的系统权限",
+      "microphoneDescription": "语音录制和听写需要此权限",
+      "microphoneTitle": "麦克风",
+      "resetAccessibility": {
+        "description": "这将从辅助功能权限中移除 OpenWhispr。你需要在系统设置 > 隐私与安全 > 辅助功能中重新授权。",
+        "label": "重置辅助功能权限",
+        "rowDescription": "重新安装或重新构建应用后，通过在系统设置中移除并重新添加 OpenWhispr 来解决问题",
+        "title": "重置辅助功能权限"
+      },
+      "test": "测试",
+      "testAndGrant": "测试并授权",
+      "title": "权限",
+      "troubleshoot": "排查问题",
+      "troubleshootingTitle": "问题排查"
+    },
+    "privacy": {
+      "cloudBackup": "云端备份",
+      "cloudBackupDescription": "将转录记录保存到云端，确保永不丢失。",
+      "description": "控制哪些数据会离开你的设备。默认全部关闭。",
+      "title": "隐私",
+      "usageAnalytics": "使用分析",
+      "usageAnalyticsDescription": "通过分享匿名性能数据帮助我们改进 OpenWhispr。我们绝不发送转录内容——仅发送计时和错误数据。"
+    },
+    "prompts": {
+      "description": "查看、自定义和测试用于文本整理和指令识别的统一系统提示词",
+      "title": "提示词工作室"
+    },
+    "transcription": {
+      "customSetup": "自定义设置",
+      "customSetupDescription": "使用你自己的服务商和 API Key。",
+      "description": "选择 OpenWhispr 转录语音的方式",
+      "openwhisprCloud": "OpenWhispr 云端",
+      "openwhisprCloudDescription": "开箱即用，无需配置。",
+      "title": "语音转文字",
+      "toasts": {
+        "switchedCloud": {
+          "description": "转录将使用 OpenWhispr 云端服务。",
+          "title": "已切换到 OpenWhispr 云端"
+        },
+        "switchedCustom": {
+          "description": "请配置你的服务商和 API Key。",
+          "title": "已切换到自定义设置"
+        }
+      }
+    }
+  },
+  "models": {
+    "descriptions": {
+      "parakeet": {
+        "parakeet_tdt_0_6b_v3": "快速多语言语音识别，自动语言检测（25 种语言）"
+      },
+      "whisper": {
+        "tiny": "最快速度，较低质量",
+        "base": "平衡之选",
+        "small": "更好质量，较慢速度",
+        "medium": "高质量",
+        "large": "最佳质量，最慢速度",
+        "turbo": "快速且质量良好"
+      },
+      "transcription": {
+        "openai_gpt_4o_mini_transcribe": "快速且准确的转录",
+        "openai_gpt_4o_transcribe": "最准确的转录",
+        "openai_whisper_1": "原始 Whisper 模型",
+        "groq_whisper_large_v3_turbo": "216 倍实时速度",
+        "mistral_voxtral_mini_latest": "快速多语言转录"
+      },
+      "cloud": {
+        "openai_gpt_5_2": "最新旗舰推理模型",
+        "openai_gpt_5_mini": "快速且经济",
+        "openai_gpt_5_nano": "超快速、低延迟",
+        "openai_gpt_4_1": "稳定基准，1M 上下文",
+        "openai_gpt_4_1_mini": "精简版 GPT-4.1",
+        "openai_gpt_4_1_nano": "最低延迟 GPT-4.1",
+        "anthropic_claude_sonnet_4_5": "均衡性能",
+        "anthropic_claude_haiku_4_5": "快速且接近前沿水平",
+        "anthropic_claude_opus_4_5": "最强大的 Claude 模型",
+        "gemini_gemini_3_pro_preview": "新一代旗舰模型，擅长复杂推理",
+        "gemini_gemini_3_flash_preview": "超快速、高能力的新一代模型",
+        "gemini_gemini_2_5_flash_lite": "最低延迟和成本",
+        "groq_qwen_qwen3_32b": "强大的推理模型，131K 上下文",
+        "groq_openai_gpt_oss_120b": "OpenAI 开源旗舰，500 T/秒",
+        "groq_openai_gpt_oss_20b": "快速开源模型，1000 T/秒",
+        "groq_llama_3_3_70b_versatile": "Meta 多功能模型，280 T/秒",
+        "groq_llama_3_1_8b_instant": "超快 560 T/秒，131K 上下文",
+        "groq_mixtral_8x7b_32768": "32K 上下文，混合专家模型",
+        "groq_gemma2_9b_it": "Google 高效模型"
+      },
+      "local": {
+        "qwen_qwen3_8b_q4_k_m": "最新 Qwen3，支持思维模式",
+        "qwen_qwen3_8b_q5_k_m": "更高质量 Qwen3，支持思维模式",
+        "qwen_qwen3_4b_q4_k_m": "紧凑型 Qwen3，具备推理能力",
+        "qwen_qwen3_1_7b_q8_0": "小而强的 Qwen3 模型",
+        "qwen_qwen3_0_6b_q8_0": "超小 Qwen3，适用于边缘设备",
+        "qwen_qwen3_32b_q4_k_m": "最强大的本地 Qwen3，深度推理",
+        "qwen_qwen2_5_0_5b_instruct_q5_k_m": "最小模型，快速但能力有限",
+        "qwen_qwen2_5_1_5b_instruct_q5_k_m": "小型模型，适合基础任务",
+        "qwen_qwen2_5_3b_instruct_q5_k_m": "均衡模型，通用场景",
+        "qwen_qwen2_5_7b_instruct_q4_k_m": "大型模型，高质量（Q4_K_M）",
+        "qwen_qwen2_5_7b_instruct_q5_k_m": "大型模型，高质量推理（Q5_K_M）",
+        "mistral_mistral_7b_instruct_v0_3_q4_k_m": "快速高效的指令模型",
+        "mistral_mistral_7b_instruct_v0_3_q5_k_m": "更高质量的指令模型",
+        "llama_llama_3_2_1b_instruct_q4_k_m": "超小模型，适用于边缘设备",
+        "llama_llama_3_2_3b_instruct_q4_k_m": "小而强的多语言模型",
+        "llama_llama_3_1_8b_instruct_q4_k_m": "强大模型，性能出色",
+        "openai_oss_gpt_oss_20b_mxfp4": "OpenAI 开源模型，适用于消费级硬件"
+      }
+    }
+  }
+}

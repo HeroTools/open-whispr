@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Check, Terminal, Info } from "lucide-react";
 import { Button } from "./button";
 import { InfoBox } from "./InfoBox";
@@ -14,6 +15,7 @@ export default function PasteToolsInfo({
   isChecking,
   onCheck,
 }: PasteToolsInfoProps) {
+  const { t } = useTranslation();
   if (!pasteToolsInfo) {
     return (
       <div className="border border-border rounded-lg p-4">
@@ -21,8 +23,8 @@ export default function PasteToolsInfo({
           <div className="flex items-center gap-3">
             <Terminal className="w-6 h-6 text-primary" />
             <div>
-              <h3 className="font-semibold text-foreground">Automatic Pasting</h3>
-              <p className="text-sm text-muted-foreground">Checking system capabilities...</p>
+              <h3 className="font-semibold text-foreground">{t("pasteToolsInfo.title")}</h3>
+              <p className="text-sm text-muted-foreground">{t("pasteToolsInfo.checking")}</p>
             </div>
           </div>
           {isChecking && (
@@ -42,10 +44,10 @@ export default function PasteToolsInfo({
             <Terminal className="w-6 h-6 text-success dark:text-success" />
             <div>
               <h3 className="font-semibold text-success dark:text-success">
-                Automatic Pasting Ready
+                {t("pasteToolsInfo.readyTitle")}
               </h3>
               <p className="text-sm text-success dark:text-success">
-                Windows supports automatic pasting out of the box. No setup required!
+                {t("pasteToolsInfo.windowsReady")}
               </p>
             </div>
           </div>
@@ -60,8 +62,11 @@ export default function PasteToolsInfo({
   // Linux with tools available
   if (pasteToolsInfo.platform === "linux" && pasteToolsInfo.available) {
     const method = pasteToolsInfo.method || "xdotool";
+    const methodLabel = method === "xtest" ? "built-in (XTest)" : method;
     const methodSuffix =
-      pasteToolsInfo.isWayland && method === "xdotool" ? " (XWayland apps only)." : ".";
+      pasteToolsInfo.isWayland && method === "xdotool"
+        ? t("pasteToolsInfo.xwaylandAppsOnly")
+        : t("pasteToolsInfo.methodReady");
 
     return (
       <InfoBox variant="success">
@@ -70,11 +75,11 @@ export default function PasteToolsInfo({
             <Terminal className="w-6 h-6 text-success dark:text-success" />
             <div>
               <h3 className="font-semibold text-success dark:text-success">
-                Automatic Pasting Ready
+                {t("pasteToolsInfo.readyTitle")}
               </h3>
               <p className="text-sm text-success dark:text-success">
-                Using <code className="bg-success/20 px-1 rounded">{method}</code> for automatic
-                text pasting{methodSuffix}
+                {t("pasteToolsInfo.usingMethodPrefix")}{" "}
+                <code className="bg-success/20 px-1 rounded">{methodLabel}</code> {methodSuffix}
               </p>
             </div>
           </div>
@@ -89,7 +94,6 @@ export default function PasteToolsInfo({
   // Linux without tools - show helpful install instructions
   if (pasteToolsInfo.platform === "linux" && !pasteToolsInfo.available) {
     const isWayland = pasteToolsInfo.isWayland;
-    const xwaylandAvailable = pasteToolsInfo.xwaylandAvailable;
     const recommendedTool = pasteToolsInfo.recommendedInstall;
     const showInstall = !!recommendedTool;
 
@@ -99,62 +103,75 @@ export default function PasteToolsInfo({
           <Info className="w-6 h-6 text-warning dark:text-warning flex-shrink-0 mt-0.5" />
           <div className="flex-1">
             <h3 className="font-semibold text-warning dark:text-warning">
-              {showInstall ? "Optional: Enable Automatic Pasting" : "Clipboard Mode on Wayland"}
+              {showInstall
+                ? t("pasteToolsInfo.optionalEnableTitle")
+                : t("pasteToolsInfo.waylandClipboardTitle")}
             </h3>
 
             {showInstall ? (
               <>
                 <p className="text-sm text-warning dark:text-warning mt-1">
-                  For automatic text pasting, install{" "}
+                  {t("pasteToolsInfo.installPrefix")}{" "}
                   <code className="bg-warning/20 px-1 rounded font-mono">{recommendedTool}</code>:
                 </p>
 
                 <div className="mt-3 bg-card border border-border p-3 rounded-md font-mono text-xs overflow-x-auto">
                   {recommendedTool === "wtype" ? (
                     <>
-                      <div className="text-muted-foreground"># Fedora / RHEL</div>
+                      <div className="text-muted-foreground">
+                        {t("pasteToolsInfo.installCommands.fedoraRhel")}
+                      </div>
                       <div className="text-foreground">sudo dnf install wtype</div>
-                      <div className="text-muted-foreground mt-2"># Debian / Ubuntu</div>
+                      <div className="text-muted-foreground mt-2">
+                        {t("pasteToolsInfo.installCommands.debianUbuntu")}
+                      </div>
                       <div className="text-foreground">sudo apt install wtype</div>
-                      <div className="text-muted-foreground mt-2"># Arch Linux</div>
+                      <div className="text-muted-foreground mt-2">
+                        {t("pasteToolsInfo.installCommands.archLinux")}
+                      </div>
                       <div className="text-foreground">sudo pacman -S wtype</div>
                     </>
                   ) : (
                     <>
-                      <div className="text-muted-foreground"># Debian / Ubuntu / Mint</div>
+                      <div className="text-muted-foreground">
+                        {t("pasteToolsInfo.installCommands.debianUbuntuMint")}
+                      </div>
                       <div className="text-foreground">sudo apt install xdotool</div>
-                      <div className="text-muted-foreground mt-2"># Fedora / RHEL</div>
+                      <div className="text-muted-foreground mt-2">
+                        {t("pasteToolsInfo.installCommands.fedoraRhel")}
+                      </div>
                       <div className="text-foreground">sudo dnf install xdotool</div>
-                      <div className="text-muted-foreground mt-2"># Arch Linux</div>
+                      <div className="text-muted-foreground mt-2">
+                        {t("pasteToolsInfo.installCommands.archLinux")}
+                      </div>
                       <div className="text-foreground">sudo pacman -S xdotool</div>
                     </>
                   )}
                 </div>
 
-                {isWayland && recommendedTool === "wtype" && xwaylandAvailable && (
+                {isWayland && recommendedTool === "wtype" && (
                   <p className="text-sm text-warning dark:text-warning mt-3">
-                    Note: For XWayland apps, xdotool also works.
+                    {t("pasteToolsInfo.noteXwaylandAlso")}
                   </p>
                 )}
 
-                {isWayland && recommendedTool !== "wtype" && (
+                {isWayland && recommendedTool === "xdotool" && (
                   <p className="text-sm text-warning dark:text-warning mt-3">
-                    Note: automatic pasting works for XWayland apps only.
+                    {t("pasteToolsInfo.noteXwaylandOnly")}
                   </p>
                 )}
               </>
             ) : (
               <p className="text-sm text-warning dark:text-warning mt-1">
-                Automatic pasting isn't available on this Wayland session. OpenWhispr will copy text
-                to your clipboard so you can paste manually with{" "}
+                {t("pasteToolsInfo.waylandClipboardDescription")}{" "}
                 <kbd className="bg-warning/20 px-1 rounded text-xs">Ctrl+V</kbd>.
               </p>
             )}
 
             {showInstall && (
               <p className="text-sm text-warning dark:text-warning mt-3">
-                Without this tool, OpenWhispr will copy text to your clipboard. You can then paste
-                manually with <kbd className="bg-warning/20 px-1 rounded text-xs">Ctrl+V</kbd>.
+                {t("pasteToolsInfo.withoutToolPrefix")}{" "}
+                <kbd className="bg-warning/20 px-1 rounded text-xs">Ctrl+V</kbd>.
               </p>
             )}
           </div>
@@ -162,7 +179,7 @@ export default function PasteToolsInfo({
 
         <div className="flex justify-end">
           <Button variant="outline" size="sm" onClick={onCheck} disabled={isChecking}>
-            {isChecking ? "Checking..." : "Re-check"}
+            {isChecking ? t("pasteToolsInfo.recheckChecking") : t("pasteToolsInfo.recheck")}
           </Button>
         </div>
       </InfoBox>

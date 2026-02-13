@@ -1,4 +1,5 @@
 import React from "react";
+import { useTranslation } from "react-i18next";
 import { Cloud, Lock } from "lucide-react";
 
 interface ProcessingModeSelectorProps {
@@ -12,6 +13,7 @@ export default function ProcessingModeSelector({
   setUseLocalWhisper,
   className = "",
 }: ProcessingModeSelectorProps) {
+  const { t } = useTranslation();
   return (
     <div
       className={`relative flex p-0.5 rounded-lg bg-white/5 dark:bg-white/3 border border-white/10 dark:border-white/5 ${className}`}
@@ -30,8 +32,10 @@ export default function ProcessingModeSelector({
         }`}
       >
         <Cloud className="w-4 h-4" />
-        <span className="text-sm font-medium">Cloud</span>
-        {!useLocalWhisper && <span className="text-[10px] text-emerald-500 font-medium">Fast</span>}
+        <span className="text-sm font-medium">{t("common.cloud")}</span>
+        {!useLocalWhisper && (
+          <span className="text-[10px] text-emerald-500 font-medium">{t("common.fast")}</span>
+        )}
       </button>
 
       <button
@@ -41,8 +45,10 @@ export default function ProcessingModeSelector({
         }`}
       >
         <Lock className="w-4 h-4" />
-        <span className="text-sm font-medium">Local</span>
-        {useLocalWhisper && <span className="text-[10px] text-primary font-medium">Private</span>}
+        <span className="text-sm font-medium">{t("common.local")}</span>
+        {useLocalWhisper && (
+          <span className="text-[10px] text-primary font-medium">{t("common.private")}</span>
+        )}
       </button>
     </div>
   );

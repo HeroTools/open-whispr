@@ -3,7 +3,12 @@ const fsPromises = require("fs").promises;
 const path = require("path");
 const { spawn } = require("child_process");
 const debugLogger = require("./debugLogger");
-const { downloadFile, createDownloadSignal } = require("./downloadUtils");
+const {
+  downloadFile,
+  createDownloadSignal,
+  cleanupStaleDownloads,
+  checkDiskSpace,
+} = require("./downloadUtils");
 const ParakeetServerManager = require("./parakeetServer");
 const { getModelsDirForService } = require("./modelDirUtils");
 
@@ -14,7 +19,7 @@ function getParakeetModelConfig(modelName) {
   if (!modelInfo) return null;
   return {
     url: modelInfo.downloadUrl,
-    size: modelInfo.sizeMb * 1_000_000,
+    size: modelInfo.expectedSizeBytes || modelInfo.sizeMb * 1_000_000,
     language: modelInfo.language,
     supportedLanguages: modelInfo.supportedLanguages || [],
     extractDir: modelInfo.extractDir,
@@ -56,6 +61,8 @@ class ParakeetManager {
 
     try {
       this.isInitialized = true;
+
+      await cleanupStaleDownloads(this.getModelsDir());
 
       await this.logDependencyStatus();
 
@@ -117,7 +124,6 @@ class ParakeetManager {
       models: [],
     };
 
-    // Check downloaded models
     for (const modelName of getValidModelNames()) {
       const modelPath = this.getModelPath(modelName);
       if (this.serverManager.isModelDownloaded(modelName)) {
@@ -128,9 +134,7 @@ class ParakeetManager {
             name: modelName,
             size: `${Math.round(stats.size / (1024 * 1024))}MB`,
           });
-        } catch {
-          // Skip if can't stat
-        }
+        } catch {}
       }
     }
 
@@ -266,32 +270,71 @@ class ParakeetManager {
       return { model: modelName, downloaded: true, path: modelPath, success: true };
     }
 
+    const spaceCheck = await checkDiskSpace(modelsDir, modelConfig.size * 2.5);
+    if (!spaceCheck.ok) {
+      throw new Error(
+        `Not enough disk space to download and extract model. Need ~${Math.round((modelConfig.size * 2.5) / 1_000_000)}MB, ` +
+          `only ${Math.round(spaceCheck.availableBytes / 1_000_000)}MB available.`
+      );
+    }
+
     const archivePath = path.join(modelsDir, `${modelName}.tar.bz2`);
     const { signal, abort } = createDownloadSignal();
     this.currentDownloadProcess = { abort };
 
     try {
-      await downloadFile(modelConfig.url, archivePath, {
-        timeout: 600000,
-        signal,
-        onProgress: (downloadedBytes, totalBytes) => {
-          if (progressCallback) {
-            progressCallback({
-              type: "progress",
-              model: modelName,
-              downloaded_bytes: downloadedBytes,
-              total_bytes: totalBytes,
-              percentage: totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0,
-            });
-          }
-        },
-      });
+      let archiveReady = false;
+      try {
+        const stats = await fsPromises.stat(archivePath);
+        if (stats.size > 0) {
+          archiveReady = true;
+          debugLogger.info("Reusing existing archive from previous attempt", {
+            archivePath,
+            size: stats.size,
+          });
+        }
+      } catch {}
+
+      if (!archiveReady) {
+        await downloadFile(modelConfig.url, archivePath, {
+          timeout: 600000,
+          signal,
+          onProgress: (downloadedBytes, totalBytes) => {
+            if (progressCallback) {
+              progressCallback({
+                type: "progress",
+                model: modelName,
+                downloaded_bytes: downloadedBytes,
+                total_bytes: totalBytes,
+                percentage: totalBytes > 0 ? Math.round((downloadedBytes / totalBytes) * 100) : 0,
+              });
+            }
+          },
+        });
+      }
 
       if (progressCallback) {
         progressCallback({ type: "installing", model: modelName, percentage: 100 });
       }
 
-      await this._extractModel(archivePath, modelName);
+      const MAX_EXTRACT_RETRIES = 2;
+      for (let attempt = 1; attempt <= MAX_EXTRACT_RETRIES; attempt++) {
+        try {
+          await this._extractModel(archivePath, modelName);
+          break;
+        } catch (extractError) {
+          debugLogger.warn("Model extraction failed", {
+            attempt,
+            maxAttempts: MAX_EXTRACT_RETRIES,
+            error: extractError.message,
+          });
+          if (attempt >= MAX_EXTRACT_RETRIES) {
+            const err = new Error(`Model installation failed: ${extractError.message}`);
+            err.code = "EXTRACTION_FAILED";
+            throw err;
+          }
+        }
+      }
       await fsPromises.unlink(archivePath).catch(() => {});
 
       if (progressCallback) {
@@ -309,8 +352,8 @@ class ParakeetManager {
 
       return { model: modelName, downloaded: true, path: modelPath, success: true };
     } catch (error) {
-      await fsPromises.unlink(archivePath).catch(() => {});
       if (error.isAbort) {
+        await fsPromises.unlink(archivePath).catch(() => {});
         throw new Error("Download interrupted by user");
       }
       throw error;
@@ -325,26 +368,25 @@ class ParakeetManager {
     const extractDir = path.join(modelsDir, `temp-extract-${modelName}`);
 
     try {
-      // Create temp extract directory
       await fsPromises.mkdir(extractDir, { recursive: true });
-
-      // Extract tar.bz2 asynchronously (tar is available on Windows 10+ and all Unix systems)
+      debugLogger.info("Extracting parakeet archive", { archivePath, extractDir });
       await this._runTarExtract(archivePath, extractDir);
+      debugLogger.info("Tar extraction completed", { extractDir });
 
-      // Find the extracted directory (usually has a specific name)
       const extractedDir = path.join(extractDir, modelConfig.extractDir);
       const targetDir = this.getModelPath(modelName);
 
-      // Move to final location
       if (fs.existsSync(extractedDir)) {
-        // Remove target if exists
         if (fs.existsSync(targetDir)) {
           await fsPromises.rm(targetDir, { recursive: true, force: true });
         }
         await fsPromises.rename(extractedDir, targetDir);
       } else {
-        // If extracted directory doesn't match expected name, try to find it
         const entries = await fsPromises.readdir(extractDir);
+        debugLogger.warn("Expected extract directory not found, searching alternatives", {
+          expected: modelConfig.extractDir,
+          found: entries,
+        });
         let modelDir = null;
 
         for (const entry of entries) {
@@ -362,16 +404,28 @@ class ParakeetManager {
           }
           await fsPromises.rename(path.join(extractDir, modelDir), targetDir);
         } else {
-          throw new Error("Could not find model directory in extracted archive");
+          throw new Error(
+            `Could not find model directory in extracted archive. ` +
+              `Expected "${modelConfig.extractDir}", found: [${entries.join(", ")}]`
+          );
         }
       }
 
-      // Cleanup temp directory
+      const requiredFiles = [
+        "encoder.int8.onnx",
+        "decoder.int8.onnx",
+        "joiner.int8.onnx",
+        "tokens.txt",
+      ];
+      const missing = requiredFiles.filter((f) => !fs.existsSync(path.join(targetDir, f)));
+      if (missing.length > 0) {
+        throw new Error(`Extracted model is missing required files: ${missing.join(", ")}`);
+      }
+
       await fsPromises.rm(extractDir, { recursive: true, force: true });
 
       debugLogger.info("Parakeet model extracted", { modelName, targetDir });
     } catch (error) {
-      // Cleanup on error
       try {
         await fsPromises.rm(extractDir, { recursive: true, force: true });
       } catch {}
@@ -498,7 +552,6 @@ class ParakeetManager {
         if (entry.isDirectory()) {
           const dirPath = path.join(modelsDir, entry.name);
           try {
-            // Estimate size from encoder file
             const encoderPath = path.join(dirPath, "encoder.int8.onnx");
             if (fs.existsSync(encoderPath)) {
               const stats = fs.statSync(encoderPath);
@@ -507,9 +560,7 @@ class ParakeetManager {
 
             fs.rmSync(dirPath, { recursive: true, force: true });
             deletedCount++;
-          } catch {
-            // Continue with other models if one fails
-          }
+          } catch {}
         }
       }
 
@@ -535,13 +586,11 @@ class ParakeetManager {
       models: [],
     };
 
-    // Check sherpa-onnx
     const binaryPath = this.serverManager.getBinaryPath();
     if (binaryPath) {
       diagnostics.sherpaOnnx = { available: true, path: binaryPath };
     }
 
-    // Check downloaded models
     try {
       const modelsDir = this.getModelsDir();
       if (fs.existsSync(modelsDir)) {
@@ -550,9 +599,7 @@ class ParakeetManager {
           .filter((e) => e.isDirectory() && this.serverManager.isModelDownloaded(e.name))
           .map((e) => e.name);
       }
-    } catch {
-      // Ignore errors reading models dir
-    }
+    } catch {}
 
     return diagnostics;
   }

@@ -7,22 +7,167 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.9] - 2026-02-12
+
+### Fixed
+- **Deepgram Nova-3 Language Fallback**: Automatically fall back to Nova-2 for languages not yet supported by Nova-3 (e.g., Chinese, Thai), preventing 400 Bad Request errors. Also switches from `keyterm` to `keywords` parameter when using Nova-2.
+
+## [1.4.8] - 2026-02-12
+
 ### Added
-- **Cancel Processing Button**: Added ability to cancel ongoing transcription processing
-- **Dark Mode Icon Inversion**: Monochrome provider icons now automatically invert in dark mode for better visibility
-- **Dynamic Window Resizing**: Window automatically resizes based on command menu and toast visibility
+- **Internationalization v1**: Full desktop localization across auth, settings, hooks, and UI with centralized renderer locale resources (#258)
+- **Chinese Language Split**: Split Chinese into Simplified (zh-CN) and Traditional (zh-TW) with tailored AI instructions and one-time migration for existing users (#267)
+- **Russian Interface Language**: Added Russian to interface language options
+- **Deepgram Token Refresh & Keyterms**: Proactive token rotation for warm connections before expiry and keyterms pass-through for improved transcription accuracy
+
+### Fixed
+- **macOS Non-English Keyboard Paste**: Fixed paste not working on non-English keyboard layouts (Russian, Ukrainian, etc.) by using physical key code instead of character-based keystroke in AppleScript fallback
+- **Whisper Language Auto-Detection**: Pass `--language auto` to whisper.cpp explicitly so non-English audio isn't forced to English (#260)
+- **Model Download Pipeline**: Inline redirect handling, deferred write stream creation, indeterminate progress bar for unknown sizes, and Parakeet ONNX file validation after extraction
+- **Sherpa-onnx Shared Libraries**: Always overwrite shared libraries during download to prevent stale architecture-mismatched binaries, with `--force` support
+- **Chinese Translation Fixes**: Minor translation corrections for Chinese interface strings
+- **Neon Auth Build Config**: Fixed auth build configuration
+
+## [1.4.7] - 2026-02-11
+
+### Added
+- **Deepgram Streaming Transcription**: Migrated real-time streaming transcription from AssemblyAI to Deepgram for improved reliability and accuracy (#249)
+
+### Fixed
+- **BYOK After Upgrade**: Prefer localStorage API keys over process.env so Bring Your Own Key mode works correctly after upgrading (#263)
+- **PTT Double-Fire Prevention**: Applied post-stop cooldown and press-identity checks to both macOS and Windows push-to-talk handlers
+- **Archive Extraction Retry**: Reuse existing archive on extraction retry with improved error handling
+- **Email Verification Polling**: Pass email param in verification polling and stop on 401 responses
+- **Auth Build Bundling**: Added @neondatabase/auth packages to rollup externals for correct production bundling (#256)
 
 ### Changed
+- **Build System**: Bumped Node version in build files
+
+## [1.4.6] - 2026-02-10
+
+### Added
+- **Robust Model Downloads**: Hardened download pipeline with stall detection, disk space checks, and file validation for more reliable model installs
+- **Prompt Handling Improvements**: Improved agent name resolution, prompt studio enhancements, and smarter prompt context assembly
+- **Past-Due Subscription Handling**: Users with past-due subscriptions now see clear messaging and recovery options
+
+### Fixed
+- **Parakeet Long Audio**: Fixed empty transcriptions for long audio by segmenting input before sending to Parakeet
+- **Plus-Addressed Emails**: Reject plus-addressed emails (e.g., user+tag@example.com) during authentication
+- **Double-Click Prevention**: Prevent duplicate requests when double-clicking checkout and billing buttons
+- **Auth Initialization Race**: Await init-user before completing auth flow and fix missing user dependency
+
+### Changed
+- **Startup Performance**: Preload lazy chunks during auth initialization for faster page transitions
+- **Code Cleanup**: Removed excess comments and simplified window management logic
+
+## [1.4.5] - 2026-02-09
+
+### Added
+- **Dictation Sound Effects Toggle**: New setting to enable/disable dictation audio cues with refined tones (warmer, softer frequencies, gentler attack, distinct start/stop)
+- **Toast Notification Redesign**: Redesigned toast notifications as dark HUD surfaces for a more polished look
+- **Floating Icon Auto-Hide**: New setting to auto-hide the floating dictation icon
+- **Loading Screen Redesign**: Branded loading screen with logo and spinner
+- **Discord Support Link**: Added Discord link to the support menu
+- **Auth-Aware Routing**: Returning signed-out users now see a re-authentication screen instead of a broken state
+
+### Fixed
+- **Dropdown Dark Mode**: Fixed dropdown styling in dark mode
+- **Toast Dark Mode**: Fixed toast colouring in dark mode
+- **Globe Key Persistence**: Globe key now persists to .env and dictation key syncs to localStorage
+- **Globe Listener Cross-Compilation**: Cross-compiled globe listener for x64
+
+### Changed
+- **Startup Performance**: Deferred non-critical manager initialization after window creation, lazy-loaded ControlPanel/OnboardingFlow/SettingsModal, converted env file writes to async, extracted SettingsProvider context, and split Radix/lucide into separate vendor chunks
+- **Scrollbar Styling**: Subtle transparent-track scrollbar with thinner floating thumb
+
+## [1.4.4] - 2026-02-08
+
+### Fixed
+- **AI Enhancement CTA Persistence**: Dismissing the "Enable AI Enhancement" banner now persists to localStorage so it stays hidden across sessions
+
+### Changed
+- **Code Cleanup**: Removed excess comments and section dividers in ControlPanel
+
+## [1.4.3] - 2026-02-08
+
+### Added
+- **Mistral Voxtral Transcription**: Added Mistral as a cloud transcription provider with Voxtral Mini model and custom dictionary support via context_bias
+- **TypeScript Compilation**: Added TypeScript as an explicit dev dependency with project-level `tsconfig.json`
+
+### Fixed
+- **Linux Wayland Clipboard**: Persistent clipboard ownership on Wayland so Ctrl+V works reliably after transcription
+- **Linux Window Flickering**: Fixed transparent window flickering on Wayland and X11 compositors
+- **Windows Modifier-Only Hotkeys**: Support modifier-only hotkeys on Windows via native keyboard hook
+- **Update Installation**: Resolved quitAndInstall hang by removing close listeners that block window shutdown during updates
+- **Custom System Prompts**: Pass custom system prompt to local and Anthropic BYOK reasoning
+- **Audio Cue Audibility**: Improved dictation start/stop audio cue volume
+- **Language Selector**: Fixed dropdown positioning and sizing inside settings modal
+- **Type Safety**: Tightened Electron IPC callback return types, model picker styles, toast variant types, and event handler signatures across the codebase
+
+### Changed
+- **Code Cleanup**: Removed excess comments, section dividers, and redundant JSDoc across components, hooks, and utilities
+
+## [1.4.2] - 2026-02-07
+
+### Fixed
+- **AssemblyAI Streaming Reliability**: Fixed real-time WebSocket going silent after idle periods by adding keep-alive pings, readyState validation, re-warm recovery, and connection death handling
+
+## [1.4.1] - 2026-02-07
+
+### Added
+- **Runtime .env Configuration**: Environment variables now reload at runtime without requiring app restart
+- **Settings Retention on Pro**: Pro subscribers retain their settings when managing their subscription
+
+### Fixed
+- **macOS Microphone Permission**: Resolved hardened-runtime mic permission prompt by routing through main-process IPC and unifying API key cache invalidation with event-based AudioManager sync
+- **AudioWorklet ASAR Loading**: Inlined AudioWorklet as blob URL to fix module loading failure in packaged ASAR builds
+- **Google OAuth Flow**: OAuth now opens in the system browser with deep link callback instead of navigating the Electron window
+- **Auth Security Hardening**: Safe JSON parsing, guarded URL constructor, and fixed error information leaks in auth code
+- **Deep Link Focus**: Control panel now correctly receives focus when opened via deep link
+- **Neon Auth Electron Compatibility**: Routed auth flows through API proxy and fixed Origin header rejection for desktop app
+- **Billing Error Visibility**: Checkout and billing errors now surface as toast notifications instead of failing silently
+- **Hotkey Persistence**: Added file-based hotkey storage for reliable startup persistence (#181)
+- **Email Verification**: Disabled Neon Auth email verification step for smoother onboarding
+
+### Changed
+- **Build Optimization**: Binary dependencies are now cached during build for faster CI
+- **UI Polish**: Fixed scrollbar styling, provider button styling, and voice recorder icon fill
+
+## [1.4.0] - 2026-02-06
+
+### Added
+- **OpenWhispr Cloud**: Cloud-native transcription service — sign in and transcribe without managing API keys
+  - Google OAuth and email/password authentication via Neon Auth
+  - Email verification flow with polling and resend support
+  - Password reset via email magic links
+- **Subscription & Billing**: Free and Pro plans with Stripe-powered payments
+  - Free plan with rolling weekly word limits (2,000 words/week)
+  - Pro plan with unlimited transcriptions
+  - 7-day free trial for new accounts with countdown display
+  - In-app upgrade prompts when approaching or reaching usage limits
+  - Stripe billing portal access for Pro subscribers
+- **Usage Tracking**: Real-time usage display with progress bar, color-coded thresholds, and next billing date
+- **Account Section in Settings**: Profile display, plan status badge, usage bar, billing management, and sign out
+- **Upgrade Prompt Dialog**: When usage limit is reached, offers three paths — upgrade to Pro, bring your own key, or switch to local
+- **Cancel Processing Button**: Cancel ongoing transcription processing mid-flight
+- **Dynamic Window Resizing**: Window automatically resizes based on command menu and toast visibility
+- **Dark Mode Icon Inversion**: Monochrome provider icons now automatically invert in dark mode for better visibility
+
+### Changed
+- **Onboarding Redesign**: Auth-first onboarding flow
+  - Signed-in users get a streamlined 3-step flow (Welcome → Setup → Activation)
+  - Non-signed-in users get a 4-step flow with transcription mode selection
+  - Permissions merged into Setup step for signed-in users
+- **Transcription Mode Architecture**: Unified mode selection across OpenWhispr Cloud, Bring Your Own Key (BYOK), and Local
+  - Signed-in users default to OpenWhispr Cloud
+  - Non-signed-in users choose between BYOK and Local
 - **Design System Overhaul**: Complete refactor of styling to use design tokens throughout the codebase
   - Button component now uses `text-foreground`, `bg-muted`, `border-border` instead of hardcoded hex values
   - Removed hardcoded classes and inline styles across components
   - Improved button and badge consistency
 - **Settings UI Redesign**: Overhauled all settings pages with unified panel system, redesigned sidebar, and extracted permissions section
 - **Dark Mode Polish**: Premium button styling, glass morphism toasts, and streamlined visuals
-- **Onboarding Improvements**:
-  - Streamlined to 4-step flow
-  - Extended to support multiple local transcription providers (Whisper and NVIDIA Parakeet)
-  - Improved contrast and design system usage
+- **App Channel Isolation**: Development, staging, and production channels now use isolated user data directories
 
 ### Fixed
 - **Light Mode UI Visibility**: Fixed multiple UI elements that were invisible or hard to see in light mode:
@@ -35,6 +180,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Local Reasoning Model Persistence**: Fixed local reasoning model selection not persisting correctly
 - **Parakeet Model Status**: Added dedicated IPC channel for Parakeet model status checks
 - **Groq Qwen3 Models**: Removed thinking tokens from Qwen3 models on Groq provider
+- **OAuth Session Grace Period**: Automatic session refresh with exponential backoff retry during initial OAuth establishment
 
 ## [1.3.3] - 2026-01-28
 

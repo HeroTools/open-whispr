@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const { spawnSync } = require("child_process");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
@@ -9,10 +10,26 @@ if (!isMac) {
   process.exit(0);
 }
 
+// Support cross-compilation via --arch flag or TARGET_ARCH env var
+const archIndex = process.argv.indexOf("--arch");
+const targetArch =
+  (archIndex !== -1 && process.argv[archIndex + 1]) || process.env.TARGET_ARCH || process.arch;
+
+const ARCH_TO_TARGET = {
+  arm64: "arm64-apple-macosx11.0",
+  x64: "x86_64-apple-macosx10.15",
+};
+const swiftTarget = ARCH_TO_TARGET[targetArch];
+if (!swiftTarget) {
+  console.error(`[globe-listener] Unsupported architecture: ${targetArch}`);
+  process.exit(1);
+}
+
 const projectRoot = path.resolve(__dirname, "..");
 const swiftSource = path.join(projectRoot, "resources", "macos-globe-listener.swift");
 const outputDir = path.join(projectRoot, "resources", "bin");
 const outputBinary = path.join(outputDir, "macos-globe-listener");
+const hashFile = path.join(outputDir, `.macos-globe-listener.${targetArch}.hash`);
 const moduleCacheDir = path.join(outputDir, ".swift-module-cache");
 
 function log(message) {
@@ -46,6 +63,28 @@ if (fs.existsSync(outputBinary)) {
   }
 }
 
+// Secondary check: compare source hash
+if (!needsBuild && fs.existsSync(outputBinary)) {
+  try {
+    const sourceContent = fs.readFileSync(swiftSource, "utf8");
+    const currentHash = crypto.createHash("sha256").update(sourceContent).digest("hex");
+
+    if (fs.existsSync(hashFile)) {
+      const savedHash = fs.readFileSync(hashFile, "utf8").trim();
+      if (savedHash !== currentHash) {
+        log("Source hash changed, rebuild needed");
+        needsBuild = true;
+      }
+    } else {
+      // No hash file exists, save current hash for next time
+      fs.writeFileSync(hashFile, currentHash);
+    }
+  } catch (err) {
+    log(`Hash check failed: ${err.message}, forcing rebuild`);
+    needsBuild = true;
+  }
+}
+
 if (!needsBuild) {
   process.exit(0);
 }
@@ -64,6 +103,8 @@ function attemptCompile(command, args) {
 const compileArgs = [
   swiftSource,
   "-O",
+  "-target",
+  swiftTarget,
   "-module-cache-path",
   moduleCacheDir,
   "-o",
@@ -87,4 +128,14 @@ try {
   console.warn(`[globe-listener] Unable to set executable permissions: ${error.message}`);
 }
 
-log("Successfully built macOS Globe listener binary.");
+// Save source hash after successful build
+try {
+  const sourceContent = fs.readFileSync(swiftSource, "utf8");
+  const hash = crypto.createHash("sha256").update(sourceContent).digest("hex");
+  fs.writeFileSync(hashFile, hash);
+} catch (err) {
+  // Non-critical, just log
+  log(`Warning: Could not save source hash: ${err.message}`);
+}
+
+log(`Successfully built macOS Globe listener binary (${targetArch}).`);

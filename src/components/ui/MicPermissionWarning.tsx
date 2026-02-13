@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./button";
 import { AlertCircle } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -25,36 +26,38 @@ const getPlatform = (): Platform => {
   return "win32";
 };
 
-const PLATFORM_CONFIG: Record<
-  Platform,
-  { message: string; soundLabel: string; privacyLabel: string; showPrivacyButton: boolean }
-> = {
-  darwin: {
-    message: "Check Sound settings to select your input device",
-    soundLabel: "Sound",
-    privacyLabel: "Privacy",
-    showPrivacyButton: true,
-  },
-  win32: {
-    message: "Check Windows Settings to select your input device",
-    soundLabel: "Sound",
-    privacyLabel: "Privacy",
-    showPrivacyButton: true,
-  },
-  linux: {
-    message: "Check system sound settings to select your input device",
-    soundLabel: "Sound",
-    privacyLabel: "",
-    showPrivacyButton: false,
-  },
-};
-
 export default function MicPermissionWarning({
   error,
   onOpenSoundSettings,
   onOpenPrivacySettings,
 }: MicPermissionWarningProps) {
-  const config = useMemo(() => PLATFORM_CONFIG[getPlatform()], []);
+  const { t } = useTranslation();
+  const config = useMemo(() => {
+    const platformConfig: Record<
+      Platform,
+      { message: string; soundLabel: string; privacyLabel: string; showPrivacyButton: boolean }
+    > = {
+      darwin: {
+        message: t("hooks.permissions.warning.messages.macos"),
+        soundLabel: t("hooks.permissions.warning.soundLabel"),
+        privacyLabel: t("hooks.permissions.warning.privacyLabel"),
+        showPrivacyButton: true,
+      },
+      win32: {
+        message: t("hooks.permissions.warning.messages.windows"),
+        soundLabel: t("hooks.permissions.warning.soundLabel"),
+        privacyLabel: t("hooks.permissions.warning.privacyLabel"),
+        showPrivacyButton: true,
+      },
+      linux: {
+        message: t("hooks.permissions.warning.messages.linux"),
+        soundLabel: t("hooks.permissions.warning.soundLabel"),
+        privacyLabel: "",
+        showPrivacyButton: false,
+      },
+    };
+    return platformConfig[getPlatform()];
+  }, [t]);
 
   return (
     <div

@@ -1,6 +1,7 @@
 const { Tray, Menu, nativeImage, app } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { i18nMain } = require("./i18nMain");
 
 class TrayManager {
   constructor() {
@@ -225,7 +226,9 @@ class TrayManager {
 
     return [
       {
-        label: dictationVisible ? "Hide Dictation Panel" : "Show Dictation Panel",
+        label: dictationVisible
+          ? i18nMain.t("tray.toggleDictation.hide")
+          : i18nMain.t("tray.toggleDictation.show"),
         click: () => {
           if (!this.windowManager) return;
           if (this.windowManager.isDictationPanelVisible()) {
@@ -237,14 +240,14 @@ class TrayManager {
         },
       },
       {
-        label: "Open Control Panel",
+        label: i18nMain.t("tray.openControlPanel"),
         click: async () => {
           await this.showControlPanelFromTray();
         },
       },
       { type: "separator" },
       {
-        label: "Quit OpenWhispr",
+        label: i18nMain.t("tray.quit"),
         click: () => {
           console.log("Quitting app via tray menu");
           app.quit();
@@ -257,7 +260,7 @@ class TrayManager {
     if (!this.tray) return;
 
     const contextMenu = Menu.buildFromTemplate(this.buildContextMenuTemplate());
-    this.tray.setToolTip("OpenWhispr - Voice Dictation");
+    this.tray.setToolTip(i18nMain.t("tray.tooltip"));
     this.tray.setContextMenu(contextMenu);
   }
 

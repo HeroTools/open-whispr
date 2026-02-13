@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./button";
 import { Copy, Trash2, ChevronDown, ChevronUp } from "lucide-react";
 import type { TranscriptionItem as TranscriptionItemType } from "../../types/electron";
@@ -21,6 +22,7 @@ export default function TranscriptionItem({
   onCopy,
   onDelete,
 }: TranscriptionItemProps) {
+  const { i18n, t } = useTranslation();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
 
@@ -28,7 +30,7 @@ export default function TranscriptionItem({
   const timestampDate = new Date(timestampSource);
   const formattedTimestamp = Number.isNaN(timestampDate.getTime())
     ? item.timestamp
-    : timestampDate.toLocaleString("en-US", {
+    : timestampDate.toLocaleString(i18n.language, {
         month: "short",
         day: "numeric",
         hour: "2-digit",
@@ -77,12 +79,12 @@ export default function TranscriptionItem({
               >
                 {isExpanded ? (
                   <>
-                    <span>Less</span>
+                    <span>{t("common.less")}</span>
                     <ChevronUp size={12} />
                   </>
                 ) : (
                   <>
-                    <span>More</span>
+                    <span>{t("common.more")}</span>
                     <ChevronDown size={12} />
                   </>
                 )}

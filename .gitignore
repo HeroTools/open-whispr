@@ -266,8 +266,7 @@ $RECYCLE.BIN/
 *~
 
 # Claude Code
-.claude/settings.local.json
-.claude/skills/
+.claude/
 .agent/
 .agents/
 
@@ -310,3 +309,5 @@ skills/
 .Trashes
 ehthumbs.db
 Thumbs.db 
+.macos-globe-listener.hash
+.linux-fast-paste.hash

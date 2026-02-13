@@ -14,7 +14,7 @@ interface StepProgressProps {
 
 export default function StepProgress({ steps, currentStep, className = "" }: StepProgressProps) {
   return (
-    <div className={`flex items-center justify-center gap-1 ${className}`}>
+    <div className={`flex items-center justify-center gap-0.5 ${className}`}>
       {steps.map((step, index) => {
         const Icon = step.icon;
         const isActive = index === currentStep;
@@ -23,36 +23,36 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
         return (
           <React.Fragment key={index}>
             <div
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-full transition-all duration-200 ${
+              className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md transition-all duration-150 ${
                 isActive
-                  ? "bg-primary/15 text-primary"
+                  ? "bg-primary/10 text-primary"
                   : isCompleted
                     ? "text-success"
-                    : "text-muted-foreground/50"
+                    : "text-muted-foreground/40"
               }`}
             >
               <div
-                className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-200 ${
+                className={`w-4.5 h-4.5 rounded-md flex items-center justify-center shrink-0 transition-all duration-150 ${
                   isActive
-                    ? "bg-primary text-white shadow-sm"
+                    ? "bg-primary text-primary-foreground"
                     : isCompleted
-                      ? "bg-success/20 text-success"
-                      : "bg-white/5 text-muted-foreground/50"
+                      ? "bg-success/15 text-success"
+                      : "bg-muted text-muted-foreground/40"
                 }`}
               >
                 {isCompleted ? (
-                  <Check className="w-3 h-3" strokeWidth={2.5} />
+                  <Check className="w-2.5 h-2.5" strokeWidth={3} />
                 ) : (
-                  <Icon className="w-3 h-3" />
+                  <Icon className="w-2.5 h-2.5" />
                 )}
               </div>
               <span
-                className={`text-[11px] font-medium hidden md:block ${
+                className={`text-[10px] font-medium hidden md:block tracking-wide ${
                   isActive
                     ? "text-primary"
                     : isCompleted
                       ? "text-success"
-                      : "text-muted-foreground/50"
+                      : "text-muted-foreground/40"
                 }`}
               >
                 {step.title}
@@ -60,8 +60,8 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
             </div>
             {index < steps.length - 1 && (
               <div
-                className={`w-4 h-px transition-colors duration-200 ${
-                  isCompleted ? "bg-success/50" : "bg-white/10"
+                className={`w-3 h-px mx-0.5 transition-colors duration-150 ${
+                  isCompleted ? "bg-success/40" : "bg-border"
                 }`}
               />
             )}

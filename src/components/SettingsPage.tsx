@@ -1,8 +1,28 @@
 import React, { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
-import { RefreshCw, Download, Mic, Shield, FolderOpen, Sun, Moon, Monitor } from "lucide-react";
+import {
+  RefreshCw,
+  Download,
+  Command,
+  Mic,
+  Shield,
+  FolderOpen,
+  LogOut,
+  UserCircle,
+  Sun,
+  Moon,
+  Monitor,
+  Cloud,
+  Key,
+  Sparkles,
+  AlertTriangle,
+  Loader2,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
 import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
@@ -10,6 +30,7 @@ import PermissionCard from "./ui/PermissionCard";
 import PasteToolsInfo from "./ui/PasteToolsInfo";
 import TranscriptionModelPicker from "./TranscriptionModelPicker";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
+import { Alert, AlertTitle, AlertDescription } from "./ui/alert";
 import { useSettings } from "../hooks/useSettings";
 import { useDialogs } from "../hooks/useDialogs";
 import { useAgentName } from "../utils/agentName";
@@ -22,14 +43,26 @@ import PromptStudio from "./ui/PromptStudio";
 import ReasoningModelSelector from "./ReasoningModelSelector";
 
 import { HotkeyInput } from "./ui/HotkeyInput";
+import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
+import { getValidationMessage } from "../utils/hotkeyValidator";
+import { getPlatform } from "../utils/platform";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
+import LanguageSelector from "./ui/LanguageSelector";
+import { Skeleton } from "./ui/skeleton";
+import { Progress } from "./ui/progress";
+import { useToast } from "./ui/Toast";
 import { useTheme } from "../hooks/useTheme";
+import type { LocalTranscriptionProvider } from "../types/electron";
+import logger from "../utils/logger";
 import { SettingsRow } from "./ui/SettingsSection";
+import { useUsage } from "../hooks/useUsage";
+import { cn } from "./lib/utils";
 
 export type SettingsSectionType =
+  | "account"
   | "general"
   | "transcription"
   | "dictionary"
@@ -37,13 +70,24 @@ export type SettingsSectionType =
   | "agentConfig"
   | "prompts"
   | "permissions"
+  | "privacy"
   | "developer";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
 }
 
-// ── Reusable layout primitives ──────────────────────────────────────
+const UI_LANGUAGE_OPTIONS: import("./ui/LanguageSelector").LanguageOption[] = [
+  { value: "en", label: "English", flag: "🇺🇸" },
+  { value: "es", label: "Español", flag: "🇪🇸" },
+  { value: "fr", label: "Français", flag: "🇫🇷" },
+  { value: "de", label: "Deutsch", flag: "🇩🇪" },
+  { value: "pt", label: "Português", flag: "🇵🇹" },
+  { value: "it", label: "Italiano", flag: "🇮🇹" },
+  { value: "ru", label: "Русский", flag: "🇷🇺" },
+  { value: "zh-CN", label: "简体中文", flag: "🇨🇳" },
+  { value: "zh-TW", label: "繁體中文", flag: "🇹🇼" },
+];
 
 function SettingsPanel({
   children,
@@ -82,7 +126,483 @@ function SectionHeader({ title, description }: { title: string; description?: st
   );
 }
 
-// ── Main component ──────────────────────────────────────────────────
+interface TranscriptionSectionProps {
+  isSignedIn: boolean;
+  cloudTranscriptionMode: string;
+  setCloudTranscriptionMode: (mode: string) => void;
+  useLocalWhisper: boolean;
+  setUseLocalWhisper: (value: boolean) => void;
+  updateTranscriptionSettings: (settings: { useLocalWhisper: boolean }) => void;
+  cloudTranscriptionProvider: string;
+  setCloudTranscriptionProvider: (provider: string) => void;
+  cloudTranscriptionModel: string;
+  setCloudTranscriptionModel: (model: string) => void;
+  localTranscriptionProvider: string;
+  setLocalTranscriptionProvider: (provider: LocalTranscriptionProvider) => void;
+  whisperModel: string;
+  setWhisperModel: (model: string) => void;
+  parakeetModel: string;
+  setParakeetModel: (model: string) => void;
+  openaiApiKey: string;
+  setOpenaiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
+  mistralApiKey: string;
+  setMistralApiKey: (key: string) => void;
+  customTranscriptionApiKey: string;
+  setCustomTranscriptionApiKey: (key: string) => void;
+  cloudTranscriptionBaseUrl?: string;
+  setCloudTranscriptionBaseUrl: (url: string) => void;
+  toast: (opts: {
+    title: string;
+    description: string;
+    variant?: "default" | "destructive" | "success";
+    duration?: number;
+  }) => void;
+}
+
+function TranscriptionSection({
+  isSignedIn,
+  cloudTranscriptionMode,
+  setCloudTranscriptionMode,
+  useLocalWhisper,
+  setUseLocalWhisper,
+  updateTranscriptionSettings,
+  cloudTranscriptionProvider,
+  setCloudTranscriptionProvider,
+  cloudTranscriptionModel,
+  setCloudTranscriptionModel,
+  localTranscriptionProvider,
+  setLocalTranscriptionProvider,
+  whisperModel,
+  setWhisperModel,
+  parakeetModel,
+  setParakeetModel,
+  openaiApiKey,
+  setOpenaiApiKey,
+  groqApiKey,
+  setGroqApiKey,
+  mistralApiKey,
+  setMistralApiKey,
+  customTranscriptionApiKey,
+  setCustomTranscriptionApiKey,
+  cloudTranscriptionBaseUrl,
+  setCloudTranscriptionBaseUrl,
+  toast,
+}: TranscriptionSectionProps) {
+  const { t, i18n } = useTranslation();
+  const isCustomMode = cloudTranscriptionMode === "byok" || useLocalWhisper;
+  const isCloudMode = isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title={t("settingsPage.transcription.title")}
+        description={t("settingsPage.transcription.description")}
+      />
+
+      {/* Mode selector */}
+      {isSignedIn && (
+        <SettingsPanel>
+          <SettingsPanelRow>
+            <button
+              onClick={() => {
+                if (!isCloudMode) {
+                  setCloudTranscriptionMode("openwhispr");
+                  setUseLocalWhisper(false);
+                  updateTranscriptionSettings({ useLocalWhisper: false });
+                  toast({
+                    title: t("settingsPage.transcription.toasts.switchedCloud.title"),
+                    description: t("settingsPage.transcription.toasts.switchedCloud.description"),
+                    variant: "success",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  isCloudMode
+                    ? "bg-primary/10 dark:bg-primary/15"
+                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                }`}
+              >
+                <Cloud
+                  className={`w-4 h-4 transition-colors ${
+                    isCloudMode ? "text-primary" : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-foreground">
+                    {t("settingsPage.transcription.openwhisprCloud")}
+                  </span>
+                  {isCloudMode && (
+                    <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                      {t("common.active")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  {t("settingsPage.transcription.openwhisprCloudDescription")}
+                </p>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                  isCloudMode
+                    ? "border-primary bg-primary"
+                    : "border-border-hover dark:border-border-subtle"
+                }`}
+              >
+                {isCloudMode && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                  </div>
+                )}
+              </div>
+            </button>
+          </SettingsPanelRow>
+          <SettingsPanelRow>
+            <button
+              onClick={() => {
+                if (!isCustomMode) {
+                  setCloudTranscriptionMode("byok");
+                  setUseLocalWhisper(false);
+                  updateTranscriptionSettings({ useLocalWhisper: false });
+                  toast({
+                    title: t("settingsPage.transcription.toasts.switchedCustom.title"),
+                    description: t("settingsPage.transcription.toasts.switchedCustom.description"),
+                    variant: "success",
+                    duration: 3000,
+                  });
+                }
+              }}
+              className="w-full flex items-center gap-3 text-left cursor-pointer group"
+            >
+              <div
+                className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                  isCustomMode
+                    ? "bg-accent/10 dark:bg-accent/15"
+                    : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                }`}
+              >
+                <Key
+                  className={`w-4 h-4 transition-colors ${
+                    isCustomMode ? "text-accent" : "text-muted-foreground"
+                  }`}
+                />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="text-[12px] font-medium text-foreground">
+                    {t("settingsPage.transcription.customSetup")}
+                  </span>
+                  {isCustomMode && (
+                    <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                      {t("common.active")}
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                  {t("settingsPage.transcription.customSetupDescription")}
+                </p>
+              </div>
+              <div
+                className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                  isCustomMode
+                    ? "border-accent bg-accent"
+                    : "border-border-hover dark:border-border-subtle"
+                }`}
+              >
+                {isCustomMode && (
+                  <div className="w-full h-full flex items-center justify-center">
+                    <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                  </div>
+                )}
+              </div>
+            </button>
+          </SettingsPanelRow>
+        </SettingsPanel>
+      )}
+
+      {/* Custom Setup model picker — shown when Custom Setup is active or not signed in */}
+      {(isCustomMode || !isSignedIn) && (
+        <TranscriptionModelPicker
+          selectedCloudProvider={cloudTranscriptionProvider}
+          onCloudProviderSelect={setCloudTranscriptionProvider}
+          selectedCloudModel={cloudTranscriptionModel}
+          onCloudModelSelect={setCloudTranscriptionModel}
+          selectedLocalModel={
+            localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
+          }
+          onLocalModelSelect={(modelId) => {
+            if (localTranscriptionProvider === "nvidia") {
+              setParakeetModel(modelId);
+            } else {
+              setWhisperModel(modelId);
+            }
+          }}
+          selectedLocalProvider={localTranscriptionProvider}
+          onLocalProviderSelect={setLocalTranscriptionProvider}
+          useLocalWhisper={useLocalWhisper}
+          onModeChange={(isLocal) => {
+            setUseLocalWhisper(isLocal);
+            updateTranscriptionSettings({ useLocalWhisper: isLocal });
+            if (isLocal) {
+              setCloudTranscriptionMode("byok");
+            }
+          }}
+          openaiApiKey={openaiApiKey}
+          setOpenaiApiKey={setOpenaiApiKey}
+          groqApiKey={groqApiKey}
+          setGroqApiKey={setGroqApiKey}
+          mistralApiKey={mistralApiKey}
+          setMistralApiKey={setMistralApiKey}
+          customTranscriptionApiKey={customTranscriptionApiKey}
+          setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+          cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+          setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+          variant="settings"
+        />
+      )}
+    </div>
+  );
+}
+
+interface AiModelsSectionProps {
+  isSignedIn: boolean;
+  cloudReasoningMode: string;
+  setCloudReasoningMode: (mode: string) => void;
+  useReasoningModel: boolean;
+  setUseReasoningModel: (value: boolean) => void;
+  reasoningModel: string;
+  setReasoningModel: (model: string) => void;
+  reasoningProvider: string;
+  setReasoningProvider: (provider: string) => void;
+  cloudReasoningBaseUrl: string;
+  setCloudReasoningBaseUrl: (url: string) => void;
+  openaiApiKey: string;
+  setOpenaiApiKey: (key: string) => void;
+  anthropicApiKey: string;
+  setAnthropicApiKey: (key: string) => void;
+  geminiApiKey: string;
+  setGeminiApiKey: (key: string) => void;
+  groqApiKey: string;
+  setGroqApiKey: (key: string) => void;
+  customReasoningApiKey: string;
+  setCustomReasoningApiKey: (key: string) => void;
+  showAlertDialog: (dialog: { title: string; description: string }) => void;
+  toast: (opts: {
+    title: string;
+    description: string;
+    variant?: "default" | "destructive" | "success";
+    duration?: number;
+  }) => void;
+}
+
+function AiModelsSection({
+  isSignedIn,
+  cloudReasoningMode,
+  setCloudReasoningMode,
+  useReasoningModel,
+  setUseReasoningModel,
+  reasoningModel,
+  setReasoningModel,
+  reasoningProvider,
+  setReasoningProvider,
+  cloudReasoningBaseUrl,
+  setCloudReasoningBaseUrl,
+  openaiApiKey,
+  setOpenaiApiKey,
+  anthropicApiKey,
+  setAnthropicApiKey,
+  geminiApiKey,
+  setGeminiApiKey,
+  groqApiKey,
+  setGroqApiKey,
+  customReasoningApiKey,
+  setCustomReasoningApiKey,
+  showAlertDialog,
+  toast,
+}: AiModelsSectionProps) {
+  const { t, i18n } = useTranslation();
+  const isCustomMode = cloudReasoningMode === "byok";
+  const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
+
+  return (
+    <div className="space-y-4">
+      <SectionHeader
+        title={t("settingsPage.aiModels.title")}
+        description={t("settingsPage.aiModels.description")}
+      />
+
+      {/* Enable toggle — always at top */}
+      <SettingsPanel>
+        <SettingsPanelRow>
+          <SettingsRow
+            label={t("settingsPage.aiModels.enableTextCleanup")}
+            description={t("settingsPage.aiModels.enableTextCleanupDescription")}
+          >
+            <Toggle checked={useReasoningModel} onChange={setUseReasoningModel} />
+          </SettingsRow>
+        </SettingsPanelRow>
+      </SettingsPanel>
+
+      {useReasoningModel && (
+        <>
+          {/* Mode selector */}
+          {isSignedIn && (
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCloudMode) {
+                      setCloudReasoningMode("openwhispr");
+                      toast({
+                        title: t("settingsPage.aiModels.toasts.switchedCloud.title"),
+                        description: t("settingsPage.aiModels.toasts.switchedCloud.description"),
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "bg-primary/10 dark:bg-primary/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Cloud
+                      className={`w-4 h-4 transition-colors ${
+                        isCloudMode ? "text-primary" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-medium text-foreground">
+                        {t("settingsPage.aiModels.openwhisprCloud")}
+                      </span>
+                      {isCloudMode && (
+                        <span className="text-[10px] font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                          {t("common.active")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      {t("settingsPage.aiModels.openwhisprCloudDescription")}
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCloudMode
+                        ? "border-primary bg-primary"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCloudMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+              <SettingsPanelRow>
+                <button
+                  onClick={() => {
+                    if (!isCustomMode) {
+                      setCloudReasoningMode("byok");
+                      toast({
+                        title: t("settingsPage.aiModels.toasts.switchedCustom.title"),
+                        description: t("settingsPage.aiModels.toasts.switchedCustom.description"),
+                        variant: "success",
+                        duration: 3000,
+                      });
+                    }
+                  }}
+                  className="w-full flex items-center gap-3 text-left cursor-pointer group"
+                >
+                  <div
+                    className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "bg-accent/10 dark:bg-accent/15"
+                        : "bg-muted/60 dark:bg-surface-raised group-hover:bg-muted dark:group-hover:bg-surface-3"
+                    }`}
+                  >
+                    <Key
+                      className={`w-4 h-4 transition-colors ${
+                        isCustomMode ? "text-accent" : "text-muted-foreground"
+                      }`}
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[12px] font-medium text-foreground">
+                        {t("settingsPage.aiModels.customSetup")}
+                      </span>
+                      {isCustomMode && (
+                        <span className="text-[10px] font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                          {t("common.active")}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+                      {t("settingsPage.aiModels.customSetupDescription")}
+                    </p>
+                  </div>
+                  <div
+                    className={`w-4 h-4 rounded-full border-2 shrink-0 transition-colors ${
+                      isCustomMode
+                        ? "border-accent bg-accent"
+                        : "border-border-hover dark:border-border-subtle"
+                    }`}
+                  >
+                    {isCustomMode && (
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-1.5 h-1.5 rounded-full bg-accent-foreground" />
+                      </div>
+                    )}
+                  </div>
+                </button>
+              </SettingsPanelRow>
+            </SettingsPanel>
+          )}
+
+          {/* Custom Setup model picker — shown when Custom Setup is active or not signed in */}
+          {(isCustomMode || !isSignedIn) && (
+            <ReasoningModelSelector
+              useReasoningModel={useReasoningModel}
+              setUseReasoningModel={setUseReasoningModel}
+              reasoningModel={reasoningModel}
+              setReasoningModel={setReasoningModel}
+              localReasoningProvider={reasoningProvider}
+              setLocalReasoningProvider={setReasoningProvider}
+              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              anthropicApiKey={anthropicApiKey}
+              setAnthropicApiKey={setAnthropicApiKey}
+              geminiApiKey={geminiApiKey}
+              setGeminiApiKey={setGeminiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              customReasoningApiKey={customReasoningApiKey}
+              setCustomReasoningApiKey={setCustomReasoningApiKey}
+              showAlertDialog={showAlertDialog}
+            />
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 export default function SettingsPage({ activeSection = "general" }: SettingsPageProps) {
   const {
@@ -99,6 +619,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     whisperModel,
     localTranscriptionProvider,
     parakeetModel,
+    uiLanguage,
+    preferredLanguage,
     cloudTranscriptionProvider,
     cloudTranscriptionModel,
     cloudTranscriptionBaseUrl,
@@ -111,6 +633,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     anthropicApiKey,
     geminiApiKey,
     groqApiKey,
+    mistralApiKey,
     dictationKey,
     activationMode,
     setActivationMode,
@@ -119,6 +642,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setPreferBuiltInMic,
     setSelectedMicDeviceId,
     setUseLocalWhisper,
+    setUiLanguage,
     setWhisperModel,
     setLocalTranscriptionProvider,
     setParakeetModel,
@@ -134,6 +658,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setAnthropicApiKey,
     setGeminiApiKey,
     setGroqApiKey,
+    setMistralApiKey,
     customTranscriptionApiKey,
     setCustomTranscriptionApiKey,
     customReasoningApiKey,
@@ -141,14 +666,29 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setDictationKey,
     updateTranscriptionSettings,
     updateReasoningSettings,
+    cloudTranscriptionMode,
+    setCloudTranscriptionMode,
+    cloudReasoningMode,
+    setCloudReasoningMode,
+    audioCuesEnabled,
+    setAudioCuesEnabled,
+    floatingIconAutoHide,
+    setFloatingIconAutoHide,
+    cloudBackupEnabled,
+    setCloudBackupEnabled,
+    telemetryEnabled,
+    setTelemetryEnabled,
   } = useSettings();
+
+  const { t, i18n } = useTranslation();
+  const { toast } = useToast();
 
   const [currentVersion, setCurrentVersion] = useState<string>("");
   const [isRemovingModels, setIsRemovingModels] = useState(false);
   const cachePathHint =
     typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent)
-      ? "%USERPROFILE%\\.cache\\openwhispr\\whisper-models"
-      : "~/.cache/openwhispr/whisper-models";
+      ? "%USERPROFILE%\\.cache\\openwhispr"
+      : "~/.cache/openwhispr";
 
   const {
     status: updateStatus,
@@ -171,7 +711,24 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const permissionsHook = usePermissions(showAlertDialog);
   useClipboard(showAlertDialog);
   const { agentName, setAgentName } = useAgentName();
+  const [agentNameInput, setAgentNameInput] = useState(agentName);
   const { theme, setTheme } = useTheme();
+  const usage = useUsage();
+  const hasShownApproachingToast = useRef(false);
+  useEffect(() => {
+    if (usage?.isApproachingLimit && !hasShownApproachingToast.current) {
+      hasShownApproachingToast.current = true;
+      toast({
+        title: t("settingsPage.account.toasts.approachingLimit.title"),
+        description: t("settingsPage.account.toasts.approachingLimit.description", {
+          used: usage.wordsUsed.toLocaleString(i18n.language),
+          limit: usage.limit.toLocaleString(i18n.language),
+        }),
+        duration: 6000,
+      });
+    }
+  }, [usage?.isApproachingLimit, usage?.wordsUsed, usage?.limit, toast, t, i18n.language]);
+
   const installTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { registerHotkey, isRegistering: isHotkeyRegistering } = useHotkeyRegistration({
@@ -182,6 +739,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     showErrorToast: true,
     showAlert: showAlertDialog,
   });
+
+  const validateHotkeyForInput = useCallback(
+    (hotkey: string) => getValidationMessage(hotkey, getPlatform()),
+    []
+  );
 
   const [isUsingGnomeHotkeys, setIsUsingGnomeHotkeys] = useState(false);
 
@@ -204,9 +766,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
   const handleRemoveDictionaryWord = useCallback(
     (wordToRemove: string) => {
+      if (wordToRemove === agentName) return;
       setCustomDictionary(customDictionary.filter((word) => word !== wordToRemove));
     },
-    [customDictionary, setCustomDictionary]
+    [customDictionary, setCustomDictionary, agentName]
   );
 
   const [autoStartEnabled, setAutoStartEnabled] = useState(false);
@@ -223,7 +786,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           const enabled = await window.electronAPI.getAutoStartEnabled();
           setAutoStartEnabled(enabled);
         } catch (error) {
-          console.error("Failed to get auto-start status:", error);
+          logger.error("Failed to get auto-start status", error, "settings");
         }
       }
       setAutoStartLoading(false);
@@ -240,7 +803,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           setAutoStartEnabled(enabled);
         }
       } catch (error) {
-        console.error("Failed to set auto-start:", error);
+        logger.error("Failed to set auto-start", error, "settings");
       } finally {
         setAutoStartLoading(false);
       }
@@ -276,7 +839,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           setActivationMode("tap");
         }
       } catch (error) {
-        console.error("Failed to check hotkey mode:", error);
+        logger.error("Failed to check hotkey mode", error, "settings");
       }
     };
     checkHotkeyMode();
@@ -285,13 +848,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   useEffect(() => {
     if (updateError) {
       showAlertDialog({
-        title: "Update Error",
-        description:
-          updateError.message ||
-          "The updater encountered a problem. Please try again or download the latest release manually.",
+        title: t("settingsPage.general.updates.dialogs.updateError.title"),
+        description: t("settingsPage.general.updates.dialogs.updateError.description"),
       });
     }
-  }, [updateError, showAlertDialog]);
+  }, [updateError, showAlertDialog, t]);
 
   useEffect(() => {
     if (installInitiated) {
@@ -300,9 +861,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       }
       installTimeoutRef.current = setTimeout(() => {
         showAlertDialog({
-          title: "Still Running",
-          description:
-            "OpenWhispr didn't restart automatically. Please quit the app manually to finish installing the update.",
+          title: t("settingsPage.general.updates.dialogs.almostThere.title"),
+          description: t("settingsPage.general.updates.dialogs.almostThere.description"),
         });
       }, 10000);
     } else if (installTimeoutRef.current) {
@@ -316,13 +876,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
         installTimeoutRef.current = null;
       }
     };
-  }, [installInitiated, showAlertDialog]);
+  }, [installInitiated, showAlertDialog, t]);
 
   const resetAccessibilityPermissions = () => {
-    const message = `To fix accessibility permissions:\n\n1. Open System Settings > Privacy & Security > Accessibility\n2. Remove any old OpenWhispr or Electron entries\n3. Click (+) and add the current OpenWhispr app\n4. Make sure the checkbox is enabled\n5. Restart OpenWhispr\n\nClick OK to open System Settings.`;
+    const message = t("settingsPage.permissions.resetAccessibility.description");
 
     showConfirmDialog({
-      title: "Reset Accessibility Permissions",
+      title: t("settingsPage.permissions.resetAccessibility.title"),
       description: message,
       onConfirm: () => {
         permissionsHook.openAccessibilitySettings();
@@ -334,78 +894,438 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     if (isRemovingModels) return;
 
     showConfirmDialog({
-      title: "Remove downloaded models?",
-      description: `This deletes all locally cached Whisper models (${cachePathHint}) and frees disk space. You can download them again from the model picker.`,
-      confirmText: "Delete Models",
+      title: t("settingsPage.developer.removeModels.title"),
+      description: t("settingsPage.developer.removeModels.description", { path: cachePathHint }),
+      confirmText: t("settingsPage.developer.removeModels.confirmText"),
       variant: "destructive",
-      onConfirm: () => {
+      onConfirm: async () => {
         setIsRemovingModels(true);
-        window.electronAPI
-          ?.deleteAllWhisperModels?.()
-          .then((result) => {
-            if (!result?.success) {
-              showAlertDialog({
-                title: "Unable to Remove Models",
-                description:
-                  result?.error || "Something went wrong while deleting the cached models.",
-              });
-              return;
-            }
+        try {
+          const results = await Promise.allSettled([
+            window.electronAPI?.deleteAllWhisperModels?.(),
+            window.electronAPI?.deleteAllParakeetModels?.(),
+            window.electronAPI?.modelDeleteAll?.(),
+          ]);
 
+          const anyFailed = results.some(
+            (r) =>
+              r.status === "rejected" || (r.status === "fulfilled" && r.value && !r.value.success)
+          );
+
+          if (anyFailed) {
+            showAlertDialog({
+              title: t("settingsPage.developer.removeModels.failedTitle"),
+              description: t("settingsPage.developer.removeModels.failedDescription"),
+            });
+          } else {
             window.dispatchEvent(new Event("openwhispr-models-cleared"));
-
             showAlertDialog({
-              title: "Models Removed",
-              description:
-                "All downloaded Whisper models were deleted. You can re-download any model from the picker when needed.",
+              title: t("settingsPage.developer.removeModels.successTitle"),
+              description: t("settingsPage.developer.removeModels.successDescription"),
             });
-          })
-          .catch((error) => {
-            showAlertDialog({
-              title: "Unable to Remove Models",
-              description: error?.message || "An unknown error occurred.",
-            });
-          })
-          .finally(() => {
-            setIsRemovingModels(false);
+          }
+        } catch {
+          showAlertDialog({
+            title: t("settingsPage.developer.removeModels.failedTitle"),
+            description: t("settingsPage.developer.removeModels.failedDescriptionShort"),
           });
+        } finally {
+          setIsRemovingModels(false);
+        }
       },
     });
-  }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog]);
+  }, [isRemovingModels, cachePathHint, showConfirmDialog, showAlertDialog, t]);
+
+  const { isSignedIn, isLoaded, user } = useAuth();
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const [isOpeningBilling, setIsOpeningBilling] = useState(false);
+
+  const handleSignOut = useCallback(async () => {
+    setIsSigningOut(true);
+    try {
+      await signOut();
+      window.location.reload();
+    } catch (error) {
+      logger.error("Sign out failed", error, "auth");
+      showAlertDialog({
+        title: t("settingsPage.account.signOut.failedTitle"),
+        description: t("settingsPage.account.signOut.failedDescription"),
+      });
+    } finally {
+      setIsSigningOut(false);
+    }
+  }, [showAlertDialog, t]);
 
   const renderSectionContent = () => {
     switch (activeSection) {
-      // ───────────────────────────────────────────────────
-      // GENERAL — Updates, Appearance, Hotkey, Startup, Mic
-      // ───────────────────────────────────────────────────
+      case "account":
+        return (
+          <div className="space-y-5">
+            {!NEON_AUTH_URL ? (
+              <>
+                <SectionHeader
+                  title={t("settingsPage.account.title")}
+                  description={t("settingsPage.account.notConfigured")}
+                />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label={t("settingsPage.account.featuresDisabled")}
+                      description={t("settingsPage.account.featuresDisabledDescription")}
+                    >
+                      <Badge variant="warning">{t("settingsPage.account.disabled")}</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            ) : isLoaded && isSignedIn && user ? (
+              <>
+                <SectionHeader title={t("settingsPage.account.title")} />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 overflow-hidden bg-primary/10 dark:bg-primary/15">
+                        {user.image ? (
+                          <img
+                            src={user.image}
+                            alt={user.name || t("settingsPage.account.user")}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <UserCircle className="w-5 h-5 text-primary" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[13px] font-medium text-foreground truncate">
+                          {user.name || t("settingsPage.account.user")}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
+                      </div>
+                      <Badge variant="success">{t("settingsPage.account.signedIn")}</Badge>
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+
+                <SectionHeader title={t("settingsPage.account.planTitle")} />
+                {!usage || !usage.hasLoaded ? (
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="h-4 w-24" />
+                        <Skeleton className="h-5 w-16 rounded-full" />
+                      </div>
+                    </SettingsPanelRow>
+                    <SettingsPanelRow>
+                      <div className="space-y-2">
+                        <Skeleton className="h-3 w-48" />
+                        <Skeleton className="h-8 w-full rounded" />
+                      </div>
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                ) : (
+                  <SettingsPanel>
+                    {usage.isPastDue && (
+                      <SettingsPanelRow>
+                        <Alert
+                          variant="warning"
+                          className="dark:bg-amber-950/50 dark:border-amber-800 dark:text-amber-200 dark:[&>svg]:text-amber-400"
+                        >
+                          <AlertTriangle className="h-4 w-4" />
+                          <AlertTitle>{t("settingsPage.account.pastDue.title")}</AlertTitle>
+                          <AlertDescription>
+                            {t("settingsPage.account.pastDue.description")}
+                          </AlertDescription>
+                        </Alert>
+                      </SettingsPanelRow>
+                    )}
+
+                    <SettingsPanelRow>
+                      <SettingsRow
+                        label={
+                          usage.isTrial
+                            ? t("settingsPage.account.planLabels.trial")
+                            : usage.isPastDue
+                              ? t("settingsPage.account.planLabels.free")
+                              : usage.isSubscribed
+                                ? t("settingsPage.account.planLabels.pro")
+                                : t("settingsPage.account.planLabels.free")
+                        }
+                        description={
+                          usage.isTrial
+                            ? t("settingsPage.account.planDescriptions.trial", {
+                                days: usage.trialDaysLeft,
+                              })
+                            : usage.isPastDue
+                              ? t("settingsPage.account.planDescriptions.pastDue", {
+                                  used: usage.wordsUsed.toLocaleString(i18n.language),
+                                  limit: usage.limit.toLocaleString(i18n.language),
+                                })
+                              : usage.isSubscribed
+                                ? usage.currentPeriodEnd
+                                  ? t("settingsPage.account.planDescriptions.nextBilling", {
+                                      date: new Date(usage.currentPeriodEnd).toLocaleDateString(
+                                        i18n.language,
+                                        { month: "short", day: "numeric", year: "numeric" }
+                                      ),
+                                    })
+                                  : t("settingsPage.account.planDescriptions.unlimited")
+                                : t("settingsPage.account.planDescriptions.freeUsage", {
+                                    used: usage.wordsUsed.toLocaleString(i18n.language),
+                                    limit: usage.limit.toLocaleString(i18n.language),
+                                  })
+                        }
+                      >
+                        {usage.isTrial ? (
+                          <Badge variant="info">{t("settingsPage.account.badges.trial")}</Badge>
+                        ) : usage.isPastDue ? (
+                          <Badge variant="destructive">
+                            {t("settingsPage.account.badges.pastDue")}
+                          </Badge>
+                        ) : usage.isSubscribed ? (
+                          <Badge variant="success">{t("settingsPage.account.badges.pro")}</Badge>
+                        ) : usage.isOverLimit ? (
+                          <Badge variant="warning">
+                            {t("settingsPage.account.badges.limitReached")}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">{t("settingsPage.account.badges.free")}</Badge>
+                        )}
+                      </SettingsRow>
+                    </SettingsPanelRow>
+
+                    {!usage.isSubscribed && !usage.isTrial && (
+                      <SettingsPanelRow>
+                        <div className="space-y-1.5">
+                          <Progress
+                            value={
+                              usage.limit > 0
+                                ? Math.min(100, (usage.wordsUsed / usage.limit) * 100)
+                                : 0
+                            }
+                            className={cn(
+                              "h-1.5",
+                              usage.isOverLimit
+                                ? "[&>div]:bg-destructive"
+                                : usage.isApproachingLimit
+                                  ? "[&>div]:bg-warning"
+                                  : "[&>div]:bg-primary"
+                            )}
+                          />
+                          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                            <span className="tabular-nums">
+                              {usage.wordsUsed.toLocaleString(i18n.language)} /{" "}
+                              {usage.limit.toLocaleString(i18n.language)}
+                            </span>
+                            {usage.isApproachingLimit && (
+                              <span className="text-warning">
+                                {t("settingsPage.account.wordsRemaining", {
+                                  remaining: usage.wordsRemaining.toLocaleString(i18n.language),
+                                })}
+                              </span>
+                            )}
+                            {!usage.isApproachingLimit && !usage.isOverLimit && (
+                              <span>{t("settingsPage.account.rollingWeeklyLimit")}</span>
+                            )}
+                          </div>
+                        </div>
+                      </SettingsPanelRow>
+                    )}
+
+                    <SettingsPanelRow>
+                      {usage.isPastDue ? (
+                        <Button
+                          onClick={async () => {
+                            setIsOpeningBilling(true);
+                            try {
+                              const result = await usage.openBillingPortal();
+                              if (!result.success) {
+                                toast({
+                                  title: t("settingsPage.account.billing.couldNotOpenTitle"),
+                                  description: t(
+                                    "settingsPage.account.billing.couldNotOpenDescription"
+                                  ),
+                                  variant: "destructive",
+                                });
+                              }
+                            } finally {
+                              setIsOpeningBilling(false);
+                            }
+                          }}
+                          disabled={isOpeningBilling}
+                          size="sm"
+                          className="w-full"
+                        >
+                          {isOpeningBilling ? (
+                            <>
+                              <Loader2 size={14} className="animate-spin" />
+                              {t("settingsPage.account.billing.opening")}
+                            </>
+                          ) : (
+                            t("settingsPage.account.billing.updatePaymentMethod")
+                          )}
+                        </Button>
+                      ) : usage.isSubscribed && !usage.isTrial ? (
+                        <Button
+                          onClick={async () => {
+                            const result = await usage.openBillingPortal();
+                            if (!result.success) {
+                              toast({
+                                title: t("settingsPage.account.billing.couldNotOpenTitle"),
+                                description: t(
+                                  "settingsPage.account.billing.couldNotOpenDescription"
+                                ),
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          disabled={usage.checkoutLoading}
+                        >
+                          {usage.checkoutLoading
+                            ? t("settingsPage.account.billing.opening")
+                            : t("settingsPage.account.billing.manageBilling")}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={async () => {
+                            const result = await usage.openCheckout();
+                            if (!result.success) {
+                              toast({
+                                title: t("settingsPage.account.checkout.couldNotOpenTitle"),
+                                description: t(
+                                  "settingsPage.account.checkout.couldNotOpenDescription"
+                                ),
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          size="sm"
+                          className="w-full"
+                          disabled={usage.checkoutLoading}
+                        >
+                          {usage.checkoutLoading
+                            ? t("settingsPage.account.checkout.opening")
+                            : t("settingsPage.account.checkout.upgradeToPro")}
+                        </Button>
+                      )}
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                )}
+
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <Button
+                      onClick={handleSignOut}
+                      variant="outline"
+                      disabled={isSigningOut}
+                      size="sm"
+                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
+                    >
+                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                      {isSigningOut
+                        ? t("settingsPage.account.signOut.signingOut")
+                        : t("settingsPage.account.signOut.signOut")}
+                    </Button>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            ) : isLoaded ? (
+              <>
+                <SectionHeader title={t("settingsPage.account.title")} />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label={t("settingsPage.account.notSignedIn")}
+                      description={t("settingsPage.account.notSignedInDescription")}
+                    >
+                      <Badge variant="outline">{t("settingsPage.account.offline")}</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+
+                <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/3 dark:bg-primary/6 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div>
+                        <p className="text-[13px] font-medium text-foreground">
+                          {t("settingsPage.account.trialCta.title")}
+                        </p>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed mt-0.5">
+                          {t("settingsPage.account.trialCta.description")}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          localStorage.setItem("pendingCloudMigration", "true");
+                          localStorage.setItem("onboardingCurrentStep", "0");
+                          localStorage.removeItem("onboardingCompleted");
+                          window.location.reload();
+                        }}
+                        size="sm"
+                        className="w-full"
+                      >
+                        <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                        {t("settingsPage.account.trialCta.button")}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <SectionHeader title={t("settingsPage.account.title")} />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            )}
+          </div>
+        );
+
       case "general":
         return (
           <div className="space-y-6">
             {/* Updates */}
             <div>
-              <SectionHeader title="Updates" />
+              <SectionHeader title={t("settingsPage.general.updates.title")} />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <SettingsRow
-                    label="Current version"
+                    label={t("settingsPage.general.updates.currentVersion")}
                     description={
                       updateStatus.isDevelopment
-                        ? "Running in development mode"
+                        ? t("settingsPage.general.updates.devMode")
                         : isUpdateAvailable
-                          ? "A newer version is available"
-                          : "You're on the latest version"
+                          ? t("settingsPage.general.updates.newVersionAvailable")
+                          : t("settingsPage.general.updates.latestVersion")
                     }
                   >
                     <div className="flex items-center gap-2.5">
                       <span className="text-[13px] tabular-nums text-muted-foreground font-mono">
-                        {currentVersion || "..."}
+                        {currentVersion || t("settingsPage.general.updates.versionPlaceholder")}
                       </span>
                       {updateStatus.isDevelopment ? (
-                        <Badge variant="warning">Dev</Badge>
+                        <Badge variant="warning">
+                          {t("settingsPage.general.updates.badges.dev")}
+                        </Badge>
                       ) : isUpdateAvailable ? (
-                        <Badge variant="success">Update</Badge>
+                        <Badge variant="success">
+                          {t("settingsPage.general.updates.badges.update")}
+                        </Badge>
                       ) : (
-                        <Badge variant="outline">Latest</Badge>
+                        <Badge variant="outline">
+                          {t("settingsPage.general.updates.badges.latest")}
+                        </Badge>
                       )}
                     </div>
                   </SettingsRow>
@@ -419,19 +1339,31 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           const result = await checkForUpdates();
                           if (result?.updateAvailable) {
                             showAlertDialog({
-                              title: "Update Available",
-                              description: `Update available: v${result.version || "new version"}`,
+                              title: t(
+                                "settingsPage.general.updates.dialogs.updateAvailable.title"
+                              ),
+                              description: t(
+                                "settingsPage.general.updates.dialogs.updateAvailable.description",
+                                {
+                                  version:
+                                    result.version || t("settingsPage.general.updates.newVersion"),
+                                }
+                              ),
                             });
                           } else {
                             showAlertDialog({
-                              title: "No Updates",
-                              description: result?.message || "No updates available",
+                              title: t("settingsPage.general.updates.dialogs.noUpdates.title"),
+                              description:
+                                result?.message ||
+                                t("settingsPage.general.updates.dialogs.noUpdates.description"),
                             });
                           }
                         } catch (error: any) {
                           showAlertDialog({
-                            title: "Update Check Failed",
-                            description: `Error checking for updates: ${error.message}`,
+                            title: t("settingsPage.general.updates.dialogs.checkFailed.title"),
+                            description: t(
+                              "settingsPage.general.updates.dialogs.checkFailed.description"
+                            ),
                           });
                         }
                       }}
@@ -444,7 +1376,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         size={13}
                         className={`mr-1.5 ${checkingForUpdates ? "animate-spin" : ""}`}
                       />
-                      {checkingForUpdates ? "Checking..." : "Check for Updates"}
+                      {checkingForUpdates
+                        ? t("settingsPage.general.updates.checking")
+                        : t("settingsPage.general.updates.checkForUpdates")}
                     </Button>
 
                     {isUpdateAvailable && !updateStatus.updateDownloaded && (
@@ -455,8 +1389,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                               await downloadUpdate();
                             } catch (error: any) {
                               showAlertDialog({
-                                title: "Download Failed",
-                                description: `Failed to download update: ${error.message}`,
+                                title: t(
+                                  "settingsPage.general.updates.dialogs.downloadFailed.title"
+                                ),
+                                description: t(
+                                  "settingsPage.general.updates.dialogs.downloadFailed.description"
+                                ),
                               });
                             }
                           }}
@@ -470,8 +1408,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             className={`mr-1.5 ${downloadingUpdate ? "animate-pulse" : ""}`}
                           />
                           {downloadingUpdate
-                            ? `Downloading... ${Math.round(updateDownloadProgress)}%`
-                            : `Download Update${updateInfo?.version ? ` v${updateInfo.version}` : ""}`}
+                            ? t("settingsPage.general.updates.downloading", {
+                                progress: Math.round(updateDownloadProgress),
+                              })
+                            : t("settingsPage.general.updates.downloadUpdate", {
+                                version: updateInfo?.version || "",
+                              })}
                         </Button>
 
                         {downloadingUpdate && (
@@ -491,16 +1433,25 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <Button
                         onClick={() => {
                           showConfirmDialog({
-                            title: "Install Update",
-                            description: `Ready to install update${updateInfo?.version ? ` v${updateInfo.version}` : ""}. The app will restart to complete installation.`,
-                            confirmText: "Install & Restart",
+                            title: t("settingsPage.general.updates.dialogs.installUpdate.title"),
+                            description: t(
+                              "settingsPage.general.updates.dialogs.installUpdate.description",
+                              { version: updateInfo?.version || "" }
+                            ),
+                            confirmText: t(
+                              "settingsPage.general.updates.dialogs.installUpdate.confirmText"
+                            ),
                             onConfirm: async () => {
                               try {
                                 await installUpdateAction();
                               } catch (error: any) {
                                 showAlertDialog({
-                                  title: "Install Failed",
-                                  description: `Failed to install update: ${error.message}`,
+                                  title: t(
+                                    "settingsPage.general.updates.dialogs.installFailed.title"
+                                  ),
+                                  description: t(
+                                    "settingsPage.general.updates.dialogs.installFailed.description"
+                                  ),
                                 });
                               }
                             },
@@ -514,7 +1465,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           size={14}
                           className={`mr-2 ${installInitiated ? "animate-spin" : ""}`}
                         />
-                        {installInitiated ? "Restarting..." : "Install & Restart"}
+                        {installInitiated
+                          ? t("settingsPage.general.updates.restarting")
+                          : t("settingsPage.general.updates.installAndRestart")}
                       </Button>
                     )}
                   </div>
@@ -522,7 +1475,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   {updateInfo?.releaseNotes && (
                     <div className="mt-4 pt-4 border-t border-border/30">
                       <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                        What's new in v{updateInfo.version}
+                        {t("settingsPage.general.updates.whatsNew", {
+                          version: updateInfo.version,
+                        })}
                       </p>
                       <div className="text-[12px] text-muted-foreground">
                         <MarkdownRenderer content={updateInfo.releaseNotes} />
@@ -535,16 +1490,34 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             {/* Appearance */}
             <div>
-              <SectionHeader title="Appearance" description="Control how OpenWhispr looks" />
+              <SectionHeader
+                title={t("settingsPage.general.appearance.title")}
+                description={t("settingsPage.general.appearance.description")}
+              />
               <SettingsPanel>
                 <SettingsPanelRow>
-                  <SettingsRow label="Theme" description="Choose light, dark, or match your system">
+                  <SettingsRow
+                    label={t("settingsPage.general.appearance.theme")}
+                    description={t("settingsPage.general.appearance.themeDescription")}
+                  >
                     <div className="inline-flex items-center gap-px p-0.5 bg-muted/60 dark:bg-surface-2 rounded-md">
                       {(
                         [
-                          { value: "light", icon: Sun, label: "Light" },
-                          { value: "dark", icon: Moon, label: "Dark" },
-                          { value: "auto", icon: Monitor, label: "Auto" },
+                          {
+                            value: "light",
+                            icon: Sun,
+                            label: t("settingsPage.general.appearance.light"),
+                          },
+                          {
+                            value: "dark",
+                            icon: Moon,
+                            label: t("settingsPage.general.appearance.dark"),
+                          },
+                          {
+                            value: "auto",
+                            icon: Monitor,
+                            label: t("settingsPage.general.appearance.auto"),
+                          },
                         ] as const
                       ).map((option) => {
                         const Icon = option.icon;
@@ -574,11 +1547,80 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
               </SettingsPanel>
             </div>
 
+            {/* Sound Effects */}
+            <div>
+              <SectionHeader title={t("settingsPage.general.soundEffects.title")} />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.soundEffects.dictationSounds")}
+                    description={t("settingsPage.general.soundEffects.dictationSoundsDescription")}
+                  >
+                    <Toggle checked={audioCuesEnabled} onChange={setAudioCuesEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Floating Icon */}
+            <div>
+              <SectionHeader
+                title={t("settingsPage.general.floatingIcon.title")}
+                description={t("settingsPage.general.floatingIcon.description")}
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.floatingIcon.autoHide")}
+                    description={t("settingsPage.general.floatingIcon.autoHideDescription")}
+                  >
+                    <Toggle checked={floatingIconAutoHide} onChange={setFloatingIconAutoHide} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Language */}
+            <div>
+              <SectionHeader
+                title={t("settings.language.sectionTitle")}
+                description={t("settings.language.sectionDescription")}
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settings.language.uiLabel")}
+                    description={t("settings.language.uiDescription")}
+                  >
+                    <LanguageSelector
+                      value={uiLanguage}
+                      onChange={setUiLanguage}
+                      options={UI_LANGUAGE_OPTIONS}
+                      className="min-w-32"
+                    />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settings.language.transcriptionLabel")}
+                    description={t("settings.language.transcriptionDescription")}
+                  >
+                    <LanguageSelector
+                      value={preferredLanguage}
+                      onChange={(value) =>
+                        updateTranscriptionSettings({ preferredLanguage: value })
+                      }
+                    />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
             {/* Dictation Hotkey */}
             <div>
               <SectionHeader
-                title="Dictation Hotkey"
-                description="The key combination that starts and stops voice dictation"
+                title={t("settingsPage.general.hotkey.title")}
+                description={t("settingsPage.general.hotkey.description")}
               />
               <SettingsPanel>
                 <SettingsPanelRow>
@@ -588,13 +1630,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       await registerHotkey(newHotkey);
                     }}
                     disabled={isHotkeyRegistering}
+                    validate={validateHotkeyForInput}
                   />
                 </SettingsPanelRow>
 
                 {!isUsingGnomeHotkeys && (
                   <SettingsPanelRow>
                     <p className="text-[11px] font-medium text-muted-foreground/80 mb-2">
-                      Activation Mode
+                      {t("settingsPage.general.hotkey.activationMode")}
                     </p>
                     <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
                   </SettingsPanelRow>
@@ -605,12 +1648,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Startup */}
             {platform !== "linux" && (
               <div>
-                <SectionHeader title="Startup" />
+                <SectionHeader title={t("settingsPage.general.startup.title")} />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Launch at login"
-                      description="Start OpenWhispr automatically when you log in"
+                      label={t("settingsPage.general.startup.launchAtLogin")}
+                      description={t("settingsPage.general.startup.launchAtLoginDescription")}
                     >
                       <Toggle
                         checked={autoStartEnabled}
@@ -626,8 +1669,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Microphone */}
             <div>
               <SectionHeader
-                title="Microphone"
-                description="Select which input device to use for dictation"
+                title={t("settingsPage.general.microphone.title")}
+                description={t("settingsPage.general.microphone.description")}
               />
               <SettingsPanel>
                 <SettingsPanelRow>
@@ -643,71 +1686,57 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // TRANSCRIPTION
-      // ───────────────────────────────────────────────────
       case "transcription":
         return (
-          <div className="space-y-5">
-            <SectionHeader
-              title="Speech to Text"
-              description="Choose a cloud provider for fast transcription or use local Whisper models for complete privacy"
-            />
-
-            <TranscriptionModelPicker
-              selectedCloudProvider={cloudTranscriptionProvider}
-              onCloudProviderSelect={setCloudTranscriptionProvider}
-              selectedCloudModel={cloudTranscriptionModel}
-              onCloudModelSelect={setCloudTranscriptionModel}
-              selectedLocalModel={
-                localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel
-              }
-              onLocalModelSelect={(modelId) => {
-                if (localTranscriptionProvider === "nvidia") {
-                  setParakeetModel(modelId);
-                } else {
-                  setWhisperModel(modelId);
-                }
-              }}
-              selectedLocalProvider={localTranscriptionProvider}
-              onLocalProviderSelect={setLocalTranscriptionProvider}
-              useLocalWhisper={useLocalWhisper}
-              onModeChange={(isLocal) => {
-                setUseLocalWhisper(isLocal);
-                updateTranscriptionSettings({ useLocalWhisper: isLocal });
-              }}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
-              customTranscriptionApiKey={customTranscriptionApiKey}
-              setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-              cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-              setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
-              variant="settings"
-            />
-          </div>
+          <TranscriptionSection
+            isSignedIn={isSignedIn ?? false}
+            cloudTranscriptionMode={cloudTranscriptionMode}
+            setCloudTranscriptionMode={setCloudTranscriptionMode}
+            useLocalWhisper={useLocalWhisper}
+            setUseLocalWhisper={setUseLocalWhisper}
+            updateTranscriptionSettings={updateTranscriptionSettings}
+            cloudTranscriptionProvider={cloudTranscriptionProvider}
+            setCloudTranscriptionProvider={setCloudTranscriptionProvider}
+            cloudTranscriptionModel={cloudTranscriptionModel}
+            setCloudTranscriptionModel={setCloudTranscriptionModel}
+            localTranscriptionProvider={localTranscriptionProvider}
+            setLocalTranscriptionProvider={setLocalTranscriptionProvider}
+            whisperModel={whisperModel}
+            setWhisperModel={setWhisperModel}
+            parakeetModel={parakeetModel}
+            setParakeetModel={setParakeetModel}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            mistralApiKey={mistralApiKey}
+            setMistralApiKey={setMistralApiKey}
+            customTranscriptionApiKey={customTranscriptionApiKey}
+            setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+            cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+            setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+            toast={toast}
+          />
         );
 
-      // ───────────────────────────────────────────────────
-      // DICTIONARY
-      // ───────────────────────────────────────────────────
       case "dictionary":
         return (
           <div className="space-y-5">
             <SectionHeader
-              title="Custom Dictionary"
-              description="Add words, names, or technical terms to improve transcription accuracy"
+              title={t("settingsPage.dictionary.title")}
+              description={t("settingsPage.dictionary.description")}
             />
 
             {/* Add Words */}
             <SettingsPanel>
               <SettingsPanelRow>
                 <div className="space-y-2">
-                  <p className="text-[12px] font-medium text-foreground">Add a word or phrase</p>
+                  <p className="text-[12px] font-medium text-foreground">
+                    {t("settingsPage.dictionary.addWordOrPhrase")}
+                  </p>
                   <div className="flex gap-2">
                     <Input
-                      placeholder="e.g. OpenWhispr, Kubernetes, Dr. Martinez..."
+                      placeholder={t("settingsPage.dictionary.placeholder")}
                       value={newDictionaryWord}
                       onChange={(e) => setNewDictionaryWord(e.target.value)}
                       onKeyDown={(e) => {
@@ -723,10 +1752,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       size="sm"
                       className="h-8"
                     >
-                      Add
+                      {t("settingsPage.dictionary.add")}
                     </Button>
                   </div>
-                  <p className="text-[10px] text-muted-foreground/50">Press Enter to add</p>
+                  <p className="text-[10px] text-muted-foreground/50">
+                    {t("settingsPage.dictionary.pressEnterToAdd")}
+                  </p>
                 </div>
               </SettingsPanelRow>
             </SettingsPanel>
@@ -735,7 +1766,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             <div>
               <div className="flex items-center justify-between mb-2">
                 <p className="text-[12px] font-medium text-foreground">
-                  Your words
+                  {t("settingsPage.dictionary.yourWords")}
                   {customDictionary.length > 0 && (
                     <span className="ml-1.5 text-muted-foreground/50 font-normal text-[11px]">
                       {customDictionary.length}
@@ -746,17 +1777,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   <button
                     onClick={() => {
                       showConfirmDialog({
-                        title: "Clear dictionary?",
-                        description:
-                          "This will remove all words from your custom dictionary. This action cannot be undone.",
-                        confirmText: "Clear All",
+                        title: t("settingsPage.dictionary.clearDictionaryTitle"),
+                        description: t("settingsPage.dictionary.clearDictionaryDescription"),
+                        confirmText: t("settingsPage.dictionary.clearAll"),
                         variant: "destructive",
-                        onConfirm: () => setCustomDictionary([]),
+                        onConfirm: () =>
+                          setCustomDictionary(customDictionary.filter((w) => w === agentName)),
                       });
                     }}
                     className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
                   >
-                    Clear all
+                    {t("settingsPage.dictionary.clearAll")}
                   </button>
                 )}
               </div>
@@ -765,39 +1796,55 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <div className="flex flex-wrap gap-1">
-                      {customDictionary.map((word) => (
-                        <span
-                          key={word}
-                          className="group inline-flex items-center gap-0.5 pl-2 pr-1 py-0.5 bg-primary/5 dark:bg-primary/10 text-foreground rounded-[5px] text-[11px] border border-border/30 dark:border-border-subtle transition-all hover:border-destructive/40 hover:bg-destructive/5"
-                        >
-                          {word}
-                          <button
-                            onClick={() => handleRemoveDictionaryWord(word)}
-                            className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
-                            title="Remove word"
+                      {customDictionary.map((word) => {
+                        const isAgentName = word === agentName;
+                        return (
+                          <span
+                            key={word}
+                            className={`group inline-flex items-center gap-0.5 py-0.5 rounded-[5px] text-[11px] border transition-all ${
+                              isAgentName
+                                ? "pl-2 pr-2 bg-primary/10 dark:bg-primary/15 text-primary border-primary/20 dark:border-primary/30"
+                                : "pl-2 pr-1 bg-primary/5 dark:bg-primary/10 text-foreground border-border/30 dark:border-border-subtle hover:border-destructive/40 hover:bg-destructive/5"
+                            }`}
+                            title={
+                              isAgentName
+                                ? t("settingsPage.dictionary.agentNameAutoManaged")
+                                : undefined
+                            }
                           >
-                            <svg
-                              width="9"
-                              height="9"
-                              viewBox="0 0 24 24"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="2.5"
-                              strokeLinecap="round"
-                            >
-                              <path d="M18 6L6 18M6 6l12 12" />
-                            </svg>
-                          </button>
-                        </span>
-                      ))}
+                            {word}
+                            {!isAgentName && (
+                              <button
+                                onClick={() => handleRemoveDictionaryWord(word)}
+                                className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
+                                title={t("settingsPage.dictionary.removeWord")}
+                              >
+                                <svg
+                                  width="9"
+                                  height="9"
+                                  viewBox="0 0 24 24"
+                                  fill="none"
+                                  stroke="currentColor"
+                                  strokeWidth="2.5"
+                                  strokeLinecap="round"
+                                >
+                                  <path d="M18 6L6 18M6 6l12 12" />
+                                </svg>
+                              </button>
+                            )}
+                          </span>
+                        );
+                      })}
                     </div>
                   </SettingsPanelRow>
                 </SettingsPanel>
               ) : (
                 <div className="rounded-lg border border-dashed border-border/40 dark:border-border-subtle py-6 flex flex-col items-center justify-center text-center">
-                  <p className="text-[11px] text-muted-foreground/50">No words added yet</p>
+                  <p className="text-[11px] text-muted-foreground/50">
+                    {t("settingsPage.dictionary.noWords")}
+                  </p>
                   <p className="text-[10px] text-muted-foreground/40 mt-0.5">
-                    Words you add will appear here
+                    {t("settingsPage.dictionary.wordsAppearHere")}
                   </p>
                 </div>
               )}
@@ -805,21 +1852,19 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             {/* How it works */}
             <div>
-              <SectionHeader title="How it works" />
+              <SectionHeader title={t("settingsPage.dictionary.howItWorksTitle")} />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    Words in your dictionary are provided as context hints to the speech recognition
-                    model. This helps it correctly identify uncommon names, technical jargon, brand
-                    names, or anything that's frequently misrecognized.
+                    {t("settingsPage.dictionary.howItWorksDescription")}
                   </p>
                 </SettingsPanelRow>
                 <SettingsPanelRow>
                   <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">Tip</span> — For difficult words,
-                    add context phrases like "The word is Synty" alongside the word itself. Adding
-                    related terms (e.g. "Synty" and "SyntyStudios") also helps the model understand
-                    the intended spelling.
+                    <span className="font-medium text-foreground">
+                      {t("settingsPage.dictionary.tipLabel")}
+                    </span>{" "}
+                    {t("settingsPage.dictionary.tipDescription")}
                   </p>
                 </SettingsPanelRow>
               </SettingsPanel>
@@ -827,84 +1872,81 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // AI MODELS
-      // ───────────────────────────────────────────────────
       case "aiModels":
         return (
-          <div className="space-y-5">
-            <SectionHeader
-              title="AI Text Enhancement"
-              description='Configure how AI models clean up and format your transcriptions. Handles commands like "scratch that", creates proper lists, and fixes errors while preserving your natural tone.'
-            />
-
-            <ReasoningModelSelector
-              useReasoningModel={useReasoningModel}
-              setUseReasoningModel={(value) => {
-                setUseReasoningModel(value);
-                updateReasoningSettings({ useReasoningModel: value });
-              }}
-              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
-              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
-              reasoningModel={reasoningModel}
-              setReasoningModel={setReasoningModel}
-              localReasoningProvider={reasoningProvider}
-              setLocalReasoningProvider={setReasoningProvider}
-              openaiApiKey={openaiApiKey}
-              setOpenaiApiKey={setOpenaiApiKey}
-              anthropicApiKey={anthropicApiKey}
-              setAnthropicApiKey={setAnthropicApiKey}
-              geminiApiKey={geminiApiKey}
-              setGeminiApiKey={setGeminiApiKey}
-              groqApiKey={groqApiKey}
-              setGroqApiKey={setGroqApiKey}
-              customReasoningApiKey={customReasoningApiKey}
-              setCustomReasoningApiKey={setCustomReasoningApiKey}
-              showAlertDialog={showAlertDialog}
-            />
-          </div>
+          <AiModelsSection
+            isSignedIn={isSignedIn ?? false}
+            cloudReasoningMode={cloudReasoningMode}
+            setCloudReasoningMode={setCloudReasoningMode}
+            useReasoningModel={useReasoningModel}
+            setUseReasoningModel={(value) => {
+              setUseReasoningModel(value);
+              updateReasoningSettings({ useReasoningModel: value });
+            }}
+            reasoningModel={reasoningModel}
+            setReasoningModel={setReasoningModel}
+            reasoningProvider={reasoningProvider}
+            setReasoningProvider={setReasoningProvider}
+            cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+            setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            anthropicApiKey={anthropicApiKey}
+            setAnthropicApiKey={setAnthropicApiKey}
+            geminiApiKey={geminiApiKey}
+            setGeminiApiKey={setGeminiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            customReasoningApiKey={customReasoningApiKey}
+            setCustomReasoningApiKey={setCustomReasoningApiKey}
+            showAlertDialog={showAlertDialog}
+            toast={toast}
+          />
         );
 
-      // ───────────────────────────────────────────────────
-      // AGENT CONFIG
-      // ───────────────────────────────────────────────────
       case "agentConfig":
         return (
           <div className="space-y-5">
             <SectionHeader
-              title="Voice Agent"
-              description="Name your AI assistant so you can address it directly during dictation"
+              title={t("settingsPage.agentConfig.title")}
+              description={t("settingsPage.agentConfig.description")}
             />
 
             {/* Agent Name */}
             <div>
-              <p className="text-[13px] font-medium text-foreground mb-3">Agent Name</p>
+              <p className="text-[13px] font-medium text-foreground mb-3">
+                {t("settingsPage.agentConfig.agentName")}
+              </p>
               <SettingsPanel>
                 <SettingsPanelRow>
                   <div className="space-y-3">
                     <div className="flex gap-2">
                       <Input
-                        placeholder="e.g. Jarvis, Nova, Atlas..."
-                        value={agentName}
-                        onChange={(e) => setAgentName(e.target.value)}
+                        placeholder={t("settingsPage.agentConfig.placeholder")}
+                        value={agentNameInput}
+                        onChange={(e) => setAgentNameInput(e.target.value)}
                         className="flex-1 text-center text-base font-mono"
                       />
                       <Button
                         onClick={() => {
-                          setAgentName(agentName.trim());
+                          const trimmed = agentNameInput.trim();
+                          setAgentName(trimmed);
+                          setAgentNameInput(trimmed);
                           showAlertDialog({
-                            title: "Agent Name Updated",
-                            description: `Your agent is now named "${agentName.trim()}". Address it by saying "Hey ${agentName.trim()}" followed by your instructions.`,
+                            title: t("settingsPage.agentConfig.dialogs.updatedTitle"),
+                            description: t("settingsPage.agentConfig.dialogs.updatedDescription", {
+                              name: trimmed,
+                            }),
                           });
                         }}
-                        disabled={!agentName.trim()}
+                        disabled={!agentNameInput.trim()}
                         size="sm"
                       >
-                        Save
+                        {t("settingsPage.agentConfig.save")}
                       </Button>
                     </div>
                     <p className="text-[11px] text-muted-foreground/60">
-                      Pick something short and natural to say aloud
+                      {t("settingsPage.agentConfig.helper")}
                     </p>
                   </div>
                 </SettingsPanelRow>
@@ -913,14 +1955,11 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             {/* How it works */}
             <div>
-              <SectionHeader title="How it works" />
+              <SectionHeader title={t("settingsPage.agentConfig.howItWorksTitle")} />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    When you say{" "}
-                    <span className="font-medium text-foreground">"Hey {agentName}"</span> followed
-                    by an instruction, the AI switches from cleanup mode to instruction mode.
-                    Without the trigger phrase, it simply cleans up your dictation.
+                    {t("settingsPage.agentConfig.howItWorksDescription", { agentName })}
                   </p>
                 </SettingsPanelRow>
               </SettingsPanel>
@@ -928,29 +1967,32 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
             {/* Examples */}
             <div>
-              <SectionHeader title="Examples" />
+              <SectionHeader title={t("settingsPage.agentConfig.examplesTitle")} />
               <SettingsPanel>
                 <SettingsPanelRow>
                   <div className="space-y-2.5">
                     {[
                       {
                         input: `Hey ${agentName}, write a formal email about the budget`,
-                        mode: "Instruction",
+                        mode: t("settingsPage.agentConfig.instructionMode"),
                       },
                       {
                         input: `Hey ${agentName}, make this more professional`,
-                        mode: "Instruction",
+                        mode: t("settingsPage.agentConfig.instructionMode"),
                       },
                       {
                         input: `Hey ${agentName}, convert this to bullet points`,
-                        mode: "Instruction",
+                        mode: t("settingsPage.agentConfig.instructionMode"),
                       },
-                      { input: "We should schedule a meeting for next week", mode: "Cleanup" },
+                      {
+                        input: t("settingsPage.agentConfig.cleanupExample"),
+                        mode: t("settingsPage.agentConfig.cleanupMode"),
+                      },
                     ].map((example, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <span
                           className={`shrink-0 mt-0.5 text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded ${
-                            example.mode === "Instruction"
+                            example.mode === t("settingsPage.agentConfig.instructionMode")
                               ? "bg-primary/10 text-primary dark:bg-primary/15"
                               : "bg-muted text-muted-foreground"
                           }`}
@@ -969,52 +2011,84 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // PROMPTS
-      // ───────────────────────────────────────────────────
       case "prompts":
         return (
           <div className="space-y-5">
             <SectionHeader
-              title="Prompt Studio"
-              description="View, customize, and test the unified system prompt that powers text cleanup and instruction detection"
+              title={t("settingsPage.prompts.title")}
+              description={t("settingsPage.prompts.description")}
             />
 
             <PromptStudio />
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // PERMISSIONS (new — extracted from General)
-      // ───────────────────────────────────────────────────
+      case "privacy":
+        return (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-lg font-semibold text-foreground mb-2">
+                {t("settingsPage.privacy.title")}
+              </h3>
+              <p className="text-sm text-muted-foreground mb-6">
+                {t("settingsPage.privacy.description")}
+              </p>
+            </div>
+
+            {isSignedIn && (
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.privacy.cloudBackup")}
+                    description={t("settingsPage.privacy.cloudBackupDescription")}
+                  >
+                    <Toggle checked={cloudBackupEnabled} onChange={setCloudBackupEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            )}
+
+            <SettingsPanel>
+              <SettingsPanelRow>
+                <SettingsRow
+                  label={t("settingsPage.privacy.usageAnalytics")}
+                  description={t("settingsPage.privacy.usageAnalyticsDescription")}
+                >
+                  <Toggle checked={telemetryEnabled} onChange={setTelemetryEnabled} />
+                </SettingsRow>
+              </SettingsPanelRow>
+            </SettingsPanel>
+          </div>
+        );
+
       case "permissions":
         return (
           <div className="space-y-5">
             <SectionHeader
-              title="Permissions"
-              description="Test and manage system permissions required for OpenWhispr to function correctly"
+              title={t("settingsPage.permissions.title")}
+              description={t("settingsPage.permissions.description")}
             />
 
             {/* Permission Cards - matching onboarding style */}
             <div className="space-y-3">
               <PermissionCard
                 icon={Mic}
-                title="Microphone"
-                description="Required for voice recording and dictation"
+                title={t("settingsPage.permissions.microphoneTitle")}
+                description={t("settingsPage.permissions.microphoneDescription")}
                 granted={permissionsHook.micPermissionGranted}
                 onRequest={permissionsHook.requestMicPermission}
-                buttonText="Test"
+                buttonText={t("settingsPage.permissions.test")}
                 onOpenSettings={permissionsHook.openMicPrivacySettings}
               />
 
               {platform === "darwin" && (
                 <PermissionCard
                   icon={Shield}
-                  title="Accessibility"
-                  description="Required for auto-paste to work after transcription"
+                  title={t("settingsPage.permissions.accessibilityTitle")}
+                  description={t("settingsPage.permissions.accessibilityDescription")}
                   granted={permissionsHook.accessibilityPermissionGranted}
                   onRequest={permissionsHook.testAccessibilityPermission}
-                  buttonText="Test & Grant"
+                  buttonText={t("settingsPage.permissions.testAndGrant")}
                   onOpenSettings={permissionsHook.openAccessibilitySettings}
                 />
               )}
@@ -1043,12 +2117,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Troubleshooting section for macOS */}
             {platform === "darwin" && (
               <div>
-                <p className="text-[13px] font-medium text-foreground mb-3">Troubleshooting</p>
+                <p className="text-[13px] font-medium text-foreground mb-3">
+                  {t("settingsPage.permissions.troubleshootingTitle")}
+                </p>
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Reset accessibility permissions"
-                      description="Fix issues after reinstalling or rebuilding the app by removing and re-adding OpenWhispr in System Settings"
+                      label={t("settingsPage.permissions.resetAccessibility.label")}
+                      description={t("settingsPage.permissions.resetAccessibility.rowDescription")}
                     >
                       <Button
                         onClick={resetAccessibilityPermissions}
@@ -1056,7 +2132,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         size="sm"
                         className="text-foreground/70 hover:text-foreground"
                       >
-                        Troubleshoot
+                        {t("settingsPage.permissions.troubleshoot")}
                       </Button>
                     </SettingsRow>
                   </SettingsPanelRow>
@@ -1066,9 +2142,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           </div>
         );
 
-      // ───────────────────────────────────────────────────
-      // DEVELOPER (+ data management moved here)
-      // ───────────────────────────────────────────────────
       case "developer":
         return (
           <div className="space-y-6">
@@ -1077,14 +2150,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             {/* Data Management — moved from General */}
             <div className="border-t border-border/40 pt-8">
               <SectionHeader
-                title="Data Management"
-                description="Manage cached models and app data"
+                title={t("settingsPage.developer.dataManagementTitle")}
+                description={t("settingsPage.developer.dataManagementDescription")}
               />
 
               <div className="space-y-4">
                 <SettingsPanel>
                   <SettingsPanelRow>
-                    <SettingsRow label="Model cache" description={cachePathHint}>
+                    <SettingsRow
+                      label={t("settingsPage.developer.modelCache")}
+                      description={cachePathHint}
+                    >
                       <div className="flex items-center gap-2">
                         <Button
                           variant="ghost"
@@ -1092,7 +2168,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           onClick={() => window.electronAPI?.openWhisperModelsFolder?.()}
                         >
                           <FolderOpen className="mr-1.5 h-3.5 w-3.5" />
-                          Open
+                          {t("settingsPage.developer.open")}
                         </Button>
                         <Button
                           variant="destructive"
@@ -1100,7 +2176,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           onClick={handleRemoveModels}
                           disabled={isRemovingModels}
                         >
-                          {isRemovingModels ? "Removing..." : "Clear Cache"}
+                          {isRemovingModels
+                            ? t("settingsPage.developer.removing")
+                            : t("settingsPage.developer.clearCache")}
                         </Button>
                       </div>
                     </SettingsRow>
@@ -1110,44 +2188,46 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
-                      label="Reset app data"
-                      description="Permanently delete all settings, transcriptions, and cached data"
+                      label={t("settingsPage.developer.resetAppData")}
+                      description={t("settingsPage.developer.resetAppDataDescription")}
                     >
                       <Button
                         onClick={() => {
                           showConfirmDialog({
-                            title: "Reset All App Data",
-                            description:
-                              "This will permanently delete ALL OpenWhispr data including:\n\n- Database and transcriptions\n- Local storage settings\n- Downloaded models\n- Environment files\n\nYou will need to manually remove app permissions in System Settings.\n\nThis action cannot be undone.",
+                            title: t("settingsPage.developer.resetAll.title"),
+                            description: t("settingsPage.developer.resetAll.description"),
                             onConfirm: () => {
                               window.electronAPI
                                 ?.cleanupApp()
                                 .then(() => {
                                   showAlertDialog({
-                                    title: "Reset Complete",
-                                    description:
-                                      "All app data has been removed. The app will reload.",
+                                    title: t("settingsPage.developer.resetAll.successTitle"),
+                                    description: t(
+                                      "settingsPage.developer.resetAll.successDescription"
+                                    ),
                                   });
                                   setTimeout(() => {
                                     window.location.reload();
                                   }, 1000);
                                 })
-                                .catch((error) => {
+                                .catch(() => {
                                   showAlertDialog({
-                                    title: "Reset Failed",
-                                    description: `Failed to reset: ${error.message}`,
+                                    title: t("settingsPage.developer.resetAll.failedTitle"),
+                                    description: t(
+                                      "settingsPage.developer.resetAll.failedDescription"
+                                    ),
                                   });
                                 });
                             },
                             variant: "destructive",
-                            confirmText: "Delete Everything",
+                            confirmText: t("settingsPage.developer.resetAll.confirmText"),
                           });
                         }}
                         variant="outline"
                         size="sm"
                         className="text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive"
                       >
-                        Reset
+                        {t("common.reset")}
                       </Button>
                     </SettingsRow>
                   </SettingsPanelRow>

@@ -40,7 +40,13 @@ const CONTROL_PANEL_CONFIG = {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,
     contextIsolation: true,
+    // sandbox: false is required because the preload script bridges IPC
+    // between the renderer and main process.
     sandbox: false,
+    // webSecurity: false disables same-origin policy. Required because in
+    // production the renderer loads from a file:// origin but makes
+    // cross-origin fetch calls to Neon Auth, Gemini, OpenAI, and Groq APIs
+    // directly from the browser. These would be blocked by CORS otherwise.
     webSecurity: false,
     spellcheck: false,
   },
@@ -57,13 +63,12 @@ const CONTROL_PANEL_CONFIG = {
   maximizable: true,
   closable: true,
   fullscreenable: true,
-  skipTaskbar: false, // Ensure control panel stays in taskbar
-  alwaysOnTop: false, // Control panel should not be always on top
-  visibleOnAllWorkspaces: false, // Control panel should stay in its workspace
-  type: "normal", // Ensure it's a normal window, not a panel
+  skipTaskbar: false,
+  alwaysOnTop: false,
+  visibleOnAllWorkspaces: false,
+  type: "normal",
 };
 
-// Window positioning utilities
 class WindowPositionUtil {
   static getMainWindowPosition(display, customSize = null) {
     const { width, height } = customSize || WINDOW_SIZES.BASE;
@@ -85,27 +90,14 @@ class WindowPositionUtil {
       });
       window.setFullScreenable(false);
 
-      // Ensure window level is maintained
       if (window.isVisible()) {
         window.setAlwaysOnTop(true, "floating", 1);
       }
     } else if (process.platform === "win32") {
       window.setAlwaysOnTop(true, "pop-up-menu");
     } else {
-      // Linux and other platforms
       window.setAlwaysOnTop(true, "screen-saver");
     }
-
-    // Bring window to front if visible
-    if (window.isVisible()) {
-      window.moveTop();
-    }
-  }
-
-  static setupControlPanel(window) {
-    // Control panel should behave like a normal application window
-    // This is only called once during window creation
-    // No need to repeatedly set these values
   }
 }
 

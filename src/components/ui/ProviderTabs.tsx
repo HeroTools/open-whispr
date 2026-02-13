@@ -1,4 +1,5 @@
 import { ReactNode, useRef, useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { ProviderIcon } from "./ProviderIcon";
 import type { ColorScheme as BaseColorScheme } from "../../utils/modelPickerStyles";
 
@@ -28,6 +29,7 @@ export function ProviderTabs({
   colorScheme = "indigo",
   scrollable = false,
 }: ProviderTabsProps) {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({
     opacity: 0,
@@ -87,14 +89,16 @@ export function ProviderTabs({
             key={provider.id}
             data-tab-button
             onClick={() => onSelect(provider.id)}
-            className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-md font-medium text-xs transition-colors duration-150 ${
+            className={`relative z-10 flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-md font-medium text-xs transition-colors duration-150 ${
               scrollable ? "whitespace-nowrap" : ""
             } ${isSelected ? "text-foreground" : "text-muted-foreground hover:text-foreground"}`}
           >
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
             <span>{provider.name}</span>
             {provider.recommended && (
-              <span className="text-[9px] text-primary/70 font-medium">Recommended</span>
+              <span className="text-[9px] text-primary/70 font-medium">
+                {t("common.recommended")}
+              </span>
             )}
           </button>
         );
