@@ -58,10 +58,10 @@ jobs:
           key: linux-electron-${{ hashFiles('**/package-lock.json') }}
           restore-keys: linux-electron-
 
-      - name: Install Linux packaging dependencies
+      - name: Install Linux build and packaging dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y rpm
+          sudo apt-get install -y rpm libx11-dev libxtst-dev
 
       - name: Build Application
         run: npm run build:linux -- --publish never

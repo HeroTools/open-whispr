@@ -51,7 +51,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
 - **clipboard.js**: Cross-platform clipboard operations
   - macOS: AppleScript-based paste with accessibility permission check
   - Windows: PowerShell SendKeys with nircmd.exe fallback
-  - Linux: Multi-tool support (wtype, ydotool, xdotool) for X11/Wayland compatibility
+  - Linux: Native XTest binary + compositor-aware fallbacks (xdotool, wtype, ydotool)
 - **database.js**: SQLite operations for transcription history
 - **debugLogger.js**: Debug logging system with file output
 - **devServerManager.js**: Vite dev server integration
@@ -435,10 +435,10 @@ On GNOME Wayland, Electron's `globalShortcut` API doesn't work due to Wayland's 
 
 3. **Clipboard Not Working**:
    - macOS: Check accessibility permissions (required for AppleScript paste)
-   - Linux X11: Install `xdotool` for paste simulation
-   - Linux Wayland: Install `wtype` or `ydotool` (requires `ydotoold` daemon)
-     - GNOME Wayland: Use `xdotool` for XWayland apps only
-     - Other Wayland compositors: `wtype` (if compositor supports virtual keyboard) or `ydotool`
+   - Linux: Native `linux-fast-paste` binary (XTest) is tried first, works for X11 and XWayland apps
+     - X11: xdotool fallback if native binary unavailable
+     - GNOME/KDE Wayland: xdotool (XWayland apps) → ydotool (requires ydotoold daemon)
+     - wlroots Wayland (Sway, Hyprland): wtype → xdotool → ydotool
    - Windows: PowerShell SendKeys (built-in) or nircmd.exe (bundled)
 
 4. **Build Issues**:
