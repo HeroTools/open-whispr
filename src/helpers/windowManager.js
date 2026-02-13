@@ -1,10 +1,16 @@
-const { app, screen, BrowserWindow, dialog } = require("electron");
+const { app, screen, BrowserWindow, shell, dialog } = require("electron");
 const HotkeyManager = require("./hotkeyManager");
 const DragManager = require("./dragManager");
 const MenuManager = require("./menuManager");
 const DevServerManager = require("./devServerManager");
+const { i18nMain } = require("./i18nMain");
 const { DEV_SERVER_PORT } = DevServerManager;
-const { MAIN_WINDOW_CONFIG, CONTROL_PANEL_CONFIG, WindowPositionUtil } = require("./windowConfig");
+const {
+  MAIN_WINDOW_CONFIG,
+  CONTROL_PANEL_CONFIG,
+  WINDOW_SIZES,
+  WindowPositionUtil,
+} = require("./windowConfig");
 
 class WindowManager {
   constructor() {
@@ -17,6 +23,9 @@ class WindowManager {
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
     this.windowsPushToTalkAvailable = false;
+    this.macCompoundPushState = null;
+    this._cachedActivationMode = "tap";
+    this._floatingIconAutoHide = false;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
@@ -56,7 +65,6 @@ class WindowManager {
           validatedURL &&
           validatedURL.includes(`localhost:${DEV_SERVER_PORT}`)
         ) {
-          // Retry connection to dev server
           setTimeout(async () => {
             const isReady = await DevServerManager.waitForDevServer();
             if (isReady) {
@@ -70,11 +78,10 @@ class WindowManager {
     );
 
     this.mainWindow.webContents.on("did-finish-load", () => {
-      this.mainWindow.setTitle("Voice Recorder");
+      this.mainWindow.setTitle(i18nMain.t("window.voiceRecorderTitle"));
       this.enforceMainWindowOnTop();
     });
 
-    // Now load the window content
     await this.loadMainWindow();
     await this.initializeHotkey();
     this.dragManager.setTargetWindow(this.mainWindow);
@@ -94,11 +101,36 @@ class WindowManager {
     this.isMainWindowInteractive = shouldCapture;
   }
 
-  /**
-   * Load content into a BrowserWindow, handling both dev server and production file loading.
-   * @param {BrowserWindow} window - The window to load content into
-   * @param {boolean} isControlPanel - Whether this is the control panel
-   */
+  resizeMainWindow(sizeKey) {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
+      return { success: false, message: "Window not available" };
+    }
+
+    const newSize = WINDOW_SIZES[sizeKey] || WINDOW_SIZES.BASE;
+    const currentBounds = this.mainWindow.getBounds();
+
+    const bottomRightX = currentBounds.x + currentBounds.width;
+    const bottomRightY = currentBounds.y + currentBounds.height;
+
+    const display = screen.getDisplayNearestPoint({ x: bottomRightX, y: bottomRightY });
+    const workArea = display.workArea || display.bounds;
+
+    let newX = bottomRightX - newSize.width;
+    let newY = bottomRightY - newSize.height;
+
+    newX = Math.max(workArea.x, Math.min(newX, workArea.x + workArea.width - newSize.width));
+    newY = Math.max(workArea.y, Math.min(newY, workArea.y + workArea.height - newSize.height));
+
+    this.mainWindow.setBounds({
+      x: newX,
+      y: newY,
+      width: newSize.width,
+      height: newSize.height,
+    });
+
+    return { success: true, bounds: { x: newX, y: newY, ...newSize } };
+  }
+
   async loadWindowContent(window, isControlPanel = false) {
     if (process.env.NODE_ENV === "development") {
       const appUrl = DevServerManager.getAppUrl(isControlPanel);
@@ -133,9 +165,22 @@ class WindowManager {
         return;
       }
 
+      const activationMode = await this.getActivationMode();
+      const currentHotkey = this.hotkeyManager.getCurrentHotkey?.();
+
+      if (
+        process.platform === "darwin" &&
+        activationMode === "push" &&
+        currentHotkey &&
+        currentHotkey !== "GLOBE" &&
+        currentHotkey.includes("+")
+      ) {
+        this.startMacCompoundPushToTalk(currentHotkey);
+        return;
+      }
+
       // Windows push mode: defer to windowsKeyManager if available, else fall through to toggle
       if (process.platform === "win32" && this.windowsPushToTalkAvailable) {
-        const activationMode = await this.getActivationMode();
         if (activationMode === "push") {
           return;
         }
@@ -150,11 +195,132 @@ class WindowManager {
       // Capture target app PID before the window might steal focus
       if (this.textEditMonitor) this.textEditMonitor.captureTargetPid();
 
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
-      }
+      this.showDictationPanel();
       this.mainWindow.webContents.send("toggle-dictation");
     };
+  }
+
+  startMacCompoundPushToTalk(hotkey) {
+    if (this.macCompoundPushState?.active) {
+      return;
+    }
+
+    const requiredModifiers = this.getMacRequiredModifiers(hotkey);
+    if (requiredModifiers.size === 0) {
+      return;
+    }
+
+    const MIN_HOLD_DURATION_MS = 150;
+    const MAX_PUSH_DURATION_MS = 300000; // 5 minutes max recording
+    const downTime = Date.now();
+
+    this.showDictationPanel();
+
+    const safetyTimeoutId = setTimeout(() => {
+      if (this.macCompoundPushState?.active) {
+        console.warn("[WindowManager] Compound PTT safety timeout triggered - stopping recording");
+        this.forceStopMacCompoundPush("timeout");
+      }
+    }, MAX_PUSH_DURATION_MS);
+
+    this.macCompoundPushState = {
+      active: true,
+      downTime,
+      isRecording: false,
+      requiredModifiers,
+      safetyTimeoutId,
+    };
+
+    setTimeout(() => {
+      if (!this.macCompoundPushState || this.macCompoundPushState.downTime !== downTime) {
+        return;
+      }
+
+      if (!this.macCompoundPushState.isRecording) {
+        this.macCompoundPushState.isRecording = true;
+        this.sendStartDictation();
+      }
+    }, MIN_HOLD_DURATION_MS);
+  }
+
+  handleMacPushModifierUp(modifier) {
+    if (!this.macCompoundPushState?.active) {
+      return;
+    }
+
+    if (!this.macCompoundPushState.requiredModifiers.has(modifier)) {
+      return;
+    }
+
+    if (this.macCompoundPushState.safetyTimeoutId) {
+      clearTimeout(this.macCompoundPushState.safetyTimeoutId);
+    }
+
+    const wasRecording = this.macCompoundPushState.isRecording;
+    this.macCompoundPushState = null;
+
+    if (wasRecording) {
+      this.sendStopDictation();
+    } else {
+      this.hideDictationPanel();
+    }
+  }
+
+  forceStopMacCompoundPush(reason = "manual") {
+    if (!this.macCompoundPushState) {
+      return;
+    }
+
+    if (this.macCompoundPushState.safetyTimeoutId) {
+      clearTimeout(this.macCompoundPushState.safetyTimeoutId);
+    }
+
+    const wasRecording = this.macCompoundPushState.isRecording;
+    this.macCompoundPushState = null;
+
+    if (wasRecording) {
+      this.sendStopDictation();
+    }
+    this.hideDictationPanel();
+
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send("compound-ptt-force-stopped", { reason });
+    }
+  }
+
+  getMacRequiredModifiers(hotkey) {
+    const required = new Set();
+    const parts = hotkey.split("+").map((part) => part.trim());
+
+    for (const part of parts) {
+      switch (part) {
+        case "Command":
+        case "Cmd":
+        case "CommandOrControl":
+        case "Super":
+        case "Meta":
+          required.add("command");
+          break;
+        case "Control":
+        case "Ctrl":
+          required.add("control");
+          break;
+        case "Alt":
+        case "Option":
+          required.add("option");
+          break;
+        case "Shift":
+          required.add("shift");
+          break;
+        case "Fn":
+          required.add("fn");
+          break;
+        default:
+          break;
+      }
+    }
+
+    return required;
   }
 
   sendStartDictation() {
@@ -162,9 +328,7 @@ class WindowManager {
       return;
     }
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      if (!this.mainWindow.isVisible()) {
-        this.mainWindow.show();
-      }
+      this.showDictationPanel();
       this.mainWindow.webContents.send("start-dictation");
     }
   }
@@ -178,18 +342,16 @@ class WindowManager {
     }
   }
 
-  async getActivationMode() {
-    if (!this.mainWindow || this.mainWindow.isDestroyed()) {
-      return "tap";
-    }
-    try {
-      const mode = await this.mainWindow.webContents.executeJavaScript(
-        `localStorage.getItem("activationMode") || "tap"`
-      );
-      return mode === "push" ? "push" : "tap";
-    } catch {
-      return "tap";
-    }
+  getActivationMode() {
+    return this._cachedActivationMode;
+  }
+
+  setActivationModeCache(mode) {
+    this._cachedActivationMode = mode === "push" ? "push" : "tap";
+  }
+
+  setFloatingIconAutoHide(enabled) {
+    this._floatingIconAutoHide = Boolean(enabled);
   }
 
   setHotkeyListeningMode(enabled) {
@@ -216,6 +378,17 @@ class WindowManager {
     return await this.dragManager.stopWindowDrag();
   }
 
+  openExternalUrl(url, showError = true) {
+    shell.openExternal(url).catch((error) => {
+      if (showError) {
+        dialog.showErrorBox(
+          i18nMain.t("dialog.openLink.title"),
+          i18nMain.t("dialog.openLink.message", { url, error: error.message })
+        );
+      }
+    });
+  }
+
   async createControlPanelWindow() {
     if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
       if (this.controlPanelWindow.isMinimized()) {
@@ -230,12 +403,39 @@ class WindowManager {
 
     this.controlPanelWindow = new BrowserWindow(CONTROL_PANEL_CONFIG);
 
+    this.controlPanelWindow.webContents.on("will-navigate", (event, url) => {
+      const appUrl = DevServerManager.getAppUrl(true);
+      const controlPanelUrl = appUrl.startsWith("http") ? appUrl : `file://${appUrl}`;
+
+      if (
+        url.startsWith(controlPanelUrl) ||
+        url.startsWith("file://") ||
+        url.startsWith("devtools://")
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+      this.openExternalUrl(url);
+    });
+
+    this.controlPanelWindow.webContents.setWindowOpenHandler(({ url }) => {
+      this.openExternalUrl(url);
+      return { action: "deny" };
+    });
+
+    this.controlPanelWindow.webContents.on("did-create-window", (childWindow, details) => {
+      childWindow.close();
+      if (details.url && !details.url.startsWith("devtools://")) {
+        this.openExternalUrl(details.url, false);
+      }
+    });
+
     const visibilityTimer = setTimeout(() => {
       if (!this.controlPanelWindow || this.controlPanelWindow.isDestroyed()) {
         return;
       }
       if (!this.controlPanelWindow.isVisible()) {
-        console.warn("Control panel did not become visible in time; forcing show");
         this.controlPanelWindow.show();
         this.controlPanelWindow.focus();
       }
@@ -247,7 +447,6 @@ class WindowManager {
 
     this.controlPanelWindow.once("ready-to-show", () => {
       clearVisibilityTimer();
-      // Show dock icon on macOS when control panel opens
       if (process.platform === "darwin" && app.dock) {
         app.dock.show();
       }
@@ -271,12 +470,11 @@ class WindowManager {
       this.controlPanelWindow = null;
     });
 
-    // Set up menu for control panel to ensure text input works
     MenuManager.setupControlPanelMenu(this.controlPanelWindow);
 
     this.controlPanelWindow.webContents.on("did-finish-load", () => {
       clearVisibilityTimer();
-      this.controlPanelWindow.setTitle("Control Panel");
+      this.controlPanelWindow.setTitle(i18nMain.t("window.controlPanelTitle"));
     });
 
     this.controlPanelWindow.webContents.on(
@@ -286,7 +484,6 @@ class WindowManager {
           return;
         }
         clearVisibilityTimer();
-        console.error("Failed to load control panel:", errorCode, errorDescription, validatedURL);
         if (process.env.NODE_ENV !== "development") {
           this.showLoadFailureDialog("Control panel", errorCode, errorDescription, validatedURL);
         }
@@ -327,7 +524,6 @@ class WindowManager {
 
     this.controlPanelWindow.hide();
 
-    // Hide dock icon on macOS when control panel is hidden
     if (process.platform === "darwin" && app.dock) {
       app.dock.hide();
     }
@@ -362,15 +558,20 @@ class WindowManager {
 
     // Safety timeout: force show the window if ready-to-show doesn't fire within 10 seconds
     const showTimeout = setTimeout(() => {
-      if (this.mainWindow && !this.mainWindow.isDestroyed() && !this.mainWindow.isVisible()) {
-        this.mainWindow.show();
+      if (
+        this.mainWindow &&
+        !this.mainWindow.isDestroyed() &&
+        !this.mainWindow.isVisible() &&
+        !this._floatingIconAutoHide
+      ) {
+        this.showDictationPanel();
       }
     }, 10000);
 
     this.mainWindow.once("ready-to-show", () => {
       clearTimeout(showTimeout);
       this.enforceMainWindowOnTop();
-      if (!this.mainWindow.isVisible()) {
+      if (!this.mainWindow.isVisible() && !this._floatingIconAutoHide) {
         if (typeof this.mainWindow.showInactive === "function") {
           this.mainWindow.showInactive();
         } else {
@@ -400,21 +601,34 @@ class WindowManager {
     }
   }
 
+  refreshLocalizedUi() {
+    MenuManager.setupMainMenu();
+
+    if (this.controlPanelWindow && !this.controlPanelWindow.isDestroyed()) {
+      MenuManager.setupControlPanelMenu(this.controlPanelWindow);
+      this.controlPanelWindow.setTitle(i18nMain.t("window.controlPanelTitle"));
+    }
+
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.setTitle(i18nMain.t("window.voiceRecorderTitle"));
+    }
+  }
+
   showLoadFailureDialog(windowName, errorCode, errorDescription, validatedURL) {
     if (this.loadErrorShown) {
       return;
     }
     this.loadErrorShown = true;
     const detailLines = [
-      `Window: ${windowName}`,
-      `Error ${errorCode}: ${errorDescription}`,
-      validatedURL ? `URL: ${validatedURL}` : null,
-      "Try reinstalling the app or launching with --log-level=debug.",
+      i18nMain.t("dialog.loadFailure.detail.window", { windowName }),
+      i18nMain.t("dialog.loadFailure.detail.error", { errorCode, errorDescription }),
+      validatedURL ? i18nMain.t("dialog.loadFailure.detail.url", { url: validatedURL }) : null,
+      i18nMain.t("dialog.loadFailure.detail.hint"),
     ].filter(Boolean);
     dialog.showMessageBox({
       type: "error",
-      title: "OpenWhispr failed to load",
-      message: "OpenWhispr could not load its UI.",
+      title: i18nMain.t("dialog.loadFailure.title"),
+      message: i18nMain.t("dialog.loadFailure.message"),
       detail: detailLines.join("\n"),
     });
   }

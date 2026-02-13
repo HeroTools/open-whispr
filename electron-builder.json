@@ -1,6 +1,10 @@
 {
   "appId": "com.herotools.openwispr",
   "productName": "OpenWhispr",
+  "protocols": {
+    "name": "OpenWhispr Protocol",
+    "schemes": ["openwhispr"]
+  },
   "directories": {
     "output": "dist"
   },
@@ -14,6 +18,7 @@
     "src/dist/**/*",
     "src/helpers/**/*",
     "src/config/**/*",
+    "src/locales/**/*",
     "src/hooks/**/*",
     "src/models/**/*",
     "src/services/localReasoningBridge.js",
@@ -77,38 +82,37 @@
     "!**/node_modules/**/CHANGELOG*",
     "!**/node_modules/**/.github/**"
   ],
-  "asarUnpack": [
-    "**/node_modules/ffmpeg-static/**/*",
-    "**/node_modules/better-sqlite3/**/*"
-  ],
+  "asarUnpack": ["**/node_modules/ffmpeg-static/**/*", "**/node_modules/better-sqlite3/**/*"],
   "extraResources": [
     "src/assets/**/*",
-    "resources/macos-globe-listener.swift",
     "resources/bin/macos-globe-listener",
+    "resources/bin/macos-fast-paste",
+    "resources/bin/linux-fast-paste",
     {
       "from": "resources/bin/",
       "to": "bin/",
-      "filter": ["whisper-cpp-*", "whisper-server-*", "llama-server-*", "sherpa-onnx-*", "windows-key-listener*", "*.dylib", "*.dll", "*.so*"]
+      "filter": [
+        "whisper-cpp-*",
+        "whisper-server-*",
+        "llama-server-*",
+        "sherpa-onnx-*",
+        "windows-key-listener*",
+        "*.dylib",
+        "*.dll",
+        "*.so*"
+      ]
     }
   ],
   "mac": {
     "category": "public.app-category.productivity",
-    "target": [
-      {
-        "target": "dmg",
-        "arch": ["x64", "arm64"]
-      },
-      {
-        "target": "zip",
-        "arch": ["x64", "arm64"]
-      }
-    ],
+    "target": ["dmg", "zip"],
     "icon": "src/assets/icon.icns",
     "gatekeeperAssess": false,
     "hardenedRuntime": true,
     "entitlements": "resources/mac/entitlements.mac.plist",
     "entitlementsInherit": "resources/mac/entitlements.mac.plist",
     "identity": "HeroTools Inc. (9R85XFMH59)",
+    "notarize": true,
     "extendInfo": {
       "LSUIElement": false,
       "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
@@ -116,10 +120,7 @@
     }
   },
   "win": {
-    "target": [
-      "nsis",
-      "portable"
-    ],
+    "target": ["nsis", "portable"],
     "icon": "src/assets/icon.ico",
     "extraResources": [
       {
@@ -129,12 +130,7 @@
     ]
   },
   "linux": {
-    "target": [
-      "AppImage",
-      "deb",
-      "rpm",
-      "tar.gz"
-    ],
+    "target": ["AppImage", "deb", "rpm", "tar.gz"],
     "icon": "src/assets/icon.png",
     "category": "Utility",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
@@ -160,10 +156,24 @@
   },
   "deb": {
     "afterRemove": "resources/linux/after-remove.sh",
-    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype"]
+    "fpm": [
+      "--deb-suggests",
+      "xdotool",
+      "--deb-suggests",
+      "wtype",
+      "--deb-recommends",
+      "wl-clipboard"
+    ]
   },
   "rpm": {
-    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype"]
+    "fpm": [
+      "--rpm-tag",
+      "Suggests: xdotool",
+      "--rpm-tag",
+      "Suggests: wtype",
+      "--rpm-tag",
+      "Recommends: wl-clipboard"
+    ]
   },
   "nsis": {
     "oneClick": false,

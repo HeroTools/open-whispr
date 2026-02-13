@@ -1,4 +1,3 @@
-// Import SVG icons as URLs for proper Vite bundling
 import openaiIcon from "@/assets/icons/providers/openai.svg";
 import anthropicIcon from "@/assets/icons/providers/anthropic.svg";
 import geminiIcon from "@/assets/icons/providers/gemini.svg";
@@ -24,4 +23,10 @@ export const PROVIDER_ICONS: Record<string, string> = {
 
 export function getProviderIcon(provider: string): string | undefined {
   return PROVIDER_ICONS[provider];
+}
+
+export const MONOCHROME_PROVIDERS = ["openai", "whisper", "anthropic", "openai-oss"] as const;
+
+export function isMonochromeProvider(provider: string): boolean {
+  return (MONOCHROME_PROVIDERS as readonly string[]).includes(provider);
 }

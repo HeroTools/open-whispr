@@ -1,9 +1,16 @@
 const path = require("path");
 
+const WINDOW_SIZES = {
+  BASE: { width: 96, height: 96 },
+  WITH_MENU: { width: 240, height: 280 },
+  WITH_TOAST: { width: 400, height: 500 },
+  EXPANDED: { width: 400, height: 500 },
+};
+
 // Main dictation window configuration
 const MAIN_WINDOW_CONFIG = {
-  width: 240,
-  height: 240,
+  width: WINDOW_SIZES.BASE.width,
+  height: WINDOW_SIZES.BASE.height,
   title: "Voice Recorder",
   webPreferences: {
     preload: path.join(__dirname, "..", "..", "preload.js"),
@@ -33,7 +40,13 @@ const CONTROL_PANEL_CONFIG = {
     preload: path.join(__dirname, "..", "..", "preload.js"),
     nodeIntegration: false,
     contextIsolation: true,
+    // sandbox: false is required because the preload script bridges IPC
+    // between the renderer and main process.
     sandbox: false,
+    // webSecurity: false disables same-origin policy. Required because in
+    // production the renderer loads from a file:// origin but makes
+    // cross-origin fetch calls to Neon Auth, Gemini, OpenAI, and Groq APIs
+    // directly from the browser. These would be blocked by CORS otherwise.
     webSecurity: false,
     spellcheck: false,
   },
@@ -46,24 +59,22 @@ const CONTROL_PANEL_CONFIG = {
     trafficLightPosition: { x: 20, y: 20 },
   }),
   transparent: false,
-  backgroundColor: "#ffffff",
   minimizable: true,
   maximizable: true,
   closable: true,
   fullscreenable: true,
-  skipTaskbar: false, // Ensure control panel stays in taskbar
-  alwaysOnTop: false, // Control panel should not be always on top
-  visibleOnAllWorkspaces: false, // Control panel should stay in its workspace
-  type: "normal", // Ensure it's a normal window, not a panel
+  skipTaskbar: false,
+  alwaysOnTop: false,
+  visibleOnAllWorkspaces: false,
+  type: "normal",
 };
 
-// Window positioning utilities
 class WindowPositionUtil {
-  static getMainWindowPosition(display) {
-    const { width, height } = MAIN_WINDOW_CONFIG;
-    const MARGIN = 20;
-    const x = Math.max(0, display.bounds.x + display.workArea.width - width - MARGIN);
+  static getMainWindowPosition(display, customSize = null) {
+    const { width, height } = customSize || WINDOW_SIZES.BASE;
+    const MARGIN = 24;
     const workArea = display.workArea || display.bounds;
+    const x = Math.max(0, workArea.x + workArea.width - width - MARGIN);
     const y = Math.max(0, workArea.y + workArea.height - height - MARGIN);
     return { x, y, width, height };
   }
@@ -79,32 +90,20 @@ class WindowPositionUtil {
       });
       window.setFullScreenable(false);
 
-      // Ensure window level is maintained
       if (window.isVisible()) {
         window.setAlwaysOnTop(true, "floating", 1);
       }
     } else if (process.platform === "win32") {
       window.setAlwaysOnTop(true, "pop-up-menu");
     } else {
-      // Linux and other platforms
       window.setAlwaysOnTop(true, "screen-saver");
     }
-
-    // Bring window to front if visible
-    if (window.isVisible()) {
-      window.moveTop();
-    }
-  }
-
-  static setupControlPanel(window) {
-    // Control panel should behave like a normal application window
-    // This is only called once during window creation
-    // No need to repeatedly set these values
   }
 }
 
 module.exports = {
   MAIN_WINDOW_CONFIG,
   CONTROL_PANEL_CONFIG,
+  WINDOW_SIZES,
   WindowPositionUtil,
 };

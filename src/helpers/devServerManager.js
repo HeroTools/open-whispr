@@ -1,4 +1,19 @@
-const DEV_SERVER_PORT = 5174;
+const DEFAULT_DEV_SERVER_PORT = 5183;
+const parseDevServerPort = () => {
+  const raw =
+    process.env.OPENWHISPR_DEV_SERVER_PORT ||
+    process.env.VITE_DEV_SERVER_PORT ||
+    String(DEFAULT_DEV_SERVER_PORT);
+  const parsed = Number(raw);
+
+  if (!Number.isInteger(parsed) || parsed < 1 || parsed > 65535) {
+    return DEFAULT_DEV_SERVER_PORT;
+  }
+
+  return parsed;
+};
+
+const DEV_SERVER_PORT = parseDevServerPort();
 const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}/`;
 
 class DevServerManager {

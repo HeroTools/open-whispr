@@ -3,22 +3,16 @@
  * Supports both single keys and compound hotkeys (e.g., "CommandOrControl+Shift+K").
  */
 
-/**
- * Detects if the current platform is macOS.
- */
-function isMacPlatform(): boolean {
-  if (typeof navigator === "undefined") return false;
-  return /Mac|Darwin/.test(navigator.platform);
-}
+import { getPlatform, type Platform } from "./platform";
 
 /**
  * Maps Electron accelerator parts to user-friendly labels.
  * Automatically adapts to the current platform (macOS vs Windows/Linux).
  */
-function formatModifierPart(part: string, isMac: boolean): string {
+function formatModifierPart(part: string, platform: Platform): string {
   switch (part) {
     case "CommandOrControl":
-      return isMac ? "Cmd" : "Ctrl";
+      return platform === "darwin" ? "Cmd" : "Ctrl";
     case "Command":
     case "Cmd":
       return "Cmd";
@@ -26,14 +20,18 @@ function formatModifierPart(part: string, isMac: boolean): string {
     case "Ctrl":
       return "Ctrl";
     case "Alt":
-      return isMac ? "Option" : "Alt";
+      return platform === "darwin" ? "Option" : "Alt";
     case "Option":
       return "Option";
     case "Shift":
       return "Shift";
     case "Super":
     case "Meta":
-      return isMac ? "Cmd" : "Win";
+      return platform === "darwin" ? "Cmd" : platform === "win32" ? "Win" : "Super";
+    case "Win":
+      return platform === "win32" ? "Win" : "Super";
+    case "Fn":
+      return "Fn";
     default:
       return part;
   }
@@ -49,30 +47,47 @@ function formatModifierPart(part: string, isMac: boolean): string {
  * formatHotkeyLabel("CommandOrControl+Shift+K") // "Cmd+Shift+K" on macOS, "Ctrl+Shift+K" on Windows
  * formatHotkeyLabel("GLOBE") // "Globe"
  * formatHotkeyLabel("`") // "`"
- * formatHotkeyLabel(null) // "`"
+ * formatHotkeyLabel(null) // platform default
  */
 export function formatHotkeyLabel(hotkey?: string | null): string {
-  // Handle empty/null values - return default backtick
+  const platform = getPlatform();
+  const resolvedHotkey = hotkey && hotkey.trim() !== "" ? hotkey : getDefaultHotkey();
+  return formatHotkeyLabelForPlatform(resolvedHotkey, platform);
+}
+
+export function formatHotkeyLabelForPlatform(hotkey: string, platform: Platform): string {
   if (!hotkey || hotkey.trim() === "") {
-    return "`";
+    return "";
   }
 
-  // Handle special GLOBE key for macOS
   if (hotkey === "GLOBE") {
     return "Globe/Fn";
   }
 
-  // Handle compound hotkeys (contains "+")
+  // Right-side single modifiers
+  const rightSideMap: Record<string, string> = {
+    RightOption: platform === "darwin" ? "Right Option" : "Right Alt",
+    RightAlt: "Right Alt",
+    RightCommand: "Right Cmd",
+    RightCmd: "Right Cmd",
+    RightControl: "Right Ctrl",
+    RightCtrl: "Right Ctrl",
+    RightShift: "Right Shift",
+    RightSuper: platform === "win32" ? "Right Win" : "Right Super",
+    RightMeta:
+      platform === "darwin" ? "Right Cmd" : platform === "win32" ? "Right Win" : "Right Super",
+    RightWin: "Right Win",
+  };
+  if (rightSideMap[hotkey]) {
+    return rightSideMap[hotkey];
+  }
+
   if (hotkey.includes("+")) {
-    const isMac = isMacPlatform();
     const parts = hotkey.split("+");
-
-    const formattedParts = parts.map((part) => formatModifierPart(part, isMac));
-
+    const formattedParts = parts.map((part) => formatModifierPart(part, platform));
     return formattedParts.join("+");
   }
 
-  // Single key - return as-is
   return hotkey;
 }
 
@@ -114,11 +129,11 @@ export function isCompoundHotkey(hotkey: string): boolean {
 /**
  * Gets the default hotkey for the current platform.
  * - macOS: GLOBE key (Fn key on modern Macs)
- * - Windows/Linux: Backtick (`)
+ * - Windows/Linux: Control+Super (Ctrl+Win / Ctrl+Super)
  */
 export function getDefaultHotkey(): string {
-  const isMac = isMacPlatform();
-  return isMac ? "GLOBE" : "`";
+  const platform = getPlatform();
+  return platform === "darwin" ? "GLOBE" : "Control+Super";
 }
 
 /**

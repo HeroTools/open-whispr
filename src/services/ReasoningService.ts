@@ -3,15 +3,9 @@ import { BaseReasoningService, ReasoningConfig } from "./BaseReasoningService";
 import { SecureCache } from "../utils/SecureCache";
 import { withRetry, createApiRetryStrategy } from "../utils/retry";
 import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../config/constants";
-import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../config/prompts";
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
-
-/**
- * @deprecated Use UNIFIED_SYSTEM_PROMPT from ../config/prompts instead
- * Kept for backwards compatibility with PromptStudio UI
- */
-export const DEFAULT_PROMPTS = LEGACY_PROMPTS;
+import { withSessionRefresh } from "../lib/neonAuth";
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
@@ -23,6 +17,10 @@ class ReasoningService extends BaseReasoningService {
     super();
     this.apiKeyCache = new SecureCache();
     this.cacheCleanupStop = this.apiKeyCache.startAutoCleanup();
+
+    if (typeof window !== "undefined") {
+      window.addEventListener("beforeunload", () => this.destroy());
+    }
   }
 
   private getConfiguredOpenAIBase(): string {
@@ -47,7 +45,6 @@ class ReasoningService extends BaseReasoningService {
       const stored = window.localStorage.getItem("cloudReasoningBaseUrl") || "";
       const trimmed = stored.trim();
 
-      // If no custom URL is stored, use the default
       if (!trimmed) {
         logger.logReasoning("CUSTOM_REASONING_ENDPOINT_CHECK", {
           hasCustomUrl: false,
@@ -68,8 +65,6 @@ class ReasoningService extends BaseReasoningService {
         defaultEndpoint: API_ENDPOINTS.OPENAI_BASE,
       });
 
-      // Don't use the custom URL if it's a known non-OpenAI provider URL
-      // These should be handled by their dedicated provider methods
       const knownNonOpenAIUrls = [
         "api.groq.com",
         "api.anthropic.com",
@@ -178,9 +173,7 @@ class ReasoningService extends BaseReasoningService {
         ReasoningService.OPENAI_ENDPOINT_PREF_STORAGE_KEY,
         JSON.stringify(data)
       );
-    } catch {
-      // Ignore storage errors
-    }
+    } catch {}
   }
 
   private async getApiKey(
@@ -205,7 +198,6 @@ class ReasoningService extends BaseReasoningService {
         keyPreview: trimmedKey ? `${trimmedKey.substring(0, 8)}...` : "none",
       });
 
-      // Custom endpoints may not require an API key
       return trimmedKey;
     }
 
@@ -258,10 +250,6 @@ class ReasoningService extends BaseReasoningService {
     return apiKey;
   }
 
-  /**
-   * Shared helper for OpenAI-compatible Chat Completions API calls.
-   * Used by Groq and as fallback for OpenAI.
-   */
   private async callChatCompletionsApi(
     endpoint: string,
     apiKey: string,
@@ -271,7 +259,7 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt = this.getSystemPrompt(agentName);
+    const systemPrompt = this.getSystemPrompt(agentName, text);
     const userPrompt = text;
 
     const messages = [
@@ -296,12 +284,10 @@ class ReasoningService extends BaseReasoningService {
         ),
     };
 
-    // Check model registry for provider-specific options
-    // Note: chat_template_kwargs is not supported by Groq's API
+    // Disable thinking for Groq Qwen models
     const modelDef = getCloudModel(model);
-    if (modelDef?.disableThinking && providerName.toLowerCase() !== "groq") {
-      requestBody.chat_template_kwargs = { enable_thinking: false };
-      logger.logReasoning("THINKING_DISABLED", { model, provider: providerName });
+    if (modelDef?.disableThinking && providerName.toLowerCase() === "groq") {
+      requestBody.reasoning_effort = "none";
     }
 
     logger.logReasoning(`${providerName.toUpperCase()}_REQUEST`, {
@@ -312,55 +298,66 @@ class ReasoningService extends BaseReasoningService {
     });
 
     const response = await withRetry(async () => {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        let errorData: any = { error: res.statusText };
-
-        try {
-          errorData = JSON.parse(errorText);
-        } catch {
-          errorData = { error: errorText || res.statusText };
-        }
-
-        logger.logReasoning(`${providerName.toUpperCase()}_API_ERROR_DETAIL`, {
-          status: res.status,
-          statusText: res.statusText,
-          error: errorData,
-          errorMessage: errorData.error?.message || errorData.message || errorData.error,
-          fullResponse: errorText.substring(0, 500),
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      try {
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKey}`,
+          },
+          body: JSON.stringify(requestBody),
+          signal: controller.signal,
         });
 
-        const errorMessage =
-          errorData.error?.message ||
-          errorData.message ||
-          errorData.error ||
-          `${providerName} API error: ${res.status}`;
-        throw new Error(errorMessage);
+        if (!res.ok) {
+          const errorText = await res.text();
+          let errorData: any = { error: res.statusText };
+
+          try {
+            errorData = JSON.parse(errorText);
+          } catch {
+            errorData = { error: errorText || res.statusText };
+          }
+
+          logger.logReasoning(`${providerName.toUpperCase()}_API_ERROR_DETAIL`, {
+            status: res.status,
+            statusText: res.statusText,
+            error: errorData,
+            errorMessage: errorData.error?.message || errorData.message || errorData.error,
+            fullResponse: errorText.substring(0, 500),
+          });
+
+          const errorMessage =
+            errorData.error?.message ||
+            errorData.message ||
+            errorData.error ||
+            `${providerName} API error: ${res.status}`;
+          throw new Error(errorMessage);
+        }
+
+        const jsonResponse = await res.json();
+
+        logger.logReasoning(`${providerName.toUpperCase()}_RAW_RESPONSE`, {
+          hasResponse: !!jsonResponse,
+          responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
+          hasChoices: !!jsonResponse?.choices,
+          choicesLength: jsonResponse?.choices?.length || 0,
+          fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
+        });
+
+        return jsonResponse;
+      } catch (error) {
+        if ((error as Error).name === "AbortError") {
+          throw new Error("Request timed out after 30s");
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeoutId);
       }
-
-      const jsonResponse = await res.json();
-
-      logger.logReasoning(`${providerName.toUpperCase()}_RAW_RESPONSE`, {
-        hasResponse: !!jsonResponse,
-        responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
-        hasChoices: !!jsonResponse?.choices,
-        choicesLength: jsonResponse?.choices?.length || 0,
-        fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
-      });
-
-      return jsonResponse;
     }, createApiRetryStrategy());
 
-    // Extract text from Chat Completions format
     if (!response.choices || !response.choices[0]) {
       logger.logReasoning(`${providerName.toUpperCase()}_RESPONSE_ERROR`, {
         model,
@@ -440,6 +437,9 @@ class ReasoningService extends BaseReasoningService {
         case "groq":
           result = await this.processWithGroq(text, model, agentName, config);
           break;
+        case "openwhispr":
+          result = await this.processWithOpenWhispr(text, model, agentName, config);
+          break;
         default:
           throw new Error(`Unsupported reasoning provider: ${provider}`);
       }
@@ -462,7 +462,6 @@ class ReasoningService extends BaseReasoningService {
         error: (error as Error).message,
         stack: (error as Error).stack,
       });
-      // Re-throw error with provider context
       throw error;
     }
   }
@@ -497,16 +496,14 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = this.getSystemPrompt(agentName);
+      const systemPrompt = this.getSystemPrompt(agentName, text);
       const userPrompt = text;
 
-      // Build messages array (used by both APIs)
       const messages = [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ];
 
-      // Add temperature for older models (GPT-4 and earlier)
       const isOlderModel = model && (model.startsWith("gpt-4") || model.startsWith("gpt-3"));
 
       const openAiBase = this.getConfiguredOpenAIBase();
@@ -534,16 +531,15 @@ class ReasoningService extends BaseReasoningService {
         let lastError: Error | null = null;
 
         for (const { url: endpoint, type } of endpointCandidates) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
           try {
-            // Build request body based on endpoint type
             const requestBody: any = { model };
 
             if (type === "responses") {
-              // Responses API uses 'input' parameter
               requestBody.input = messages;
               requestBody.store = false;
             } else {
-              // Chat Completions API uses 'messages' parameter
               requestBody.messages = messages;
               if (isOlderModel) {
                 requestBody.temperature = config.temperature || 0.3;
@@ -557,6 +553,7 @@ class ReasoningService extends BaseReasoningService {
                 Authorization: `Bearer ${apiKey}`,
               },
               body: JSON.stringify(requestBody),
+              signal: controller.signal,
             });
 
             if (!res.ok) {
@@ -583,6 +580,9 @@ class ReasoningService extends BaseReasoningService {
             this.rememberOpenAiPreference(openAiBase, type);
             return res.json();
           } catch (error) {
+            if ((error as Error).name === "AbortError") {
+              throw new Error("Request timed out after 30s");
+            }
             lastError = error as Error;
             if (type === "responses") {
               logger.logReasoning("OPENAI_ENDPOINT_FALLBACK", {
@@ -592,17 +592,17 @@ class ReasoningService extends BaseReasoningService {
               continue;
             }
             throw error;
+          } finally {
+            clearTimeout(timeoutId);
           }
         }
 
         throw lastError || new Error("No OpenAI endpoint responded");
       }, createApiRetryStrategy());
 
-      // Detect the API response format (Responses API vs Chat Completions)
       const isResponsesApi = Array.isArray(response?.output);
       const isChatCompletions = Array.isArray(response?.choices);
 
-      // Log the raw response for debugging
       logger.logReasoning("OPENAI_RAW_RESPONSE", {
         model,
         format: isResponsesApi ? "responses" : isChatCompletions ? "chat_completions" : "unknown",
@@ -614,7 +614,6 @@ class ReasoningService extends BaseReasoningService {
         usage: response.usage,
       });
 
-      // Extract text from the Responses API or Chat Completions formats
       let responseText = "";
 
       if (isResponsesApi) {
@@ -671,14 +670,13 @@ class ReasoningService extends BaseReasoningService {
         isEmpty: responseText.length === 0,
       });
 
-      // If we got an empty response, return the original text as fallback
       if (!responseText) {
         logger.logReasoning("OPENAI_EMPTY_RESPONSE_FALLBACK", {
           model,
           originalTextLength: text.length,
           reason: "Empty response from API",
         });
-        return text; // Return original text if API returns nothing
+        return text;
       }
 
       return responseText;
@@ -706,7 +704,6 @@ class ReasoningService extends BaseReasoningService {
       environment: typeof window !== "undefined" ? "browser" : "node",
     });
 
-    // Use IPC to communicate with main process for Anthropic API
     if (typeof window !== "undefined" && window.electronAPI) {
       const startTime = Date.now();
 
@@ -715,12 +712,11 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const result = await window.electronAPI.processAnthropicReasoning(
-        text,
-        model,
-        agentName,
-        config
-      );
+      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
+        ...config,
+        systemPrompt,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -759,8 +755,6 @@ class ReasoningService extends BaseReasoningService {
       environment: typeof window !== "undefined" ? "browser" : "node",
     });
 
-    // Instead of importing directly, we'll use IPC to communicate with main process
-    // For local models, we need to use IPC to communicate with the main process
     if (typeof window !== "undefined" && window.electronAPI) {
       const startTime = Date.now();
 
@@ -769,7 +763,11 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, config);
+      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
+        ...config,
+        systemPrompt,
+      });
 
       const processingTime = Date.now() - startTime;
 
@@ -822,7 +820,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = this.getSystemPrompt(agentName);
+      const systemPrompt = this.getSystemPrompt(agentName, text);
       const userPrompt = text;
 
       const requestBody = {
@@ -840,7 +838,7 @@ class ReasoningService extends BaseReasoningService {
           maxOutputTokens:
             config.maxTokens ||
             Math.max(
-              2000, // Gemini 3 Pro need more tokens for thinking processes
+              2000,
               this.calculateMaxTokens(
                 text.length,
                 TOKEN_LIMITS.MIN_TOKENS_GEMINI,
@@ -861,52 +859,64 @@ class ReasoningService extends BaseReasoningService {
             requestBody: JSON.stringify(requestBody).substring(0, 200),
           });
 
-          const res = await fetch(`${API_ENDPOINTS.GEMINI}/models/${model}:generateContent`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "x-goog-api-key": apiKey,
-            },
-            body: JSON.stringify(requestBody),
-          });
-
-          if (!res.ok) {
-            const errorText = await res.text();
-            let errorData: any = { error: res.statusText };
-
-            try {
-              errorData = JSON.parse(errorText);
-            } catch {
-              errorData = { error: errorText || res.statusText };
-            }
-
-            logger.logReasoning("GEMINI_API_ERROR_DETAIL", {
-              status: res.status,
-              statusText: res.statusText,
-              error: errorData,
-              errorMessage: errorData.error?.message || errorData.message || errorData.error,
-              fullResponse: errorText.substring(0, 500),
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 30000);
+          try {
+            const res = await fetch(`${API_ENDPOINTS.GEMINI}/models/${model}:generateContent`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "x-goog-api-key": apiKey,
+              },
+              body: JSON.stringify(requestBody),
+              signal: controller.signal,
             });
 
-            const errorMessage =
-              errorData.error?.message ||
-              errorData.message ||
-              errorData.error ||
-              `Gemini API error: ${res.status}`;
-            throw new Error(errorMessage);
+            if (!res.ok) {
+              const errorText = await res.text();
+              let errorData: any = { error: res.statusText };
+
+              try {
+                errorData = JSON.parse(errorText);
+              } catch {
+                errorData = { error: errorText || res.statusText };
+              }
+
+              logger.logReasoning("GEMINI_API_ERROR_DETAIL", {
+                status: res.status,
+                statusText: res.statusText,
+                error: errorData,
+                errorMessage: errorData.error?.message || errorData.message || errorData.error,
+                fullResponse: errorText.substring(0, 500),
+              });
+
+              const errorMessage =
+                errorData.error?.message ||
+                errorData.message ||
+                errorData.error ||
+                `Gemini API error: ${res.status}`;
+              throw new Error(errorMessage);
+            }
+
+            const jsonResponse = await res.json();
+
+            logger.logReasoning("GEMINI_RAW_RESPONSE", {
+              hasResponse: !!jsonResponse,
+              responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
+              hasCandidates: !!jsonResponse?.candidates,
+              candidatesLength: jsonResponse?.candidates?.length || 0,
+              fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
+            });
+
+            return jsonResponse;
+          } catch (error) {
+            if ((error as Error).name === "AbortError") {
+              throw new Error("Request timed out after 30s");
+            }
+            throw error;
+          } finally {
+            clearTimeout(timeoutId);
           }
-
-          const jsonResponse = await res.json();
-
-          logger.logReasoning("GEMINI_RAW_RESPONSE", {
-            hasResponse: !!jsonResponse,
-            responseKeys: jsonResponse ? Object.keys(jsonResponse) : [],
-            hasCandidates: !!jsonResponse?.candidates,
-            candidatesLength: jsonResponse?.candidates?.length || 0,
-            fullResponse: JSON.stringify(jsonResponse).substring(0, 500),
-          });
-
-          return jsonResponse;
         }, createApiRetryStrategy());
       } catch (fetchError) {
         logger.logReasoning("GEMINI_FETCH_ERROR", {
@@ -916,7 +926,6 @@ class ReasoningService extends BaseReasoningService {
         throw fetchError;
       }
 
-      // Check if response has the expected structure
       if (!response.candidates || !response.candidates[0]) {
         logger.logReasoning("GEMINI_RESPONSE_ERROR", {
           model,
@@ -927,7 +936,6 @@ class ReasoningService extends BaseReasoningService {
         throw new Error("Invalid response structure from Gemini API");
       }
 
-      // Check if the response has actual content
       const candidate = response.candidates[0];
       if (!candidate.content?.parts?.[0]?.text) {
         logger.logReasoning("GEMINI_EMPTY_RESPONSE", {
@@ -938,7 +946,6 @@ class ReasoningService extends BaseReasoningService {
           response: JSON.stringify(candidate).substring(0, 500),
         });
 
-        // If finish reason is MAX_TOKENS, the model hit its limit
         if (candidate.finishReason === "MAX_TOKENS") {
           throw new Error(
             "Gemini reached token limit before generating response. Try a shorter input or increase max tokens."
@@ -1007,9 +1014,87 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
+  private async processWithOpenWhispr(
+    text: string,
+    model: string,
+    agentName: string | null = null,
+    config: ReasoningConfig = {}
+  ): Promise<string> {
+    logger.logReasoning("OPENWHISPR_START", { model, agentName });
+
+    if (this.isProcessing) {
+      throw new Error("Already processing a request");
+    }
+
+    this.isProcessing = true;
+
+    try {
+      const customDictionary = this.getCustomDictionary();
+      const language = this.getPreferredLanguage();
+      const locale = this.getUiLanguage();
+
+      // Use withSessionRefresh to handle AUTH_EXPIRED automatically
+      const result = await withSessionRefresh(async () => {
+        const res = await (window as any).electronAPI.cloudReason(text, {
+          model,
+          agentName,
+          customDictionary,
+          customPrompt: this.getCustomPrompt(),
+          language,
+          locale,
+        });
+
+        if (!res.success) {
+          const err: any = new Error(res.error || "OpenWhispr cloud reasoning failed");
+          err.code = res.code;
+          throw err;
+        }
+
+        return res;
+      });
+
+      logger.logReasoning("OPENWHISPR_SUCCESS", {
+        model: result.model,
+        provider: result.provider,
+        resultLength: result.text.length,
+      });
+
+      return result.text;
+    } catch (error) {
+      logger.logReasoning("OPENWHISPR_ERROR", {
+        model,
+        error: (error as Error).message,
+      });
+      throw error;
+    } finally {
+      this.isProcessing = false;
+    }
+  }
+
+  protected getCustomDictionary(): string[] {
+    try {
+      const raw = localStorage.getItem("customDictionary");
+      if (!raw) return [];
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private getCustomPrompt(): string | undefined {
+    try {
+      const raw = localStorage.getItem("customUnifiedPrompt");
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   async isAvailable(): Promise<boolean> {
     try {
-      // Check if we have at least one configured API key or local model available
       const openaiKey = await window.electronAPI?.getOpenAIKey?.();
       const anthropicKey = await window.electronAPI?.getAnthropicKey?.();
       const geminiKey = await window.electronAPI?.getGeminiKey?.();
@@ -1035,14 +1120,10 @@ class ReasoningService extends BaseReasoningService {
     }
   }
 
-  /**
-   * Clear cached API key for a specific provider or all providers.
-   * Call this when API keys change to ensure fresh keys are used.
-   * Note: "custom" keys are not cached (read fresh from localStorage each time).
-   */
-  clearApiKeyCache(provider?: "openai" | "anthropic" | "gemini" | "groq" | "custom"): void {
+  clearApiKeyCache(
+    provider?: "openai" | "anthropic" | "gemini" | "groq" | "mistral" | "custom"
+  ): void {
     if (provider) {
-      // Custom keys aren't cached, but we accept the type for consistency
       if (provider !== "custom") {
         this.apiKeyCache.delete(provider);
       }

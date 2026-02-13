@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "./button";
 import { Textarea } from "./textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "./card";
 import {
   Eye,
   Edit3,
@@ -9,10 +9,9 @@ import {
   Save,
   RotateCcw,
   Copy,
-  Sparkles,
   TestTube,
   AlertTriangle,
-  Info,
+  Check,
 } from "lucide-react";
 import { AlertDialog } from "./dialog";
 import { useDialogs } from "../../hooks/useDialogs";
@@ -20,7 +19,7 @@ import { useAgentName } from "../../utils/agentName";
 import ReasoningService from "../../services/ReasoningService";
 import { getModelProvider } from "../../models/ModelRegistry";
 import logger from "../../utils/logger";
-import { UNIFIED_SYSTEM_PROMPT, LEGACY_PROMPTS } from "../../config/prompts";
+import { UNIFIED_SYSTEM_PROMPT } from "../../config/prompts";
 
 interface PromptStudioProps {
   className?: string;
@@ -36,6 +35,8 @@ const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
   openai: { label: "OpenAI", apiKeyStorageKey: "openaiApiKey" },
   anthropic: { label: "Anthropic", apiKeyStorageKey: "anthropicApiKey" },
   gemini: { label: "Gemini", apiKeyStorageKey: "geminiApiKey" },
+  groq: { label: "Groq", apiKeyStorageKey: "groqApiKey" },
+  openwhispr: { label: "OpenWhispr Cloud" },
   custom: {
     label: "Custom endpoint",
     apiKeyStorageKey: "openaiApiKey",
@@ -44,9 +45,6 @@ const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
   local: { label: "Local" },
 };
 
-/**
- * Get the current prompt being used - either custom or default unified prompt
- */
 function getCurrentPrompt(): string {
   const customPrompt = localStorage.getItem("customUnifiedPrompt");
   if (customPrompt) {
@@ -60,36 +58,31 @@ function getCurrentPrompt(): string {
 }
 
 export default function PromptStudio({ className = "" }: PromptStudioProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"current" | "edit" | "test">("current");
   const [editedPrompt, setEditedPrompt] = useState(UNIFIED_SYSTEM_PROMPT);
-  const [testText, setTestText] = useState(
-    "um so like I was thinking we should probably you know schedule a meeting for next week to discuss the the project timeline"
-  );
+  const [testText, setTestText] = useState(() => t("promptStudio.defaultTestInput"));
   const [testResult, setTestResult] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
 
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const { agentName } = useAgentName();
 
-  // Load saved custom prompt from localStorage
   useEffect(() => {
-    // Migrate legacy two-prompt system (customPrompts → customUnifiedPrompt)
     const legacyPrompts = localStorage.getItem("customPrompts");
     if (legacyPrompts && !localStorage.getItem("customUnifiedPrompt")) {
       try {
         const parsed = JSON.parse(legacyPrompts);
-        // Use agent prompt as base (it's more comprehensive than regular prompt)
         if (parsed.agent) {
           localStorage.setItem("customUnifiedPrompt", JSON.stringify(parsed.agent));
           localStorage.removeItem("customPrompts");
-          console.log("Migrated legacy custom prompts to unified format");
         }
       } catch (e) {
         console.error("Failed to migrate legacy custom prompts:", e);
       }
     }
 
-    // Load current custom prompt
     const customPrompt = localStorage.getItem("customUnifiedPrompt");
     if (customPrompt) {
       try {
@@ -103,9 +96,8 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
   const savePrompt = () => {
     localStorage.setItem("customUnifiedPrompt", JSON.stringify(editedPrompt));
     showAlertDialog({
-      title: "Prompt Saved!",
-      description:
-        "Your custom prompt has been saved and will be used for all future AI processing.",
+      title: t("promptStudio.dialogs.saved.title"),
+      description: t("promptStudio.dialogs.saved.description"),
     });
   };
 
@@ -113,9 +105,15 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     setEditedPrompt(UNIFIED_SYSTEM_PROMPT);
     localStorage.removeItem("customUnifiedPrompt");
     showAlertDialog({
-      title: "Reset Complete",
-      description: "Prompt has been reset to the default value.",
+      title: t("promptStudio.dialogs.reset.title"),
+      description: t("promptStudio.dialogs.reset.description"),
     });
+  };
+
+  const copyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedPrompt(true);
+    setTimeout(() => setCopiedPrompt(false), 2000);
   };
 
   const testPrompt = async () => {
@@ -125,18 +123,25 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     setTestResult("");
 
     try {
-      const useReasoningModel = localStorage.getItem("useReasoningModel") !== "false";
+      const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+      const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
+      const isSignedIn = localStorage.getItem("isSignedIn") === "true";
+      const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
+
       const reasoningModel = localStorage.getItem("reasoningModel") || "";
-      const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
-      const customBaseUrl = localStorage.getItem("cloudReasoningBaseUrl") || "";
+      const reasoningProvider = isCloudMode
+        ? "openwhispr"
+        : reasoningModel
+          ? getModelProvider(reasoningModel)
+          : "openai";
 
       logger.debug(
         "PromptStudio test starting",
         {
           useReasoningModel,
+          isCloudMode,
           reasoningModel,
           reasoningProvider,
-          customBaseUrl: customBaseUrl ? `${customBaseUrl.substring(0, 50)}...` : "(none)",
           testTextLength: testText.length,
           agentName,
         },
@@ -144,117 +149,45 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       );
 
       if (!useReasoningModel) {
-        logger.debug("PromptStudio test aborted: AI enhancement disabled", {}, "prompt-studio");
-        setTestResult(
-          "AI text enhancement is disabled. Enable it in AI Text Cleanup settings to test prompts."
-        );
+        setTestResult(t("promptStudio.test.disabledReasoning"));
         return;
       }
 
-      if (!reasoningModel) {
-        logger.debug("PromptStudio test aborted: no model selected", {}, "prompt-studio");
-        setTestResult("No reasoning model selected. Choose one in AI Text Cleanup settings.");
+      // In BYOK mode, a model must be selected
+      if (!isCloudMode && !reasoningModel) {
+        setTestResult(t("promptStudio.test.noModelSelected"));
         return;
       }
 
-      const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
-        label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
-      };
-      const providerLabel = providerConfig.label;
+      // In BYOK mode with custom provider, validate base URL
+      if (!isCloudMode) {
+        const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
+          label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
+        };
 
-      if (providerConfig.baseStorageKey) {
-        const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
-        if (!baseUrl) {
-          logger.debug(
-            "PromptStudio test aborted: missing base URL for custom endpoint",
-            { provider: reasoningProvider },
-            "prompt-studio"
-          );
-          setTestResult(`${providerLabel} base URL missing. Add it in AI Text Cleanup settings.`);
-          return;
+        if (providerConfig.baseStorageKey) {
+          const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
+          if (!baseUrl) {
+            setTestResult(
+              t("promptStudio.test.baseUrlMissing", {
+                provider: providerConfig.label,
+              })
+            );
+            return;
+          }
         }
       }
 
-      // Save the current edited prompt temporarily for the test
+      // Cloud mode doesn't require a specific model — pass a placeholder if none is set
+      const modelToUse = isCloudMode ? reasoningModel || "auto" : reasoningModel;
+
       const currentCustomPrompt = localStorage.getItem("customUnifiedPrompt");
       localStorage.setItem("customUnifiedPrompt", JSON.stringify(editedPrompt));
 
-      const startTime = Date.now();
-
       try {
-        if (reasoningProvider === "local") {
-          logger.debug(
-            "PromptStudio: sending to local model",
-            { model: reasoningModel, textLength: testText.length },
-            "prompt-studio"
-          );
-
-          const result = await window.electronAPI.processLocalReasoning(
-            testText,
-            reasoningModel,
-            agentName,
-            {}
-          );
-
-          const processingTime = Date.now() - startTime;
-
-          if (result.success) {
-            const resultText = result.text || "";
-            logger.debug(
-              "PromptStudio: local model success",
-              {
-                processingTimeMs: processingTime,
-                resultLength: resultText.length,
-                resultPreview: resultText.substring(0, 100),
-              },
-              "prompt-studio"
-            );
-            setTestResult(resultText);
-          } else {
-            logger.debug(
-              "PromptStudio: local model error",
-              { processingTimeMs: processingTime, error: result.error },
-              "prompt-studio"
-            );
-            setTestResult(`Local model error: ${result.error}`);
-          }
-        } else {
-          logger.debug(
-            "PromptStudio: sending to cloud provider",
-            {
-              provider: reasoningProvider,
-              model: reasoningModel,
-              textLength: testText.length,
-              isCustomEndpoint: reasoningProvider === "custom",
-              customBaseUrl: customBaseUrl || "(default)",
-            },
-            "prompt-studio"
-          );
-
-          const result = await ReasoningService.processText(
-            testText,
-            reasoningModel,
-            agentName,
-            {}
-          );
-
-          const processingTime = Date.now() - startTime;
-
-          logger.debug(
-            "PromptStudio: cloud provider success",
-            {
-              provider: reasoningProvider,
-              processingTimeMs: processingTime,
-              resultLength: result.length,
-              resultPreview: result.substring(0, 100),
-            },
-            "prompt-studio"
-          );
-
-          setTestResult(result);
-        }
+        const result = await ReasoningService.processText(testText, modelToUse, agentName, {});
+        setTestResult(result);
       } finally {
-        // Restore original prompt
         if (currentCustomPrompt) {
           localStorage.setItem("customUnifiedPrompt", currentCustomPrompt);
         } else {
@@ -263,254 +196,21 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      logger.error(
-        "PromptStudio test failed",
-        {
-          error: errorMessage,
-          stack: error instanceof Error ? error.stack : undefined,
-        },
-        "prompt-studio"
-      );
-      setTestResult(`Test failed: ${errorMessage}`);
+      logger.error("PromptStudio test failed", { error: errorMessage }, "prompt-studio");
+      setTestResult(t("promptStudio.test.failed", { error: errorMessage }));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const copyPrompt = (prompt: string) => {
-    navigator.clipboard.writeText(prompt);
-    showAlertDialog({
-      title: "Copied!",
-      description: "Prompt copied to clipboard.",
-    });
-  };
-
-  // Check if the test text contains the agent name
   const isAgentAddressed = testText.toLowerCase().includes(agentName.toLowerCase());
+  const isCustomPrompt = getCurrentPrompt() !== UNIFIED_SYSTEM_PROMPT;
 
-  const renderCurrentPrompt = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Eye className="w-5 h-5 text-blue-600" />
-          Current System Prompt
-        </h3>
-        <p className="text-sm text-gray-600 mb-6">
-          This is the exact prompt sent to your AI model. It handles both text cleanup and
-          instruction detection in a single, unified approach.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="w-4 h-4 text-purple-600" />
-            Unified System Prompt
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <Info className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-              <div className="text-sm text-blue-800">
-                <p className="font-medium mb-1">How it works:</p>
-                <ul className="list-disc list-inside space-y-1 text-blue-700">
-                  <li>
-                    <strong>Cleanup mode (default)</strong>: Cleans transcribed speech - removes
-                    filler words, fixes grammar, punctuation
-                  </li>
-                  <li>
-                    <strong>Instruction mode</strong>: When you directly address "{agentName}" with
-                    a command, it executes the instruction AND cleans up the text
-                  </li>
-                  <li>The AI intelligently detects which mode to use based on context</li>
-                </ul>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-gray-50 border rounded-lg p-4 font-mono text-sm max-h-96 overflow-y-auto">
-            <pre className="whitespace-pre-wrap">
-              {getCurrentPrompt().replace(/\{\{agentName\}\}/g, agentName)}
-            </pre>
-          </div>
-          <Button
-            onClick={() => copyPrompt(getCurrentPrompt())}
-            variant="outline"
-            size="sm"
-            className="mt-3"
-          >
-            <Copy className="w-4 h-4 mr-2" />
-            Copy Prompt
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-
-  const renderEditPrompt = () => (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Edit3 className="w-5 h-5 text-indigo-600" />
-          Customize System Prompt
-        </h3>
-        <p className="text-sm text-gray-600 mb-2">
-          Edit the system prompt to change how your AI processes speech. Use{" "}
-          <code className="bg-gray-100 px-1 rounded">{"{{agentName}}"}</code> as a placeholder for
-          your agent's name.
-        </p>
-        <p className="text-sm text-amber-600 mb-6">
-          <strong>Caution:</strong> Modifying this prompt may affect transcription quality. The
-          default prompt has been carefully crafted for optimal results.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">System Prompt</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Textarea
-            value={editedPrompt}
-            onChange={(e) => setEditedPrompt(e.target.value)}
-            rows={20}
-            className="font-mono text-sm"
-            placeholder="Enter your custom system prompt..."
-          />
-          <p className="text-xs text-gray-500 mt-2">
-            Your agent name is: <strong>{agentName}</strong>
-          </p>
-        </CardContent>
-      </Card>
-
-      <div className="flex gap-3">
-        <Button onClick={savePrompt} className="flex-1">
-          <Save className="w-4 h-4 mr-2" />
-          Save Custom Prompt
-        </Button>
-        <Button onClick={resetToDefault} variant="outline">
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Reset to Default
-        </Button>
-      </div>
-    </div>
-  );
-
-  const renderTestPlayground = () => {
-    const useReasoningModel = localStorage.getItem("useReasoningModel") !== "false";
-    const reasoningModel = localStorage.getItem("reasoningModel") || "";
-    const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
-    const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
-      label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
-    };
-    const providerLabel = providerConfig.label;
-    const providerEndpoint = providerConfig.baseStorageKey
-      ? (localStorage.getItem(providerConfig.baseStorageKey) || "").trim()
-      : "";
-
-    return (
-      <div className="space-y-6">
-        <div>
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-            <TestTube className="w-5 h-5 text-green-600" />
-            Test Your Prompt
-          </h3>
-          <p className="text-sm text-gray-600 mb-6">
-            Test how the AI processes different types of input. Try both regular dictation and
-            addressing your agent directly.
-          </p>
-        </div>
-
-        {!useReasoningModel && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm text-amber-800 font-medium">AI Text Enhancement Disabled</p>
-                <p className="text-sm text-amber-700 mt-1">
-                  Enable AI text enhancement in the AI Text Cleanup settings to test prompts.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <Card>
-          <CardContent className="p-6 space-y-4">
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="text-gray-600">Current Model:</span>
-                <span className="ml-2 font-medium">{reasoningModel || "None selected"}</span>
-              </div>
-              <div>
-                <span className="text-gray-600">Provider:</span>
-                <span className="ml-2 font-medium capitalize">{providerLabel}</span>
-                {providerConfig.baseStorageKey && (
-                  <div className="text-xs text-gray-500 mt-1 break-all">
-                    Endpoint: {providerEndpoint || "Not configured"}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Test Input</label>
-              <Textarea
-                value={testText}
-                onChange={(e) => setTestText(e.target.value)}
-                rows={4}
-                placeholder="Enter text to test..."
-              />
-              <div className="flex items-center justify-between mt-2">
-                <div className="text-xs text-gray-500 space-y-1">
-                  <p>Try: "um so like I think we should uh schedule a meeting" (cleanup mode)</p>
-                  <p>
-                    Try: "Hey {agentName}, make this more formal: gonna send the report tomorrow"
-                    (instruction mode)
-                  </p>
-                </div>
-                {testText && (
-                  <span
-                    className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ml-4 ${
-                      isAgentAddressed
-                        ? "bg-purple-100 text-purple-700"
-                        : "bg-green-100 text-green-700"
-                    }`}
-                  >
-                    {isAgentAddressed ? "May trigger instruction mode" : "Cleanup mode"}
-                  </span>
-                )}
-              </div>
-            </div>
-
-            <Button
-              onClick={testPrompt}
-              disabled={!testText.trim() || isLoading || !useReasoningModel}
-              className="w-full"
-            >
-              <Play className="w-4 h-4 mr-2" />
-              {isLoading ? "Processing..." : "Test with AI"}
-            </Button>
-
-            {testResult && (
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-sm font-medium">AI Output</label>
-                  <Button onClick={() => copyPrompt(testResult)} variant="ghost" size="sm">
-                    <Copy className="w-4 h-4" />
-                  </Button>
-                </div>
-                <div className="border rounded-lg p-4 text-sm max-h-60 overflow-y-auto bg-gray-50 border-gray-200">
-                  <pre className="whitespace-pre-wrap">{testResult}</pre>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
+  const tabs = [
+    { id: "current" as const, label: t("promptStudio.tabs.view"), icon: Eye },
+    { id: "edit" as const, label: t("promptStudio.tabs.customize"), icon: Edit3 },
+    { id: "test" as const, label: t("promptStudio.tabs.test"), icon: TestTube },
+  ];
 
   return (
     <div className={className}>
@@ -522,35 +222,271 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         onOk={() => {}}
       />
 
-      {/* Tab Navigation */}
-      <div className="flex border-b border-gray-200 mb-6">
-        {[
-          { id: "current", label: "Current Prompt", icon: Eye },
-          { id: "edit", label: "Customize", icon: Edit3 },
-          { id: "test", label: "Test", icon: TestTube },
-        ].map((tab) => {
-          const Icon = tab.icon;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 border-b-2 transition-colors ${
-                activeTab === tab.id
-                  ? "border-indigo-600 text-indigo-600"
-                  : "border-transparent text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
+      {/* Tab Navigation + Content in a single panel */}
+      <div className="rounded-xl border border-border/60 dark:border-border-subtle bg-card dark:bg-surface-2 overflow-hidden">
+        <div className="flex border-b border-border/40 dark:border-border-subtle">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-medium transition-all duration-150 border-b-2 ${
+                  isActive
+                    ? "border-primary text-foreground bg-primary/5 dark:bg-primary/3"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:bg-black/2 dark:hover:bg-white/2"
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
 
-      {/* Tab Content */}
-      {activeTab === "current" && renderCurrentPrompt()}
-      {activeTab === "edit" && renderEditPrompt()}
-      {activeTab === "test" && renderTestPlayground()}
+        {/* ── View Tab ── */}
+        {activeTab === "current" && (
+          <div className="divide-y divide-border/40 dark:divide-border-subtle">
+            <div className="px-5 py-4">
+              <div className="space-y-2">
+                {[
+                  {
+                    mode: t("promptStudio.view.modes.cleanup.label"),
+                    desc: t("promptStudio.view.modes.cleanup.description"),
+                  },
+                  {
+                    mode: t("promptStudio.view.modes.agent.label"),
+                    desc: t("promptStudio.view.modes.agent.description", { agentName }),
+                  },
+                ].map((item) => (
+                  <div key={item.mode} className="flex items-start gap-3">
+                    <span className="shrink-0 mt-0.5 text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded bg-muted text-muted-foreground">
+                      {item.mode}
+                    </span>
+                    <p className="text-[12px] text-muted-foreground leading-relaxed">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="px-5 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <p className="text-[11px] font-medium text-muted-foreground/60 uppercase tracking-wider">
+                    {isCustomPrompt
+                      ? t("promptStudio.view.customPrompt")
+                      : t("promptStudio.view.defaultPrompt")}
+                  </p>
+                  {isCustomPrompt && (
+                    <span className="text-[9px] font-semibold uppercase tracking-wider px-1.5 py-px rounded-full bg-primary/10 text-primary">
+                      {t("promptStudio.view.modified")}
+                    </span>
+                  )}
+                </div>
+                <Button
+                  onClick={() => copyText(getCurrentPrompt())}
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-[11px]"
+                >
+                  {copiedPrompt ? (
+                    <>
+                      <Check className="w-3 h-3 mr-1 text-success" />{" "}
+                      {t("promptStudio.common.copied")}
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-3 h-3 mr-1" /> {t("promptStudio.common.copy")}
+                    </>
+                  )}
+                </Button>
+              </div>
+              <div className="bg-muted/30 dark:bg-surface-raised/30 border border-border/30 rounded-lg p-4 max-h-80 overflow-y-auto">
+                <pre className="text-[11px] font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                  {getCurrentPrompt().replace(/\{\{agentName\}\}/g, agentName)}
+                </pre>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Edit Tab ── */}
+        {activeTab === "edit" && (
+          <div className="divide-y divide-border/40 dark:divide-border-subtle">
+            <div className="px-5 py-4">
+              <p className="text-[12px] text-muted-foreground leading-relaxed">
+                <span className="font-medium text-warning">
+                  {t("promptStudio.edit.cautionLabel")}
+                </span>{" "}
+                {t("promptStudio.edit.cautionTextPrefix")}{" "}
+                <code className="text-[11px] bg-muted/50 px-1 py-0.5 rounded font-mono">
+                  {"{{agentName}}"}
+                </code>{" "}
+                {t("promptStudio.edit.cautionTextSuffix")}
+              </p>
+            </div>
+
+            <div className="px-5 py-4">
+              <Textarea
+                value={editedPrompt}
+                onChange={(e) => setEditedPrompt(e.target.value)}
+                rows={16}
+                className="font-mono text-[11px] leading-relaxed"
+                placeholder={t("promptStudio.edit.placeholder")}
+              />
+              <p className="text-[11px] text-muted-foreground/50 mt-2">
+                {t("promptStudio.edit.agentNameLabel")}{" "}
+                <span className="font-medium text-foreground">{agentName}</span>
+              </p>
+            </div>
+
+            <div className="px-5 py-4">
+              <div className="flex gap-2">
+                <Button onClick={savePrompt} size="sm" className="flex-1">
+                  <Save className="w-3.5 h-3.5 mr-2" />
+                  {t("promptStudio.common.save")}
+                </Button>
+                <Button onClick={resetToDefault} variant="outline" size="sm">
+                  <RotateCcw className="w-3.5 h-3.5 mr-2" />
+                  {t("promptStudio.common.reset")}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── Test Tab ── */}
+        {activeTab === "test" &&
+          (() => {
+            const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+            const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
+            const isSignedIn = localStorage.getItem("isSignedIn") === "true";
+            const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
+
+            const reasoningModel = localStorage.getItem("reasoningModel") || "";
+            const reasoningProvider = isCloudMode
+              ? "openwhispr"
+              : reasoningModel
+                ? getModelProvider(reasoningModel)
+                : "openai";
+            const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
+              label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
+            };
+
+            const displayModel = isCloudMode
+              ? t("promptStudio.test.openwhisprCloud")
+              : reasoningModel || t("promptStudio.test.none");
+            const displayProvider = providerConfig.label;
+
+            return (
+              <div className="divide-y divide-border/40 dark:divide-border-subtle">
+                {!useReasoningModel && (
+                  <div className="px-5 py-4">
+                    <div className="rounded-lg border border-warning/20 bg-warning/5 dark:bg-warning/10 px-4 py-3">
+                      <div className="flex items-start gap-2.5">
+                        <AlertTriangle className="w-3.5 h-3.5 text-warning mt-0.5 shrink-0" />
+                        <p className="text-[12px] text-muted-foreground leading-relaxed">
+                          {t("promptStudio.test.disabledInSettingsPrefix")}{" "}
+                          <span className="font-medium text-foreground">
+                            {t("promptStudio.test.aiModels")}
+                          </span>{" "}
+                          {t("promptStudio.test.disabledInSettingsSuffix")}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div className="px-5 py-4">
+                  <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                      <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                        {t("promptStudio.test.modelLabel")}
+                      </p>
+                      <p className="text-[12px] font-medium text-foreground font-mono">
+                        {displayModel}
+                      </p>
+                    </div>
+                    <div className="h-3 w-px bg-border/40" />
+                    <div className="flex items-center gap-2">
+                      <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider">
+                        {t("promptStudio.test.providerLabel")}
+                      </p>
+                      <p className="text-[12px] font-medium text-foreground">{displayProvider}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="px-5 py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[12px] font-medium text-foreground">
+                      {t("promptStudio.test.inputLabel")}
+                    </p>
+                    {testText && (
+                      <span
+                        className={`text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded ${
+                          isAgentAddressed
+                            ? "bg-primary/10 text-primary dark:bg-primary/15"
+                            : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {isAgentAddressed
+                          ? t("promptStudio.test.instruction")
+                          : t("promptStudio.test.cleanup")}
+                      </span>
+                    )}
+                  </div>
+                  <Textarea
+                    value={testText}
+                    onChange={(e) => setTestText(e.target.value)}
+                    rows={3}
+                    className="text-[12px]"
+                    placeholder={t("promptStudio.test.inputPlaceholder")}
+                  />
+                  <p className="text-[10px] text-muted-foreground/40 mt-1.5">
+                    {t("promptStudio.test.addressHint", { agentName })}
+                  </p>
+                </div>
+
+                <div className="px-5 py-4">
+                  <Button
+                    onClick={testPrompt}
+                    disabled={!testText.trim() || isLoading || !useReasoningModel}
+                    size="sm"
+                    className="w-full"
+                  >
+                    <Play className="w-3.5 h-3.5 mr-2" />
+                    {isLoading ? t("promptStudio.test.processing") : t("promptStudio.test.run")}
+                  </Button>
+                </div>
+
+                {testResult && (
+                  <div className="px-5 py-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[12px] font-medium text-foreground">
+                        {t("promptStudio.test.outputLabel")}
+                      </p>
+                      <Button
+                        onClick={() => copyText(testResult)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-1.5"
+                      >
+                        <Copy className="w-3 h-3 text-muted-foreground" />
+                      </Button>
+                    </div>
+                    <div className="bg-muted/30 dark:bg-surface-raised/30 border border-border/30 rounded-lg p-4 max-h-48 overflow-y-auto">
+                      <pre className="text-[12px] text-foreground whitespace-pre-wrap leading-relaxed">
+                        {testResult}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+      </div>
     </div>
   );
 }

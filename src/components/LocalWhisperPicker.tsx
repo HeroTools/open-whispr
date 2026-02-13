@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { Button } from "./ui/button";
-import { Download, Trash2, Check, X } from "lucide-react";
-import { ProviderIcon } from "./ui/ProviderIcon";
+import { useTranslation } from "react-i18next";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import { ConfirmDialog } from "./ui/dialog";
+import ModelCardList, { type ModelCardOption } from "./ui/ModelCardList";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload } from "../hooks/useModelDownload";
 import { WHISPER_MODEL_INFO } from "../models/ModelRegistry";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
+import { getProviderIcon } from "../utils/providerIcons";
 
 interface WhisperModel {
   model: string;
@@ -30,6 +30,7 @@ export default function LocalWhisperPicker({
   className = "",
   variant = "settings",
 }: LocalWhisperPickerProps) {
+  const { t } = useTranslation();
   const [models, setModels] = useState<WhisperModel[]>([]);
   const hasLoadedRef = useRef(false);
   const downloadingModelRef = useRef<string | null>(null);
@@ -104,12 +105,18 @@ export default function LocalWhisperPicker({
     downloadingModelRef.current = downloadingModel;
   }, [downloadingModel]);
 
+  const handleDownload = useCallback(
+    (modelId: string) => {
+      downloadModel(modelId, onModelSelect);
+    },
+    [downloadModel, onModelSelect]
+  );
+
   const handleDelete = useCallback(
     (modelId: string) => {
       showConfirmDialog({
-        title: "Delete Model",
-        description:
-          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        title: t("transcription.deleteModel.title"),
+        description: t("transcription.deleteModel.description"),
         onConfirm: async () => {
           await deleteModel(modelId, async () => {
             const result = await window.electronAPI?.listWhisperModels();
@@ -122,7 +129,7 @@ export default function LocalWhisperPicker({
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteModel, validateAndSelectModel]
+    [showConfirmDialog, deleteModel, validateAndSelectModel, t]
   );
 
   const progressDisplay = useMemo(() => {
@@ -132,111 +139,47 @@ export default function LocalWhisperPicker({
       <DownloadProgressBar
         modelName={modelInfo?.name || downloadingModel}
         progress={downloadProgress}
-        styles={styles}
       />
     );
-  }, [downloadingModel, downloadProgress, styles]);
+  }, [downloadingModel, downloadProgress]);
+
+  const whisperIcon = getProviderIcon("whisper");
 
   return (
     <div className={`${styles.container} ${className}`}>
       {progressDisplay}
 
       <div className="p-4">
-        <h5 className={`${styles.header} mb-3`}>Whisper Models</h5>
+        <h5 className={`${styles.header} mb-3`}>{t("transcription.whisperModels")}</h5>
 
-        <div className="space-y-2">
-          {models.map((model) => {
+        <ModelCardList
+          models={models.map((model): ModelCardOption => {
             const modelId = model.model;
-            const info = WHISPER_MODEL_INFO[modelId] || {
+            const info = WHISPER_MODEL_INFO[modelId] ?? {
               name: modelId,
-              description: "Model",
-              size: "Unknown",
+              description: t("transcription.fallback.whisperModelDescription"),
+              size: t("common.unknown"),
+              recommended: false,
             };
-            const isSelected = modelId === selectedModel;
-            const isDownloading = isDownloadingModel(modelId);
-            const isDownloaded = model.downloaded;
-
-            return (
-              <div
-                key={modelId}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  isSelected ? styles.modelCard.selected : styles.modelCard.default
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <ProviderIcon provider="whisper" className="w-4 h-4" />
-                      <span className="font-medium text-gray-900">{info.name}</span>
-                      {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
-                      {info.recommended && (
-                        <span className={styles.badges.recommended}>Recommended</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs text-gray-600">{info.description}</span>
-                      <span className="text-xs text-gray-500">
-                        • {model.size_mb ? `${model.size_mb}MB` : info.size}
-                      </span>
-                      {isDownloaded && (
-                        <span className={styles.badges.downloaded}>
-                          <Check className="inline w-3 h-3 mr-1" />
-                          Downloaded
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex gap-2">
-                    {isDownloaded ? (
-                      <>
-                        {!isSelected && (
-                          <Button
-                            onClick={() => onModelSelect(modelId)}
-                            size="sm"
-                            variant="outline"
-                            className={styles.buttons.select}
-                          >
-                            Select
-                          </Button>
-                        )}
-                        <Button
-                          onClick={() => handleDelete(modelId)}
-                          size="sm"
-                          variant="outline"
-                          className={styles.buttons.delete}
-                        >
-                          <Trash2 size={14} />
-                          <span className="ml-1">Delete</span>
-                        </Button>
-                      </>
-                    ) : isDownloading ? (
-                      <Button
-                        onClick={cancelDownload}
-                        disabled={isCancelling}
-                        size="sm"
-                        variant="outline"
-                        className="text-red-600 border-red-300 hover:bg-red-50"
-                      >
-                        <X size={14} />
-                        <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={() => downloadModel(modelId, onModelSelect)}
-                        size="sm"
-                        className={styles.buttons.download}
-                      >
-                        <Download size={14} />
-                        <span className="ml-1">Download</span>
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
+            return {
+              value: modelId,
+              label: info.name,
+              description: model.size_mb ? `${model.size_mb}MB` : info.size,
+              icon: whisperIcon,
+              invertInDark: true,
+              recommended: info.recommended,
+              isDownloaded: model.downloaded,
+              isDownloading: isDownloadingModel(modelId),
+            };
           })}
-        </div>
+          selectedModel={selectedModel}
+          onModelSelect={onModelSelect}
+          onDownload={handleDownload}
+          onDelete={handleDelete}
+          onCancelDownload={cancelDownload}
+          isCancelling={isCancelling}
+          colorScheme={colorScheme}
+        />
       </div>
 
       <ConfirmDialog

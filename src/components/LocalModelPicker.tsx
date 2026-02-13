@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { Button } from "./ui/button";
-import { Download, Trash2, Check, X } from "lucide-react";
-import { ProviderIcon } from "./ui/ProviderIcon";
+import { useTranslation } from "react-i18next";
 import { ProviderTabs } from "./ui/ProviderTabs";
 import { DownloadProgressBar } from "./ui/DownloadProgressBar";
 import { ConfirmDialog } from "./ui/dialog";
+import ModelCardList, { type ModelCardOption } from "./ui/ModelCardList";
 import { useDialogs } from "../hooks/useDialogs";
 import { useModelDownload, type ModelType } from "../hooks/useModelDownload";
 import { MODEL_PICKER_COLORS, type ColorScheme } from "../utils/modelPickerStyles";
+import { getProviderIcon, isMonochromeProvider } from "../utils/providerIcons";
 
 export interface LocalModel {
   id: string;
@@ -49,6 +49,7 @@ export default function LocalModelPicker({
   className = "",
   onDownloadComplete,
 }: LocalModelPickerProps) {
+  const { t } = useTranslation();
   const [downloadedModels, setDownloadedModels] = useState<Set<string>>(new Set());
 
   const { confirmDialog, showConfirmDialog, hideConfirmDialog } = useDialogs();
@@ -59,6 +60,15 @@ export default function LocalModelPicker({
       let downloaded = new Set<string>();
       if (modelType === "whisper") {
         const result = await window.electronAPI?.listWhisperModels();
+        if (result?.success) {
+          downloaded = new Set(
+            result.models
+              .filter((m: { downloaded?: boolean }) => m.downloaded)
+              .map((m: { model: string }) => m.model)
+          );
+        }
+      } else if (modelType === "parakeet") {
+        const result = await window.electronAPI?.listParakeetModels();
         if (result?.success) {
           downloaded = new Set(
             result.models
@@ -123,28 +133,25 @@ export default function LocalModelPicker({
   const handleDelete = useCallback(
     (modelId: string) => {
       showConfirmDialog({
-        title: "Delete Model",
-        description:
-          "Are you sure you want to delete this model? You'll need to re-download it if you want to use it again.",
+        title: t("transcription.deleteModel.title"),
+        description: t("transcription.deleteModel.description"),
         onConfirm: () => deleteModel(modelId, loadDownloadedModels),
         variant: "destructive",
       });
     },
-    [showConfirmDialog, deleteModel, loadDownloadedModels]
+    [showConfirmDialog, deleteModel, loadDownloadedModels, t]
   );
 
   const currentProvider = providers.find((p) => p.id === selectedProvider);
-  const models = currentProvider?.models || [];
+  const models = useMemo(() => currentProvider?.models || [], [currentProvider?.models]);
 
   const progressDisplay = useMemo(() => {
     if (!downloadingModel) return null;
 
     const modelName = models.find((m) => m.id === downloadingModel)?.name || downloadingModel;
 
-    return (
-      <DownloadProgressBar modelName={modelName} progress={downloadProgress} styles={styles} />
-    );
-  }, [downloadingModel, downloadProgress, models, styles]);
+    return <DownloadProgressBar modelName={modelName} progress={downloadProgress} />;
+  }, [downloadingModel, downloadProgress, models]);
 
   return (
     <div className={`${styles.container} ${className}`}>
@@ -158,99 +165,31 @@ export default function LocalModelPicker({
 
       {progressDisplay}
 
-      <div className="p-4">
-        <h5 className={`${styles.header} mb-3`}>Available Models</h5>
+      <div className="p-3">
+        <h5 className={`${styles.header} mb-2`}>{t("common.availableModels")}</h5>
 
-        <div className="space-y-2">
-          {models.length === 0 ? (
-            <p className="text-sm text-gray-500">No models available for this provider</p>
-          ) : (
-            models.map((model) => {
-              const isSelected = model.id === selectedModel;
-              const isDownloading = isDownloadingModel(model.id);
-              const isDownloaded =
-                downloadedModels.has(model.id) || model.isDownloaded || model.downloaded;
-
-              return (
-                <div
-                  key={model.id}
-                  className={`p-3 rounded-lg border-2 transition-all ${
-                    isSelected ? styles.modelCard.selected : styles.modelCard.default
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <ProviderIcon provider={selectedProvider} className="w-4 h-4" />
-                        <span className="font-medium text-gray-900">{model.name}</span>
-                        {isSelected && <span className={styles.badges.selected}>✓ Selected</span>}
-                        {model.recommended && (
-                          <span className={styles.badges.recommended}>Recommended</span>
-                        )}
-                      </div>
-                      <div className="text-xs text-gray-600 mt-1">{model.description}</div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-gray-500">Size: {model.size}</span>
-                        {isDownloaded && (
-                          <span className={styles.badges.downloaded}>
-                            <Check className="inline w-3 h-3 mr-1" />
-                            Downloaded
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      {isDownloaded ? (
-                        <>
-                          {!isSelected && (
-                            <Button
-                              onClick={() => onModelSelect(model.id)}
-                              size="sm"
-                              variant="outline"
-                              className={styles.buttons.select}
-                            >
-                              Select
-                            </Button>
-                          )}
-                          <Button
-                            onClick={() => handleDelete(model.id)}
-                            size="sm"
-                            variant="outline"
-                            className={styles.buttons.delete}
-                          >
-                            <Trash2 size={14} />
-                            <span className="ml-1">Delete</span>
-                          </Button>
-                        </>
-                      ) : isDownloading ? (
-                        <Button
-                          onClick={cancelDownload}
-                          disabled={isCancelling}
-                          size="sm"
-                          variant="outline"
-                          className="text-red-600 border-red-300 hover:bg-red-50"
-                        >
-                          <X size={14} />
-                          <span className="ml-1">{isCancelling ? "..." : "Cancel"}</span>
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={() => handleDownload(model.id)}
-                          size="sm"
-                          className={styles.buttons.download}
-                        >
-                          <Download size={14} />
-                          <span className="ml-1">Download</span>
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
+        <ModelCardList
+          models={models.map(
+            (model): ModelCardOption => ({
+              value: model.id,
+              label: model.name,
+              description: model.size,
+              icon: getProviderIcon(selectedProvider),
+              invertInDark: isMonochromeProvider(selectedProvider),
+              recommended: model.recommended,
+              isDownloaded:
+                downloadedModels.has(model.id) || model.isDownloaded || model.downloaded,
+              isDownloading: isDownloadingModel(model.id),
             })
           )}
-        </div>
+          selectedModel={selectedModel}
+          onModelSelect={onModelSelect}
+          onDownload={handleDownload}
+          onDelete={handleDelete}
+          onCancelDownload={cancelDownload}
+          isCancelling={isCancelling}
+          colorScheme={colorScheme}
+        />
       </div>
 
       <ConfirmDialog

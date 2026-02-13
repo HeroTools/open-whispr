@@ -23,12 +23,19 @@ static BOOL g_isKeyDown = FALSE;
 static BOOL g_requireCtrl = FALSE;
 static BOOL g_requireAlt = FALSE;
 static BOOL g_requireShift = FALSE;
+static BOOL g_requireWin = FALSE;
+static BOOL g_useModifiersOnly = FALSE;
 
 // Check if required modifiers are currently pressed
 BOOL AreModifiersPressed(void) {
     if (g_requireCtrl && !(GetAsyncKeyState(VK_CONTROL) & 0x8000)) return FALSE;
     if (g_requireAlt && !(GetAsyncKeyState(VK_MENU) & 0x8000)) return FALSE;
     if (g_requireShift && !(GetAsyncKeyState(VK_SHIFT) & 0x8000)) return FALSE;
+    if (g_requireWin &&
+        !(GetAsyncKeyState(VK_LWIN) & 0x8000) &&
+        !(GetAsyncKeyState(VK_RWIN) & 0x8000)) {
+        return FALSE;
+    }
     return TRUE;
 }
 
@@ -75,6 +82,14 @@ DWORD ParseKeyCode(const char* keyName) {
     if (_stricmp(keyName, "Tab") == 0) return VK_TAB;
     if (_stricmp(keyName, "CapsLock") == 0) return VK_CAPITAL;
     if (_stricmp(keyName, "NumLock") == 0) return VK_NUMLOCK;
+
+    // Right-side modifier keys (used as single-key hotkeys)
+    if (_stricmp(keyName, "RightAlt") == 0 || _stricmp(keyName, "RightOption") == 0) return VK_RMENU;
+    if (_stricmp(keyName, "RightControl") == 0 || _stricmp(keyName, "RightCtrl") == 0) return VK_RCONTROL;
+    if (_stricmp(keyName, "RightShift") == 0) return VK_RSHIFT;
+    if (_stricmp(keyName, "RightSuper") == 0 || _stricmp(keyName, "RightWin") == 0 ||
+        _stricmp(keyName, "RightMeta") == 0 || _stricmp(keyName, "RightCommand") == 0 ||
+        _stricmp(keyName, "RightCmd") == 0) return VK_RWIN;
 
     // Backtick/tilde - the default hotkey
     if (strcmp(keyName, "`") == 0 || _stricmp(keyName, "Backquote") == 0) return VK_OEM_3;
@@ -125,11 +140,31 @@ LRESULT CALLBACK LowLevelKeyboardProc(int nCode, WPARAM wParam, LPARAM lParam) {
             if (g_requireShift && (kbd->vkCode == VK_SHIFT || kbd->vkCode == VK_LSHIFT || kbd->vkCode == VK_RSHIFT)) {
                 modifierReleased = TRUE;
             }
+            if (g_requireWin && (kbd->vkCode == VK_LWIN || kbd->vkCode == VK_RWIN)) {
+                modifierReleased = TRUE;
+            }
             if (modifierReleased) {
                 g_isKeyDown = FALSE;
                 printf("KEY_UP\n");
                 fflush(stdout);
             }
+        }
+
+        if (g_useModifiersOnly) {
+            if (isKeyDown) {
+                if (!g_isKeyDown && AreModifiersPressed()) {
+                    g_isKeyDown = TRUE;
+                    printf("KEY_DOWN\n");
+                    fflush(stdout);
+                }
+            } else if (isKeyUp) {
+                if (g_isKeyDown && !AreModifiersPressed()) {
+                    g_isKeyDown = FALSE;
+                    printf("KEY_UP\n");
+                    fflush(stdout);
+                }
+            }
+            return CallNextHookEx(g_hook, nCode, wParam, lParam);
         }
 
         // Check for the target key
@@ -176,6 +211,8 @@ DWORD ParseCompoundHotkey(const char* hotkey) {
     g_requireCtrl = FALSE;
     g_requireAlt = FALSE;
     g_requireShift = FALSE;
+    g_requireWin = FALSE;
+    g_useModifiersOnly = FALSE;
 
     DWORD mainKeyVk = 0;
     char* token = strtok(buffer, "+");
@@ -199,10 +236,11 @@ DWORD ParseCompoundHotkey(const char* hotkey) {
             g_requireShift = TRUE;
         } else if (_stricmp(token, "Super") == 0 ||
                    _stricmp(token, "Meta") == 0 ||
+                   _stricmp(token, "Win") == 0 ||
                    _stricmp(token, "Command") == 0 ||
                    _stricmp(token, "Cmd") == 0) {
-            // Windows key - treat as Ctrl on Windows for compatibility
-            g_requireCtrl = TRUE;
+            // Windows key
+            g_requireWin = TRUE;
         } else {
             // This should be the main key
             mainKeyVk = ParseKeyCode(token);
@@ -227,14 +265,18 @@ int main(int argc, char* argv[]) {
     }
 
     g_targetVk = ParseCompoundHotkey(argv[1]);
-    if (g_targetVk == 0) {
+    if (g_targetVk == 0 && (g_requireCtrl || g_requireAlt || g_requireShift || g_requireWin)) {
+        g_useModifiersOnly = TRUE;
+    }
+
+    if (g_targetVk == 0 && !g_useModifiersOnly) {
         fprintf(stderr, "Error: Invalid key '%s'\n", argv[1]);
         return 1;
     }
 
     // Log what we're listening for
-    fprintf(stderr, "Listening for: %s (VK=0x%02X, Ctrl=%d, Alt=%d, Shift=%d)\n",
-            argv[1], g_targetVk, g_requireCtrl, g_requireAlt, g_requireShift);
+    fprintf(stderr, "Listening for: %s (VK=0x%02X, Ctrl=%d, Alt=%d, Shift=%d, Win=%d, ModOnly=%d)\n",
+            argv[1], g_targetVk, g_requireCtrl, g_requireAlt, g_requireShift, g_requireWin, g_useModifiersOnly);
 
     // Set up console handler for clean shutdown
     SetConsoleCtrlHandler(ConsoleHandler, TRUE);

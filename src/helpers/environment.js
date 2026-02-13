@@ -1,6 +1,27 @@
 const path = require("path");
 const fs = require("fs");
+const fsPromises = require("fs/promises");
 const { app } = require("electron");
+const { normalizeUiLanguage } = require("./i18nMain");
+
+const PERSISTED_KEYS = [
+  "OPENAI_API_KEY",
+  "ANTHROPIC_API_KEY",
+  "GEMINI_API_KEY",
+  "GROQ_API_KEY",
+  "MISTRAL_API_KEY",
+  "CUSTOM_TRANSCRIPTION_API_KEY",
+  "CUSTOM_REASONING_API_KEY",
+  "LOCAL_TRANSCRIPTION_PROVIDER",
+  "PARAKEET_MODEL",
+  "LOCAL_WHISPER_MODEL",
+  "REASONING_PROVIDER",
+  "LOCAL_REASONING_MODEL",
+  "DICTATION_KEY",
+  "ACTIVATION_MODE",
+  "FLOATING_ICON_AUTO_HIDE",
+  "UI_LANGUAGE",
+];
 
 class EnvironmentManager {
   constructor() {
@@ -8,29 +29,27 @@ class EnvironmentManager {
   }
 
   loadEnvironmentVariables() {
-    // In production, try multiple locations for .env file
-    const possibleEnvPaths = [
-      // Development path
-      path.join(__dirname, "..", ".env"),
-      // Production packaged app paths
+    // Loaded in priority order - dotenv won't override, so first file wins per variable.
+    const userDataEnv = path.join(app.getPath("userData"), ".env");
+    try {
+      if (fs.existsSync(userDataEnv)) {
+        require("dotenv").config({ path: userDataEnv });
+      }
+    } catch {}
+
+    const fallbackPaths = [
+      path.join(__dirname, "..", "..", ".env"), // Development
       path.join(process.resourcesPath, ".env"),
       path.join(process.resourcesPath, "app.asar.unpacked", ".env"),
-      path.join(app.getPath("userData"), ".env"), // User data directory
-      // Legacy paths
-      path.join(process.resourcesPath, "app", ".env"),
+      path.join(process.resourcesPath, "app", ".env"), // Legacy
     ];
 
-    for (const envPath of possibleEnvPaths) {
+    for (const envPath of fallbackPaths) {
       try {
         if (fs.existsSync(envPath)) {
-          const result = require("dotenv").config({ path: envPath });
-          if (!result.error) {
-            break;
-          }
+          require("dotenv").config({ path: envPath });
         }
-      } catch (error) {
-        // Continue to next path
-      }
+      } catch {}
     }
   }
 
@@ -75,6 +94,14 @@ class EnvironmentManager {
     return this._saveKey("GROQ_API_KEY", key);
   }
 
+  getMistralKey() {
+    return this._getKey("MISTRAL_API_KEY");
+  }
+
+  saveMistralKey(key) {
+    return this._saveKey("MISTRAL_API_KEY", key);
+  }
+
   getCustomTranscriptionKey() {
     return this._getKey("CUSTOM_TRANSCRIPTION_API_KEY");
   }
@@ -91,7 +118,50 @@ class EnvironmentManager {
     return this._saveKey("CUSTOM_REASONING_API_KEY", key);
   }
 
-  createProductionEnvFile(apiKey) {
+  getDictationKey() {
+    return this._getKey("DICTATION_KEY");
+  }
+
+  saveDictationKey(key) {
+    const result = this._saveKey("DICTATION_KEY", key);
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
+  getActivationMode() {
+    const mode = this._getKey("ACTIVATION_MODE");
+    return mode === "push" ? "push" : "tap";
+  }
+
+  saveActivationMode(mode) {
+    const validMode = mode === "push" ? "push" : "tap";
+    const result = this._saveKey("ACTIVATION_MODE", validMode);
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
+  getFloatingIconAutoHide() {
+    return this._getKey("FLOATING_ICON_AUTO_HIDE") === "true";
+  }
+
+  saveFloatingIconAutoHide(enabled) {
+    const result = this._saveKey("FLOATING_ICON_AUTO_HIDE", String(enabled));
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return result;
+  }
+
+  getUiLanguage() {
+    return normalizeUiLanguage(this._getKey("UI_LANGUAGE"));
+  }
+
+  saveUiLanguage(language) {
+    const normalized = normalizeUiLanguage(language);
+    const result = this._saveKey("UI_LANGUAGE", normalized);
+    this.saveAllKeysToEnvFile().catch(() => {});
+    return { ...result, language: normalized };
+  }
+
+  async createProductionEnvFile(apiKey) {
     const envPath = path.join(app.getPath("userData"), ".env");
 
     const envContent = `# OpenWhispr Environment Variables
@@ -99,58 +169,24 @@ class EnvironmentManager {
 OPENAI_API_KEY=${apiKey}
 `;
 
-    fs.writeFileSync(envPath, envContent, "utf8");
-
+    await fsPromises.writeFile(envPath, envContent, "utf8");
     require("dotenv").config({ path: envPath });
 
     return { success: true, path: envPath };
   }
 
-  saveAllKeysToEnvFile() {
+  async saveAllKeysToEnvFile() {
     const envPath = path.join(app.getPath("userData"), ".env");
 
-    // Build env content with all current keys
-    let envContent = `# OpenWhispr Environment Variables
-# This file was created automatically for production use
-`;
+    let envContent = "# OpenWhispr Environment Variables\n";
 
-    if (process.env.OPENAI_API_KEY) {
-      envContent += `OPENAI_API_KEY=${process.env.OPENAI_API_KEY}\n`;
-    }
-    if (process.env.ANTHROPIC_API_KEY) {
-      envContent += `ANTHROPIC_API_KEY=${process.env.ANTHROPIC_API_KEY}\n`;
-    }
-    if (process.env.GEMINI_API_KEY) {
-      envContent += `GEMINI_API_KEY=${process.env.GEMINI_API_KEY}\n`;
-    }
-    if (process.env.GROQ_API_KEY) {
-      envContent += `GROQ_API_KEY=${process.env.GROQ_API_KEY}\n`;
-    }
-    if (process.env.CUSTOM_TRANSCRIPTION_API_KEY) {
-      envContent += `CUSTOM_TRANSCRIPTION_API_KEY=${process.env.CUSTOM_TRANSCRIPTION_API_KEY}\n`;
-    }
-    if (process.env.CUSTOM_REASONING_API_KEY) {
-      envContent += `CUSTOM_REASONING_API_KEY=${process.env.CUSTOM_REASONING_API_KEY}\n`;
-    }
-    if (process.env.LOCAL_TRANSCRIPTION_PROVIDER) {
-      envContent += `LOCAL_TRANSCRIPTION_PROVIDER=${process.env.LOCAL_TRANSCRIPTION_PROVIDER}\n`;
-    }
-    if (process.env.PARAKEET_MODEL) {
-      envContent += `PARAKEET_MODEL=${process.env.PARAKEET_MODEL}\n`;
-    }
-    if (process.env.LOCAL_WHISPER_MODEL) {
-      envContent += `LOCAL_WHISPER_MODEL=${process.env.LOCAL_WHISPER_MODEL}\n`;
-    }
-    if (process.env.REASONING_PROVIDER) {
-      envContent += `REASONING_PROVIDER=${process.env.REASONING_PROVIDER}\n`;
-    }
-    if (process.env.LOCAL_REASONING_MODEL) {
-      envContent += `LOCAL_REASONING_MODEL=${process.env.LOCAL_REASONING_MODEL}\n`;
+    for (const key of PERSISTED_KEYS) {
+      if (process.env[key]) {
+        envContent += `${key}=${process.env[key]}\n`;
+      }
     }
 
-    fs.writeFileSync(envPath, envContent, "utf8");
-
-    // Reload the env file
+    await fsPromises.writeFile(envPath, envContent, "utf8");
     require("dotenv").config({ path: envPath });
 
     return { success: true, path: envPath };

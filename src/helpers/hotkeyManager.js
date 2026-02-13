@@ -1,24 +1,50 @@
 const { globalShortcut } = require("electron");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
+const { i18nMain } = require("./i18nMain");
 
 // Delay to ensure localStorage is accessible after window load
 const HOTKEY_REGISTRATION_DELAY_MS = 1000;
 
+// Right-side single modifiers are handled by native listeners, not globalShortcut
+const RIGHT_SIDE_MODIFIER_PATTERN =
+  /^Right(Control|Ctrl|Alt|Option|Shift|Command|Cmd|Super|Meta|Win)$/i;
+
+function isRightSideModifier(hotkey) {
+  return RIGHT_SIDE_MODIFIER_PATTERN.test(hotkey);
+}
+
+// Modifier-only combos (e.g. "Control+Super") bypass globalShortcut on Windows
+// and use the native low-level keyboard hook instead.
+const MODIFIER_NAMES = new Set([
+  "control",
+  "ctrl",
+  "alt",
+  "option",
+  "shift",
+  "super",
+  "meta",
+  "win",
+  "command",
+  "cmd",
+  "commandorcontrol",
+  "cmdorctrl",
+]);
+
+function isModifierOnlyHotkey(hotkey) {
+  if (!hotkey || !hotkey.includes("+")) return false;
+  return hotkey.split("+").every((part) => MODIFIER_NAMES.has(part.toLowerCase()));
+}
+
 // Suggested alternative hotkeys when registration fails
 const SUGGESTED_HOTKEYS = {
   single: ["F8", "F9", "F10", "Pause", "ScrollLock"],
-  compound: [
-    "CommandOrControl+Shift+Space",
-    "CommandOrControl+Shift+D",
-    "Alt+Space",
-    "CommandOrControl+`",
-  ],
+  compound: ["Control+Super", "Control+Alt", "Control+Shift+Space", "Alt+F7"],
 };
 
 class HotkeyManager {
   constructor() {
-    this.currentHotkey = "`";
+    this.currentHotkey = process.platform === "darwin" ? "GLOBE" : "Control+Super";
     this.isInitialized = false;
     this.isListeningMode = false;
     this.gnomeManager = null;
@@ -39,21 +65,9 @@ class HotkeyManager {
     if (globalShortcut.isRegistered(hotkey)) {
       return {
         reason: "already_registered",
-        message: `"${hotkey}" is already registered by another application.`,
+        message: i18nMain.t("hotkey.errors.alreadyRegistered", { hotkey }),
         suggestions: this.getSuggestions(hotkey),
       };
-    }
-
-    if (process.platform === "win32") {
-      // Windows reserves certain keys
-      const winReserved = ["PrintScreen", "Win", "Super"];
-      if (winReserved.some((k) => hotkey.includes(k))) {
-        return {
-          reason: "os_reserved",
-          message: `"${hotkey}" is reserved by Windows.`,
-          suggestions: this.getSuggestions(hotkey),
-        };
-      }
     }
 
     if (process.platform === "linux") {
@@ -61,7 +75,7 @@ class HotkeyManager {
       if (hotkey.includes("Super") || hotkey.includes("Meta")) {
         return {
           reason: "os_reserved",
-          message: `"${hotkey}" may be reserved by your desktop environment.`,
+          message: i18nMain.t("hotkey.errors.osReserved", { hotkey }),
           suggestions: this.getSuggestions(hotkey),
         };
       }
@@ -69,23 +83,29 @@ class HotkeyManager {
 
     return {
       reason: "registration_failed",
-      message: `Could not register "${hotkey}". It may be in use by another application.`,
+      message: i18nMain.t("hotkey.errors.registrationFailed", { hotkey }),
       suggestions: this.getSuggestions(hotkey),
     };
   }
 
   getSuggestions(failedHotkey) {
     const isCompound = failedHotkey.includes("+");
-    const suggestions = isCompound
-      ? [...SUGGESTED_HOTKEYS.compound]
-      : [...SUGGESTED_HOTKEYS.single];
+    let suggestions = isCompound ? [...SUGGESTED_HOTKEYS.compound] : [...SUGGESTED_HOTKEYS.single];
+
+    if (process.platform === "darwin" && isCompound) {
+      suggestions = ["Control+Alt", "Alt+Command", "Command+Shift+Space"];
+    } else if (process.platform === "win32" && isCompound) {
+      suggestions = ["Control+Super", "Control+Alt", "Control+Shift+K"];
+    } else if (process.platform === "linux" && isCompound) {
+      suggestions = ["Control+Super", "Control+Shift+K", "Super+Shift+R"];
+    }
 
     return suggestions.filter((s) => s !== failedHotkey).slice(0, 3);
   }
 
-  setupShortcuts(hotkey = "`", callback) {
+  setupShortcuts(hotkey = "Control+Super", callback) {
     if (!callback) {
-      throw new Error("Callback function is required for hotkey setup");
+      throw new Error(i18nMain.t("hotkey.errors.callbackRequired"));
     }
 
     debugLogger.log(`[HotkeyManager] Setting up hotkey: "${hotkey}"`);
@@ -93,12 +113,15 @@ class HotkeyManager {
     debugLogger.log(`[HotkeyManager] Current hotkey: "${this.currentHotkey}"`);
 
     // If we're already using this hotkey AND it's actually registered, return success
-    // Note: We need to check isRegistered because on first run, currentHotkey is set to "`"
-    // but it's not actually registered yet
+    // Note: We need to check isRegistered because on first run, currentHotkey is set to the
+    // default value but it's not actually registered yet.
+    const checkAccelerator = hotkey.startsWith("Fn+") ? hotkey.slice(3) : hotkey;
     if (
       hotkey === this.currentHotkey &&
       hotkey !== "GLOBE" &&
-      globalShortcut.isRegistered(hotkey)
+      !isRightSideModifier(hotkey) &&
+      !isModifierOnlyHotkey(hotkey) &&
+      globalShortcut.isRegistered(checkAccelerator)
     ) {
       debugLogger.log(
         `[HotkeyManager] Hotkey "${hotkey}" is already the current hotkey and registered, no change needed`
@@ -106,10 +129,26 @@ class HotkeyManager {
       return { success: true, hotkey };
     }
 
-    // Unregister the previous hotkey (if it's not GLOBE, which doesn't use globalShortcut)
-    if (this.currentHotkey && this.currentHotkey !== "GLOBE") {
-      debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${this.currentHotkey}"`);
-      globalShortcut.unregister(this.currentHotkey);
+    const previousHotkey = this.currentHotkey;
+
+    // Unregister the previous hotkey (skip native-listener-only hotkeys)
+    if (
+      this.currentHotkey &&
+      this.currentHotkey !== "GLOBE" &&
+      !isRightSideModifier(this.currentHotkey) &&
+      !isModifierOnlyHotkey(this.currentHotkey)
+    ) {
+      const prevAccelerator = this.currentHotkey.startsWith("Fn+")
+        ? this.currentHotkey.slice(3)
+        : this.currentHotkey;
+      try {
+        debugLogger.log(`[HotkeyManager] Unregistering previous hotkey: "${prevAccelerator}"`);
+        globalShortcut.unregister(prevAccelerator);
+      } catch (error) {
+        debugLogger.warn(
+          `[HotkeyManager] Skipping previous hotkey unregister for non-accelerator "${prevAccelerator}": ${error.message}`
+        );
+      }
     }
 
     try {
@@ -118,7 +157,7 @@ class HotkeyManager {
           debugLogger.log("[HotkeyManager] GLOBE key rejected - not on macOS");
           return {
             success: false,
-            error: "The Globe key is only available on macOS.",
+            error: i18nMain.t("hotkey.errors.globeOnlyMac"),
           };
         }
         this.currentHotkey = hotkey;
@@ -126,14 +165,38 @@ class HotkeyManager {
         return { success: true, hotkey };
       }
 
-      const alreadyRegistered = globalShortcut.isRegistered(hotkey);
-      debugLogger.log(`[HotkeyManager] Is "${hotkey}" already registered? ${alreadyRegistered}`);
-
-      if (process.platform === "linux") {
-        globalShortcut.unregister(hotkey);
+      // Right-side single modifiers are handled by native listeners (Swift/C), not globalShortcut
+      if (isRightSideModifier(hotkey)) {
+        this.currentHotkey = hotkey;
+        debugLogger.log(
+          `[HotkeyManager] Right-side modifier "${hotkey}" set - using native listener`
+        );
+        return { success: true, hotkey };
       }
 
-      const success = globalShortcut.register(hotkey, callback);
+      // Modifier-only combos use the native keyboard hook on Windows
+      if (isModifierOnlyHotkey(hotkey) && process.platform === "win32") {
+        this.currentHotkey = hotkey;
+        debugLogger.log(
+          `[HotkeyManager] Modifier-only "${hotkey}" set - using Windows native listener`
+        );
+        return { success: true, hotkey };
+      }
+
+      // Fn+ prefix is a UI-level distinction (user holds Fn to get real F-keys on macOS).
+      // At the OS/Electron level, the accelerator is just the key without Fn.
+      const accelerator = hotkey.startsWith("Fn+") ? hotkey.slice(3) : hotkey;
+
+      const alreadyRegistered = globalShortcut.isRegistered(accelerator);
+      debugLogger.log(
+        `[HotkeyManager] Is "${accelerator}" already registered? ${alreadyRegistered}`
+      );
+
+      if (process.platform === "linux") {
+        globalShortcut.unregister(accelerator);
+      }
+
+      const success = globalShortcut.register(accelerator, callback);
       debugLogger.log(`[HotkeyManager] Registration result for "${hotkey}": ${success}`);
 
       if (success) {
@@ -141,13 +204,17 @@ class HotkeyManager {
         debugLogger.log(`[HotkeyManager] Hotkey "${hotkey}" registered successfully`);
         return { success: true, hotkey };
       } else {
-        const failureInfo = this.getFailureReason(hotkey);
+        const failureInfo = this.getFailureReason(accelerator);
         console.error(`[HotkeyManager] Failed to register hotkey: ${hotkey}`, failureInfo);
         debugLogger.log(`[HotkeyManager] Registration failed:`, failureInfo);
 
+        this._restorePreviousHotkey(previousHotkey, callback);
+
         let errorMessage = failureInfo.message;
         if (failureInfo.suggestions.length > 0) {
-          errorMessage += ` Try: ${failureInfo.suggestions.join(", ")}`;
+          errorMessage += ` ${i18nMain.t("hotkey.errors.trySuggestions", {
+            suggestions: failureInfo.suggestions.join(", "),
+          })}`;
         }
 
         return {
@@ -160,7 +227,34 @@ class HotkeyManager {
     } catch (error) {
       console.error("[HotkeyManager] Error setting up shortcuts:", error);
       debugLogger.log(`[HotkeyManager] Exception during registration:`, error.message);
+      this._restorePreviousHotkey(previousHotkey, callback);
       return { success: false, error: error.message };
+    }
+  }
+
+  _restorePreviousHotkey(previousHotkey, callback) {
+    if (
+      !previousHotkey ||
+      previousHotkey === "GLOBE" ||
+      isRightSideModifier(previousHotkey) ||
+      isModifierOnlyHotkey(previousHotkey)
+    ) {
+      return;
+    }
+    const prevAccel = previousHotkey.startsWith("Fn+") ? previousHotkey.slice(3) : previousHotkey;
+    try {
+      const restored = globalShortcut.register(prevAccel, callback);
+      if (restored) {
+        debugLogger.log(
+          `[HotkeyManager] Restored previous hotkey "${previousHotkey}" after failed registration`
+        );
+      } else {
+        debugLogger.warn(`[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`);
+      }
+    } catch (err) {
+      debugLogger.warn(
+        `[HotkeyManager] Exception restoring previous hotkey "${previousHotkey}": ${err.message}`
+      );
     }
   }
 
@@ -206,7 +300,7 @@ class HotkeyManager {
             const savedHotkey = await mainWindow.webContents.executeJavaScript(`
               localStorage.getItem("dictationKey") || ""
             `);
-            const hotkey = savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Alt+R";
+            const hotkey = savedHotkey && savedHotkey.trim() !== "" ? savedHotkey : "Control+Super";
             const gnomeHotkey = GnomeShortcutManager.convertToGnomeFormat(hotkey);
 
             const success = await this.gnomeManager.registerKeybinding(gnomeHotkey);
@@ -247,9 +341,24 @@ class HotkeyManager {
 
   async loadSavedHotkeyOrDefault(mainWindow, callback) {
     try {
-      const savedHotkey = await mainWindow.webContents.executeJavaScript(`
-        localStorage.getItem("dictationKey") || ""
-      `);
+      // First check file-based storage (environment variable) - more reliable
+      let savedHotkey = process.env.DICTATION_KEY || "";
+
+      // Fall back to localStorage if env var is empty
+      if (!savedHotkey) {
+        savedHotkey = await mainWindow.webContents.executeJavaScript(`
+          localStorage.getItem("dictationKey") || ""
+        `);
+
+        // If we found a hotkey in localStorage but not in env, migrate it to .env file
+        if (savedHotkey && savedHotkey.trim() !== "") {
+          debugLogger.log(
+            `[HotkeyManager] Migrating hotkey "${savedHotkey}" from localStorage to .env`
+          );
+          await this._persistHotkeyToEnvFile(savedHotkey);
+        }
+      }
+
       if (savedHotkey && savedHotkey.trim() !== "") {
         const result = this.setupShortcuts(savedHotkey, callback);
         if (result.success) {
@@ -260,11 +369,12 @@ class HotkeyManager {
         this.notifyHotkeyFailure(savedHotkey, result);
       }
 
-      const defaultHotkey = process.platform === "darwin" ? "GLOBE" : "`";
+      const defaultHotkey = process.platform === "darwin" ? "GLOBE" : "Control+Super";
 
       if (defaultHotkey === "GLOBE") {
         this.currentHotkey = "GLOBE";
         debugLogger.log("[HotkeyManager] Using GLOBE key as default on macOS");
+        await this._persistHotkeyToEnvFile("GLOBE");
         return;
       }
 
@@ -279,7 +389,7 @@ class HotkeyManager {
       debugLogger.log(
         `[HotkeyManager] Default hotkey "${defaultHotkey}" failed, trying fallbacks...`
       );
-      const fallbackHotkeys = ["F8", "F9", "CommandOrControl+Shift+Space"];
+      const fallbackHotkeys = ["F8", "F9", "Control+Shift+Space"];
 
       for (const fallback of fallbackHotkeys) {
         const fallbackResult = this.setupShortcuts(fallback, callback);
@@ -299,10 +409,24 @@ class HotkeyManager {
     }
   }
 
+  async _persistHotkeyToEnvFile(hotkey) {
+    process.env.DICTATION_KEY = hotkey;
+    try {
+      const EnvironmentManager = require("./environment");
+      const envManager = new EnvironmentManager();
+      await envManager.saveAllKeysToEnvFile();
+      debugLogger.log(`[HotkeyManager] Persisted hotkey "${hotkey}" to .env file`);
+    } catch (err) {
+      debugLogger.warn("[HotkeyManager] Failed to persist hotkey to .env file:", err.message);
+    }
+  }
+
   async saveHotkeyToRenderer(hotkey) {
-    // Escape the hotkey string to prevent injection issues
     const escapedHotkey = hotkey.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 
+    await this._persistHotkeyToEnvFile(hotkey);
+
+    // Also save to localStorage for backwards compatibility
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       try {
         await this.mainWindow.webContents.executeJavaScript(
@@ -315,7 +439,9 @@ class HotkeyManager {
         return false;
       }
     } else {
-      debugLogger.warn("[HotkeyManager] Main window not available for saving hotkey");
+      debugLogger.warn(
+        "[HotkeyManager] Main window not available for saving hotkey to localStorage"
+      );
       return false;
     }
   }
@@ -335,7 +461,7 @@ class HotkeyManager {
       this.mainWindow.webContents.send("hotkey-registration-failed", {
         hotkey,
         error: result?.error || `Could not register "${hotkey}"`,
-        suggestions: result?.suggestions || ["F8", "F9", "CommandOrControl+Shift+Space"],
+        suggestions: result?.suggestions || ["F8", "F9", "Control+Shift+Space"],
       });
     }
   }
@@ -420,3 +546,5 @@ class HotkeyManager {
 }
 
 module.exports = HotkeyManager;
+module.exports.isModifierOnlyHotkey = isModifierOnlyHotkey;
+module.exports.isRightSideModifier = isRightSideModifier;
