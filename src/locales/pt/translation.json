@@ -765,6 +765,7 @@
       "none": "Nenhum",
       "outputLabel": "Saída",
       "processing": "Processando...",
+      "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Provedor",
       "run": "Executar teste"
     },

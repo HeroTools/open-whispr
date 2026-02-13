@@ -794,6 +794,7 @@
       "none": "Нет",
       "outputLabel": "Результат",
       "processing": "Обработка...",
+      "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "Провайдер",
       "run": "Запустить тест"
     },

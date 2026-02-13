@@ -35,6 +35,8 @@ const PROVIDER_CONFIG: Record<string, ProviderConfig> = {
   openai: { label: "OpenAI", apiKeyStorageKey: "openaiApiKey" },
   anthropic: { label: "Anthropic", apiKeyStorageKey: "anthropicApiKey" },
   gemini: { label: "Gemini", apiKeyStorageKey: "geminiApiKey" },
+  groq: { label: "Groq", apiKeyStorageKey: "groqApiKey" },
+  openwhispr: { label: "OpenWhispr Cloud" },
   custom: {
     label: "Custom endpoint",
     apiKeyStorageKey: "openaiApiKey",
@@ -121,14 +123,23 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     setTestResult("");
 
     try {
-      const useReasoningModel = localStorage.getItem("useReasoningModel") !== "false";
+      const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+      const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
+      const isSignedIn = localStorage.getItem("isSignedIn") === "true";
+      const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
+
       const reasoningModel = localStorage.getItem("reasoningModel") || "";
-      const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
+      const reasoningProvider = isCloudMode
+        ? "openwhispr"
+        : reasoningModel
+          ? getModelProvider(reasoningModel)
+          : "openai";
 
       logger.debug(
         "PromptStudio test starting",
         {
           useReasoningModel,
+          isCloudMode,
           reasoningModel,
           reasoningProvider,
           testTextLength: testText.length,
@@ -142,32 +153,39 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         return;
       }
 
-      if (!reasoningModel) {
+      // In BYOK mode, a model must be selected
+      if (!isCloudMode && !reasoningModel) {
         setTestResult(t("promptStudio.test.noModelSelected"));
         return;
       }
 
-      const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
-        label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
-      };
+      // In BYOK mode with custom provider, validate base URL
+      if (!isCloudMode) {
+        const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
+          label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
+        };
 
-      if (providerConfig.baseStorageKey) {
-        const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
-        if (!baseUrl) {
-          setTestResult(
-            t("promptStudio.test.baseUrlMissing", {
-              provider: providerConfig.label,
-            })
-          );
-          return;
+        if (providerConfig.baseStorageKey) {
+          const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
+          if (!baseUrl) {
+            setTestResult(
+              t("promptStudio.test.baseUrlMissing", {
+                provider: providerConfig.label,
+              })
+            );
+            return;
+          }
         }
       }
+
+      // Cloud mode doesn't require a specific model — pass a placeholder if none is set
+      const modelToUse = isCloudMode ? reasoningModel || "auto" : reasoningModel;
 
       const currentCustomPrompt = localStorage.getItem("customUnifiedPrompt");
       localStorage.setItem("customUnifiedPrompt", JSON.stringify(editedPrompt));
 
       try {
-        const result = await ReasoningService.processText(testText, reasoningModel, agentName, {});
+        const result = await ReasoningService.processText(testText, modelToUse, agentName, {});
         setTestResult(result);
       } finally {
         if (currentCustomPrompt) {
@@ -342,11 +360,24 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         {activeTab === "test" &&
           (() => {
             const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
+            const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
+            const isSignedIn = localStorage.getItem("isSignedIn") === "true";
+            const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
+
             const reasoningModel = localStorage.getItem("reasoningModel") || "";
-            const reasoningProvider = reasoningModel ? getModelProvider(reasoningModel) : "openai";
+            const reasoningProvider = isCloudMode
+              ? "openwhispr"
+              : reasoningModel
+                ? getModelProvider(reasoningModel)
+                : "openai";
             const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
               label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
             };
+
+            const displayModel = isCloudMode
+              ? t("promptStudio.test.openwhisprCloud")
+              : reasoningModel || t("promptStudio.test.none");
+            const displayProvider = providerConfig.label;
 
             return (
               <div className="divide-y divide-border/40 dark:divide-border-subtle">
@@ -374,7 +405,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                         {t("promptStudio.test.modelLabel")}
                       </p>
                       <p className="text-[12px] font-medium text-foreground font-mono">
-                        {reasoningModel || t("promptStudio.test.none")}
+                        {displayModel}
                       </p>
                     </div>
                     <div className="h-3 w-px bg-border/40" />
@@ -382,9 +413,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
                       <p className="text-[11px] text-muted-foreground/60 uppercase tracking-wider">
                         {t("promptStudio.test.providerLabel")}
                       </p>
-                      <p className="text-[12px] font-medium text-foreground">
-                        {providerConfig.label}
-                      </p>
+                      <p className="text-[12px] font-medium text-foreground">{displayProvider}</p>
                     </div>
                   </div>
                 </div>

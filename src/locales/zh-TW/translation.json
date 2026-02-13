@@ -793,6 +793,7 @@
       "none": "無",
       "outputLabel": "輸出",
       "processing": "處理中...",
+      "openwhisprCloud": "OpenWhispr Cloud",
       "providerLabel": "供應商",
       "run": "執行測試"
     },

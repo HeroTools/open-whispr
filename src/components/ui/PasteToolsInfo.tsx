@@ -62,6 +62,7 @@ export default function PasteToolsInfo({
   // Linux with tools available
   if (pasteToolsInfo.platform === "linux" && pasteToolsInfo.available) {
     const method = pasteToolsInfo.method || "xdotool";
+    const methodLabel = method === "xtest" ? "built-in (XTest)" : method;
     const methodSuffix =
       pasteToolsInfo.isWayland && method === "xdotool"
         ? t("pasteToolsInfo.xwaylandAppsOnly")
@@ -78,7 +79,7 @@ export default function PasteToolsInfo({
               </h3>
               <p className="text-sm text-success dark:text-success">
                 {t("pasteToolsInfo.usingMethodPrefix")}{" "}
-                <code className="bg-success/20 px-1 rounded">{method}</code> {methodSuffix}
+                <code className="bg-success/20 px-1 rounded">{methodLabel}</code> {methodSuffix}
               </p>
             </div>
           </div>
@@ -93,7 +94,6 @@ export default function PasteToolsInfo({
   // Linux without tools - show helpful install instructions
   if (pasteToolsInfo.platform === "linux" && !pasteToolsInfo.available) {
     const isWayland = pasteToolsInfo.isWayland;
-    const xwaylandAvailable = pasteToolsInfo.xwaylandAvailable;
     const recommendedTool = pasteToolsInfo.recommendedInstall;
     const showInstall = !!recommendedTool;
 
@@ -149,13 +149,13 @@ export default function PasteToolsInfo({
                   )}
                 </div>
 
-                {isWayland && recommendedTool === "wtype" && xwaylandAvailable && (
+                {isWayland && recommendedTool === "wtype" && (
                   <p className="text-sm text-warning dark:text-warning mt-3">
                     {t("pasteToolsInfo.noteXwaylandAlso")}
                   </p>
                 )}
 
-                {isWayland && recommendedTool !== "wtype" && (
+                {isWayland && recommendedTool === "xdotool" && (
                   <p className="text-sm text-warning dark:text-warning mt-3">
                     {t("pasteToolsInfo.noteXwaylandOnly")}
                   </p>
