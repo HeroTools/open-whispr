@@ -989,8 +989,11 @@ class ClipboardManager {
       );
     }
 
-    // Use key names for ydotool 0.1.x compat (Ubuntu ships 0.1.8)
-    const ydotoolArgs = inTerminal ? ["key", "ctrl+shift+v"] : ["key", "ctrl+v"];
+    // Raw keycodes work across both ydotool 0.1.x and 1.0.x (key names silently fail on 1.0.x)
+    // 29 = KEY_LEFTCTRL, 42 = KEY_LEFTSHIFT, 47 = KEY_V
+    const ydotoolArgs = inTerminal
+      ? ["key", "29:1", "42:1", "47:1", "47:0", "42:0", "29:0"]
+      : ["key", "29:1", "47:1", "47:0", "29:0"];
 
     const wtypeEntry = canUseWtype
       ? [
