@@ -211,8 +211,12 @@ class DeepgramStreaming {
 
     this.warmConnectionReady = false;
     this.warmSessionId = null;
-    this.cachedToken = token;
-    this.tokenFetchedAt = Date.now();
+    // Only update tokenFetchedAt when the token actually changes —
+    // re-warming with the same token must not reset the expiry clock.
+    if (token !== this.cachedToken) {
+      this.cachedToken = token;
+      this.tokenFetchedAt = Date.now();
+    }
     this.warmConnectionOptions = options;
     this.rewarmAttempts = 0;
 
@@ -276,6 +280,11 @@ class DeepgramStreaming {
       this.warmConnection.on("error", (error) => {
         clearTimeout(warmupTimeout);
         debugLogger.error("Deepgram warmup connection error", { error: error.message });
+        // Invalidate cached token on auth failure so next attempt fetches fresh
+        if (error.message && error.message.includes("401")) {
+          this.cachedToken = null;
+          this.tokenFetchedAt = null;
+        }
         this.cleanupWarmConnection();
         if (!settled) {
           settled = true;
@@ -593,6 +602,11 @@ class DeepgramStreaming {
 
       this.ws.on("error", (error) => {
         debugLogger.error("Deepgram WebSocket error", { error: error.message });
+        // Invalidate cached token on auth failure so next attempt fetches fresh
+        if (error.message && error.message.includes("401")) {
+          this.cachedToken = null;
+          this.tokenFetchedAt = null;
+        }
         this.cleanup();
         if (this.pendingReject) {
           this.pendingReject(error);
