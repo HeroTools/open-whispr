@@ -19,7 +19,7 @@ import {
   clearTranscriptions as clearStoreTranscriptions,
 } from "../stores/transcriptionStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
-import { setActiveNoteId } from "../stores/noteStore";
+import { setActiveNoteId, setActiveFolderId } from "../stores/noteStore";
 import HistoryView from "./HistoryView";
 
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
@@ -444,8 +444,9 @@ export default function ControlPanel() {
             {activeView === "upload" && (
               <Suspense fallback={null}>
                 <UploadAudioView
-                  onNoteCreated={(noteId) => {
+                  onNoteCreated={(noteId, folderId) => {
                     setActiveNoteId(noteId);
+                    if (folderId) setActiveFolderId(folderId);
                     setActiveView("personal-notes");
                   }}
                 />

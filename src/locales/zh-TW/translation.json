@@ -1336,6 +1336,8 @@
       "noteTitle": "筆記標題",
       "stop": "停止",
       "dictate": "聽寫",
+      "recording": "錄音中",
+      "processing": "處理中...",
       "edit": "編輯",
       "preview": "預覽",
       "enhance": "增強",

@@ -1336,6 +1336,8 @@
       "noteTitle": "Titolo della nota",
       "stop": "Ferma",
       "dictate": "Detta",
+      "recording": "Registrazione",
+      "processing": "Elaborazione...",
       "edit": "Modifica",
       "preview": "Anteprima",
       "enhance": "Migliora",

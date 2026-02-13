@@ -1336,6 +1336,8 @@
       "noteTitle": "Note title",
       "stop": "Stop",
       "dictate": "Dictate",
+      "recording": "Recording",
+      "processing": "Processing...",
       "edit": "Edit",
       "preview": "Preview",
       "enhance": "Enhance",
@@ -1393,6 +1395,22 @@
       "title": "Meeting Notes",
       "description": "Speaker identification & structured summaries",
       "comingSoon": "Coming Soon"
+    },
+    "empty": {
+      "title": "No notes here yet",
+      "description": "Create your first note to start writing",
+      "selectTitle": "Select a note",
+      "selectDescription": "Choose a note from the sidebar",
+      "createNote": "Create note",
+      "emptyFolder": "No notes in this folder"
+    },
+    "addToFolder": {
+      "title": "Add notes",
+      "searchPlaceholder": "Search notes to add...",
+      "addExisting": "Add existing",
+      "addCount": "Add {{count}} notes",
+      "noResults": "No matching notes",
+      "noNotesAvailable": "No other notes available"
     }
   }
 }

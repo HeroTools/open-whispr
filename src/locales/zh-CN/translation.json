@@ -1336,6 +1336,8 @@
       "noteTitle": "笔记标题",
       "stop": "停止",
       "dictate": "听写",
+      "recording": "录音中",
+      "processing": "处理中...",
       "edit": "编辑",
       "preview": "预览",
       "enhance": "增强",

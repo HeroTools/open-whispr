@@ -1,5 +1,5 @@
 import { Button } from "./ui/button";
-import { Trash2, FileText, Mic, Loader2, Sparkles, Cloud, X } from "lucide-react";
+import { Trash2, FileText, Loader2, Sparkles, Cloud, X } from "lucide-react";
 import TranscriptionItem from "./ui/TranscriptionItem";
 import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
 import { formatHotkeyLabel } from "../utils/hotkeys";
@@ -142,14 +142,47 @@ export default function HistoryView({
               <span className="text-sm text-muted-foreground">Loading…</span>
             </div>
           ) : history.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 px-4">
-              <div className="w-10 h-10 rounded-md bg-muted/50 dark:bg-white/4 flex items-center justify-center mb-3">
-                <Mic size={18} className="text-muted-foreground" />
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">No transcriptions yet</p>
-              <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+            <div className="flex flex-col items-center justify-center py-16 px-4">
+              <svg
+                className="text-foreground dark:text-white mb-5"
+                width="64"
+                height="64"
+                viewBox="0 0 64 64"
+                fill="none"
+              >
+                <rect
+                  x="24"
+                  y="6"
+                  width="16"
+                  height="28"
+                  rx="8"
+                  fill="currentColor"
+                  fillOpacity={0.04}
+                  stroke="currentColor"
+                  strokeOpacity={0.1}
+                />
+                <rect x="28" y="12" width="8" height="3" rx="1.5" fill="currentColor" fillOpacity={0.06} />
+                <path
+                  d="M18 28c0 7.7 6.3 14 14 14s14-6.3 14-14"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeOpacity={0.07}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                />
+                <line x1="32" y1="42" x2="32" y2="50" stroke="currentColor" strokeOpacity={0.07} strokeWidth={1.5} strokeLinecap="round" />
+                <line x1="26" y1="50" x2="38" y2="50" stroke="currentColor" strokeOpacity={0.07} strokeWidth={1.5} strokeLinecap="round" />
+                <path d="M12 20a2 2 0 0 1 0 8" stroke="currentColor" strokeOpacity={0.04} strokeWidth={1.5} strokeLinecap="round" />
+                <path d="M8 18a2 2 0 0 1 0 12" stroke="currentColor" strokeOpacity={0.03} strokeWidth={1.5} strokeLinecap="round" />
+                <path d="M52 20a2 2 0 0 0 0 8" stroke="currentColor" strokeOpacity={0.04} strokeWidth={1.5} strokeLinecap="round" />
+                <path d="M56 18a2 2 0 0 0 0 12" stroke="currentColor" strokeOpacity={0.03} strokeWidth={1.5} strokeLinecap="round" />
+              </svg>
+              <h3 className="text-[13px] font-semibold text-foreground/60 mb-2">
+                No transcriptions yet
+              </h3>
+              <div className="flex items-center gap-2 text-[11px] text-foreground/25">
                 <span>Press</span>
-                <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border text-[11px] font-mono font-medium">
+                <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border/50 text-[10px] font-mono font-medium text-foreground/40">
                   {formatHotkeyLabel(hotkey)}
                 </kbd>
                 <span>to start</span>

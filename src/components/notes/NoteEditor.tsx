@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Mic, Eye, Pencil, Loader2, Sparkles, Download, FileText } from "lucide-react";
+import { Eye, Pencil, Loader2, Sparkles, Download, FileText } from "lucide-react";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
 import {
   DropdownMenu,
@@ -10,6 +10,7 @@ import {
 } from "../ui/dropdown-menu";
 import { cn } from "../lib/utils";
 import type { NoteItem } from "../../types/electron";
+import DictationWidget from "./DictationWidget";
 
 interface NoteEditorProps {
   note: NoteItem;
@@ -20,6 +21,7 @@ interface NoteEditorProps {
   partialTranscript: string;
   finalTranscript: string | null;
   onFinalTranscriptConsumed: () => void;
+  isProcessing: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;
   onOpenEnhance?: () => void;
@@ -35,6 +37,7 @@ export default function NoteEditor({
   onContentChange,
   isSaving,
   isRecording,
+  isProcessing,
   partialTranscript,
   finalTranscript,
   onFinalTranscriptConsumed,
@@ -214,31 +217,6 @@ export default function NoteEditor({
       </div>
 
       <div className="flex items-center gap-px px-5 py-1.5">
-        <button
-          onClick={isRecording ? onStopRecording : onStartRecording}
-          className={cn(
-            "flex items-center gap-1.5 h-6 px-2 rounded-md text-[10px] font-medium transition-all duration-200",
-            isRecording
-              ? "bg-destructive/10 text-destructive hover:bg-destructive/15"
-              : "text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/4"
-          )}
-        >
-          {isRecording ? (
-            <>
-              <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full rounded-full bg-destructive/60 animate-ping" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
-              </span>
-              {t("notes.editor.stop")}
-            </>
-          ) : (
-            <>
-              <Mic size={11} />
-              {t("notes.editor.dictate")}
-            </>
-          )}
-        </button>
-
         {viewMode !== "enhanced" && (
           <button
             onClick={() => setIsPreview(!isPreview)}
@@ -325,7 +303,7 @@ export default function NoteEditor({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto relative">
         {viewMode === "enhanced" && enhancedContent ? (
           <div className="px-5 py-3 text-[13px] text-foreground leading-relaxed">
             <MarkdownRenderer content={enhancedContent} />
@@ -345,6 +323,13 @@ export default function NoteEditor({
             style={{ boxShadow: "none" }}
           />
         )}
+
+        <DictationWidget
+          isRecording={isRecording}
+          isProcessing={isProcessing}
+          onStart={onStartRecording}
+          onStop={onStopRecording}
+        />
       </div>
     </div>
   );

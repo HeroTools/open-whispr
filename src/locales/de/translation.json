@@ -1336,6 +1336,8 @@
       "noteTitle": "Notiztitel",
       "stop": "Stopp",
       "dictate": "Diktieren",
+      "recording": "Aufnahme",
+      "processing": "Verarbeitung...",
       "edit": "Bearbeiten",
       "preview": "Vorschau",
       "enhance": "Verbessern",
