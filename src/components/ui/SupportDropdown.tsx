@@ -19,6 +19,7 @@ function DiscordIcon({ className }: { className?: string }) {
 
 interface SupportDropdownProps {
   className?: string;
+  trigger?: React.ReactNode;
 }
 
 const openExternal = async (url: string) => {
@@ -32,20 +33,22 @@ const openExternal = async (url: string) => {
   }
 };
 
-export default function SupportDropdown({ className }: SupportDropdownProps) {
+export default function SupportDropdown({ className, trigger }: SupportDropdownProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "text-foreground/70 hover:text-foreground hover:bg-foreground/10",
-            className
-          )}
-        >
-          <HelpCircle size={16} />
-        </Button>
+        {trigger || (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "text-foreground/70 hover:text-foreground hover:bg-foreground/10",
+              className
+            )}
+          >
+            <HelpCircle size={16} />
+          </Button>
+        )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onClick={() => openExternal("https://discord.gg/yZWC9WTtX7")}>

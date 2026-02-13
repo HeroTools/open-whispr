@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 /**
  * Helper to register an IPC listener and return a cleanup function.
@@ -38,6 +38,44 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Dictionary functions
   getDictionary: () => ipcRenderer.invoke("db-get-dictionary"),
   setDictionary: (words) => ipcRenderer.invoke("db-set-dictionary", words),
+
+  // Note functions
+  saveNote: (title, content, noteType, sourceFile, audioDuration, folderId) =>
+    ipcRenderer.invoke("db-save-note", title, content, noteType, sourceFile, audioDuration, folderId),
+  getNote: (id) => ipcRenderer.invoke("db-get-note", id),
+  getNotes: (noteType, limit, folderId) => ipcRenderer.invoke("db-get-notes", noteType, limit, folderId),
+  updateNote: (id, updates) => ipcRenderer.invoke("db-update-note", id, updates),
+  deleteNote: (id) => ipcRenderer.invoke("db-delete-note", id),
+  exportNote: (noteId, format) => ipcRenderer.invoke("export-note", noteId, format),
+
+  // Folder functions
+  getFolders: () => ipcRenderer.invoke("db-get-folders"),
+  createFolder: (name) => ipcRenderer.invoke("db-create-folder", name),
+  deleteFolder: (id) => ipcRenderer.invoke("db-delete-folder", id),
+  renameFolder: (id, name) => ipcRenderer.invoke("db-rename-folder", id, name),
+  getFolderNoteCounts: () => ipcRenderer.invoke("db-get-folder-note-counts"),
+
+  // Audio file operations
+  selectAudioFile: () => ipcRenderer.invoke("select-audio-file"),
+  transcribeAudioFile: (filePath, options) =>
+    ipcRenderer.invoke("transcribe-audio-file", filePath, options),
+  getPathForFile: (file) => webUtils.getPathForFile(file),
+
+  onNoteAdded: (callback) => {
+    const listener = (_event, note) => callback?.(note);
+    ipcRenderer.on("note-added", listener);
+    return () => ipcRenderer.removeListener("note-added", listener);
+  },
+  onNoteUpdated: (callback) => {
+    const listener = (_event, note) => callback?.(note);
+    ipcRenderer.on("note-updated", listener);
+    return () => ipcRenderer.removeListener("note-updated", listener);
+  },
+  onNoteDeleted: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("note-deleted", listener);
+    return () => ipcRenderer.removeListener("note-deleted", listener);
+  },
 
   onTranscriptionAdded: (callback) => {
     const listener = (_event, transcription) => callback?.(transcription);
@@ -232,6 +270,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
   cloudUsage: () => ipcRenderer.invoke("cloud-usage"),
   cloudCheckout: () => ipcRenderer.invoke("cloud-checkout"),
   cloudBillingPortal: () => ipcRenderer.invoke("cloud-billing-portal"),
+
+  // Cloud audio file transcription
+  transcribeAudioFileCloud: (filePath) => ipcRenderer.invoke("transcribe-audio-file-cloud", filePath),
+  transcribeAudioFileByok: (options) => ipcRenderer.invoke("transcribe-audio-file-byok", options),
+
+  // Referral stats
+  getReferralStats: () => ipcRenderer.invoke("get-referral-stats"),
+  sendReferralInvite: (email) => ipcRenderer.invoke("send-referral-invite", email),
+  getReferralInvites: () => ipcRenderer.invoke("get-referral-invites"),
 
   // Assembly AI Streaming
   assemblyAiStreamingWarmup: (options) =>

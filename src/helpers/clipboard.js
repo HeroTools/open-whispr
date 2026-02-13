@@ -1017,8 +1017,8 @@ class ClipboardManager {
       // wlroots (Sway, Hyprland, etc.): wtype is native; then xdotool for XWayland; ydotool last
       candidates = [...wtypeEntry, ...xdotoolEntry, ...ydotoolEntry];
     } else {
-      // GNOME, KDE, or unknown Wayland: xdotool for XWayland apps first; ydotool fallback; wtype last resort
-      candidates = [...xdotoolEntry, ...ydotoolEntry, ...wtypeEntry];
+      // GNOME, KDE, or unknown Wayland: ydotool (uinput) works for all windows; xdotool for XWayland only
+      candidates = [...ydotoolEntry, ...xdotoolEntry, ...wtypeEntry];
     }
 
     const available = candidates.filter((c) => this.commandExists(c.cmd));

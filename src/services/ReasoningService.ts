@@ -259,7 +259,7 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt = this.getSystemPrompt(agentName, text);
+    const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
     const userPrompt = text;
 
     const messages = [
@@ -496,7 +496,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const userPrompt = text;
 
       const messages = [
@@ -712,7 +712,7 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
         ...config,
         systemPrompt,
@@ -763,7 +763,7 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
         ...config,
         systemPrompt,
@@ -820,7 +820,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const userPrompt = text;
 
       const requestBody = {

@@ -4,6 +4,7 @@ export interface ReasoningConfig {
   maxTokens?: number;
   temperature?: number;
   contextSize?: number;
+  systemPrompt?: string;
 }
 
 export abstract class BaseReasoningService {

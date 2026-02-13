@@ -8,7 +8,6 @@ import {
   Sparkles,
   UserCircle,
   Wrench,
-  BookOpen,
   ShieldCheck,
   Lock,
 } from "lucide-react";
@@ -46,13 +45,6 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
         label: t("settingsModal.sections.transcription.label"),
         icon: Mic,
         description: t("settingsModal.sections.transcription.description"),
-        group: t("settingsModal.groups.speech"),
-      },
-      {
-        id: "dictionary",
-        label: t("settingsModal.sections.dictionary.label"),
-        icon: BookOpen,
-        description: t("settingsModal.sections.dictionary.description"),
         group: t("settingsModal.groups.speech"),
       },
       {
