@@ -380,32 +380,34 @@ export default function ControlPanel() {
             style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
           />
           <div className="flex-1 overflow-y-auto pt-1">
-            {usage?.isPastDue && (
-              <div className="mx-4 mb-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 p-3">
-                <div className="flex items-start gap-3">
-                  <div className="shrink-0 w-8 h-8 rounded-md bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-                    <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200 mb-0.5">
-                      {t("controlPanel.billing.pastDueTitle")}
-                    </p>
-                    <p className="text-[12px] text-amber-700 dark:text-amber-300/80 mb-2">
-                      {t("controlPanel.billing.bannerDescription", {
-                        limit: usage.limit.toLocaleString(),
-                      })}
-                    </p>
-                    <Button
-                      variant="default"
-                      size="sm"
-                      className="h-7 text-[11px]"
-                      onClick={() => {
-                        setSettingsSection("account");
-                        setShowSettings(true);
-                      }}
-                    >
-                      {t("controlPanel.billing.updatePayment")}
-                    </Button>
+            {usage?.isPastDue && activeView === "home" && (
+              <div className="max-w-3xl mx-auto w-full mb-3">
+                <div className="rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/50 p-3">
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0 w-8 h-8 rounded-md bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+                      <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200 mb-0.5">
+                        {t("controlPanel.billing.pastDueTitle")}
+                      </p>
+                      <p className="text-[12px] text-amber-700 dark:text-amber-300/80 mb-2">
+                        {t("controlPanel.billing.bannerDescription", {
+                          limit: usage.limit.toLocaleString(),
+                        })}
+                      </p>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        className="h-7 text-[11px]"
+                        onClick={() => {
+                          setSettingsSection("account");
+                          setShowSettings(true);
+                        }}
+                      >
+                        {t("controlPanel.billing.updatePayment")}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </div>

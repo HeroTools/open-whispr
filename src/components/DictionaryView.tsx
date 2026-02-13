@@ -3,9 +3,11 @@ import { BookOpen, X, CornerDownLeft, Info } from "lucide-react";
 import { Input } from "./ui/input";
 import { ConfirmDialog } from "./ui/dialog";
 import { useSettings } from "../hooks/useSettings";
+import { getAgentName } from "../utils/agentName";
 
 export default function DictionaryView() {
   const { customDictionary, setCustomDictionary } = useSettings();
+  const agentName = getAgentName();
   const [newWord, setNewWord] = useState("");
   const [confirmClear, setConfirmClear] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
@@ -25,9 +27,10 @@ export default function DictionaryView() {
 
   const handleRemove = useCallback(
     (word: string) => {
+      if (word === agentName) return;
       setCustomDictionary(customDictionary.filter((w) => w !== word));
     },
-    [customDictionary, setCustomDictionary]
+    [customDictionary, setCustomDictionary, agentName]
   );
 
   return (
@@ -37,7 +40,7 @@ export default function DictionaryView() {
         onOpenChange={setConfirmClear}
         title="Clear dictionary?"
         description="This will remove all words from your custom dictionary. This action cannot be undone."
-        onConfirm={() => setCustomDictionary([])}
+        onConfirm={() => setCustomDictionary(customDictionary.filter((w) => w === agentName))}
         variant="destructive"
       />
 
@@ -160,31 +163,36 @@ export default function DictionaryView() {
 
           <div className="flex-1 overflow-y-auto px-5 py-3">
             <div className="flex flex-wrap gap-1.5">
-              {customDictionary.map((word) => (
-                <span
-                  key={word}
-                  className="group inline-flex items-center gap-1 pl-2.5 pr-1 py-[3px]
-                    bg-foreground/[0.02] dark:bg-white/[0.03]
-                    text-foreground/60 dark:text-foreground/50
-                    rounded-[5px] text-[11px]
-                    border border-foreground/8 dark:border-white/6
-                    transition-all duration-150
-                    hover:border-foreground/15 dark:hover:border-white/12
-                    hover:bg-foreground/[0.04] dark:hover:bg-white/[0.06]
-                    hover:text-foreground/80 dark:hover:text-foreground/70"
-                >
-                  {word}
-                  <button
-                    onClick={() => handleRemove(word)}
-                    className="p-0.5 rounded-sm
-                      opacity-0 group-hover:opacity-100
-                      text-foreground/25 hover:!text-destructive/70
-                      transition-all duration-150"
+              {customDictionary.map((word) => {
+                const isAgentName = word === agentName;
+                return (
+                  <span
+                    key={word}
+                    className={`group inline-flex items-center gap-1 py-[3px]
+                      rounded-[5px] text-[11px]
+                      border transition-all duration-150
+                      ${
+                        isAgentName
+                          ? "pl-2.5 pr-2.5 bg-primary/10 dark:bg-primary/15 text-primary border-primary/20 dark:border-primary/30"
+                          : "pl-2.5 pr-1 bg-foreground/[0.02] dark:bg-white/[0.03] text-foreground/60 dark:text-foreground/50 border-foreground/8 dark:border-white/6 hover:border-foreground/15 dark:hover:border-white/12 hover:bg-foreground/[0.04] dark:hover:bg-white/[0.06] hover:text-foreground/80 dark:hover:text-foreground/70"
+                      }`}
+                    title={isAgentName ? "Auto-managed — synced from agent name" : undefined}
                   >
-                    <X size={10} strokeWidth={2} />
-                  </button>
-                </span>
-              ))}
+                    {word}
+                    {!isAgentName && (
+                      <button
+                        onClick={() => handleRemove(word)}
+                        className="p-0.5 rounded-sm
+                          opacity-0 group-hover:opacity-100
+                          text-foreground/25 hover:!text-destructive/70
+                          transition-all duration-150"
+                      >
+                        <X size={10} strokeWidth={2} />
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
             </div>
           </div>
 

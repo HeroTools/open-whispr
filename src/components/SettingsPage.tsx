@@ -676,6 +676,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
     setCloudBackupEnabled,
     telemetryEnabled,
     setTelemetryEnabled,
+    customDictionary,
+    setCustomDictionary,
   } = useSettings();
 
   const { t, i18n } = useTranslation();
@@ -1711,159 +1713,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           />
         );
 
-      case "dictionary":
-        return (
-          <div className="space-y-5">
-            <SectionHeader
-              title={t("settingsPage.dictionary.title")}
-              description={t("settingsPage.dictionary.description")}
-            />
-
-            {/* Add Words */}
-            <SettingsPanel>
-              <SettingsPanelRow>
-                <div className="space-y-2">
-                  <p className="text-[12px] font-medium text-foreground">
-                    {t("settingsPage.dictionary.addWordOrPhrase")}
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder={t("settingsPage.dictionary.placeholder")}
-                      value={newDictionaryWord}
-                      onChange={(e) => setNewDictionaryWord(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleAddDictionaryWord();
-                        }
-                      }}
-                      className="flex-1 h-8 text-[12px]"
-                    />
-                    <Button
-                      onClick={handleAddDictionaryWord}
-                      disabled={!newDictionaryWord.trim()}
-                      size="sm"
-                      className="h-8"
-                    >
-                      {t("settingsPage.dictionary.add")}
-                    </Button>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground/50">
-                    {t("settingsPage.dictionary.pressEnterToAdd")}
-                  </p>
-                </div>
-              </SettingsPanelRow>
-            </SettingsPanel>
-
-            {/* Word List */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-[12px] font-medium text-foreground">
-                  {t("settingsPage.dictionary.yourWords")}
-                  {customDictionary.length > 0 && (
-                    <span className="ml-1.5 text-muted-foreground/50 font-normal text-[11px]">
-                      {customDictionary.length}
-                    </span>
-                  )}
-                </p>
-                {customDictionary.length > 0 && (
-                  <button
-                    onClick={() => {
-                      showConfirmDialog({
-                        title: t("settingsPage.dictionary.clearDictionaryTitle"),
-                        description: t("settingsPage.dictionary.clearDictionaryDescription"),
-                        confirmText: t("settingsPage.dictionary.clearAll"),
-                        variant: "destructive",
-                        onConfirm: () =>
-                          setCustomDictionary(customDictionary.filter((w) => w === agentName)),
-                      });
-                    }}
-                    className="text-[10px] text-muted-foreground/40 hover:text-destructive transition-colors"
-                  >
-                    {t("settingsPage.dictionary.clearAll")}
-                  </button>
-                )}
-              </div>
-
-              {customDictionary.length > 0 ? (
-                <SettingsPanel>
-                  <SettingsPanelRow>
-                    <div className="flex flex-wrap gap-1">
-                      {customDictionary.map((word) => {
-                        const isAgentName = word === agentName;
-                        return (
-                          <span
-                            key={word}
-                            className={`group inline-flex items-center gap-0.5 py-0.5 rounded-[5px] text-[11px] border transition-all ${
-                              isAgentName
-                                ? "pl-2 pr-2 bg-primary/10 dark:bg-primary/15 text-primary border-primary/20 dark:border-primary/30"
-                                : "pl-2 pr-1 bg-primary/5 dark:bg-primary/10 text-foreground border-border/30 dark:border-border-subtle hover:border-destructive/40 hover:bg-destructive/5"
-                            }`}
-                            title={
-                              isAgentName
-                                ? t("settingsPage.dictionary.agentNameAutoManaged")
-                                : undefined
-                            }
-                          >
-                            {word}
-                            {!isAgentName && (
-                              <button
-                                onClick={() => handleRemoveDictionaryWord(word)}
-                                className="ml-0.5 p-0.5 rounded-sm text-muted-foreground/40 hover:text-destructive transition-colors"
-                                title={t("settingsPage.dictionary.removeWord")}
-                              >
-                                <svg
-                                  width="9"
-                                  height="9"
-                                  viewBox="0 0 24 24"
-                                  fill="none"
-                                  stroke="currentColor"
-                                  strokeWidth="2.5"
-                                  strokeLinecap="round"
-                                >
-                                  <path d="M18 6L6 18M6 6l12 12" />
-                                </svg>
-                              </button>
-                            )}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  </SettingsPanelRow>
-                </SettingsPanel>
-              ) : (
-                <div className="rounded-lg border border-dashed border-border/40 dark:border-border-subtle py-6 flex flex-col items-center justify-center text-center">
-                  <p className="text-[11px] text-muted-foreground/50">
-                    {t("settingsPage.dictionary.noWords")}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground/40 mt-0.5">
-                    {t("settingsPage.dictionary.wordsAppearHere")}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* How it works */}
-            <div>
-              <SectionHeader title={t("settingsPage.dictionary.howItWorksTitle")} />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    {t("settingsPage.dictionary.howItWorksDescription")}
-                  </p>
-                </SettingsPanelRow>
-                <SettingsPanelRow>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    <span className="font-medium text-foreground">
-                      {t("settingsPage.dictionary.tipLabel")}
-                    </span>{" "}
-                    {t("settingsPage.dictionary.tipDescription")}
-                  </p>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-          </div>
-        );
-
       case "aiModels":
         return (
           <AiModelsSection
@@ -1922,8 +1771,12 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                       <Button
                         onClick={() => {
                           const trimmed = agentNameInput.trim();
+                          const oldName = agentName;
                           setAgentName(trimmed);
                           setAgentNameInput(trimmed);
+                          let dict = customDictionary.filter((w) => w !== oldName);
+                          if (trimmed && !dict.includes(trimmed)) dict = [trimmed, ...dict];
+                          setCustomDictionary(dict);
                           showAlertDialog({
                             title: t("settingsPage.agentConfig.dialogs.updatedTitle"),
                             description: t("settingsPage.agentConfig.dialogs.updatedDescription", {

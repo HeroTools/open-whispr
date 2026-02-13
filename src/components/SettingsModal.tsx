@@ -10,7 +10,6 @@ import {
   Wrench,
   ShieldCheck,
   Lock,
-  BookOpen,
 } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
@@ -46,13 +45,6 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
         label: t("settingsModal.sections.transcription.label"),
         icon: Mic,
         description: t("settingsModal.sections.transcription.description"),
-        group: t("settingsModal.groups.speech"),
-      },
-      {
-        id: "dictionary",
-        label: t("settingsModal.sections.dictionary.label"),
-        icon: BookOpen,
-        description: t("settingsModal.sections.dictionary.description"),
         group: t("settingsModal.groups.speech"),
       },
       {

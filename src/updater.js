@@ -40,8 +40,7 @@ class UpdateManager {
     // Setting channel to e.g. 'latest-arm64' makes the updater look for
     // 'latest-arm64-mac.yml' instead of the shared 'latest-mac.yml'.
     if (process.platform === "darwin") {
-      autoUpdater.channel =
-        process.arch === "arm64" ? "latest-arm64" : "latest-x64";
+      autoUpdater.channel = process.arch === "arm64" ? "latest-arm64" : "latest-x64";
     }
 
     // Disable auto-download - let user control when to download
