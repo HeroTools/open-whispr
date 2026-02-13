@@ -177,9 +177,39 @@ chmod +x dist/OpenWhispr-*.AppImage
 ./dist/OpenWhispr-*.AppImage
 ```
 
-**Optional Dependencies for Automatic Paste**:
+**Native Paste Binary (`linux-fast-paste`)**:
 
-The clipboard paste feature requires platform-specific tools:
+OpenWhispr ships a native C binary for pasting text on Linux, compiled automatically at build time. This is the **primary** paste mechanism — external tools like `xdotool` and `wtype` are only used as fallbacks if the native binary fails.
+
+How it works:
+- **X11**: Uses the XTest extension to synthesize `Ctrl+V` (or `Ctrl+Shift+V` in terminals) directly, with no external dependencies beyond X11 itself
+- **Wayland**: Uses the Linux `uinput` subsystem to create a virtual keyboard and inject keystrokes. Falls back to XTest via XWayland if uinput is unavailable
+- **Terminal detection**: Recognizes 20+ terminal emulators (kitty, alacritty, gnome-terminal, wezterm, ghostty, etc.) and automatically uses `Ctrl+Shift+V` instead of `Ctrl+V`
+- **Window targeting**: Can target a specific window ID via `--window` to ensure keystrokes reach the correct application
+
+Build dependencies (for compiling from source):
+```bash
+# Debian/Ubuntu
+sudo apt install gcc libx11-dev libxtst-dev
+
+# Fedora/RHEL
+sudo dnf install gcc libX11-devel libXtst-devel
+
+# Arch
+sudo pacman -S gcc libx11 libxtst
+```
+
+The build script (`scripts/build-linux-fast-paste.js`) runs during `npm run compile:linux-paste` and:
+1. Detects whether `linux/uinput.h` headers are available
+2. Compiles with `-DHAVE_UINPUT` if so (enables Wayland uinput support)
+3. Caches the binary and skips rebuilds unless the source or flags change
+4. Gracefully falls back to system tools if compilation fails
+
+If the native binary isn't available, OpenWhispr falls back to external paste tools in this order:
+
+**Fallback Dependencies for Automatic Paste**:
+
+The following tools are used as fallbacks when the native paste binary is unavailable or fails:
 
 **X11 (Traditional Linux Desktop)**:
 ```bash
@@ -240,7 +270,7 @@ sudo dnf install kdotool  # Fedora/RHEL
 sudo pacman -S kdotool    # Arch
 ```
 
-> ℹ️ **Note**: OpenWhispr automatically tries paste tools in this order: `wtype` → `ydotool` → `xdotool` (for XWayland apps). If no paste tool is installed, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
+> ℹ️ **Note**: OpenWhispr automatically tries paste methods in this order: native `linux-fast-paste` binary (XTest or uinput) → `wtype` → `ydotool` → `xdotool` (for XWayland apps). If no paste method works, text will still be copied to the clipboard - you'll just need to paste manually with Ctrl+V.
 
 > ⚠️ **ydotool Requirements**: The `ydotoold` daemon must be running for ydotool to work. Start it manually with `sudo ydotoold &` or enable the systemd service as shown above.
 
