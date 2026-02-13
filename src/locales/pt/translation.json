@@ -1034,6 +1034,7 @@
       "hotkey": {
         "activationMode": "Modo de ativação",
         "description": "A combinação de teclas que inicia e para o ditado por voz",
+        "resetToDefault": "Redefinir para {{hotkey}}",
         "title": "Atalho de ditado"
       },
       "microphone": {

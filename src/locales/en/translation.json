@@ -1062,6 +1062,7 @@
       "hotkey": {
         "activationMode": "Activation Mode",
         "description": "The key combination that starts and stops voice dictation",
+        "resetToDefault": "Reset to {{hotkey}}",
         "title": "Dictation Hotkey"
       },
       "microphone": {

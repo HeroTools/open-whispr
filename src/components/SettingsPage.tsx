@@ -46,6 +46,7 @@ import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { getValidationMessage } from "../utils/hotkeyValidator";
 import { getPlatform } from "../utils/platform";
+import { getDefaultHotkey, formatHotkeyLabel } from "../utils/hotkeys";
 import { ActivationModeSelector } from "./ui/ActivationModeSelector";
 import { Toggle } from "./ui/toggle";
 import DeveloperSection from "./DeveloperSection";
@@ -1612,6 +1613,17 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     disabled={isHotkeyRegistering}
                     validate={validateHotkeyForInput}
                   />
+                  {dictationKey && dictationKey !== getDefaultHotkey() && (
+                    <button
+                      onClick={() => registerHotkey(getDefaultHotkey())}
+                      disabled={isHotkeyRegistering}
+                      className="mt-2 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50"
+                    >
+                      {t("settingsPage.general.hotkey.resetToDefault", {
+                        hotkey: formatHotkeyLabel(getDefaultHotkey()),
+                      })}
+                    </button>
+                  )}
                 </SettingsPanelRow>
 
                 {!isUsingGnomeHotkeys && (

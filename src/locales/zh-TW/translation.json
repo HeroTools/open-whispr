@@ -1062,6 +1062,7 @@
       "hotkey": {
         "activationMode": "啟用模式",
         "description": "用來開始和停止語音輸入的組合鍵",
+        "resetToDefault": "重置為 {{hotkey}}",
         "title": "語音輸入快捷鍵"
       },
       "microphone": {

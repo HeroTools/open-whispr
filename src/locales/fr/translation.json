@@ -1062,6 +1062,7 @@
       "hotkey": {
         "activationMode": "Mode d'activation",
         "description": "La combinaison de touches qui démarre et arrête la dictée vocale",
+        "resetToDefault": "Réinitialiser à {{hotkey}}",
         "title": "Raccourci de dictée"
       },
       "microphone": {

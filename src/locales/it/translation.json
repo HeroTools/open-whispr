@@ -1062,6 +1062,7 @@
       "hotkey": {
         "activationMode": "Modalità di attivazione",
         "description": "La combinazione di tasti che avvia e ferma la dettatura vocale",
+        "resetToDefault": "Ripristina a {{hotkey}}",
         "title": "Scorciatoia di dettatura"
       },
       "microphone": {

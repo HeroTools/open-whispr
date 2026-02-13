@@ -1062,6 +1062,7 @@
       "hotkey": {
         "activationMode": "激活模式",
         "description": "用于开始和停止语音听写的组合键",
+        "resetToDefault": "重置为 {{hotkey}}",
         "title": "听写快捷键"
       },
       "microphone": {
