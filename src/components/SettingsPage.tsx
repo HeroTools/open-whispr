@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
-import MarkdownRenderer from "./ui/MarkdownRenderer";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
 import MicrophoneSettings from "./ui/MicrophoneSettings";
 import PermissionCard from "./ui/PermissionCard";
@@ -1459,9 +1458,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           version: updateInfo.version,
                         })}
                       </p>
-                      <div className="text-[12px] text-muted-foreground">
-                        <MarkdownRenderer content={updateInfo.releaseNotes} />
-                      </div>
+                      <div
+                        className="text-[12px] text-muted-foreground [&_ul]:list-disc [&_ul]:pl-4 [&_ul]:space-y-1 [&_ol]:list-decimal [&_ol]:pl-4 [&_ol]:space-y-1 [&_li]:pl-1 [&_p]:mb-2 [&_p:last-child]:mb-0 [&_a]:text-link [&_a]:underline"
+                        dangerouslySetInnerHTML={{ __html: updateInfo.releaseNotes }}
+                      />
                     </div>
                   )}
                 </SettingsPanelRow>
