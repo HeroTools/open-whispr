@@ -19,6 +19,7 @@ const getLinuxDesktopEnv = () =>
     .toLowerCase();
 
 const isGnomeDesktop = (desktopEnv) => desktopEnv.includes("gnome");
+const isKdeDesktop = (desktopEnv) => desktopEnv.includes("kde") || desktopEnv.includes("plasma");
 
 const getLinuxSessionInfo = () => {
   const isWayland =
@@ -27,8 +28,9 @@ const getLinuxSessionInfo = () => {
   const xwaylandAvailable = isWayland && !!process.env.DISPLAY;
   const desktopEnv = getLinuxDesktopEnv();
   const isGnome = isWayland && isGnomeDesktop(desktopEnv);
+  const isKde = isWayland && isKdeDesktop(desktopEnv);
 
-  return { isWayland, xwaylandAvailable, desktopEnv, isGnome };
+  return { isWayland, xwaylandAvailable, desktopEnv, isGnome, isKde };
 };
 
 // ms before simulating keystroke
@@ -585,7 +587,7 @@ class ClipboardManager {
   }
 
   async pasteLinux(originalClipboard, options = {}) {
-    const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
+    const { isWayland, xwaylandAvailable, isGnome, isKde } = getLinuxSessionInfo();
     const webContents = options.webContents;
     const xdotoolExists = this.commandExists("xdotool");
     const wtypeExists = this.commandExists("wtype");
@@ -600,6 +602,7 @@ class ClipboardManager {
         isWayland,
         xwaylandAvailable,
         isGnome,
+        isKde,
         xdotoolExists,
         wtypeExists,
         ydotoolExists,
@@ -704,7 +707,7 @@ class ClipboardManager {
     const inTerminal = isTerminal();
     const preferTerminalPaste = isWayland && !inTerminal && !xdotoolWindowClass;
 
-    const canUseWtype = isWayland && !isGnome;
+    const canUseWtype = isWayland && !isGnome && !isKde;
     let canUseYdotool = isWayland && ydotoolExists;
     const canUseDotool = isWayland && dotoolExists;
     const canUseXdotool = isWayland
@@ -985,19 +988,15 @@ class ClipboardManager {
 
     let errorMsg;
     if (isWayland) {
-      if (isGnome) {
-        if (!wtypeExists && !xwaylandAvailable) {
+      if (isGnome || isKde) {
+        const deName = isGnome ? "GNOME" : "KDE";
+        if (!xdotoolExists && !ydotoolExists && !dotoolExists) {
+          errorMsg = `Clipboard copied, but automatic pasting on ${deName} Wayland requires a virtual input tool like dotool or ydotool. For XWayland apps, xdotool also works. Please install one or paste manually with Ctrl+V.`;
+        } else if (!xdotoolWindowClass && !ydotoolExists && !dotoolExists) {
           errorMsg =
-            "Clipboard copied, but GNOME Wayland needs wtype (Wayland-native) to paste automatically. Please install wtype or paste manually with Ctrl+V.";
-        } else if (!wtypeExists && !xdotoolExists && !ydotoolExists && !dotoolExists) {
-          errorMsg =
-            "Clipboard copied, but automatic pasting on GNOME Wayland requires wtype or a virtual input tool like dotool/ydotool. For XWayland apps, xdotool also works. Please install one or paste manually with Ctrl+V.";
-        } else if (!xdotoolWindowClass && !wtypeExists) {
-          errorMsg =
-            "Clipboard copied, but the active app isn't running under XWayland. Please paste manually with Ctrl+V or install wtype/dotool/ydotool for Wayland apps.";
+            "Clipboard copied, but the active app isn't running under XWayland. Please paste manually with Ctrl+V or install dotool/ydotool for Wayland apps.";
         } else {
-          errorMsg =
-            "Clipboard copied, but paste simulation failed on GNOME Wayland. Please paste manually with Ctrl+V.";
+          errorMsg = `Clipboard copied, but paste simulation failed on ${deName} Wayland. Please paste manually with Ctrl+V.`;
         }
       } else if (!wtypeExists && !xdotoolExists && !ydotoolExists && !dotoolExists) {
         if (!xwaylandAvailable) {
@@ -1390,10 +1389,10 @@ Would you like to open System Settings now?`;
       };
     }
 
-    const { isWayland, xwaylandAvailable, isGnome } = getLinuxSessionInfo();
+    const { isWayland, xwaylandAvailable, isGnome, isKde } = getLinuxSessionInfo();
     const tools = [];
     const readyTools = [];
-    const canUseWtype = isWayland && !isGnome;
+    const canUseWtype = isWayland && !isGnome && !isKde;
     const canUseYdotool = isWayland;
     const canUseDotool = isWayland;
     const canUseXdotool = !isWayland || xwaylandAvailable;
@@ -1426,7 +1425,7 @@ Would you like to open System Settings now?`;
     if (!available) {
       if (!isWayland) {
         recommendedInstall = "xdotool";
-      } else if (isGnome) {
+      } else if (isGnome || isKde) {
         recommendedInstall = xwaylandAvailable
           ? "wtype or dotool/ydotool"
           : "wtype or dotool/ydotool";

@@ -47,7 +47,7 @@ function hasNvidiaGpu() {
   try {
     require("child_process").execSync("nvidia-smi", { stdio: "ignore" });
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }

@@ -9,6 +9,7 @@ module.exports = [
       "src/dist/**",
       "*.min.js",
       "build/**",
+      ".tmp/**",
       "src/**", // src has its own config
     ],
   },
@@ -26,7 +27,10 @@ module.exports = [
     rules: {
       ...js.configs.recommended.rules,
       // Relaxed rules - catch syntax errors but don't be too strict
-      "no-unused-vars": ["warn", { varsIgnorePattern: "^_", argsIgnorePattern: "^_|^event|^err|^error" }],
+      "no-unused-vars": [
+        "warn",
+        { varsIgnorePattern: "^_", argsIgnorePattern: "^_|^event|^err|^error" },
+      ],
       "no-console": "off",
       "no-empty": ["error", { allowEmptyCatch: true }],
       "no-constant-condition": ["error", { checkLoops: false }],
