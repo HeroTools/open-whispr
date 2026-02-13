@@ -11,6 +11,14 @@ const MAX_REWARM_ATTEMPTS = 10;
 const KEEPALIVE_INTERVAL_MS = 3000;
 const COLD_START_BUFFER_MAX = 3 * SAMPLE_RATE * 2; // 3 seconds of 16-bit PCM
 
+// Languages supported by Nova-3 (base codes). If a language isn't here, fall back to Nova-2.
+const NOVA3_LANGUAGES = new Set([
+  "ar", "be", "bn", "bs", "bg", "ca", "hr", "cs", "da", "nl", "en", "et",
+  "fi", "fr", "de", "el", "he", "hi", "hu", "id", "it", "ja", "kn", "ko",
+  "lv", "lt", "mk", "ms", "mr", "no", "fa", "pl", "pt", "ro", "ru", "sr",
+  "sk", "sl", "es", "sv", "tl", "ta", "te", "tr", "uk", "ur", "vi", "multi",
+]);
+
 // 100ms of silence at 16kHz 16-bit mono — sent to warm connections to prevent
 // Deepgram's net0001 idle timeout (which only resets on audio data, not KeepAlive).
 const SILENCE_FRAME = Buffer.alloc((SAMPLE_RATE / 10) * 2);
@@ -52,20 +60,31 @@ class DeepgramStreaming {
 
   buildWebSocketUrl(options) {
     const sampleRate = options.sampleRate || SAMPLE_RATE;
+    const lang = options.language && options.language !== "auto" ? options.language : null;
+    const baseLang = lang ? lang.split("-")[0].toLowerCase() : null;
+    const useNova3 = !lang || NOVA3_LANGUAGES.has(lang) || NOVA3_LANGUAGES.has(baseLang);
+    const model = useNova3 ? "nova-3" : "nova-2";
+
+    if (!useNova3) {
+      debugLogger.debug("Deepgram falling back to nova-2", { language: lang });
+    }
+
     const params = new URLSearchParams({
       encoding: "linear16",
       sample_rate: String(sampleRate),
       channels: "1",
-      model: "nova-3",
+      model,
       punctuate: "true",
       interim_results: "true",
     });
-    if (options.language && options.language !== "auto") {
-      params.set("language", options.language);
+    if (lang) {
+      params.set("language", lang);
     }
     if (Array.isArray(options.keyterms)) {
+      // Nova-3 uses "keyterm", Nova-2 uses "keywords"
+      const paramName = useNova3 ? "keyterm" : "keywords";
       for (const term of options.keyterms) {
-        if (term) params.append("keyterm", term);
+        if (term) params.append(paramName, term);
       }
     }
     return `wss://api.deepgram.com/v1/listen?${params.toString()}`;
