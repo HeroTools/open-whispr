@@ -22,18 +22,14 @@ class WindowManager {
     this.isQuitting = false;
     this.isMainWindowInteractive = false;
     this.loadErrorShown = false;
-    this.windowsPushToTalkAvailable = false;
     this.macCompoundPushState = null;
+    this.winPushState = null;
     this._cachedActivationMode = "tap";
     this._floatingIconAutoHide = false;
 
     app.on("before-quit", () => {
       this.isQuitting = true;
     });
-  }
-
-  setWindowsPushToTalkAvailable(available) {
-    this.windowsPushToTalkAvailable = available;
   }
 
   async createMainWindow() {
@@ -165,7 +161,7 @@ class WindowManager {
         return;
       }
 
-      const activationMode = await this.getActivationMode();
+      const activationMode = this.getActivationMode();
       const currentHotkey = this.hotkeyManager.getCurrentHotkey?.();
 
       if (
@@ -179,11 +175,9 @@ class WindowManager {
         return;
       }
 
-      // Windows push mode: defer to windowsKeyManager if available, else fall through to toggle
-      if (process.platform === "win32" && this.windowsPushToTalkAvailable) {
-        if (activationMode === "push") {
-          return;
-        }
+      // Windows push mode: always defer to native listener (globalShortcut can't detect key-up)
+      if (process.platform === "win32" && activationMode === "push") {
+        return;
       }
 
       const now = Date.now();
@@ -318,6 +312,53 @@ class WindowManager {
     }
 
     return required;
+  }
+
+  startWindowsPushToTalk() {
+    if (this.winPushState?.active) {
+      return;
+    }
+
+    const MIN_HOLD_DURATION_MS = 150;
+    const downTime = Date.now();
+
+    this.showDictationPanel();
+
+    this.winPushState = {
+      active: true,
+      downTime,
+      isRecording: false,
+    };
+
+    setTimeout(() => {
+      if (!this.winPushState || this.winPushState.downTime !== downTime) {
+        return;
+      }
+
+      if (!this.winPushState.isRecording) {
+        this.winPushState.isRecording = true;
+        this.sendStartDictation();
+      }
+    }, MIN_HOLD_DURATION_MS);
+  }
+
+  handleWindowsPushKeyUp() {
+    if (!this.winPushState?.active) {
+      return;
+    }
+
+    const wasRecording = this.winPushState.isRecording;
+    this.winPushState = null;
+
+    if (wasRecording) {
+      this.sendStopDictation();
+    } else {
+      this.hideDictationPanel();
+    }
+  }
+
+  resetWindowsPushState() {
+    this.winPushState = null;
   }
 
   sendStartDictation() {
@@ -501,6 +542,9 @@ class WindowManager {
   showDictationPanel(options = {}) {
     const { focus = false } = options;
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      if (this.mainWindow.isMinimized()) {
+        this.mainWindow.restore();
+      }
       if (!this.mainWindow.isVisible()) {
         if (typeof this.mainWindow.showInactive === "function") {
           this.mainWindow.showInactive();
@@ -528,11 +572,7 @@ class WindowManager {
 
   hideDictationPanel() {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
-      if (process.platform === "darwin") {
-        this.mainWindow.hide();
-      } else {
-        this.mainWindow.minimize();
-      }
+      this.mainWindow.hide();
     }
   }
 

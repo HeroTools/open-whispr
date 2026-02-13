@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.11] - 2026-02-13
+
+### Added
+
+- **Japanese Locale**: Full Japanese UI and prompt translations
+- **Windows Paste Terminal Detection**: Added kitty to the Windows fast paste binary's terminal class list
+
+### Changed
+
+- **Windows Push-to-Talk Refactor**: Moved PTT state management (hold timing, recording tracking, cooldown) from main process into `windowManager` for cleaner separation and consistency with macOS PTT patterns
+- **Audio Recording Reentrancy Guards**: Added lock refs to `useAudioRecording` start/stop to prevent concurrent calls from rapid key presses
+- **Synchronous Activation Mode**: `getActivationMode()` is now synchronous (reads from cache), removing unnecessary async overhead in all PTT and hotkey handlers
+- **Default Agent Name**: Set default agent name to OpenWhispr
+
+### Fixed
+
+- **Hide vs Minimize**: Dictation panel now consistently hides (rather than minimizing on Windows/Linux) for uniform cross-platform behavior
+- **Minimized Window Restore**: Dictation panel restores from minimized state before showing, preventing invisible panel on Windows
+
 ## [1.4.10] - 2026-02-13
 
 ### Added

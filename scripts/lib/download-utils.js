@@ -227,9 +227,14 @@ function downloadFile(url, dest, retryCount = 0) {
   });
 }
 
-function extractZip(zipPath, destDir) {
+async function extractZip(zipPath, destDir) {
   if (process.platform === "win32") {
-    execSync(`tar -xf "${zipPath}" -C "${destDir}"`, { stdio: "inherit" });
+    // Use unzipper package on Windows for better path handling
+    const unzipper = require("unzipper");
+    await fs
+      .createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: destDir }))
+      .promise();
   } else {
     execSync(`unzip -o "${zipPath}" -d "${destDir}"`, { stdio: "inherit" });
   }
@@ -239,11 +244,11 @@ function extractTarGz(tarPath, destDir) {
   execSync(`tar -xzf "${tarPath}" -C "${destDir}"`, { stdio: "inherit" });
 }
 
-function extractArchive(archivePath, destDir) {
+async function extractArchive(archivePath, destDir) {
   if (archivePath.endsWith(".tar.gz") || archivePath.endsWith(".tgz")) {
     extractTarGz(archivePath, destDir);
   } else {
-    extractZip(archivePath, destDir);
+    await extractZip(archivePath, destDir);
   }
 }
 

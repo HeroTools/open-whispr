@@ -97,6 +97,7 @@
         "llama-server-*",
         "sherpa-onnx-*",
         "windows-key-listener*",
+        "windows-fast-paste*",
         "*.dylib",
         "*.dll",
         "*.so*"
