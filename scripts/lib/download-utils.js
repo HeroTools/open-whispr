@@ -227,9 +227,14 @@ function downloadFile(url, dest, retryCount = 0) {
   });
 }
 
-function extractZip(zipPath, destDir) {
+async function extractZip(zipPath, destDir) {
   if (process.platform === "win32") {
-    execSync(`tar -xf "${zipPath}" -C "${destDir}"`, { stdio: "inherit" });
+    // Use unzipper package on Windows for better path handling
+    const unzipper = require("unzipper");
+    await fs
+      .createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: destDir }))
+      .promise();
   } else {
     execSync(`unzip -o "${zipPath}" -d "${destDir}"`, { stdio: "inherit" });
   }
