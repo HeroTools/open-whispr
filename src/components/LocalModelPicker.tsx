@@ -67,6 +67,15 @@ export default function LocalModelPicker({
               .map((m: { model: string }) => m.model)
           );
         }
+      } else if (modelType === "parakeet") {
+        const result = await window.electronAPI?.listParakeetModels();
+        if (result?.success) {
+          downloaded = new Set(
+            result.models
+              .filter((m: { downloaded?: boolean }) => m.downloaded)
+              .map((m: { model: string }) => m.model)
+          );
+        }
       } else {
         const result = await window.electronAPI?.modelGetAll?.();
         if (result && Array.isArray(result)) {

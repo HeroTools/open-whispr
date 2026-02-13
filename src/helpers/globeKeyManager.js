@@ -28,9 +28,15 @@ class GlobeKeyManager extends EventEmitter {
 
     try {
       fs.accessSync(listenerPath, fs.constants.X_OK);
-    } catch (accessError) {
-      this.reportError(new Error(`macOS Globe listener is not executable: ${listenerPath}`));
-      return;
+    } catch {
+      try {
+        fs.chmodSync(listenerPath, 0o755);
+      } catch {
+        this.reportError(
+          new Error(`macOS Globe listener is not executable and chmod failed: ${listenerPath}`)
+        );
+        return;
+      }
     }
 
     this.hasReportedError = false;

@@ -6,7 +6,6 @@ const debugLogger = require("./debugLogger");
 const {
   downloadFile,
   createDownloadSignal,
-  validateFileSize,
   cleanupStaleDownloads,
   checkDiskSpace,
 } = require("./downloadUtils");
@@ -135,9 +134,7 @@ class ParakeetManager {
             name: modelName,
             size: `${Math.round(stats.size / (1024 * 1024))}MB`,
           });
-        } catch {
-          // Skip if can't stat
-        }
+        } catch {}
       }
     }
 
@@ -288,18 +285,20 @@ class ParakeetManager {
     try {
       let archiveReady = false;
       try {
-        await validateFileSize(archivePath, modelConfig.size, 15);
-        archiveReady = true;
-        debugLogger.info("Reusing existing archive from previous attempt", { archivePath });
-      } catch {
-        // Archive missing or too small — need to download
-      }
+        const stats = await fsPromises.stat(archivePath);
+        if (stats.size > 0) {
+          archiveReady = true;
+          debugLogger.info("Reusing existing archive from previous attempt", {
+            archivePath,
+            size: stats.size,
+          });
+        }
+      } catch {}
 
       if (!archiveReady) {
         await downloadFile(modelConfig.url, archivePath, {
           timeout: 600000,
           signal,
-          expectedSize: modelConfig.size,
           onProgress: (downloadedBytes, totalBytes) => {
             if (progressCallback) {
               progressCallback({
@@ -312,8 +311,6 @@ class ParakeetManager {
             }
           },
         });
-
-        await validateFileSize(archivePath, modelConfig.size, 15);
       }
 
       if (progressCallback) {
@@ -372,7 +369,9 @@ class ParakeetManager {
 
     try {
       await fsPromises.mkdir(extractDir, { recursive: true });
+      debugLogger.info("Extracting parakeet archive", { archivePath, extractDir });
       await this._runTarExtract(archivePath, extractDir);
+      debugLogger.info("Tar extraction completed", { extractDir });
 
       const extractedDir = path.join(extractDir, modelConfig.extractDir);
       const targetDir = this.getModelPath(modelName);
@@ -561,9 +560,7 @@ class ParakeetManager {
 
             fs.rmSync(dirPath, { recursive: true, force: true });
             deletedCount++;
-          } catch {
-            // Continue with other models if one fails
-          }
+          } catch {}
         }
       }
 
@@ -602,9 +599,7 @@ class ParakeetManager {
           .filter((e) => e.isDirectory() && this.serverManager.isModelDownloaded(e.name))
           .map((e) => e.name);
       }
-    } catch {
-      // Ignore errors reading models dir
-    }
+    } catch {}
 
     return diagnostics;
   }
