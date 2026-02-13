@@ -62,6 +62,8 @@ class AudioManager {
     this.workletBlobUrl = null;
     this.streamingStartInProgress = false;
     this.stopRequestedDuringStreamingStart = false;
+    this.streamingFallbackRecorder = null;
+    this.streamingFallbackChunks = [];
   }
 
   getWorkletBlobUrl() {
@@ -1754,9 +1756,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const [, wsResult] = await Promise.all([
         this.cacheMicrophoneDeviceId(),
         withSessionRefresh(async () => {
+          const warmupLang = localStorage.getItem("preferredLanguage");
           const res = await window.electronAPI.deepgramStreamingWarmup({
             sampleRate: 16000,
-            language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+            language: warmupLang && warmupLang !== "auto" ? warmupLang : undefined,
             keyterms: this.getKeyterms(),
           });
           // Throw error to trigger retry if AUTH_EXPIRED
@@ -1873,6 +1876,19 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         );
       }
 
+      // Start fallback recorder in case streaming produces no results
+      try {
+        this.streamingFallbackChunks = [];
+        this.streamingFallbackRecorder = new MediaRecorder(stream);
+        this.streamingFallbackRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) this.streamingFallbackChunks.push(e.data);
+        };
+        this.streamingFallbackRecorder.start();
+      } catch (e) {
+        logger.debug("Fallback recorder failed to start", { error: e.message }, "streaming");
+        this.streamingFallbackRecorder = null;
+      }
+
       // 2. Set up audio pipeline so frames flow the instant WebSocket is ready.
       //    Frames sent before WebSocket connects are silently dropped by sendAudio().
       const audioContext = await this.getOrCreateAudioContext();
@@ -1947,9 +1963,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       // 4. Connect WebSocket — audio is already flowing from the pipeline above,
       //    so Deepgram receives data immediately (no idle timeout).
       const result = await withSessionRefresh(async () => {
+        const preferredLang = localStorage.getItem("preferredLanguage");
         const res = await window.electronAPI.deepgramStreamingStart({
           sampleRate: 16000,
-          language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+          language: preferredLang && preferredLang !== "auto" ? preferredLang : undefined,
           keyterms: this.getKeyterms(),
         });
 
@@ -2073,6 +2090,21 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       this.streamingSource = null;
     }
     this.streamingAudioContext = null;
+
+    // Stop fallback recorder before stopping media tracks
+    let fallbackBlob = null;
+    if (this.streamingFallbackRecorder?.state === "recording") {
+      fallbackBlob = await new Promise((resolve) => {
+        this.streamingFallbackRecorder.onstop = () => {
+          const mimeType = this.streamingFallbackRecorder.mimeType || "audio/webm";
+          resolve(new Blob(this.streamingFallbackChunks, { type: mimeType }));
+        };
+        this.streamingFallbackRecorder.stop();
+      });
+    }
+    this.streamingFallbackRecorder = null;
+    this.streamingFallbackChunks = [];
+
     if (this.streamingStream) {
       this.streamingStream.getTracks().forEach((track) => track.stop());
       this.streamingStream = null;
@@ -2191,6 +2223,26 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       }
     }
 
+    // If streaming produced no text, fall back to batch transcription
+    if (!finalText && durationSeconds > 2 && fallbackBlob?.size > 0) {
+      logger.info(
+        "Streaming produced no text, falling back to batch transcription",
+        { durationSeconds, blobSize: fallbackBlob.size },
+        "streaming"
+      );
+      try {
+        const batchResult = await this.processWithOpenWhisprCloud(fallbackBlob, {
+          durationSeconds,
+        });
+        if (batchResult?.text) {
+          finalText = batchResult.text;
+          logger.info("Batch fallback succeeded", { textLength: finalText.length }, "streaming");
+        }
+      } catch (fallbackErr) {
+        logger.error("Batch fallback failed", { error: fallbackErr.message }, "streaming");
+      }
+    }
+
     if (finalText) {
       const tBeforePaste = performance.now();
       this.onTranscriptionComplete?.({
@@ -2222,6 +2274,14 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
   }
 
   cleanupStreamingAudio() {
+    if (this.streamingFallbackRecorder?.state === "recording") {
+      try {
+        this.streamingFallbackRecorder.stop();
+      } catch {}
+    }
+    this.streamingFallbackRecorder = null;
+    this.streamingFallbackChunks = [];
+
     if (this.streamingProcessor) {
       try {
         this.streamingProcessor.port.postMessage("stop");
