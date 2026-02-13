@@ -139,6 +139,7 @@ async function downloadBinary(platformArch, config, release, isForce = false) {
       console.log(`  ${platformArch}: Extracted to ${config.outputName}`);
 
       // Copy shared libraries (dylib/dll/so files)
+      // Always overwrite — libraries are architecture-specific (e.g. arm64 vs x64 dylibs)
       if (config.libPattern) {
         const libraries = findLibrariesInDir(extractDir, config.libPattern);
 
@@ -146,12 +147,9 @@ async function downloadBinary(platformArch, config, release, isForce = false) {
           const libName = path.basename(libPath);
           const destPath = path.join(BIN_DIR, libName);
 
-          // Only copy if not already exists (libraries are shared across architectures on same OS)
-          if (!fs.existsSync(destPath)) {
-            fs.copyFileSync(libPath, destPath);
-            setExecutable(destPath);
-            console.log(`  ${platformArch}: Copied library ${libName}`);
-          }
+          fs.copyFileSync(libPath, destPath);
+          setExecutable(destPath);
+          console.log(`  ${platformArch}: Copied library ${libName}`);
         }
       }
     } else {

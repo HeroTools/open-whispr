@@ -15,8 +15,6 @@ export function useTheme() {
           : "light"
         : theme;
 
-    console.log("[useTheme] Applying theme:", effectiveTheme, "from setting:", theme);
-
     // Apply dark class
     if (effectiveTheme === "dark") {
       htmlElement.classList.add("dark");

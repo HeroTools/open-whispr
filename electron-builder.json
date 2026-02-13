@@ -18,6 +18,7 @@
     "src/dist/**/*",
     "src/helpers/**/*",
     "src/config/**/*",
+    "src/locales/**/*",
     "src/hooks/**/*",
     "src/models/**/*",
     "src/services/localReasoningBridge.js",
@@ -81,19 +82,24 @@
     "!**/node_modules/**/CHANGELOG*",
     "!**/node_modules/**/.github/**"
   ],
-  "asarUnpack": [
-    "**/node_modules/ffmpeg-static/**/*",
-    "**/node_modules/better-sqlite3/**/*"
-  ],
+  "asarUnpack": ["**/node_modules/ffmpeg-static/**/*", "**/node_modules/better-sqlite3/**/*"],
   "extraResources": [
     "src/assets/**/*",
-    "resources/macos-globe-listener.swift",
     "resources/bin/macos-globe-listener",
     "resources/bin/macos-fast-paste",
     {
       "from": "resources/bin/",
       "to": "bin/",
-      "filter": ["whisper-cpp-*", "whisper-server-*", "llama-server-*", "sherpa-onnx-*", "windows-key-listener*", "*.dylib", "*.dll", "*.so*"]
+      "filter": [
+        "whisper-cpp-*",
+        "whisper-server-*",
+        "llama-server-*",
+        "sherpa-onnx-*",
+        "windows-key-listener*",
+        "*.dylib",
+        "*.dll",
+        "*.so*"
+      ]
     }
   ],
   "mac": {
@@ -105,6 +111,7 @@
     "entitlements": "resources/mac/entitlements.mac.plist",
     "entitlementsInherit": "resources/mac/entitlements.mac.plist",
     "identity": "HeroTools Inc. (9R85XFMH59)",
+    "notarize": true,
     "extendInfo": {
       "LSUIElement": false,
       "NSMicrophoneUsageDescription": "OpenWhispr needs microphone access for speech-to-text transcription.",
@@ -112,10 +119,7 @@
     }
   },
   "win": {
-    "target": [
-      "nsis",
-      "portable"
-    ],
+    "target": ["nsis", "portable"],
     "icon": "src/assets/icon.ico",
     "extraResources": [
       {
@@ -125,12 +129,7 @@
     ]
   },
   "linux": {
-    "target": [
-      "AppImage",
-      "deb",
-      "rpm",
-      "tar.gz"
-    ],
+    "target": ["AppImage", "deb", "rpm", "tar.gz"],
     "icon": "src/assets/icon.png",
     "category": "Utility",
     "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
@@ -156,10 +155,24 @@
   },
   "deb": {
     "afterRemove": "resources/linux/after-remove.sh",
-    "fpm": ["--deb-recommends", "xdotool", "--deb-recommends", "wtype", "--deb-recommends", "wl-clipboard"]
+    "fpm": [
+      "--deb-recommends",
+      "xdotool",
+      "--deb-recommends",
+      "wtype",
+      "--deb-recommends",
+      "wl-clipboard"
+    ]
   },
   "rpm": {
-    "fpm": ["--rpm-tag", "Recommends: xdotool", "--rpm-tag", "Recommends: wtype", "--rpm-tag", "Recommends: wl-clipboard"]
+    "fpm": [
+      "--rpm-tag",
+      "Recommends: xdotool",
+      "--rpm-tag",
+      "Recommends: wtype",
+      "--rpm-tag",
+      "Recommends: wl-clipboard"
+    ]
   },
   "nsis": {
     "oneClick": false,

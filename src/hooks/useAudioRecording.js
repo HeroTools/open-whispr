@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import AudioManager from "../helpers/audioManager";
 import logger from "../utils/logger";
 import { playStartCue, playStopCue } from "../utils/dictationCues";
 
 export const useAudioRecording = (toast, options = {}) => {
+  const { t } = useTranslation();
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
@@ -39,11 +41,11 @@ export const useAudioRecording = (toast, options = {}) => {
     }
 
     const currentState = audioManagerRef.current.getState();
-    if (!currentState.isRecording) {
+    if (!currentState.isRecording && !currentState.isStreamingStartInProgress) {
       return false;
     }
 
-    if (currentState.isStreaming) {
+    if (currentState.isStreaming || currentState.isStreamingStartInProgress) {
       void playStopCue(); // streaming stop finalization is async, play cue immediately on stop action
       return await audioManagerRef.current.stopStreamingRecording();
     }
@@ -73,11 +75,11 @@ export const useAudioRecording = (toast, options = {}) => {
         // Provide specific titles for cloud error codes
         const title =
           error.code === "AUTH_EXPIRED"
-            ? "Session Expired"
+            ? t("hooks.audioRecording.errorTitles.sessionExpired")
             : error.code === "OFFLINE"
-              ? "You're Offline"
+              ? t("hooks.audioRecording.errorTitles.offline")
               : error.code === "LIMIT_REACHED"
-                ? "Daily Limit Reached"
+                ? t("hooks.audioRecording.errorTitles.dailyLimitReached")
                 : error.title;
 
         toast({
@@ -114,8 +116,8 @@ export const useAudioRecording = (toast, options = {}) => {
 
           if (result.source === "openai" && localStorage.getItem("useLocalWhisper") === "true") {
             toast({
-              title: "Fallback Mode",
-              description: "Local Whisper failed. Used OpenAI API instead.",
+              title: t("hooks.audioRecording.fallback.title"),
+              description: t("hooks.audioRecording.fallback.description"),
               variant: "default",
             });
           }
@@ -175,8 +177,8 @@ export const useAudioRecording = (toast, options = {}) => {
 
     const handleNoAudioDetected = () => {
       toast({
-        title: "No Audio Detected",
-        description: "The recording contained no detectable audio. Please try again.",
+        title: t("hooks.audioRecording.noAudio.title"),
+        description: t("hooks.audioRecording.noAudio.description"),
         variant: "default",
       });
     };
@@ -193,7 +195,7 @@ export const useAudioRecording = (toast, options = {}) => {
         audioManagerRef.current.cleanup();
       }
     };
-  }, [toast, onToggle, performStartRecording, performStopRecording]);
+  }, [toast, onToggle, performStartRecording, performStopRecording, t]);
 
   const startRecording = async () => {
     return performStartRecording();
@@ -229,9 +231,9 @@ export const useAudioRecording = (toast, options = {}) => {
     }
   };
 
-  const warmupStreaming = () => {
-    audioManagerRef.current?.warmupStreamingConnection();
-  };
+  const warmupStreaming = useCallback((opts) => {
+    audioManagerRef.current?.warmupStreamingConnection(opts);
+  }, []);
 
   return {
     isRecording,

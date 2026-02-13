@@ -49,6 +49,9 @@ class AssemblyAiStreaming {
     if (options.language && options.language !== "auto") {
       params.set("speech_model", "universal-streaming-multilingual");
     }
+    if (options.keyterms && options.keyterms.length > 0) {
+      params.set("keyterms_prompt", JSON.stringify(options.keyterms.slice(0, 100)));
+    }
     return `wss://streaming.assemblyai.com/v3/ws?${params.toString()}`;
   }
 

@@ -1,4 +1,5 @@
 import React, { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { resetPassword, NEON_AUTH_URL, authClient } from "../lib/neonAuth";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
@@ -11,6 +12,7 @@ interface ResetPasswordViewProps {
 }
 
 export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPasswordViewProps) {
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -24,12 +26,12 @@ export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPas
       if (!password || !confirmPassword) return;
 
       if (password !== confirmPassword) {
-        setError("Passwords do not match");
+        setError(t("resetPassword.errors.passwordsDoNotMatch"));
         return;
       }
 
       if (password.length < 8) {
-        setError("Password must be at least 8 characters");
+        setError(t("resetPassword.errors.passwordMinLength"));
         return;
       }
 
@@ -46,7 +48,7 @@ export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPas
         setIsSubmitting(false);
       }
     },
-    [password, confirmPassword, token]
+    [password, confirmPassword, token, t]
   );
 
   if (!NEON_AUTH_URL || !authClient) {
@@ -54,12 +56,12 @@ export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPas
       <div className="space-y-3">
         <div className="bg-warning/5 p-2.5 rounded border border-warning/20">
           <p className="text-[10px] text-warning text-center leading-snug">
-            Authentication is not configured.
+            {t("resetPassword.notConfigured")}
           </p>
         </div>
         <Button onClick={onBack} variant="outline" className="w-full h-9">
           <ArrowLeft className="w-3.5 h-3.5" />
-          <span className="text-sm font-medium">Go Back</span>
+          <span className="text-sm font-medium">{t("resetPassword.goBack")}</span>
         </Button>
       </div>
     );
@@ -73,15 +75,15 @@ export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPas
             <Check className="w-5 h-5 text-success" />
           </div>
           <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-            Password reset successful
+            {t("resetPassword.success.title")}
           </p>
           <p className="text-muted-foreground text-sm mt-1.5 leading-snug">
-            Your password has been updated. You're now signed in.
+            {t("resetPassword.success.description")}
           </p>
         </div>
 
         <Button onClick={onSuccess} className="w-full h-9">
-          <span className="text-sm font-medium">Continue</span>
+          <span className="text-sm font-medium">{t("resetPassword.continue")}</span>
         </Button>
       </div>
     );
@@ -95,22 +97,22 @@ export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPas
         className="text-[10px] text-muted-foreground hover:text-foreground transition-colors flex items-center gap-0.5"
       >
         <ArrowLeft className="w-3 h-3" />
-        Back to sign in
+        {t("resetPassword.backToSignIn")}
       </button>
 
       <div className="text-center mb-4">
         <p className="text-lg font-semibold text-foreground tracking-tight leading-tight">
-          Create new password
+          {t("resetPassword.title")}
         </p>
         <p className="text-muted-foreground text-sm mt-1 leading-tight">
-          Enter your new password below
+          {t("resetPassword.subtitle")}
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-2">
         <Input
           type="password"
-          placeholder="New password"
+          placeholder={t("resetPassword.newPasswordPlaceholder")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className="h-9 text-sm"
@@ -121,7 +123,7 @@ export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPas
         />
         <Input
           type="password"
-          placeholder="Confirm new password"
+          placeholder={t("resetPassword.confirmPasswordPlaceholder")}
           value={confirmPassword}
           onChange={(e) => setConfirmPassword(e.target.value)}
           className="h-9 text-sm"
@@ -131,7 +133,7 @@ export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPas
         />
 
         <p className="text-[9px] text-muted-foreground/70 leading-tight">
-          Password must be at least 8 characters
+          {t("resetPassword.passwordMinLength")}
         </p>
 
         {error && (
@@ -149,10 +151,10 @@ export default function ResetPasswordView({ token, onSuccess, onBack }: ResetPas
           {isSubmitting ? (
             <>
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              <span className="text-sm font-medium">Resetting...</span>
+              <span className="text-sm font-medium">{t("resetPassword.resetting")}</span>
             </>
           ) : (
-            <span className="text-sm font-medium">Reset Password</span>
+            <span className="text-sm font-medium">{t("resetPassword.resetButton")}</span>
           )}
         </Button>
       </form>

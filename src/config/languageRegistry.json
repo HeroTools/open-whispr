@@ -78,13 +78,22 @@
       "instruction": "LANGUAGE CONTEXT: The user's preferred language is Catalan. The transcribed text will be in Catalan. You MUST respond entirely in Catalan while maintaining proper Catalan grammar, spelling, and punctuation. If the user naturally uses English words or technical terms, preserve those as-is."
     },
     {
-      "code": "zh",
-      "label": "Chinese",
+      "code": "zh-CN",
+      "label": "Chinese (Simplified)",
       "flag": "\uD83C\uDDE8\uD83C\uDDF3",
       "whisper": true,
       "parakeet": false,
       "assemblyai": false,
-      "instruction": "LANGUAGE CONTEXT: The user's preferred language is Chinese. The transcribed text will be in Chinese. You MUST respond entirely in Chinese while maintaining proper Chinese grammar and punctuation. Preserve any English technical terms as the user spoke them."
+      "instruction": "LANGUAGE CONTEXT: The user's preferred language is Simplified Chinese (简体中文). The transcribed text will be in Chinese. You MUST respond entirely in Simplified Chinese while maintaining proper grammar and punctuation. Use simplified characters throughout (e.g., 简体, 语言, 学习). Preserve any English technical terms as the user spoke them."
+    },
+    {
+      "code": "zh-TW",
+      "label": "Chinese (Traditional)",
+      "flag": "\uD83C\uDDF9\uD83C\uDDFC",
+      "whisper": true,
+      "parakeet": false,
+      "assemblyai": false,
+      "instruction": "LANGUAGE CONTEXT: The user's preferred language is Traditional Chinese (繁體中文). The transcribed text will be in Chinese. You MUST respond entirely in Traditional Chinese while maintaining proper grammar and punctuation. Use traditional characters throughout (e.g., 繁體, 語言, 學習). Preserve any English technical terms as the user spoke them."
     },
     {
       "code": "hr",

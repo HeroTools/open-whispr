@@ -139,7 +139,7 @@ if (process.platform === "darwin" && app.getName() !== "OpenWhispr") {
 // Add global error handling for uncaught exceptions
 process.on("uncaughtException", (error) => {
   console.error("Uncaught Exception:", error);
-  // Don't exit the process for EPIPE errors as they're harmless
+  // Don't exit the process for EPIPE errors as they're FB
   if (error.code === "EPIPE") {
     return;
   }
@@ -164,6 +164,7 @@ const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const DevServerManager = require("./src/helpers/devServerManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
+const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 
 // Manager instances - initialized after app.whenReady()
 let debugLogger = null;
@@ -218,63 +219,30 @@ function setupProductionPath() {
   }
 }
 
-// Initialize all managers - called after app.whenReady()
-function initializeManagers() {
-  // Set up PATH before initializing managers
+// Phase 1: Initialize managers + IPC handlers before window content loads
+function initializeCoreManagers() {
   setupProductionPath();
 
-  // Now it's safe to call app.getPath() and initialize managers
   debugLogger = require("./src/helpers/debugLogger");
-  // Ensure file logging is initialized now that app is ready
   debugLogger.ensureFileLogging();
 
   environmentManager = new EnvironmentManager();
+  const uiLanguage = environmentManager.getUiLanguage();
+  process.env.UI_LANGUAGE = uiLanguage;
+  changeLanguage(uiLanguage);
   debugLogger.refreshLogLevel();
 
   windowManager = new WindowManager();
   hotkeyManager = windowManager.hotkeyManager;
   databaseManager = new DatabaseManager();
   clipboardManager = new ClipboardManager();
-  clipboardManager.preWarmAccessibility();
   whisperManager = new WhisperManager();
   parakeetManager = new ParakeetManager();
-  trayManager = new TrayManager();
   updateManager = new UpdateManager();
-  globeKeyManager = new GlobeKeyManager();
   windowsKeyManager = new WindowsKeyManager();
 
-  // Set up Globe key error handler on macOS
-  if (process.platform === "darwin") {
-    globeKeyManager.on("error", (error) => {
-      if (globeKeyAlertShown) {
-        return;
-      }
-      globeKeyAlertShown = true;
-
-      const detailLines = [
-        error?.message || "Unknown error occurred while starting the Globe listener.",
-        "The Globe key shortcut will remain disabled; existing keyboard shortcuts continue to work.",
-      ];
-
-      if (process.env.NODE_ENV === "development") {
-        detailLines.push(
-          "Run `npm run compile:globe` and rebuild the app to regenerate the listener binary."
-        );
-      } else {
-        detailLines.push("Try reinstalling OpenWhispr or contact support if the issue persists.");
-      }
-
-      dialog.showMessageBox({
-        type: "warning",
-        title: "Globe Hotkey Unavailable",
-        message: "OpenWhispr could not activate the Globe key hotkey.",
-        detail: detailLines.join("\n\n"),
-      });
-    });
-  }
-
-  // Initialize IPC handlers with all managers
-  const _ipcHandlers = new IPCHandlers({
+  // IPC handlers must be registered before window content loads
+  new IPCHandlers({
     environmentManager,
     databaseManager,
     clipboardManager,
@@ -283,7 +251,42 @@ function initializeManagers() {
     windowManager,
     updateManager,
     windowsKeyManager,
+    getTrayManager: () => trayManager,
   });
+}
+
+// Phase 2: Non-critical setup after windows are visible
+function initializeDeferredManagers() {
+  clipboardManager.preWarmAccessibility();
+  trayManager = new TrayManager();
+  globeKeyManager = new GlobeKeyManager();
+
+  if (process.platform === "darwin") {
+    globeKeyManager.on("error", (error) => {
+      if (globeKeyAlertShown) {
+        return;
+      }
+      globeKeyAlertShown = true;
+
+      const detailLines = [
+        error?.message || i18nMain.t("startup.globeHotkey.details.unknown"),
+        i18nMain.t("startup.globeHotkey.details.fallback"),
+      ];
+
+      if (process.env.NODE_ENV === "development") {
+        detailLines.push(i18nMain.t("startup.globeHotkey.details.devHint"));
+      } else {
+        detailLines.push(i18nMain.t("startup.globeHotkey.details.reinstallHint"));
+      }
+
+      dialog.showMessageBox({
+        type: "warning",
+        title: i18nMain.t("startup.globeHotkey.title"),
+        message: i18nMain.t("startup.globeHotkey.message"),
+        detail: detailLines.join("\n\n"),
+      });
+    });
+  }
 }
 
 app.on("open-url", (event, url) => {
@@ -430,12 +433,11 @@ function startAuthBridgeServer() {
 
 // Main application startup
 async function startApp() {
-  // Initialize all managers now that app is ready
-  initializeManagers();
+  // Phase 1: Core managers + IPC handlers before windows
+  initializeCoreManagers();
   startAuthBridgeServer();
 
   // Electron's file:// sends no Origin header, which Neon Auth rejects.
-  // Inject the request's own origin at the Chromium network layer.
   session.defaultSession.webRequest.onBeforeSendHeaders(
     { urls: ["https://*.neon.tech/*"] },
     (details, callback) => {
@@ -448,56 +450,56 @@ async function startApp() {
     }
   );
 
-  // Initialize activation mode cache from persisted .env value
   windowManager.setActivationModeCache(environmentManager.getActivationMode());
+  windowManager.setFloatingIconAutoHide(environmentManager.getFloatingIconAutoHide());
 
-  // Update cache + persist when renderer changes activation mode (all platforms)
   ipcMain.on("activation-mode-changed", (_event, mode) => {
     windowManager.setActivationModeCache(mode);
     environmentManager.saveActivationMode(mode);
   });
 
-  // In development, add a small delay to let Vite start properly
-  if (process.env.NODE_ENV === "development") {
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-  }
+  ipcMain.on("floating-icon-auto-hide-changed", (_event, enabled) => {
+    windowManager.setFloatingIconAutoHide(enabled);
+    environmentManager.saveFloatingIconAutoHide(enabled);
+    // Relay to the floating icon window so it can react immediately
+    if (windowManager.mainWindow && !windowManager.mainWindow.isDestroyed()) {
+      windowManager.mainWindow.webContents.send("floating-icon-auto-hide-changed", enabled);
+    }
+  });
 
-  // On macOS, set activation policy to allow dock icon to be shown/hidden dynamically
-  // The dock icon visibility is managed by WindowManager based on control panel state
   if (process.platform === "darwin") {
     app.setActivationPolicy("regular");
   }
 
-  // Initialize Whisper manager at startup (don't await to avoid blocking)
-  // Settings can be provided via environment variables for server pre-warming:
-  // - LOCAL_TRANSCRIPTION_PROVIDER=whisper to enable local whisper mode
-  // - LOCAL_WHISPER_MODEL=base (or tiny, small, medium, large, turbo)
+  // In development, wait for Vite dev server to be ready
+  if (process.env.NODE_ENV === "development") {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  // Create windows FIRST so the user sees UI as soon as possible
+  await windowManager.createMainWindow();
+  await windowManager.createControlPanelWindow();
+
+  // Phase 2: Initialize remaining managers after windows are visible
+  initializeDeferredManagers();
+
+  // Non-blocking server pre-warming
   const whisperSettings = {
     localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
     whisperModel: process.env.LOCAL_WHISPER_MODEL,
   };
   whisperManager.initializeAtStartup(whisperSettings).catch((err) => {
-    // Whisper not being available at startup is not critical
     debugLogger.debug("Whisper startup init error (non-fatal)", { error: err.message });
   });
 
-  // Initialize Parakeet manager at startup (don't await to avoid blocking)
-  // Settings can be provided via environment variables for server pre-warming:
-  // - LOCAL_TRANSCRIPTION_PROVIDER=nvidia to enable parakeet
-  // - PARAKEET_MODEL=parakeet-tdt-0.6b-v3 (model name)
   const parakeetSettings = {
     localTranscriptionProvider: process.env.LOCAL_TRANSCRIPTION_PROVIDER || "",
     parakeetModel: process.env.PARAKEET_MODEL,
   };
   parakeetManager.initializeAtStartup(parakeetSettings).catch((err) => {
-    // Parakeet not being available at startup is not critical
     debugLogger.debug("Parakeet startup init error (non-fatal)", { error: err.message });
   });
 
-  // Pre-warm llama-server if local reasoning is configured
-  // Settings can be provided via environment variables:
-  // - REASONING_PROVIDER=local to enable local reasoning
-  // - LOCAL_REASONING_MODEL=qwen3-8b-q4_k_m (or another model ID)
   if (process.env.REASONING_PROVIDER === "local" && process.env.LOCAL_REASONING_MODEL) {
     const modelManager = require("./src/helpers/modelManagerBridge").default;
     modelManager.prewarmServer(process.env.LOCAL_REASONING_MODEL).catch((err) => {
@@ -505,32 +507,25 @@ async function startApp() {
     });
   }
 
-  // Log nircmd status on Windows (for debugging bundled dependencies)
   if (process.platform === "win32") {
     const nircmdStatus = clipboardManager.getNircmdStatus();
     debugLogger.debug("Windows paste tool status", nircmdStatus);
   }
 
-  // Create main window
-  await windowManager.createMainWindow();
-
-  // Create control panel window
-  await windowManager.createControlPanelWindow();
-
-  // Set up tray
   trayManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   trayManager.setWindowManager(windowManager);
   trayManager.setCreateControlPanelCallback(() => windowManager.createControlPanelWindow());
   await trayManager.createTray();
 
-  // Set windows for update manager and check for updates
   updateManager.setWindows(windowManager.mainWindow, windowManager.controlPanelWindow);
   updateManager.checkForUpdatesOnStartup();
 
   if (process.platform === "darwin") {
     let globeKeyDownTime = 0;
     let globeKeyIsRecording = false;
-    const MIN_HOLD_DURATION_MS = 150; // Minimum hold time to trigger push-to-talk
+    let globeLastStopTime = 0;
+    const MIN_HOLD_DURATION_MS = 150;
+    const POST_STOP_COOLDOWN_MS = 300;
 
     globeKeyManager.on("globe-down", async () => {
       // Forward to control panel for hotkey capture
@@ -542,20 +537,21 @@ async function startApp() {
       if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
         if (isLiveWindow(windowManager.mainWindow)) {
           const activationMode = await windowManager.getActivationMode();
-          windowManager.showDictationPanel();
           if (activationMode === "push") {
-            // Track when key was pressed for push-to-talk
-            globeKeyDownTime = Date.now();
+            const now = Date.now();
+            if (now - globeLastStopTime < POST_STOP_COOLDOWN_MS) return;
+            windowManager.showDictationPanel();
+            const pressTime = now;
+            globeKeyDownTime = pressTime;
             globeKeyIsRecording = false;
-            // Start recording after a brief delay to distinguish tap from hold
             setTimeout(async () => {
-              // Only start if key is still being held
-              if (globeKeyDownTime > 0 && !globeKeyIsRecording) {
+              if (globeKeyDownTime === pressTime && !globeKeyIsRecording) {
                 globeKeyIsRecording = true;
                 windowManager.sendStartDictation();
               }
             }, MIN_HOLD_DURATION_MS);
           } else {
+            windowManager.showDictationPanel();
             windowManager.mainWindow.webContents.send("toggle-dictation");
           }
         }
@@ -573,12 +569,11 @@ async function startApp() {
         const activationMode = await windowManager.getActivationMode();
         if (activationMode === "push") {
           globeKeyDownTime = 0;
-          // Only stop if we actually started recording
+          globeLastStopTime = Date.now();
           if (globeKeyIsRecording) {
             globeKeyIsRecording = false;
             windowManager.sendStopDictation();
           }
-          // If released too quickly, don't do anything (tap is ignored in push mode)
         }
       }
 
@@ -595,6 +590,7 @@ async function startApp() {
     // Right-side single modifier handling (e.g., RightOption as hotkey)
     let rightModDownTime = 0;
     let rightModIsRecording = false;
+    let rightModLastStopTime = 0;
 
     globeKeyManager.on("right-modifier-down", async (modifier) => {
       const currentHotkey = hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey();
@@ -602,17 +598,21 @@ async function startApp() {
       if (!isLiveWindow(windowManager.mainWindow)) return;
 
       const activationMode = await windowManager.getActivationMode();
-      windowManager.showDictationPanel();
       if (activationMode === "push") {
-        rightModDownTime = Date.now();
+        const now = Date.now();
+        if (now - rightModLastStopTime < POST_STOP_COOLDOWN_MS) return;
+        windowManager.showDictationPanel();
+        const pressTime = now;
+        rightModDownTime = pressTime;
         rightModIsRecording = false;
         setTimeout(() => {
-          if (rightModDownTime > 0 && !rightModIsRecording) {
+          if (rightModDownTime === pressTime && !rightModIsRecording) {
             rightModIsRecording = true;
             windowManager.sendStartDictation();
           }
         }, MIN_HOLD_DURATION_MS);
       } else {
+        windowManager.showDictationPanel();
         windowManager.mainWindow.webContents.send("toggle-dictation");
       }
     });
@@ -625,6 +625,7 @@ async function startApp() {
       const activationMode = await windowManager.getActivationMode();
       if (activationMode === "push") {
         rightModDownTime = 0;
+        rightModLastStopTime = Date.now();
         if (rightModIsRecording) {
           rightModIsRecording = false;
           windowManager.sendStopDictation();
@@ -640,8 +641,10 @@ async function startApp() {
     ipcMain.on("hotkey-changed", (_event, _newHotkey) => {
       globeKeyDownTime = 0;
       globeKeyIsRecording = false;
+      globeLastStopTime = 0;
       rightModDownTime = 0;
       rightModIsRecording = false;
+      rightModLastStopTime = 0;
     });
   }
 
@@ -650,11 +653,10 @@ async function startApp() {
     debugLogger.debug("[Push-to-Talk] Windows Push-to-Talk setup starting");
     let winKeyDownTime = 0;
     let winKeyIsRecording = false;
+    let winLastStopTime = 0;
 
-    // Minimum duration (ms) the key must be held before starting recording.
-    // This distinguishes a "tap" (ignored in push mode) from a "hold" (starts recording).
-    // 150ms is short enough to feel instant but long enough to detect intent.
     const WIN_MIN_HOLD_DURATION_MS = 150;
+    const WIN_POST_STOP_COOLDOWN_MS = 300;
 
     // Helper to check if hotkey is valid for Windows key listener
     const isValidHotkey = (hotkey) => {
@@ -682,12 +684,19 @@ async function startApp() {
       const activationMode = await windowManager.getActivationMode();
       debugLogger.debug("[Push-to-Talk] Activation mode check", { activationMode });
       if (activationMode === "push") {
+        const now = Date.now();
+        if (now - winLastStopTime < WIN_POST_STOP_COOLDOWN_MS) {
+          debugLogger.debug("[Push-to-Talk] Ignoring KEY_DOWN during post-stop cooldown");
+          return;
+        }
+
         debugLogger.debug("[Push-to-Talk] Starting recording sequence");
         windowManager.showDictationPanel();
-        winKeyDownTime = Date.now();
+        const pressTime = now;
+        winKeyDownTime = pressTime;
         winKeyIsRecording = false;
         setTimeout(async () => {
-          if (winKeyDownTime > 0 && !winKeyIsRecording) {
+          if (winKeyDownTime === pressTime && !winKeyIsRecording) {
             winKeyIsRecording = true;
             debugLogger.debug("[Push-to-Talk] Sending start dictation command");
             windowManager.sendStartDictation();
@@ -708,6 +717,7 @@ async function startApp() {
         const wasRecording = winKeyIsRecording;
         winKeyDownTime = 0;
         winKeyIsRecording = false;
+        winLastStopTime = Date.now();
         if (wasRecording) {
           debugLogger.debug("[Push-to-Talk] Sending stop dictation command");
           windowManager.sendStopDictation();
@@ -737,7 +747,7 @@ async function startApp() {
       if (isLiveWindow(windowManager.mainWindow)) {
         windowManager.mainWindow.webContents.send("windows-ptt-unavailable", {
           reason: "binary_not_found",
-          message: "Push-to-Talk native listener not available",
+          message: i18nMain.t("windows.pttUnavailable"),
         });
       }
     });
@@ -850,8 +860,8 @@ if (gotSingleInstanceLock) {
       startApp().catch((error) => {
         console.error("Failed to start app:", error);
         dialog.showErrorBox(
-          "OpenWhispr Startup Error",
-          `Failed to start the application:\n\n${error.message}\n\nPlease report this issue.`
+          i18nMain.t("startup.error.title"),
+          i18nMain.t("startup.error.message", { error: error.message })
         );
         app.exit(1);
       });

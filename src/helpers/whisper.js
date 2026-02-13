@@ -2,7 +2,13 @@ const fs = require("fs");
 const fsPromises = require("fs").promises;
 const path = require("path");
 const debugLogger = require("./debugLogger");
-const { downloadFile, createDownloadSignal } = require("./downloadUtils");
+const {
+  downloadFile,
+  createDownloadSignal,
+  validateFileSize,
+  cleanupStaleDownloads,
+  checkDiskSpace,
+} = require("./downloadUtils");
 const WhisperServerManager = require("./whisperServer");
 const { getModelsDirForService } = require("./modelDirUtils");
 
@@ -15,7 +21,7 @@ function getWhisperModelConfig(modelName) {
   if (!modelInfo) return null;
   return {
     url: modelInfo.downloadUrl,
-    size: modelInfo.sizeMb * 1_000_000,
+    size: modelInfo.expectedSizeBytes || modelInfo.sizeMb * 1_000_000,
     fileName: modelInfo.fileName,
   };
 }
@@ -59,6 +65,8 @@ class WhisperManager {
 
     try {
       this.isInitialized = true;
+
+      await cleanupStaleDownloads(this.getModelsDir());
 
       // Pre-warm whisper-server if local mode enabled (eliminates 2-5s cold-start delay)
       const { localTranscriptionProvider, whisperModel } = settings;
@@ -382,6 +390,14 @@ class WhisperManager {
       };
     }
 
+    const spaceCheck = await checkDiskSpace(modelsDir, modelConfig.size * 1.2);
+    if (!spaceCheck.ok) {
+      throw new Error(
+        `Not enough disk space to download model. Need ~${Math.round((modelConfig.size * 1.2) / 1_000_000)}MB, ` +
+          `only ${Math.round(spaceCheck.availableBytes / 1_000_000)}MB available.`
+      );
+    }
+
     const { signal, abort } = createDownloadSignal();
     this.currentDownloadProcess = { abort };
 
@@ -389,6 +405,7 @@ class WhisperManager {
       await downloadFile(modelConfig.url, modelPath, {
         timeout: 600000,
         signal,
+        expectedSize: modelConfig.size,
         onProgress: (downloadedBytes, totalBytes) => {
           if (progressCallback) {
             progressCallback({
@@ -401,6 +418,8 @@ class WhisperManager {
           }
         },
       });
+
+      await validateFileSize(modelPath, modelConfig.size);
 
       const stats = await fsPromises.stat(modelPath);
 

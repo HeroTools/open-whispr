@@ -7,6 +7,8 @@ const AppUtils = require("../utils");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
 const AssemblyAiStreaming = require("./assemblyAiStreaming");
+const { i18nMain, changeLanguage } = require("./i18nMain");
+const DeepgramStreaming = require("./deepgramStreaming");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
@@ -20,8 +22,10 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.getTrayManager = managers.getTrayManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
+    this.deepgramStreaming = null;
     this.setupHandlers();
   }
 
@@ -44,7 +48,7 @@ class IPCHandlers {
         set: Object.keys(setVars),
         cleared: clearVars.filter((k) => !process.env[k]),
       });
-      this.environmentManager.saveAllKeysToEnvFile();
+      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
     }
   }
 
@@ -175,6 +179,13 @@ class IPCHandlers {
 
     // Clipboard handlers
     ipcMain.handle("paste-text", async (event, text, options) => {
+      // If the floating dictation panel currently has focus, blur it first so the
+      // paste keystroke lands in the user's target app instead of the overlay.
+      const mainWindow = this.windowManager?.mainWindow;
+      if (mainWindow && !mainWindow.isDestroyed() && mainWindow.isFocused()) {
+        mainWindow.blur();
+        await new Promise((resolve) => setTimeout(resolve, 80));
+      }
       return this.clipboardManager.pasteText(text, { ...options, webContents: event.sender });
     });
 
@@ -283,9 +294,28 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-whisper-model", async (event, modelName) => {
-      return this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
-        event.sender.send("whisper-download-progress", progressData);
-      });
+      try {
+        const result = await this.whisperManager.downloadWhisperModel(modelName, (progressData) => {
+          if (!event.sender.isDestroyed()) {
+            event.sender.send("whisper-download-progress", progressData);
+          }
+        });
+        return result;
+      } catch (error) {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("whisper-download-progress", {
+            type: "error",
+            model: modelName,
+            error: error.message,
+            code: error.code || "DOWNLOAD_FAILED",
+          });
+        }
+        return {
+          success: false,
+          error: error.message,
+          code: error.code || "DOWNLOAD_FAILED",
+        };
+      }
     });
 
     ipcMain.handle("check-model-status", async (event, modelName) => {
@@ -377,9 +407,31 @@ class IPCHandlers {
     });
 
     ipcMain.handle("download-parakeet-model", async (event, modelName) => {
-      return this.parakeetManager.downloadParakeetModel(modelName, (progressData) => {
-        event.sender.send("parakeet-download-progress", progressData);
-      });
+      try {
+        const result = await this.parakeetManager.downloadParakeetModel(
+          modelName,
+          (progressData) => {
+            if (!event.sender.isDestroyed()) {
+              event.sender.send("parakeet-download-progress", progressData);
+            }
+          }
+        );
+        return result;
+      } catch (error) {
+        if (!event.sender.isDestroyed()) {
+          event.sender.send("parakeet-download-progress", {
+            type: "error",
+            model: modelName,
+            error: error.message,
+            code: error.code || "DOWNLOAD_FAILED",
+          });
+        }
+        return {
+          success: false,
+          error: error.message,
+          code: error.code || "DOWNLOAD_FAILED",
+        };
+      }
     });
 
     ipcMain.handle("check-parakeet-model-status", async (_event, modelName) => {
@@ -411,7 +463,7 @@ class IPCHandlers {
       const result = await this.parakeetManager.startServer(modelName);
       process.env.LOCAL_TRANSCRIPTION_PROVIDER = "nvidia";
       process.env.PARAKEET_MODEL = modelName;
-      this.environmentManager.saveAllKeysToEnvFile();
+      await this.environmentManager.saveAllKeysToEnvFile();
       return result;
     });
 
@@ -419,7 +471,7 @@ class IPCHandlers {
       const result = await this.parakeetManager.stopServer();
       delete process.env.LOCAL_TRANSCRIPTION_PROVIDER;
       delete process.env.PARAKEET_MODEL;
-      this.environmentManager.saveAllKeysToEnvFile();
+      await this.environmentManager.saveAllKeysToEnvFile();
       return result;
     });
 
@@ -450,7 +502,10 @@ class IPCHandlers {
 
       const { isModifierOnlyHotkey, isRightSideModifier } = require("./hotkeyManager");
       const usesNativeListener = (hotkey) =>
-        !hotkey || hotkey === "GLOBE" || isModifierOnlyHotkey(hotkey) || isRightSideModifier(hotkey);
+        !hotkey ||
+        hotkey === "GLOBE" ||
+        isModifierOnlyHotkey(hotkey) ||
+        isRightSideModifier(hotkey);
 
       if (enabled) {
         // Entering capture mode - unregister globalShortcut so it doesn't consume key events
@@ -602,12 +657,14 @@ class IPCHandlers {
         const result = await modelManager.downloadModel(
           modelId,
           (progress, downloadedSize, totalSize) => {
-            event.sender.send("model-download-progress", {
-              modelId,
-              progress,
-              downloadedSize,
-              totalSize,
-            });
+            if (!event.sender.isDestroyed()) {
+              event.sender.send("model-download-progress", {
+                modelId,
+                progress,
+                downloadedSize,
+                totalSize,
+              });
+            }
           }
         );
         return { success: true, path: result };
@@ -781,6 +838,23 @@ class IPCHandlers {
 
     ipcMain.handle("save-anthropic-key", async (event, key) => {
       return this.environmentManager.saveAnthropicKey(key);
+    });
+
+    ipcMain.handle("get-ui-language", async () => {
+      return this.environmentManager.getUiLanguage();
+    });
+
+    ipcMain.handle("save-ui-language", async (event, language) => {
+      return this.environmentManager.saveUiLanguage(language);
+    });
+
+    ipcMain.handle("set-ui-language", async (event, language) => {
+      const result = this.environmentManager.saveUiLanguage(language);
+      process.env.UI_LANGUAGE = result.language;
+      changeLanguage(result.language);
+      this.windowManager?.refreshLocalizedUi?.();
+      this.getTrayManager?.()?.updateTrayMenu?.();
+      return { success: true, language: result.language };
     });
 
     ipcMain.handle("save-all-keys-to-env", async () => {
@@ -1004,9 +1078,9 @@ class IPCHandlers {
       if (!url) {
         // Platform doesn't support this settings URL
         const messages = {
-          microphone: "Please open your system settings to configure microphone permissions.",
-          sound: "Please open your system sound settings (e.g., pavucontrol).",
-          accessibility: "Accessibility settings are not applicable on this platform.",
+          microphone: i18nMain.t("systemSettings.microphone"),
+          sound: i18nMain.t("systemSettings.sound"),
+          accessibility: i18nMain.t("systemSettings.accessibility"),
         };
         return {
           success: false,
@@ -1081,10 +1155,7 @@ class IPCHandlers {
       runtimeEnv.VITE_NEON_AUTH_URL ||
       "";
 
-    const getSessionCookies = async (event) => {
-      const win = BrowserWindow.fromWebContents(event.sender);
-      if (!win) return "";
-
+    const getSessionCookiesFromWindow = async (win) => {
       const scopedUrls = [getAuthUrl(), getApiUrl()].filter(Boolean);
       const cookiesByName = new Map();
 
@@ -1128,6 +1199,12 @@ class IPCHandlers {
       );
 
       return cookieHeader;
+    };
+
+    const getSessionCookies = async (event) => {
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (!win) return "";
+      return getSessionCookiesFromWindow(win);
     };
 
     ipcMain.handle("cloud-transcribe", async (event, audioBuffer, opts = {}) => {
@@ -1276,6 +1353,8 @@ class IPCHandlers {
           model: opts.model || "(default)",
           agentName: opts.agentName || "(none)",
           language: opts.language || "(auto)",
+          locale: opts.locale || "en",
+          hasCustomPrompt: !!opts.customPrompt,
           textLength: text?.length || 0,
           textPreview: text?.substring(0, 80) || "(empty)",
         });
@@ -1297,7 +1376,9 @@ class IPCHandlers {
             model: opts.model,
             agentName: opts.agentName,
             customDictionary: opts.customDictionary,
+            customPrompt: opts.customPrompt,
             language: opts.language,
+            locale: opts.locale,
             sessionId: this.sessionId,
             clientType: "desktop",
             appVersion: app.getVersion(),
@@ -1720,6 +1801,249 @@ class IPCHandlers {
         return { isConnected: false, sessionId: null };
       }
       return this.assemblyAiStreaming.getStatus();
+    });
+
+    // --- Deepgram Streaming handlers ---
+
+    let deepgramTokenWindowId = null;
+
+    const fetchDeepgramStreamingTokenFromWindow = async (windowId) => {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+      const win = BrowserWindow.fromId(windowId);
+      if (!win || win.isDestroyed()) throw new Error("Window not available for token refresh");
+
+      const cookieHeader = await getSessionCookiesFromWindow(win);
+      if (!cookieHeader) throw new Error("No session cookies available");
+
+      const tokenResponse = await fetch(`${apiUrl}/api/deepgram-streaming-token`, {
+        method: "POST",
+        headers: { Cookie: cookieHeader },
+      });
+
+      if (!tokenResponse.ok) {
+        if (tokenResponse.status === 401) {
+          const err = new Error("Session expired");
+          err.code = "AUTH_EXPIRED";
+          throw err;
+        }
+        throw new Error(`Failed to get Deepgram streaming token: ${tokenResponse.status}`);
+      }
+
+      const { token } = await tokenResponse.json();
+      if (!token) throw new Error("No token received from API");
+      return token;
+    };
+
+    const fetchDeepgramStreamingToken = async (event) => {
+      const apiUrl = getApiUrl();
+      if (!apiUrl) {
+        throw new Error("OpenWhispr API URL not configured");
+      }
+
+      const cookieHeader = await getSessionCookies(event);
+      if (!cookieHeader) {
+        throw new Error("No session cookies available");
+      }
+
+      const tokenResponse = await fetch(`${apiUrl}/api/deepgram-streaming-token`, {
+        method: "POST",
+        headers: {
+          Cookie: cookieHeader,
+        },
+      });
+
+      if (!tokenResponse.ok) {
+        if (tokenResponse.status === 401) {
+          const err = new Error("Session expired");
+          err.code = "AUTH_EXPIRED";
+          throw err;
+        }
+        const errorData = await tokenResponse.json().catch(() => ({}));
+        throw new Error(
+          errorData.error || `Failed to get Deepgram streaming token: ${tokenResponse.status}`
+        );
+      }
+
+      const { token } = await tokenResponse.json();
+      if (!token) {
+        throw new Error("No token received from API");
+      }
+
+      return token;
+    };
+
+    ipcMain.handle("deepgram-streaming-warmup", async (event, options = {}) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          return { success: false, error: "API not configured", code: "NO_API" };
+        }
+
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win && !win.isDestroyed()) {
+          deepgramTokenWindowId = win.id;
+        }
+
+        if (!this.deepgramStreaming) {
+          this.deepgramStreaming = new DeepgramStreaming();
+        }
+
+        this.deepgramStreaming.setTokenRefreshFn(async () => {
+          if (!deepgramTokenWindowId) throw new Error("No window reference");
+          return fetchDeepgramStreamingTokenFromWindow(deepgramTokenWindowId);
+        });
+
+        if (this.deepgramStreaming.hasWarmConnection()) {
+          debugLogger.debug("Deepgram connection already warm", {}, "streaming");
+          return { success: true, alreadyWarm: true };
+        }
+
+        let token = this.deepgramStreaming.getCachedToken();
+        if (!token) {
+          debugLogger.debug("Fetching new Deepgram streaming token for warmup", {}, "streaming");
+          token = await fetchDeepgramStreamingToken(event);
+        }
+
+        await this.deepgramStreaming.warmup({ ...options, token });
+        debugLogger.debug("Deepgram connection warmed up", {}, "streaming");
+
+        return { success: true };
+      } catch (error) {
+        debugLogger.error("Deepgram warmup error", { error: error.message });
+        if (error.code === "AUTH_EXPIRED") {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        return { success: false, error: error.message };
+      }
+    });
+
+    let deepgramStreamingStartInProgress = false;
+
+    ipcMain.handle("deepgram-streaming-start", async (event, options = {}) => {
+      if (deepgramStreamingStartInProgress) {
+        debugLogger.debug(
+          "Deepgram streaming start already in progress, ignoring",
+          {},
+          "streaming"
+        );
+        return { success: false, error: "Operation in progress" };
+      }
+
+      deepgramStreamingStartInProgress = true;
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          return { success: false, error: "API not configured", code: "NO_API" };
+        }
+
+        const win = BrowserWindow.fromWebContents(event.sender);
+        if (win && !win.isDestroyed()) {
+          deepgramTokenWindowId = win.id;
+        }
+
+        if (!this.deepgramStreaming) {
+          this.deepgramStreaming = new DeepgramStreaming();
+        }
+
+        this.deepgramStreaming.setTokenRefreshFn(async () => {
+          if (!deepgramTokenWindowId) throw new Error("No window reference");
+          return fetchDeepgramStreamingTokenFromWindow(deepgramTokenWindowId);
+        });
+
+        if (this.deepgramStreaming.isConnected) {
+          debugLogger.debug("Deepgram cleaning up stale connection before start", {}, "streaming");
+          await this.deepgramStreaming.disconnect(false);
+        }
+
+        const hasWarm = this.deepgramStreaming.hasWarmConnection();
+        debugLogger.debug("Deepgram streaming start", { hasWarmConnection: hasWarm }, "streaming");
+
+        let token = this.deepgramStreaming.getCachedToken();
+        if (!token) {
+          debugLogger.debug("Fetching Deepgram streaming token from API", {}, "streaming");
+          token = await fetchDeepgramStreamingToken(event);
+          this.deepgramStreaming.cacheToken(token);
+        } else {
+          debugLogger.debug("Using cached Deepgram streaming token", {}, "streaming");
+        }
+
+        this.deepgramStreaming.onPartialTranscript = (text) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("deepgram-partial-transcript", text);
+          }
+        };
+
+        this.deepgramStreaming.onFinalTranscript = (text) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("deepgram-final-transcript", text);
+          }
+        };
+
+        this.deepgramStreaming.onError = (error) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("deepgram-error", error.message);
+          }
+        };
+
+        this.deepgramStreaming.onSessionEnd = (data) => {
+          if (win && !win.isDestroyed()) {
+            win.webContents.send("deepgram-session-end", data);
+          }
+        };
+
+        await this.deepgramStreaming.connect({ ...options, token });
+        debugLogger.debug("Deepgram streaming started", {}, "streaming");
+
+        return {
+          success: true,
+          usedWarmConnection: hasWarm,
+        };
+      } catch (error) {
+        debugLogger.error("Deepgram streaming start error", { error: error.message });
+        if (error.code === "AUTH_EXPIRED") {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        return { success: false, error: error.message };
+      } finally {
+        deepgramStreamingStartInProgress = false;
+      }
+    });
+
+    ipcMain.on("deepgram-streaming-send", (event, audioBuffer) => {
+      try {
+        if (!this.deepgramStreaming) return;
+        const buffer = Buffer.from(audioBuffer);
+        this.deepgramStreaming.sendAudio(buffer);
+      } catch (error) {
+        debugLogger.error("Deepgram streaming send error", { error: error.message });
+      }
+    });
+
+    ipcMain.on("deepgram-streaming-finalize", () => {
+      this.deepgramStreaming?.finalize();
+    });
+
+    ipcMain.handle("deepgram-streaming-stop", async () => {
+      try {
+        let result = { text: "" };
+        if (this.deepgramStreaming) {
+          result = await this.deepgramStreaming.disconnect(true);
+        }
+
+        return { success: true, text: result?.text || "" };
+      } catch (error) {
+        debugLogger.error("Deepgram streaming stop error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("deepgram-streaming-status", async () => {
+      if (!this.deepgramStreaming) {
+        return { isConnected: false, sessionId: null };
+      }
+      return this.deepgramStreaming.getStatus();
     });
   }
 

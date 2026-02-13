@@ -1,12 +1,23 @@
-import { useCallback, useEffect, useRef } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef } from "react";
 import { useLocalStorage } from "./useLocalStorage";
 import { useDebouncedCallback } from "./useDebouncedCallback";
 import { API_ENDPOINTS } from "../config/constants";
-import ReasoningService from "../services/ReasoningService";
 import logger from "../utils/logger";
+import { ensureAgentNameInDictionary } from "../utils/agentName";
+import i18n, { normalizeUiLanguage } from "../i18n";
+import { hasStoredByokKey } from "../utils/byokDetection";
 import type { LocalTranscriptionProvider } from "../types/electron";
 
+let _ReasoningService: typeof import("../services/ReasoningService").default | null = null;
+function getReasoningService() {
+  if (!_ReasoningService) {
+    _ReasoningService = require("../services/ReasoningService").default;
+  }
+  return _ReasoningService!;
+}
+
 export interface TranscriptionSettings {
+  uiLanguage: string;
   useLocalWhisper: boolean;
   whisperModel: string;
   localTranscriptionProvider: LocalTranscriptionProvider;
@@ -60,7 +71,20 @@ export interface ThemeSettings {
   theme: "light" | "dark" | "auto";
 }
 
-export function useSettings() {
+const LANGUAGE_MIGRATIONS: Record<string, string> = { zh: "zh-CN" };
+let _migrated = false;
+function migratePreferredLanguage() {
+  if (_migrated) return;
+  _migrated = true;
+  const stored = localStorage.getItem("preferredLanguage");
+  if (stored && LANGUAGE_MIGRATIONS[stored]) {
+    localStorage.setItem("preferredLanguage", LANGUAGE_MIGRATIONS[stored]);
+  }
+}
+
+function useSettingsInternal() {
+  migratePreferredLanguage();
+
   const [useLocalWhisper, setUseLocalWhisper] = useLocalStorage("useLocalWhisper", false, {
     serialize: String,
     deserialize: (value) => value === "true",
@@ -110,6 +134,70 @@ export function useSettings() {
     deserialize: String,
   });
 
+  const [uiLanguage, setUiLanguageLocal] = useLocalStorage("uiLanguage", "en", {
+    serialize: String,
+    deserialize: (value) => normalizeUiLanguage(value),
+  });
+
+  const setUiLanguage = useCallback(
+    (language: string) => {
+      setUiLanguageLocal(normalizeUiLanguage(language));
+    },
+    [setUiLanguageLocal]
+  );
+
+  const hasRunUiLanguageSync = useRef(false);
+  const uiLanguageSyncReady = useRef(false);
+
+  useEffect(() => {
+    if (hasRunUiLanguageSync.current) return;
+    hasRunUiLanguageSync.current = true;
+
+    const sync = async () => {
+      let resolved = normalizeUiLanguage(uiLanguage);
+
+      if (typeof window !== "undefined" && window.electronAPI?.getUiLanguage) {
+        const envLanguage = await window.electronAPI.getUiLanguage();
+        resolved = normalizeUiLanguage(envLanguage || resolved);
+      }
+
+      if (resolved !== uiLanguage) {
+        setUiLanguageLocal(resolved);
+      }
+
+      await i18n.changeLanguage(resolved);
+      uiLanguageSyncReady.current = true;
+    };
+
+    sync().catch((err) => {
+      logger.warn(
+        "Failed to sync UI language on startup",
+        { error: (err as Error).message },
+        "settings"
+      );
+      uiLanguageSyncReady.current = true;
+      void i18n.changeLanguage(normalizeUiLanguage(uiLanguage));
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!uiLanguageSyncReady.current) return;
+
+    const normalized = normalizeUiLanguage(uiLanguage);
+    void i18n.changeLanguage(normalized);
+
+    if (typeof window !== "undefined" && window.electronAPI?.setUiLanguage) {
+      window.electronAPI.setUiLanguage(normalized).catch((err) => {
+        logger.warn(
+          "Failed to sync UI language to main process",
+          { error: (err as Error).message },
+          "settings"
+        );
+      });
+    }
+  }, [uiLanguage]);
+
   const [cloudTranscriptionProvider, setCloudTranscriptionProvider] = useLocalStorage(
     "cloudTranscriptionProvider",
     "openai",
@@ -146,10 +234,9 @@ export function useSettings() {
     }
   );
 
-  // Cloud transcription mode: "openwhispr" (server-side) or "byok" (bring your own key)
   const [cloudTranscriptionMode, setCloudTranscriptionMode] = useLocalStorage(
     "cloudTranscriptionMode",
-    "openwhispr",
+    hasStoredByokKey() ? "byok" : "openwhispr",
     {
       serialize: String,
       deserialize: String,
@@ -233,7 +320,10 @@ export function useSettings() {
       }
     };
 
-    syncDictionary();
+    syncDictionary().then(() => {
+      // Ensure agent name is in dictionary for existing users who set it before this feature
+      ensureAgentNameInDictionary();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -383,7 +473,7 @@ export function useSettings() {
   const invalidateApiKeyCaches = useCallback(
     (provider?: "openai" | "anthropic" | "gemini" | "groq" | "mistral" | "custom") => {
       if (provider) {
-        ReasoningService.clearApiKeyCache(provider);
+        getReasoningService().clearApiKeyCache(provider);
       }
       window.dispatchEvent(new Event("api-key-changed"));
       debouncedPersistToEnv();
@@ -508,6 +598,48 @@ export function useSettings() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sync dictation key from main process on first mount (handles localStorage cleared)
+  const hasRunDictationKeySync = useRef(false);
+  useEffect(() => {
+    if (hasRunDictationKeySync.current) return;
+    hasRunDictationKeySync.current = true;
+
+    const sync = async () => {
+      if (!window.electronAPI?.getDictationKey) return;
+      const envKey = await window.electronAPI.getDictationKey();
+      if (envKey && envKey !== dictationKey) {
+        setDictationKeyLocal(envKey);
+      }
+    };
+    sync().catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const [audioCuesEnabled, setAudioCuesEnabled] = useLocalStorage("audioCuesEnabled", true, {
+    serialize: String,
+    deserialize: (value) => value !== "false",
+  });
+
+  // Floating icon auto-hide setting
+  const [floatingIconAutoHide, setFloatingIconAutoHideLocal] = useLocalStorage(
+    "floatingIconAutoHide",
+    false,
+    {
+      serialize: String,
+      deserialize: (value) => value === "true",
+    }
+  );
+
+  const setFloatingIconAutoHide = useCallback(
+    (enabled: boolean) => {
+      setFloatingIconAutoHideLocal(enabled);
+      if (typeof window !== "undefined" && window.electronAPI?.notifyFloatingIconAutoHideChanged) {
+        window.electronAPI.notifyFloatingIconAutoHideChanged(enabled);
+      }
+    },
+    [setFloatingIconAutoHideLocal]
+  );
+
   // Microphone settings
   const [preferBuiltInMic, setPreferBuiltInMic] = useLocalStorage("preferBuiltInMic", true, {
     serialize: String,
@@ -552,6 +684,7 @@ export function useSettings() {
   const updateTranscriptionSettings = useCallback(
     (settings: Partial<TranscriptionSettings>) => {
       if (settings.useLocalWhisper !== undefined) setUseLocalWhisper(settings.useLocalWhisper);
+      if (settings.uiLanguage !== undefined) setUiLanguage(settings.uiLanguage);
       if (settings.whisperModel !== undefined) setWhisperModel(settings.whisperModel);
       if (settings.localTranscriptionProvider !== undefined)
         setLocalTranscriptionProvider(settings.localTranscriptionProvider);
@@ -574,6 +707,7 @@ export function useSettings() {
     },
     [
       setUseLocalWhisper,
+      setUiLanguage,
       setWhisperModel,
       setLocalTranscriptionProvider,
       setParakeetModel,
@@ -623,6 +757,7 @@ export function useSettings() {
   return {
     useLocalWhisper,
     whisperModel,
+    uiLanguage,
     localTranscriptionProvider,
     parakeetModel,
     allowOpenAIFallback,
@@ -650,6 +785,7 @@ export function useSettings() {
     theme,
     setUseLocalWhisper,
     setWhisperModel,
+    setUiLanguage,
     setLocalTranscriptionProvider,
     setParakeetModel,
     setAllowOpenAIFallback,
@@ -679,6 +815,10 @@ export function useSettings() {
     setTheme,
     activationMode,
     setActivationMode,
+    audioCuesEnabled,
+    setAudioCuesEnabled,
+    floatingIconAutoHide,
+    setFloatingIconAutoHide,
     preferBuiltInMic,
     selectedMicDeviceId,
     setPreferBuiltInMic,
@@ -691,4 +831,21 @@ export function useSettings() {
     updateReasoningSettings,
     updateApiKeys,
   };
+}
+
+export type SettingsValue = ReturnType<typeof useSettingsInternal>;
+
+const SettingsContext = createContext<SettingsValue | null>(null);
+
+export function SettingsProvider({ children }: { children: React.ReactNode }) {
+  const value = useSettingsInternal();
+  return React.createElement(SettingsContext.Provider, { value }, children);
+}
+
+export function useSettings(): SettingsValue {
+  const ctx = useContext(SettingsContext);
+  if (!ctx) {
+    throw new Error("useSettings must be used within a SettingsProvider");
+  }
+  return ctx;
 }

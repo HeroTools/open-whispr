@@ -19,6 +19,7 @@ export interface WhisperModelResult {
   downloaded: boolean;
   size_mb?: number;
   error?: string;
+  code?: string;
 }
 
 export interface WhisperModelDeleteResult {
@@ -85,12 +86,13 @@ export interface AppVersionResult {
 }
 
 export interface WhisperDownloadProgressData {
-  type: string;
+  type: "progress" | "installing" | "complete" | "error";
   model: string;
   percentage?: number;
   downloaded_bytes?: number;
   total_bytes?: number;
   error?: string;
+  code?: string;
   result?: any;
 }
 
@@ -108,6 +110,7 @@ export interface ParakeetModelResult {
   size_bytes?: number;
   size_mb?: number;
   error?: string;
+  code?: string;
 }
 
 export interface ParakeetModelDeleteResult {
@@ -126,12 +129,13 @@ export interface ParakeetModelsListResult {
 }
 
 export interface ParakeetDownloadProgressData {
-  type: string;
+  type: "progress" | "installing" | "complete" | "error";
   model: string;
   percentage?: number;
   downloaded_bytes?: number;
   total_bytes?: number;
   error?: string;
+  code?: string;
 }
 
 export interface ParakeetTranscriptionResult {
@@ -197,6 +201,9 @@ declare global {
       createProductionEnvFile: (key: string) => Promise<void>;
       getAnthropicKey: () => Promise<string | null>;
       saveAnthropicKey: (key: string) => Promise<void>;
+      getUiLanguage: () => Promise<string>;
+      saveUiLanguage: (language: string) => Promise<{ success: boolean; language: string }>;
+      setUiLanguage: (language: string) => Promise<{ success: boolean; language: string }>;
       saveAllKeysToEnv: () => Promise<{ success: boolean; path: string }>;
       syncStartupPreferences: (prefs: {
         useLocalWhisper: boolean;
@@ -416,6 +423,8 @@ declare global {
       // Windows Push-to-Talk notifications
       notifyActivationModeChanged?: (mode: "tap" | "push") => void;
       notifyHotkeyChanged?: (hotkey: string) => void;
+      notifyFloatingIconAutoHideChanged?: (enabled: boolean) => void;
+      onFloatingIconAutoHideChanged?: (callback: (enabled: boolean) => void) => () => void;
 
       // Auto-start at login
       getAutoStartEnabled?: () => Promise<boolean>;
@@ -439,7 +448,14 @@ declare global {
       }>;
       cloudReason?: (
         text: string,
-        opts: { model?: string; agentName?: string; customDictionary?: string[] }
+        opts: {
+          model?: string;
+          agentName?: string;
+          customDictionary?: string[];
+          customPrompt?: string;
+          language?: string;
+          locale?: string;
+        }
       ) => Promise<{
         success: boolean;
         text?: string;
@@ -454,6 +470,7 @@ declare global {
         wordsRemaining?: number;
         limit?: number;
         plan?: string;
+        status?: string;
         isSubscribed?: boolean;
         isTrial?: boolean;
         trialDaysLeft?: number | null;
@@ -515,6 +532,37 @@ declare global {
       onAssemblyAiFinalTranscript?: (callback: (text: string) => void) => () => void;
       onAssemblyAiError?: (callback: (error: string) => void) => () => void;
       onAssemblyAiSessionEnd?: (
+        callback: (data: { audioDuration?: number; text?: string }) => void
+      ) => () => void;
+
+      // Deepgram Streaming
+      deepgramStreamingWarmup?: (options?: { sampleRate?: number; language?: string }) => Promise<{
+        success: boolean;
+        alreadyWarm?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      deepgramStreamingStart?: (options?: { sampleRate?: number; language?: string }) => Promise<{
+        success: boolean;
+        usedWarmConnection?: boolean;
+        error?: string;
+        code?: string;
+      }>;
+      deepgramStreamingSend?: (audioBuffer: ArrayBuffer) => void;
+      deepgramStreamingFinalize?: () => void;
+      deepgramStreamingStop?: () => Promise<{
+        success: boolean;
+        text?: string;
+        error?: string;
+      }>;
+      deepgramStreamingStatus?: () => Promise<{
+        isConnected: boolean;
+        sessionId: string | null;
+      }>;
+      onDeepgramPartialTranscript?: (callback: (text: string) => void) => () => void;
+      onDeepgramFinalTranscript?: (callback: (text: string) => void) => () => void;
+      onDeepgramError?: (callback: (error: string) => void) => () => void;
+      onDeepgramSessionEnd?: (
         callback: (data: { audioDuration?: number; text?: string }) => void
       ) => () => void;
     };

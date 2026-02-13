@@ -1,6 +1,7 @@
 const { globalShortcut } = require("electron");
 const debugLogger = require("./debugLogger");
 const GnomeShortcutManager = require("./gnomeShortcut");
+const { i18nMain } = require("./i18nMain");
 
 // Delay to ensure localStorage is accessible after window load
 const HOTKEY_REGISTRATION_DELAY_MS = 1000;
@@ -64,7 +65,7 @@ class HotkeyManager {
     if (globalShortcut.isRegistered(hotkey)) {
       return {
         reason: "already_registered",
-        message: `"${hotkey}" is already registered by another application.`,
+        message: i18nMain.t("hotkey.errors.alreadyRegistered", { hotkey }),
         suggestions: this.getSuggestions(hotkey),
       };
     }
@@ -74,7 +75,7 @@ class HotkeyManager {
       if (hotkey.includes("Super") || hotkey.includes("Meta")) {
         return {
           reason: "os_reserved",
-          message: `"${hotkey}" may be reserved by your desktop environment.`,
+          message: i18nMain.t("hotkey.errors.osReserved", { hotkey }),
           suggestions: this.getSuggestions(hotkey),
         };
       }
@@ -82,7 +83,7 @@ class HotkeyManager {
 
     return {
       reason: "registration_failed",
-      message: `Could not register "${hotkey}". It may be in use by another application.`,
+      message: i18nMain.t("hotkey.errors.registrationFailed", { hotkey }),
       suggestions: this.getSuggestions(hotkey),
     };
   }
@@ -104,7 +105,7 @@ class HotkeyManager {
 
   setupShortcuts(hotkey = "Control+Super", callback) {
     if (!callback) {
-      throw new Error("Callback function is required for hotkey setup");
+      throw new Error(i18nMain.t("hotkey.errors.callbackRequired"));
     }
 
     debugLogger.log(`[HotkeyManager] Setting up hotkey: "${hotkey}"`);
@@ -156,7 +157,7 @@ class HotkeyManager {
           debugLogger.log("[HotkeyManager] GLOBE key rejected - not on macOS");
           return {
             success: false,
-            error: "The Globe key is only available on macOS.",
+            error: i18nMain.t("hotkey.errors.globeOnlyMac"),
           };
         }
         this.currentHotkey = hotkey;
@@ -211,7 +212,9 @@ class HotkeyManager {
 
         let errorMessage = failureInfo.message;
         if (failureInfo.suggestions.length > 0) {
-          errorMessage += ` Try: ${failureInfo.suggestions.join(", ")}`;
+          errorMessage += ` ${i18nMain.t("hotkey.errors.trySuggestions", {
+            suggestions: failureInfo.suggestions.join(", "),
+          })}`;
         }
 
         return {
@@ -238,9 +241,7 @@ class HotkeyManager {
     ) {
       return;
     }
-    const prevAccel = previousHotkey.startsWith("Fn+")
-      ? previousHotkey.slice(3)
-      : previousHotkey;
+    const prevAccel = previousHotkey.startsWith("Fn+") ? previousHotkey.slice(3) : previousHotkey;
     try {
       const restored = globalShortcut.register(prevAccel, callback);
       if (restored) {
@@ -248,9 +249,7 @@ class HotkeyManager {
           `[HotkeyManager] Restored previous hotkey "${previousHotkey}" after failed registration`
         );
       } else {
-        debugLogger.warn(
-          `[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`
-        );
+        debugLogger.warn(`[HotkeyManager] Could not restore previous hotkey "${previousHotkey}"`);
       }
     } catch (err) {
       debugLogger.warn(
@@ -355,12 +354,12 @@ class HotkeyManager {
           localStorage.getItem("dictationKey") || ""
         `);
 
-        // If we found a hotkey in localStorage but not in env, migrate it
+        // If we found a hotkey in localStorage but not in env, migrate it to .env file
         if (savedHotkey && savedHotkey.trim() !== "") {
-          process.env.DICTATION_KEY = savedHotkey;
           debugLogger.log(
-            `[HotkeyManager] Migrated hotkey "${savedHotkey}" from localStorage to env`
+            `[HotkeyManager] Migrating hotkey "${savedHotkey}" from localStorage to .env`
           );
+          await this._persistHotkeyToEnvFile(savedHotkey);
         }
       }
 
@@ -379,6 +378,7 @@ class HotkeyManager {
       if (defaultHotkey === "GLOBE") {
         this.currentHotkey = "GLOBE";
         debugLogger.log("[HotkeyManager] Using GLOBE key as default on macOS");
+        await this._persistHotkeyToEnvFile("GLOBE");
         return;
       }
 
@@ -413,23 +413,22 @@ class HotkeyManager {
     }
   }
 
-  async saveHotkeyToRenderer(hotkey) {
-    // Escape the hotkey string to prevent injection issues
-    const escapedHotkey = hotkey.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-
-    // Save to environment variable for file-based persistence (more reliable)
+  async _persistHotkeyToEnvFile(hotkey) {
     process.env.DICTATION_KEY = hotkey;
-
-    // Persist to .env file for reliable startup
     try {
-      // Lazy require to avoid circular dependencies
       const EnvironmentManager = require("./environment");
       const envManager = new EnvironmentManager();
-      envManager.saveAllKeysToEnvFile();
-      debugLogger.log(`[HotkeyManager] Saved hotkey "${hotkey}" to .env file`);
+      await envManager.saveAllKeysToEnvFile();
+      debugLogger.log(`[HotkeyManager] Persisted hotkey "${hotkey}" to .env file`);
     } catch (err) {
       debugLogger.warn("[HotkeyManager] Failed to persist hotkey to .env file:", err.message);
     }
+  }
+
+  async saveHotkeyToRenderer(hotkey) {
+    const escapedHotkey = hotkey.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+
+    await this._persistHotkeyToEnvFile(hotkey);
 
     // Also save to localStorage for backwards compatibility
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {

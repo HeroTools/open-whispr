@@ -7,6 +7,74 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.8] - 2026-02-12
+
+### Added
+- **Internationalization v1**: Full desktop localization across auth, settings, hooks, and UI with centralized renderer locale resources (#258)
+- **Chinese Language Split**: Split Chinese into Simplified (zh-CN) and Traditional (zh-TW) with tailored AI instructions and one-time migration for existing users (#267)
+- **Russian Interface Language**: Added Russian to interface language options
+- **Deepgram Token Refresh & Keyterms**: Proactive token rotation for warm connections before expiry and keyterms pass-through for improved transcription accuracy
+
+### Fixed
+- **macOS Non-English Keyboard Paste**: Fixed paste not working on non-English keyboard layouts (Russian, Ukrainian, etc.) by using physical key code instead of character-based keystroke in AppleScript fallback
+- **Whisper Language Auto-Detection**: Pass `--language auto` to whisper.cpp explicitly so non-English audio isn't forced to English (#260)
+- **Model Download Pipeline**: Inline redirect handling, deferred write stream creation, indeterminate progress bar for unknown sizes, and Parakeet ONNX file validation after extraction
+- **Sherpa-onnx Shared Libraries**: Always overwrite shared libraries during download to prevent stale architecture-mismatched binaries, with `--force` support
+- **Chinese Translation Fixes**: Minor translation corrections for Chinese interface strings
+- **Neon Auth Build Config**: Fixed auth build configuration
+
+## [1.4.7] - 2026-02-11
+
+### Added
+- **Deepgram Streaming Transcription**: Migrated real-time streaming transcription from AssemblyAI to Deepgram for improved reliability and accuracy (#249)
+
+### Fixed
+- **BYOK After Upgrade**: Prefer localStorage API keys over process.env so Bring Your Own Key mode works correctly after upgrading (#263)
+- **PTT Double-Fire Prevention**: Applied post-stop cooldown and press-identity checks to both macOS and Windows push-to-talk handlers
+- **Archive Extraction Retry**: Reuse existing archive on extraction retry with improved error handling
+- **Email Verification Polling**: Pass email param in verification polling and stop on 401 responses
+- **Auth Build Bundling**: Added @neondatabase/auth packages to rollup externals for correct production bundling (#256)
+
+### Changed
+- **Build System**: Bumped Node version in build files
+
+## [1.4.6] - 2026-02-10
+
+### Added
+- **Robust Model Downloads**: Hardened download pipeline with stall detection, disk space checks, and file validation for more reliable model installs
+- **Prompt Handling Improvements**: Improved agent name resolution, prompt studio enhancements, and smarter prompt context assembly
+- **Past-Due Subscription Handling**: Users with past-due subscriptions now see clear messaging and recovery options
+
+### Fixed
+- **Parakeet Long Audio**: Fixed empty transcriptions for long audio by segmenting input before sending to Parakeet
+- **Plus-Addressed Emails**: Reject plus-addressed emails (e.g., user+tag@example.com) during authentication
+- **Double-Click Prevention**: Prevent duplicate requests when double-clicking checkout and billing buttons
+- **Auth Initialization Race**: Await init-user before completing auth flow and fix missing user dependency
+
+### Changed
+- **Startup Performance**: Preload lazy chunks during auth initialization for faster page transitions
+- **Code Cleanup**: Removed excess comments and simplified window management logic
+
+## [1.4.5] - 2026-02-09
+
+### Added
+- **Dictation Sound Effects Toggle**: New setting to enable/disable dictation audio cues with refined tones (warmer, softer frequencies, gentler attack, distinct start/stop)
+- **Toast Notification Redesign**: Redesigned toast notifications as dark HUD surfaces for a more polished look
+- **Floating Icon Auto-Hide**: New setting to auto-hide the floating dictation icon
+- **Loading Screen Redesign**: Branded loading screen with logo and spinner
+- **Discord Support Link**: Added Discord link to the support menu
+- **Auth-Aware Routing**: Returning signed-out users now see a re-authentication screen instead of a broken state
+
+### Fixed
+- **Dropdown Dark Mode**: Fixed dropdown styling in dark mode
+- **Toast Dark Mode**: Fixed toast colouring in dark mode
+- **Globe Key Persistence**: Globe key now persists to .env and dictation key syncs to localStorage
+- **Globe Listener Cross-Compilation**: Cross-compiled globe listener for x64
+
+### Changed
+- **Startup Performance**: Deferred non-critical manager initialization after window creation, lazy-loaded ControlPanel/OnboardingFlow/SettingsModal, converted env file writes to async, extracted SettingsProvider context, and split Radix/lucide into separate vendor chunks
+- **Scrollbar Styling**: Subtle transparent-track scrollbar with thinner floating thumb
+
 ## [1.4.4] - 2026-02-08
 
 ### Fixed

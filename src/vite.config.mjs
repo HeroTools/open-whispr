@@ -76,7 +76,18 @@ export default defineConfig(({ mode }) => {
           'tar',
           'unzipper',
           '@aws-sdk/client-s3'
-        ]
+        ],
+        output: {
+          manualChunks: {
+            'vendor-radix': [
+              '@radix-ui/react-dialog',
+              '@radix-ui/react-dropdown-menu',
+              '@radix-ui/react-select',
+              '@radix-ui/react-tabs',
+            ],
+            'vendor-icons': ['lucide-react'],
+          },
+        },
       }
     }
   }

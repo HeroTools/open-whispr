@@ -5,6 +5,7 @@ import { isBuiltInMicrophone } from "../utils/audioDeviceUtils";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
 import { getBaseLanguageCode, validateLanguageForModel } from "../utils/languageSupport";
+import { hasStoredByokKey } from "../utils/byokDetection";
 
 const SHORT_CLIP_DURATION_SECONDS = 2.5;
 const REASONING_CACHE_TTL = 30000; // 30 seconds
@@ -59,6 +60,8 @@ class AudioManager {
     this.persistentAudioContext = null;
     this.workletModuleLoaded = false;
     this.workletBlobUrl = null;
+    this.streamingStartInProgress = false;
+    this.stopRequestedDuringStreamingStart = false;
   }
 
   getWorkletBlobUrl() {
@@ -332,7 +335,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const whisperModel = localStorage.getItem("whisperModel") || "base";
       const parakeetModel = localStorage.getItem("parakeetModel") || "parakeet-tdt-0.6b-v3";
 
-      const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
+      const cloudTranscriptionMode =
+        localStorage.getItem("cloudTranscriptionMode") ||
+        (hasStoredByokKey() ? "byok" : "openwhispr");
       const isSignedIn = localStorage.getItem("isSignedIn") === "true";
 
       const isOpenWhisprCloudMode = !useLocalWhisper && cloudTranscriptionMode === "openwhispr";
@@ -593,17 +598,18 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     let apiKey = null;
 
     if (provider === "custom") {
-      try {
-        apiKey = await window.electronAPI.getCustomTranscriptionKey?.();
-      } catch (err) {
-        logger.debug(
-          "Failed to get custom transcription key via IPC, falling back to localStorage",
-          { error: err?.message },
-          "transcription"
-        );
-      }
-      if (!apiKey || !apiKey.trim()) {
-        apiKey = localStorage.getItem("customTranscriptionApiKey") || "";
+      // Prefer localStorage (user-entered via UI) over main process (.env)
+      apiKey = localStorage.getItem("customTranscriptionApiKey") || "";
+      if (!apiKey.trim()) {
+        try {
+          apiKey = await window.electronAPI.getCustomTranscriptionKey?.();
+        } catch (err) {
+          logger.debug(
+            "Failed to get custom transcription key via IPC",
+            { error: err?.message },
+            "transcription"
+          );
+        }
       }
       apiKey = apiKey?.trim() || "";
 
@@ -623,27 +629,31 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         apiKey = null;
       }
     } else if (provider === "mistral") {
-      apiKey = await window.electronAPI.getMistralKey?.();
+      // Prefer localStorage (user-entered via UI) over main process (.env)
+      // to avoid stale keys in process.env after auth mode transitions
+      apiKey = localStorage.getItem("mistralApiKey");
       if (!isValidApiKey(apiKey, "mistral")) {
-        apiKey = localStorage.getItem("mistralApiKey");
+        apiKey = await window.electronAPI.getMistralKey?.();
       }
       if (!isValidApiKey(apiKey, "mistral")) {
         throw new Error("Mistral API key not found. Please set your API key in the Control Panel.");
       }
     } else if (provider === "groq") {
-      // Try to get Groq API key
-      apiKey = await window.electronAPI.getGroqKey?.();
+      // Prefer localStorage (user-entered via UI) over main process (.env)
+      apiKey = localStorage.getItem("groqApiKey");
       if (!isValidApiKey(apiKey, "groq")) {
-        apiKey = localStorage.getItem("groqApiKey");
+        apiKey = await window.electronAPI.getGroqKey?.();
       }
       if (!isValidApiKey(apiKey, "groq")) {
         throw new Error("Groq API key not found. Please set your API key in the Control Panel.");
       }
     } else {
       // Default to OpenAI
-      apiKey = await window.electronAPI.getOpenAIKey();
+      // Prefer localStorage (user-entered via UI) over main process (.env)
+      // to avoid stale keys in process.env after auth mode transitions
+      apiKey = localStorage.getItem("openaiApiKey");
       if (!isValidApiKey(apiKey, "openai")) {
-        apiKey = localStorage.getItem("openaiApiKey");
+        apiKey = await window.electronAPI.getOpenAIKey();
       }
       if (!isValidApiKey(apiKey, "openai")) {
         throw new Error(
@@ -1104,7 +1114,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           const res = await window.electronAPI.cloudReason(processedText, {
             agentName,
             customDictionary: this.getCustomDictionaryArray(),
+            customPrompt: this.getCustomPrompt(),
             language: localStorage.getItem("preferredLanguage") || "auto",
+            locale: localStorage.getItem("uiLanguage") || "en",
           });
           if (!res.success) {
             const err = new Error(res.error || "Cloud reasoning failed");
@@ -1153,6 +1165,21 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     } catch {
       return [];
     }
+  }
+
+  getCustomPrompt() {
+    try {
+      const raw = localStorage.getItem("customUnifiedPrompt");
+      if (!raw) return undefined;
+      const parsed = JSON.parse(raw);
+      return typeof parsed === "string" ? parsed : undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
+  getKeyterms() {
+    return this.getCustomDictionaryArray();
   }
 
   async processWithOpenAIAPI(audioBlob, metadata = {}) {
@@ -1697,14 +1724,17 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       isRecording: this.isRecording,
       isProcessing: this.isProcessing,
       isStreaming: this.isStreaming,
+      isStreamingStartInProgress: this.streamingStartInProgress,
     };
   }
 
-  shouldUseStreaming() {
-    const cloudTranscriptionMode = localStorage.getItem("cloudTranscriptionMode") || "openwhispr";
-    const isSignedIn = localStorage.getItem("isSignedIn") === "true";
+  shouldUseStreaming(isSignedInOverride) {
+    const cloudTranscriptionMode =
+      localStorage.getItem("cloudTranscriptionMode") ||
+      (hasStoredByokKey() ? "byok" : "openwhispr");
+    const isSignedIn = isSignedInOverride ?? localStorage.getItem("isSignedIn") === "true";
     const useLocalWhisper = localStorage.getItem("useLocalWhisper") === "true";
-    const streamingDisabled = localStorage.getItem("assemblyAiStreaming") === "false";
+    const streamingDisabled = localStorage.getItem("deepgramStreaming") === "false";
 
     return (
       !useLocalWhisper &&
@@ -1714,8 +1744,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     );
   }
 
-  async warmupStreamingConnection() {
-    if (!this.shouldUseStreaming()) {
+  async warmupStreamingConnection({ isSignedIn: isSignedInOverride } = {}) {
+    if (!this.shouldUseStreaming(isSignedInOverride)) {
       logger.debug("Streaming warmup skipped - not in streaming mode", {}, "streaming");
       return false;
     }
@@ -1724,9 +1754,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       const [, wsResult] = await Promise.all([
         this.cacheMicrophoneDeviceId(),
         withSessionRefresh(async () => {
-          const res = await window.electronAPI.assemblyAiStreamingWarmup({
+          const res = await window.electronAPI.deepgramStreamingWarmup({
             sampleRate: 16000,
             language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+            keyterms: this.getKeyterms(),
           });
           // Throw error to trigger retry if AUTH_EXPIRED
           if (!res.success && res.code) {
@@ -1775,7 +1806,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         }
 
         logger.info(
-          "AssemblyAI streaming connection warmed up",
+          "Deepgram streaming connection warmed up",
           { alreadyWarm: wsResult.alreadyWarm, micCached: !!this.cachedMicDeviceId },
           "streaming"
         );
@@ -1784,11 +1815,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         logger.debug("Streaming warmup skipped - API not configured", {}, "streaming");
         return false;
       } else {
-        logger.warn("AssemblyAI warmup failed", { error: wsResult.error }, "streaming");
+        logger.warn("Deepgram warmup failed", { error: wsResult.error }, "streaming");
         return false;
       }
     } catch (error) {
-      logger.error("AssemblyAI warmup error", { error: error.message }, "streaming");
+      logger.error("Deepgram warmup error", { error: error.message }, "streaming");
       return false;
     }
   }
@@ -1807,36 +1838,25 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
   async startStreamingRecording() {
     try {
-      if (this.isRecording || this.isStreaming || this.isProcessing) {
+      if (this.streamingStartInProgress) {
         return false;
       }
+      this.streamingStartInProgress = true;
+
+      if (this.isRecording || this.isStreaming || this.isProcessing) {
+        this.streamingStartInProgress = false;
+        return false;
+      }
+
+      this.stopRequestedDuringStreamingStart = false;
 
       const t0 = performance.now();
       const constraints = await this.getAudioConstraints();
       const tConstraints = performance.now();
 
-      // Run getUserMedia and WebSocket connect in parallel.
-      // With warmup, WS resolves in ~5ms; getUserMedia (~500ms) dominates.
-      const [stream, result] = await Promise.all([
-        navigator.mediaDevices.getUserMedia(constraints),
-        withSessionRefresh(async () => {
-          const res = await window.electronAPI.assemblyAiStreamingStart({
-            sampleRate: 16000,
-            language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
-          });
-
-          if (!res.success) {
-            if (res.code === "NO_API") {
-              return { needsFallback: true };
-            }
-            const err = new Error(res.error || "Failed to start streaming session");
-            err.code = res.code;
-            throw err;
-          }
-          return res;
-        }),
-      ]);
-      const tParallel = performance.now();
+      // 1. Get mic stream (can take 10-15s on cold macOS mic driver)
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const tMedia = performance.now();
 
       const audioTrack = stream.getAudioTracks()[0];
       if (audioTrack) {
@@ -1853,16 +1873,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         );
       }
 
-      if (result.needsFallback) {
-        stream.getTracks().forEach((track) => track.stop());
-        logger.debug(
-          "Streaming API not configured, falling back to regular recording",
-          {},
-          "streaming"
-        );
-        return this.startRecording();
-      }
-
+      // 2. Set up audio pipeline so frames flow the instant WebSocket is ready.
+      //    Frames sent before WebSocket connects are silently dropped by sendAudio().
       const audioContext = await this.getOrCreateAudioContext();
       this.streamingAudioContext = audioContext;
       this.streamingSource = audioContext.createMediaStreamSource(stream);
@@ -1877,50 +1889,33 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
       this.streamingProcessor.port.onmessage = (event) => {
         if (!this.isStreaming) return;
-        window.electronAPI.assemblyAiStreamingSend(event.data);
+        window.electronAPI.deepgramStreamingSend(event.data);
       };
 
-      this.streamingSource.connect(this.streamingProcessor);
-
-      const tReady = performance.now();
-      logger.info(
-        "Streaming start timing",
-        {
-          constraintsMs: Math.round(tConstraints - t0),
-          getUserMediaAndWsMs: Math.round(tParallel - tConstraints),
-          pipelineMs: Math.round(tReady - tParallel),
-          totalMs: Math.round(tReady - t0),
-          usedWarmConnection: result.usedWarmConnection,
-          micDriverWarmedUp: !!this.micDriverWarmedUp,
-        },
-        "streaming"
-      );
-
-      // Show recording indicator only AFTER mic is live and audio pipeline is connected.
-      // This ensures no words are lost — the user sees "recording" exactly when audio flows.
       this.isStreaming = true;
-      this.isRecording = true;
-      this.recordingStartTime = Date.now();
-      this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
+      this.streamingSource.connect(this.streamingProcessor);
+      const tPipeline = performance.now();
 
+      // 3. Register IPC event listeners BEFORE connecting, so no transcript
+      //    events are lost during the connect handshake.
       this.streamingFinalText = "";
       this.streamingPartialText = "";
       this.streamingTextResolve = null;
       this.streamingTextDebounce = null;
 
-      const partialCleanup = window.electronAPI.onAssemblyAiPartialTranscript((text) => {
+      const partialCleanup = window.electronAPI.onDeepgramPartialTranscript((text) => {
         this.streamingPartialText = text;
         this.onPartialTranscript?.(text);
       });
 
-      const finalCleanup = window.electronAPI.onAssemblyAiFinalTranscript((text) => {
+      const finalCleanup = window.electronAPI.onDeepgramFinalTranscript((text) => {
         this.streamingFinalText = text;
         this.streamingPartialText = "";
         this.onPartialTranscript?.(text);
       });
 
-      const errorCleanup = window.electronAPI.onAssemblyAiError((error) => {
-        logger.error("AssemblyAI streaming error", { error }, "streaming");
+      const errorCleanup = window.electronAPI.onDeepgramError((error) => {
+        logger.error("Deepgram streaming error", { error }, "streaming");
         this.onError?.({
           title: "Streaming Error",
           description: error,
@@ -1937,17 +1932,78 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         }
       });
 
-      const sessionEndCleanup = window.electronAPI.onAssemblyAiSessionEnd((data) => {
-        logger.debug("AssemblyAI session ended", data, "streaming");
+      const sessionEndCleanup = window.electronAPI.onDeepgramSessionEnd((data) => {
+        logger.debug("Deepgram session ended", data, "streaming");
         if (data.text) {
           this.streamingFinalText = data.text;
         }
       });
 
       this.streamingCleanupFns = [partialCleanup, finalCleanup, errorCleanup, sessionEndCleanup];
+      this.isRecording = true;
+      this.recordingStartTime = Date.now();
+      this.onStateChange?.({ isRecording: true, isProcessing: false, isStreaming: true });
 
+      // 4. Connect WebSocket — audio is already flowing from the pipeline above,
+      //    so Deepgram receives data immediately (no idle timeout).
+      const result = await withSessionRefresh(async () => {
+        const res = await window.electronAPI.deepgramStreamingStart({
+          sampleRate: 16000,
+          language: getBaseLanguageCode(localStorage.getItem("preferredLanguage")),
+          keyterms: this.getKeyterms(),
+        });
+
+        if (!res.success) {
+          if (res.code === "NO_API") {
+            return { needsFallback: true };
+          }
+          const err = new Error(res.error || "Failed to start streaming session");
+          err.code = res.code;
+          throw err;
+        }
+        return res;
+      });
+      const tWs = performance.now();
+
+      if (result.needsFallback) {
+        this.isRecording = false;
+        this.recordingStartTime = null;
+        this.stopRequestedDuringStreamingStart = false;
+        await this.cleanupStreaming();
+        this.onStateChange?.({ isRecording: false, isProcessing: false, isStreaming: false });
+        this.streamingStartInProgress = false;
+        logger.debug(
+          "Streaming API not configured, falling back to regular recording",
+          {},
+          "streaming"
+        );
+        return this.startRecording();
+      }
+
+      logger.info(
+        "Streaming start timing",
+        {
+          constraintsMs: Math.round(tConstraints - t0),
+          getUserMediaMs: Math.round(tMedia - tConstraints),
+          pipelineMs: Math.round(tPipeline - tMedia),
+          wsConnectMs: Math.round(tWs - tPipeline),
+          totalMs: Math.round(tWs - t0),
+          usedWarmConnection: result.usedWarmConnection,
+          micDriverWarmedUp: !!this.micDriverWarmedUp,
+        },
+        "streaming"
+      );
+
+      this.streamingStartInProgress = false;
+      if (this.stopRequestedDuringStreamingStart) {
+        this.stopRequestedDuringStreamingStart = false;
+        logger.debug("Applying deferred streaming stop requested during startup", {}, "streaming");
+        return this.stopStreamingRecording();
+      }
       return true;
     } catch (error) {
+      this.streamingStartInProgress = false;
+      this.stopRequestedDuringStreamingStart = false;
       logger.error("Failed to start streaming recording", { error: error.message }, "streaming");
 
       let errorTitle = "Streaming Error";
@@ -1969,11 +2025,20 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       });
 
       await this.cleanupStreaming();
+      this.isRecording = false;
+      this.recordingStartTime = null;
+      this.onStateChange?.({ isRecording: false, isProcessing: false, isStreaming: false });
       return false;
     }
   }
 
   async stopStreamingRecording() {
+    if (this.streamingStartInProgress) {
+      this.stopRequestedDuringStreamingStart = true;
+      logger.debug("Streaming stop requested while start is in progress", {}, "streaming");
+      return true;
+    }
+
     if (!this.isStreaming) return false;
 
     const durationSeconds = this.recordingStartTime
@@ -2019,13 +2084,14 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     await new Promise((resolve) => setTimeout(resolve, 120));
     this.isStreaming = false;
 
-    // 4. ForceEndpoint finalizes any in-progress turn, then Terminate closes the session.
-    //    The server MUST process ALL remaining audio and send ALL Turn messages before
-    //    responding with Termination — so awaiting this guarantees we get every word.
-    window.electronAPI.assemblyAiStreamingForceEndpoint?.();
+    // 4. Finalize tells Deepgram to process any buffered audio and send final Results.
+    //    Wait briefly so the server sends back the from_finalize transcript before
+    //    CloseStream triggers connection close.
+    window.electronAPI.deepgramStreamingFinalize?.();
+    await new Promise((resolve) => setTimeout(resolve, 300));
     const tForceEndpoint = performance.now();
 
-    const stopResult = await window.electronAPI.assemblyAiStreamingStop().catch((e) => {
+    const stopResult = await window.electronAPI.deepgramStreamingStop().catch((e) => {
       logger.debug("Streaming disconnect error", { error: e.message }, "streaming");
       return { success: false };
     });
@@ -2074,7 +2140,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
             const res = await window.electronAPI.cloudReason(finalText, {
               agentName,
               customDictionary: this.getCustomDictionaryArray(),
+              customPrompt: this.getCustomPrompt(),
               language: localStorage.getItem("preferredLanguage") || "auto",
+              locale: localStorage.getItem("uiLanguage") || "en",
             });
             if (!res.success) {
               const err = new Error(res.error || "Cloud reasoning failed");
@@ -2128,7 +2196,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       this.onTranscriptionComplete?.({
         success: true,
         text: finalText,
-        source: "assemblyai-streaming",
+        source: "deepgram-streaming",
       });
 
       logger.info(
@@ -2215,13 +2283,13 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
       this.persistentAudioContext.close().catch(() => {});
       this.persistentAudioContext = null;
       this.workletModuleLoaded = false;
-      if (this.workletBlobUrl) {
-        URL.revokeObjectURL(this.workletBlobUrl);
-        this.workletBlobUrl = null;
-      }
+    }
+    if (this.workletBlobUrl) {
+      URL.revokeObjectURL(this.workletBlobUrl);
+      this.workletBlobUrl = null;
     }
     try {
-      window.electronAPI?.assemblyAiStreamingStop?.();
+      window.electronAPI?.deepgramStreamingStop?.();
     } catch (e) {
       // Ignore errors during cleanup (page may be unloading)
     }

@@ -1,12 +1,23 @@
-import React, { useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import ReactDOM from "react-dom/client";
+import { I18nextProvider, useTranslation } from "react-i18next";
 import App from "./App.jsx";
-import ControlPanel from "./components/ControlPanel.tsx";
-import OnboardingFlow from "./components/OnboardingFlow.tsx";
+import AuthenticationStep from "./components/AuthenticationStep.tsx";
+import TitleBar from "./components/TitleBar.tsx";
+import SupportDropdown from "./components/ui/SupportDropdown.tsx";
+import { Card, CardContent } from "./components/ui/card.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
+import { SettingsProvider } from "./hooks/useSettings";
 import { useTheme } from "./hooks/useTheme";
+import { useAuth } from "./hooks/useAuth";
+import i18n from "./i18n";
 import "./index.css";
+
+const controlPanelImport = () => import("./components/ControlPanel.tsx");
+const onboardingFlowImport = () => import("./components/OnboardingFlow.tsx");
+const ControlPanel = React.lazy(controlPanelImport);
+const OnboardingFlow = React.lazy(onboardingFlowImport);
 
 let root = null;
 
@@ -39,6 +50,9 @@ function isOAuthBrowserRedirect() {
   const isInElectron = typeof window.electronAPI !== "undefined";
 
   if (verifier && !isInElectron) {
+    const redirectTitle = i18n.t("app.oauth.redirectTitle");
+    const closeTab = i18n.t("app.oauth.closeTab");
+
     if (OAUTH_AUTH_BRIDGE_URL) {
       try {
         const bridgeUrl = new URL(OAUTH_AUTH_BRIDGE_URL);
@@ -240,8 +254,8 @@ function isOAuthBrowserRedirect() {
           </div>
 
           <div class="content">
-            <h1>Redirecting to OpenWhispr</h1>
-            <p class="subtitle">You can close this tab</p>
+            <h1>${redirectTitle}</h1>
+            <p class="subtitle">${closeTab}</p>
           </div>
         </div>
       </div>
@@ -256,38 +270,60 @@ if (!isOAuthBrowserRedirect()) {
 }
 
 function AppRouter() {
-  // Initialize theme system
   useTheme();
+  const { isSignedIn, isLoaded: authLoaded } = useAuth();
 
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [needsReauth, setNeedsReauth] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Check if this is the control panel window
   const isControlPanel =
     window.location.pathname.includes("control") || window.location.search.includes("panel=true");
-
-  // Check if this is the dictation panel (main app)
   const isDictationPanel = !isControlPanel;
 
+  // Preload lazy chunks while waiting for auth so Suspense resolves instantly
   useEffect(() => {
-    // Check if onboarding has been completed
-    const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
-    // Clamp step to valid range (0-5) for current 6-step onboarding
-    const rawStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
-    const currentStep = Math.max(0, Math.min(rawStep, 5));
+    if (isControlPanel) {
+      controlPanelImport().catch(() => {});
+      if (!localStorage.getItem("onboardingCompleted")) {
+        onboardingFlowImport().catch(() => {});
+      }
+    }
+  }, [isControlPanel]);
 
-    if (isControlPanel && !onboardingCompleted) {
-      // Show onboarding for control panel if not completed
-      setShowOnboarding(true);
+  useEffect(() => {
+    if (!authLoaded) return;
+
+    const onboardingCompleted = localStorage.getItem("onboardingCompleted") === "true";
+    const authSkipped =
+      localStorage.getItem("authenticationSkipped") === "true" ||
+      localStorage.getItem("skipAuth") === "true";
+
+    // Valid session proves prior onboarding — restore flag if localStorage was wiped
+    if (!onboardingCompleted && isSignedIn) {
+      localStorage.setItem("onboardingCompleted", "true");
     }
 
-    // Hide dictation panel window unless onboarding is complete or we're past the permissions step
-    if (isDictationPanel && !onboardingCompleted && currentStep < 4) {
-      window.electronAPI?.hideWindow?.();
+    const resolved = localStorage.getItem("onboardingCompleted") === "true";
+
+    if (isControlPanel) {
+      if (!resolved) {
+        setShowOnboarding(true);
+      } else if (!isSignedIn && !authSkipped) {
+        setNeedsReauth(true);
+      }
+    }
+
+    if (isDictationPanel && !resolved) {
+      const rawStep = parseInt(localStorage.getItem("onboardingCurrentStep") || "0");
+      const currentStep = Math.max(0, Math.min(rawStep, 5));
+      if (currentStep < 4) {
+        window.electronAPI?.hideWindow?.();
+      }
     }
 
     setIsLoading(false);
-  }, [isControlPanel, isDictationPanel]);
+  }, [isControlPanel, isDictationPanel, isSignedIn, authLoaded]);
 
   const handleOnboardingComplete = () => {
     setShowOnboarding(false);
@@ -295,21 +331,89 @@ function AppRouter() {
   };
 
   if (isLoading) {
+    return <LoadingFallback />;
+  }
+
+  // First-time user: full onboarding wizard
+  if (isControlPanel && showOnboarding) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading OpenWhispr...</p>
+      <Suspense fallback={<LoadingFallback />}>
+        <OnboardingFlow onComplete={handleOnboardingComplete} />
+      </Suspense>
+    );
+  }
+
+  // Returning user needs to re-authenticate (signed out, setup already done)
+  if (isControlPanel && needsReauth) {
+    return (
+      <div
+        className="h-screen flex flex-col bg-background"
+        style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
+      >
+        <div className="shrink-0 z-10">
+          <TitleBar
+            showTitle={true}
+            className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
+            actions={<SupportDropdown />}
+          />
+        </div>
+        <div className="flex-1 px-6 md:px-12 overflow-y-auto flex items-center">
+          <div className="w-full max-w-sm mx-auto">
+            <Card className="bg-card/90 backdrop-blur-2xl border border-border/50 dark:border-white/5 shadow-lg rounded-xl overflow-hidden">
+              <CardContent className="p-6">
+                <AuthenticationStep
+                  onContinueWithoutAccount={() => {
+                    localStorage.setItem("authenticationSkipped", "true");
+                    localStorage.setItem("skipAuth", "true");
+                    setNeedsReauth(false);
+                  }}
+                  onAuthComplete={() => setNeedsReauth(false)}
+                  onNeedsVerification={() => {}}
+                />
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (isControlPanel && showOnboarding) {
-    return <OnboardingFlow onComplete={handleOnboardingComplete} />;
-  }
+  return isControlPanel ? (
+    <Suspense fallback={<LoadingFallback />}>
+      <ControlPanel />
+    </Suspense>
+  ) : (
+    <App />
+  );
+}
 
-  return isControlPanel ? <ControlPanel /> : <App />;
+function LoadingFallback({ message }) {
+  const { t } = useTranslation();
+  const fallbackMessage = message || t("app.loading");
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex flex-col items-center gap-4 animate-[scale-in_300ms_ease-out]">
+        <svg
+          viewBox="0 0 1024 1024"
+          className="w-12 h-12 drop-shadow-[0_2px_8px_rgba(37,99,235,0.18)] dark:drop-shadow-[0_2px_12px_rgba(100,149,237,0.25)]"
+          aria-label="OpenWhispr"
+        >
+          <rect width="1024" height="1024" rx="241" fill="#2056DF" />
+          <circle cx="512" cy="512" r="314" fill="#2056DF" stroke="white" strokeWidth="74" />
+          <path d="M512 383V641" stroke="white" strokeWidth="74" strokeLinecap="round" />
+          <path d="M627 457V568" stroke="white" strokeWidth="74" strokeLinecap="round" />
+          <path d="M397 457V568" stroke="white" strokeWidth="74" strokeLinecap="round" />
+        </svg>
+        <div className="w-7 h-7 rounded-full border-[2.5px] border-transparent border-t-primary animate-[spinner-rotate_0.8s_cubic-bezier(0.4,0,0.2,1)_infinite] motion-reduce:animate-none motion-reduce:border-t-muted-foreground motion-reduce:opacity-50" />
+        {fallbackMessage && (
+          <p className="text-[13px] font-medium text-muted-foreground dark:text-foreground/60 tracking-[-0.01em]">
+            {fallbackMessage}
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function mountApp() {
@@ -319,9 +423,13 @@ function mountApp() {
   root.render(
     <React.StrictMode>
       <ErrorBoundary>
-        <ToastProvider>
-          <AppRouter />
-        </ToastProvider>
+        <I18nextProvider i18n={i18n}>
+          <SettingsProvider>
+            <ToastProvider>
+              <AppRouter />
+            </ToastProvider>
+          </SettingsProvider>
+        </I18nextProvider>
       </ErrorBoundary>
     </React.StrictMode>
   );
