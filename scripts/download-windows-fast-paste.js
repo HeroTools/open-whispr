@@ -73,7 +73,7 @@ async function main() {
     fs.mkdirSync(extractDir, { recursive: true });
 
     console.log("  Extracting...");
-    extractZip(zipPath, extractDir);
+    await extractZip(zipPath, extractDir);
 
     const binaryPath = path.join(extractDir, BINARY_NAME);
     if (fs.existsSync(binaryPath)) {

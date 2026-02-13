@@ -244,11 +244,11 @@ function extractTarGz(tarPath, destDir) {
   execSync(`tar -xzf "${tarPath}" -C "${destDir}"`, { stdio: "inherit" });
 }
 
-function extractArchive(archivePath, destDir) {
+async function extractArchive(archivePath, destDir) {
   if (archivePath.endsWith(".tar.gz") || archivePath.endsWith(".tgz")) {
     extractTarGz(archivePath, destDir);
   } else {
-    extractZip(archivePath, destDir);
+    await extractZip(archivePath, destDir);
   }
 }
 

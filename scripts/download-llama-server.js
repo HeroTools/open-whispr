@@ -124,7 +124,7 @@ async function downloadBinary(platformArch, config, release, isForce = false) {
 
     const extractDir = path.join(BIN_DIR, `temp-llama-${platformArch}`);
     fs.mkdirSync(extractDir, { recursive: true });
-    extractArchive(zipPath, extractDir);
+    await extractArchive(zipPath, extractDir);
 
     const binaryName = path.basename(config.binaryPath);
     let binaryPath = path.join(extractDir, config.binaryPath);

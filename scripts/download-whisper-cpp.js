@@ -87,7 +87,7 @@ async function downloadBinary(platformArch, config, release, isForce = false) {
 
     const extractDir = path.join(BIN_DIR, `temp-whisper-${platformArch}`);
     fs.mkdirSync(extractDir, { recursive: true });
-    extractZip(zipPath, extractDir);
+    await extractZip(zipPath, extractDir);
 
     const binaryPath = findBinaryInDir(extractDir, config.binaryName);
     if (binaryPath) {
