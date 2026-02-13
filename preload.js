@@ -64,6 +64,9 @@ contextBridge.exposeInMainWorld("electronAPI", {
   readClipboard: () => ipcRenderer.invoke("read-clipboard"),
   writeClipboard: (text) => ipcRenderer.invoke("write-clipboard", text),
   checkPasteTools: () => ipcRenderer.invoke("check-paste-tools"),
+  beginPasteSession: () => ipcRenderer.invoke("begin-paste-session"),
+  pasteChunk: (text) => ipcRenderer.invoke("paste-chunk", text),
+  endPasteSession: () => ipcRenderer.invoke("end-paste-session"),
 
   // Local Whisper functions (whisper.cpp)
   transcribeLocalWhisper: (audioBlob, options) =>
