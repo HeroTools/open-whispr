@@ -1243,5 +1243,153 @@
         "openai_oss_gpt_oss_20b_mxfp4": "Modèle open-weight d'OpenAI pour matériel grand public"
       }
     }
+  },
+  "referral": {
+    "title": "Parrainez et gagnez des récompenses",
+    "subtitle": "Offrez un mois. Recevez un mois.",
+    "tabs": {
+      "refer": "Parrainer",
+      "pastInvites": "Invitations passées"
+    },
+    "howItWorks": {
+      "shareLink": "Partagez votre lien d'invitation",
+      "theySignUp": "Ils s'inscrivent et obtiennent un ",
+      "freeMonthOfPro": "mois gratuit de Pro",
+      "youGet": "Vous recevez un ",
+      "freeMonth": "mois gratuit",
+      "whenTheyDictate": " lorsqu'ils dictent 2 000 mots"
+    },
+    "inviteLink": {
+      "title": "Votre lien d'invitation",
+      "copy": "Copier",
+      "copied": "Copié"
+    },
+    "sendInvites": {
+      "title": "Envoyer des invitations",
+      "placeholder": "friend@example.com",
+      "send": "Envoyer",
+      "sending": "Envoi en cours"
+    },
+    "stats": {
+      "referred": "Parrainés",
+      "converted": "Convertis",
+      "monthsEarned": "Mois gagnés"
+    },
+    "status": {
+      "converted": "Converti",
+      "opened": "Ouvert",
+      "failed": "Échoué",
+      "sent": "Envoyé"
+    },
+    "empty": {
+      "title": "Aucune invitation envoyée",
+      "description": "Partagez votre lien ou envoyez une invitation pour commencer"
+    },
+    "toasts": {
+      "copiedTitle": "Copié !",
+      "copiedDescription": "Lien de parrainage copié dans le presse-papiers",
+      "copyFailedTitle": "Échec de la copie",
+      "copyFailedDescription": "Impossible de copier le lien dans le presse-papiers",
+      "invalidEmailTitle": "E-mail invalide",
+      "invalidEmailDescription": "Veuillez entrer une adresse e-mail valide",
+      "inviteSentTitle": "Invitation envoyée !",
+      "inviteSentDescription": "Invitation envoyée à {{email}}",
+      "sendFailedTitle": "Échec de l'envoi",
+      "sendFailedDescription": "Impossible d'envoyer l'invitation. Veuillez réessayer."
+    },
+    "errors": {
+      "unableToLoad": "Impossible de charger les données de parrainage",
+      "unableToLoadStats": "Impossible de charger les statistiques de parrainage. Veuillez réessayer plus tard."
+    },
+    "tryAgain": "Réessayer",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "Votre signature audio",
+      "stop": "Arrêter",
+      "playSignal": "Lire le signal"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "Dossiers",
+      "meetings": "Réunions",
+      "soon": "Bientôt",
+      "folderName": "Nom du dossier",
+      "couldNotCreate": "Impossible de créer le dossier",
+      "couldNotRename": "Impossible de renommer le dossier",
+      "couldNotDelete": "Impossible de supprimer le dossier"
+    },
+    "list": {
+      "title": "Notes",
+      "newNote": "Nouvelle note",
+      "untitled": "Sans titre",
+      "untitledNote": "Note sans titre",
+      "createToGetStarted": "Créez une note pour commencer",
+      "selectNote": "Sélectionnez une note"
+    },
+    "editor": {
+      "untitled": "Sans titre",
+      "noteTitle": "Titre de la note",
+      "stop": "Arrêter",
+      "dictate": "Dicter",
+      "edit": "Modifier",
+      "preview": "Aperçu",
+      "enhance": "Améliorer",
+      "reEnhance": "Ré-améliorer",
+      "export": "Exporter",
+      "asMarkdown": "En Markdown",
+      "asPlainText": "En texte brut",
+      "raw": "Brut",
+      "enhanced": "Amélioré",
+      "saving": "Enregistrement",
+      "wordsCount": "{{count}} mots",
+      "startWriting": "Commencez à écrire..."
+    },
+    "enhance": {
+      "title": "Améliorer avec l'IA",
+      "defaultPrompt": "Corrigez la grammaire, améliorez la structure et formatez ces notes pour la lisibilité tout en préservant le sens original.",
+      "placeholder": "Que doit faire l'IA avec vos notes ?",
+      "tryAgain": "Réessayer",
+      "apply": "Appliquer",
+      "cancel": "Annuler",
+      "enhancing": "Amélioration en cours...",
+      "enhance": "Améliorer"
+    },
+    "upload": {
+      "title": "Téléverser un fichier audio",
+      "using": "Utilisation de {{model}}",
+      "dropOrBrowse": "Déposez un fichier audio ou cliquez pour parcourir",
+      "supportedFormats": "MP3, WAV, M4A, WebM, OGG, FLAC, AAC",
+      "dropToUpload": "Déposez pour téléverser",
+      "transcribe": "Transcrire",
+      "cancel": "Annuler",
+      "transcribingCloud": "Transcription via le cloud...",
+      "transcribingLocal": "Transcription locale...",
+      "transcribingProvider": "Transcription via {{provider}}...",
+      "transcriptionComplete": "Transcription terminée",
+      "openNote": "Ouvrir la note",
+      "uploadAnother": "Téléverser un autre fichier",
+      "retry": "Réessayer",
+      "startOver": "Recommencer",
+      "transcriptionSettings": "Paramètres de transcription",
+      "newFolder": "Nouveau dossier",
+      "folderName": "Nom du dossier",
+      "create": "Créer",
+      "setupTitle": "Configurer la transcription",
+      "setupDescription": "Choisissez comment transcrire votre audio. Cela s'applique également à la dictée en direct.",
+      "continue": "Continuer",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "Personnalisé",
+      "selectFolder": "Sélectionner un dossier",
+      "transcriptionFailed": "Échec de la transcription",
+      "errorOccurred": "Une erreur est survenue",
+      "enhancementFailed": "Échec de l'amélioration"
+    },
+    "meeting": {
+      "title": "Notes de réunion",
+      "description": "Identification des intervenants et résumés structurés",
+      "comingSoon": "Bientôt disponible"
+    }
   }
 }

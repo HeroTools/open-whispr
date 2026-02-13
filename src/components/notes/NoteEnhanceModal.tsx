@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Sparkles, Loader2, ChevronDown } from "lucide-react";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -16,7 +17,7 @@ interface NoteEnhanceModalProps {
 
 type ModalState = "idle" | "enhancing" | "preview" | "error";
 
-const DEFAULT_PROMPT =
+const DEFAULT_PROMPT_FALLBACK =
   "Clean up grammar, improve structure, and format these notes for readability while preserving all original meaning.";
 
 const BASE_SYSTEM_PROMPT =
@@ -28,8 +29,9 @@ export default function NoteEnhanceModal({
   noteContent,
   onApply,
 }: NoteEnhanceModalProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<ModalState>("idle");
-  const [prompt, setPrompt] = useState(DEFAULT_PROMPT);
+  const [prompt, setPrompt] = useState(t("notes.enhance.defaultPrompt") || DEFAULT_PROMPT_FALLBACK);
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
@@ -71,7 +73,7 @@ export default function NoteEnhanceModal({
       setResult(enhanced);
       setState("preview");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Enhancement failed");
+      setError(err instanceof Error ? err.message : t("notes.upload.enhancementFailed"));
       setState("error");
     }
   };
@@ -87,7 +89,7 @@ export default function NoteEnhanceModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[14px]">
             <Sparkles size={13} className="text-primary" />
-            Enhance with AI
+            {t("notes.enhance.title")}
           </DialogTitle>
         </DialogHeader>
 
@@ -120,7 +122,7 @@ export default function NoteEnhanceModal({
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           disabled={state === "enhancing"}
-          placeholder="What should the AI do with your notes?"
+          placeholder={t("notes.enhance.placeholder")}
           rows={3}
           className={cn(
             "w-full px-3 py-2 rounded-md text-[12px] leading-relaxed resize-none",
@@ -152,10 +154,10 @@ export default function NoteEnhanceModal({
                 onClick={() => setState("idle")}
                 className="h-7 text-[11px]"
               >
-                Try Again
+                {t("notes.enhance.tryAgain")}
               </Button>
               <Button variant="default" size="sm" onClick={handleApply} className="h-7 text-[11px]">
-                Apply
+                {t("notes.enhance.apply")}
               </Button>
             </>
           ) : (
@@ -167,7 +169,7 @@ export default function NoteEnhanceModal({
                 disabled={state === "enhancing"}
                 className="h-7 text-[11px]"
               >
-                Cancel
+                {t("notes.enhance.cancel")}
               </Button>
               <Button
                 variant="default"
@@ -179,10 +181,10 @@ export default function NoteEnhanceModal({
                 {state === "enhancing" ? (
                   <>
                     <Loader2 size={12} className="animate-spin mr-1.5" />
-                    Enhancing...
+                    {t("notes.enhance.enhancing")}
                   </>
                 ) : (
-                  "Enhance"
+                  t("notes.enhance.enhance")
                 )}
               </Button>
             </>

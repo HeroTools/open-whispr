@@ -1243,5 +1243,153 @@
         "openai_oss_gpt_oss_20b_mxfp4": "OpenAI 开源模型，适用于消费级硬件"
       }
     }
+  },
+  "referral": {
+    "title": "推荐赚取奖励",
+    "subtitle": "送一个月，得一个月。",
+    "tabs": {
+      "refer": "推荐",
+      "pastInvites": "历史邀请"
+    },
+    "howItWorks": {
+      "shareLink": "分享你的邀请链接",
+      "theySignUp": "对方注册即可获得",
+      "freeMonthOfPro": "一个月免费 Pro",
+      "youGet": "你将获得",
+      "freeMonth": "一个月免费",
+      "whenTheyDictate": "当对方听写满 2,000 个词时"
+    },
+    "inviteLink": {
+      "title": "你的邀请链接",
+      "copy": "复制",
+      "copied": "已复制"
+    },
+    "sendInvites": {
+      "title": "发送邀请",
+      "placeholder": "friend@example.com",
+      "send": "发送",
+      "sending": "发送中"
+    },
+    "stats": {
+      "referred": "已推荐",
+      "converted": "已转化",
+      "monthsEarned": "已获得月数"
+    },
+    "status": {
+      "converted": "已转化",
+      "opened": "已打开",
+      "failed": "失败",
+      "sent": "已发送"
+    },
+    "empty": {
+      "title": "尚未发送任何邀请",
+      "description": "分享你的链接或发送邀请以开始使用"
+    },
+    "toasts": {
+      "copiedTitle": "已复制！",
+      "copiedDescription": "推荐链接已复制到剪贴板",
+      "copyFailedTitle": "复制失败",
+      "copyFailedDescription": "无法将链接复制到剪贴板",
+      "invalidEmailTitle": "邮箱地址无效",
+      "invalidEmailDescription": "请输入有效的邮箱地址",
+      "inviteSentTitle": "邀请已发送！",
+      "inviteSentDescription": "邀请已发送至 {{email}}",
+      "sendFailedTitle": "发送失败",
+      "sendFailedDescription": "邀请发送失败，请重试。"
+    },
+    "errors": {
+      "unableToLoad": "无法加载推荐数据",
+      "unableToLoadStats": "无法加载推荐统计数据，请稍后重试。"
+    },
+    "tryAgain": "重试",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "你的声纹签名",
+      "stop": "停止",
+      "playSignal": "播放信号"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "文件夹",
+      "meetings": "会议",
+      "soon": "即将推出",
+      "folderName": "文件夹名称",
+      "couldNotCreate": "无法创建文件夹",
+      "couldNotRename": "无法重命名文件夹",
+      "couldNotDelete": "无法删除文件夹"
+    },
+    "list": {
+      "title": "笔记",
+      "newNote": "新建笔记",
+      "untitled": "无标题",
+      "untitledNote": "无标题笔记",
+      "createToGetStarted": "创建一条笔记以开始使用",
+      "selectNote": "选择一条笔记"
+    },
+    "editor": {
+      "untitled": "无标题",
+      "noteTitle": "笔记标题",
+      "stop": "停止",
+      "dictate": "听写",
+      "edit": "编辑",
+      "preview": "预览",
+      "enhance": "增强",
+      "reEnhance": "重新增强",
+      "export": "导出",
+      "asMarkdown": "导出为 Markdown",
+      "asPlainText": "导出为纯文本",
+      "raw": "原始内容",
+      "enhanced": "增强内容",
+      "saving": "保存中",
+      "wordsCount": "{{count}} 个词",
+      "startWriting": "开始书写..."
+    },
+    "enhance": {
+      "title": "AI 增强",
+      "defaultPrompt": "修正语法、改善结构，并将笔记格式化以提高可读性，同时保留所有原始含义。",
+      "placeholder": "你希望 AI 对你的笔记做什么？",
+      "tryAgain": "重试",
+      "apply": "应用",
+      "cancel": "取消",
+      "enhancing": "增强中...",
+      "enhance": "增强"
+    },
+    "upload": {
+      "title": "上传音频",
+      "using": "使用 {{model}}",
+      "dropOrBrowse": "拖放音频文件或点击浏览",
+      "supportedFormats": "MP3、WAV、M4A、WebM、OGG、FLAC、AAC",
+      "dropToUpload": "拖放以上传",
+      "transcribe": "转录",
+      "cancel": "取消",
+      "transcribingCloud": "正在通过云端转录...",
+      "transcribingLocal": "正在本地转录...",
+      "transcribingProvider": "正在通过 {{provider}} 转录...",
+      "transcriptionComplete": "转录完成",
+      "openNote": "打开笔记",
+      "uploadAnother": "上传另一个",
+      "retry": "重试",
+      "startOver": "重新开始",
+      "transcriptionSettings": "转录设置",
+      "newFolder": "新建文件夹",
+      "folderName": "文件夹名称",
+      "create": "创建",
+      "setupTitle": "设置转录",
+      "setupDescription": "选择转录音频的方式。此设置也适用于实时听写。",
+      "continue": "继续",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "自定义",
+      "selectFolder": "选择文件夹",
+      "transcriptionFailed": "转录失败",
+      "errorOccurred": "发生错误",
+      "enhancementFailed": "增强失败"
+    },
+    "meeting": {
+      "title": "会议笔记",
+      "description": "说话人识别与结构化摘要",
+      "comingSoon": "即将推出"
+    }
   }
 }

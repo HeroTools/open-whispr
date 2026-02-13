@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { Send, Mail, Copy, Check, Link, UserPlus, Gift } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
@@ -23,14 +24,14 @@ interface ReferralInvite {
   convertedAt?: string;
 }
 
-const statusConfig: Record<
+const statusVariants: Record<
   ReferralInvite["status"],
-  { label: string; variant: "success" | "info" | "destructive" | "outline" }
+  "success" | "info" | "destructive" | "outline"
 > = {
-  converted: { label: "Converted", variant: "success" },
-  opened: { label: "Opened", variant: "info" },
-  failed: { label: "Failed", variant: "destructive" },
-  sent: { label: "Sent", variant: "outline" },
+  converted: "success",
+  opened: "info",
+  failed: "destructive",
+  sent: "outline",
 };
 
 function formatDate(dateStr: string) {
@@ -171,6 +172,7 @@ function StatGauge({
 }
 
 export function ReferralDashboard() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<ReferralStats | null>(null);
   const [invites, setInvites] = useState<ReferralInvite[]>([]);
   const [copied, setCopied] = useState(false);
@@ -188,7 +190,7 @@ export function ReferralDashboard() {
       setStats(data ?? null);
     } catch (err) {
       console.error("Failed to fetch referral stats:", err);
-      setError("Unable to load referral stats. Please try again later.");
+      setError(t("referral.errors.unableToLoadStats"));
     } finally {
       setLoading(false);
     }
@@ -214,8 +216,8 @@ export function ReferralDashboard() {
       await navigator.clipboard.writeText(stats.referralLink);
       setCopied(true);
       toast({
-        title: "Copied!",
-        description: "Referral link copied to clipboard",
+        title: t("referral.toasts.copiedTitle"),
+        description: t("referral.toasts.copiedDescription"),
         variant: "success",
         duration: 2000,
       });
@@ -223,8 +225,8 @@ export function ReferralDashboard() {
     } catch (err) {
       console.error("Failed to copy link:", err);
       toast({
-        title: "Copy Failed",
-        description: "Failed to copy link to clipboard",
+        title: t("referral.toasts.copyFailedTitle"),
+        description: t("referral.toasts.copyFailedDescription"),
         variant: "destructive",
       });
     }
@@ -236,8 +238,8 @@ export function ReferralDashboard() {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailInput.trim())) {
       toast({
-        title: "Invalid Email",
-        description: "Please enter a valid email address",
+        title: t("referral.toasts.invalidEmailTitle"),
+        description: t("referral.toasts.invalidEmailDescription"),
         variant: "destructive",
       });
       return;
@@ -249,8 +251,8 @@ export function ReferralDashboard() {
 
       if (result?.success) {
         toast({
-          title: "Invite Sent!",
-          description: `Invitation sent to ${emailInput}`,
+          title: t("referral.toasts.inviteSentTitle"),
+          description: t("referral.toasts.inviteSentDescription", { email: emailInput }),
           variant: "success",
         });
         setEmailInput("");
@@ -261,8 +263,8 @@ export function ReferralDashboard() {
     } catch (err) {
       console.error("Failed to send invite:", err);
       toast({
-        title: "Send Failed",
-        description: "Failed to send invitation. Please try again.",
+        title: t("referral.toasts.sendFailedTitle"),
+        description: t("referral.toasts.sendFailedDescription"),
         variant: "destructive",
       });
     } finally {
@@ -298,13 +300,13 @@ export function ReferralDashboard() {
     return (
       <div className="flex flex-col items-center justify-center h-85 bg-card text-center px-6">
         <p className="text-[13px] text-foreground/40 mb-3">
-          {error || "Unable to load referral data"}
+          {error || t("referral.errors.unableToLoad")}
         </p>
         <button
           onClick={fetchStats}
           className="px-3.5 py-1.5 rounded-md text-[12px] font-medium bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90 transition-all duration-200"
         >
-          Try Again
+          {t("referral.tryAgain")}
         </button>
       </div>
     );
@@ -328,9 +330,9 @@ export function ReferralDashboard() {
 
       <div className="relative z-10 px-7 pt-7 pb-6">
         <h2 className="text-[20px] font-bold tracking-tight leading-tight text-foreground">
-          Refer and earn rewards
+          {t("referral.title")}
         </h2>
-        <p className="text-[12px] text-foreground/30 mt-1">Give a month. Get a month.</p>
+        <p className="text-[12px] text-foreground/30 mt-1">{t("referral.subtitle")}</p>
 
         <Tabs defaultValue="refer" className="mt-4">
           <TabsList className="w-full justify-start bg-transparent! p-0! h-auto! gap-4 rounded-none! border-b border-foreground/6">
@@ -338,13 +340,13 @@ export function ReferralDashboard() {
               value="refer"
               className="rounded-none! bg-transparent! shadow-none! px-0! pb-2! pt-0! text-[12px] border-b-2 border-transparent text-foreground/30 hover:text-foreground/50 data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:border-foreground/50 data-[state=active]:text-foreground"
             >
-              Refer
+              {t("referral.tabs.refer")}
             </TabsTrigger>
             <TabsTrigger
               value="history"
               className="rounded-none! bg-transparent! shadow-none! px-0! pb-2! pt-0! text-[12px] border-b-2 border-transparent text-foreground/30 hover:text-foreground/50 data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:border-foreground/50 data-[state=active]:text-foreground"
             >
-              Past invites ({invites.length})
+              {t("referral.tabs.pastInvites")} ({invites.length})
             </TabsTrigger>
           </TabsList>
 
@@ -359,15 +361,19 @@ export function ReferralDashboard() {
                   <div className="w-5 h-5 rounded bg-foreground/4 flex items-center justify-center shrink-0">
                     <Link className="w-2.5 h-2.5 text-foreground/30" />
                   </div>
-                  <span className="text-[11px] text-foreground/40">Share your invite link</span>
+                  <span className="text-[11px] text-foreground/40">
+                    {t("referral.howItWorks.shareLink")}
+                  </span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-5 h-5 rounded bg-foreground/4 flex items-center justify-center shrink-0">
                     <UserPlus className="w-2.5 h-2.5 text-foreground/30" />
                   </div>
                   <span className="text-[11px] text-foreground/40">
-                    They sign up and get a{" "}
-                    <strong className="text-foreground/60">free month of Pro</strong>
+                    {t("referral.howItWorks.theySignUp")}
+                    <strong className="text-foreground/60">
+                      {t("referral.howItWorks.freeMonthOfPro")}
+                    </strong>
                   </span>
                 </div>
                 <div className="flex items-center gap-2.5">
@@ -375,15 +381,18 @@ export function ReferralDashboard() {
                     <Gift className="w-2.5 h-2.5 text-foreground/30" />
                   </div>
                   <span className="text-[11px] text-foreground/40">
-                    You get a <strong className="text-foreground/60">free month</strong> when they
-                    dictate 2,000 words
+                    {t("referral.howItWorks.youGet")}
+                    <strong className="text-foreground/60">
+                      {t("referral.howItWorks.freeMonth")}
+                    </strong>
+                    {t("referral.howItWorks.whenTheyDictate")}
                   </span>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <h4 className="text-[10px] font-medium text-foreground/25 uppercase tracking-wider">
-                  Your invite link
+                  {t("referral.inviteLink.title")}
                 </h4>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 flex items-center gap-2 h-8 px-3 rounded-md bg-foreground/4 border border-foreground/7 overflow-hidden">
@@ -402,19 +411,19 @@ export function ReferralDashboard() {
                     )}
                   >
                     {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                    {copied ? "Copied" : "Copy"}
+                    {copied ? t("referral.inviteLink.copied") : t("referral.inviteLink.copy")}
                   </button>
                 </div>
               </div>
 
               <div className="space-y-2">
                 <h4 className="text-[10px] font-medium text-foreground/25 uppercase tracking-wider">
-                  Send invites
+                  {t("referral.sendInvites.title")}
                 </h4>
                 <div className="flex items-center gap-2">
                   <input
                     type="email"
-                    placeholder="friend@example.com"
+                    placeholder={t("referral.sendInvites.placeholder")}
                     value={emailInput}
                     onChange={(e) => setEmailInput(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -431,7 +440,9 @@ export function ReferralDashboard() {
                     ) : (
                       <Send className="w-3 h-3" />
                     )}
-                    {sendingInvite ? "Sending" : "Send"}
+                    {sendingInvite
+                      ? t("referral.sendInvites.sending")
+                      : t("referral.sendInvites.send")}
                   </button>
                 </div>
               </div>
@@ -440,11 +451,19 @@ export function ReferralDashboard() {
 
           <TabsContent value="history" className="mt-5">
             <div className="grid grid-cols-3 gap-2.5">
-              <StatGauge value={stats.totalReferrals} label="Referred" delay={0} />
-              <StatGauge value={stats.completedReferrals} label="Converted" delay={150} />
+              <StatGauge
+                value={stats.totalReferrals}
+                label={t("referral.stats.referred")}
+                delay={0}
+              />
+              <StatGauge
+                value={stats.completedReferrals}
+                label={t("referral.stats.converted")}
+                delay={150}
+              />
               <StatGauge
                 value={stats.totalMonthsEarned}
-                label="Months earned"
+                label={t("referral.stats.monthsEarned")}
                 delay={300}
                 highlight={stats.totalMonthsEarned > 0}
               />
@@ -453,7 +472,8 @@ export function ReferralDashboard() {
             {invites.length > 0 ? (
               <div className="space-y-1 mt-4">
                 {invites.map((invite) => {
-                  const { label, variant } = statusConfig[invite.status] ?? statusConfig.sent;
+                  const variant = statusVariants[invite.status] ?? statusVariants.sent;
+                  const label = t(`referral.status.${invite.status}`);
                   return (
                     <div
                       key={invite.id}
@@ -478,9 +498,9 @@ export function ReferralDashboard() {
             ) : (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Mail className="w-5 h-5 text-foreground/10 mb-2" />
-                <p className="text-[12px] text-foreground/25">No invites sent yet</p>
+                <p className="text-[12px] text-foreground/25">{t("referral.empty.title")}</p>
                 <p className="text-[10px] text-foreground/15 mt-0.5">
-                  Share your link or send an invite to get started
+                  {t("referral.empty.description")}
                 </p>
               </div>
             )}

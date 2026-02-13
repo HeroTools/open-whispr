@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { Mic, Eye, Pencil, Loader2, Sparkles, Download, FileText } from "lucide-react";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
 import {
@@ -45,6 +46,7 @@ export default function NoteEditor({
   enhancedContent,
   isEnhancementStale,
 }: NoteEditorProps) {
+  const { t } = useTranslation();
   const [isPreview, setIsPreview] = useState(false);
   const [viewMode, setViewMode] = useState<"raw" | "enhanced">("raw");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -204,10 +206,10 @@ export default function NoteEditor({
           onInput={handleTitleInput}
           onKeyDown={handleTitleKeyDown}
           onPaste={handleTitlePaste}
-          data-placeholder="Untitled"
+          data-placeholder={t("notes.editor.untitled")}
           className="w-full text-base font-semibold text-foreground bg-transparent outline-none tracking-[-0.01em] empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/15 empty:before:pointer-events-none"
           role="textbox"
-          aria-label="Note title"
+          aria-label={t("notes.editor.noteTitle")}
         />
       </div>
 
@@ -227,12 +229,12 @@ export default function NoteEditor({
                 <span className="absolute inline-flex h-full w-full rounded-full bg-destructive/60 animate-ping" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-destructive" />
               </span>
-              Stop
+              {t("notes.editor.stop")}
             </>
           ) : (
             <>
               <Mic size={11} />
-              Dictate
+              {t("notes.editor.dictate")}
             </>
           )}
         </button>
@@ -248,7 +250,7 @@ export default function NoteEditor({
             )}
           >
             {isPreview ? <Pencil size={10} /> : <Eye size={10} />}
-            {isPreview ? "Edit" : "Preview"}
+            {isPreview ? t("notes.editor.edit") : t("notes.editor.preview")}
           </button>
         )}
 
@@ -258,7 +260,7 @@ export default function NoteEditor({
             className="flex items-center gap-1.5 h-6 px-2 rounded-md text-[10px] font-medium text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/4 transition-all duration-150"
           >
             <Sparkles size={10} />
-            {isEnhancementStale ? "Re-enhance" : "Enhance"}
+            {isEnhancementStale ? t("notes.editor.reEnhance") : t("notes.editor.enhance")}
           </button>
         )}
 
@@ -267,17 +269,17 @@ export default function NoteEditor({
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-1.5 h-6 px-2 rounded-md text-[10px] font-medium text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/4 transition-all duration-150">
                 <Download size={10} />
-                Export
+                {t("notes.editor.export")}
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" sideOffset={4}>
               <DropdownMenuItem onClick={() => onExportNote("md")} className="text-[12px] gap-2">
                 <FileText size={13} className="text-foreground/40" />
-                As Markdown
+                {t("notes.editor.asMarkdown")}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => onExportNote("txt")} className="text-[12px] gap-2">
                 <FileText size={13} className="text-foreground/40" />
-                As Plain Text
+                {t("notes.editor.asPlainText")}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -294,7 +296,7 @@ export default function NoteEditor({
                   : "text-foreground/25 hover:text-foreground/40"
               )}
             >
-              Raw
+              {t("notes.editor.raw")}
             </button>
             <button
               onClick={() => setViewMode("enhanced")}
@@ -305,7 +307,7 @@ export default function NoteEditor({
                   : "text-foreground/25 hover:text-foreground/40"
               )}
             >
-              Enhanced
+              {t("notes.editor.enhanced")}
               {isEnhancementStale && <span className="w-1 h-1 rounded-full bg-amber-400/60" />}
             </button>
           </div>
@@ -315,7 +317,11 @@ export default function NoteEditor({
 
         <span className="text-[9px] text-foreground/20 tabular-nums flex items-center gap-1.5">
           {isSaving && <Loader2 size={8} className="animate-spin" />}
-          {isSaving ? "Saving" : wordCount > 0 ? `${wordCount} words` : ""}
+          {isSaving
+            ? t("notes.editor.saving")
+            : wordCount > 0
+              ? t("notes.editor.wordsCount", { count: wordCount })
+              : ""}
         </span>
       </div>
 
@@ -334,7 +340,7 @@ export default function NoteEditor({
             value={note.content}
             onChange={handleContentChange}
             onSelect={handleSelect}
-            placeholder="Start writing..."
+            placeholder={t("notes.editor.startWriting")}
             className="w-full h-full px-5 py-3 text-[13px] text-foreground/90 bg-transparent! border-none! outline-none resize-none rounded-none leading-[1.7] placeholder:text-foreground/15"
             style={{ boxShadow: "none" }}
           />

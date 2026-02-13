@@ -1243,5 +1243,153 @@
     "maximize": "Maximizar",
     "restore": "Restaurar",
     "close": "Fechar"
+  },
+  "referral": {
+    "title": "Indique e ganhe recompensas",
+    "subtitle": "Dê um mês. Ganhe um mês.",
+    "tabs": {
+      "refer": "Indicar",
+      "pastInvites": "Convites anteriores"
+    },
+    "howItWorks": {
+      "shareLink": "Compartilhe seu link de convite",
+      "theySignUp": "A pessoa se cadastra e ganha um ",
+      "freeMonthOfPro": "mês grátis de Pro",
+      "youGet": "Você ganha um ",
+      "freeMonth": "mês grátis",
+      "whenTheyDictate": " quando ela ditar 2.000 palavras"
+    },
+    "inviteLink": {
+      "title": "Seu link de convite",
+      "copy": "Copiar",
+      "copied": "Copiado"
+    },
+    "sendInvites": {
+      "title": "Enviar convites",
+      "placeholder": "friend@example.com",
+      "send": "Enviar",
+      "sending": "Enviando"
+    },
+    "stats": {
+      "referred": "Indicados",
+      "converted": "Convertidos",
+      "monthsEarned": "Meses ganhos"
+    },
+    "status": {
+      "converted": "Convertido",
+      "opened": "Aberto",
+      "failed": "Falhou",
+      "sent": "Enviado"
+    },
+    "empty": {
+      "title": "Nenhum convite enviado ainda",
+      "description": "Compartilhe seu link ou envie um convite para começar"
+    },
+    "toasts": {
+      "copiedTitle": "Copiado!",
+      "copiedDescription": "Link de indicação copiado para a área de transferência",
+      "copyFailedTitle": "Falha ao copiar",
+      "copyFailedDescription": "Não foi possível copiar o link para a área de transferência",
+      "invalidEmailTitle": "E-mail inválido",
+      "invalidEmailDescription": "Por favor, insira um endereço de e-mail válido",
+      "inviteSentTitle": "Convite enviado!",
+      "inviteSentDescription": "Convite enviado para {{email}}",
+      "sendFailedTitle": "Falha ao enviar",
+      "sendFailedDescription": "Não foi possível enviar o convite. Por favor, tente novamente."
+    },
+    "errors": {
+      "unableToLoad": "Não foi possível carregar os dados de indicação",
+      "unableToLoadStats": "Não foi possível carregar as estatísticas de indicação. Por favor, tente novamente mais tarde."
+    },
+    "tryAgain": "Tentar novamente",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "Sua assinatura de áudio",
+      "stop": "Parar",
+      "playSignal": "Reproduzir sinal"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "Pastas",
+      "meetings": "Reuniões",
+      "soon": "Em breve",
+      "folderName": "Nome da pasta",
+      "couldNotCreate": "Não foi possível criar a pasta",
+      "couldNotRename": "Não foi possível renomear a pasta",
+      "couldNotDelete": "Não foi possível excluir a pasta"
+    },
+    "list": {
+      "title": "Notas",
+      "newNote": "Nova nota",
+      "untitled": "Sem título",
+      "untitledNote": "Nota sem título",
+      "createToGetStarted": "Crie uma nota para começar",
+      "selectNote": "Selecione uma nota"
+    },
+    "editor": {
+      "untitled": "Sem título",
+      "noteTitle": "Título da nota",
+      "stop": "Parar",
+      "dictate": "Ditar",
+      "edit": "Editar",
+      "preview": "Visualizar",
+      "enhance": "Aprimorar",
+      "reEnhance": "Reaprimorar",
+      "export": "Exportar",
+      "asMarkdown": "Como Markdown",
+      "asPlainText": "Como texto simples",
+      "raw": "Original",
+      "enhanced": "Aprimorado",
+      "saving": "Salvando",
+      "wordsCount": "{{count}} palavras",
+      "startWriting": "Comece a escrever..."
+    },
+    "enhance": {
+      "title": "Aprimorar com IA",
+      "defaultPrompt": "Corrija a gramática, melhore a estrutura e formate estas notas para facilitar a leitura, preservando todo o significado original.",
+      "placeholder": "O que a IA deve fazer com suas notas?",
+      "tryAgain": "Tentar novamente",
+      "apply": "Aplicar",
+      "cancel": "Cancelar",
+      "enhancing": "Aprimorando...",
+      "enhance": "Aprimorar"
+    },
+    "upload": {
+      "title": "Enviar áudio",
+      "using": "Usando {{model}}",
+      "dropOrBrowse": "Arraste um arquivo de áudio ou clique para procurar",
+      "supportedFormats": "MP3, WAV, M4A, WebM, OGG, FLAC, AAC",
+      "dropToUpload": "Solte para enviar",
+      "transcribe": "Transcrever",
+      "cancel": "Cancelar",
+      "transcribingCloud": "Transcrevendo pela nuvem...",
+      "transcribingLocal": "Transcrevendo localmente...",
+      "transcribingProvider": "Transcrevendo via {{provider}}...",
+      "transcriptionComplete": "Transcrição concluída",
+      "openNote": "Abrir nota",
+      "uploadAnother": "Enviar outro",
+      "retry": "Tentar novamente",
+      "startOver": "Recomeçar",
+      "transcriptionSettings": "Configurações de transcrição",
+      "newFolder": "Nova pasta",
+      "folderName": "Nome da pasta",
+      "create": "Criar",
+      "setupTitle": "Configurar transcrição",
+      "setupDescription": "Escolha como transcrever seu áudio. Isso também se aplica à ditação ao vivo.",
+      "continue": "Continuar",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "Personalizado",
+      "selectFolder": "Selecionar pasta",
+      "transcriptionFailed": "Falha na transcrição",
+      "errorOccurred": "Ocorreu um erro",
+      "enhancementFailed": "Falha no aprimoramento"
+    },
+    "meeting": {
+      "title": "Notas de reunião",
+      "description": "Identificação de falantes e resumos estruturados",
+      "comingSoon": "Em breve"
+    }
   }
 }

@@ -1243,5 +1243,153 @@
         "openai_oss_gpt_oss_20b_mxfp4": "Open-Weight-Modell von OpenAI für Consumer-Hardware"
       }
     }
+  },
+  "referral": {
+    "title": "Empfehlen und Belohnungen erhalten",
+    "subtitle": "Schenke einen Monat. Erhalte einen Monat.",
+    "tabs": {
+      "refer": "Empfehlen",
+      "pastInvites": "Vergangene Einladungen"
+    },
+    "howItWorks": {
+      "shareLink": "Teile deinen Einladungslink",
+      "theySignUp": "Sie registrieren sich und erhalten einen ",
+      "freeMonthOfPro": "kostenlosen Monat Pro",
+      "youGet": "Du erhältst einen ",
+      "freeMonth": "kostenlosen Monat",
+      "whenTheyDictate": " wenn sie 2.000 Wörter diktieren"
+    },
+    "inviteLink": {
+      "title": "Dein Einladungslink",
+      "copy": "Kopieren",
+      "copied": "Kopiert"
+    },
+    "sendInvites": {
+      "title": "Einladungen senden",
+      "placeholder": "friend@example.com",
+      "send": "Senden",
+      "sending": "Wird gesendet"
+    },
+    "stats": {
+      "referred": "Empfohlen",
+      "converted": "Umgewandelt",
+      "monthsEarned": "Verdiente Monate"
+    },
+    "status": {
+      "converted": "Umgewandelt",
+      "opened": "Geöffnet",
+      "failed": "Fehlgeschlagen",
+      "sent": "Gesendet"
+    },
+    "empty": {
+      "title": "Noch keine Einladungen gesendet",
+      "description": "Teile deinen Link oder sende eine Einladung, um loszulegen"
+    },
+    "toasts": {
+      "copiedTitle": "Kopiert!",
+      "copiedDescription": "Empfehlungslink in die Zwischenablage kopiert",
+      "copyFailedTitle": "Kopieren fehlgeschlagen",
+      "copyFailedDescription": "Link konnte nicht in die Zwischenablage kopiert werden",
+      "invalidEmailTitle": "Ungültige E-Mail",
+      "invalidEmailDescription": "Bitte gib eine gültige E-Mail-Adresse ein",
+      "inviteSentTitle": "Einladung gesendet!",
+      "inviteSentDescription": "Einladung an {{email}} gesendet",
+      "sendFailedTitle": "Senden fehlgeschlagen",
+      "sendFailedDescription": "Einladung konnte nicht gesendet werden. Bitte versuche es erneut."
+    },
+    "errors": {
+      "unableToLoad": "Empfehlungsdaten konnten nicht geladen werden",
+      "unableToLoadStats": "Empfehlungsstatistiken konnten nicht geladen werden. Bitte versuche es später erneut."
+    },
+    "tryAgain": "Erneut versuchen",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "Deine Audio-Signatur",
+      "stop": "Stopp",
+      "playSignal": "Signal abspielen"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "Ordner",
+      "meetings": "Besprechungen",
+      "soon": "Demnächst",
+      "folderName": "Ordnername",
+      "couldNotCreate": "Ordner konnte nicht erstellt werden",
+      "couldNotRename": "Ordner konnte nicht umbenannt werden",
+      "couldNotDelete": "Ordner konnte nicht gelöscht werden"
+    },
+    "list": {
+      "title": "Notizen",
+      "newNote": "Neue Notiz",
+      "untitled": "Unbenannt",
+      "untitledNote": "Unbenannte Notiz",
+      "createToGetStarted": "Erstelle eine Notiz, um loszulegen",
+      "selectNote": "Notiz auswählen"
+    },
+    "editor": {
+      "untitled": "Unbenannt",
+      "noteTitle": "Notiztitel",
+      "stop": "Stopp",
+      "dictate": "Diktieren",
+      "edit": "Bearbeiten",
+      "preview": "Vorschau",
+      "enhance": "Verbessern",
+      "reEnhance": "Erneut verbessern",
+      "export": "Exportieren",
+      "asMarkdown": "Als Markdown",
+      "asPlainText": "Als Klartext",
+      "raw": "Roh",
+      "enhanced": "Verbessert",
+      "saving": "Wird gespeichert",
+      "wordsCount": "{{count}} Wörter",
+      "startWriting": "Schreibe los..."
+    },
+    "enhance": {
+      "title": "Mit KI verbessern",
+      "defaultPrompt": "Grammatik bereinigen, Struktur verbessern und diese Notizen für bessere Lesbarkeit formatieren, ohne die ursprüngliche Bedeutung zu verändern.",
+      "placeholder": "Was soll die KI mit deinen Notizen machen?",
+      "tryAgain": "Erneut versuchen",
+      "apply": "Anwenden",
+      "cancel": "Abbrechen",
+      "enhancing": "Wird verbessert...",
+      "enhance": "Verbessern"
+    },
+    "upload": {
+      "title": "Audio hochladen",
+      "using": "Verwendet {{model}}",
+      "dropOrBrowse": "Audiodatei ablegen oder klicken zum Durchsuchen",
+      "supportedFormats": "MP3, WAV, M4A, WebM, OGG, FLAC, AAC",
+      "dropToUpload": "Zum Hochladen ablegen",
+      "transcribe": "Transkribieren",
+      "cancel": "Abbrechen",
+      "transcribingCloud": "Wird über die Cloud transkribiert...",
+      "transcribingLocal": "Wird lokal transkribiert...",
+      "transcribingProvider": "Wird über {{provider}} transkribiert...",
+      "transcriptionComplete": "Transkription abgeschlossen",
+      "openNote": "Notiz öffnen",
+      "uploadAnother": "Weitere hochladen",
+      "retry": "Erneut versuchen",
+      "startOver": "Neu beginnen",
+      "transcriptionSettings": "Transkriptionseinstellungen",
+      "newFolder": "Neuer Ordner",
+      "folderName": "Ordnername",
+      "create": "Erstellen",
+      "setupTitle": "Transkription einrichten",
+      "setupDescription": "Wähle, wie dein Audio transkribiert werden soll. Dies gilt auch für die Live-Diktierfunktion.",
+      "continue": "Weiter",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "Benutzerdefiniert",
+      "selectFolder": "Ordner auswählen",
+      "transcriptionFailed": "Transkription fehlgeschlagen",
+      "errorOccurred": "Ein Fehler ist aufgetreten",
+      "enhancementFailed": "Verbesserung fehlgeschlagen"
+    },
+    "meeting": {
+      "title": "Besprechungsnotizen",
+      "description": "Sprechererkennung und strukturierte Zusammenfassungen",
+      "comingSoon": "Demnächst verfügbar"
+    }
   }
 }

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, Suspense } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Upload,
   FileAudio,
@@ -50,6 +51,7 @@ interface UploadAudioViewProps {
 }
 
 export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps) {
+  const { t } = useTranslation();
   const [state, setState] = useState<UploadState>("idle");
   const [file, setFile] = useState<{ name: string; path: string; size: string } | null>(null);
   const [result, setResult] = useState<string | null>(null);
@@ -268,13 +270,13 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
         setState("complete");
       } else {
         setProgress(0);
-        setError(res.error || "Transcription failed");
+        setError(res.error || t("notes.upload.transcriptionFailed"));
         setState("error");
       }
     } catch (err) {
       if (progressRef.current) clearInterval(progressRef.current);
       setProgress(0);
-      setError(err instanceof Error ? err.message : "An error occurred");
+      setError(err instanceof Error ? err.message : t("notes.upload.errorOccurred"));
       setState("error");
     }
   };
@@ -312,9 +314,9 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
   };
 
   const getTranscribingLabel = (): string => {
-    if (isOpenWhisprCloud) return "Transcribing via cloud...";
-    if (useLocalWhisper) return "Transcribing locally...";
-    return `Transcribing via ${cloudTranscriptionProvider}...`;
+    if (isOpenWhisprCloud) return t("notes.upload.transcribingCloud");
+    if (useLocalWhisper) return t("notes.upload.transcribingLocal");
+    return t("notes.upload.transcribingProvider", { provider: cloudTranscriptionProvider });
   };
 
   const modeSelector = isSignedIn ? (
@@ -333,7 +335,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
         )}
       >
         <Cloud size={11} />
-        OpenWhispr Cloud
+        {t("notes.upload.openwhisprCloud")}
       </button>
       <button
         onClick={() => setCloudTranscriptionMode("byok")}
@@ -345,7 +347,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
         )}
       >
         <Key size={11} />
-        Custom
+        {t("notes.upload.custom")}
       </button>
     </div>
   ) : null;
@@ -401,10 +403,10 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                 <Upload size={17} strokeWidth={1.5} className="text-primary/50" />
               </div>
               <h2 className="text-[13px] font-semibold text-foreground mb-1">
-                Set up transcription
+                {t("notes.upload.setupTitle")}
               </h2>
               <p className="text-[11px] text-foreground/30 text-center leading-relaxed max-w-[280px]">
-                Choose how to transcribe your audio. This also applies to live dictation.
+                {t("notes.upload.setupDescription")}
               </p>
             </div>
 
@@ -418,7 +420,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                 onClick={dismissSetup}
                 className="h-8 text-[11px] px-6"
               >
-                Continue
+                {t("notes.upload.continue")}
               </Button>
             </div>
 
@@ -437,8 +439,12 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                     className="text-foreground/25 dark:text-foreground/35"
                   />
                 </div>
-                <h2 className="text-[13px] font-semibold text-foreground mb-1">Upload Audio</h2>
-                <p className="text-[10px] text-foreground/25">Using {getActiveModelLabel()}</p>
+                <h2 className="text-[13px] font-semibold text-foreground mb-1">
+                  {t("notes.upload.title")}
+                </h2>
+                <p className="text-[10px] text-foreground/25">
+                  {t("notes.upload.using", { model: getActiveModelLabel() })}
+                </p>
               </div>
 
               <div
@@ -480,16 +486,18 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                       />
                     </div>
                     <p className="text-[11px] text-foreground/35 group-hover:text-foreground/50 transition-colors">
-                      Drop audio file or click to browse
+                      {t("notes.upload.dropOrBrowse")}
                     </p>
                     <p className="text-[9px] text-foreground/15 tracking-wide">
-                      MP3, WAV, M4A, WebM, OGG, FLAC, AAC
+                      {t("notes.upload.supportedFormats")}
                     </p>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center gap-2 relative">
                     <Upload size={18} className="text-primary/60" />
-                    <p className="text-[11px] text-primary/60 font-medium">Drop to upload</p>
+                    <p className="text-[11px] text-primary/60 font-medium">
+                      {t("notes.upload.dropToUpload")}
+                    </p>
                   </div>
                 )}
               </div>
@@ -528,7 +536,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                   onClick={handleTranscribe}
                   className="h-8 text-[11px] px-5"
                 >
-                  Transcribe
+                  {t("notes.upload.transcribe")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -536,7 +544,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                   onClick={reset}
                   className="h-8 text-[11px] text-foreground/35"
                 >
-                  Cancel
+                  {t("notes.upload.cancel")}
                 </Button>
               </div>
             </div>
@@ -621,7 +629,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
               </div>
 
               <p className="text-[12px] text-foreground/60 font-medium mb-1">
-                Transcription complete
+                {t("notes.upload.transcriptionComplete")}
               </p>
               <p className="text-[9px] text-foreground/25 max-w-[240px] text-center line-clamp-2 mb-4">
                 {result.slice(0, 150)}
@@ -632,7 +640,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                   <FolderOpen size={12} className="text-foreground/20 shrink-0" />
                   <Select value={selectedFolderId} onValueChange={handleFolderChange}>
                     <SelectTrigger className="h-7 w-44 text-[11px] rounded-lg px-2.5 [&>svg]:h-3 [&>svg]:w-3">
-                      <SelectValue placeholder="Select folder" />
+                      <SelectValue placeholder={t("notes.upload.selectFolder")} />
                     </SelectTrigger>
                     <SelectContent>
                       {folders.map((f) => {
@@ -648,7 +656,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                               {f.name}
                               {isMeetings && (
                                 <span className="text-[8px] uppercase tracking-wider text-foreground/25 font-medium">
-                                  Soon
+                                  {t("notes.folders.soon")}
                                 </span>
                               )}
                             </span>
@@ -662,7 +670,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                       >
                         <span className="flex items-center gap-1.5 text-primary/60">
                           <Plus size={11} />
-                          New Folder
+                          {t("notes.upload.newFolder")}
                         </span>
                       </SelectItem>
                     </SelectContent>
@@ -678,7 +686,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                     onClick={() => onNoteCreated(noteId)}
                     className="h-8 text-[11px]"
                   >
-                    Open Note
+                    {t("notes.upload.openNote")}
                   </Button>
                 )}
                 <Button
@@ -687,7 +695,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                   onClick={reset}
                   className="h-8 text-[11px] text-foreground/35"
                 >
-                  Upload Another
+                  {t("notes.upload.uploadAnother")}
                 </Button>
               </div>
             </div>
@@ -715,7 +723,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                   onClick={handleTranscribe}
                   className="h-7 text-[10px] text-foreground/40"
                 >
-                  Retry
+                  {t("notes.upload.retry")}
                 </Button>
                 <Button
                   variant="ghost"
@@ -723,7 +731,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                   onClick={reset}
                   className="h-7 text-[10px] text-foreground/25"
                 >
-                  Start Over
+                  {t("notes.upload.startOver")}
                 </Button>
               </div>
             </div>
@@ -740,7 +748,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                 size={10}
                 className={cn("transition-transform duration-200", advancedOpen && "rotate-90")}
               />
-              Transcription Settings
+              {t("notes.upload.transcriptionSettings")}
             </button>
 
             {advancedOpen && (
@@ -756,12 +764,12 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
       <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
         <DialogContent className="sm:max-w-[320px] p-5 gap-3">
           <DialogHeader>
-            <DialogTitle className="text-[14px]">New Folder</DialogTitle>
+            <DialogTitle className="text-[14px]">{t("notes.upload.newFolder")}</DialogTitle>
           </DialogHeader>
           <Input
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
-            placeholder="Folder name"
+            placeholder={t("notes.upload.folderName")}
             className="h-8 text-[12px]"
             autoFocus
             onKeyDown={(e) => {
@@ -778,7 +786,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
               }}
               className="h-7 text-[11px]"
             >
-              Cancel
+              {t("notes.upload.cancel")}
             </Button>
             <Button
               variant="default"
@@ -787,7 +795,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
               disabled={!newFolderName.trim()}
               className="h-7 text-[11px]"
             >
-              Create
+              {t("notes.upload.create")}
             </Button>
           </DialogFooter>
         </DialogContent>

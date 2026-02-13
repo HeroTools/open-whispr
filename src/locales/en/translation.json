@@ -1243,5 +1243,153 @@
         "openai_oss_gpt_oss_20b_mxfp4": "OpenAI's open-weight model for consumer hardware"
       }
     }
+  },
+  "referral": {
+    "title": "Refer and earn rewards",
+    "subtitle": "Give a month. Get a month.",
+    "tabs": {
+      "refer": "Refer",
+      "pastInvites": "Past invites"
+    },
+    "howItWorks": {
+      "shareLink": "Share your invite link",
+      "theySignUp": "They sign up and get a ",
+      "freeMonthOfPro": "free month of Pro",
+      "youGet": "You get a ",
+      "freeMonth": "free month",
+      "whenTheyDictate": " when they dictate 2,000 words"
+    },
+    "inviteLink": {
+      "title": "Your invite link",
+      "copy": "Copy",
+      "copied": "Copied"
+    },
+    "sendInvites": {
+      "title": "Send invites",
+      "placeholder": "friend@example.com",
+      "send": "Send",
+      "sending": "Sending"
+    },
+    "stats": {
+      "referred": "Referred",
+      "converted": "Converted",
+      "monthsEarned": "Months earned"
+    },
+    "status": {
+      "converted": "Converted",
+      "opened": "Opened",
+      "failed": "Failed",
+      "sent": "Sent"
+    },
+    "empty": {
+      "title": "No invites sent yet",
+      "description": "Share your link or send an invite to get started"
+    },
+    "toasts": {
+      "copiedTitle": "Copied!",
+      "copiedDescription": "Referral link copied to clipboard",
+      "copyFailedTitle": "Copy Failed",
+      "copyFailedDescription": "Failed to copy link to clipboard",
+      "invalidEmailTitle": "Invalid Email",
+      "invalidEmailDescription": "Please enter a valid email address",
+      "inviteSentTitle": "Invite Sent!",
+      "inviteSentDescription": "Invitation sent to {{email}}",
+      "sendFailedTitle": "Send Failed",
+      "sendFailedDescription": "Failed to send invitation. Please try again."
+    },
+    "errors": {
+      "unableToLoad": "Unable to load referral data",
+      "unableToLoadStats": "Unable to load referral stats. Please try again later."
+    },
+    "tryAgain": "Try Again",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "Your audio signature",
+      "stop": "Stop",
+      "playSignal": "Play signal"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "Folders",
+      "meetings": "Meetings",
+      "soon": "Soon",
+      "folderName": "Folder name",
+      "couldNotCreate": "Couldn't create folder",
+      "couldNotRename": "Couldn't rename folder",
+      "couldNotDelete": "Couldn't delete folder"
+    },
+    "list": {
+      "title": "Notes",
+      "newNote": "New note",
+      "untitled": "Untitled",
+      "untitledNote": "Untitled Note",
+      "createToGetStarted": "Create a note to get started",
+      "selectNote": "Select a note"
+    },
+    "editor": {
+      "untitled": "Untitled",
+      "noteTitle": "Note title",
+      "stop": "Stop",
+      "dictate": "Dictate",
+      "edit": "Edit",
+      "preview": "Preview",
+      "enhance": "Enhance",
+      "reEnhance": "Re-enhance",
+      "export": "Export",
+      "asMarkdown": "As Markdown",
+      "asPlainText": "As Plain Text",
+      "raw": "Raw",
+      "enhanced": "Enhanced",
+      "saving": "Saving",
+      "wordsCount": "{{count}} words",
+      "startWriting": "Start writing..."
+    },
+    "enhance": {
+      "title": "Enhance with AI",
+      "defaultPrompt": "Clean up grammar, improve structure, and format these notes for readability while preserving all original meaning.",
+      "placeholder": "What should the AI do with your notes?",
+      "tryAgain": "Try Again",
+      "apply": "Apply",
+      "cancel": "Cancel",
+      "enhancing": "Enhancing...",
+      "enhance": "Enhance"
+    },
+    "upload": {
+      "title": "Upload Audio",
+      "using": "Using {{model}}",
+      "dropOrBrowse": "Drop audio file or click to browse",
+      "supportedFormats": "MP3, WAV, M4A, WebM, OGG, FLAC, AAC",
+      "dropToUpload": "Drop to upload",
+      "transcribe": "Transcribe",
+      "cancel": "Cancel",
+      "transcribingCloud": "Transcribing via cloud...",
+      "transcribingLocal": "Transcribing locally...",
+      "transcribingProvider": "Transcribing via {{provider}}...",
+      "transcriptionComplete": "Transcription complete",
+      "openNote": "Open Note",
+      "uploadAnother": "Upload Another",
+      "retry": "Retry",
+      "startOver": "Start Over",
+      "transcriptionSettings": "Transcription Settings",
+      "newFolder": "New Folder",
+      "folderName": "Folder name",
+      "create": "Create",
+      "setupTitle": "Set up transcription",
+      "setupDescription": "Choose how to transcribe your audio. This also applies to live dictation.",
+      "continue": "Continue",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "Custom",
+      "selectFolder": "Select folder",
+      "transcriptionFailed": "Transcription failed",
+      "errorOccurred": "An error occurred",
+      "enhancementFailed": "Enhancement failed"
+    },
+    "meeting": {
+      "title": "Meeting Notes",
+      "description": "Speaker identification & structured summaries",
+      "comingSoon": "Coming Soon"
+    }
   }
 }

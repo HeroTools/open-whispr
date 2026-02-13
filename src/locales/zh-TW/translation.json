@@ -1243,5 +1243,153 @@
         "openai_oss_gpt_oss_20b_mxfp4": "OpenAI 開放權重模型，適用於消費級硬體"
       }
     }
+  },
+  "referral": {
+    "title": "推薦好友賺取獎勵",
+    "subtitle": "送一個月，得一個月。",
+    "tabs": {
+      "refer": "推薦",
+      "pastInvites": "過去的邀請"
+    },
+    "howItWorks": {
+      "shareLink": "分享您的邀請連結",
+      "theySignUp": "對方註冊即可獲得",
+      "freeMonthOfPro": "一個月免費 Pro",
+      "youGet": "您可獲得",
+      "freeMonth": "一個月免費",
+      "whenTheyDictate": "當對方聽寫滿 2,000 字時"
+    },
+    "inviteLink": {
+      "title": "您的邀請連結",
+      "copy": "複製",
+      "copied": "已複製"
+    },
+    "sendInvites": {
+      "title": "發送邀請",
+      "placeholder": "friend@example.com",
+      "send": "發送",
+      "sending": "發送中"
+    },
+    "stats": {
+      "referred": "已推薦",
+      "converted": "已轉換",
+      "monthsEarned": "已獲得月數"
+    },
+    "status": {
+      "converted": "已轉換",
+      "opened": "已開啟",
+      "failed": "失敗",
+      "sent": "已發送"
+    },
+    "empty": {
+      "title": "尚未發送任何邀請",
+      "description": "分享您的連結或發送邀請以開始使用"
+    },
+    "toasts": {
+      "copiedTitle": "已複製！",
+      "copiedDescription": "推薦連結已複製到剪貼簿",
+      "copyFailedTitle": "複製失敗",
+      "copyFailedDescription": "無法將連結複製到剪貼簿",
+      "invalidEmailTitle": "無效的電子郵件",
+      "invalidEmailDescription": "請輸入有效的電子郵件地址",
+      "inviteSentTitle": "邀請已發送！",
+      "inviteSentDescription": "邀請已發送至 {{email}}",
+      "sendFailedTitle": "發送失敗",
+      "sendFailedDescription": "無法發送邀請，請重試。"
+    },
+    "errors": {
+      "unableToLoad": "無法載入推薦資料",
+      "unableToLoadStats": "無法載入推薦統計資料，請稍後再試。"
+    },
+    "tryAgain": "重試",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "您的音訊簽名",
+      "stop": "停止",
+      "playSignal": "播放信號"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "資料夾",
+      "meetings": "會議",
+      "soon": "即將推出",
+      "folderName": "資料夾名稱",
+      "couldNotCreate": "無法建立資料夾",
+      "couldNotRename": "無法重新命名資料夾",
+      "couldNotDelete": "無法刪除資料夾"
+    },
+    "list": {
+      "title": "筆記",
+      "newNote": "新增筆記",
+      "untitled": "未命名",
+      "untitledNote": "未命名筆記",
+      "createToGetStarted": "建立筆記以開始使用",
+      "selectNote": "選擇筆記"
+    },
+    "editor": {
+      "untitled": "未命名",
+      "noteTitle": "筆記標題",
+      "stop": "停止",
+      "dictate": "聽寫",
+      "edit": "編輯",
+      "preview": "預覽",
+      "enhance": "增強",
+      "reEnhance": "重新增強",
+      "export": "匯出",
+      "asMarkdown": "匯出為 Markdown",
+      "asPlainText": "匯出為純文字",
+      "raw": "原始",
+      "enhanced": "已增強",
+      "saving": "儲存中",
+      "wordsCount": "{{count}} 個字",
+      "startWriting": "開始撰寫..."
+    },
+    "enhance": {
+      "title": "使用 AI 增強",
+      "defaultPrompt": "修正文法、改善結構，並將這些筆記格式化以提升可讀性，同時保留所有原始含義。",
+      "placeholder": "AI 應如何處理您的筆記？",
+      "tryAgain": "重試",
+      "apply": "套用",
+      "cancel": "取消",
+      "enhancing": "增強中...",
+      "enhance": "增強"
+    },
+    "upload": {
+      "title": "上傳音訊",
+      "using": "使用 {{model}}",
+      "dropOrBrowse": "拖放音訊檔案或點擊瀏覽",
+      "supportedFormats": "MP3、WAV、M4A、WebM、OGG、FLAC、AAC",
+      "dropToUpload": "拖放以上傳",
+      "transcribe": "轉錄",
+      "cancel": "取消",
+      "transcribingCloud": "透過雲端轉錄中...",
+      "transcribingLocal": "本機轉錄中...",
+      "transcribingProvider": "透過 {{provider}} 轉錄中...",
+      "transcriptionComplete": "轉錄完成",
+      "openNote": "開啟筆記",
+      "uploadAnother": "上傳另一個",
+      "retry": "重試",
+      "startOver": "重新開始",
+      "transcriptionSettings": "轉錄設定",
+      "newFolder": "新增資料夾",
+      "folderName": "資料夾名稱",
+      "create": "建立",
+      "setupTitle": "設定轉錄",
+      "setupDescription": "選擇音訊轉錄方式。此設定同樣適用於即時聽寫。",
+      "continue": "繼續",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "自訂",
+      "selectFolder": "選擇資料夾",
+      "transcriptionFailed": "轉錄失敗",
+      "errorOccurred": "發生錯誤",
+      "enhancementFailed": "增強失敗"
+    },
+    "meeting": {
+      "title": "會議筆記",
+      "description": "說話者辨識與結構化摘要",
+      "comingSoon": "即將推出"
+    }
   }
 }

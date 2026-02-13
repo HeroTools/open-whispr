@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Trash2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../lib/utils";
@@ -35,10 +36,11 @@ function relativeTime(dateStr: string): string {
   if (minutes < 60) return `${minutes}m`;
   if (hours < 24) return `${hours}h`;
   if (days < 7) return `${days}d`;
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 export default function NoteListItem({ note, isActive, onClick, onDelete }: NoteListItemProps) {
+  const { t } = useTranslation();
   const preview = stripMarkdown(note.content);
 
   return (
@@ -65,7 +67,7 @@ export default function NoteListItem({ note, isActive, onClick, onDelete }: Note
               isActive ? "text-foreground font-medium" : "text-foreground/80"
             )}
           >
-            {note.title || "Untitled"}
+            {note.title || t("notes.list.untitled")}
           </p>
           <div className="flex items-center gap-0.5 shrink-0">
             <span className="text-[9px] text-muted-foreground/30 tabular-nums group-hover:opacity-0 transition-opacity">

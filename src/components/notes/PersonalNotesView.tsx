@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { Plus, NotebookPen, Loader2, FolderOpen, Pencil, Trash2, Users } from "lucide-react";
 import { Button } from "../ui/button";
 import { useToast } from "../ui/Toast";
@@ -17,9 +18,9 @@ import {
   setActiveFolderId,
 } from "../../stores/noteStore";
 
-const MEETINGS_FOLDER_NAME = "Meetings";
-
 export default function PersonalNotesView() {
+  const { t } = useTranslation();
+  const MEETINGS_FOLDER_NAME = t("notes.folders.meetings");
   const notes = useNotes();
   const activeNoteId = useActiveNoteId();
   const activeFolderId = useActiveFolderId();
@@ -154,7 +155,7 @@ export default function PersonalNotesView() {
   const handleNewNote = useCallback(async () => {
     if (!activeFolderId || isMeetingsFolder) return;
     const result = await window.electronAPI.saveNote(
-      "Untitled Note",
+      t("notes.list.untitledNote"),
       "",
       "personal",
       null,
@@ -225,7 +226,11 @@ export default function PersonalNotesView() {
       await loadFolders();
       setActiveFolderId(result.folder.id);
     } else if (result.error) {
-      toast({ title: "Couldn't create folder", description: result.error, variant: "destructive" });
+      toast({
+        title: t("notes.folders.couldNotCreate"),
+        description: result.error,
+        variant: "destructive",
+      });
     }
     setIsCreatingFolder(false);
     setNewFolderName("");
@@ -243,7 +248,11 @@ export default function PersonalNotesView() {
     if (result.success) {
       await loadFolders();
     } else if (result.error) {
-      toast({ title: "Couldn't rename folder", description: result.error, variant: "destructive" });
+      toast({
+        title: t("notes.folders.couldNotRename"),
+        description: result.error,
+        variant: "destructive",
+      });
     }
     setRenamingFolderId(null);
     setRenameValue("");
@@ -260,7 +269,7 @@ export default function PersonalNotesView() {
         await loadFolders();
       } else if (result.error) {
         toast({
-          title: "Couldn't delete folder",
+          title: t("notes.folders.couldNotDelete"),
           description: result.error,
           variant: "destructive",
         });
@@ -292,7 +301,7 @@ export default function PersonalNotesView() {
         {/* Folders */}
         <div className="flex items-center justify-between px-3 py-2">
           <span className="text-[10px] font-medium uppercase tracking-wider text-foreground/25">
-            Folders
+            {t("notes.folders.title")}
           </span>
           <Button
             variant="ghost"
@@ -371,7 +380,7 @@ export default function PersonalNotesView() {
 
                 {isMeetings ? (
                   <span className="text-[7px] font-semibold uppercase tracking-wider text-foreground/20 bg-foreground/4 dark:bg-white/6 px-1.5 py-px rounded shrink-0">
-                    Soon
+                    {t("notes.folders.soon")}
                   </span>
                 ) : (
                   <span
@@ -427,7 +436,7 @@ export default function PersonalNotesView() {
                   }
                 }}
                 onBlur={handleCreateFolder}
-                placeholder="Folder name"
+                placeholder={t("notes.folders.folderName")}
                 className="w-full h-6 bg-foreground/5 dark:bg-white/5 rounded px-2 text-[11px] text-foreground placeholder:text-foreground/20 outline-none border border-primary/30 focus:border-primary/50"
               />
             </div>
@@ -441,7 +450,7 @@ export default function PersonalNotesView() {
           <>
             <div className="flex items-center justify-between px-3 py-1">
               <span className="text-[10px] font-medium uppercase tracking-wider text-foreground/25">
-                Notes
+                {t("notes.list.title")}
               </span>
               <Button
                 variant="ghost"
@@ -468,7 +477,7 @@ export default function PersonalNotesView() {
                     className="text-foreground/10 mb-1.5 group-hover:text-foreground/20 transition-colors"
                   />
                   <p className="text-[10px] text-foreground/20 group-hover:text-foreground/30 transition-colors">
-                    New note
+                    {t("notes.list.newNote")}
                   </p>
                 </button>
               ) : (
@@ -493,12 +502,12 @@ export default function PersonalNotesView() {
         {isMeetingsFolder ? (
           <div className="flex flex-col items-center justify-center h-full">
             <Users size={18} className="text-foreground/8 mb-2.5" />
-            <p className="text-[11px] text-foreground/25 mb-1">Meeting Notes</p>
+            <p className="text-[11px] text-foreground/25 mb-1">{t("notes.meeting.title")}</p>
             <p className="text-[9px] text-foreground/12 text-center max-w-48">
-              Speaker identification & structured summaries
+              {t("notes.meeting.description")}
             </p>
             <span className="mt-2.5 text-[8px] font-medium uppercase tracking-wider text-foreground/15 bg-foreground/3 px-2 py-0.5 rounded-sm">
-              Coming Soon
+              {t("notes.meeting.comingSoon")}
             </span>
           </div>
         ) : editorNote ? (
@@ -531,7 +540,7 @@ export default function PersonalNotesView() {
           <div className="flex-1 flex flex-col items-center justify-center">
             <NotebookPen size={16} className="text-foreground/6 mb-2" />
             <p className="text-[10px] text-foreground/12">
-              {notes.length === 0 ? "Create a note to get started" : "Select a note"}
+              {notes.length === 0 ? t("notes.list.createToGetStarted") : t("notes.list.selectNote")}
             </p>
           </div>
         )}

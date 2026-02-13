@@ -1244,5 +1244,153 @@
         "openai_oss_gpt_oss_20b_mxfp4": "Открытая модель OpenAI для потребительского оборудования"
       }
     }
+  },
+  "referral": {
+    "title": "Приглашайте и получайте награды",
+    "subtitle": "Подарите месяц. Получите месяц.",
+    "tabs": {
+      "refer": "Пригласить",
+      "pastInvites": "Отправленные приглашения"
+    },
+    "howItWorks": {
+      "shareLink": "Поделитесь ссылкой-приглашением",
+      "theySignUp": "Они регистрируются и получают ",
+      "freeMonthOfPro": "бесплатный месяц Pro",
+      "youGet": "Вы получаете ",
+      "freeMonth": "бесплатный месяц",
+      "whenTheyDictate": ", когда они надиктуют 2 000 слов"
+    },
+    "inviteLink": {
+      "title": "Ваша ссылка-приглашение",
+      "copy": "Копировать",
+      "copied": "Скопировано"
+    },
+    "sendInvites": {
+      "title": "Отправить приглашения",
+      "placeholder": "friend@example.com",
+      "send": "Отправить",
+      "sending": "Отправка"
+    },
+    "stats": {
+      "referred": "Приглашено",
+      "converted": "Активировано",
+      "monthsEarned": "Месяцев заработано"
+    },
+    "status": {
+      "converted": "Активировано",
+      "opened": "Открыто",
+      "failed": "Не удалось",
+      "sent": "Отправлено"
+    },
+    "empty": {
+      "title": "Приглашения ещё не отправлены",
+      "description": "Поделитесь ссылкой или отправьте приглашение, чтобы начать"
+    },
+    "toasts": {
+      "copiedTitle": "Скопировано!",
+      "copiedDescription": "Реферальная ссылка скопирована в буфер обмена",
+      "copyFailedTitle": "Ошибка копирования",
+      "copyFailedDescription": "Не удалось скопировать ссылку в буфер обмена",
+      "invalidEmailTitle": "Неверный адрес электронной почты",
+      "invalidEmailDescription": "Пожалуйста, введите корректный адрес электронной почты",
+      "inviteSentTitle": "Приглашение отправлено!",
+      "inviteSentDescription": "Приглашение отправлено на {{email}}",
+      "sendFailedTitle": "Ошибка отправки",
+      "sendFailedDescription": "Не удалось отправить приглашение. Пожалуйста, попробуйте ещё раз."
+    },
+    "errors": {
+      "unableToLoad": "Не удалось загрузить данные реферальной программы",
+      "unableToLoadStats": "Не удалось загрузить статистику рефералов. Пожалуйста, попробуйте позже."
+    },
+    "tryAgain": "Попробовать снова",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "Ваша аудиоподпись",
+      "stop": "Стоп",
+      "playSignal": "Воспроизвести сигнал"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "Папки",
+      "meetings": "Встречи",
+      "soon": "Скоро",
+      "folderName": "Название папки",
+      "couldNotCreate": "Не удалось создать папку",
+      "couldNotRename": "Не удалось переименовать папку",
+      "couldNotDelete": "Не удалось удалить папку"
+    },
+    "list": {
+      "title": "Заметки",
+      "newNote": "Новая заметка",
+      "untitled": "Без названия",
+      "untitledNote": "Заметка без названия",
+      "createToGetStarted": "Создайте заметку, чтобы начать",
+      "selectNote": "Выберите заметку"
+    },
+    "editor": {
+      "untitled": "Без названия",
+      "noteTitle": "Название заметки",
+      "stop": "Стоп",
+      "dictate": "Диктовать",
+      "edit": "Редактировать",
+      "preview": "Предпросмотр",
+      "enhance": "Улучшить",
+      "reEnhance": "Улучшить снова",
+      "export": "Экспорт",
+      "asMarkdown": "Как Markdown",
+      "asPlainText": "Как обычный текст",
+      "raw": "Исходный",
+      "enhanced": "Улучшенный",
+      "saving": "Сохранение",
+      "wordsCount": "{{count}} слов",
+      "startWriting": "Начните писать..."
+    },
+    "enhance": {
+      "title": "Улучшить с помощью ИИ",
+      "defaultPrompt": "Исправьте грамматику, улучшите структуру и отформатируйте эти заметки для удобства чтения, сохранив весь исходный смысл.",
+      "placeholder": "Что ИИ должен сделать с вашими заметками?",
+      "tryAgain": "Попробовать снова",
+      "apply": "Применить",
+      "cancel": "Отмена",
+      "enhancing": "Улучшение...",
+      "enhance": "Улучшить"
+    },
+    "upload": {
+      "title": "Загрузить аудио",
+      "using": "Используется {{model}}",
+      "dropOrBrowse": "Перетащите аудиофайл или нажмите для выбора",
+      "supportedFormats": "MP3, WAV, M4A, WebM, OGG, FLAC, AAC",
+      "dropToUpload": "Отпустите для загрузки",
+      "transcribe": "Транскрибировать",
+      "cancel": "Отмена",
+      "transcribingCloud": "Транскрибирование через облако...",
+      "transcribingLocal": "Локальное транскрибирование...",
+      "transcribingProvider": "Транскрибирование через {{provider}}...",
+      "transcriptionComplete": "Транскрибирование завершено",
+      "openNote": "Открыть заметку",
+      "uploadAnother": "Загрузить ещё",
+      "retry": "Повторить",
+      "startOver": "Начать сначала",
+      "transcriptionSettings": "Настройки транскрибирования",
+      "newFolder": "Новая папка",
+      "folderName": "Название папки",
+      "create": "Создать",
+      "setupTitle": "Настройте транскрибирование",
+      "setupDescription": "Выберите способ транскрибирования аудио. Это также применяется к живой диктовке.",
+      "continue": "Продолжить",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "Другой",
+      "selectFolder": "Выбрать папку",
+      "transcriptionFailed": "Ошибка транскрибирования",
+      "errorOccurred": "Произошла ошибка",
+      "enhancementFailed": "Ошибка улучшения"
+    },
+    "meeting": {
+      "title": "Заметки со встреч",
+      "description": "Определение говорящих и структурированные резюме",
+      "comingSoon": "Скоро"
+    }
   }
 }

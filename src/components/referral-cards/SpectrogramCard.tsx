@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "../lib/utils";
 import { generateSpectrogramData } from "./generateWaveform";
 
@@ -100,6 +101,7 @@ function createAudio(data: number[][]): { stop: () => void } | null {
 }
 
 export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
+  const { t } = useTranslation();
   const data = useMemo(() => generateSpectrogramData(referralCode, COLS, ROWS), [referralCode]);
   const [playing, setPlaying] = useState(false);
   const [playKey, setPlayKey] = useState(0);
@@ -152,14 +154,14 @@ export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
       {/* Brand + Signal ID */}
       <div className="absolute top-0 inset-x-0 px-5 pt-3.5 flex items-center justify-between z-10">
         <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-foreground/20 select-none">
-          OpenWhispr
+          {t("referral.card.brand")}
         </span>
         <div className="flex flex-col items-end">
           <span className="text-[10px] font-mono text-foreground/30 tracking-wider select-all">
             {referralCode}
           </span>
           <span className="text-[7px] uppercase tracking-[0.15em] text-foreground/12 select-none">
-            Signal ID
+            {t("referral.card.signalId")}
           </span>
         </div>
       </div>
@@ -218,7 +220,7 @@ export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
                   ? "bg-foreground/12 text-foreground/80"
                   : "bg-foreground/6 text-foreground/40 hover:bg-foreground/10 hover:text-foreground/70"
               )}
-              aria-label={playing ? "Stop" : "Play signal"}
+              aria-label={playing ? t("referral.card.stop") : t("referral.card.playSignal")}
             >
               {playing ? (
                 <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor">
@@ -232,7 +234,7 @@ export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
             </button>
             <div>
               <span className="text-[13px] font-medium text-foreground/70 leading-tight block">
-                Your audio signature
+                {t("referral.card.audioSignature")}
               </span>
             </div>
           </div>
