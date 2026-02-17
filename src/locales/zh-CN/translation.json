@@ -868,6 +868,14 @@
         "description": "外观、快捷键与启动",
         "label": "偏好设置"
       },
+      "hotkeys": {
+        "description": "听写快捷键与激活模式",
+        "label": "快捷键"
+      },
+      "softwareUpdates": {
+        "description": "检查并安装更新",
+        "label": "软件更新"
+      },
       "permissions": {
         "description": "麦克风与辅助功能",
         "label": "权限"

@@ -868,6 +868,14 @@
         "description": "Aspetto, scorciatoia e avvio",
         "label": "Preferenze"
       },
+      "hotkeys": {
+        "description": "Scorciatoia di dettatura e attivazione",
+        "label": "Scorciatoie"
+      },
+      "softwareUpdates": {
+        "description": "Controlla e installa aggiornamenti",
+        "label": "Aggiornamenti"
+      },
       "permissions": {
         "description": "Microfono e accessibilità",
         "label": "Permessi"

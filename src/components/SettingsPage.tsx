@@ -64,12 +64,14 @@ import { cn } from "./lib/utils";
 export type SettingsSectionType =
   | "account"
   | "general"
+  | "hotkeys"
   | "transcription"
   | "aiModels"
   | "agentConfig"
   | "prompts"
-  | "permissions"
+  | "softwareUpdates"
   | "privacy"
+  | "permissions"
   | "developer";
 
 interface SettingsPageProps {
@@ -1277,7 +1279,411 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
       case "general":
         return (
           <div className="space-y-6">
-            {/* Updates */}
+            {/* Appearance */}
+            <div>
+              <SectionHeader
+                title={t("settingsPage.general.appearance.title")}
+                description={t("settingsPage.general.appearance.description")}
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.appearance.theme")}
+                    description={t("settingsPage.general.appearance.themeDescription")}
+                  >
+                    <div className="inline-flex items-center gap-px p-0.5 bg-muted/60 dark:bg-surface-2 rounded-md">
+                      {(
+                        [
+                          {
+                            value: "light",
+                            icon: Sun,
+                            label: t("settingsPage.general.appearance.light"),
+                          },
+                          {
+                            value: "dark",
+                            icon: Moon,
+                            label: t("settingsPage.general.appearance.dark"),
+                          },
+                          {
+                            value: "auto",
+                            icon: Monitor,
+                            label: t("settingsPage.general.appearance.auto"),
+                          },
+                        ] as const
+                      ).map((option) => {
+                        const Icon = option.icon;
+                        const isSelected = theme === option.value;
+                        return (
+                          <button
+                            key={option.value}
+                            onClick={() => setTheme(option.value)}
+                            className={`
+                              flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-[11px] font-medium
+                              transition-all duration-100
+                              ${
+                                isSelected
+                                  ? "bg-background dark:bg-surface-raised text-foreground shadow-sm"
+                                  : "text-muted-foreground hover:text-foreground"
+                              }
+                            `}
+                          >
+                            <Icon className={`w-3 h-3 ${isSelected ? "text-primary" : ""}`} />
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Sound Effects */}
+            <div>
+              <SectionHeader title={t("settingsPage.general.soundEffects.title")} />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.soundEffects.dictationSounds")}
+                    description={t("settingsPage.general.soundEffects.dictationSoundsDescription")}
+                  >
+                    <Toggle checked={audioCuesEnabled} onChange={setAudioCuesEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Floating Icon */}
+            <div>
+              <SectionHeader
+                title={t("settingsPage.general.floatingIcon.title")}
+                description={t("settingsPage.general.floatingIcon.description")}
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.general.floatingIcon.autoHide")}
+                    description={t("settingsPage.general.floatingIcon.autoHideDescription")}
+                  >
+                    <Toggle checked={floatingIconAutoHide} onChange={setFloatingIconAutoHide} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Language */}
+            <div>
+              <SectionHeader
+                title={t("settings.language.sectionTitle")}
+                description={t("settings.language.sectionDescription")}
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settings.language.uiLabel")}
+                    description={t("settings.language.uiDescription")}
+                  >
+                    <LanguageSelector
+                      value={uiLanguage}
+                      onChange={setUiLanguage}
+                      options={UI_LANGUAGE_OPTIONS}
+                      className="min-w-32"
+                    />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settings.language.transcriptionLabel")}
+                    description={t("settings.language.transcriptionDescription")}
+                  >
+                    <LanguageSelector
+                      value={preferredLanguage}
+                      onChange={(value) =>
+                        updateTranscriptionSettings({ preferredLanguage: value })
+                      }
+                    />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Startup */}
+            {platform !== "linux" && (
+              <div>
+                <SectionHeader title={t("settingsPage.general.startup.title")} />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label={t("settingsPage.general.startup.launchAtLogin")}
+                      description={t("settingsPage.general.startup.launchAtLoginDescription")}
+                    >
+                      <Toggle
+                        checked={autoStartEnabled}
+                        onChange={(checked: boolean) => handleAutoStartChange(checked)}
+                        disabled={autoStartLoading}
+                      />
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </div>
+            )}
+
+            {/* Microphone */}
+            <div>
+              <SectionHeader
+                title={t("settingsPage.general.microphone.title")}
+                description={t("settingsPage.general.microphone.description")}
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <MicrophoneSettings
+                    preferBuiltInMic={preferBuiltInMic}
+                    selectedMicDeviceId={selectedMicDeviceId}
+                    onPreferBuiltInChange={setPreferBuiltInMic}
+                    onDeviceSelect={setSelectedMicDeviceId}
+                  />
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+          </div>
+        );
+
+      case "hotkeys":
+        return (
+          <div className="space-y-6">
+            {/* Dictation Hotkey */}
+            <div>
+              <SectionHeader
+                title={t("settingsPage.general.hotkey.title")}
+                description={t("settingsPage.general.hotkey.description")}
+              />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <HotkeyInput
+                    value={dictationKey}
+                    onChange={async (newHotkey) => {
+                      await registerHotkey(newHotkey);
+                    }}
+                    disabled={isHotkeyRegistering}
+                    validate={validateHotkeyForInput}
+                  />
+                  {dictationKey && dictationKey !== getDefaultHotkey() && (
+                    <button
+                      onClick={() => registerHotkey(getDefaultHotkey())}
+                      disabled={isHotkeyRegistering}
+                      className="mt-2 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50"
+                    >
+                      {t("settingsPage.general.hotkey.resetToDefault", {
+                        hotkey: formatHotkeyLabel(getDefaultHotkey()),
+                      })}
+                    </button>
+                  )}
+                </SettingsPanelRow>
+
+                {!isUsingGnomeHotkeys && (
+                  <SettingsPanelRow>
+                    <p className="text-[11px] font-medium text-muted-foreground/80 mb-2">
+                      {t("settingsPage.general.hotkey.activationMode")}
+                    </p>
+                    <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
+                  </SettingsPanelRow>
+                )}
+              </SettingsPanel>
+            </div>
+          </div>
+        );
+
+      case "transcription":
+        return (
+          <TranscriptionSection
+            isSignedIn={isSignedIn ?? false}
+            cloudTranscriptionMode={cloudTranscriptionMode}
+            setCloudTranscriptionMode={setCloudTranscriptionMode}
+            useLocalWhisper={useLocalWhisper}
+            setUseLocalWhisper={setUseLocalWhisper}
+            updateTranscriptionSettings={updateTranscriptionSettings}
+            cloudTranscriptionProvider={cloudTranscriptionProvider}
+            setCloudTranscriptionProvider={setCloudTranscriptionProvider}
+            cloudTranscriptionModel={cloudTranscriptionModel}
+            setCloudTranscriptionModel={setCloudTranscriptionModel}
+            localTranscriptionProvider={localTranscriptionProvider}
+            setLocalTranscriptionProvider={setLocalTranscriptionProvider}
+            whisperModel={whisperModel}
+            setWhisperModel={setWhisperModel}
+            parakeetModel={parakeetModel}
+            setParakeetModel={setParakeetModel}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            mistralApiKey={mistralApiKey}
+            setMistralApiKey={setMistralApiKey}
+            customTranscriptionApiKey={customTranscriptionApiKey}
+            setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
+            cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
+            setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
+            toast={toast}
+          />
+        );
+
+      case "aiModels":
+        return (
+          <AiModelsSection
+            isSignedIn={isSignedIn ?? false}
+            cloudReasoningMode={cloudReasoningMode}
+            setCloudReasoningMode={setCloudReasoningMode}
+            useReasoningModel={useReasoningModel}
+            setUseReasoningModel={(value) => {
+              setUseReasoningModel(value);
+              updateReasoningSettings({ useReasoningModel: value });
+            }}
+            reasoningModel={reasoningModel}
+            setReasoningModel={setReasoningModel}
+            reasoningProvider={reasoningProvider}
+            setReasoningProvider={setReasoningProvider}
+            cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+            setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+            openaiApiKey={openaiApiKey}
+            setOpenaiApiKey={setOpenaiApiKey}
+            anthropicApiKey={anthropicApiKey}
+            setAnthropicApiKey={setAnthropicApiKey}
+            geminiApiKey={geminiApiKey}
+            setGeminiApiKey={setGeminiApiKey}
+            groqApiKey={groqApiKey}
+            setGroqApiKey={setGroqApiKey}
+            customReasoningApiKey={customReasoningApiKey}
+            setCustomReasoningApiKey={setCustomReasoningApiKey}
+            showAlertDialog={showAlertDialog}
+            toast={toast}
+          />
+        );
+
+      case "agentConfig":
+        return (
+          <div className="space-y-5">
+            <SectionHeader
+              title={t("settingsPage.agentConfig.title")}
+              description={t("settingsPage.agentConfig.description")}
+            />
+
+            {/* Agent Name */}
+            <div>
+              <p className="text-[13px] font-medium text-foreground mb-3">
+                {t("settingsPage.agentConfig.agentName")}
+              </p>
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <div className="space-y-3">
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder={t("settingsPage.agentConfig.placeholder")}
+                        value={agentNameInput}
+                        onChange={(e) => setAgentNameInput(e.target.value)}
+                        className="flex-1 text-center text-base font-mono"
+                      />
+                      <Button
+                        onClick={() => {
+                          const trimmed = agentNameInput.trim();
+                          const oldName = agentName;
+                          setAgentName(trimmed);
+                          setAgentNameInput(trimmed);
+                          let dict = customDictionary.filter((w) => w !== oldName);
+                          if (trimmed && !dict.includes(trimmed)) dict = [trimmed, ...dict];
+                          setCustomDictionary(dict);
+                          showAlertDialog({
+                            title: t("settingsPage.agentConfig.dialogs.updatedTitle"),
+                            description: t("settingsPage.agentConfig.dialogs.updatedDescription", {
+                              name: trimmed,
+                            }),
+                          });
+                        }}
+                        disabled={!agentNameInput.trim()}
+                        size="sm"
+                      >
+                        {t("settingsPage.agentConfig.save")}
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground/60">
+                      {t("settingsPage.agentConfig.helper")}
+                    </p>
+                  </div>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* How it works */}
+            <div>
+              <SectionHeader title={t("settingsPage.agentConfig.howItWorksTitle")} />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">
+                    {t("settingsPage.agentConfig.howItWorksDescription", { agentName })}
+                  </p>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Examples */}
+            <div>
+              <SectionHeader title={t("settingsPage.agentConfig.examplesTitle")} />
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <div className="space-y-2.5">
+                    {[
+                      {
+                        input: `Hey ${agentName}, write a formal email about the budget`,
+                        mode: t("settingsPage.agentConfig.instructionMode"),
+                      },
+                      {
+                        input: `Hey ${agentName}, make this more professional`,
+                        mode: t("settingsPage.agentConfig.instructionMode"),
+                      },
+                      {
+                        input: `Hey ${agentName}, convert this to bullet points`,
+                        mode: t("settingsPage.agentConfig.instructionMode"),
+                      },
+                      {
+                        input: t("settingsPage.agentConfig.cleanupExample"),
+                        mode: t("settingsPage.agentConfig.cleanupMode"),
+                      },
+                    ].map((example, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span
+                          className={`shrink-0 mt-0.5 text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded ${
+                            example.mode === t("settingsPage.agentConfig.instructionMode")
+                              ? "bg-primary/10 text-primary dark:bg-primary/15"
+                              : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          {example.mode}
+                        </span>
+                        <p className="text-[12px] text-muted-foreground leading-relaxed">
+                          "{example.input}"
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+          </div>
+        );
+
+      case "prompts":
+        return (
+          <div className="space-y-5">
+            <SectionHeader
+              title={t("settingsPage.prompts.title")}
+              description={t("settingsPage.prompts.description")}
+            />
+
+            <PromptStudio />
+          </div>
+        );
+
+      case "softwareUpdates":
+        return (
+          <div className="space-y-6">
             <div>
               <SectionHeader title={t("settingsPage.general.updates.title")} />
               <SettingsPanel>
@@ -1470,401 +1876,6 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </SettingsPanelRow>
               </SettingsPanel>
             </div>
-
-            {/* Appearance */}
-            <div>
-              <SectionHeader
-                title={t("settingsPage.general.appearance.title")}
-                description={t("settingsPage.general.appearance.description")}
-              />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label={t("settingsPage.general.appearance.theme")}
-                    description={t("settingsPage.general.appearance.themeDescription")}
-                  >
-                    <div className="inline-flex items-center gap-px p-0.5 bg-muted/60 dark:bg-surface-2 rounded-md">
-                      {(
-                        [
-                          {
-                            value: "light",
-                            icon: Sun,
-                            label: t("settingsPage.general.appearance.light"),
-                          },
-                          {
-                            value: "dark",
-                            icon: Moon,
-                            label: t("settingsPage.general.appearance.dark"),
-                          },
-                          {
-                            value: "auto",
-                            icon: Monitor,
-                            label: t("settingsPage.general.appearance.auto"),
-                          },
-                        ] as const
-                      ).map((option) => {
-                        const Icon = option.icon;
-                        const isSelected = theme === option.value;
-                        return (
-                          <button
-                            key={option.value}
-                            onClick={() => setTheme(option.value)}
-                            className={`
-                              flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-[11px] font-medium
-                              transition-all duration-100
-                              ${
-                                isSelected
-                                  ? "bg-background dark:bg-surface-raised text-foreground shadow-sm"
-                                  : "text-muted-foreground hover:text-foreground"
-                              }
-                            `}
-                          >
-                            <Icon className={`w-3 h-3 ${isSelected ? "text-primary" : ""}`} />
-                            {option.label}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </SettingsRow>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* Sound Effects */}
-            <div>
-              <SectionHeader title={t("settingsPage.general.soundEffects.title")} />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label={t("settingsPage.general.soundEffects.dictationSounds")}
-                    description={t("settingsPage.general.soundEffects.dictationSoundsDescription")}
-                  >
-                    <Toggle checked={audioCuesEnabled} onChange={setAudioCuesEnabled} />
-                  </SettingsRow>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* Floating Icon */}
-            <div>
-              <SectionHeader
-                title={t("settingsPage.general.floatingIcon.title")}
-                description={t("settingsPage.general.floatingIcon.description")}
-              />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label={t("settingsPage.general.floatingIcon.autoHide")}
-                    description={t("settingsPage.general.floatingIcon.autoHideDescription")}
-                  >
-                    <Toggle checked={floatingIconAutoHide} onChange={setFloatingIconAutoHide} />
-                  </SettingsRow>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* Language */}
-            <div>
-              <SectionHeader
-                title={t("settings.language.sectionTitle")}
-                description={t("settings.language.sectionDescription")}
-              />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label={t("settings.language.uiLabel")}
-                    description={t("settings.language.uiDescription")}
-                  >
-                    <LanguageSelector
-                      value={uiLanguage}
-                      onChange={setUiLanguage}
-                      options={UI_LANGUAGE_OPTIONS}
-                      className="min-w-32"
-                    />
-                  </SettingsRow>
-                </SettingsPanelRow>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label={t("settings.language.transcriptionLabel")}
-                    description={t("settings.language.transcriptionDescription")}
-                  >
-                    <LanguageSelector
-                      value={preferredLanguage}
-                      onChange={(value) =>
-                        updateTranscriptionSettings({ preferredLanguage: value })
-                      }
-                    />
-                  </SettingsRow>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* Dictation Hotkey */}
-            <div>
-              <SectionHeader
-                title={t("settingsPage.general.hotkey.title")}
-                description={t("settingsPage.general.hotkey.description")}
-              />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <HotkeyInput
-                    value={dictationKey}
-                    onChange={async (newHotkey) => {
-                      await registerHotkey(newHotkey);
-                    }}
-                    disabled={isHotkeyRegistering}
-                    validate={validateHotkeyForInput}
-                  />
-                  {dictationKey && dictationKey !== getDefaultHotkey() && (
-                    <button
-                      onClick={() => registerHotkey(getDefaultHotkey())}
-                      disabled={isHotkeyRegistering}
-                      className="mt-2 text-[11px] text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50"
-                    >
-                      {t("settingsPage.general.hotkey.resetToDefault", {
-                        hotkey: formatHotkeyLabel(getDefaultHotkey()),
-                      })}
-                    </button>
-                  )}
-                </SettingsPanelRow>
-
-                {!isUsingGnomeHotkeys && (
-                  <SettingsPanelRow>
-                    <p className="text-[11px] font-medium text-muted-foreground/80 mb-2">
-                      {t("settingsPage.general.hotkey.activationMode")}
-                    </p>
-                    <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
-                  </SettingsPanelRow>
-                )}
-              </SettingsPanel>
-            </div>
-
-            {/* Startup */}
-            {platform !== "linux" && (
-              <div>
-                <SectionHeader title={t("settingsPage.general.startup.title")} />
-                <SettingsPanel>
-                  <SettingsPanelRow>
-                    <SettingsRow
-                      label={t("settingsPage.general.startup.launchAtLogin")}
-                      description={t("settingsPage.general.startup.launchAtLoginDescription")}
-                    >
-                      <Toggle
-                        checked={autoStartEnabled}
-                        onChange={(checked: boolean) => handleAutoStartChange(checked)}
-                        disabled={autoStartLoading}
-                      />
-                    </SettingsRow>
-                  </SettingsPanelRow>
-                </SettingsPanel>
-              </div>
-            )}
-
-            {/* Microphone */}
-            <div>
-              <SectionHeader
-                title={t("settingsPage.general.microphone.title")}
-                description={t("settingsPage.general.microphone.description")}
-              />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <MicrophoneSettings
-                    preferBuiltInMic={preferBuiltInMic}
-                    selectedMicDeviceId={selectedMicDeviceId}
-                    onPreferBuiltInChange={setPreferBuiltInMic}
-                    onDeviceSelect={setSelectedMicDeviceId}
-                  />
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-          </div>
-        );
-
-      case "transcription":
-        return (
-          <TranscriptionSection
-            isSignedIn={isSignedIn ?? false}
-            cloudTranscriptionMode={cloudTranscriptionMode}
-            setCloudTranscriptionMode={setCloudTranscriptionMode}
-            useLocalWhisper={useLocalWhisper}
-            setUseLocalWhisper={setUseLocalWhisper}
-            updateTranscriptionSettings={updateTranscriptionSettings}
-            cloudTranscriptionProvider={cloudTranscriptionProvider}
-            setCloudTranscriptionProvider={setCloudTranscriptionProvider}
-            cloudTranscriptionModel={cloudTranscriptionModel}
-            setCloudTranscriptionModel={setCloudTranscriptionModel}
-            localTranscriptionProvider={localTranscriptionProvider}
-            setLocalTranscriptionProvider={setLocalTranscriptionProvider}
-            whisperModel={whisperModel}
-            setWhisperModel={setWhisperModel}
-            parakeetModel={parakeetModel}
-            setParakeetModel={setParakeetModel}
-            openaiApiKey={openaiApiKey}
-            setOpenaiApiKey={setOpenaiApiKey}
-            groqApiKey={groqApiKey}
-            setGroqApiKey={setGroqApiKey}
-            mistralApiKey={mistralApiKey}
-            setMistralApiKey={setMistralApiKey}
-            customTranscriptionApiKey={customTranscriptionApiKey}
-            setCustomTranscriptionApiKey={setCustomTranscriptionApiKey}
-            cloudTranscriptionBaseUrl={cloudTranscriptionBaseUrl}
-            setCloudTranscriptionBaseUrl={setCloudTranscriptionBaseUrl}
-            toast={toast}
-          />
-        );
-
-      case "aiModels":
-        return (
-          <AiModelsSection
-            isSignedIn={isSignedIn ?? false}
-            cloudReasoningMode={cloudReasoningMode}
-            setCloudReasoningMode={setCloudReasoningMode}
-            useReasoningModel={useReasoningModel}
-            setUseReasoningModel={(value) => {
-              setUseReasoningModel(value);
-              updateReasoningSettings({ useReasoningModel: value });
-            }}
-            reasoningModel={reasoningModel}
-            setReasoningModel={setReasoningModel}
-            reasoningProvider={reasoningProvider}
-            setReasoningProvider={setReasoningProvider}
-            cloudReasoningBaseUrl={cloudReasoningBaseUrl}
-            setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
-            openaiApiKey={openaiApiKey}
-            setOpenaiApiKey={setOpenaiApiKey}
-            anthropicApiKey={anthropicApiKey}
-            setAnthropicApiKey={setAnthropicApiKey}
-            geminiApiKey={geminiApiKey}
-            setGeminiApiKey={setGeminiApiKey}
-            groqApiKey={groqApiKey}
-            setGroqApiKey={setGroqApiKey}
-            customReasoningApiKey={customReasoningApiKey}
-            setCustomReasoningApiKey={setCustomReasoningApiKey}
-            showAlertDialog={showAlertDialog}
-            toast={toast}
-          />
-        );
-
-      case "agentConfig":
-        return (
-          <div className="space-y-5">
-            <SectionHeader
-              title={t("settingsPage.agentConfig.title")}
-              description={t("settingsPage.agentConfig.description")}
-            />
-
-            {/* Agent Name */}
-            <div>
-              <p className="text-[13px] font-medium text-foreground mb-3">
-                {t("settingsPage.agentConfig.agentName")}
-              </p>
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder={t("settingsPage.agentConfig.placeholder")}
-                        value={agentNameInput}
-                        onChange={(e) => setAgentNameInput(e.target.value)}
-                        className="flex-1 text-center text-base font-mono"
-                      />
-                      <Button
-                        onClick={() => {
-                          const trimmed = agentNameInput.trim();
-                          const oldName = agentName;
-                          setAgentName(trimmed);
-                          setAgentNameInput(trimmed);
-                          let dict = customDictionary.filter((w) => w !== oldName);
-                          if (trimmed && !dict.includes(trimmed)) dict = [trimmed, ...dict];
-                          setCustomDictionary(dict);
-                          showAlertDialog({
-                            title: t("settingsPage.agentConfig.dialogs.updatedTitle"),
-                            description: t("settingsPage.agentConfig.dialogs.updatedDescription", {
-                              name: trimmed,
-                            }),
-                          });
-                        }}
-                        disabled={!agentNameInput.trim()}
-                        size="sm"
-                      >
-                        {t("settingsPage.agentConfig.save")}
-                      </Button>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground/60">
-                      {t("settingsPage.agentConfig.helper")}
-                    </p>
-                  </div>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* How it works */}
-            <div>
-              <SectionHeader title={t("settingsPage.agentConfig.howItWorksTitle")} />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed">
-                    {t("settingsPage.agentConfig.howItWorksDescription", { agentName })}
-                  </p>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* Examples */}
-            <div>
-              <SectionHeader title={t("settingsPage.agentConfig.examplesTitle")} />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <div className="space-y-2.5">
-                    {[
-                      {
-                        input: `Hey ${agentName}, write a formal email about the budget`,
-                        mode: t("settingsPage.agentConfig.instructionMode"),
-                      },
-                      {
-                        input: `Hey ${agentName}, make this more professional`,
-                        mode: t("settingsPage.agentConfig.instructionMode"),
-                      },
-                      {
-                        input: `Hey ${agentName}, convert this to bullet points`,
-                        mode: t("settingsPage.agentConfig.instructionMode"),
-                      },
-                      {
-                        input: t("settingsPage.agentConfig.cleanupExample"),
-                        mode: t("settingsPage.agentConfig.cleanupMode"),
-                      },
-                    ].map((example, i) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <span
-                          className={`shrink-0 mt-0.5 text-[10px] font-medium uppercase tracking-wider px-1.5 py-px rounded ${
-                            example.mode === t("settingsPage.agentConfig.instructionMode")
-                              ? "bg-primary/10 text-primary dark:bg-primary/15"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {example.mode}
-                        </span>
-                        <p className="text-[12px] text-muted-foreground leading-relaxed">
-                          "{example.input}"
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-          </div>
-        );
-
-      case "prompts":
-        return (
-          <div className="space-y-5">
-            <SectionHeader
-              title={t("settingsPage.prompts.title")}
-              description={t("settingsPage.prompts.description")}
-            />
-
-            <PromptStudio />
           </div>
         );
 

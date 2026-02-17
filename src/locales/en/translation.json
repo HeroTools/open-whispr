@@ -865,8 +865,16 @@
         "label": "Dictionary"
       },
       "general": {
-        "description": "Appearance, hotkey & startup",
+        "description": "Appearance, sounds & startup",
         "label": "Preferences"
+      },
+      "hotkeys": {
+        "description": "Dictation hotkey & activation",
+        "label": "Hotkeys"
+      },
+      "softwareUpdates": {
+        "description": "Check & install updates",
+        "label": "Software Updates"
       },
       "permissions": {
         "description": "Microphone & accessibility",

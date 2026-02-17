@@ -868,6 +868,14 @@
         "description": "外観・ホットキー・起動設定",
         "label": "環境設定"
       },
+      "hotkeys": {
+        "description": "ディクテーションホットキーと起動モード",
+        "label": "ホットキー"
+      },
+      "softwareUpdates": {
+        "description": "アップデートの確認とインストール",
+        "label": "ソフトウェアアップデート"
+      },
       "permissions": {
         "description": "マイクとアクセシビリティ",
         "label": "権限"

@@ -868,6 +868,14 @@
         "description": "Apariencia, atajo e inicio",
         "label": "Preferencias"
       },
+      "hotkeys": {
+        "description": "Atajo de dictado y activación",
+        "label": "Atajos"
+      },
+      "softwareUpdates": {
+        "description": "Buscar e instalar actualizaciones",
+        "label": "Actualizaciones"
+      },
       "permissions": {
         "description": "Micrófono y accesibilidad",
         "label": "Permisos"

@@ -868,6 +868,14 @@
         "description": "Apparence, raccourci et démarrage",
         "label": "Préférences"
       },
+      "hotkeys": {
+        "description": "Raccourci de dictée et activation",
+        "label": "Raccourcis"
+      },
+      "softwareUpdates": {
+        "description": "Vérifier et installer les mises à jour",
+        "label": "Mises à jour"
+      },
       "permissions": {
         "description": "Microphone et accessibilité",
         "label": "Permissions"

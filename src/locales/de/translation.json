@@ -868,6 +868,14 @@
         "description": "Darstellung, Hotkey & Start",
         "label": "Einstellungen"
       },
+      "hotkeys": {
+        "description": "Diktat-Hotkey & Aktivierung",
+        "label": "Hotkeys"
+      },
+      "softwareUpdates": {
+        "description": "Updates prüfen & installieren",
+        "label": "Software-Updates"
+      },
       "permissions": {
         "description": "Mikrofon & Bedienungshilfen",
         "label": "Berechtigungen"

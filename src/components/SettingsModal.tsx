@@ -10,6 +10,8 @@ import {
   Wrench,
   ShieldCheck,
   Lock,
+  Keyboard,
+  RefreshCw,
 } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
@@ -41,6 +43,13 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
         group: t("settingsModal.groups.app"),
       },
       {
+        id: "hotkeys",
+        label: t("settingsModal.sections.hotkeys.label"),
+        icon: Keyboard,
+        description: t("settingsModal.sections.hotkeys.description"),
+        group: t("settingsModal.groups.app"),
+      },
+      {
         id: "transcription",
         label: t("settingsModal.sections.transcription.label"),
         icon: Mic,
@@ -67,6 +76,13 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
         icon: Sparkles,
         description: t("settingsModal.sections.prompts.description"),
         group: t("settingsModal.groups.intelligence"),
+      },
+      {
+        id: "softwareUpdates",
+        label: t("settingsModal.sections.softwareUpdates.label"),
+        icon: RefreshCw,
+        description: t("settingsModal.sections.softwareUpdates.description"),
+        group: t("settingsModal.groups.system"),
       },
       {
         id: "privacy",

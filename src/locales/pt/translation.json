@@ -840,6 +840,14 @@
         "description": "Aparência, atalho e inicialização",
         "label": "Preferências"
       },
+      "hotkeys": {
+        "description": "Atalho de ditado e ativação",
+        "label": "Atalhos"
+      },
+      "softwareUpdates": {
+        "description": "Verificar e instalar atualizações",
+        "label": "Atualizações"
+      },
       "permissions": {
         "description": "Microfone e acessibilidade",
         "label": "Permissões"

@@ -868,6 +868,14 @@
         "description": "外觀、快捷鍵與啟動",
         "label": "偏好設定"
       },
+      "hotkeys": {
+        "description": "聽寫快捷鍵與啟用模式",
+        "label": "快捷鍵"
+      },
+      "softwareUpdates": {
+        "description": "檢查並安裝更新",
+        "label": "軟體更新"
+      },
       "permissions": {
         "description": "麥克風與輔助使用",
         "label": "權限"
