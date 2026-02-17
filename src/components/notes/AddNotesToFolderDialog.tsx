@@ -105,10 +105,7 @@ export default function AddNotesToFolderDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="sm:max-w-96 p-0 gap-0 overflow-hidden"
-        aria-describedby={undefined}
-      >
+      <DialogContent className="sm:max-w-96 p-0 gap-0 overflow-hidden" aria-describedby={undefined}>
         <DialogTitle className="sr-only">{t("notes.addToFolder.title")}</DialogTitle>
 
         <div className="px-4 pr-12 pt-4 pb-2">
@@ -170,9 +167,7 @@ export default function AddNotesToFolderDialog({
                             : "border-foreground/15 dark:border-white/15"
                         )}
                       >
-                        {isSelected && (
-                          <Check size={10} className="text-white" strokeWidth={2.5} />
-                        )}
+                        {isSelected && <Check size={10} className="text-white" strokeWidth={2.5} />}
                       </div>
                     </button>
                   );

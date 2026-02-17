@@ -54,7 +54,16 @@ function relativeTime(dateStr: string): string {
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-export default function NoteListItem({ note, isActive, onClick, onDelete, folders, currentFolderId, onMoveToFolder, onCreateFolderAndMove }: NoteListItemProps) {
+export default function NoteListItem({
+  note,
+  isActive,
+  onClick,
+  onDelete,
+  folders,
+  currentFolderId,
+  onMoveToFolder,
+  onCreateFolderAndMove,
+}: NoteListItemProps) {
   const { t } = useTranslation();
   const preview = stripMarkdown(note.content);
   const [folderSearch, setFolderSearch] = useState("");
@@ -62,7 +71,10 @@ export default function NoteListItem({ note, isActive, onClick, onDelete, folder
   const [isCreating, setIsCreating] = useState(false);
 
   const filteredFolders = useMemo(
-    () => folderSearch ? folders.filter((f) => f.name.toLowerCase().includes(folderSearch.toLowerCase())) : folders,
+    () =>
+      folderSearch
+        ? folders.filter((f) => f.name.toLowerCase().includes(folderSearch.toLowerCase()))
+        : folders,
     [folders, folderSearch]
   );
 
@@ -96,9 +108,15 @@ export default function NoteListItem({ note, isActive, onClick, onDelete, folder
             <span className="text-[9px] text-muted-foreground/30 tabular-nums group-hover:opacity-0 transition-opacity">
               {relativeTime(note.updated_at)}
             </span>
-            <DropdownMenu onOpenChange={(open) => {
-              if (!open) { setFolderSearch(""); setIsCreating(false); setNewFolderName(""); }
-            }}>
+            <DropdownMenu
+              onOpenChange={(open) => {
+                if (!open) {
+                  setFolderSearch("");
+                  setIsCreating(false);
+                  setNewFolderName("");
+                }
+              }}
+            >
               <DropdownMenuTrigger asChild>
                 <Button
                   size="icon"
@@ -122,7 +140,10 @@ export default function NoteListItem({ note, isActive, onClick, onDelete, folder
                     {folders.length > 5 && (
                       <>
                         <div className="relative px-2 py-1.5">
-                          <Search size={9} className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/15 pointer-events-none" />
+                          <Search
+                            size={9}
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/15 pointer-events-none"
+                          />
                           <input
                             value={folderSearch}
                             onChange={(e) => setFolderSearch(e.target.value)}
@@ -154,7 +175,9 @@ export default function NoteListItem({ note, isActive, onClick, onDelete, folder
                         );
                       })}
                       {folderSearch && filteredFolders.length === 0 && (
-                        <p className="text-[10px] text-foreground/20 text-center py-1.5">{t("notes.context.noResults")}</p>
+                        <p className="text-[10px] text-foreground/20 text-center py-1.5">
+                          {t("notes.context.noResults")}
+                        </p>
                       )}
                     </div>
                     <DropdownMenuSeparator />

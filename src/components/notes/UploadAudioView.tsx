@@ -254,9 +254,10 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
         setResult(res.text);
 
         const textFallback = res.text.trim().split(/\s+/).slice(0, 6).join(" ");
-        const fallbackTitle = textFallback.length > 0
-          ? textFallback + (res.text.trim().split(/\s+/).length > 6 ? "..." : "")
-          : file.name.replace(/\.[^.]+$/, "");
+        const fallbackTitle =
+          textFallback.length > 0
+            ? textFallback + (res.text.trim().split(/\s+/).length > 6 ? "..." : "")
+            : file.name.replace(/\.[^.]+$/, "");
         const aiTitle = await generateTitle(res.text);
         const title = aiTitle || fallbackTitle;
 
@@ -686,7 +687,9 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                   <Button
                     variant="default"
                     size="sm"
-                    onClick={() => onNoteCreated(noteId, selectedFolderId ? Number(selectedFolderId) : null)}
+                    onClick={() =>
+                      onNoteCreated(noteId, selectedFolderId ? Number(selectedFolderId) : null)
+                    }
                     className="h-8 text-[11px]"
                   >
                     {t("notes.upload.openNote")}

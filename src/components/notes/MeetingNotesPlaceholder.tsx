@@ -12,7 +12,15 @@ export default function MeetingNotesPlaceholder() {
         fill="none"
       >
         <ellipse cx="36" cy="48" rx="24" ry="2" fill="currentColor" fillOpacity={0.03} />
-        <circle cx="24" cy="20" r="7" fill="currentColor" fillOpacity={0.04} stroke="currentColor" strokeOpacity={0.08} />
+        <circle
+          cx="24"
+          cy="20"
+          r="7"
+          fill="currentColor"
+          fillOpacity={0.04}
+          stroke="currentColor"
+          strokeOpacity={0.08}
+        />
         <path
           d="M13 40c0-6 5-11 11-11s11 5 11 11"
           fill="currentColor"
@@ -20,7 +28,15 @@ export default function MeetingNotesPlaceholder() {
           stroke="currentColor"
           strokeOpacity={0.06}
         />
-        <circle cx="48" cy="20" r="7" fill="currentColor" fillOpacity={0.04} stroke="currentColor" strokeOpacity={0.08} />
+        <circle
+          cx="48"
+          cy="20"
+          r="7"
+          fill="currentColor"
+          fillOpacity={0.04}
+          stroke="currentColor"
+          strokeOpacity={0.08}
+        />
         <path
           d="M37 40c0-6 5-11 11-11s11 5 11 11"
           fill="currentColor"
@@ -28,11 +44,55 @@ export default function MeetingNotesPlaceholder() {
           stroke="currentColor"
           strokeOpacity={0.06}
         />
-        <rect x="16" y="6" width="14" height="8" rx="3" fill="currentColor" fillOpacity={0.04} stroke="currentColor" strokeOpacity={0.07} />
-        <rect x="18.5" y="8.5" width="5" height="1" rx="0.5" fill="currentColor" fillOpacity={0.06} />
-        <rect x="18.5" y="11" width="8" height="1" rx="0.5" fill="currentColor" fillOpacity={0.04} />
-        <rect x="44" y="9" width="12" height="7" rx="2.5" fill="currentColor" fillOpacity={0.03} stroke="currentColor" strokeOpacity={0.06} />
-        <rect x="46.5" y="11.5" width="4" height="1" rx="0.5" fill="currentColor" fillOpacity={0.05} />
+        <rect
+          x="16"
+          y="6"
+          width="14"
+          height="8"
+          rx="3"
+          fill="currentColor"
+          fillOpacity={0.04}
+          stroke="currentColor"
+          strokeOpacity={0.07}
+        />
+        <rect
+          x="18.5"
+          y="8.5"
+          width="5"
+          height="1"
+          rx="0.5"
+          fill="currentColor"
+          fillOpacity={0.06}
+        />
+        <rect
+          x="18.5"
+          y="11"
+          width="8"
+          height="1"
+          rx="0.5"
+          fill="currentColor"
+          fillOpacity={0.04}
+        />
+        <rect
+          x="44"
+          y="9"
+          width="12"
+          height="7"
+          rx="2.5"
+          fill="currentColor"
+          fillOpacity={0.03}
+          stroke="currentColor"
+          strokeOpacity={0.06}
+        />
+        <rect
+          x="46.5"
+          y="11.5"
+          width="4"
+          height="1"
+          rx="0.5"
+          fill="currentColor"
+          fillOpacity={0.05}
+        />
       </svg>
       <h3 className="text-[13px] font-semibold text-foreground/60 mb-1">
         {t("notes.meeting.title")}

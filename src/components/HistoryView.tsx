@@ -161,7 +161,15 @@ export default function HistoryView({
                   stroke="currentColor"
                   strokeOpacity={0.1}
                 />
-                <rect x="28" y="12" width="8" height="3" rx="1.5" fill="currentColor" fillOpacity={0.06} />
+                <rect
+                  x="28"
+                  y="12"
+                  width="8"
+                  height="3"
+                  rx="1.5"
+                  fill="currentColor"
+                  fillOpacity={0.06}
+                />
                 <path
                   d="M18 28c0 7.7 6.3 14 14 14s14-6.3 14-14"
                   fill="none"
@@ -170,12 +178,54 @@ export default function HistoryView({
                   strokeWidth={1.5}
                   strokeLinecap="round"
                 />
-                <line x1="32" y1="42" x2="32" y2="50" stroke="currentColor" strokeOpacity={0.07} strokeWidth={1.5} strokeLinecap="round" />
-                <line x1="26" y1="50" x2="38" y2="50" stroke="currentColor" strokeOpacity={0.07} strokeWidth={1.5} strokeLinecap="round" />
-                <path d="M12 20a2 2 0 0 1 0 8" stroke="currentColor" strokeOpacity={0.04} strokeWidth={1.5} strokeLinecap="round" />
-                <path d="M8 18a2 2 0 0 1 0 12" stroke="currentColor" strokeOpacity={0.03} strokeWidth={1.5} strokeLinecap="round" />
-                <path d="M52 20a2 2 0 0 0 0 8" stroke="currentColor" strokeOpacity={0.04} strokeWidth={1.5} strokeLinecap="round" />
-                <path d="M56 18a2 2 0 0 0 0 12" stroke="currentColor" strokeOpacity={0.03} strokeWidth={1.5} strokeLinecap="round" />
+                <line
+                  x1="32"
+                  y1="42"
+                  x2="32"
+                  y2="50"
+                  stroke="currentColor"
+                  strokeOpacity={0.07}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                />
+                <line
+                  x1="26"
+                  y1="50"
+                  x2="38"
+                  y2="50"
+                  stroke="currentColor"
+                  strokeOpacity={0.07}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M12 20a2 2 0 0 1 0 8"
+                  stroke="currentColor"
+                  strokeOpacity={0.04}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M8 18a2 2 0 0 1 0 12"
+                  stroke="currentColor"
+                  strokeOpacity={0.03}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M52 20a2 2 0 0 0 0 8"
+                  stroke="currentColor"
+                  strokeOpacity={0.04}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                />
+                <path
+                  d="M56 18a2 2 0 0 0 0 12"
+                  stroke="currentColor"
+                  strokeOpacity={0.03}
+                  strokeWidth={1.5}
+                  strokeLinecap="round"
+                />
               </svg>
               <h3 className="text-[13px] font-semibold text-foreground/60 mb-2">
                 No transcriptions yet
