@@ -1367,7 +1367,8 @@
       "apply": "Appliquer",
       "cancel": "Annuler",
       "enhancing": "Amélioration en cours...",
-      "enhance": "Améliorer"
+      "enhance": "Améliorer",
+      "noProviders": "Configurez les clés API dans les Paramètres pour utiliser les modèles IA"
     },
     "upload": {
       "title": "Téléverser un fichier audio",

@@ -1367,7 +1367,8 @@
       "apply": "Applica",
       "cancel": "Annulla",
       "enhancing": "Miglioramento in corso...",
-      "enhance": "Migliora"
+      "enhance": "Migliora",
+      "noProviders": "Configura le chiavi API nelle Impostazioni per usare i modelli IA"
     },
     "upload": {
       "title": "Carica audio",

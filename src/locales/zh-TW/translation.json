@@ -1367,7 +1367,8 @@
       "apply": "套用",
       "cancel": "取消",
       "enhancing": "增強中...",
-      "enhance": "增強"
+      "enhance": "增強",
+      "noProviders": "在設定中配置 API 金鑰以使用 AI 模型"
     },
     "upload": {
       "title": "上傳音訊",

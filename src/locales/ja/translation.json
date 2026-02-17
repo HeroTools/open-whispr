@@ -1280,6 +1280,17 @@
       "update": "更新",
       "cancel": "キャンセル",
       "noActions": "カスタムアクションはまだありません"
+    },
+    "enhance": {
+      "title": "AIで強化",
+      "defaultPrompt": "文法を修正し、構造を改善し、元の意味をすべて保持しながら、読みやすさのためにこのノートをフォーマットしてください。",
+      "placeholder": "AIにノートをどう処理させますか？",
+      "tryAgain": "再試行",
+      "apply": "適用",
+      "cancel": "キャンセル",
+      "enhancing": "強化中...",
+      "enhance": "強化",
+      "noProviders": "設定でAPIキーを構成してAIモデルを使用してください"
     }
   }
 }

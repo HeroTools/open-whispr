@@ -1367,7 +1367,8 @@
       "apply": "Aplicar",
       "cancel": "Cancelar",
       "enhancing": "Aprimorando...",
-      "enhance": "Aprimorar"
+      "enhance": "Aprimorar",
+      "noProviders": "Configure as chaves de API nas Configurações para usar modelos de IA"
     },
     "upload": {
       "title": "Enviar áudio",

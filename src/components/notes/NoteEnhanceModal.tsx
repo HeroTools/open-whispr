@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Sparkles, Loader2, ChevronDown } from "lucide-react";
+import { Sparkles, Loader2 } from "lucide-react";
 import { Button } from "../ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../ui/dialog";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
 import reasoningService from "../../services/ReasoningService";
-import { getAllReasoningModels } from "../../models/ModelRegistry";
+import NoteModelPicker from "./NoteModelPicker";
 import { cn } from "../lib/utils";
 import type { ActionItem } from "../../types/electron";
 
@@ -39,18 +39,11 @@ export default function NoteEnhanceModal({
   const [error, setError] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
 
-  const models = getAllReasoningModels();
-
   useEffect(() => {
     if (open && !selectedModel) {
-      const stored = localStorage.getItem("reasoningModel") || "";
-      if (stored && models.some((m) => m.value === stored)) {
-        setSelectedModel(stored);
-      } else if (models.length > 0) {
-        setSelectedModel(models[0].value);
-      }
+      setSelectedModel(localStorage.getItem("reasoningModel") || "");
     }
-  }, [open, selectedModel, models]);
+  }, [open, selectedModel]);
 
   useEffect(() => {
     if (open) {
@@ -97,30 +90,14 @@ export default function NoteEnhanceModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="relative">
-          <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
-            disabled={state === "enhancing"}
-            className={cn(
-              "w-full h-8 px-3 pr-8 rounded-md text-[12px] appearance-none",
-              "bg-foreground/3 dark:bg-white/4 border border-border/30 dark:border-white/6",
-              "text-foreground/80 outline-none",
-              "focus:border-primary/30 transition-colors duration-150",
-              "disabled:opacity-40"
-            )}
-          >
-            {models.map((m) => (
-              <option key={m.value} value={m.value}>
-                {m.fullLabel}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            size={12}
-            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-foreground/30 pointer-events-none"
-          />
-        </div>
+        <NoteModelPicker
+          selectedModel={selectedModel}
+          onModelSelect={(modelId) => {
+            setSelectedModel(modelId);
+            localStorage.setItem("reasoningModel", modelId);
+          }}
+          disabled={state === "enhancing"}
+        />
 
         <textarea
           value={prompt}

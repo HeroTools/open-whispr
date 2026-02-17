@@ -1367,7 +1367,8 @@
       "apply": "应用",
       "cancel": "取消",
       "enhancing": "增强中...",
-      "enhance": "增强"
+      "enhance": "增强",
+      "noProviders": "在设置中配置 API 密钥以使用 AI 模型"
     },
     "upload": {
       "title": "上传音频",

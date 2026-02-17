@@ -1367,7 +1367,8 @@
       "apply": "Apply",
       "cancel": "Cancel",
       "enhancing": "Enhancing...",
-      "enhance": "Enhance"
+      "enhance": "Enhance",
+      "noProviders": "Configure API keys in Settings to use AI models"
     },
     "upload": {
       "title": "Upload Audio",

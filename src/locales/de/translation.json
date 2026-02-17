@@ -1367,7 +1367,8 @@
       "apply": "Anwenden",
       "cancel": "Abbrechen",
       "enhancing": "Wird verbessert...",
-      "enhance": "Verbessern"
+      "enhance": "Verbessern",
+      "noProviders": "Konfigurieren Sie API-Schlüssel in den Einstellungen, um KI-Modelle zu verwenden"
     },
     "upload": {
       "title": "Audio hochladen",
