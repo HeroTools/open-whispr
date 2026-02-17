@@ -285,6 +285,9 @@ $RECYCLE.BIN/
 .agents/
 
 # AI agent skills (keep local)
+CLAUDE.md
+GEMINI.md
+OPENCODE.md
 .agents/
 .agent/
 .claude/skills/
