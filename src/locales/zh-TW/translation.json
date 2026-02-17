@@ -1413,18 +1413,18 @@
       "newFolder": "新增資料夾"
     },
     "actions": {
-      "manage": "Manage Actions...",
-      "manageTitle": "Custom Actions",
-      "addAction": "New Action",
-      "editAction": "Edit Action",
-      "namePlaceholder": "Action name",
-      "descriptionPlaceholder": "Brief description (optional)",
-      "promptPlaceholder": "What should the AI do with the note content?",
-      "builtIn": "Built-in",
-      "save": "Save",
-      "update": "Update",
-      "cancel": "Cancel",
-      "noActions": "No custom actions yet"
+      "manage": "管理動作...",
+      "manageTitle": "自訂動作",
+      "addAction": "新增動作",
+      "editAction": "編輯動作",
+      "namePlaceholder": "動作名稱",
+      "descriptionPlaceholder": "簡要描述（選填）",
+      "promptPlaceholder": "AI 應如何處理筆記內容？",
+      "builtIn": "內建",
+      "save": "儲存",
+      "update": "更新",
+      "cancel": "取消",
+      "noActions": "尚無自訂動作"
     }
   }
 }

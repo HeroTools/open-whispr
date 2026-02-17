@@ -1413,18 +1413,18 @@
       "newFolder": "Nueva carpeta"
     },
     "actions": {
-      "manage": "Manage Actions...",
-      "manageTitle": "Custom Actions",
-      "addAction": "New Action",
-      "editAction": "Edit Action",
-      "namePlaceholder": "Action name",
-      "descriptionPlaceholder": "Brief description (optional)",
-      "promptPlaceholder": "What should the AI do with the note content?",
-      "builtIn": "Built-in",
-      "save": "Save",
-      "update": "Update",
-      "cancel": "Cancel",
-      "noActions": "No custom actions yet"
+      "manage": "Gestionar acciones...",
+      "manageTitle": "Acciones personalizadas",
+      "addAction": "Nueva acción",
+      "editAction": "Editar acción",
+      "namePlaceholder": "Nombre de la acción",
+      "descriptionPlaceholder": "Descripción breve (opcional)",
+      "promptPlaceholder": "¿Qué debe hacer la IA con el contenido de la nota?",
+      "builtIn": "Integrada",
+      "save": "Guardar",
+      "update": "Actualizar",
+      "cancel": "Cancelar",
+      "noActions": "Aún no hay acciones personalizadas"
     }
   }
 }
