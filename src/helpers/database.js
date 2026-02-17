@@ -91,6 +91,34 @@ class DatabaseManager {
           .run(personalFolder.id);
       }
 
+      this.db.exec(`
+        CREATE TABLE IF NOT EXISTS actions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          prompt TEXT NOT NULL,
+          icon TEXT NOT NULL DEFAULT 'sparkles',
+          is_builtin INTEGER NOT NULL DEFAULT 0,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      const actionCount = this.db.prepare("SELECT COUNT(*) as count FROM actions").get();
+      if (actionCount.count === 0) {
+        this.db
+          .prepare(
+            "INSERT INTO actions (name, description, prompt, icon, is_builtin, sort_order) VALUES (?, ?, ?, ?, 1, 0)"
+          )
+          .run(
+            "Clean Up Notes",
+            "Fix grammar, structure, and formatting",
+            "Clean up grammar, improve structure, and format these notes for readability while preserving all original meaning.",
+            "sparkles"
+          );
+      }
+
       return true;
     } catch (error) {
       console.error("Database initialization failed:", error.message);
@@ -381,6 +409,88 @@ class DatabaseManager {
         .all();
     } catch (error) {
       console.error("Error getting folder note counts:", error.message);
+      throw error;
+    }
+  }
+
+  getActions() {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db.prepare("SELECT * FROM actions ORDER BY sort_order ASC, created_at ASC").all();
+    } catch (error) {
+      console.error("Error getting actions:", error.message);
+      throw error;
+    }
+  }
+
+  getAction(id) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      return this.db.prepare("SELECT * FROM actions WHERE id = ?").get(id) || null;
+    } catch (error) {
+      console.error("Error getting action:", error.message);
+      throw error;
+    }
+  }
+
+  createAction(name, description, prompt, icon = "sparkles") {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const trimmedName = (name || "").trim();
+      const trimmedPrompt = (prompt || "").trim();
+      if (!trimmedName) return { success: false, error: "Action name is required" };
+      if (!trimmedPrompt) return { success: false, error: "Action prompt is required" };
+      const maxOrder = this.db.prepare("SELECT MAX(sort_order) as max_order FROM actions").get();
+      const sortOrder = (maxOrder?.max_order ?? 0) + 1;
+      const result = this.db
+        .prepare(
+          "INSERT INTO actions (name, description, prompt, icon, sort_order) VALUES (?, ?, ?, ?, ?)"
+        )
+        .run(trimmedName, (description || "").trim(), trimmedPrompt, icon || "sparkles", sortOrder);
+      const action = this.db
+        .prepare("SELECT * FROM actions WHERE id = ?")
+        .get(result.lastInsertRowid);
+      return { success: true, action };
+    } catch (error) {
+      console.error("Error creating action:", error.message);
+      throw error;
+    }
+  }
+
+  updateAction(id, updates) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const allowedFields = ["name", "description", "prompt", "icon", "sort_order"];
+      const fields = [];
+      const values = [];
+      for (const [key, value] of Object.entries(updates)) {
+        if (allowedFields.includes(key) && value !== undefined) {
+          fields.push(`${key} = ?`);
+          values.push(value);
+        }
+      }
+      if (fields.length === 0) return { success: false };
+      fields.push("updated_at = CURRENT_TIMESTAMP");
+      values.push(id);
+      this.db.prepare(`UPDATE actions SET ${fields.join(", ")} WHERE id = ?`).run(...values);
+      const action = this.db.prepare("SELECT * FROM actions WHERE id = ?").get(id);
+      return { success: true, action };
+    } catch (error) {
+      console.error("Error updating action:", error.message);
+      throw error;
+    }
+  }
+
+  deleteAction(id) {
+    try {
+      if (!this.db) throw new Error("Database not initialized");
+      const action = this.db.prepare("SELECT * FROM actions WHERE id = ?").get(id);
+      if (!action) return { success: false, error: "Action not found" };
+      if (action.is_builtin) return { success: false, error: "Cannot delete built-in actions" };
+      this.db.prepare("DELETE FROM actions WHERE id = ?").run(id);
+      return { success: true, id };
+    } catch (error) {
+      console.error("Error deleting action:", error.message);
       throw error;
     }
   }

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Eye, Pencil, Loader2, Sparkles, Download, FileText } from "lucide-react";
+import { Eye, Pencil, Loader2, Download, FileText } from "lucide-react";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
 import {
   DropdownMenu,
@@ -24,11 +24,11 @@ interface NoteEditorProps {
   isProcessing: boolean;
   onStartRecording: () => void;
   onStopRecording: () => void;
-  onOpenEnhance?: () => void;
   onExportNote?: (format: "md" | "txt") => void;
   hasEnhancedContent?: boolean;
   enhancedContent?: string | null;
   isEnhancementStale?: boolean;
+  actionPicker?: React.ReactNode;
 }
 
 export default function NoteEditor({
@@ -43,11 +43,11 @@ export default function NoteEditor({
   onFinalTranscriptConsumed,
   onStartRecording,
   onStopRecording,
-  onOpenEnhance,
   onExportNote,
   hasEnhancedContent,
   enhancedContent,
   isEnhancementStale,
+  actionPicker,
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [isPreview, setIsPreview] = useState(false);
@@ -232,16 +232,6 @@ export default function NoteEditor({
           </button>
         )}
 
-        {onOpenEnhance && (
-          <button
-            onClick={onOpenEnhance}
-            className="flex items-center gap-1.5 h-6 px-2 rounded-md text-[10px] font-medium text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/4 transition-all duration-150"
-          >
-            <Sparkles size={10} />
-            {isEnhancementStale ? t("notes.editor.reEnhance") : t("notes.editor.enhance")}
-          </button>
-        )}
-
         {onExportNote && (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -329,6 +319,7 @@ export default function NoteEditor({
           isProcessing={isProcessing}
           onStart={onStartRecording}
           onStop={onStopRecording}
+          actionPicker={actionPicker}
         />
       </div>
     </div>

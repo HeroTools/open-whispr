@@ -7,11 +7,13 @@ import { MarkdownRenderer } from "../ui/MarkdownRenderer";
 import reasoningService from "../../services/ReasoningService";
 import { getAllReasoningModels } from "../../models/ModelRegistry";
 import { cn } from "../lib/utils";
+import type { ActionItem } from "../../types/electron";
 
 interface NoteEnhanceModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   noteContent: string;
+  action: ActionItem | null;
   onApply: (enhancedContent: string, prompt: string) => void;
 }
 
@@ -27,11 +29,12 @@ export default function NoteEnhanceModal({
   open,
   onOpenChange,
   noteContent,
+  action,
   onApply,
 }: NoteEnhanceModalProps) {
   const { t } = useTranslation();
   const [state, setState] = useState<ModalState>("idle");
-  const [prompt, setPrompt] = useState(t("notes.enhance.defaultPrompt") || DEFAULT_PROMPT_FALLBACK);
+  const [prompt, setPrompt] = useState("");
   const [result, setResult] = useState("");
   const [error, setError] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
@@ -51,11 +54,12 @@ export default function NoteEnhanceModal({
 
   useEffect(() => {
     if (open) {
+      setPrompt(action?.prompt || t("notes.enhance.defaultPrompt") || DEFAULT_PROMPT_FALLBACK);
       setState("idle");
       setResult("");
       setError("");
     }
-  }, [open]);
+  }, [open, action]);
 
   const handleEnhance = async () => {
     if (!selectedModel || !noteContent.trim()) return;
@@ -89,7 +93,7 @@ export default function NoteEnhanceModal({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-[14px]">
             <Sparkles size={13} className="text-primary" />
-            {t("notes.enhance.title")}
+            {action ? action.name : t("notes.enhance.title")}
           </DialogTitle>
         </DialogHeader>
 

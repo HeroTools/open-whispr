@@ -336,6 +336,45 @@ class IPCHandlers {
       return this.databaseManager.getFolderNoteCounts();
     });
 
+    // Action handlers
+    ipcMain.handle("db-get-actions", async () => {
+      return this.databaseManager.getActions();
+    });
+
+    ipcMain.handle("db-get-action", async (event, id) => {
+      return this.databaseManager.getAction(id);
+    });
+
+    ipcMain.handle("db-create-action", async (event, name, description, prompt, icon) => {
+      const result = this.databaseManager.createAction(name, description, prompt, icon);
+      if (result?.success && result?.action) {
+        setImmediate(() => {
+          this.broadcastToWindows("action-created", result.action);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-update-action", async (event, id, updates) => {
+      const result = this.databaseManager.updateAction(id, updates);
+      if (result?.success && result?.action) {
+        setImmediate(() => {
+          this.broadcastToWindows("action-updated", result.action);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-action", async (event, id) => {
+      const result = this.databaseManager.deleteAction(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("action-deleted", { id });
+        });
+      }
+      return result;
+    });
+
     ipcMain.handle("export-note", async (event, noteId, format) => {
       try {
         const note = this.databaseManager.getNote(noteId);

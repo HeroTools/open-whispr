@@ -30,6 +30,18 @@ export interface FolderItem {
   created_at: string;
 }
 
+export interface ActionItem {
+  id: number;
+  name: string;
+  description: string;
+  prompt: string;
+  icon: string;
+  is_builtin: number;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface WhisperCheckResult {
   installed: boolean;
   working: boolean;
@@ -265,6 +277,30 @@ declare global {
         name: string
       ) => Promise<{ success: boolean; folder?: FolderItem; error?: string }>;
       getFolderNoteCounts: () => Promise<Array<{ folder_id: number; count: number }>>;
+
+      // Action operations
+      getActions: () => Promise<ActionItem[]>;
+      getAction: (id: number) => Promise<ActionItem | null>;
+      createAction: (
+        name: string,
+        description: string,
+        prompt: string,
+        icon?: string
+      ) => Promise<{ success: boolean; action?: ActionItem; error?: string }>;
+      updateAction: (
+        id: number,
+        updates: {
+          name?: string;
+          description?: string;
+          prompt?: string;
+          icon?: string;
+          sort_order?: number;
+        }
+      ) => Promise<{ success: boolean; action?: ActionItem; error?: string }>;
+      deleteAction: (id: number) => Promise<{ success: boolean; id?: number; error?: string }>;
+      onActionCreated?: (callback: (action: ActionItem) => void) => () => void;
+      onActionUpdated?: (callback: (action: ActionItem) => void) => () => void;
+      onActionDeleted?: (callback: (payload: { id: number }) => void) => () => void;
 
       // Audio file operations
       selectAudioFile: () => Promise<{ canceled: boolean; filePath?: string }>;

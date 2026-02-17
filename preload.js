@@ -55,6 +55,14 @@ contextBridge.exposeInMainWorld("electronAPI", {
   renameFolder: (id, name) => ipcRenderer.invoke("db-rename-folder", id, name),
   getFolderNoteCounts: () => ipcRenderer.invoke("db-get-folder-note-counts"),
 
+  // Action functions
+  getActions: () => ipcRenderer.invoke("db-get-actions"),
+  getAction: (id) => ipcRenderer.invoke("db-get-action", id),
+  createAction: (name, description, prompt, icon) =>
+    ipcRenderer.invoke("db-create-action", name, description, prompt, icon),
+  updateAction: (id, updates) => ipcRenderer.invoke("db-update-action", id, updates),
+  deleteAction: (id) => ipcRenderer.invoke("db-delete-action", id),
+
   // Audio file operations
   selectAudioFile: () => ipcRenderer.invoke("select-audio-file"),
   transcribeAudioFile: (filePath, options) =>
@@ -75,6 +83,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
     const listener = (_event, data) => callback?.(data);
     ipcRenderer.on("note-deleted", listener);
     return () => ipcRenderer.removeListener("note-deleted", listener);
+  },
+
+  onActionCreated: (callback) => {
+    const listener = (_event, action) => callback?.(action);
+    ipcRenderer.on("action-created", listener);
+    return () => ipcRenderer.removeListener("action-created", listener);
+  },
+  onActionUpdated: (callback) => {
+    const listener = (_event, action) => callback?.(action);
+    ipcRenderer.on("action-updated", listener);
+    return () => ipcRenderer.removeListener("action-updated", listener);
+  },
+  onActionDeleted: (callback) => {
+    const listener = (_event, data) => callback?.(data);
+    ipcRenderer.on("action-deleted", listener);
+    return () => ipcRenderer.removeListener("action-deleted", listener);
   },
 
   onTranscriptionAdded: (callback) => {

@@ -1411,6 +1411,20 @@
       "searchFolders": "搜索文件夹...",
       "noResults": "未找到文件夹",
       "newFolder": "新建文件夹"
+    },
+    "actions": {
+      "manage": "Manage Actions...",
+      "manageTitle": "Custom Actions",
+      "addAction": "New Action",
+      "editAction": "Edit Action",
+      "namePlaceholder": "Action name",
+      "descriptionPlaceholder": "Brief description (optional)",
+      "promptPlaceholder": "What should the AI do with the note content?",
+      "builtIn": "Built-in",
+      "save": "Save",
+      "update": "Update",
+      "cancel": "Cancel",
+      "noActions": "No custom actions yet"
     }
   }
 }

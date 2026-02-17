@@ -13,10 +13,12 @@ import { useToast } from "../ui/Toast";
 import NoteListItem from "./NoteListItem";
 import NoteEditor from "./NoteEditor";
 import NoteEnhanceModal from "./NoteEnhanceModal";
+import ActionPicker from "./ActionPicker";
+import ActionManagerDialog from "./ActionManagerDialog";
 import AddNotesToFolderDialog from "./AddNotesToFolderDialog";
 import { useNoteRecording } from "../../hooks/useNoteRecording";
 import { cn } from "../lib/utils";
-import type { FolderItem } from "../../types/electron";
+import type { FolderItem, ActionItem } from "../../types/electron";
 import {
   useNotes,
   useActiveNoteId,
@@ -39,6 +41,8 @@ export default function PersonalNotesView() {
   const [localContent, setLocalContent] = useState("");
   const [finalTranscript, setFinalTranscript] = useState<string | null>(null);
   const [showEnhanceModal, setShowEnhanceModal] = useState(false);
+  const [selectedAction, setSelectedAction] = useState<ActionItem | null>(null);
+  const [showActionManager, setShowActionManager] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activeNoteRef = useRef<number | null>(null);
   const localContentRef = useRef(localContent);
@@ -64,18 +68,19 @@ export default function PersonalNotesView() {
     [folders, activeFolderId]
   );
 
-  const { isRecording, isProcessing, partialTranscript, startRecording, stopRecording } = useNoteRecording({
-    onTranscriptionComplete: useCallback((text: string) => {
-      setFinalTranscript(text);
-    }, []),
-    onPartialTranscript: useCallback(() => {}, []),
-    onError: useCallback(
-      (error: { title: string; description: string }) => {
-        toast({ title: error.title, description: error.description, variant: "destructive" });
-      },
-      [toast]
-    ),
-  });
+  const { isRecording, isProcessing, partialTranscript, startRecording, stopRecording } =
+    useNoteRecording({
+      onTranscriptionComplete: useCallback((text: string) => {
+        setFinalTranscript(text);
+      }, []),
+      onPartialTranscript: useCallback(() => {}, []),
+      onError: useCallback(
+        (error: { title: string; description: string }) => {
+          toast({ title: error.title, description: error.description, variant: "destructive" });
+        },
+        [toast]
+      ),
+    });
 
   const loadFolders = useCallback(async () => {
     const [items, counts] = await Promise.all([
@@ -228,7 +233,11 @@ export default function PersonalNotesView() {
         if (activeFolderId) await initializeNotes(null, 50, activeFolderId);
         await loadFolders();
       } else if (result.error) {
-        toast({ title: t("notes.folders.couldNotCreate"), description: result.error, variant: "destructive" });
+        toast({
+          title: t("notes.folders.couldNotCreate"),
+          description: result.error,
+          variant: "destructive",
+        });
       }
     },
     [activeFolderId, loadFolders, toast, t]
@@ -441,9 +450,7 @@ export default function PersonalNotesView() {
                     <span
                       className={cn(
                         "text-[9px] tabular-nums shrink-0 transition-colors group-hover:opacity-0",
-                        isActive
-                          ? "text-foreground/30"
-                          : "text-foreground/15"
+                        isActive ? "text-foreground/30" : "text-foreground/15"
                       )}
                     >
                       {count > 0 ? count : ""}
@@ -567,9 +574,33 @@ export default function PersonalNotesView() {
                       stroke="currentColor"
                       strokeOpacity={0.08}
                     />
-                    <rect x="12" y="9" width="10" height="1.5" rx="0.75" fill="currentColor" fillOpacity={0.07} />
-                    <rect x="12" y="13" width="12" height="1.5" rx="0.75" fill="currentColor" fillOpacity={0.05} />
-                    <rect x="12" y="17" width="8" height="1.5" rx="0.75" fill="currentColor" fillOpacity={0.04} />
+                    <rect
+                      x="12"
+                      y="9"
+                      width="10"
+                      height="1.5"
+                      rx="0.75"
+                      fill="currentColor"
+                      fillOpacity={0.07}
+                    />
+                    <rect
+                      x="12"
+                      y="13"
+                      width="12"
+                      height="1.5"
+                      rx="0.75"
+                      fill="currentColor"
+                      fillOpacity={0.05}
+                    />
+                    <rect
+                      x="12"
+                      y="17"
+                      width="8"
+                      height="1.5"
+                      rx="0.75"
+                      fill="currentColor"
+                      fillOpacity={0.04}
+                    />
                   </svg>
                   <p className="text-[10px] text-foreground/25 mb-3">
                     {t("notes.empty.emptyFolder")}
@@ -623,7 +654,15 @@ export default function PersonalNotesView() {
               fill="none"
             >
               <ellipse cx="36" cy="48" rx="24" ry="2" fill="currentColor" fillOpacity={0.03} />
-              <circle cx="24" cy="20" r="7" fill="currentColor" fillOpacity={0.04} stroke="currentColor" strokeOpacity={0.08} />
+              <circle
+                cx="24"
+                cy="20"
+                r="7"
+                fill="currentColor"
+                fillOpacity={0.04}
+                stroke="currentColor"
+                strokeOpacity={0.08}
+              />
               <path
                 d="M13 40c0-6 5-11 11-11s11 5 11 11"
                 fill="currentColor"
@@ -631,7 +670,15 @@ export default function PersonalNotesView() {
                 stroke="currentColor"
                 strokeOpacity={0.06}
               />
-              <circle cx="48" cy="20" r="7" fill="currentColor" fillOpacity={0.04} stroke="currentColor" strokeOpacity={0.08} />
+              <circle
+                cx="48"
+                cy="20"
+                r="7"
+                fill="currentColor"
+                fillOpacity={0.04}
+                stroke="currentColor"
+                strokeOpacity={0.08}
+              />
               <path
                 d="M37 40c0-6 5-11 11-11s11 5 11 11"
                 fill="currentColor"
@@ -639,11 +686,55 @@ export default function PersonalNotesView() {
                 stroke="currentColor"
                 strokeOpacity={0.06}
               />
-              <rect x="16" y="6" width="14" height="8" rx="3" fill="currentColor" fillOpacity={0.04} stroke="currentColor" strokeOpacity={0.07} />
-              <rect x="18.5" y="8.5" width="5" height="1" rx="0.5" fill="currentColor" fillOpacity={0.06} />
-              <rect x="18.5" y="11" width="8" height="1" rx="0.5" fill="currentColor" fillOpacity={0.04} />
-              <rect x="44" y="9" width="12" height="7" rx="2.5" fill="currentColor" fillOpacity={0.03} stroke="currentColor" strokeOpacity={0.06} />
-              <rect x="46.5" y="11.5" width="4" height="1" rx="0.5" fill="currentColor" fillOpacity={0.05} />
+              <rect
+                x="16"
+                y="6"
+                width="14"
+                height="8"
+                rx="3"
+                fill="currentColor"
+                fillOpacity={0.04}
+                stroke="currentColor"
+                strokeOpacity={0.07}
+              />
+              <rect
+                x="18.5"
+                y="8.5"
+                width="5"
+                height="1"
+                rx="0.5"
+                fill="currentColor"
+                fillOpacity={0.06}
+              />
+              <rect
+                x="18.5"
+                y="11"
+                width="8"
+                height="1"
+                rx="0.5"
+                fill="currentColor"
+                fillOpacity={0.04}
+              />
+              <rect
+                x="44"
+                y="9"
+                width="12"
+                height="7"
+                rx="2.5"
+                fill="currentColor"
+                fillOpacity={0.03}
+                stroke="currentColor"
+                strokeOpacity={0.06}
+              />
+              <rect
+                x="46.5"
+                y="11.5"
+                width="4"
+                height="1"
+                rx="0.5"
+                fill="currentColor"
+                fillOpacity={0.05}
+              />
             </svg>
             <h3 className="text-[13px] font-semibold text-foreground/60 mb-1">
               {t("notes.meeting.title")}
@@ -669,18 +760,29 @@ export default function PersonalNotesView() {
               onFinalTranscriptConsumed={() => setFinalTranscript(null)}
               onStartRecording={startRecording}
               onStopRecording={stopRecording}
-              onOpenEnhance={() => setShowEnhanceModal(true)}
               onExportNote={handleExportNote}
               hasEnhancedContent={!!activeNote?.enhanced_content}
               enhancedContent={activeNote?.enhanced_content ?? null}
               isEnhancementStale={isEnhancementStale}
+              actionPicker={
+                <ActionPicker
+                  onRunAction={(action) => {
+                    setSelectedAction(action);
+                    setShowEnhanceModal(true);
+                  }}
+                  onManageActions={() => setShowActionManager(true)}
+                  disabled={!localContent.trim()}
+                />
+              }
             />
             <NoteEnhanceModal
               open={showEnhanceModal}
               onOpenChange={setShowEnhanceModal}
               noteContent={localContent}
+              action={selectedAction}
               onApply={handleApplyEnhancement}
             />
+            <ActionManagerDialog open={showActionManager} onOpenChange={setShowActionManager} />
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center -mt-6">
@@ -726,11 +828,51 @@ export default function PersonalNotesView() {
                 stroke="currentColor"
                 strokeOpacity={0.1}
               />
-              <rect x="20" y="16" width="16" height="2" rx="1" fill="currentColor" fillOpacity={0.08} />
-              <rect x="20" y="21" width="20" height="2" rx="1" fill="currentColor" fillOpacity={0.06} />
-              <rect x="20" y="26" width="12" height="2" rx="1" fill="currentColor" fillOpacity={0.05} />
-              <rect x="20" y="31" width="18" height="2" rx="1" fill="currentColor" fillOpacity={0.04} />
-              <circle cx="54" cy="50" r="5" fill="currentColor" fillOpacity={0.03} stroke="currentColor" strokeOpacity={0.06} />
+              <rect
+                x="20"
+                y="16"
+                width="16"
+                height="2"
+                rx="1"
+                fill="currentColor"
+                fillOpacity={0.08}
+              />
+              <rect
+                x="20"
+                y="21"
+                width="20"
+                height="2"
+                rx="1"
+                fill="currentColor"
+                fillOpacity={0.06}
+              />
+              <rect
+                x="20"
+                y="26"
+                width="12"
+                height="2"
+                rx="1"
+                fill="currentColor"
+                fillOpacity={0.05}
+              />
+              <rect
+                x="20"
+                y="31"
+                width="18"
+                height="2"
+                rx="1"
+                fill="currentColor"
+                fillOpacity={0.04}
+              />
+              <circle
+                cx="54"
+                cy="50"
+                r="5"
+                fill="currentColor"
+                fillOpacity={0.03}
+                stroke="currentColor"
+                strokeOpacity={0.06}
+              />
               <path
                 d="M51.5 50L53 51.5L56.5 48"
                 stroke="currentColor"

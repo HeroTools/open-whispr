@@ -37,6 +37,7 @@ export function useNoteRecording({
   useEffect(() => {
     const manager = new AudioManager();
     audioManagerRef.current = manager;
+    manager.setSkipReasoning(true);
 
     manager.setCallbacks({
       onStateChange: ({

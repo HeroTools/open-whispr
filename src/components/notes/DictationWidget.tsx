@@ -8,11 +8,18 @@ interface DictationWidgetProps {
   isProcessing: boolean;
   onStart: () => void;
   onStop: () => void;
+  actionPicker?: React.ReactNode;
 }
 
 const BAR_COUNT = 7;
 
-export default function DictationWidget({ isRecording, isProcessing, onStart, onStop }: DictationWidgetProps) {
+export default function DictationWidget({
+  isRecording,
+  isProcessing,
+  onStart,
+  onStop,
+  actionPicker,
+}: DictationWidgetProps) {
   const { t } = useTranslation();
   const [elapsed, setElapsed] = useState(0);
 
@@ -88,25 +95,28 @@ export default function DictationWidget({ isRecording, isProcessing, onStart, on
           </span>
         </div>
       ) : (
-        <button
-          onClick={onStart}
-          className={cn(
-            "flex items-center gap-2.5 h-11 px-6 rounded-xl pointer-events-auto",
-            "bg-primary/8 dark:bg-primary/12",
-            "backdrop-blur-xl",
-            "border border-primary/15 dark:border-primary/20",
-            "shadow-sm hover:shadow-md",
-            "text-primary/70 hover:text-primary",
-            "transition-all duration-200",
-            "hover:bg-primary/12 dark:hover:bg-primary/18",
-            "active:scale-[0.98]"
-          )}
-        >
-          <Mic size={15} />
-          <span className="text-[12px] font-semibold tracking-tight">
-            {t("notes.editor.transcribe")}
-          </span>
-        </button>
+        <div className="flex items-center gap-2 pointer-events-auto">
+          <button
+            onClick={onStart}
+            className={cn(
+              "flex items-center gap-2.5 h-11 px-6 rounded-xl",
+              "bg-primary/8 dark:bg-primary/12",
+              "backdrop-blur-xl",
+              "border border-primary/15 dark:border-primary/20",
+              "shadow-sm hover:shadow-md",
+              "text-primary/70 hover:text-primary",
+              "transition-all duration-200",
+              "hover:bg-primary/12 dark:hover:bg-primary/18",
+              "active:scale-[0.98]"
+            )}
+          >
+            <Mic size={15} />
+            <span className="text-[12px] font-semibold tracking-tight">
+              {t("notes.editor.transcribe")}
+            </span>
+          </button>
+          {actionPicker}
+        </div>
       )}
     </div>
   );

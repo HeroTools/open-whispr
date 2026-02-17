@@ -64,6 +64,7 @@ class AudioManager {
     this.stopRequestedDuringStreamingStart = false;
     this.streamingFallbackRecorder = null;
     this.streamingFallbackChunks = [];
+    this.skipReasoning = false;
   }
 
   getWorkletBlobUrl() {
@@ -127,6 +128,10 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     this.onError = onError;
     this.onTranscriptionComplete = onTranscriptionComplete;
     this.onPartialTranscript = onPartialTranscript;
+  }
+
+  setSkipReasoning(skip) {
+    this.skipReasoning = skip;
   }
 
   async getAudioConstraints() {
@@ -1106,7 +1111,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     // Process with reasoning if enabled
     let processedText = result.text;
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-    if (useReasoningModel && processedText) {
+    if (useReasoningModel && processedText && !this.skipReasoning) {
       const reasoningStart = performance.now();
       const agentName = localStorage.getItem("agentName") || "";
       const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
@@ -2161,7 +2166,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
     );
 
     const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-    if (useReasoningModel && finalText) {
+    if (useReasoningModel && finalText && !this.skipReasoning) {
       const reasoningStart = performance.now();
       const agentName = localStorage.getItem("agentName") || "";
       const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
