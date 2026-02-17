@@ -159,6 +159,8 @@ const UpdateManager = require("./src/updater");
 const GlobeKeyManager = require("./src/helpers/globeKeyManager");
 const DevServerManager = require("./src/helpers/devServerManager");
 const WindowsKeyManager = require("./src/helpers/windowsKeyManager");
+const RecordingStorageManager = require("./src/helpers/recordingStorage");
+const S3StorageManager = require("./src/helpers/s3Storage");
 const { i18nMain, changeLanguage } = require("./src/helpers/i18nMain");
 
 // Manager instances - initialized after app.whenReady()
@@ -174,6 +176,8 @@ let trayManager = null;
 let updateManager = null;
 let globeKeyManager = null;
 let windowsKeyManager = null;
+let recordingStorageManager = null;
+let s3StorageManager = null;
 let globeKeyAlertShown = false;
 let authBridgeServer = null;
 
@@ -235,6 +239,8 @@ function initializeCoreManagers() {
   parakeetManager = new ParakeetManager();
   updateManager = new UpdateManager();
   windowsKeyManager = new WindowsKeyManager();
+  recordingStorageManager = new RecordingStorageManager();
+  s3StorageManager = new S3StorageManager();
 
   // IPC handlers must be registered before window content loads
   new IPCHandlers({
@@ -246,6 +252,8 @@ function initializeCoreManagers() {
     windowManager,
     updateManager,
     windowsKeyManager,
+    recordingStorageManager,
+    s3StorageManager,
     getTrayManager: () => trayManager,
   });
 }

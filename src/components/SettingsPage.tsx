@@ -71,6 +71,7 @@ export type SettingsSectionType =
   | "prompts"
   | "permissions"
   | "privacy"
+  | "storage"
   | "developer";
 
 interface SettingsPageProps {
@@ -122,6 +123,462 @@ function SectionHeader({ title, description }: { title: string; description?: st
       <h3 className="text-[13px] font-semibold text-foreground tracking-tight">{title}</h3>
       {description && (
         <p className="text-[11px] text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+      )}
+    </div>
+  );
+}
+
+function StorageSection() {
+  const { t } = useTranslation();
+  const [saveEnabled, setSaveEnabled] = React.useState(
+    () => localStorage.getItem("saveRecordingsLocally") !== "false"
+  );
+  const [checkDiskSpace, setCheckDiskSpace] = React.useState(
+    () => localStorage.getItem("checkDiskSpace") !== "false"
+  );
+  const [chunkEnabled, setChunkEnabled] = React.useState(
+    () => localStorage.getItem("recordingChunkEnabled") !== "false"
+  );
+  const [chunkMB, setChunkMB] = React.useState(
+    () => localStorage.getItem("recordingChunkMB") || "24.5" // groq cloud free limit is 25MB
+  );
+  const [directory, setDirectory] = React.useState("");
+  const [isDefault, setIsDefault] = React.useState(true);
+  const [dirError, setDirError] = React.useState<string | null>(null);
+  const [availableSpaceMB, setAvailableSpaceMB] = React.useState<number | null>(null);
+
+  // S3-compatible cloud storage state
+  const [s3Enabled, setS3Enabled] = React.useState(false);
+  const [s3EndpointUrl, setS3EndpointUrl] = React.useState("");
+  const [s3Region, setS3Region] = React.useState("auto");
+  const [s3AccessKeyId, setS3AccessKeyId] = React.useState("");
+  const [s3SecretAccessKey, setS3SecretAccessKey] = React.useState("");
+  const [s3Bucket, setS3Bucket] = React.useState("");
+  const [s3AutoDelete, setS3AutoDelete] = React.useState(true);
+  const [s3TestStatus, setS3TestStatus] = React.useState<"idle" | "testing" | "success" | "error">("idle");
+  const [s3TestError, setS3TestError] = React.useState("");
+  const [s3TestSteps, setS3TestSteps] = React.useState<string[]>([]);
+  const [s3IsConfigured, setS3IsConfigured] = React.useState(false);
+
+  // Load directory info on mount
+  React.useEffect(() => {
+    window.electronAPI?.recordingGetDirectory?.().then((res) => {
+      if (res?.success) {
+        setDirectory(res.directory || "");
+        setIsDefault(res.isDefault ?? true);
+      }
+    });
+    window.electronAPI?.recordingValidateDirectory?.().then((res) => {
+      if (res) {
+        if (!res.valid) setDirError(res.error || null);
+        else {
+          setDirError(null);
+          setAvailableSpaceMB(res.availableSpaceMB);
+        }
+      }
+    });
+    // Load S3 config
+    window.electronAPI?.s3GetConfig?.().then((res) => {
+      if (res?.success && res.config) {
+        setS3Enabled(res.config.enabled !== false && !!res.isConfigured);
+        setS3EndpointUrl(res.config.endpointUrl || "");
+        setS3Region(res.config.region || "auto");
+        setS3AccessKeyId(res.config.accessKeyId || "");
+        setS3SecretAccessKey(res.config.secretAccessKey || "");
+        setS3Bucket(res.config.bucket || "");
+        setS3AutoDelete(res.config.autoDeleteAfterTranscription !== false);
+        setS3IsConfigured(!!res.isConfigured);
+      }
+    });
+  }, []);
+
+  const handleToggleSave = (enabled: boolean) => {
+    setSaveEnabled(enabled);
+    localStorage.setItem("saveRecordingsLocally", String(enabled));
+  };
+
+  const handleToggleDiskCheck = (enabled: boolean) => {
+    setCheckDiskSpace(enabled);
+    localStorage.setItem("checkDiskSpace", String(enabled));
+  };
+
+  const handleToggleChunk = (enabled: boolean) => {
+    setChunkEnabled(enabled);
+    localStorage.setItem("recordingChunkEnabled", String(enabled));
+  };
+
+  const handleChunkMBChange = (value: string) => {
+    const num = parseFloat(value);
+    if (isNaN(num) || num < 1) return;
+    setChunkMB(value);
+    localStorage.setItem("recordingChunkMB", String(num));
+  };
+
+  const handleBrowse = async () => {
+    const result = await window.electronAPI?.recordingSelectDirectory?.();
+    if (!result || result.canceled) return;
+    if (result.success) {
+      setDirectory(result.directory || "");
+      setIsDefault(false);
+      setDirError(null);
+      if (result.availableSpaceMB !== undefined) {
+        setAvailableSpaceMB(result.availableSpaceMB);
+      }
+    } else if (result.error) {
+      setDirError(result.error);
+    }
+  };
+
+  const handleReset = async () => {
+    const result = await window.electronAPI?.recordingResetDirectory?.();
+    if (result?.success) {
+      setDirectory(result.directory || "");
+      setIsDefault(true);
+      setDirError(null);
+      const validation = await window.electronAPI?.recordingValidateDirectory?.();
+      if (validation) {
+        setAvailableSpaceMB(validation.availableSpaceMB);
+      }
+    }
+  };
+
+  const handleOpen = () => {
+    window.electronAPI?.recordingOpenDirectory?.();
+  };
+
+  // ── S3 handlers ─────────────────────────────────────────────────────
+
+  const saveS3Config = async (overrides: Record<string, unknown> = {}) => {
+    const config = {
+      endpointUrl: s3EndpointUrl,
+      region: s3Region,
+      accessKeyId: s3AccessKeyId,
+      secretAccessKey: s3SecretAccessKey,
+      bucket: s3Bucket,
+      enabled: s3Enabled,
+      autoDeleteAfterTranscription: s3AutoDelete,
+      ...overrides,
+    };
+    await window.electronAPI?.s3SaveConfig?.(config);
+  };
+
+  const handleS3Toggle = async (enabled: boolean) => {
+    setS3Enabled(enabled);
+    await saveS3Config({ enabled });
+  };
+
+  const handleS3AutoDeleteToggle = async (enabled: boolean) => {
+    setS3AutoDelete(enabled);
+    await saveS3Config({ autoDeleteAfterTranscription: enabled });
+  };
+
+  const handleS3FieldBlur = () => {
+    saveS3Config();
+  };
+
+  const handleS3TestConnection = async () => {
+    setS3TestStatus("testing");
+    setS3TestError("");
+    setS3TestSteps([]);
+    // Save current fields first
+    await saveS3Config();
+    const result = await window.electronAPI?.s3TestConnection?.();
+    if (result?.success) {
+      setS3TestStatus("success");
+      setS3TestSteps(result.details?.steps || []);
+      setS3IsConfigured(true);
+    } else {
+      setS3TestStatus("error");
+      setS3TestError(result?.error || "Unknown error");
+      setS3TestSteps(result?.details?.steps || []);
+      setS3IsConfigured(false);
+    }
+  };
+
+  const chunkMBNum = parseFloat(chunkMB) || 24.5;
+  const showCloudSizeWarning = chunkEnabled && chunkMBNum > 25;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          {t("settingsPage.storage.title")}
+        </h3>
+        <p className="text-sm text-muted-foreground mb-6">
+          {t("settingsPage.storage.description")}
+        </p>
+      </div>
+
+      {/* Enable/disable toggle */}
+      <SettingsPanel>
+        <SettingsPanelRow>
+          <SettingsRow
+            label={t("settingsPage.storage.enableSave")}
+            description={t("settingsPage.storage.enableSaveDescription")}
+          >
+            <Toggle checked={saveEnabled} onChange={handleToggleSave} />
+          </SettingsRow>
+        </SettingsPanelRow>
+      </SettingsPanel>
+
+      {/* Directory selection (only show when saving is enabled) */}
+      {saveEnabled && (
+        <>
+          <SettingsPanel>
+            <SettingsPanelRow>
+              <div className="space-y-2">
+                <SettingsRow
+                  label={t("settingsPage.storage.directory")}
+                  description={t("settingsPage.storage.directoryDescription")}
+                >
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" onClick={handleBrowse}>
+                      <FolderOpen className="mr-1.5 h-3.5 w-3.5" />
+                      {t("settingsPage.storage.browse")}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleOpen}>
+                      {t("settingsPage.storage.open")}
+                    </Button>
+                    {!isDefault && (
+                      <Button variant="ghost" size="sm" onClick={handleReset}>
+                        {t("settingsPage.storage.resetToDefault")}
+                      </Button>
+                    )}
+                  </div>
+                </SettingsRow>
+                <div className="text-xs text-muted-foreground font-mono truncate max-w-full px-1">
+                  {directory}
+                  {isDefault && (
+                    <span className="ml-1 text-muted-foreground/60">
+                      {t("settingsPage.storage.defaultLabel")}
+                    </span>
+                  )}
+                </div>
+                {dirError && (
+                  <p className="text-xs text-destructive px-1">
+                    {t("settingsPage.storage.directoryError", { error: dirError })}
+                  </p>
+                )}
+                {!dirError && availableSpaceMB !== null && (
+                  <p className="text-xs text-muted-foreground/70 px-1">
+                    {t("settingsPage.storage.availableSpace", { spaceMB: availableSpaceMB.toLocaleString() })}
+                  </p>
+                )}
+              </div>
+            </SettingsPanelRow>
+          </SettingsPanel>
+
+          {/* Disk space check */}
+          <SettingsPanel>
+            <SettingsPanelRow>
+              <SettingsRow
+                label={t("settingsPage.storage.checkDiskSpace")}
+                description={t("settingsPage.storage.checkDiskSpaceDescription")}
+              >
+                <Toggle checked={checkDiskSpace} onChange={handleToggleDiskCheck} />
+              </SettingsRow>
+            </SettingsPanelRow>
+          </SettingsPanel>
+
+          {/* Chunk splitting */}
+          <SettingsPanel>
+            <SettingsPanelRow>
+              <SettingsRow
+                label={t("settingsPage.storage.chunkSplitting")}
+                description={t("settingsPage.storage.chunkSplittingDescription")}
+              >
+                <Toggle checked={chunkEnabled} onChange={handleToggleChunk} />
+              </SettingsRow>
+            </SettingsPanelRow>
+            {chunkEnabled && (
+              <>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.storage.chunkMB")}
+                    description=""
+                  >
+                    <input
+                      type="number"
+                      min={1}
+                      max={500}
+                      step={0.5}
+                      value={chunkMB}
+                      onChange={(e) => handleChunkMBChange(e.target.value)}
+                      className="w-20 rounded-md border border-input bg-background px-3 py-1.5 text-sm text-foreground"
+                    />
+                  </SettingsRow>
+                </SettingsPanelRow>
+                {showCloudSizeWarning && (
+                  <div className="mx-3 mb-3 flex items-start gap-2 rounded-md bg-yellow-500/10 border border-yellow-500/30 px-3 py-2">
+                    <AlertTriangle className="h-4 w-4 text-yellow-500 mt-0.5 shrink-0" />
+                    <p className="text-xs text-yellow-600 dark:text-yellow-400">
+                      {t("settingsPage.storage.cloudSizeWarning")}
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+          </SettingsPanel>
+
+          {/* ── S3-Compatible Cloud Backup ─────────────────────────────── */}
+          <div className="pt-2">
+            <h4 className="text-base font-semibold text-foreground mb-1">
+              {t("settingsPage.storage.s3Title")}
+            </h4>
+            <p className="text-sm text-muted-foreground mb-4">
+              {t("settingsPage.storage.s3Description")}
+            </p>
+          </div>
+
+          <SettingsPanel>
+            <SettingsPanelRow>
+              <SettingsRow
+                label={t("settingsPage.storage.s3Enable")}
+                description={t("settingsPage.storage.s3EnableDescription")}
+              >
+                <Toggle checked={s3Enabled} onChange={handleS3Toggle} />
+              </SettingsRow>
+            </SettingsPanelRow>
+          </SettingsPanel>
+
+          {s3Enabled && (
+            <>
+              {/* Quick-start guide for new users */}
+              {!s3IsConfigured && (
+                <div className="rounded-lg border border-blue-500/20 bg-blue-500/5 p-4 space-y-2">
+                  <h5 className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                    {t("settingsPage.storage.s3QuickStartTitle")}
+                  </h5>
+                  <p className="text-xs text-muted-foreground whitespace-pre-line">
+                    {t("settingsPage.storage.s3QuickStartR2")}
+                  </p>
+                </div>
+              )}
+
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <div className="space-y-3 w-full">
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-foreground">
+                        {t("settingsPage.storage.s3EndpointUrl")}
+                      </label>
+                      <p className="text-xs text-muted-foreground/70">
+                        {t("settingsPage.storage.s3EndpointHint")}
+                      </p>
+                      <Input
+                        value={s3EndpointUrl}
+                        onChange={(e) => setS3EndpointUrl(e.target.value)}
+                        onBlur={handleS3FieldBlur}
+                        placeholder="https://<accountId>.r2.cloudflarestorage.com"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-foreground">
+                        {t("settingsPage.storage.s3Region")}
+                      </label>
+                      <Input
+                        value={s3Region}
+                        onChange={(e) => setS3Region(e.target.value)}
+                        onBlur={handleS3FieldBlur}
+                        placeholder="auto"
+                        className="font-mono text-sm w-40"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-foreground">
+                        {t("settingsPage.storage.s3AccessKeyId")}
+                      </label>
+                      <Input
+                        value={s3AccessKeyId}
+                        onChange={(e) => setS3AccessKeyId(e.target.value)}
+                        onBlur={handleS3FieldBlur}
+                        placeholder="Access Key ID"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-foreground">
+                        {t("settingsPage.storage.s3SecretAccessKey")}
+                      </label>
+                      <Input
+                        type="password"
+                        value={s3SecretAccessKey}
+                        onChange={(e) => setS3SecretAccessKey(e.target.value)}
+                        onBlur={handleS3FieldBlur}
+                        placeholder="Secret Access Key"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-medium text-foreground">
+                        {t("settingsPage.storage.s3Bucket")}
+                      </label>
+                      <Input
+                        value={s3Bucket}
+                        onChange={(e) => setS3Bucket(e.target.value)}
+                        onBlur={handleS3FieldBlur}
+                        placeholder="my-recordings-bucket"
+                        className="font-mono text-sm"
+                      />
+                    </div>
+
+                    {/* Test connection */}
+                    <div className="space-y-2 pt-1">
+                      <div className="flex items-center gap-3">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleS3TestConnection}
+                          disabled={s3TestStatus === "testing" || !s3EndpointUrl || !s3AccessKeyId || !s3Bucket}
+                        >
+                          {s3TestStatus === "testing" ? (
+                            <>
+                              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                              {t("settingsPage.storage.s3Testing")}
+                            </>
+                          ) : (
+                            <>
+                              <Cloud className="mr-1.5 h-3.5 w-3.5" />
+                              {t("settingsPage.storage.s3TestConnection")}
+                            </>
+                          )}
+                        </Button>
+                        {s3TestStatus === "success" && (
+                          <span className="text-xs text-green-600 dark:text-green-400 font-medium">
+                            {t("settingsPage.storage.s3Connected")}
+                          </span>
+                        )}
+                        {s3TestStatus === "error" && (
+                          <span className="text-xs text-destructive font-medium">
+                            {t("settingsPage.storage.s3ConnectionFailed", { error: s3TestError })}
+                          </span>
+                        )}
+                      </div>
+                      {s3TestSteps.length > 0 && (
+                        <p className="text-xs text-muted-foreground/70 font-mono">
+                          {t("settingsPage.storage.s3TestSteps")}: {s3TestSteps.join(" → ")}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </SettingsPanelRow>
+              </SettingsPanel>
+
+              {/* Auto-delete toggle */}
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.storage.s3AutoDelete")}
+                    description={t("settingsPage.storage.s3AutoDeleteDescription")}
+                  >
+                    <Toggle checked={s3AutoDelete} onChange={handleS3AutoDeleteToggle} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </>
+          )}
+        </>
       )}
     </div>
   );
@@ -2061,6 +2518,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
             </SettingsPanel>
           </div>
         );
+
+      case "storage":
+        return <StorageSection />;
 
       case "permissions":
         return (

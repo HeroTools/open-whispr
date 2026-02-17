@@ -11,6 +11,7 @@ import {
   BookOpen,
   ShieldCheck,
   Lock,
+  HardDrive,
 } from "lucide-react";
 import SidebarModal, { SidebarItem } from "./ui/SidebarModal";
 import SettingsPage, { SettingsSectionType } from "./SettingsPage";
@@ -81,6 +82,13 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
         label: t("settingsModal.sections.privacy.label"),
         icon: Lock,
         description: t("settingsModal.sections.privacy.description"),
+        group: t("settingsModal.groups.system"),
+      },
+      {
+        id: "storage",
+        label: t("settingsModal.sections.storage.label"),
+        icon: HardDrive,
+        description: t("settingsModal.sections.storage.description"),
         group: t("settingsModal.groups.system"),
       },
       {
