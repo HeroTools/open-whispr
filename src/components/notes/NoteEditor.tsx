@@ -341,23 +341,24 @@ export default function NoteEditor({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto relative">
-        {viewMode === "enhanced" && enhancedContent ? (
-          <div className="px-5 py-3 text-[13px] text-foreground leading-relaxed">
-            <MarkdownRenderer content={enhancedContent} />
-          </div>
-        ) : (
-          <textarea
-            ref={textareaRef}
-            value={note.content}
-            onChange={handleContentChange}
-            onSelect={handleSelect}
-            placeholder={t("notes.editor.startWriting")}
-            className="w-full h-full px-5 py-3 text-[13px] text-foreground/90 bg-transparent! border-none! outline-none resize-none rounded-none leading-[1.7] placeholder:text-foreground/15"
-            style={{ boxShadow: "none" }}
-          />
-        )}
-
+      <div className="flex-1 relative overflow-hidden">
+        <div className="h-full overflow-y-auto">
+          {viewMode === "enhanced" && enhancedContent ? (
+            <div className="px-5 py-3 pb-20 text-[13px] text-foreground leading-relaxed">
+              <MarkdownRenderer content={enhancedContent} />
+            </div>
+          ) : (
+            <textarea
+              ref={textareaRef}
+              value={note.content}
+              onChange={handleContentChange}
+              onSelect={handleSelect}
+              placeholder={t("notes.editor.startWriting")}
+              className="w-full h-full px-5 py-3 pb-20 text-[13px] text-foreground/90 bg-transparent! border-none! outline-none resize-none rounded-none leading-[1.7] placeholder:text-foreground/15"
+              style={{ boxShadow: "none" }}
+            />
+          )}
+        </div>
         <DictationWidget
           isRecording={isRecording}
           isProcessing={isProcessing}

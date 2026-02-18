@@ -36,7 +36,7 @@ export default function DictationWidget({
   const seconds = String(elapsed % 60).padStart(2, "0");
 
   return (
-    <div className="sticky bottom-5 z-10 flex justify-center pointer-events-none">
+    <div className="absolute bottom-5 left-0 right-0 z-10 flex justify-center pointer-events-none">
       {isRecording ? (
         <div
           className={cn(
