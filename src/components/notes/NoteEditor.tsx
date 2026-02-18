@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowUpFromLine, Loader2, FileText } from "lucide-react";
+import { Download, Loader2, FileText, Sparkles, AlignLeft } from "lucide-react";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
 import {
   DropdownMenu,
@@ -248,7 +248,7 @@ export default function NoteEditor({
   return (
     <div className="flex flex-col h-full">
       <div className="px-5 pt-4 pb-0">
-        <div className="flex items-start gap-2">
+        <div className="flex items-center gap-2">
           <div
             ref={titleRef}
             contentEditable
@@ -261,14 +261,57 @@ export default function NoteEditor({
             role="textbox"
             aria-label={t("notes.editor.noteTitle")}
           />
+          {hasEnhancedContent && (
+            <div
+              ref={segmentContainerRef}
+              className="relative flex items-center shrink-0 rounded-md bg-foreground/3 dark:bg-white/3 p-0.5"
+            >
+              <div
+                className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-all duration-200 ease-out pointer-events-none"
+                style={indicatorStyle}
+              />
+              <button
+                data-segment-button
+                onClick={() => setViewMode("raw")}
+                className={cn(
+                  "relative z-1 px-1.5 h-5 rounded text-[9px] font-medium transition-colors duration-150 flex items-center gap-1",
+                  viewMode === "raw"
+                    ? "text-foreground/60"
+                    : "text-foreground/25 hover:text-foreground/40"
+                )}
+              >
+                <AlignLeft size={10} />
+                {t("notes.editor.raw")}
+              </button>
+              <button
+                data-segment-button
+                onClick={() => setViewMode("enhanced")}
+                className={cn(
+                  "relative z-1 px-1.5 h-5 rounded text-[9px] font-medium transition-colors duration-150 flex items-center gap-1",
+                  viewMode === "enhanced"
+                    ? "text-foreground/60"
+                    : "text-foreground/25 hover:text-foreground/40"
+                )}
+              >
+                <Sparkles size={9} />
+                {t("notes.editor.enhanced")}
+                {isEnhancementStale && (
+                  <span
+                    className="w-1 h-1 rounded-full bg-amber-400/60"
+                    title={t("notes.editor.staleIndicator")}
+                  />
+                )}
+              </button>
+            </div>
+          )}
           {onExportNote && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="shrink-0 mt-0.5 p-1 rounded-md text-foreground/15 hover:text-foreground/40 transition-colors duration-150"
+                  className="shrink-0 p-1.5 rounded-md border border-foreground/8 dark:border-white/8 bg-foreground/3 dark:bg-white/3 text-foreground/35 hover:text-foreground/60 hover:bg-foreground/6 dark:hover:bg-white/6 transition-all duration-150"
                   aria-label={t("notes.editor.export")}
                 >
-                  <ArrowUpFromLine size={13} />
+                  <Download size={12} />
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={4}>
@@ -284,62 +327,18 @@ export default function NoteEditor({
             </DropdownMenu>
           )}
         </div>
-        {noteDate && <p className="text-[10px] text-foreground/20 mt-0.5">{noteDate}</p>}
-      </div>
-
-      <div className="flex items-center gap-px px-5 py-1.5">
-        {hasEnhancedContent && (
-          <div
-            ref={segmentContainerRef}
-            className="relative flex items-center rounded-md bg-foreground/3 dark:bg-white/3 p-0.5"
-          >
-            <div
-              className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-all duration-200 ease-out pointer-events-none"
-              style={indicatorStyle}
-            />
-            <button
-              data-segment-button
-              onClick={() => setViewMode("raw")}
-              className={cn(
-                "relative z-1 px-2 h-5 rounded text-[9px] font-medium transition-colors duration-150",
-                viewMode === "raw"
-                  ? "text-foreground/60"
-                  : "text-foreground/25 hover:text-foreground/40"
-              )}
-            >
-              {t("notes.editor.raw")}
-            </button>
-            <button
-              data-segment-button
-              onClick={() => setViewMode("enhanced")}
-              className={cn(
-                "relative z-1 px-2 h-5 rounded text-[9px] font-medium transition-colors duration-150 flex items-center gap-1",
-                viewMode === "enhanced"
-                  ? "text-foreground/60"
-                  : "text-foreground/25 hover:text-foreground/40"
-              )}
-            >
-              {t("notes.editor.enhanced")}
-              {isEnhancementStale && (
-                <span
-                  className="w-1 h-1 rounded-full bg-amber-400/60"
-                  title={t("notes.editor.staleIndicator")}
-                />
-              )}
-            </button>
-          </div>
-        )}
-
-        <div className="flex-1" />
-
-        <span className="text-[9px] text-foreground/20 tabular-nums flex items-center gap-1.5">
-          {isSaving && <Loader2 size={8} className="animate-spin" />}
-          {isSaving
-            ? t("notes.editor.saving")
-            : wordCount > 0
-              ? t("notes.editor.wordsCount", { count: wordCount })
-              : ""}
-        </span>
+        <div className="flex items-center mt-0.5">
+          {noteDate && <p className="text-[10px] text-foreground/20">{noteDate}</p>}
+          <div className="flex-1" />
+          <span className="text-[9px] text-foreground/20 tabular-nums flex items-center gap-1.5">
+            {isSaving && <Loader2 size={8} className="animate-spin" />}
+            {isSaving
+              ? t("notes.editor.saving")
+              : wordCount > 0
+                ? t("notes.editor.wordsCount", { count: wordCount })
+                : ""}
+          </span>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto relative">

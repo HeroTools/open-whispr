@@ -1659,6 +1659,7 @@ class IPCHandlers {
         const fileName = path.basename(filePath);
 
         const { body, boundary } = buildMultipartBody(audioBuffer, fileName, contentType, {
+          source: "file_upload",
           clientType: "desktop",
           appVersion: app.getVersion(),
           sessionId: this.sessionId,
