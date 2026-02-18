@@ -356,6 +356,7 @@ export default function ControlPanel() {
           userEmail={user?.email}
           userImage={user?.image}
           isSignedIn={isSignedIn}
+          authLoaded={authLoaded}
           updateAction={
             !updateStatus.isDevelopment &&
             (updateStatus.updateAvailable ||

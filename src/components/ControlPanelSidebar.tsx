@@ -26,6 +26,7 @@ interface ControlPanelSidebarProps {
   userEmail?: string | null;
   userImage?: string | null;
   isSignedIn?: boolean;
+  authLoaded?: boolean;
   updateAction?: React.ReactNode;
 }
 
@@ -54,6 +55,7 @@ export default function ControlPanelSidebar({
   userEmail,
   userImage,
   isSignedIn,
+  authLoaded,
   updateAction,
 }: ControlPanelSidebarProps) {
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
@@ -219,9 +221,9 @@ export default function ControlPanelSidebar({
                   </p>
                 )}
               </>
-            ) : (
+            ) : authLoaded && !isSignedIn ? (
               <p className="text-[11px] text-foreground/30">Not signed in</p>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
