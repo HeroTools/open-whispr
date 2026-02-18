@@ -10,6 +10,8 @@ import {
 } from "../ui/dropdown-menu";
 import { cn } from "../lib/utils";
 import type { NoteItem } from "../../types/electron";
+import type { ActionProcessingState } from "../../hooks/useActionProcessing";
+import ActionProcessingOverlay from "./ActionProcessingOverlay";
 import DictationWidget from "./DictationWidget";
 
 function formatNoteDate(dateStr: string): string {
@@ -42,6 +44,8 @@ interface NoteEditorProps {
   enhancedContent?: string | null;
   isEnhancementStale?: boolean;
   actionPicker?: React.ReactNode;
+  actionProcessingState?: ActionProcessingState;
+  actionName?: string | null;
 }
 
 export default function NoteEditor({
@@ -61,6 +65,8 @@ export default function NoteEditor({
   enhancedContent,
   isEnhancementStale,
   actionPicker,
+  actionProcessingState,
+  actionName,
 }: NoteEditorProps) {
   const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<"raw" | "enhanced">("raw");
@@ -105,6 +111,14 @@ export default function NoteEditor({
     if (segmentContainerRef.current) observer.observe(segmentContainerRef.current);
     return () => observer.disconnect();
   }, [updateSegmentIndicator]);
+
+  const prevProcessingStateRef = useRef(actionProcessingState);
+  useEffect(() => {
+    if (prevProcessingStateRef.current === "processing" && actionProcessingState === "success") {
+      setViewMode("enhanced");
+    }
+    prevProcessingStateRef.current = actionProcessingState;
+  }, [actionProcessingState]);
 
   useEffect(() => {
     if (note.id !== prevNoteIdRef.current) {
@@ -354,11 +368,18 @@ export default function NoteEditor({
               onChange={handleContentChange}
               onSelect={handleSelect}
               placeholder={t("notes.editor.startWriting")}
-              className="w-full h-full px-5 py-3 pb-20 text-[13px] text-foreground/90 bg-transparent! border-none! outline-none resize-none rounded-none leading-[1.7] placeholder:text-foreground/15"
+              className={cn(
+                "w-full h-full px-5 py-3 pb-20 text-[13px] text-foreground/90 bg-transparent! border-none! outline-none resize-none rounded-none leading-[1.7] placeholder:text-foreground/15",
+                actionProcessingState === "processing" && "pointer-events-none"
+              )}
               style={{ boxShadow: "none" }}
             />
           )}
         </div>
+        <ActionProcessingOverlay
+          state={actionProcessingState ?? "idle"}
+          actionName={actionName ?? null}
+        />
         <DictationWidget
           isRecording={isRecording}
           isProcessing={isProcessing}

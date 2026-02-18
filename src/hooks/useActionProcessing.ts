@@ -1,0 +1,86 @@
+import { useState, useRef, useCallback } from "react";
+import reasoningService from "../services/ReasoningService";
+import type { ActionItem } from "../types/electron";
+
+export type ActionProcessingState = "idle" | "processing" | "success";
+
+const BASE_SYSTEM_PROMPT =
+  "You are a note enhancement assistant. The user will provide raw notes — possibly voice-transcribed, rough, or unstructured. Your job is to clean them up according to the instructions below while preserving all original meaning and information. Output clean markdown.\n\nInstructions: ";
+
+const DEFAULT_CLOUD_MODEL = "gpt-5.2";
+
+interface UseActionProcessingOptions {
+  onSuccess: (enhancedContent: string, prompt: string) => void;
+  onError: (errorMessage: string) => void;
+}
+
+export function useActionProcessing({ onSuccess, onError }: UseActionProcessingOptions) {
+  const [state, setState] = useState<ActionProcessingState>("idle");
+  const [actionName, setActionName] = useState<string | null>(null);
+  const cancelledRef = useRef(false);
+  const successTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const processingRef = useRef(false);
+
+  const runAction = useCallback(
+    async (action: ActionItem, noteContent: string) => {
+      if (processingRef.current) return;
+
+      const isCloudMode =
+        localStorage.getItem("isSignedIn") === "true" &&
+        (localStorage.getItem("cloudReasoningMode") || "openwhispr") === "openwhispr";
+
+      const modelId = isCloudMode
+        ? DEFAULT_CLOUD_MODEL
+        : localStorage.getItem("reasoningModel") || "";
+
+      if (!modelId) {
+        onError("No AI model selected. Configure one in Settings.");
+        return;
+      }
+
+      cancelledRef.current = false;
+      processingRef.current = true;
+      setActionName(action.name);
+      setState("processing");
+
+      try {
+        const systemPrompt = BASE_SYSTEM_PROMPT + action.prompt;
+        const enhanced = await reasoningService.processText(noteContent, modelId, null, {
+          systemPrompt,
+          temperature: 0.3,
+        });
+
+        if (cancelledRef.current) return;
+
+        setState("success");
+        onSuccess(enhanced, action.prompt);
+
+        successTimeoutRef.current = setTimeout(() => {
+          processingRef.current = false;
+          setState("idle");
+          setActionName(null);
+        }, 600);
+      } catch (err) {
+        if (cancelledRef.current) return;
+        processingRef.current = false;
+        setState("idle");
+        setActionName(null);
+        onError(err instanceof Error ? err.message : "Action failed");
+      }
+    },
+    [onSuccess, onError]
+  );
+
+  const cancel = useCallback(() => {
+    cancelledRef.current = true;
+    processingRef.current = false;
+    if (successTimeoutRef.current) {
+      clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = null;
+    }
+    setState("idle");
+    setActionName(null);
+  }, []);
+
+  return { state, actionName, runAction, cancel };
+}

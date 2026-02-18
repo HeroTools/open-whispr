@@ -518,6 +518,24 @@ a:hover {
   }
 }
 
+/* Action processing scanner sweep */
+@keyframes scanner-sweep {
+  0% {
+    top: 0%;
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    top: 100%;
+    opacity: 0;
+  }
+}
+
 /* ---- Referral Modal v2 ---- */
 
 /* Animated mesh gradient — slow-drifting color blobs */
@@ -693,6 +711,17 @@ a:hover {
   .spectrogram-play {
     animation: none;
     opacity: 0;
+  }
+
+  .scanner-sweep-line {
+    animation: none !important;
+    top: 50% !important;
+    opacity: 0.5 !important;
+  }
+
+  [data-scanner-progress] {
+    animation: none !important;
+    width: 60% !important;
   }
 }
 

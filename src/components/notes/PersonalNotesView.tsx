@@ -12,13 +12,13 @@ import {
 import { useToast } from "../ui/Toast";
 import NoteListItem from "./NoteListItem";
 import NoteEditor from "./NoteEditor";
-import NoteEnhanceModal from "./NoteEnhanceModal";
 import ActionPicker from "./ActionPicker";
 import ActionManagerDialog from "./ActionManagerDialog";
 import AddNotesToFolderDialog from "./AddNotesToFolderDialog";
 import { useNoteRecording } from "../../hooks/useNoteRecording";
+import { useActionProcessing } from "../../hooks/useActionProcessing";
 import { cn } from "../lib/utils";
-import type { FolderItem, ActionItem } from "../../types/electron";
+import type { FolderItem } from "../../types/electron";
 import {
   useNotes,
   useActiveNoteId,
@@ -40,8 +40,6 @@ export default function PersonalNotesView() {
   const [localTitle, setLocalTitle] = useState("");
   const [localContent, setLocalContent] = useState("");
   const [finalTranscript, setFinalTranscript] = useState<string | null>(null);
-  const [showEnhanceModal, setShowEnhanceModal] = useState(false);
-  const [selectedAction, setSelectedAction] = useState<ActionItem | null>(null);
   const [showActionManager, setShowActionManager] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activeNoteRef = useRef<number | null>(null);
@@ -258,10 +256,37 @@ export default function PersonalNotesView() {
       } finally {
         setIsSaving(false);
       }
-      setShowEnhanceModal(false);
     },
     [activeNoteId]
   );
+
+  const {
+    state: actionProcessingState,
+    actionName,
+    runAction,
+    cancel: cancelAction,
+  } = useActionProcessing({
+    onSuccess: useCallback(
+      (enhancedContent: string, prompt: string) => {
+        handleApplyEnhancement(enhancedContent, prompt);
+      },
+      [handleApplyEnhancement]
+    ),
+    onError: useCallback(
+      (errorMessage: string) => {
+        toast({
+          title: t("notes.enhance.title"),
+          description: errorMessage,
+          variant: "destructive",
+        });
+      },
+      [toast, t]
+    ),
+  });
+
+  useEffect(() => {
+    return () => cancelAction();
+  }, [activeNoteId, cancelAction]);
 
   const isEnhancementStale = useMemo(() => {
     if (!activeNote?.enhanced_content || !activeNote?.enhanced_at_content_hash) return false;
@@ -764,23 +789,18 @@ export default function PersonalNotesView() {
               hasEnhancedContent={!!activeNote?.enhanced_content}
               enhancedContent={activeNote?.enhanced_content ?? null}
               isEnhancementStale={isEnhancementStale}
+              actionProcessingState={actionProcessingState}
+              actionName={actionName}
               actionPicker={
                 <ActionPicker
                   onRunAction={(action) => {
-                    setSelectedAction(action);
-                    setShowEnhanceModal(true);
+                    if (!localContent.trim()) return;
+                    runAction(action, localContent);
                   }}
                   onManageActions={() => setShowActionManager(true)}
-                  disabled={!localContent.trim()}
+                  disabled={!localContent.trim() || actionProcessingState === "processing"}
                 />
               }
-            />
-            <NoteEnhanceModal
-              open={showEnhanceModal}
-              onOpenChange={setShowEnhanceModal}
-              noteContent={localContent}
-              action={selectedAction}
-              onApply={handleApplyEnhancement}
             />
             <ActionManagerDialog open={showActionManager} onOpenChange={setShowActionManager} />
           </>
