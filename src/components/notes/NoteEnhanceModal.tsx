@@ -25,6 +25,8 @@ const DEFAULT_PROMPT_FALLBACK =
 const BASE_SYSTEM_PROMPT =
   "You are a note enhancement assistant. The user will provide raw notes — possibly voice-transcribed, rough, or unstructured. Your job is to clean them up according to the instructions below while preserving all original meaning and information. Output clean markdown.\n\nInstructions: ";
 
+const DEFAULT_CLOUD_MODEL = "gpt-5.2";
+
 export default function NoteEnhanceModal({
   open,
   onOpenChange,
@@ -39,11 +41,19 @@ export default function NoteEnhanceModal({
   const [error, setError] = useState("");
   const [selectedModel, setSelectedModel] = useState("");
 
+  const isCloudMode =
+    localStorage.getItem("isSignedIn") === "true" &&
+    localStorage.getItem("cloudReasoningMode") === "openwhispr";
+
   useEffect(() => {
     if (open && !selectedModel) {
-      setSelectedModel(localStorage.getItem("reasoningModel") || "");
+      if (isCloudMode) {
+        setSelectedModel(DEFAULT_CLOUD_MODEL);
+      } else {
+        setSelectedModel(localStorage.getItem("reasoningModel") || "");
+      }
     }
-  }, [open, selectedModel]);
+  }, [open, selectedModel, isCloudMode]);
 
   useEffect(() => {
     if (open) {
@@ -90,14 +100,16 @@ export default function NoteEnhanceModal({
           </DialogTitle>
         </DialogHeader>
 
-        <NoteModelPicker
-          selectedModel={selectedModel}
-          onModelSelect={(modelId) => {
-            setSelectedModel(modelId);
-            localStorage.setItem("reasoningModel", modelId);
-          }}
-          disabled={state === "enhancing"}
-        />
+        {!isCloudMode && (
+          <NoteModelPicker
+            selectedModel={selectedModel}
+            onModelSelect={(modelId) => {
+              setSelectedModel(modelId);
+              localStorage.setItem("reasoningModel", modelId);
+            }}
+            disabled={state === "enhancing"}
+          />
+        )}
 
         <textarea
           value={prompt}

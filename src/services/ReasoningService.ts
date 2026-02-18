@@ -1040,6 +1040,7 @@ class ReasoningService extends BaseReasoningService {
           agentName,
           customDictionary,
           customPrompt: this.getCustomPrompt(),
+          systemPrompt: config.systemPrompt,
           language,
           locale,
         });
