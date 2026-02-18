@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Eye, Pencil, Loader2, Download, FileText } from "lucide-react";
+import { ArrowUpFromLine, Loader2, FileText } from "lucide-react";
 import { MarkdownRenderer } from "../ui/MarkdownRenderer";
 import {
   DropdownMenu,
@@ -11,6 +11,19 @@ import {
 import { cn } from "../lib/utils";
 import type { NoteItem } from "../../types/electron";
 import DictationWidget from "./DictationWidget";
+
+function formatNoteDate(dateStr: string): string {
+  const source = dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`;
+  const date = new Date(source);
+  if (Number.isNaN(date.getTime())) return "";
+  const datePart = date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const timePart = date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  return `${datePart} \u00b7 ${timePart}`;
+}
 
 interface NoteEditorProps {
   note: NoteItem;
@@ -50,7 +63,6 @@ export default function NoteEditor({
   actionPicker,
 }: NoteEditorProps) {
   const { t } = useTranslation();
-  const [isPreview, setIsPreview] = useState(false);
   const [viewMode, setViewMode] = useState<"raw" | "enhanced">("raw");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const titleRef = useRef<HTMLDivElement>(null);
@@ -61,10 +73,42 @@ export default function NoteEditor({
   const isDictationUpdateRef = useRef(false);
   const prevRecordingRef = useRef(false);
 
+  const segmentContainerRef = useRef<HTMLDivElement>(null);
+  const [indicatorStyle, setIndicatorStyle] = useState<React.CSSProperties>({ opacity: 0 });
+
+  const updateSegmentIndicator = useCallback(() => {
+    const container = segmentContainerRef.current;
+    if (!container) return;
+
+    const idx = viewMode === "raw" ? 0 : 1;
+
+    const buttons = container.querySelectorAll<HTMLButtonElement>("[data-segment-button]");
+    const btn = buttons[idx];
+    if (!btn) return;
+
+    const cr = container.getBoundingClientRect();
+    const br = btn.getBoundingClientRect();
+    setIndicatorStyle({
+      width: br.width,
+      height: br.height,
+      transform: `translateX(${br.left - cr.left}px)`,
+      opacity: 1,
+    });
+  }, [viewMode]);
+
+  useEffect(() => {
+    updateSegmentIndicator();
+  }, [updateSegmentIndicator]);
+
+  useEffect(() => {
+    const observer = new ResizeObserver(() => updateSegmentIndicator());
+    if (segmentContainerRef.current) observer.observe(segmentContainerRef.current);
+    return () => observer.disconnect();
+  }, [updateSegmentIndicator]);
+
   useEffect(() => {
     if (note.id !== prevNoteIdRef.current) {
       prevNoteIdRef.current = note.id;
-      setIsPreview(false);
       setViewMode("raw");
       if (titleRef.current && titleRef.current.textContent !== note.title) {
         titleRef.current.textContent = note.title || "";
@@ -199,84 +243,89 @@ export default function NoteEditor({
     return trimmed ? trimmed.split(/\s+/).length : 0;
   }, [note.content]);
 
+  const noteDate = formatNoteDate(note.created_at);
+
   return (
     <div className="flex flex-col h-full">
       <div className="px-5 pt-4 pb-0">
-        <div
-          ref={titleRef}
-          contentEditable
-          suppressContentEditableWarning
-          onInput={handleTitleInput}
-          onKeyDown={handleTitleKeyDown}
-          onPaste={handleTitlePaste}
-          data-placeholder={t("notes.editor.untitled")}
-          className="w-full text-base font-semibold text-foreground bg-transparent outline-none tracking-[-0.01em] empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/15 empty:before:pointer-events-none"
-          role="textbox"
-          aria-label={t("notes.editor.noteTitle")}
-        />
+        <div className="flex items-start gap-2">
+          <div
+            ref={titleRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={handleTitleInput}
+            onKeyDown={handleTitleKeyDown}
+            onPaste={handleTitlePaste}
+            data-placeholder={t("notes.editor.untitled")}
+            className="flex-1 min-w-0 text-base font-semibold text-foreground bg-transparent outline-none tracking-[-0.01em] empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/15 empty:before:pointer-events-none"
+            role="textbox"
+            aria-label={t("notes.editor.noteTitle")}
+          />
+          {onExportNote && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className="shrink-0 mt-0.5 p-1 rounded-md text-foreground/15 hover:text-foreground/40 transition-colors duration-150"
+                  aria-label={t("notes.editor.export")}
+                >
+                  <ArrowUpFromLine size={13} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" sideOffset={4}>
+                <DropdownMenuItem onClick={() => onExportNote("md")} className="text-[12px] gap-2">
+                  <FileText size={13} className="text-foreground/40" />
+                  {t("notes.editor.asMarkdown")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onExportNote("txt")} className="text-[12px] gap-2">
+                  <FileText size={13} className="text-foreground/40" />
+                  {t("notes.editor.asPlainText")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+        </div>
+        {noteDate && <p className="text-[10px] text-foreground/20 mt-0.5">{noteDate}</p>}
       </div>
 
       <div className="flex items-center gap-px px-5 py-1.5">
-        {viewMode !== "enhanced" && (
-          <button
-            onClick={() => setIsPreview(!isPreview)}
-            className={cn(
-              "flex items-center gap-1.5 h-6 px-2 rounded-md text-[10px] font-medium transition-all duration-200",
-              isPreview
-                ? "bg-foreground/6 text-foreground/60"
-                : "text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/4"
-            )}
-          >
-            {isPreview ? <Pencil size={10} /> : <Eye size={10} />}
-            {isPreview ? t("notes.editor.edit") : t("notes.editor.preview")}
-          </button>
-        )}
-
-        {onExportNote && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button className="flex items-center gap-1.5 h-6 px-2 rounded-md text-[10px] font-medium text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/4 transition-all duration-150">
-                <Download size={10} />
-                {t("notes.editor.export")}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" sideOffset={4}>
-              <DropdownMenuItem onClick={() => onExportNote("md")} className="text-[12px] gap-2">
-                <FileText size={13} className="text-foreground/40" />
-                {t("notes.editor.asMarkdown")}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onExportNote("txt")} className="text-[12px] gap-2">
-                <FileText size={13} className="text-foreground/40" />
-                {t("notes.editor.asPlainText")}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
-
         {hasEnhancedContent && (
-          <div className="flex items-center rounded-md bg-foreground/3 dark:bg-white/3 p-0.5 ml-1">
+          <div
+            ref={segmentContainerRef}
+            className="relative flex items-center rounded-md bg-foreground/3 dark:bg-white/3 p-0.5"
+          >
+            <div
+              className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-all duration-200 ease-out pointer-events-none"
+              style={indicatorStyle}
+            />
             <button
+              data-segment-button
               onClick={() => setViewMode("raw")}
               className={cn(
-                "px-2 h-5 rounded text-[9px] font-medium transition-all duration-150",
+                "relative z-1 px-2 h-5 rounded text-[9px] font-medium transition-colors duration-150",
                 viewMode === "raw"
-                  ? "bg-background dark:bg-surface-2 text-foreground/60 shadow-sm"
+                  ? "text-foreground/60"
                   : "text-foreground/25 hover:text-foreground/40"
               )}
             >
               {t("notes.editor.raw")}
             </button>
             <button
+              data-segment-button
               onClick={() => setViewMode("enhanced")}
               className={cn(
-                "px-2 h-5 rounded text-[9px] font-medium transition-all duration-150 flex items-center gap-1",
+                "relative z-1 px-2 h-5 rounded text-[9px] font-medium transition-colors duration-150 flex items-center gap-1",
                 viewMode === "enhanced"
-                  ? "bg-background dark:bg-surface-2 text-foreground/60 shadow-sm"
+                  ? "text-foreground/60"
                   : "text-foreground/25 hover:text-foreground/40"
               )}
             >
               {t("notes.editor.enhanced")}
-              {isEnhancementStale && <span className="w-1 h-1 rounded-full bg-amber-400/60" />}
+              {isEnhancementStale && (
+                <span
+                  className="w-1 h-1 rounded-full bg-amber-400/60"
+                  title={t("notes.editor.staleIndicator")}
+                />
+              )}
             </button>
           </div>
         )}
@@ -297,10 +346,6 @@ export default function NoteEditor({
         {viewMode === "enhanced" && enhancedContent ? (
           <div className="px-5 py-3 text-[13px] text-foreground leading-relaxed">
             <MarkdownRenderer content={enhancedContent} />
-          </div>
-        ) : isPreview ? (
-          <div className="px-5 py-3 text-[13px] text-foreground leading-relaxed">
-            <MarkdownRenderer content={note.content} />
           </div>
         ) : (
           <textarea

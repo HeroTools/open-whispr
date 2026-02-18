@@ -1357,7 +1357,8 @@
       "enhanced": "Verbessert",
       "saving": "Wird gespeichert",
       "wordsCount": "{{count}} Wörter",
-      "startWriting": "Schreibe los..."
+      "startWriting": "Schreibe los...",
+      "staleIndicator": "Der Inhalt hat sich seit der Verbesserung geändert"
     },
     "enhance": {
       "title": "Mit KI verbessern",

@@ -1357,7 +1357,8 @@
       "enhanced": "Aprimorado",
       "saving": "Salvando",
       "wordsCount": "{{count}} palavras",
-      "startWriting": "Comece a escrever..."
+      "startWriting": "Comece a escrever...",
+      "staleIndicator": "O conteúdo mudou desde o aprimoramento"
     },
     "enhance": {
       "title": "Aprimorar com IA",

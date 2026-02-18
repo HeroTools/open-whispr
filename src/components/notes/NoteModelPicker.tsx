@@ -11,7 +11,7 @@ interface NoteModelPickerProps {
   disabled?: boolean;
 }
 
-const CLOUD_PROVIDER_IDS = ["openai", "anthropic", "gemini", "groq"] as const;
+const PROVIDER_IDS = ["openai", "anthropic", "gemini", "groq", "local"] as const;
 
 const PROVIDER_KEY_MAP: Record<string, string> = {
   openai: "openaiApiKey",
@@ -22,16 +22,18 @@ const PROVIDER_KEY_MAP: Record<string, string> = {
 
 function getAvailableProviders() {
   const isSignedIn = localStorage.getItem("isSignedIn") === "true";
-  const cloudMode = localStorage.getItem("cloudReasoningMode");
+  const cloudMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
   const isCloud = isSignedIn && cloudMode === "openwhispr";
 
-  return CLOUD_PROVIDER_IDS.filter(
-    (id) => REASONING_PROVIDERS[id] && (isCloud || !!localStorage.getItem(PROVIDER_KEY_MAP[id]))
-  );
+  return PROVIDER_IDS.filter((id) => {
+    if (!REASONING_PROVIDERS[id]?.models.length) return false;
+    if (id === "local") return true;
+    return isCloud || !!localStorage.getItem(PROVIDER_KEY_MAP[id]);
+  });
 }
 
 function getProviderForModel(modelId: string): string | null {
-  for (const id of CLOUD_PROVIDER_IDS) {
+  for (const id of PROVIDER_IDS) {
     const provider = REASONING_PROVIDERS[id];
     if (provider?.models.some((m) => m.value === modelId)) return id;
   }
@@ -60,8 +62,7 @@ export default function NoteModelPicker({
   }
 
   const currentProvider =
-    activeProvider &&
-    availableProviders.includes(activeProvider as (typeof CLOUD_PROVIDER_IDS)[number])
+    activeProvider && availableProviders.includes(activeProvider as (typeof PROVIDER_IDS)[number])
       ? activeProvider
       : availableProviders[0];
 

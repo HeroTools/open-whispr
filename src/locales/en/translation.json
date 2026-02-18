@@ -1357,7 +1357,8 @@
       "enhanced": "Enhanced",
       "saving": "Saving",
       "wordsCount": "{{count}} words",
-      "startWriting": "Start writing..."
+      "startWriting": "Start writing...",
+      "staleIndicator": "Content has changed since enhancement"
     },
     "enhance": {
       "title": "Enhance with AI",

@@ -43,7 +43,7 @@ export default function NoteEnhanceModal({
 
   const isCloudMode =
     localStorage.getItem("isSignedIn") === "true" &&
-    localStorage.getItem("cloudReasoningMode") === "openwhispr";
+    (localStorage.getItem("cloudReasoningMode") || "openwhispr") === "openwhispr";
 
   useEffect(() => {
     if (open && !selectedModel) {

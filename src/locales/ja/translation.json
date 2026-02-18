@@ -1257,7 +1257,8 @@
   },
   "notes": {
     "editor": {
-      "transcribe": "文字起こし"
+      "transcribe": "文字起こし",
+      "staleIndicator": "強化後にコンテンツが変更されました"
     },
     "context": {
       "moveToFolder": "フォルダに移動",

@@ -1357,7 +1357,8 @@
       "enhanced": "Amélioré",
       "saving": "Enregistrement",
       "wordsCount": "{{count}} mots",
-      "startWriting": "Commencez à écrire..."
+      "startWriting": "Commencez à écrire...",
+      "staleIndicator": "Le contenu a changé depuis l'amélioration"
     },
     "enhance": {
       "title": "Améliorer avec l'IA",

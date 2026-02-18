@@ -1358,7 +1358,8 @@
       "enhanced": "Улучшенный",
       "saving": "Сохранение",
       "wordsCount": "{{count}} слов",
-      "startWriting": "Начните писать..."
+      "startWriting": "Начните писать...",
+      "staleIndicator": "Содержимое изменилось после улучшения"
     },
     "enhance": {
       "title": "Улучшить с помощью ИИ",
