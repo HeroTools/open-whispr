@@ -690,7 +690,7 @@ export default function PersonalNotesView() {
         {isMeetingsFolder && <div className="flex-1" />}
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 min-h-0">
         {isMeetingsFolder ? (
           <div className="flex flex-col items-center justify-center h-full -mt-6">
             <svg

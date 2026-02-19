@@ -269,102 +269,111 @@ export default function NoteEditor({
   const noteDate = formatNoteDate(note.created_at);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-h-0">
       <div className="px-5 pt-4 pb-0">
-        <div className="flex items-center gap-2">
-          <div
-            ref={titleRef}
-            contentEditable
-            suppressContentEditableWarning
-            onInput={handleTitleInput}
-            onKeyDown={handleTitleKeyDown}
-            onPaste={handleTitlePaste}
-            data-placeholder={t("notes.editor.untitled")}
-            className="flex-1 min-w-0 text-base font-semibold text-foreground bg-transparent outline-none tracking-[-0.01em] empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/15 empty:before:pointer-events-none"
-            role="textbox"
-            aria-label={t("notes.editor.noteTitle")}
-          />
-          {hasEnhancedContent && (
-            <div
-              ref={segmentContainerRef}
-              className="relative flex items-center shrink-0 rounded-md bg-foreground/3 dark:bg-white/3 p-0.5"
-            >
-              <div
-                className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-all duration-200 ease-out pointer-events-none"
-                style={indicatorStyle}
-              />
-              <button
-                data-segment-button
-                onClick={() => setViewMode("raw")}
-                className={cn(
-                  "relative z-1 px-1.5 h-5 rounded text-[9px] font-medium transition-colors duration-150 flex items-center gap-1",
-                  viewMode === "raw"
-                    ? "text-foreground/60"
-                    : "text-foreground/25 hover:text-foreground/40"
-                )}
-              >
-                <AlignLeft size={10} />
-                {t("notes.editor.raw")}
-              </button>
-              <button
-                data-segment-button
-                onClick={() => setViewMode("enhanced")}
-                className={cn(
-                  "relative z-1 px-1.5 h-5 rounded text-[9px] font-medium transition-colors duration-150 flex items-center gap-1",
-                  viewMode === "enhanced"
-                    ? "text-foreground/60"
-                    : "text-foreground/25 hover:text-foreground/40"
-                )}
-              >
-                <Sparkles size={9} />
-                {t("notes.editor.enhanced")}
-                {isEnhancementStale && (
-                  <span
-                    className="w-1 h-1 rounded-full bg-amber-400/60"
-                    title={t("notes.editor.staleIndicator")}
-                  />
-                )}
-              </button>
-            </div>
-          )}
-          {onExportNote && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="shrink-0 p-1.5 rounded-md border border-foreground/8 dark:border-white/8 bg-foreground/3 dark:bg-white/3 text-foreground/35 hover:text-foreground/60 hover:bg-foreground/6 dark:hover:bg-white/6 transition-all duration-150"
-                  aria-label={t("notes.editor.export")}
-                >
-                  <Download size={12} />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" sideOffset={4}>
-                <DropdownMenuItem onClick={() => onExportNote("md")} className="text-[12px] gap-2">
-                  <FileText size={13} className="text-foreground/40" />
-                  {t("notes.editor.asMarkdown")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => onExportNote("txt")} className="text-[12px] gap-2">
-                  <FileText size={13} className="text-foreground/40" />
-                  {t("notes.editor.asPlainText")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-        </div>
-        <div className="flex items-center mt-0.5">
-          {noteDate && <p className="text-[10px] text-foreground/20">{noteDate}</p>}
+        <div
+          ref={titleRef}
+          contentEditable
+          suppressContentEditableWarning
+          onInput={handleTitleInput}
+          onKeyDown={handleTitleKeyDown}
+          onPaste={handleTitlePaste}
+          data-placeholder={t("notes.editor.untitled")}
+          className="text-base font-semibold text-foreground bg-transparent outline-none tracking-[-0.01em] empty:before:content-[attr(data-placeholder)] empty:before:text-foreground/15 empty:before:pointer-events-none"
+          role="textbox"
+          aria-label={t("notes.editor.noteTitle")}
+        />
+        <div className="flex items-center mt-1">
+          <div className="flex items-center text-[10px] text-foreground/20 min-w-0">
+            {noteDate && <span>{noteDate}</span>}
+            {noteDate && (isSaving || wordCount > 0) && <span className="mx-1.5">&middot;</span>}
+            <span className="tabular-nums flex items-center gap-1 shrink-0">
+              {isSaving && <Loader2 size={8} className="animate-spin" />}
+              {isSaving
+                ? t("notes.editor.saving")
+                : wordCount > 0
+                  ? t("notes.editor.wordsCount", { count: wordCount })
+                  : ""}
+            </span>
+          </div>
           <div className="flex-1" />
-          <span className="text-[9px] text-foreground/20 tabular-nums flex items-center gap-1.5">
-            {isSaving && <Loader2 size={8} className="animate-spin" />}
-            {isSaving
-              ? t("notes.editor.saving")
-              : wordCount > 0
-                ? t("notes.editor.wordsCount", { count: wordCount })
-                : ""}
-          </span>
+          <div className="flex items-center gap-1">
+            {hasEnhancedContent && (
+              <div
+                ref={segmentContainerRef}
+                className="relative flex items-center shrink-0 rounded-md bg-foreground/3 dark:bg-white/3 p-0.5"
+              >
+                <div
+                  className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-all duration-200 ease-out pointer-events-none"
+                  style={indicatorStyle}
+                />
+                <button
+                  data-segment-button
+                  onClick={() => setViewMode("raw")}
+                  className={cn(
+                    "relative z-1 px-1.5 h-5 rounded text-[9px] font-medium transition-colors duration-150 flex items-center gap-1",
+                    viewMode === "raw"
+                      ? "text-foreground/60"
+                      : "text-foreground/25 hover:text-foreground/40"
+                  )}
+                >
+                  <AlignLeft size={10} />
+                  {t("notes.editor.raw")}
+                </button>
+                <button
+                  data-segment-button
+                  onClick={() => setViewMode("enhanced")}
+                  className={cn(
+                    "relative z-1 px-1.5 h-5 rounded text-[9px] font-medium transition-colors duration-150 flex items-center gap-1",
+                    viewMode === "enhanced"
+                      ? "text-foreground/60"
+                      : "text-foreground/25 hover:text-foreground/40"
+                  )}
+                >
+                  <Sparkles size={9} />
+                  {t("notes.editor.enhanced")}
+                  {isEnhancementStale && (
+                    <span
+                      className="w-1 h-1 rounded-full bg-amber-400/60"
+                      title={t("notes.editor.staleIndicator")}
+                    />
+                  )}
+                </button>
+              </div>
+            )}
+            {onExportNote && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md bg-foreground/3 dark:bg-white/3 text-foreground/25 hover:text-foreground/40 hover:bg-foreground/6 dark:hover:bg-white/6 transition-all duration-150"
+                    aria-label={t("notes.editor.export")}
+                  >
+                    <Download size={11} />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={4}>
+                  <DropdownMenuItem
+                    onClick={() => onExportNote("md")}
+                    className="text-[12px] gap-2"
+                  >
+                    <FileText size={13} className="text-foreground/40" />
+                    {t("notes.editor.asMarkdown")}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onExportNote("txt")}
+                    className="text-[12px] gap-2"
+                  >
+                    <FileText size={13} className="text-foreground/40" />
+                    {t("notes.editor.asPlainText")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative min-h-0">
         <div className="h-full overflow-y-auto">
           {viewMode === "enhanced" && enhancedContent ? (
             <MarkdownTextarea value={enhancedContent} onChange={handleEnhancedChange} />
@@ -382,6 +391,10 @@ export default function NoteEditor({
         <ActionProcessingOverlay
           state={actionProcessingState ?? "idle"}
           actionName={actionName ?? null}
+        />
+        <div
+          className="absolute bottom-0 left-0 right-0 h-24 pointer-events-none"
+          style={{ background: "linear-gradient(to bottom, transparent, var(--color-background))" }}
         />
         <DictationWidget
           isRecording={isRecording}
