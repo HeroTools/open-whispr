@@ -368,7 +368,7 @@ export default function ControlPanel() {
                 size="sm"
                 onClick={handleUpdateClick}
                 disabled={isInstalling || isDownloading}
-                className="gap-1.5 text-[11px] w-full h-7"
+                className="gap-1.5 text-2xs w-full h-7"
               >
                 {getUpdateButtonContent()}
               </Button>
@@ -389,10 +389,10 @@ export default function ControlPanel() {
                       <AlertTriangle size={16} className="text-amber-600 dark:text-amber-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-[13px] font-medium text-amber-900 dark:text-amber-200 mb-0.5">
+                      <p className="text-xs font-medium text-amber-900 dark:text-amber-200 mb-0.5">
                         {t("controlPanel.billing.pastDueTitle")}
                       </p>
-                      <p className="text-[12px] text-amber-700 dark:text-amber-300/80 mb-2">
+                      <p className="text-xs text-amber-700 dark:text-amber-300/80 mb-2">
                         {t("controlPanel.billing.bannerDescription", {
                           limit: usage.limit.toLocaleString(),
                         })}
@@ -400,7 +400,7 @@ export default function ControlPanel() {
                       <Button
                         variant="default"
                         size="sm"
-                        className="h-7 text-[11px]"
+                        className="h-7 text-2xs"
                         onClick={() => {
                           setSettingsSection("account");
                           setShowSettings(true);

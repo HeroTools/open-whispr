@@ -131,7 +131,9 @@ function renderOverlay(text: string): ReactNode[] {
           {indent}
           <span className="relative">
             <span className="invisible">{marker}</span>
-            <span className="absolute left-0 text-foreground/40">{bulletChar(indent)}</span>
+            <span className="absolute left-0 text-sm text-foreground/40 leading-[inherit]">
+              {bulletChar(indent)}
+            </span>
           </span>{" "}
           {parseInline(content, i)}
         </span>
@@ -193,7 +195,7 @@ function renderOverlay(text: string): ReactNode[] {
   return out;
 }
 
-const SHARED = "leading-[1.7] text-[13px] px-5 py-3 pb-20 whitespace-pre-wrap break-words";
+const SHARED = "leading-[1.7] text-xs px-5 py-3 pb-20 whitespace-pre-wrap break-words";
 
 export function MarkdownTextarea({
   value,

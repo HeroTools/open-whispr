@@ -608,7 +608,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t("onboarding.activation.mode")}
               </span>
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+              <p className="text-2xs text-muted-foreground/70 mt-0.5">
                 {activationMode === "tap"
                   ? t("onboarding.activation.tapDescription")
                   : t("onboarding.activation.holdDescription")}
@@ -629,7 +629,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             {t("onboarding.activation.test")}
           </span>
-          <span className="text-[10px] text-muted-foreground/60">
+          <span className="text-3xs text-muted-foreground/60">
             {activationMode === "tap" || isUsingGnomeHotkeys
               ? t("onboarding.activation.hotkeyToStartStop", { hotkey: readableHotkey })
               : t("onboarding.activation.holdHotkey", { hotkey: readableHotkey })}

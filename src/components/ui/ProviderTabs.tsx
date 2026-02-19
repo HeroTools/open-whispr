@@ -96,7 +96,7 @@ export function ProviderTabs({
             {renderIcon ? renderIcon(provider.id) : <ProviderIcon provider={provider.id} />}
             <span>{provider.name}</span>
             {provider.recommended && (
-              <span className="text-[9px] text-primary/70 font-medium">
+              <span className="text-4xs text-primary/70 font-medium">
                 {t("common.recommended")}
               </span>
             )}

@@ -94,10 +94,8 @@ export default function MeetingNotesPlaceholder() {
           fillOpacity={0.05}
         />
       </svg>
-      <h3 className="text-[13px] font-semibold text-foreground/60 mb-1">
-        {t("notes.meeting.title")}
-      </h3>
-      <p className="text-[11px] text-foreground/25 text-center max-w-52 mb-3">
+      <h3 className="text-xs font-semibold text-foreground/60 mb-1">{t("notes.meeting.title")}</h3>
+      <p className="text-2xs text-foreground/25 text-center max-w-52 mb-3">
         {t("notes.meeting.description")}
       </p>
       <span className="text-[8px] font-semibold uppercase tracking-widest text-primary/40 bg-primary/5 dark:bg-primary/8 px-2.5 py-1 rounded-md border border-primary/8 dark:border-primary/12">

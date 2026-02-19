@@ -45,7 +45,7 @@ export default function HistoryView({
               {t("controlPanel.history.title")}
             </h2>
             {history.length > 0 && (
-              <span className="text-[11px] text-muted-foreground tabular-nums">
+              <span className="text-2xs text-muted-foreground tabular-nums">
                 ({history.length})
               </span>
             )}
@@ -55,7 +55,7 @@ export default function HistoryView({
               onClick={clearHistory}
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              className="h-7 px-2 text-2xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 size={12} className="mr-1" />
               {t("controlPanel.history.clear")}
@@ -80,16 +80,16 @@ export default function HistoryView({
                 <Cloud size={16} className="text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-foreground mb-0.5">
+                <p className="text-xs font-medium text-foreground mb-0.5">
                   {t("controlPanel.cloudMigration.title")}
                 </p>
-                <p className="text-[12px] text-muted-foreground mb-2">
+                <p className="text-xs text-muted-foreground mb-2">
                   {t("controlPanel.cloudMigration.description")}
                 </p>
                 <Button
                   variant="default"
                   size="sm"
-                  className="h-7 text-[11px]"
+                  className="h-7 text-2xs"
                   onClick={() => {
                     setShowCloudMigrationBanner(false);
                     localStorage.setItem("cloudMigrationShown", "true");
@@ -120,16 +120,16 @@ export default function HistoryView({
                 <Sparkles size={16} className="text-primary" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[13px] font-medium text-foreground mb-0.5">
+                <p className="text-xs font-medium text-foreground mb-0.5">
                   {t("controlPanel.aiCta.title")}
                 </p>
-                <p className="text-[12px] text-muted-foreground mb-2">
+                <p className="text-xs text-muted-foreground mb-2">
                   {t("controlPanel.aiCta.description")}
                 </p>
                 <Button
                   variant="default"
                   size="sm"
-                  className="h-7 text-[11px]"
+                  className="h-7 text-2xs"
                   onClick={() => onOpenSettings("aiModels")}
                 >
                   {t("controlPanel.aiCta.enable")}
@@ -231,12 +231,12 @@ export default function HistoryView({
                   strokeLinecap="round"
                 />
               </svg>
-              <h3 className="text-[13px] font-semibold text-foreground/60 mb-2">
+              <h3 className="text-xs font-semibold text-foreground/60 mb-2">
                 {t("controlPanel.history.empty")}
               </h3>
-              <div className="flex items-center gap-2 text-[11px] text-foreground/25">
+              <div className="flex items-center gap-2 text-2xs text-foreground/25">
                 <span>{t("controlPanel.history.press")}</span>
-                <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border/50 text-[10px] font-mono font-medium text-foreground/40">
+                <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border/50 text-3xs font-mono font-medium text-foreground/40">
                   {formatHotkeyLabel(hotkey)}
                 </kbd>
                 <span>{t("controlPanel.history.toStart")}</span>

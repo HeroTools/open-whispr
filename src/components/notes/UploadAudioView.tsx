@@ -332,7 +332,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
           updateTranscriptionSettings({ useLocalWhisper: false });
         }}
         className={cn(
-          "flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[10px] font-medium transition-colors duration-150",
+          "flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-3xs font-medium transition-colors duration-150",
           isOpenWhisprCloud
             ? "bg-foreground/[0.06] dark:bg-white/8 text-foreground/70"
             : "text-foreground/30 hover:text-foreground/50"
@@ -344,7 +344,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
       <button
         onClick={() => setCloudTranscriptionMode("byok")}
         className={cn(
-          "flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-[10px] font-medium transition-colors duration-150",
+          "flex-1 flex items-center justify-center gap-1.5 h-7 rounded text-3xs font-medium transition-colors duration-150",
           !isOpenWhisprCloud
             ? "bg-foreground/[0.06] dark:bg-white/8 text-foreground/70"
             : "text-foreground/30 hover:text-foreground/50"
@@ -406,10 +406,10 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
               <div className="w-10 h-10 rounded-[10px] bg-gradient-to-b from-primary/10 to-primary/[0.03] dark:from-primary/15 dark:to-primary/5 border border-primary/15 dark:border-primary/20 flex items-center justify-center mb-3">
                 <Upload size={17} strokeWidth={1.5} className="text-primary/50" />
               </div>
-              <h2 className="text-[13px] font-semibold text-foreground mb-1">
+              <h2 className="text-xs font-semibold text-foreground mb-1">
                 {t("notes.upload.setupTitle")}
               </h2>
-              <p className="text-[11px] text-foreground/30 text-center leading-relaxed max-w-[280px]">
+              <p className="text-2xs text-foreground/30 text-center leading-relaxed max-w-[280px]">
                 {t("notes.upload.setupDescription")}
               </p>
             </div>
@@ -422,7 +422,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                 variant="default"
                 size="sm"
                 onClick={dismissSetup}
-                className="h-8 text-[11px] px-6"
+                className="h-8 text-2xs px-6"
               >
                 {t("notes.upload.continue")}
               </Button>
@@ -485,7 +485,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
           <div className="mx-auto mt-5" style={{ maxWidth: advancedOpen ? "448px" : "320px" }}>
             <button
               onClick={() => setAdvancedOpen(!advancedOpen)}
-              className="flex items-center gap-1.5 text-[10px] text-foreground/25 hover:text-foreground/40 transition-colors mx-auto"
+              className="flex items-center gap-1.5 text-3xs text-foreground/25 hover:text-foreground/40 transition-colors mx-auto"
             >
               <ChevronRight
                 size={10}
@@ -507,13 +507,13 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
       <Dialog open={showNewFolderDialog} onOpenChange={setShowNewFolderDialog}>
         <DialogContent className="sm:max-w-[320px] p-5 gap-3">
           <DialogHeader>
-            <DialogTitle className="text-[14px]">{t("notes.upload.newFolder")}</DialogTitle>
+            <DialogTitle className="text-sm">{t("notes.upload.newFolder")}</DialogTitle>
           </DialogHeader>
           <Input
             value={newFolderName}
             onChange={(e) => setNewFolderName(e.target.value)}
             placeholder={t("notes.upload.folderName")}
-            className="h-8 text-[12px]"
+            className="h-8 text-xs"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Enter") handleCreateFolder();
@@ -527,7 +527,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
                 setShowNewFolderDialog(false);
                 setNewFolderName("");
               }}
-              className="h-7 text-[11px]"
+              className="h-7 text-2xs"
             >
               {t("notes.upload.cancel")}
             </Button>
@@ -536,7 +536,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
               size="sm"
               onClick={handleCreateFolder}
               disabled={!newFolderName.trim()}
-              className="h-7 text-[11px]"
+              className="h-7 text-2xs"
             >
               {t("notes.upload.create")}
             </Button>
@@ -597,10 +597,8 @@ function IdleView({
             className="text-foreground/25 dark:text-foreground/35"
           />
         </div>
-        <h2 className="text-[13px] font-semibold text-foreground mb-1">
-          {t("notes.upload.title")}
-        </h2>
-        <p className="text-[10px] text-foreground/25">
+        <h2 className="text-xs font-semibold text-foreground mb-1">{t("notes.upload.title")}</h2>
+        <p className="text-3xs text-foreground/25">
           {t("notes.upload.using", { model: getActiveModelLabel() })}
         </p>
       </div>
@@ -655,19 +653,17 @@ function IdleView({
                 className="text-foreground/20 dark:text-foreground/30 group-hover:text-foreground/40 transition-colors"
               />
             </div>
-            <p className="text-[11px] text-foreground/35 group-hover:text-foreground/50 transition-colors">
+            <p className="text-2xs text-foreground/35 group-hover:text-foreground/50 transition-colors">
               {t("notes.upload.dropOrBrowse")}
             </p>
-            <p className="text-[9px] text-foreground/15 tracking-wide">
+            <p className="text-4xs text-foreground/15 tracking-wide">
               {t("notes.upload.supportedFormats")}
             </p>
           </div>
         ) : (
           <div className="flex flex-col items-center gap-2 relative">
             <Upload size={18} className="text-primary/60" />
-            <p className="text-[11px] text-primary/60 font-medium">
-              {t("notes.upload.dropToUpload")}
-            </p>
+            <p className="text-2xs text-primary/60 font-medium">{t("notes.upload.dropToUpload")}</p>
           </div>
         )}
       </div>
@@ -698,9 +694,9 @@ function SelectedView({
             <FileAudio size={15} className="text-primary/60" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[12px] text-foreground/70 truncate font-medium">{file.name}</p>
-            {file.size && <p className="text-[10px] text-foreground/25 mt-0.5">{file.size}</p>}
-            <p className="text-[9px] text-foreground/20 mt-0.5">{getActiveModelLabel()}</p>
+            <p className="text-xs text-foreground/70 truncate font-medium">{file.name}</p>
+            {file.size && <p className="text-3xs text-foreground/25 mt-0.5">{file.size}</p>}
+            <p className="text-4xs text-foreground/20 mt-0.5">{getActiveModelLabel()}</p>
           </div>
           <button
             onClick={reset}
@@ -716,7 +712,7 @@ function SelectedView({
           variant="default"
           size="sm"
           onClick={handleTranscribe}
-          className="h-8 text-[11px] px-5"
+          className="h-8 text-2xs px-5"
         >
           {t("notes.upload.transcribe")}
         </Button>
@@ -724,7 +720,7 @@ function SelectedView({
           variant="ghost"
           size="sm"
           onClick={reset}
-          className="h-8 text-[11px] text-foreground/35"
+          className="h-8 text-2xs text-foreground/35"
         >
           {t("notes.upload.cancel")}
         </Button>
@@ -764,9 +760,9 @@ function TranscribingView({ t, progress, getTranscribingLabel, file }: Transcrib
         />
       </div>
 
-      <p className="text-[11px] text-foreground/50 font-medium">{getTranscribingLabel()}</p>
+      <p className="text-2xs text-foreground/50 font-medium">{getTranscribingLabel()}</p>
       {file && (
-        <p className="text-[9px] text-foreground/20 mt-1 truncate max-w-[200px]">{file.name}</p>
+        <p className="text-4xs text-foreground/20 mt-1 truncate max-w-[200px]">{file.name}</p>
       )}
     </div>
   );
@@ -833,10 +829,10 @@ function CompleteView({
         </div>
       </div>
 
-      <p className="text-[12px] text-foreground/60 font-medium mb-1">
+      <p className="text-xs text-foreground/60 font-medium mb-1">
         {t("notes.upload.transcriptionComplete")}
       </p>
-      <p className="text-[9px] text-foreground/25 max-w-[240px] text-center line-clamp-2 mb-4">
+      <p className="text-4xs text-foreground/25 max-w-[240px] text-center line-clamp-2 mb-4">
         {result.slice(0, 150)}
       </p>
 
@@ -844,7 +840,7 @@ function CompleteView({
         <div className="flex items-center justify-center gap-2 mb-4">
           <FolderOpen size={12} className="text-foreground/20 shrink-0" />
           <Select value={selectedFolderId} onValueChange={handleFolderChange}>
-            <SelectTrigger className="h-7 w-44 text-[11px] rounded-lg px-2.5 [&>svg]:h-3 [&>svg]:w-3">
+            <SelectTrigger className="h-7 w-44 text-2xs rounded-lg px-2.5 [&>svg]:h-3 [&>svg]:w-3">
               <SelectValue placeholder={t("notes.upload.selectFolder")} />
             </SelectTrigger>
             <SelectContent>
@@ -855,7 +851,7 @@ function CompleteView({
                     key={f.id}
                     value={String(f.id)}
                     disabled={isMeetings}
-                    className="text-[11px] py-1.5 pl-2.5 pr-7 rounded-md"
+                    className="text-2xs py-1.5 pl-2.5 pr-7 rounded-md"
                   >
                     <span className="flex items-center gap-1.5">
                       {f.name}
@@ -869,10 +865,7 @@ function CompleteView({
                 );
               })}
               <SelectSeparator />
-              <SelectItem
-                value="__create_new__"
-                className="text-[11px] py-1.5 pl-2.5 pr-7 rounded-md"
-              >
+              <SelectItem value="__create_new__" className="text-2xs py-1.5 pl-2.5 pr-7 rounded-md">
                 <span className="flex items-center gap-1.5 text-primary/60">
                   <Plus size={11} />
                   {t("notes.upload.newFolder")}
@@ -891,7 +884,7 @@ function CompleteView({
             onClick={() =>
               onNoteCreated(noteId, selectedFolderId ? Number(selectedFolderId) : null)
             }
-            className="h-8 text-[11px]"
+            className="h-8 text-2xs"
           >
             {t("notes.upload.openNote")}
           </Button>
@@ -900,7 +893,7 @@ function CompleteView({
           variant="ghost"
           size="sm"
           onClick={reset}
-          className="h-8 text-[11px] text-foreground/35"
+          className="h-8 text-2xs text-foreground/35"
         >
           {t("notes.upload.uploadAnother")}
         </Button>
@@ -922,7 +915,7 @@ function ErrorView({ t, error, reset, handleTranscribe }: ErrorViewProps) {
       <div className="rounded-lg border border-destructive/15 dark:border-destructive/20 bg-destructive/[0.03] dark:bg-destructive/[0.05] backdrop-blur-sm p-4 mb-4">
         <div className="flex items-start gap-2.5">
           <AlertCircle size={14} className="text-destructive/50 shrink-0 mt-0.5" />
-          <p className="flex-1 text-[11px] text-destructive/70 leading-relaxed">{error}</p>
+          <p className="flex-1 text-2xs text-destructive/70 leading-relaxed">{error}</p>
           <button
             onClick={reset}
             className="text-foreground/15 hover:text-foreground/30 transition-colors shrink-0 p-0.5 rounded"
@@ -937,7 +930,7 @@ function ErrorView({ t, error, reset, handleTranscribe }: ErrorViewProps) {
           variant="ghost"
           size="sm"
           onClick={handleTranscribe}
-          className="h-7 text-[10px] text-foreground/40"
+          className="h-7 text-3xs text-foreground/40"
         >
           {t("notes.upload.retry")}
         </Button>
@@ -945,7 +938,7 @@ function ErrorView({ t, error, reset, handleTranscribe }: ErrorViewProps) {
           variant="ghost"
           size="sm"
           onClick={reset}
-          className="h-7 text-[10px] text-foreground/25"
+          className="h-7 text-3xs text-foreground/25"
         >
           {t("notes.upload.startOver")}
         </Button>

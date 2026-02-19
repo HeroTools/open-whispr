@@ -78,15 +78,13 @@ export default function ActionProcessingOverlay({
         {isSuccess ? (
           <div className="flex items-center gap-2">
             <Check size={13} className="text-success/70" />
-            <span className="text-[12px] font-medium text-success/70 tracking-tight">
+            <span className="text-xs font-medium text-success/70 tracking-tight">
               {t("notes.actions.done")}
             </span>
           </div>
         ) : (
           <>
-            <span className="text-[12px] font-medium text-accent/70 tracking-tight">
-              {actionName}
-            </span>
+            <span className="text-xs font-medium text-accent/70 tracking-tight">{actionName}</span>
             <div className="w-32 h-0.5 bg-accent/10 rounded-full overflow-hidden">
               <div
                 className="h-full w-1/3 bg-accent/40 rounded-full"

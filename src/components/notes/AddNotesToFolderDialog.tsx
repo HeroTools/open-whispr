@@ -118,7 +118,7 @@ export default function AddNotesToFolderDialog({
               placeholder={t("notes.addToFolder.searchPlaceholder")}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-8 rounded-md bg-foreground/[0.03] dark:bg-white/[0.04] border border-foreground/8 dark:border-white/8 pl-8 pr-3 text-[12px] text-foreground placeholder:text-foreground/20 outline-none focus:border-primary/30 transition-colors"
+              className="w-full h-8 rounded-md bg-foreground/[0.03] dark:bg-white/[0.04] border border-foreground/8 dark:border-white/8 pl-8 pr-3 text-xs text-foreground placeholder:text-foreground/20 outline-none focus:border-primary/30 transition-colors"
               autoFocus
             />
           </div>
@@ -127,7 +127,7 @@ export default function AddNotesToFolderDialog({
         <div className="max-h-80 overflow-y-auto px-2 pb-2">
           {grouped.length === 0 ? (
             <div className="flex items-center justify-center py-10">
-              <p className="text-[11px] text-foreground/20">
+              <p className="text-2xs text-foreground/20">
                 {search
                   ? t("notes.addToFolder.noResults")
                   : t("notes.addToFolder.noNotesAvailable")}
@@ -136,7 +136,7 @@ export default function AddNotesToFolderDialog({
           ) : (
             grouped.map(([dateLabel, notes]) => (
               <div key={dateLabel}>
-                <p className="text-[10px] font-medium text-foreground/30 px-2 pt-3 pb-1.5">
+                <p className="text-3xs font-medium text-foreground/30 px-2 pt-3 pb-1.5">
                   {dateLabel}
                 </p>
                 {notes.map((note) => {
@@ -155,7 +155,7 @@ export default function AddNotesToFolderDialog({
                         <FileText size={12} className="text-foreground/20" />
                       </div>
                       <div className="flex-1 min-w-0 text-left">
-                        <p className="text-[12px] text-foreground/80 truncate">
+                        <p className="text-xs text-foreground/80 truncate">
                           {note.title || t("notes.list.untitled")}
                         </p>
                       </div>
@@ -183,7 +183,7 @@ export default function AddNotesToFolderDialog({
             size="sm"
             onClick={handleAdd}
             disabled={selected.size === 0 || isAdding}
-            className="h-7 text-[11px]"
+            className="h-7 text-2xs"
           >
             {t("notes.addToFolder.addCount", { count: selected.size })}
           </Button>

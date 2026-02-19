@@ -126,7 +126,7 @@ export default function ControlPanelSidebar({
               />
               <span
                 className={cn(
-                  "text-[12px] transition-colors duration-150",
+                  "text-xs transition-colors duration-150",
                   isActive
                     ? "text-foreground font-medium"
                     : "text-foreground/50 group-hover:text-foreground/70"
@@ -156,7 +156,7 @@ export default function ControlPanelSidebar({
             <div className="flex items-center justify-center h-5 w-5 rounded bg-success/10 dark:bg-success/15 shrink-0">
               <Gift size={11} className="text-success" />
             </div>
-            <span className="text-[11px] text-success/70 dark:text-success/60 group-hover:text-success/90 dark:group-hover:text-success/80 font-medium transition-colors duration-150">
+            <span className="text-3xs text-success/70 dark:text-success/60 group-hover:text-success/90 dark:group-hover:text-success/80 font-medium transition-colors duration-150">
               {t("sidebar.referral")}
             </span>
           </button>
@@ -171,7 +171,7 @@ export default function ControlPanelSidebar({
             size={15}
             className="shrink-0 text-foreground/20 group-hover:text-foreground/40 transition-colors duration-150"
           />
-          <span className="text-[12px] text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
+          <span className="text-xs text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
             {t("sidebar.settings")}
           </span>
         </button>
@@ -186,7 +186,7 @@ export default function ControlPanelSidebar({
                 size={15}
                 className="shrink-0 text-foreground/20 group-hover:text-foreground/40 transition-colors duration-150"
               />
-              <span className="text-[12px] text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
+              <span className="text-xs text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
                 {t("sidebar.support")}
               </span>
             </button>
@@ -202,7 +202,7 @@ export default function ControlPanelSidebar({
             size={15}
             className="shrink-0 text-foreground/20 group-hover:text-destructive/60 transition-colors duration-150"
           />
-          <span className="text-[12px] text-foreground/40 group-hover:text-destructive/60 transition-colors duration-150">
+          <span className="text-xs text-foreground/40 group-hover:text-destructive/60 transition-colors duration-150">
             {t("sidebar.quit")}
           </span>
         </button>
@@ -218,17 +218,15 @@ export default function ControlPanelSidebar({
           <div className="flex-1 min-w-0">
             {isSignedIn && (userName || userEmail) ? (
               <>
-                <p className="text-[11px] text-foreground/60 truncate leading-tight">
+                <p className="text-2xs text-foreground/60 truncate leading-tight">
                   {userName || "User"}
                 </p>
                 {userEmail && (
-                  <p className="text-[9px] text-foreground/25 truncate leading-tight">
-                    {userEmail}
-                  </p>
+                  <p className="text-4xs text-foreground/25 truncate leading-tight">{userEmail}</p>
                 )}
               </>
             ) : authLoaded && !isSignedIn ? (
-              <p className="text-[11px] text-foreground/30">Not signed in</p>
+              <p className="text-2xs text-foreground/30">Not signed in</p>
             ) : null}
           </div>
         </div>

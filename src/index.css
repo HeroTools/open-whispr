@@ -43,6 +43,31 @@
   --color-border-subtle: #e5e5e5;
   --color-border-hover: #d4d4d4;
   --color-border-active: #2563eb;
+
+  /* Sub-xs type scale for dense desktop UI.
+     text-xs=12px, text-sm=14px are built-in Tailwind.
+     These fill the smaller end needed by compact native-style UI:
+       text-2xs = 11px  — labels, secondary text
+       text-3xs = 10px  — metadata, counts, captions
+       text-4xs = 9px   — hint text, kbd badges */
+  --font-size-4xs: 0.5625rem;
+  --font-size-3xs: 0.625rem;
+  --font-size-2xs: 0.6875rem;
+}
+
+/* Explicit utility definitions — ensures text-2xs/3xs/4xs are always generated
+   regardless of Vite HMR cache state. These match the @theme tokens above. */
+@utility text-4xs {
+  font-size: 0.5625rem; /* 9px */
+  line-height: 1.3;
+}
+@utility text-3xs {
+  font-size: 0.625rem; /* 10px */
+  line-height: 1.4;
+}
+@utility text-2xs {
+  font-size: 0.6875rem; /* 11px */
+  line-height: 1.4;
 }
 
 :root {

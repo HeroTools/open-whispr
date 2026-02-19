@@ -249,13 +249,13 @@ const Toast: React.FC<
       <div className="flex items-start gap-2 flex-1 min-w-0 px-2.5 py-2 pr-7">
         <div className="flex-1 min-w-0">
           {message && (
-            <div className="text-[12px] font-medium leading-tight text-white/90">{message}</div>
+            <div className="text-xs font-medium leading-tight text-white/90">{message}</div>
           )}
           {detail &&
             (isDestructive ? (
               <div
                 className={cn(
-                  "text-[11px] leading-snug mt-1 px-1.5 py-1 rounded-[3px] font-mono",
+                  "text-2xs leading-snug mt-1 px-1.5 py-1 rounded-[3px] font-mono",
                   "bg-white/4 border border-white/6",
                   "text-red-300/80"
                 )}
@@ -277,7 +277,7 @@ const Toast: React.FC<
                 </div>
               </div>
             ) : (
-              <div className="text-[11px] leading-snug mt-0.5 text-white/45">{detail}</div>
+              <div className="text-2xs leading-snug mt-0.5 text-white/45">{detail}</div>
             ))}
         </div>
 

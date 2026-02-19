@@ -51,13 +51,13 @@ export default function PermissionCard({
         {/* Content */}
         <div className="flex-1 min-w-0">
           <h3 className="text-xs font-medium text-foreground">{title}</h3>
-          <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{description}</p>
+          <p className="text-2xs text-muted-foreground leading-snug mt-0.5">{description}</p>
         </div>
 
         {/* Actions - only when not granted */}
         {!granted && (
           <div className="flex items-center gap-1.5 shrink-0">
-            <Button onClick={onRequest} size="sm" className="h-7 px-3 text-[11px]">
+            <Button onClick={onRequest} size="sm" className="h-7 px-3 text-2xs">
               {buttonText}
             </Button>
             {onOpenSettings && (

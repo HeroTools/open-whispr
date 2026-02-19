@@ -153,11 +153,11 @@ export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
 
       {/* Brand + Signal ID */}
       <div className="absolute top-0 inset-x-0 px-5 pt-3.5 flex items-center justify-between z-10">
-        <span className="text-[9px] font-medium uppercase tracking-[0.2em] text-foreground/20 select-none">
+        <span className="text-4xs font-medium uppercase tracking-[0.2em] text-foreground/20 select-none">
           {t("referral.card.brand")}
         </span>
         <div className="flex flex-col items-end">
-          <span className="text-[10px] font-mono text-foreground/30 tracking-wider select-all">
+          <span className="text-3xs font-mono text-foreground/30 tracking-wider select-all">
             {referralCode}
           </span>
           <span className="text-[7px] uppercase tracking-[0.15em] text-foreground/12 select-none">
@@ -233,7 +233,7 @@ export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
               )}
             </button>
             <div>
-              <span className="text-[13px] font-medium text-foreground/70 leading-tight block">
+              <span className="text-xs font-medium text-foreground/70 leading-tight block">
                 {t("referral.card.audioSignature")}
               </span>
             </div>

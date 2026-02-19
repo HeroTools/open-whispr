@@ -47,7 +47,7 @@ export default function StepProgress({ steps, currentStep, className = "" }: Ste
                 )}
               </div>
               <span
-                className={`text-[10px] font-medium hidden md:block tracking-wide ${
+                className={`text-3xs font-medium hidden md:block tracking-wide ${
                   isActive
                     ? "text-primary"
                     : isCompleted

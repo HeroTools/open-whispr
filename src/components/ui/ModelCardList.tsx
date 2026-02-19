@@ -154,14 +154,14 @@ export default function ModelCardList({
                 {model.label}
               </span>
               {model.description && (
-                <span className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0">
+                <span className="text-2xs text-muted-foreground/50 tabular-nums shrink-0">
                   {model.description}
                 </span>
               )}
 
               {/* Recommended badge */}
               {model.recommended && (
-                <span className="text-[10px] font-medium text-primary px-1.5 py-0.5 bg-primary/10 rounded-sm shrink-0">
+                <span className="text-3xs font-medium text-primary px-1.5 py-0.5 bg-primary/10 rounded-sm shrink-0">
                   Recommended
                 </span>
               )}
@@ -170,7 +170,7 @@ export default function ModelCardList({
               <div className="ml-auto flex items-center gap-1.5 shrink-0">
                 {/* Selected/Active badge */}
                 {isSelected && (
-                  <span className="text-[10px] font-medium text-primary px-2 py-0.5 bg-primary/10 rounded-sm">
+                  <span className="text-3xs font-medium text-primary px-2 py-0.5 bg-primary/10 rounded-sm">
                     Active
                   </span>
                 )}
@@ -199,7 +199,7 @@ export default function ModelCardList({
                         disabled={isCancelling}
                         size="sm"
                         variant="outline"
-                        className="h-6 px-2.5 text-[11px] text-destructive border-destructive/25 hover:bg-destructive/8"
+                        className="h-6 px-2.5 text-2xs text-destructive border-destructive/25 hover:bg-destructive/8"
                       >
                         <X size={11} className="mr-0.5" />
                         {isCancelling ? "..." : "Cancel"}
@@ -212,7 +212,7 @@ export default function ModelCardList({
                         }}
                         size="sm"
                         variant="default"
-                        className="h-6 px-2.5 text-[11px]"
+                        className="h-6 px-2.5 text-2xs"
                       >
                         <Download size={11} className="mr-1" />
                         Download

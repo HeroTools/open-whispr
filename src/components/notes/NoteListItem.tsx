@@ -102,14 +102,14 @@ export default function NoteListItem({
         <div className="flex items-center justify-between gap-2">
           <p
             className={cn(
-              "text-[12px] truncate transition-colors duration-150",
+              "text-xs truncate transition-colors duration-150",
               isActive ? "text-foreground font-medium" : "text-foreground/80"
             )}
           >
             {note.title || t("notes.list.untitled")}
           </p>
           <div className="flex items-center gap-0.5 shrink-0">
-            <span className="text-[9px] text-muted-foreground/30 tabular-nums group-hover:opacity-0 transition-opacity">
+            <span className="text-4xs text-muted-foreground/30 tabular-nums group-hover:opacity-0 transition-opacity">
               {relativeTime(note.updated_at)}
             </span>
             <DropdownMenu
@@ -133,7 +133,7 @@ export default function NoteListItem({
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" sideOffset={4} className="min-w-40">
                 <DropdownMenuSub>
-                  <DropdownMenuSubTrigger className="text-[11px] gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer focus:bg-foreground/5 data-[state=open]:bg-foreground/5">
+                  <DropdownMenuSubTrigger className="text-2xs gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer focus:bg-foreground/5 data-[state=open]:bg-foreground/5">
                     <FolderOpen size={12} className="text-muted-foreground/60" />
                     {t("notes.context.moveToFolder")}
                   </DropdownMenuSubTrigger>
@@ -154,7 +154,7 @@ export default function NoteListItem({
                             onKeyDown={(e) => e.stopPropagation()}
                             placeholder={t("notes.context.searchFolders")}
                             style={{ background: "none" }}
-                            className="w-full pl-5 pr-1 py-0.5 text-[11px] text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
+                            className="w-full pl-5 pr-1 py-0.5 text-2xs text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
                           />
                         </div>
                         <DropdownMenuSeparator />
@@ -171,7 +171,7 @@ export default function NoteListItem({
                               e.stopPropagation();
                               onMoveToFolder(note.id, folder.id);
                             }}
-                            className="text-[11px] gap-2 rounded-md px-2 py-1"
+                            className="text-2xs gap-2 rounded-md px-2 py-1"
                           >
                             <span className="truncate flex-1">{folder.name}</span>
                             {isCurrent && <Check size={9} className="text-primary shrink-0" />}
@@ -179,7 +179,7 @@ export default function NoteListItem({
                         );
                       })}
                       {folderSearch && filteredFolders.length === 0 && (
-                        <p className="text-[10px] text-foreground/20 text-center py-1.5">
+                        <p className="text-3xs text-foreground/20 text-center py-1.5">
                           {t("notes.context.noResults")}
                         </p>
                       )}
@@ -204,7 +204,7 @@ export default function NoteListItem({
                             }
                           }}
                           placeholder={t("notes.folders.folderName")}
-                          className="w-full bg-transparent text-[11px] text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
+                          className="w-full bg-transparent text-2xs text-foreground placeholder:text-foreground/15 outline-none border-none appearance-none"
                         />
                       </div>
                     ) : (
@@ -213,7 +213,7 @@ export default function NoteListItem({
                           e.preventDefault();
                           setIsCreating(true);
                         }}
-                        className="text-[11px] gap-2 rounded-md px-2 py-1 text-foreground/40"
+                        className="text-2xs gap-2 rounded-md px-2 py-1 text-foreground/40"
                       >
                         <Plus size={10} />
                         {t("notes.context.newFolder")}
@@ -227,7 +227,7 @@ export default function NoteListItem({
                     e.stopPropagation();
                     onDelete(note.id);
                   }}
-                  className="text-[11px] gap-2 rounded-lg px-2.5 py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
+                  className="text-2xs gap-2 rounded-lg px-2.5 py-1.5 text-destructive focus:text-destructive focus:bg-destructive/10"
                 >
                   <Trash2 size={12} />
                   {t("notes.context.delete")}
@@ -237,7 +237,7 @@ export default function NoteListItem({
           </div>
         </div>
         {preview && (
-          <p className="text-[10px] text-muted-foreground/40 line-clamp-1 mt-0.5">{preview}</p>
+          <p className="text-4xs text-muted-foreground/40 line-clamp-1 mt-0.5">{preview}</p>
         )}
       </div>
     </button>

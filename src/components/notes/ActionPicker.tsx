@@ -68,7 +68,7 @@ export default function ActionPicker({
         )}
       >
         <Sparkles size={14} />
-        <span className="text-[12px] font-semibold tracking-tight">{actionName(activeAction)}</span>
+        <span className="text-xs font-semibold tracking-tight">{actionName(activeAction)}</span>
       </button>
 
       <DropdownMenu>
@@ -97,7 +97,7 @@ export default function ActionPicker({
               key={action.id}
               onClick={() => handleRun(action)}
               className={cn(
-                "text-[12px] gap-2.5 rounded-md px-2.5 py-1.5",
+                "text-xs gap-2.5 rounded-md px-2.5 py-1.5",
                 action.id === activeAction.id && "bg-accent/5"
               )}
             >
@@ -105,7 +105,7 @@ export default function ActionPicker({
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{actionName(action)}</div>
                 {action.description && (
-                  <div className="text-[10px] text-muted-foreground/50 truncate">
+                  <div className="text-3xs text-muted-foreground/50 truncate">
                     {actionDescription(action)}
                   </div>
                 )}
@@ -115,7 +115,7 @@ export default function ActionPicker({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             onClick={onManageActions}
-            className="text-[12px] gap-2.5 rounded-md px-2.5 py-1.5 text-muted-foreground/60"
+            className="text-xs gap-2.5 rounded-md px-2.5 py-1.5 text-muted-foreground/60"
           >
             <Settings2 size={12} />
             {t("notes.actions.manage")}

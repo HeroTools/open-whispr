@@ -63,7 +63,7 @@ export default function SidebarModal<T extends string>({
 
     return (
       <span
-        className={`ml-auto text-[9px] font-semibold uppercase tracking-wider px-1.5 py-px rounded-sm shrink-0 ${
+        className={`ml-auto text-4xs font-semibold uppercase tracking-wider px-1.5 py-px rounded-sm shrink-0 ${
           item.badgeVariant === "new"
             ? "bg-primary/10 text-primary dark:bg-primary/15"
             : item.badgeVariant === "update"
@@ -94,7 +94,7 @@ export default function SidebarModal<T extends string>({
               >
                 {/* Title */}
                 <div className="px-4 pt-5 pb-0.5">
-                  <h2 className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  <h2 className="text-3xs font-semibold uppercase tracking-widest text-muted-foreground/50">
                     {title}
                   </h2>
                 </div>
@@ -105,7 +105,7 @@ export default function SidebarModal<T extends string>({
                     <div key={groupIndex} className={groupIndex > 0 ? "mt-3" : ""}>
                       {group.label && (
                         <div className="px-2 pb-0.5 pt-1.5">
-                          <span className="text-[9px] font-medium tracking-[0.08em] uppercase text-muted-foreground/35 dark:text-muted-foreground/50">
+                          <span className="text-4xs font-medium tracking-[0.08em] uppercase text-muted-foreground/35 dark:text-muted-foreground/50">
                             {group.label}
                           </span>
                         </div>
@@ -119,7 +119,7 @@ export default function SidebarModal<T extends string>({
                               key={item.id}
                               data-section-id={item.id}
                               onClick={() => onSectionChange(item.id)}
-                              className={`group relative w-full flex items-center gap-2.5 px-2.5 py-2 text-left text-[12px] rounded-lg transition-colors duration-100 outline-none ${
+                              className={`group relative w-full flex items-center gap-2.5 px-2.5 py-2 text-left text-xs rounded-lg transition-colors duration-100 outline-none ${
                                 isActive
                                   ? "text-foreground bg-muted dark:bg-surface-raised"
                                   : "text-muted-foreground dark:text-foreground/60 hover:text-foreground hover:bg-muted/50 dark:hover:bg-surface-2"
@@ -149,7 +149,7 @@ export default function SidebarModal<T extends string>({
                               </span>
                               {renderBadge(item)}
                               {item.shortcut && !item.badge && (
-                                <kbd className="ml-auto text-[9px] text-muted-foreground/25 font-mono shrink-0">
+                                <kbd className="ml-auto text-4xs text-muted-foreground/25 font-mono shrink-0">
                                   {item.shortcut}
                                 </kbd>
                               )}
@@ -166,7 +166,7 @@ export default function SidebarModal<T extends string>({
                   <div className="px-3 py-2.5 border-t border-border/20 dark:border-border-subtle">
                     <div className="flex items-center gap-1.5">
                       <div className="h-1 w-1 rounded-full bg-success/60" />
-                      <span className="text-[9px] text-muted-foreground/40 tabular-nums tracking-wide">
+                      <span className="text-4xs text-muted-foreground/40 tabular-nums tracking-wide">
                         v{version}
                       </span>
                     </div>
