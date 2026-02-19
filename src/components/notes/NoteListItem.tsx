@@ -126,7 +126,7 @@ export default function NoteListItem({
                   size="icon"
                   variant="ghost"
                   onClick={(e) => e.stopPropagation()}
-                  className="h-5 w-5 rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity absolute right-2 text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/5"
+                  className="h-5 w-5 rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity absolute right-2 text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/5 active:bg-foreground/8"
                 >
                   <MoreHorizontal size={12} />
                 </Button>

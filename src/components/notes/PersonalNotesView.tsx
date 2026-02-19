@@ -30,6 +30,9 @@ import {
   setActiveFolderId,
 } from "../../stores/noteStore";
 
+const FOLDER_INPUT_CLASS =
+  "w-full h-6 bg-foreground/5 dark:bg-white/5 rounded px-2 text-[11px] text-foreground outline-none border border-primary/30 focus:border-primary/50";
+
 export default function PersonalNotesView() {
   const { t } = useTranslation();
   const MEETINGS_FOLDER_NAME = t("notes.folders.meetings");
@@ -89,7 +92,6 @@ export default function PersonalNotesView() {
       onTranscriptionComplete: useCallback((text: string) => {
         setFinalTranscript(text);
       }, []),
-      onPartialTranscript: useCallback(() => {}, []),
       onError: useCallback(
         (error: { title: string; description: string }) => {
           toast({ title: error.title, description: error.description, variant: "destructive" });
@@ -331,7 +333,7 @@ export default function PersonalNotesView() {
                       }
                     }}
                     onBlur={handleConfirmRename}
-                    className="w-full h-6 bg-foreground/5 dark:bg-white/5 rounded px-2 text-[11px] text-foreground outline-none border border-primary/30 focus:border-primary/50"
+                    className={FOLDER_INPUT_CLASS}
                   />
                 </div>
               );
@@ -442,7 +444,7 @@ export default function PersonalNotesView() {
                 }}
                 onBlur={handleCreateFolder}
                 placeholder={t("notes.folders.folderName")}
-                className="w-full h-6 bg-foreground/5 dark:bg-white/5 rounded px-2 text-[11px] text-foreground placeholder:text-foreground/20 outline-none border border-primary/30 focus:border-primary/50"
+                className={cn(FOLDER_INPUT_CLASS, "placeholder:text-foreground/20")}
               />
             </div>
           )}

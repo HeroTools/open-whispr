@@ -5,7 +5,7 @@ import logger from "../utils/logger";
 
 interface UseNoteRecordingOptions {
   onTranscriptionComplete: (text: string) => void;
-  onPartialTranscript: (text: string) => void;
+  onPartialTranscript?: (text: string) => void;
   onError?: (error: { title: string; description: string }) => void;
 }
 
@@ -70,7 +70,7 @@ export function useNoteRecording({
       },
       onPartialTranscript: (text: string) => {
         setPartialTranscript(text);
-        callbacksRef.current.onPartialTranscript(text);
+        callbacksRef.current.onPartialTranscript?.(text);
       },
       onTranscriptionComplete: (result: {
         success: boolean;

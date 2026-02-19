@@ -188,6 +188,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
                         "p-1.5 rounded-md",
                         "text-muted-foreground/40 hover:text-foreground/70",
                         "hover:bg-foreground/5 dark:hover:bg-white/6",
+                        "active:bg-foreground/8 dark:active:bg-white/8",
                         "transition-colors duration-150"
                       )}
                     >
@@ -200,7 +201,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
                         className={cn(
                           "p-1.5 rounded-md",
                           "text-muted-foreground/40 hover:text-destructive/70",
-                          "hover:bg-destructive/5",
+                          "hover:bg-destructive/5 active:bg-destructive/8",
                           "transition-colors duration-150"
                         )}
                       >

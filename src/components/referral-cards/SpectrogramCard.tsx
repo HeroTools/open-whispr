@@ -31,7 +31,7 @@ const FREQUENCIES = Array.from({ length: ROWS }, (_, i) => {
 function spectrogramColor(value: number): string {
   if (value < 0.05) return "transparent";
   const a = (0.1 + value * 0.8).toFixed(3);
-  return `rgba(70, 120, 220, ${a})`;
+  return `oklch(0.72 0.22 260 / ${a})`;
 }
 
 function createAudio(data: number[][]): { stop: () => void } | null {
@@ -144,7 +144,7 @@ export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
   }, [play]);
 
   return (
-    <div className="relative w-full h-55 rounded-lg border overflow-hidden bg-surface-1 dark:bg-[oklch(0.07_0.01_270)] border-border dark:border-foreground/6">
+    <div className="relative w-full h-55 rounded-lg border overflow-hidden bg-surface-1 border-border dark:border-foreground/6">
       {/* Noise texture */}
       <div
         className="absolute inset-0 rounded-lg opacity-[0.03] pointer-events-none mix-blend-overlay"
