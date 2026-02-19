@@ -345,7 +345,7 @@ export default function PersonalNotesView() {
                 type="button"
                 onClick={() => setActiveFolderId(folder.id)}
                 className={cn(
-                  "group relative flex items-center gap-2 w-full h-7 px-2 rounded-md cursor-pointer transition-colors duration-150",
+                  "group relative flex items-center gap-2 w-full h-7 px-2 rounded-md cursor-pointer text-left transition-colors duration-150",
                   "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
                   isActive
                     ? "bg-primary/8 dark:bg-primary/10"
