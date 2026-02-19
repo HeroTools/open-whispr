@@ -195,7 +195,7 @@ function renderOverlay(text: string): ReactNode[] {
   return out;
 }
 
-const SHARED = "leading-[1.7] text-xs px-5 py-3 pb-20 whitespace-pre-wrap break-words";
+const SHARED = "leading-[1.7] text-base px-5 py-3 pb-20 whitespace-pre-wrap break-words";
 
 export function MarkdownTextarea({
   value,
