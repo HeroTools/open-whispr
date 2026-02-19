@@ -131,7 +131,7 @@ function renderOverlay(text: string): ReactNode[] {
           {indent}
           <span className="relative">
             <span className="invisible">{marker}</span>
-            <span className="absolute left-0 text-sm text-foreground/40 leading-[inherit]">
+            <span className="absolute left-0 text-foreground/40">
               {bulletChar(indent)}
             </span>
           </span>{" "}
