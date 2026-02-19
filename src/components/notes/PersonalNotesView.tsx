@@ -39,9 +39,11 @@ export default function PersonalNotesView() {
   const [isSaving, setIsSaving] = useState(false);
   const [localTitle, setLocalTitle] = useState("");
   const [localContent, setLocalContent] = useState("");
+  const [localEnhancedContent, setLocalEnhancedContent] = useState<string | null>(null);
   const [finalTranscript, setFinalTranscript] = useState<string | null>(null);
   const [showActionManager, setShowActionManager] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const enhancedSaveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const activeNoteRef = useRef<number | null>(null);
   const localContentRef = useRef(localContent);
   localContentRef.current = localContent;
@@ -139,6 +141,7 @@ export default function PersonalNotesView() {
       activeNoteRef.current = activeNote.id;
       setLocalTitle(activeNote.title);
       setLocalContent(activeNote.content);
+      setLocalEnhancedContent(activeNote.enhanced_content ?? null);
     }
     if (!activeNote) {
       activeNoteRef.current = null;
@@ -160,6 +163,7 @@ export default function PersonalNotesView() {
   useEffect(() => {
     return () => {
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      if (enhancedSaveTimeoutRef.current) clearTimeout(enhancedSaveTimeoutRef.current);
     };
   }, []);
 
@@ -177,6 +181,23 @@ export default function PersonalNotesView() {
       if (activeNoteId) debouncedSave(activeNoteId, localTitle, content);
     },
     [activeNoteId, localTitle, debouncedSave]
+  );
+
+  const handleEnhancedContentChange = useCallback(
+    (content: string) => {
+      setLocalEnhancedContent(content);
+      if (!activeNoteId) return;
+      if (enhancedSaveTimeoutRef.current) clearTimeout(enhancedSaveTimeoutRef.current);
+      enhancedSaveTimeoutRef.current = setTimeout(async () => {
+        setIsSaving(true);
+        try {
+          await window.electronAPI.updateNote(activeNoteId, { enhanced_content: content });
+        } finally {
+          setIsSaving(false);
+        }
+      }, 1000);
+    },
+    [activeNoteId]
   );
 
   const handleNewNote = useCallback(async () => {
@@ -244,6 +265,7 @@ export default function PersonalNotesView() {
   const handleApplyEnhancement = useCallback(
     async (enhancedContent: string, prompt: string) => {
       if (!activeNoteId) return;
+      setLocalEnhancedContent(enhancedContent);
       const hash =
         String(localContentRef.current.length) + "-" + localContentRef.current.slice(0, 50);
       setIsSaving(true);
@@ -777,6 +799,7 @@ export default function PersonalNotesView() {
               note={editorNote}
               onTitleChange={handleTitleChange}
               onContentChange={handleContentChange}
+              onEnhancedContentChange={handleEnhancedContentChange}
               isSaving={isSaving}
               isRecording={isRecording}
               isProcessing={isProcessing}
@@ -786,8 +809,8 @@ export default function PersonalNotesView() {
               onStartRecording={startRecording}
               onStopRecording={stopRecording}
               onExportNote={handleExportNote}
-              hasEnhancedContent={!!activeNote?.enhanced_content}
-              enhancedContent={activeNote?.enhanced_content ?? null}
+              hasEnhancedContent={!!localEnhancedContent}
+              enhancedContent={localEnhancedContent}
               isEnhancementStale={isEnhancementStale}
               actionProcessingState={actionProcessingState}
               actionName={actionName}

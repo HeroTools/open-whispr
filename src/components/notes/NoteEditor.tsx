@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Download, Loader2, FileText, Sparkles, AlignLeft } from "lucide-react";
-import { MarkdownRenderer } from "../ui/MarkdownRenderer";
+import { MarkdownTextarea } from "../ui/MarkdownTextarea";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -31,6 +31,7 @@ interface NoteEditorProps {
   note: NoteItem;
   onTitleChange: (title: string) => void;
   onContentChange: (content: string) => void;
+  onEnhancedContentChange?: (content: string) => void;
   isSaving: boolean;
   isRecording: boolean;
   partialTranscript: string;
@@ -52,6 +53,7 @@ export default function NoteEditor({
   note,
   onTitleChange,
   onContentChange,
+  onEnhancedContentChange,
   isSaving,
   isRecording,
   isProcessing,
@@ -252,6 +254,13 @@ export default function NoteEditor({
     cursorPosRef.current = e.target.selectionStart;
   };
 
+  const handleEnhancedChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      onEnhancedContentChange?.(e.target.value);
+    },
+    [onEnhancedContentChange]
+  );
+
   const wordCount = useMemo(() => {
     const trimmed = note.content.trim();
     return trimmed ? trimmed.split(/\s+/).length : 0;
@@ -358,21 +367,15 @@ export default function NoteEditor({
       <div className="flex-1 relative overflow-hidden">
         <div className="h-full overflow-y-auto">
           {viewMode === "enhanced" && enhancedContent ? (
-            <div className="px-5 py-3 pb-20 text-[13px] text-foreground leading-relaxed">
-              <MarkdownRenderer content={enhancedContent} />
-            </div>
+            <MarkdownTextarea value={enhancedContent} onChange={handleEnhancedChange} />
           ) : (
-            <textarea
-              ref={textareaRef}
+            <MarkdownTextarea
               value={note.content}
               onChange={handleContentChange}
               onSelect={handleSelect}
+              textareaRef={textareaRef}
               placeholder={t("notes.editor.startWriting")}
-              className={cn(
-                "w-full h-full px-5 py-3 pb-20 text-[13px] text-foreground/90 bg-transparent! border-none! outline-none resize-none rounded-none leading-[1.7] placeholder:text-foreground/15",
-                actionProcessingState === "processing" && "pointer-events-none"
-              )}
-              style={{ boxShadow: "none" }}
+              disabled={actionProcessingState === "processing"}
             />
           )}
         </div>
