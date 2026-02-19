@@ -102,7 +102,7 @@ export default function NoteListItem({
         <div className="flex items-center justify-between gap-2">
           <p
             className={cn(
-              "text-xs truncate transition-colors duration-150",
+              "text-sm truncate transition-colors duration-150",
               isActive ? "text-foreground font-medium" : "text-foreground/80"
             )}
           >

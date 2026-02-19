@@ -60,7 +60,7 @@ export default function TranscriptionItem({
           {/* Text */}
           <p
             className={cn(
-              "text-foreground text-xs leading-[1.5] break-words",
+              "text-foreground text-sm leading-[1.5] break-words",
               !isExpanded && isLongText && "line-clamp-2"
             )}
           >
