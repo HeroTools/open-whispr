@@ -1292,6 +1292,11 @@
       "failed": "Failed",
       "sent": "Sent"
     },
+    "friends": {
+      "title": "Friends",
+      "completed": "Completed",
+      "sentInvites": "Sent invites"
+    },
     "empty": {
       "title": "No invites sent yet",
       "description": "Share your link or send an invite to get started"

@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Send, Mail, Copy, Check, Link, UserPlus, Gift } from "lucide-react";
+import { Send, Mail, Copy, Check, Link, UserPlus, Gift, CheckCircle2, User } from "lucide-react";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "./ui/tabs";
 import { useToast } from "./ui/Toast";
 import { cn } from "./lib/utils";
 import { SpectrogramCard } from "./referral-cards/SpectrogramCard";
+
+const REFERRAL_WORD_GOAL = 2000;
 
 interface ReferralStats {
   referralCode: string;
@@ -13,6 +15,16 @@ interface ReferralStats {
   totalReferrals: number;
   completedReferrals: number;
   totalMonthsEarned: number;
+  referrals: Referral[];
+}
+
+interface Referral {
+  id: string;
+  email: string;
+  name: string;
+  status: "pending" | "completed" | "rewarded";
+  created_at: string;
+  words_used: number;
 }
 
 interface ReferralInvite {
@@ -469,33 +481,93 @@ export function ReferralDashboard() {
               />
             </div>
 
-            {invites.length > 0 ? (
-              <div className="space-y-1 mt-4">
-                {invites.map((invite) => {
-                  const variant = statusVariants[invite.status] ?? statusVariants.sent;
-                  const label = t(`referral.status.${invite.status}`);
-                  return (
-                    <div
-                      key={invite.id}
-                      className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-foreground/3 border border-foreground/5 hover:border-foreground/8 transition-colors"
-                    >
-                      <div className="flex items-center gap-2 min-w-0 flex-1">
-                        <Mail className="w-3 h-3 text-foreground/20 shrink-0" />
-                        <span className="text-[11px] text-foreground/60 truncate">
-                          {invite.recipientEmail}
-                        </span>
-                        <span className="text-[10px] text-foreground/15 shrink-0">
-                          {formatDate(invite.sentAt)}
-                        </span>
+            {/* Friends section — actual signups with word progress */}
+            {stats.referrals && stats.referrals.length > 0 && (
+              <div className="mt-5">
+                <h4 className="text-[10px] font-medium text-foreground/25 uppercase tracking-wider mb-2">
+                  {t("referral.friends.title")}
+                </h4>
+                <div className="space-y-1.5">
+                  {stats.referrals.map((referral) => {
+                    const isComplete = referral.status === "rewarded";
+                    const wordsUsed = Math.min(referral.words_used, REFERRAL_WORD_GOAL);
+                    const progress = Math.round((wordsUsed / REFERRAL_WORD_GOAL) * 100);
+                    const displayName = referral.name || referral.email;
+
+                    return (
+                      <div
+                        key={referral.id}
+                        className="py-2 px-2.5 rounded-md bg-foreground/3 border border-foreground/5"
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <User className="w-3 h-3 text-foreground/20 shrink-0" />
+                            <span className="text-[11px] text-foreground/60 truncate">
+                              {displayName}
+                            </span>
+                          </div>
+                          {isComplete ? (
+                            <div className="flex items-center gap-1 ml-2 shrink-0">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-400/80" />
+                              <span className="text-[10px] text-emerald-400/80 font-medium">
+                                {t("referral.friends.completed")}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-[10px] text-foreground/30 tabular-nums ml-2 shrink-0">
+                              {wordsUsed.toLocaleString()} / {REFERRAL_WORD_GOAL.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        <div className="h-1 rounded-full bg-foreground/6 overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all duration-500",
+                              isComplete ? "bg-emerald-400/60" : "bg-foreground/20"
+                            )}
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
                       </div>
-                      <Badge variant={variant} className="ml-2 text-[9px] shrink-0">
-                        {label}
-                      </Badge>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
               </div>
-            ) : (
+            )}
+
+            {/* Sent Invites section */}
+            {invites.length > 0 ? (
+              <div className="mt-5">
+                <h4 className="text-[10px] font-medium text-foreground/25 uppercase tracking-wider mb-2">
+                  {t("referral.friends.sentInvites")}
+                </h4>
+                <div className="space-y-1">
+                  {invites.map((invite) => {
+                    const variant = statusVariants[invite.status] ?? statusVariants.sent;
+                    const label = t(`referral.status.${invite.status}`);
+                    return (
+                      <div
+                        key={invite.id}
+                        className="flex items-center justify-between py-1.5 px-2.5 rounded-md bg-foreground/3 border border-foreground/5 hover:border-foreground/8 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <Mail className="w-3 h-3 text-foreground/20 shrink-0" />
+                          <span className="text-[11px] text-foreground/60 truncate">
+                            {invite.recipientEmail}
+                          </span>
+                          <span className="text-[10px] text-foreground/15 shrink-0">
+                            {formatDate(invite.sentAt)}
+                          </span>
+                        </div>
+                        <Badge variant={variant} className="ml-2 text-[9px] shrink-0">
+                          {label}
+                        </Badge>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : !stats.referrals?.length ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <Mail className="w-5 h-5 text-foreground/10 mb-2" />
                 <p className="text-[12px] text-foreground/25">{t("referral.empty.title")}</p>
@@ -503,7 +575,7 @@ export function ReferralDashboard() {
                   {t("referral.empty.description")}
                 </p>
               </div>
-            )}
+            ) : null}
           </TabsContent>
         </Tabs>
       </div>

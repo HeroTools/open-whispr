@@ -694,6 +694,7 @@ declare global {
           status: "pending" | "completed" | "rewarded";
           created_at: string;
           first_payment_at: string | null;
+          words_used: number;
         }>;
       }>;
 
