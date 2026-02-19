@@ -368,7 +368,7 @@ export default function ControlPanel() {
                 size="sm"
                 onClick={handleUpdateClick}
                 disabled={isInstalling || isDownloading}
-                className="gap-1.5 text-2xs w-full h-7"
+                className="gap-1.5 text-xs w-full h-7"
               >
                 {getUpdateButtonContent()}
               </Button>
@@ -400,7 +400,7 @@ export default function ControlPanel() {
                       <Button
                         variant="default"
                         size="sm"
-                        className="h-7 text-2xs"
+                        className="h-7 text-xs"
                         onClick={() => {
                           setSettingsSection("account");
                           setShowSettings(true);

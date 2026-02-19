@@ -41,7 +41,7 @@ export default function ApiKeyInput({
           </div>
         )}
       </div>
-      {helpText && <p className="text-2xs text-muted-foreground/70 mt-1">{helpText}</p>}
+      {helpText && <p className="text-xs text-muted-foreground/70 mt-1">{helpText}</p>}
     </div>
   );
 }

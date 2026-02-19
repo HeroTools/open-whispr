@@ -105,7 +105,7 @@ export default function ActionPicker({
               <div className="flex-1 min-w-0">
                 <div className="font-medium truncate">{actionName(action)}</div>
                 {action.description && (
-                  <div className="text-3xs text-muted-foreground/50 truncate">
+                  <div className="text-xs text-muted-foreground/50 truncate">
                     {actionDescription(action)}
                   </div>
                 )}

@@ -45,7 +45,7 @@ export default function HistoryView({
               {t("controlPanel.history.title")}
             </h2>
             {history.length > 0 && (
-              <span className="text-2xs text-muted-foreground tabular-nums">
+              <span className="text-xs text-muted-foreground tabular-nums">
                 ({history.length})
               </span>
             )}
@@ -55,7 +55,7 @@ export default function HistoryView({
               onClick={clearHistory}
               variant="ghost"
               size="sm"
-              className="h-7 px-2 text-2xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 size={12} className="mr-1" />
               {t("controlPanel.history.clear")}
@@ -89,7 +89,7 @@ export default function HistoryView({
                 <Button
                   variant="default"
                   size="sm"
-                  className="h-7 text-2xs"
+                  className="h-7 text-xs"
                   onClick={() => {
                     setShowCloudMigrationBanner(false);
                     localStorage.setItem("cloudMigrationShown", "true");
@@ -129,7 +129,7 @@ export default function HistoryView({
                 <Button
                   variant="default"
                   size="sm"
-                  className="h-7 text-2xs"
+                  className="h-7 text-xs"
                   onClick={() => onOpenSettings("aiModels")}
                 >
                   {t("controlPanel.aiCta.enable")}
@@ -234,9 +234,9 @@ export default function HistoryView({
               <h3 className="text-xs font-semibold text-foreground/60 mb-2">
                 {t("controlPanel.history.empty")}
               </h3>
-              <div className="flex items-center gap-2 text-2xs text-foreground/25">
+              <div className="flex items-center gap-2 text-xs text-foreground/25">
                 <span>{t("controlPanel.history.press")}</span>
-                <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border/50 text-3xs font-mono font-medium text-foreground/40">
+                <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border/50 text-xs font-mono font-medium text-foreground/40">
                   {formatHotkeyLabel(hotkey)}
                 </kbd>
                 <span>{t("controlPanel.history.toStart")}</span>

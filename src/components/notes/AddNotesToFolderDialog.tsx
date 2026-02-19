@@ -127,7 +127,7 @@ export default function AddNotesToFolderDialog({
         <div className="max-h-80 overflow-y-auto px-2 pb-2">
           {grouped.length === 0 ? (
             <div className="flex items-center justify-center py-10">
-              <p className="text-2xs text-foreground/20">
+              <p className="text-xs text-foreground/20">
                 {search
                   ? t("notes.addToFolder.noResults")
                   : t("notes.addToFolder.noNotesAvailable")}
@@ -136,7 +136,7 @@ export default function AddNotesToFolderDialog({
           ) : (
             grouped.map(([dateLabel, notes]) => (
               <div key={dateLabel}>
-                <p className="text-3xs font-medium text-foreground/30 px-2 pt-3 pb-1.5">
+                <p className="text-xs font-medium text-foreground/30 px-2 pt-3 pb-1.5">
                   {dateLabel}
                 </p>
                 {notes.map((note) => {
@@ -183,7 +183,7 @@ export default function AddNotesToFolderDialog({
             size="sm"
             onClick={handleAdd}
             disabled={selected.size === 0 || isAdding}
-            className="h-7 text-2xs"
+            className="h-7 text-xs"
           >
             {t("notes.addToFolder.addCount", { count: selected.size })}
           </Button>

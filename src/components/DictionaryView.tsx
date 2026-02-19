@@ -58,7 +58,7 @@ export default function DictionaryView() {
           </div>
 
           <h2 className="text-xs font-semibold text-foreground mb-1">{t("dictionary.title")}</h2>
-          <p className="text-2xs text-foreground/30 text-center leading-relaxed max-w-[240px] mb-6">
+          <p className="text-xs text-foreground/30 text-center leading-relaxed max-w-[240px] mb-6">
             {t("dictionary.description")}
           </p>
 
@@ -70,7 +70,7 @@ export default function DictionaryView() {
               onKeyDown={(e) => {
                 if (e.key === "Enter") handleAdd();
               }}
-              className="w-full h-8 text-2xs pr-8 placeholder:text-foreground/20"
+              className="w-full h-8 text-xs pr-8 placeholder:text-foreground/20"
             />
             {newWord.trim() ? (
               <button
@@ -81,7 +81,7 @@ export default function DictionaryView() {
                 <CornerDownLeft size={11} />
               </button>
             ) : (
-              <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-4xs text-foreground/12 font-mono select-none pointer-events-none">
+              <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-foreground/12 font-mono select-none pointer-events-none">
                 ⏎
               </kbd>
             )}
@@ -91,7 +91,7 @@ export default function DictionaryView() {
             {["OpenWhispr", "Dr. Smith", "gRPC"].map((ex) => (
               <span
                 key={ex}
-                className="text-4xs text-foreground/12 px-1.5 py-0.5 rounded-[4px] border border-dashed border-foreground/6 dark:border-white/5"
+                className="text-xs text-foreground/12 px-1.5 py-0.5 rounded-[4px] border border-dashed border-foreground/6 dark:border-white/5"
               >
                 {ex}
               </span>
@@ -103,14 +103,14 @@ export default function DictionaryView() {
               onClick={() => setShowInfo(!showInfo)}
               aria-expanded={showInfo}
               aria-label={t("dictionary.howItWorks")}
-              className="flex items-center gap-1 text-4xs text-foreground/15 hover:text-foreground/30 transition-colors mx-auto"
+              className="flex items-center gap-1 text-xs text-foreground/15 hover:text-foreground/30 transition-colors mx-auto"
             >
               <Info size={9} />
               {t("dictionary.howItWorks")}
             </button>
             {showInfo && (
               <div className="mt-2.5 rounded-md bg-foreground/[0.02] dark:bg-white/[0.02] border border-foreground/5 dark:border-white/4 px-3 py-2.5">
-                <p className="text-4xs text-foreground/25 leading-[1.6]">
+                <p className="text-xs text-foreground/25 leading-[1.6]">
                   Words are fed as context hints to the speech model, helping it recognize uncommon
                   terms. For difficult words, try adding context like{" "}
                   <span className="text-foreground/35">"The word is Synty"</span> alongside the word
@@ -126,14 +126,14 @@ export default function DictionaryView() {
           <div className="px-5 pt-4 pb-2.5 flex items-baseline justify-between">
             <div className="flex items-baseline gap-2">
               <h2 className="text-xs font-semibold text-foreground">{t("dictionary.title")}</h2>
-              <span className="text-3xs text-foreground/15 font-mono tabular-nums">
+              <span className="text-xs text-foreground/15 font-mono tabular-nums">
                 {customDictionary.length}
               </span>
             </div>
             <button
               onClick={() => setConfirmClear(true)}
               aria-label={t("dictionary.clearAll")}
-              className="text-4xs text-foreground/15 hover:text-destructive/70 transition-colors"
+              className="text-xs text-foreground/15 hover:text-destructive/70 transition-colors"
             >
               {t("dictionary.clearAll")}
             </button>
@@ -148,7 +148,7 @@ export default function DictionaryView() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleAdd();
                 }}
-                className="w-full h-7 text-2xs pr-8 placeholder:text-foreground/20"
+                className="w-full h-7 text-xs pr-8 placeholder:text-foreground/20"
               />
               {newWord.trim() ? (
                 <button
@@ -159,7 +159,7 @@ export default function DictionaryView() {
                   <CornerDownLeft size={10} />
                 </button>
               ) : (
-                <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-4xs text-foreground/12 font-mono select-none pointer-events-none">
+                <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-foreground/12 font-mono select-none pointer-events-none">
                   ⏎
                 </kbd>
               )}
@@ -176,7 +176,7 @@ export default function DictionaryView() {
                   <span
                     key={word}
                     className={`group inline-flex items-center gap-1 py-[3px]
-                      rounded-[5px] text-2xs
+                      rounded-[5px] text-xs
                       border transition-colors duration-150
                       ${
                         isAgentName
@@ -206,7 +206,7 @@ export default function DictionaryView() {
 
           <div className="px-5 pb-3 flex items-start gap-1.5">
             <Info size={9} className="text-foreground/10 mt-px shrink-0" />
-            <p className="text-4xs text-foreground/12 leading-relaxed">
+            <p className="text-xs text-foreground/12 leading-relaxed">
               Separate multiple words with commas. Add context phrases like "The word is Synty" for
               better recognition.
             </p>

@@ -284,7 +284,7 @@ export default function NoteEditor({
           aria-label={t("notes.editor.noteTitle")}
         />
         <div className="flex items-center mt-1">
-          <div className="flex items-center text-3xs text-foreground/20 min-w-0">
+          <div className="flex items-center text-xs text-foreground/20 min-w-0">
             {noteDate && <span>{noteDate}</span>}
             {noteDate && (isSaving || wordCount > 0) && <span className="mx-1.5">&middot;</span>}
             <span className="tabular-nums flex items-center gap-1 shrink-0">
@@ -311,7 +311,7 @@ export default function NoteEditor({
                   data-segment-button
                   onClick={() => setViewMode("raw")}
                   className={cn(
-                    "relative z-1 px-1.5 h-5 rounded text-4xs font-medium transition-colors duration-150 flex items-center gap-1",
+                    "relative z-1 px-1.5 h-5 rounded text-xs font-medium transition-colors duration-150 flex items-center gap-1",
                     viewMode === "raw"
                       ? "text-foreground/60"
                       : "text-foreground/25 hover:text-foreground/40"
@@ -324,7 +324,7 @@ export default function NoteEditor({
                   data-segment-button
                   onClick={() => setViewMode("enhanced")}
                   className={cn(
-                    "relative z-1 px-1.5 h-5 rounded text-4xs font-medium transition-colors duration-150 flex items-center gap-1",
+                    "relative z-1 px-1.5 h-5 rounded text-xs font-medium transition-colors duration-150 flex items-center gap-1",
                     viewMode === "enhanced"
                       ? "text-foreground/60"
                       : "text-foreground/25 hover:text-foreground/40"

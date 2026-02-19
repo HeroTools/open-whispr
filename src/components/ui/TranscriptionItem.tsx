@@ -50,7 +50,7 @@ export default function TranscriptionItem({
       <div className="flex items-start gap-3">
         {/* Number badge - compact pill */}
         <div className="flex-shrink-0 mt-0.5">
-          <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-1.5 rounded-sm bg-primary/10 dark:bg-primary/15 text-primary text-3xs font-semibold tabular-nums">
+          <span className="inline-flex items-center justify-center min-w-[28px] h-5 px-1.5 rounded-sm bg-primary/10 dark:bg-primary/15 text-primary text-xs font-semibold tabular-nums">
             {total - index}
           </span>
         </div>
@@ -69,13 +69,13 @@ export default function TranscriptionItem({
 
           {/* Metadata row */}
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-2xs text-muted-foreground tabular-nums">
+            <span className="text-xs text-muted-foreground tabular-nums">
               {formattedTimestamp}
             </span>
             {isLongText && (
               <button
                 onClick={() => setIsExpanded(!isExpanded)}
-                className="inline-flex items-center gap-0.5 text-2xs text-primary/80 hover:text-primary transition-colors"
+                className="inline-flex items-center gap-0.5 text-xs text-primary/80 hover:text-primary transition-colors"
               >
                 {isExpanded ? (
                   <>

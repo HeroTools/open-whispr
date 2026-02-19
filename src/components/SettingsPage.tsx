@@ -122,7 +122,7 @@ function SectionHeader({ title, description }: { title: string; description?: st
     <div className="mb-3">
       <h3 className="text-xs font-semibold text-foreground tracking-tight">{title}</h3>
       {description && (
-        <p className="text-2xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+        <p className="text-xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
       )}
     </div>
   );
@@ -242,12 +242,12 @@ function TranscriptionSection({
                     {t("settingsPage.transcription.openwhisprCloud")}
                   </span>
                   {isCloudMode && (
-                    <span className="text-3xs font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                    <span className="text-xs font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
                       {t("common.active")}
                     </span>
                   )}
                 </div>
-                <p className="text-2xs text-muted-foreground/80 mt-0.5">
+                <p className="text-xs text-muted-foreground/80 mt-0.5">
                   {t("settingsPage.transcription.openwhisprCloudDescription")}
                 </p>
               </div>
@@ -302,12 +302,12 @@ function TranscriptionSection({
                     {t("settingsPage.transcription.customSetup")}
                   </span>
                   {isCustomMode && (
-                    <span className="text-3xs font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                    <span className="text-xs font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
                       {t("common.active")}
                     </span>
                   )}
                 </div>
-                <p className="text-2xs text-muted-foreground/80 mt-0.5">
+                <p className="text-xs text-muted-foreground/80 mt-0.5">
                   {t("settingsPage.transcription.customSetupDescription")}
                 </p>
               </div>
@@ -491,12 +491,12 @@ function AiModelsSection({
                         {t("settingsPage.aiModels.openwhisprCloud")}
                       </span>
                       {isCloudMode && (
-                        <span className="text-3xs font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
+                        <span className="text-xs font-medium text-primary bg-primary/10 dark:bg-primary/15 px-1.5 py-px rounded-sm">
                           {t("common.active")}
                         </span>
                       )}
                     </div>
-                    <p className="text-2xs text-muted-foreground/80 mt-0.5">
+                    <p className="text-xs text-muted-foreground/80 mt-0.5">
                       {t("settingsPage.aiModels.openwhisprCloudDescription")}
                     </p>
                   </div>
@@ -549,12 +549,12 @@ function AiModelsSection({
                         {t("settingsPage.aiModels.customSetup")}
                       </span>
                       {isCustomMode && (
-                        <span className="text-3xs font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
+                        <span className="text-xs font-medium text-accent bg-accent/10 dark:bg-accent/15 px-1.5 py-px rounded-sm">
                           {t("common.active")}
                         </span>
                       )}
                     </div>
-                    <p className="text-2xs text-muted-foreground/80 mt-0.5">
+                    <p className="text-xs text-muted-foreground/80 mt-0.5">
                       {t("settingsPage.aiModels.customSetupDescription")}
                     </p>
                   </div>
@@ -983,7 +983,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         <p className="text-xs font-medium text-foreground truncate">
                           {user.name || t("settingsPage.account.user")}
                         </p>
-                        <p className="text-2xs text-muted-foreground truncate">{user.email}</p>
+                        <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                       </div>
                       <Badge variant="success">{t("settingsPage.account.signedIn")}</Badge>
                     </div>
@@ -1095,7 +1095,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                                   : "[&>div]:bg-primary"
                             )}
                           />
-                          <div className="flex items-center justify-between text-2xs text-muted-foreground">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
                             <span className="tabular-nums">
                               {usage.wordsUsed.toLocaleString(i18n.language)} /{" "}
                               {usage.limit.toLocaleString(i18n.language)}
@@ -1239,7 +1239,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         <p className="text-xs font-medium text-foreground">
                           {t("settingsPage.account.trialCta.title")}
                         </p>
-                        <p className="text-2xs text-muted-foreground leading-relaxed mt-0.5">
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
                           {t("settingsPage.account.trialCta.description")}
                         </p>
                       </div>
@@ -1318,7 +1318,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             key={option.value}
                             onClick={() => setTheme(option.value)}
                             className={`
-                              flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-2xs font-medium
+                              flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-xs font-medium
                               transition-colors duration-100
                               ${
                                 isSelected
@@ -1471,7 +1471,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     <button
                       onClick={() => registerHotkey(getDefaultHotkey())}
                       disabled={isHotkeyRegistering}
-                      className="mt-2 text-2xs text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50"
+                      className="mt-2 text-xs text-muted-foreground/70 hover:text-foreground transition-colors disabled:opacity-50"
                     >
                       {t("settingsPage.general.hotkey.resetToDefault", {
                         hotkey: formatHotkeyLabel(getDefaultHotkey()),
@@ -1482,7 +1482,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
                 {!isUsingGnomeHotkeys && (
                   <SettingsPanelRow>
-                    <p className="text-2xs font-medium text-muted-foreground/80 mb-2">
+                    <p className="text-xs font-medium text-muted-foreground/80 mb-2">
                       {t("settingsPage.general.hotkey.activationMode")}
                     </p>
                     <ActivationModeSelector value={activationMode} onChange={setActivationMode} />
@@ -1603,7 +1603,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         {t("settingsPage.agentConfig.save")}
                       </Button>
                     </div>
-                    <p className="text-2xs text-muted-foreground/60">
+                    <p className="text-xs text-muted-foreground/60">
                       {t("settingsPage.agentConfig.helper")}
                     </p>
                   </div>
@@ -1649,7 +1649,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     ].map((example, i) => (
                       <div key={i} className="flex items-start gap-3">
                         <span
-                          className={`shrink-0 mt-0.5 text-3xs font-medium uppercase tracking-wider px-1.5 py-px rounded ${
+                          className={`shrink-0 mt-0.5 text-xs font-medium uppercase tracking-wider px-1.5 py-px rounded ${
                             example.mode === t("settingsPage.agentConfig.instructionMode")
                               ? "bg-primary/10 text-primary dark:bg-primary/15"
                               : "bg-muted text-muted-foreground"
@@ -1862,7 +1862,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
 
                   {updateInfo?.releaseNotes && (
                     <div className="mt-4 pt-4 border-t border-border/30">
-                      <p className="text-2xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
                         {t("settingsPage.general.updates.whatsNew", {
                           version: updateInfo.version,
                         })}

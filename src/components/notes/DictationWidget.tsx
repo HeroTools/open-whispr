@@ -62,7 +62,7 @@ export default function DictationWidget({
             ))}
           </div>
 
-          <span className="text-2xs font-medium tabular-nums text-primary/60 dark:text-primary/70 min-w-9">
+          <span className="text-xs font-medium tabular-nums text-primary/60 dark:text-primary/70 min-w-9">
             {minutes}:{seconds}
           </span>
 
@@ -90,7 +90,7 @@ export default function DictationWidget({
           )}
         >
           <Loader2 size={14} className="animate-spin text-primary/50" />
-          <span className="text-2xs font-medium text-primary/50">
+          <span className="text-xs font-medium text-primary/50">
             {t("notes.editor.processing")}
           </span>
         </div>

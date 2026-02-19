@@ -153,11 +153,11 @@ export default function DeveloperSection() {
         {/* Log Path — only when active */}
         {debugEnabled && logPath && (
           <div className="px-5 py-4">
-            <p className="text-2xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-2">
+            <p className="text-xs font-medium text-muted-foreground/60 uppercase tracking-wider mb-2">
               {t("developerSection.currentLogFile")}
             </p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 text-2xs text-muted-foreground font-mono break-all leading-relaxed bg-muted/30 dark:bg-surface-raised/30 px-3 py-2 rounded-lg border border-border/30">
+              <code className="flex-1 text-xs text-muted-foreground font-mono break-all leading-relaxed bg-muted/30 dark:bg-surface-raised/30 px-3 py-2 rounded-lg border border-border/30">
                 {logPath}
               </code>
               <Button
@@ -246,14 +246,14 @@ export default function DeveloperSection() {
                   t("developerSection.sharing.steps.2"),
                 ].map((step, i) => (
                   <div key={i} className="flex items-start gap-3">
-                    <span className="shrink-0 text-2xs font-mono text-muted-foreground/40 mt-0.5 w-4 text-right">
+                    <span className="shrink-0 text-xs font-mono text-muted-foreground/40 mt-0.5 w-4 text-right">
                       {i + 1}
                     </span>
                     <p className="text-xs text-muted-foreground leading-relaxed">{step}</p>
                   </div>
                 ))}
               </div>
-              <p className="text-2xs text-muted-foreground/40 mt-4 pt-3 border-t border-border/20">
+              <p className="text-xs text-muted-foreground/40 mt-4 pt-3 border-t border-border/20">
                 {t("developerSection.sharing.footer")}
               </p>
             </div>

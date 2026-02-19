@@ -90,7 +90,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
         </DialogHeader>
 
         <div className="space-y-2">
-          <p className="text-2xs font-medium text-foreground/50">
+          <p className="text-xs font-medium text-foreground/50">
             {editingId !== null ? t("notes.actions.editAction") : t("notes.actions.addAction")}
           </p>
           <input
@@ -130,7 +130,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
                 size="sm"
                 onClick={resetForm}
                 disabled={isSaving}
-                className="h-7 text-2xs"
+                className="h-7 text-xs"
               >
                 {t("notes.actions.cancel")}
               </Button>
@@ -140,7 +140,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
               size="sm"
               onClick={handleSave}
               disabled={isSaving || !name.trim() || !prompt.trim()}
-              className="h-7 text-2xs"
+              className="h-7 text-xs"
             >
               {isSaving ? (
                 <Loader2 size={12} className="animate-spin" />
@@ -155,7 +155,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
 
         <div className="border-t border-border/20 dark:border-white/4 pt-2.5">
           {actions.length === 0 ? (
-            <p className="text-2xs text-muted-foreground/40 text-center py-4">
+            <p className="text-xs text-muted-foreground/40 text-center py-4">
               {t("notes.actions.noActions")}
             </p>
           ) : (
@@ -174,13 +174,13 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
                     <div className="flex items-center gap-1.5">
                       <span className="text-xs font-medium truncate">{actionName(action)}</span>
                       {action.is_builtin === 1 && (
-                        <span className="text-4xs font-medium px-1.5 py-0.5 rounded bg-foreground/5 dark:bg-white/6 text-muted-foreground/50 shrink-0">
+                        <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-foreground/5 dark:bg-white/6 text-muted-foreground/50 shrink-0">
                           {t("notes.actions.builtIn")}
                         </span>
                       )}
                     </div>
                     {action.description && (
-                      <p className="text-3xs text-muted-foreground/40 truncate">
+                      <p className="text-xs text-muted-foreground/40 truncate">
                         {actionDescription(action)}
                       </p>
                     )}

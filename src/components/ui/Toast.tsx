@@ -255,7 +255,7 @@ const Toast: React.FC<
             (isDestructive ? (
               <div
                 className={cn(
-                  "text-2xs leading-snug mt-1 px-1.5 py-1 rounded-[3px] font-mono",
+                  "text-xs leading-snug mt-1 px-1.5 py-1 rounded-[3px] font-mono",
                   "bg-white/4 border border-white/6",
                   "text-red-300/80"
                 )}
@@ -277,7 +277,7 @@ const Toast: React.FC<
                 </div>
               </div>
             ) : (
-              <div className="text-2xs leading-snug mt-0.5 text-white/45">{detail}</div>
+              <div className="text-xs leading-snug mt-0.5 text-white/45">{detail}</div>
             ))}
         </div>
 

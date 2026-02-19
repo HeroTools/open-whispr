@@ -31,7 +31,7 @@ import {
 } from "../../stores/noteStore";
 
 const FOLDER_INPUT_CLASS =
-  "w-full h-6 bg-foreground/5 dark:bg-white/5 rounded px-2 text-2xs text-foreground outline-none border border-primary/30 focus:border-primary/50";
+  "w-full h-6 bg-foreground/5 dark:bg-white/5 rounded px-2 text-xs text-foreground outline-none border border-primary/30 focus:border-primary/50";
 
 export default function PersonalNotesView() {
   const { t } = useTranslation();
@@ -297,7 +297,7 @@ export default function PersonalNotesView() {
       <div className="w-52 shrink-0 border-r border-border/15 dark:border-white/4 flex flex-col">
         {/* Folders */}
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-4xs font-medium uppercase tracking-wider text-foreground/25">
+          <span className="text-xs font-medium uppercase tracking-wider text-foreground/25">
             {t("notes.folders.title")}
           </span>
           <Button
@@ -364,7 +364,7 @@ export default function PersonalNotesView() {
                 />
                 <span
                   className={cn(
-                    "text-2xs truncate flex-1 transition-colors duration-150",
+                    "text-xs truncate flex-1 transition-colors duration-150",
                     isActive
                       ? "text-foreground font-medium"
                       : "text-foreground/50 group-hover:text-foreground/70"
@@ -381,7 +381,7 @@ export default function PersonalNotesView() {
                   <>
                     <span
                       className={cn(
-                        "text-4xs tabular-nums shrink-0 transition-colors group-hover:opacity-0",
+                        "text-xs tabular-nums shrink-0 transition-colors group-hover:opacity-0",
                         isActive ? "text-foreground/30" : "text-foreground/15"
                       )}
                     >
@@ -404,7 +404,7 @@ export default function PersonalNotesView() {
                               setRenamingFolderId(folder.id);
                               setRenameValue(folder.name);
                             }}
-                            className="text-2xs gap-2 rounded-md px-2 py-1"
+                            className="text-xs gap-2 rounded-md px-2 py-1"
                           >
                             <Pencil size={11} className="text-muted-foreground/60" />
                             {t("notes.context.rename")}
@@ -415,7 +415,7 @@ export default function PersonalNotesView() {
                               e.stopPropagation();
                               handleDeleteFolder(folder.id);
                             }}
-                            className="text-2xs gap-2 rounded-md px-2 py-1 text-destructive focus:text-destructive focus:bg-destructive/10"
+                            className="text-xs gap-2 rounded-md px-2 py-1 text-destructive focus:text-destructive focus:bg-destructive/10"
                           >
                             <Trash2 size={11} />
                             {t("notes.context.delete")}
@@ -456,7 +456,7 @@ export default function PersonalNotesView() {
         {!isMeetingsFolder && (
           <>
             <div className="flex items-center justify-between px-3 py-1">
-              <span className="text-4xs font-medium uppercase tracking-wider text-foreground/25">
+              <span className="text-xs font-medium uppercase tracking-wider text-foreground/25">
                 {t("notes.list.title")}
               </span>
               <Button
@@ -535,18 +535,18 @@ export default function PersonalNotesView() {
                       fillOpacity={0.04}
                     />
                   </svg>
-                  <p className="text-3xs text-foreground/25 mb-3">{t("notes.empty.emptyFolder")}</p>
+                  <p className="text-xs text-foreground/25 mb-3">{t("notes.empty.emptyFolder")}</p>
                   <div className="flex flex-col gap-1.5 w-full max-w-36">
                     <button
                       onClick={handleNewNote}
-                      className="flex items-center justify-center gap-1.5 h-6 rounded-md bg-primary/8 dark:bg-primary/10 border border-primary/12 dark:border-primary/15 text-3xs font-medium text-primary/70 hover:bg-primary/12 hover:text-primary hover:border-primary/20 transition-colors"
+                      className="flex items-center justify-center gap-1.5 h-6 rounded-md bg-primary/8 dark:bg-primary/10 border border-primary/12 dark:border-primary/15 text-xs font-medium text-primary/70 hover:bg-primary/12 hover:text-primary hover:border-primary/20 transition-colors"
                     >
                       <Plus size={10} />
                       {t("notes.empty.createNote")}
                     </button>
                     <button
                       onClick={() => setShowAddNotesDialog(true)}
-                      className="flex items-center justify-center gap-1.5 h-6 rounded-md border border-foreground/8 dark:border-white/8 text-3xs text-foreground/40 hover:text-foreground/60 hover:border-foreground/15 hover:bg-foreground/3 dark:hover:bg-white/3 transition-colors"
+                      className="flex items-center justify-center gap-1.5 h-6 rounded-md border border-foreground/8 dark:border-white/8 text-xs text-foreground/40 hover:text-foreground/60 hover:border-foreground/15 hover:bg-foreground/3 dark:hover:bg-white/3 transition-colors"
                     >
                       {t("notes.addToFolder.addExisting")}
                     </button>
@@ -670,7 +670,7 @@ export default function PersonalNotesView() {
             <h3 className="text-xs font-semibold text-foreground/60 mb-1">
               {t("notes.meeting.title")}
             </h3>
-            <p className="text-2xs text-foreground/25 text-center max-w-52 mb-3">
+            <p className="text-xs text-foreground/25 text-center max-w-52 mb-3">
               {t("notes.meeting.description")}
             </p>
             <span className="text-[8px] font-semibold uppercase tracking-widest text-primary/40 bg-primary/5 dark:bg-primary/8 px-2.5 py-1 rounded-md border border-primary/8 dark:border-primary/12">
@@ -819,20 +819,20 @@ export default function PersonalNotesView() {
                 <h3 className="text-xs font-semibold text-foreground/60 mb-1">
                   {t("notes.empty.title")}
                 </h3>
-                <p className="text-2xs text-foreground/25 text-center max-w-55 mb-4">
+                <p className="text-xs text-foreground/25 text-center max-w-55 mb-4">
                   {t("notes.empty.description")}
                 </p>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleNewNote}
-                    className="flex items-center gap-1.5 px-4 h-7 rounded-md bg-primary/8 dark:bg-primary/10 border border-primary/12 dark:border-primary/15 text-2xs font-medium text-primary/70 hover:bg-primary/12 hover:text-primary hover:border-primary/20 transition-colors"
+                    className="flex items-center gap-1.5 px-4 h-7 rounded-md bg-primary/8 dark:bg-primary/10 border border-primary/12 dark:border-primary/15 text-xs font-medium text-primary/70 hover:bg-primary/12 hover:text-primary hover:border-primary/20 transition-colors"
                   >
                     <Plus size={11} />
                     {t("notes.empty.createNote")}
                   </button>
                   <button
                     onClick={() => setShowAddNotesDialog(true)}
-                    className="flex items-center gap-1.5 px-4 h-7 rounded-md border border-foreground/8 dark:border-white/8 text-2xs text-foreground/40 hover:text-foreground/60 hover:border-foreground/15 hover:bg-foreground/3 dark:hover:bg-white/3 transition-colors"
+                    className="flex items-center gap-1.5 px-4 h-7 rounded-md border border-foreground/8 dark:border-white/8 text-xs text-foreground/40 hover:text-foreground/60 hover:border-foreground/15 hover:bg-foreground/3 dark:hover:bg-white/3 transition-colors"
                   >
                     {t("notes.addToFolder.addExisting")}
                   </button>
@@ -843,7 +843,7 @@ export default function PersonalNotesView() {
                 <h3 className="text-xs font-semibold text-foreground/60 mb-1">
                   {t("notes.empty.selectTitle")}
                 </h3>
-                <p className="text-2xs text-foreground/25 text-center max-w-50">
+                <p className="text-xs text-foreground/25 text-center max-w-50">
                   {t("notes.empty.selectDescription")}
                 </p>
               </>

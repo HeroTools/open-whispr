@@ -18,7 +18,7 @@ export const SettingsSection: React.FC<SettingsSectionProps> = ({
       <div>
         <h3 className="text-xs font-semibold text-foreground tracking-tight">{title}</h3>
         {description && (
-          <p className="text-2xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+          <p className="text-xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
         )}
       </div>
       {children}
@@ -71,7 +71,7 @@ export const SettingsRow: React.FC<SettingsRowProps> = ({
       <div className="min-w-0 flex-1">
         <p className="text-xs font-medium text-foreground">{label}</p>
         {description && (
-          <p className="text-2xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
+          <p className="text-xs text-muted-foreground/80 mt-0.5 leading-relaxed">{description}</p>
         )}
       </div>
       <div className="shrink-0">{children}</div>
