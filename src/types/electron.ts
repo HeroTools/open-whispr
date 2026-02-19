@@ -38,6 +38,7 @@ export interface ActionItem {
   icon: string;
   is_builtin: number;
   sort_order: number;
+  translation_key: string | null;
   created_at: string;
   updated_at: string;
 }

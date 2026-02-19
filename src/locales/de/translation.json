@@ -1434,7 +1434,13 @@
       "noActions": "Noch keine benutzerdefinierten Aktionen",
       "runAction": "{{name}} ausführen",
       "selectAction": "Aktion auswählen",
-      "done": "Fertig"
+      "done": "Fertig",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "Notizen bereinigen",
+          "description": "Grammatik, Struktur und Formatierung verbessern"
+        }
+      }
     },
     "empty": {
       "title": "Noch keine Notizen hier",

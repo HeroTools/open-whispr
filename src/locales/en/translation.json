@@ -1357,7 +1357,7 @@
     "rollingLimit": "Rolling weekly limit",
     "upgradeToPro": "Upgrade to Pro",
     "useYourOwnKey": "Use Your Own Key",
-    "upgradeUnlimited": "Upgrade to Pro \u2014 unlimited transcriptions"
+    "upgradeUnlimited": "Upgrade to Pro — unlimited transcriptions"
   },
   "notes": {
     "folders": {
@@ -1483,7 +1483,13 @@
       "cancel": "Cancel",
       "noActions": "No custom actions yet",
       "runAction": "Run {{name}}",
-      "selectAction": "Select action"
+      "selectAction": "Select action",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "Clean Up Notes",
+          "description": "Fix grammar, structure, and formatting"
+        }
+      }
     }
   },
   "dictionary": {

@@ -74,6 +74,11 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
     }
   };
 
+  const actionName = (action: ActionItem) =>
+    action.translation_key ? t(`${action.translation_key}.name`) : action.name;
+  const actionDescription = (action: ActionItem) =>
+    action.translation_key ? t(`${action.translation_key}.description`) : action.description;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg gap-2.5">
@@ -167,7 +172,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
                   <Sparkles size={12} className="text-accent/40 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[12px] font-medium truncate">{action.name}</span>
+                      <span className="text-[12px] font-medium truncate">{actionName(action)}</span>
                       {action.is_builtin === 1 && (
                         <span className="text-[9px] font-medium px-1.5 py-0.5 rounded bg-foreground/5 dark:bg-white/6 text-muted-foreground/50 shrink-0">
                           {t("notes.actions.builtIn")}
@@ -176,7 +181,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
                     </div>
                     {action.description && (
                       <p className="text-[10px] text-muted-foreground/40 truncate">
-                        {action.description}
+                        {actionDescription(action)}
                       </p>
                     )}
                   </div>

@@ -43,12 +43,17 @@ export default function ActionPicker({
 
   if (!activeAction) return null;
 
+  const actionName = (action: ActionItem) =>
+    action.translation_key ? t(`${action.translation_key}.name`) : action.name;
+  const actionDescription = (action: ActionItem) =>
+    action.translation_key ? t(`${action.translation_key}.description`) : action.description;
+
   return (
     <div className="flex items-center">
       <button
         onClick={() => handleRun(activeAction)}
         disabled={disabled}
-        aria-label={t("notes.actions.runAction", { name: activeAction.name })}
+        aria-label={t("notes.actions.runAction", { name: actionName(activeAction) })}
         className={cn(
           "flex items-center gap-2 h-11 pl-5 pr-3 rounded-l-xl",
           "bg-accent/8 dark:bg-accent/12",
@@ -63,7 +68,7 @@ export default function ActionPicker({
         )}
       >
         <Sparkles size={14} />
-        <span className="text-[12px] font-semibold tracking-tight">{activeAction.name}</span>
+        <span className="text-[12px] font-semibold tracking-tight">{actionName(activeAction)}</span>
       </button>
 
       <DropdownMenu>
@@ -98,10 +103,10 @@ export default function ActionPicker({
             >
               <Sparkles size={12} className="text-accent/50 shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="font-medium truncate">{action.name}</div>
+                <div className="font-medium truncate">{actionName(action)}</div>
                 {action.description && (
                   <div className="text-[10px] text-muted-foreground/50 truncate">
-                    {action.description}
+                    {actionDescription(action)}
                   </div>
                 )}
               </div>

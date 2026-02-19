@@ -1283,7 +1283,13 @@
       "noActions": "カスタムアクションはまだありません",
       "runAction": "{{name}} を実行",
       "selectAction": "アクションを選択",
-      "done": "完了"
+      "done": "完了",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "ノートを整理",
+          "description": "文法、構成、書式を修正する"
+        }
+      }
     },
     "empty": {
       "title": "まだノートがありません",

@@ -1434,7 +1434,13 @@
       "noActions": "尚無自訂動作",
       "runAction": "執行 {{name}}",
       "selectAction": "選擇動作",
-      "done": "完成"
+      "done": "完成",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "整理筆記",
+          "description": "修正文法、結構和格式"
+        }
+      }
     },
     "empty": {
       "title": "這裡還沒有筆記",

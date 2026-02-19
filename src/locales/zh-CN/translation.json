@@ -1434,7 +1434,13 @@
       "noActions": "暂无自定义操作",
       "runAction": "运行 {{name}}",
       "selectAction": "选择操作",
-      "done": "完成"
+      "done": "完成",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "整理笔记",
+          "description": "修正语法、结构和格式"
+        }
+      }
     },
     "empty": {
       "title": "这里还没有笔记",

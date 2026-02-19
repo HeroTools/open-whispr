@@ -114,19 +114,33 @@ class DatabaseManager {
         )
       `);
 
+      try {
+        this.db.exec("ALTER TABLE actions ADD COLUMN translation_key TEXT");
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
+
       const actionCount = this.db.prepare("SELECT COUNT(*) as count FROM actions").get();
       if (actionCount.count === 0) {
         this.db
           .prepare(
-            "INSERT INTO actions (name, description, prompt, icon, is_builtin, sort_order) VALUES (?, ?, ?, ?, 1, 0)"
+            "INSERT INTO actions (name, description, prompt, icon, is_builtin, sort_order, translation_key) VALUES (?, ?, ?, ?, 1, 0, ?)"
           )
           .run(
             "Clean Up Notes",
             "Fix grammar, structure, and formatting",
             "Clean up grammar, improve structure, and format these notes for readability while preserving all original meaning.",
-            "sparkles"
+            "sparkles",
+            "notes.actions.builtin.cleanupNotes"
           );
       }
+
+      // Back-fill translation_key for existing installs
+      this.db
+        .prepare(
+          "UPDATE actions SET translation_key = ? WHERE is_builtin = 1 AND name = ? AND translation_key IS NULL"
+        )
+        .run("notes.actions.builtin.cleanupNotes", "Clean Up Notes");
 
       return true;
     } catch (error) {

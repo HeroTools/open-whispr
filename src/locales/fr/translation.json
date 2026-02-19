@@ -1434,7 +1434,13 @@
       "noActions": "Aucune action personnalisée pour l'instant",
       "runAction": "Exécuter {{name}}",
       "selectAction": "Sélectionner l'action",
-      "done": "Terminé"
+      "done": "Terminé",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "Nettoyer les notes",
+          "description": "Corriger la grammaire, la structure et la mise en forme"
+        }
+      }
     },
     "empty": {
       "title": "Aucune note ici pour l'instant",

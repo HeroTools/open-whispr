@@ -1434,7 +1434,13 @@
       "noActions": "Aún no hay acciones personalizadas",
       "runAction": "Ejecutar {{name}}",
       "selectAction": "Seleccionar acción",
-      "done": "Listo"
+      "done": "Listo",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "Limpiar notas",
+          "description": "Corregir gramática, estructura y formato"
+        }
+      }
     },
     "empty": {
       "title": "Todavía no hay notas aquí",

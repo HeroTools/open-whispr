@@ -1434,7 +1434,13 @@
       "noActions": "Nessuna azione personalizzata ancora",
       "runAction": "Esegui {{name}}",
       "selectAction": "Seleziona azione",
-      "done": "Fatto"
+      "done": "Fatto",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "Pulisci note",
+          "description": "Correggere grammatica, struttura e formattazione"
+        }
+      }
     },
     "empty": {
       "title": "Ancora nessuna nota qui",
