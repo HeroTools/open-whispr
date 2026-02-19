@@ -116,7 +116,7 @@ export default function ModelCardList({
           <div
             key={model.value}
             onClick={handleCardClick}
-            className={`relative w-full p-2 pl-2.5 rounded-md border text-left transition-all duration-200 group overflow-hidden ${
+            className={`relative w-full p-2 pl-2.5 rounded-md border text-left transition-colors duration-200 group overflow-hidden ${
               isSelected ? styles.selected : styles.default
             } ${!isLocalMode || (isDownloaded && !isSelected) ? "cursor-pointer" : ""}`}
           >
@@ -186,7 +186,7 @@ export default function ModelCardList({
                         }}
                         size="sm"
                         variant="ghost"
-                        className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all active:scale-95"
+                        className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-[color,opacity,transform] active:scale-95"
                       >
                         <Trash2 size={12} />
                       </Button>

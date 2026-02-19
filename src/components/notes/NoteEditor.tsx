@@ -27,11 +27,16 @@ function formatNoteDate(dateStr: string): string {
   return `${datePart} \u00b7 ${timePart}`;
 }
 
+export interface Enhancement {
+  content: string;
+  isStale: boolean;
+  onChange: (content: string) => void;
+}
+
 interface NoteEditorProps {
   note: NoteItem;
   onTitleChange: (title: string) => void;
   onContentChange: (content: string) => void;
-  onEnhancedContentChange?: (content: string) => void;
   isSaving: boolean;
   isRecording: boolean;
   partialTranscript: string;
@@ -41,9 +46,7 @@ interface NoteEditorProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onExportNote?: (format: "md" | "txt") => void;
-  hasEnhancedContent?: boolean;
-  enhancedContent?: string | null;
-  isEnhancementStale?: boolean;
+  enhancement?: Enhancement;
   actionPicker?: React.ReactNode;
   actionProcessingState?: ActionProcessingState;
   actionName?: string | null;
@@ -53,7 +56,6 @@ export default function NoteEditor({
   note,
   onTitleChange,
   onContentChange,
-  onEnhancedContentChange,
   isSaving,
   isRecording,
   isProcessing,
@@ -63,9 +65,7 @@ export default function NoteEditor({
   onStartRecording,
   onStopRecording,
   onExportNote,
-  hasEnhancedContent,
-  enhancedContent,
-  isEnhancementStale,
+  enhancement,
   actionPicker,
   actionProcessingState,
   actionName,
@@ -256,9 +256,9 @@ export default function NoteEditor({
 
   const handleEnhancedChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      onEnhancedContentChange?.(e.target.value);
+      enhancement?.onChange(e.target.value);
     },
-    [onEnhancedContentChange]
+    [enhancement]
   );
 
   const wordCount = useMemo(() => {
@@ -298,13 +298,13 @@ export default function NoteEditor({
           </div>
           <div className="flex-1" />
           <div className="flex items-center gap-1">
-            {hasEnhancedContent && (
+            {enhancement && (
               <div
                 ref={segmentContainerRef}
                 className="relative flex items-center shrink-0 rounded-md bg-foreground/3 dark:bg-white/3 p-0.5"
               >
                 <div
-                  className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-all duration-200 ease-out pointer-events-none"
+                  className="absolute top-0.5 left-0 rounded bg-background dark:bg-surface-2 shadow-sm transition-[width,height,transform,opacity] duration-200 ease-out pointer-events-none"
                   style={indicatorStyle}
                 />
                 <button
@@ -332,7 +332,7 @@ export default function NoteEditor({
                 >
                   <Sparkles size={9} />
                   {t("notes.editor.enhanced")}
-                  {isEnhancementStale && (
+                  {enhancement.isStale && (
                     <span
                       className="w-1 h-1 rounded-full bg-amber-400/60"
                       title={t("notes.editor.staleIndicator")}
@@ -345,7 +345,7 @@ export default function NoteEditor({
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md bg-foreground/3 dark:bg-white/3 text-foreground/25 hover:text-foreground/40 hover:bg-foreground/6 dark:hover:bg-white/6 transition-all duration-150"
+                    className="shrink-0 h-6 w-6 flex items-center justify-center rounded-md bg-foreground/3 dark:bg-white/3 text-foreground/25 hover:text-foreground/40 hover:bg-foreground/6 dark:hover:bg-white/6 transition-colors duration-150"
                     aria-label={t("notes.editor.export")}
                   >
                     <Download size={11} />
@@ -375,8 +375,8 @@ export default function NoteEditor({
 
       <div className="flex-1 relative min-h-0">
         <div className="h-full overflow-y-auto">
-          {viewMode === "enhanced" && enhancedContent ? (
-            <MarkdownTextarea value={enhancedContent} onChange={handleEnhancedChange} />
+          {viewMode === "enhanced" && enhancement ? (
+            <MarkdownTextarea value={enhancement.content} onChange={handleEnhancedChange} />
           ) : (
             <MarkdownTextarea
               value={note.content}

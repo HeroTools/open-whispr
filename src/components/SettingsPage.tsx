@@ -1319,7 +1319,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             onClick={() => setTheme(option.value)}
                             className={`
                               flex items-center gap-1 px-2.5 py-1 rounded-[5px] text-[11px] font-medium
-                              transition-all duration-100
+                              transition-colors duration-100
                               ${
                                 isSelected
                                   ? "bg-background dark:bg-surface-raised text-foreground shadow-sm"
@@ -1807,7 +1807,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         {downloadingUpdate && (
                           <div className="h-1 w-full overflow-hidden rounded-full bg-muted/50">
                             <div
-                              className="h-full bg-success transition-all duration-200 rounded-full"
+                              className="h-full bg-success transition-[width] duration-200 rounded-full"
                               style={{
                                 width: `${Math.min(100, Math.max(0, updateDownloadProgress))}%`,
                               }}

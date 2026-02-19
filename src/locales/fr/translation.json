@@ -1319,6 +1319,11 @@
       "audioSignature": "Votre signature audio",
       "stop": "Arrêter",
       "playSignal": "Lire le signal"
+    },
+    "friends": {
+      "title": "Amis",
+      "completed": "Complété",
+      "sentInvites": "Invitations envoyées"
     }
   },
   "notes": {
@@ -1426,7 +1431,70 @@
       "save": "Enregistrer",
       "update": "Mettre à jour",
       "cancel": "Annuler",
-      "noActions": "Aucune action personnalisée pour l'instant"
+      "noActions": "Aucune action personnalisée pour l'instant",
+      "runAction": "Exécuter {{name}}",
+      "selectAction": "Sélectionner l'action",
+      "done": "Terminé"
+    },
+    "empty": {
+      "title": "Aucune note ici pour l'instant",
+      "description": "Créez votre première note pour commencer à écrire",
+      "selectTitle": "Sélectionner une note",
+      "selectDescription": "Choisissez une note dans la barre latérale",
+      "createNote": "Créer une note",
+      "emptyFolder": "Aucune note dans ce dossier"
+    },
+    "addToFolder": {
+      "title": "Ajouter des notes",
+      "searchPlaceholder": "Rechercher des notes à ajouter...",
+      "addExisting": "Ajouter des notes existantes",
+      "addCount": "Ajouter {{count}} notes",
+      "noResults": "Aucune note correspondante",
+      "noNotesAvailable": "Aucune autre note disponible"
     }
+  },
+  "dictionary": {
+    "addWord": "Ajouter un mot",
+    "removeWord": "Supprimer {{word}}",
+    "clearAll": "Tout effacer",
+    "howItWorks": "Comment ça marche",
+    "title": "Dictionnaire personnalisé",
+    "description": "Apprenez à l'IA votre vocabulaire — noms, jargon et termes qu'elle pourrait autrement manquer",
+    "clearTitle": "Vider le dictionnaire ?",
+    "clearDescription": "Cela supprimera tous les mots de votre dictionnaire personnalisé. Cette action est irréversible.",
+    "addPlaceholder": "Ajouter un mot ou une expression..."
+  },
+  "sidebar": {
+    "home": "Accueil",
+    "notes": "Notes",
+    "upload": "Importer",
+    "dictionary": "Dictionnaire",
+    "quitTitle": "Quitter OpenWhispr ?",
+    "quitDescription": "Cela fermera OpenWhispr et arrêtera les processus en arrière-plan.",
+    "quitConfirm": "Quitter",
+    "quitCancel": "Annuler",
+    "referral": "Obtenir un mois gratuit",
+    "settings": "Paramètres",
+    "support": "Assistance",
+    "quit": "Quitter"
+  },
+  "usage": {
+    "approachingLimit": "Limite hebdomadaire bientôt atteinte",
+    "approachingLimitDescription": "Vous avez utilisé {{wordsUsed}} de vos {{limit}} mots gratuits cette semaine.",
+    "yourPlan": "Votre abonnement",
+    "trial": "Essai ({{days}} jour restant)",
+    "trial_other": "Essai ({{days}} jours restants)",
+    "pro": "Pro",
+    "unlimitedTrial": "Transcriptions illimitées pendant votre période d'essai",
+    "unlimited": "Transcriptions illimitées",
+    "manageSubscription": "Gérer l'abonnement",
+    "weeklyUsage": "Utilisation hebdomadaire",
+    "limitReached": "Limite atteinte",
+    "free": "Gratuit",
+    "wordsRemaining": "{{remaining}} mots restants",
+    "rollingLimit": "Limite hebdomadaire glissante",
+    "upgradeToPro": "Passer à Pro",
+    "useYourOwnKey": "Utiliser votre propre clé API",
+    "upgradeUnlimited": "Passer à Pro — transcriptions illimitées"
   }
 }

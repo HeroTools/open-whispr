@@ -16,9 +16,11 @@ import ActionPicker from "./ActionPicker";
 import ActionManagerDialog from "./ActionManagerDialog";
 import AddNotesToFolderDialog from "./AddNotesToFolderDialog";
 import { useNoteRecording } from "../../hooks/useNoteRecording";
-import { useActionProcessing } from "../../hooks/useActionProcessing";
+import { useActionProcessing, DEFAULT_CLOUD_MODEL } from "../../hooks/useActionProcessing";
+import { useFolderManagement } from "../../hooks/useFolderManagement";
+import { useAuth } from "../../hooks/useAuth";
+import { useSettings } from "../../hooks/useSettings";
 import { cn } from "../lib/utils";
-import type { FolderItem } from "../../types/electron";
 import {
   useNotes,
   useActiveNoteId,
@@ -26,7 +28,6 @@ import {
   initializeNotes,
   setActiveNoteId,
   setActiveFolderId,
-  getActiveFolderIdValue,
 } from "../../stores/noteStore";
 
 export default function PersonalNotesView() {
@@ -35,7 +36,6 @@ export default function PersonalNotesView() {
   const notes = useNotes();
   const activeNoteId = useActiveNoteId();
   const activeFolderId = useActiveFolderId();
-  const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [localTitle, setLocalTitle] = useState("");
   const [localContent, setLocalContent] = useState("");
@@ -50,17 +50,33 @@ export default function PersonalNotesView() {
   const localTitleRef = useRef(localTitle);
   localTitleRef.current = localTitle;
   const { toast } = useToast();
+  const { isSignedIn } = useAuth();
+  const { cloudReasoningMode, reasoningModel } = useSettings();
 
-  const [folders, setFolders] = useState<FolderItem[]>([]);
-  const [folderCounts, setFolderCounts] = useState<Record<number, number>>({});
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
-  const [renamingFolderId, setRenamingFolderId] = useState<number | null>(null);
-  const [renameValue, setRenameValue] = useState("");
-  const [showAddNotesDialog, setShowAddNotesDialog] = useState(false);
-  const newFolderInputRef = useRef<HTMLInputElement>(null);
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  const prevFolderIdRef = useRef<number | null>(null);
+  const isCloudMode = !!isSignedIn && cloudReasoningMode === "openwhispr";
+  const effectiveModelId = isCloudMode ? DEFAULT_CLOUD_MODEL : reasoningModel;
+
+  const {
+    folders,
+    folderCounts,
+    isLoading,
+    isCreatingFolder,
+    newFolderName,
+    renamingFolderId,
+    renameValue,
+    showAddNotesDialog,
+    newFolderInputRef,
+    renameInputRef,
+    setIsCreatingFolder,
+    setNewFolderName,
+    setRenamingFolderId,
+    setRenameValue,
+    setShowAddNotesDialog,
+    loadFolders,
+    handleCreateFolder,
+    handleConfirmRename,
+    handleDeleteFolder,
+  } = useFolderManagement();
 
   const activeNote = notes.find((n) => n.id === activeNoteId) ?? null;
   const isMeetingsFolder = useMemo(
@@ -81,60 +97,6 @@ export default function PersonalNotesView() {
         [toast]
       ),
     });
-
-  const loadFolders = useCallback(async () => {
-    const [items, counts] = await Promise.all([
-      window.electronAPI.getFolders(),
-      window.electronAPI.getFolderNoteCounts(),
-    ]);
-    setFolders(items);
-    const countMap: Record<number, number> = {};
-    counts.forEach((c) => {
-      countMap[c.folder_id] = c.count;
-    });
-    setFolderCounts(countMap);
-    return items;
-  }, []);
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setIsLoading(true);
-        const items = await loadFolders();
-
-        // Respect pre-set activeFolderId (e.g., navigating from "Open Note")
-        const presetFolderId = getActiveFolderIdValue();
-        const isPresetValid = presetFolderId != null && items.some((f) => f.id === presetFolderId);
-
-        const initialFolderId = isPresetValid
-          ? presetFolderId
-          : (items.find((f) => f.name === "Personal" && f.is_default)?.id ?? items[0]?.id ?? null);
-
-        if (initialFolderId !== presetFolderId) {
-          setActiveFolderId(initialFolderId);
-        }
-        if (initialFolderId) {
-          await initializeNotes(null, 50, initialFolderId);
-        }
-        prevFolderIdRef.current = initialFolderId;
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    load();
-  }, [loadFolders]);
-
-  useEffect(() => {
-    if (!activeFolderId || isLoading) return;
-    // Skip if folder hasn't changed (e.g., initial load completing)
-    if (prevFolderIdRef.current === activeFolderId) return;
-    prevFolderIdRef.current = activeFolderId;
-    const loadForFolder = async () => {
-      await initializeNotes(null, 50, activeFolderId);
-      setActiveNoteId(null);
-    };
-    loadForFolder();
-  }, [activeFolderId, isLoading]);
 
   useEffect(() => {
     if (activeNote && activeNote.id !== activeNoteRef.current) {
@@ -324,83 +286,6 @@ export default function PersonalNotesView() {
     [activeNoteId]
   );
 
-  const handleCreateFolder = useCallback(async () => {
-    const trimmed = newFolderName.trim();
-    if (!trimmed) {
-      setIsCreatingFolder(false);
-      setNewFolderName("");
-      return;
-    }
-    const result = await window.electronAPI.createFolder(trimmed);
-    if (result.success && result.folder) {
-      await loadFolders();
-      setActiveFolderId(result.folder.id);
-    } else if (result.error) {
-      toast({
-        title: t("notes.folders.couldNotCreate"),
-        description: result.error,
-        variant: "destructive",
-      });
-    }
-    setIsCreatingFolder(false);
-    setNewFolderName("");
-  }, [newFolderName, loadFolders, toast]);
-
-  const handleRenameFolder = useCallback(async () => {
-    if (!renamingFolderId) return;
-    const trimmed = renameValue.trim();
-    if (!trimmed) {
-      setRenamingFolderId(null);
-      setRenameValue("");
-      return;
-    }
-    const result = await window.electronAPI.renameFolder(renamingFolderId, trimmed);
-    if (result.success) {
-      await loadFolders();
-    } else if (result.error) {
-      toast({
-        title: t("notes.folders.couldNotRename"),
-        description: result.error,
-        variant: "destructive",
-      });
-    }
-    setRenamingFolderId(null);
-    setRenameValue("");
-  }, [renamingFolderId, renameValue, loadFolders, toast]);
-
-  const handleDeleteFolder = useCallback(
-    async (folderId: number) => {
-      const result = await window.electronAPI.deleteFolder(folderId);
-      if (result.success) {
-        const personalFolder = folders.find((f) => f.name === "Personal" && f.is_default);
-        if (activeFolderId === folderId && personalFolder) {
-          setActiveFolderId(personalFolder.id);
-        }
-        await loadFolders();
-      } else if (result.error) {
-        toast({
-          title: t("notes.folders.couldNotDelete"),
-          description: result.error,
-          variant: "destructive",
-        });
-      }
-    },
-    [folders, activeFolderId, loadFolders, toast]
-  );
-
-  useEffect(() => {
-    if (isCreatingFolder && newFolderInputRef.current) {
-      newFolderInputRef.current.focus();
-    }
-  }, [isCreatingFolder]);
-
-  useEffect(() => {
-    if (renamingFolderId && renameInputRef.current) {
-      renameInputRef.current.focus();
-      renameInputRef.current.select();
-    }
-  }, [renamingFolderId]);
-
   const editorNote = activeNote
     ? { ...activeNote, title: localTitle, content: localContent }
     : null;
@@ -417,6 +302,7 @@ export default function PersonalNotesView() {
             variant="ghost"
             size="icon"
             onClick={() => setIsCreatingFolder(true)}
+            aria-label={t("notes.context.newFolder")}
             className="h-5 w-5 rounded-md text-muted-foreground/30 hover:text-foreground/60 hover:bg-foreground/5"
           >
             <Plus size={13} />
@@ -438,13 +324,13 @@ export default function PersonalNotesView() {
                     value={renameValue}
                     onChange={(e) => setRenameValue(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") handleRenameFolder();
+                      if (e.key === "Enter") handleConfirmRename();
                       if (e.key === "Escape") {
                         setRenamingFolderId(null);
                         setRenameValue("");
                       }
                     }}
-                    onBlur={handleRenameFolder}
+                    onBlur={handleConfirmRename}
                     className="w-full h-6 bg-foreground/5 dark:bg-white/5 rounded px-2 text-[11px] text-foreground outline-none border border-primary/30 focus:border-primary/50"
                   />
                 </div>
@@ -452,16 +338,13 @@ export default function PersonalNotesView() {
             }
 
             return (
-              <div
+              <button
                 key={folder.id}
-                role="button"
-                tabIndex={0}
+                type="button"
                 onClick={() => setActiveFolderId(folder.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") setActiveFolderId(folder.id);
-                }}
                 className={cn(
-                  "group relative flex items-center gap-2 w-full h-7 px-2 rounded-md cursor-pointer transition-all duration-150",
+                  "group relative flex items-center gap-2 w-full h-7 px-2 rounded-md cursor-pointer transition-colors duration-150",
+                  "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
                   isActive
                     ? "bg-primary/8 dark:bg-primary/10"
                     : "hover:bg-foreground/4 dark:hover:bg-white/4"
@@ -540,7 +423,7 @@ export default function PersonalNotesView() {
                     )}
                   </>
                 )}
-              </div>
+              </button>
             );
           })}
 
@@ -578,6 +461,7 @@ export default function PersonalNotesView() {
                 variant="ghost"
                 size="icon"
                 onClick={handleNewNote}
+                aria-label={t("notes.list.newNote")}
                 className="h-5 w-5 rounded-md text-muted-foreground/30 hover:text-foreground/60 hover:bg-foreground/5"
               >
                 <Plus size={13} />
@@ -655,14 +539,14 @@ export default function PersonalNotesView() {
                   <div className="flex flex-col gap-1.5 w-full max-w-36">
                     <button
                       onClick={handleNewNote}
-                      className="flex items-center justify-center gap-1.5 h-6 rounded-md bg-primary/8 dark:bg-primary/10 border border-primary/12 dark:border-primary/15 text-[10px] font-medium text-primary/70 hover:bg-primary/12 hover:text-primary hover:border-primary/20 transition-all"
+                      className="flex items-center justify-center gap-1.5 h-6 rounded-md bg-primary/8 dark:bg-primary/10 border border-primary/12 dark:border-primary/15 text-[10px] font-medium text-primary/70 hover:bg-primary/12 hover:text-primary hover:border-primary/20 transition-colors"
                     >
                       <Plus size={10} />
                       {t("notes.empty.createNote")}
                     </button>
                     <button
                       onClick={() => setShowAddNotesDialog(true)}
-                      className="flex items-center justify-center gap-1.5 h-6 rounded-md border border-foreground/8 dark:border-white/8 text-[10px] text-foreground/40 hover:text-foreground/60 hover:border-foreground/15 hover:bg-foreground/3 dark:hover:bg-white/3 transition-all"
+                      className="flex items-center justify-center gap-1.5 h-6 rounded-md border border-foreground/8 dark:border-white/8 text-[10px] text-foreground/40 hover:text-foreground/60 hover:border-foreground/15 hover:bg-foreground/3 dark:hover:bg-white/3 transition-colors"
                     >
                       {t("notes.addToFolder.addExisting")}
                     </button>
@@ -799,7 +683,6 @@ export default function PersonalNotesView() {
               note={editorNote}
               onTitleChange={handleTitleChange}
               onContentChange={handleContentChange}
-              onEnhancedContentChange={handleEnhancedContentChange}
               isSaving={isSaving}
               isRecording={isRecording}
               isProcessing={isProcessing}
@@ -809,16 +692,22 @@ export default function PersonalNotesView() {
               onStartRecording={startRecording}
               onStopRecording={stopRecording}
               onExportNote={handleExportNote}
-              hasEnhancedContent={!!localEnhancedContent}
-              enhancedContent={localEnhancedContent}
-              isEnhancementStale={isEnhancementStale}
+              enhancement={
+                localEnhancedContent
+                  ? {
+                      content: localEnhancedContent,
+                      isStale: isEnhancementStale,
+                      onChange: handleEnhancedContentChange,
+                    }
+                  : undefined
+              }
               actionProcessingState={actionProcessingState}
               actionName={actionName}
               actionPicker={
                 <ActionPicker
                   onRunAction={(action) => {
                     if (!localContent.trim()) return;
-                    runAction(action, localContent);
+                    runAction(action, localContent, { isCloudMode, modelId: effectiveModelId });
                   }}
                   onManageActions={() => setShowActionManager(true)}
                   disabled={!localContent.trim() || actionProcessingState === "processing"}
@@ -936,14 +825,14 @@ export default function PersonalNotesView() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleNewNote}
-                    className="flex items-center gap-1.5 px-4 h-7 rounded-md bg-primary/8 dark:bg-primary/10 border border-primary/12 dark:border-primary/15 text-[11px] font-medium text-primary/70 hover:bg-primary/12 hover:text-primary hover:border-primary/20 transition-all"
+                    className="flex items-center gap-1.5 px-4 h-7 rounded-md bg-primary/8 dark:bg-primary/10 border border-primary/12 dark:border-primary/15 text-[11px] font-medium text-primary/70 hover:bg-primary/12 hover:text-primary hover:border-primary/20 transition-colors"
                   >
                     <Plus size={11} />
                     {t("notes.empty.createNote")}
                   </button>
                   <button
                     onClick={() => setShowAddNotesDialog(true)}
-                    className="flex items-center gap-1.5 px-4 h-7 rounded-md border border-foreground/8 dark:border-white/8 text-[11px] text-foreground/40 hover:text-foreground/60 hover:border-foreground/15 hover:bg-foreground/3 dark:hover:bg-white/3 transition-all"
+                    className="flex items-center gap-1.5 px-4 h-7 rounded-md border border-foreground/8 dark:border-white/8 text-[11px] text-foreground/40 hover:text-foreground/60 hover:border-foreground/15 hover:bg-foreground/3 dark:hover:bg-white/3 transition-colors"
                   >
                     {t("notes.addToFolder.addExisting")}
                   </button>

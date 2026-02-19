@@ -232,7 +232,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-medium transition-all duration-150 border-b-2 ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 text-[12px] font-medium transition-colors duration-150 border-b-2 ${
                   isActive
                     ? "border-primary text-foreground bg-primary/5 dark:bg-primary/3"
                     : "border-transparent text-muted-foreground hover:text-foreground hover:bg-black/2 dark:hover:bg-white/2"

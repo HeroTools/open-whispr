@@ -105,7 +105,7 @@ export default function DictationWidget({
               "border border-primary/15 dark:border-primary/20",
               "shadow-sm hover:shadow-md",
               "text-primary/70 hover:text-primary",
-              "transition-all duration-200",
+              "transition-[background-color,color,transform] duration-200",
               "hover:bg-primary/12 dark:hover:bg-primary/18",
               "active:scale-[0.98]"
             )}

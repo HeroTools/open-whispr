@@ -10,7 +10,9 @@ import {
   UserCircle,
   Power,
 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
+import { getCachedPlatform } from "../utils/platform";
 import SupportDropdown from "./ui/SupportDropdown";
 import WindowControls from "./WindowControls";
 import { ConfirmDialog } from "./ui/dialog";
@@ -30,21 +32,7 @@ interface ControlPanelSidebarProps {
   updateAction?: React.ReactNode;
 }
 
-const platform =
-  typeof window !== "undefined" && window.electronAPI?.getPlatform
-    ? window.electronAPI.getPlatform()
-    : "darwin";
-
-const navItems: {
-  id: ControlPanelView;
-  label: string;
-  icon: React.ComponentType<{ size?: number; className?: string }>;
-}[] = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "personal-notes", label: "Notes", icon: NotebookPen },
-  { id: "upload", label: "Upload", icon: Upload },
-  { id: "dictionary", label: "Dictionary", icon: BookOpen },
-];
+const platform = getCachedPlatform();
 
 export default function ControlPanelSidebar({
   activeView,
@@ -58,7 +46,19 @@ export default function ControlPanelSidebar({
   authLoaded,
   updateAction,
 }: ControlPanelSidebarProps) {
+  const { t } = useTranslation();
   const [showQuitConfirm, setShowQuitConfirm] = useState(false);
+
+  const navItems: {
+    id: ControlPanelView;
+    label: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+  }[] = [
+    { id: "home", label: t("sidebar.home"), icon: Home },
+    { id: "personal-notes", label: t("sidebar.notes"), icon: NotebookPen },
+    { id: "upload", label: t("sidebar.upload"), icon: Upload },
+    { id: "dictionary", label: t("sidebar.dictionary"), icon: BookOpen },
+  ];
 
   const handleQuit = async () => {
     try {
@@ -73,10 +73,10 @@ export default function ControlPanelSidebar({
       <ConfirmDialog
         open={showQuitConfirm}
         onOpenChange={setShowQuitConfirm}
-        title="Quit OpenWhispr?"
-        description="This will close OpenWhispr and stop background processes."
-        confirmText="Quit"
-        cancelText="Cancel"
+        title={t("sidebar.quitTitle")}
+        description={t("sidebar.quitDescription")}
+        confirmText={t("sidebar.quitConfirm")}
+        cancelText={t("sidebar.quitCancel")}
         onConfirm={handleQuit}
         variant="destructive"
       />
@@ -107,7 +107,8 @@ export default function ControlPanelSidebar({
               key={item.id}
               onClick={() => onViewChange(item.id)}
               className={cn(
-                "group relative flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md outline-none transition-all duration-150 text-left",
+                "group relative flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md outline-none transition-colors duration-150 text-left",
+                "focus-visible:ring-1 focus-visible:ring-primary/30",
                 isActive
                   ? "bg-primary/8 dark:bg-primary/10"
                   : "hover:bg-foreground/4 dark:hover:bg-white/4 active:bg-foreground/6"
@@ -150,39 +151,43 @@ export default function ControlPanelSidebar({
         {isSignedIn && onOpenReferrals && (
           <button
             onClick={onOpenReferrals}
-            className="group flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left transition-all duration-200 bg-success/[0.04] dark:bg-success/[0.06] border border-success/[0.08] dark:border-success/[0.10] hover:bg-success/[0.07] dark:hover:bg-success/[0.10] hover:border-success/[0.14] dark:hover:border-success/[0.16]"
+            className="group flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left transition-colors duration-200 bg-success/4 dark:bg-success/6 border border-success/8 dark:border-success/10 hover:bg-success/7 dark:hover:bg-success/10 hover:border-success/14 dark:hover:border-success/16"
           >
             <div className="flex items-center justify-center h-5 w-5 rounded bg-success/10 dark:bg-success/15 shrink-0">
               <Gift size={11} className="text-success" />
             </div>
             <span className="text-[11px] text-success/70 dark:text-success/60 group-hover:text-success/90 dark:group-hover:text-success/80 font-medium transition-colors duration-150">
-              Get a free month
+              {t("sidebar.referral")}
             </span>
           </button>
         )}
 
         <button
           onClick={onOpenSettings}
-          className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left hover:bg-foreground/4 dark:hover:bg-white/4 transition-all duration-150"
+          aria-label={t("sidebar.settings")}
+          className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left outline-none hover:bg-foreground/4 dark:hover:bg-white/4 focus-visible:ring-1 focus-visible:ring-primary/30 transition-colors duration-150"
         >
           <Settings
             size={15}
             className="shrink-0 text-foreground/20 group-hover:text-foreground/40 transition-colors duration-150"
           />
           <span className="text-[12px] text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
-            Settings
+            {t("sidebar.settings")}
           </span>
         </button>
 
         <SupportDropdown
           trigger={
-            <button className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left hover:bg-foreground/4 dark:hover:bg-white/4 transition-all duration-150">
+            <button
+              aria-label={t("sidebar.support")}
+              className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left outline-none hover:bg-foreground/4 dark:hover:bg-white/4 focus-visible:ring-1 focus-visible:ring-primary/30 transition-colors duration-150"
+            >
               <HelpCircle
                 size={15}
                 className="shrink-0 text-foreground/20 group-hover:text-foreground/40 transition-colors duration-150"
               />
               <span className="text-[12px] text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
-                Support
+                {t("sidebar.support")}
               </span>
             </button>
           }
@@ -190,14 +195,15 @@ export default function ControlPanelSidebar({
 
         <button
           onClick={() => setShowQuitConfirm(true)}
-          className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left hover:bg-destructive/5 dark:hover:bg-destructive/8 transition-all duration-150"
+          aria-label={t("sidebar.quit")}
+          className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left outline-none hover:bg-destructive/5 dark:hover:bg-destructive/8 focus-visible:ring-1 focus-visible:ring-primary/30 transition-colors duration-150"
         >
           <Power
             size={15}
             className="shrink-0 text-foreground/20 group-hover:text-destructive/60 transition-colors duration-150"
           />
           <span className="text-[12px] text-foreground/40 group-hover:text-destructive/60 transition-colors duration-150">
-            Quit
+            {t("sidebar.quit")}
           </span>
         </button>
 

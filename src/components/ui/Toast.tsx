@@ -236,7 +236,7 @@ const Toast: React.FC<
       className={cn(
         "group toast-surface pointer-events-auto relative flex w-75 overflow-hidden",
         "rounded-[5px]",
-        "transition-all duration-200 ease-out",
+        "transition-[opacity,transform] duration-200 ease-out",
         isExiting
           ? "opacity-0 translate-x-2 scale-[0.98]"
           : "opacity-100 translate-x-0 scale-100 animate-in slide-in-from-right-4 fade-in-0 duration-300"
@@ -268,7 +268,7 @@ const Toast: React.FC<
                       "shrink-0 p-0.5 rounded-xs mt-px",
                       "text-white/30 hover:text-white/70",
                       "hover:bg-white/6",
-                      "transition-all duration-150"
+                      "transition-colors duration-150"
                     )}
                     aria-label="Copy error"
                   >
@@ -291,7 +291,7 @@ const Toast: React.FC<
             "absolute right-1 top-1 p-1 rounded-[3px]",
             "text-white/0 group-hover:text-white/50 hover:!text-white/80",
             "hover:bg-white/6",
-            "transition-all duration-150",
+            "transition-colors duration-150",
             "focus:outline-none focus-visible:ring-1 focus-visible:ring-white/20"
           )}
         >

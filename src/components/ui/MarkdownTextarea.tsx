@@ -33,6 +33,7 @@ interface MarkdownTextareaProps {
 
 const SYN = "text-foreground/25";
 const BULLETS = ["•", "◦", "▸"];
+const RE_INLINE_MD = /(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`([^`]+)`)/g;
 
 function bulletChar(indent: string) {
   const level = Math.floor(indent.length / 2);
@@ -43,12 +44,12 @@ function parseInline(text: string, lineKey: number): ReactNode[] {
   if (!text) return [];
 
   const tokens: ReactNode[] = [];
-  const regex = /(\*\*\*(.+?)\*\*\*)|(\*\*(.+?)\*\*)|(\*(.+?)\*)|(`([^`]+)`)/g;
+  RE_INLINE_MD.lastIndex = 0;
   let lastIdx = 0;
   let mi = 0;
   let m: RegExpExecArray | null;
 
-  while ((m = regex.exec(text)) !== null) {
+  while ((m = RE_INLINE_MD.exec(text)) !== null) {
     if (m.index > lastIdx) tokens.push(text.slice(lastIdx, m.index));
     const k = `${lineKey}-${mi++}`;
 

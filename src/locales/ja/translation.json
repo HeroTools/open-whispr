@@ -1280,7 +1280,26 @@
       "save": "保存",
       "update": "更新",
       "cancel": "キャンセル",
-      "noActions": "カスタムアクションはまだありません"
+      "noActions": "カスタムアクションはまだありません",
+      "runAction": "{{name}} を実行",
+      "selectAction": "アクションを選択",
+      "done": "完了"
+    },
+    "empty": {
+      "title": "まだノートがありません",
+      "description": "最初のノートを作成して書き始めましょう",
+      "selectTitle": "ノートを選択",
+      "selectDescription": "サイドバーからノートを選んでください",
+      "createNote": "ノートを作成",
+      "emptyFolder": "このフォルダにノートはありません"
+    },
+    "addToFolder": {
+      "title": "ノートを追加",
+      "searchPlaceholder": "追加するノートを検索...",
+      "addExisting": "既存を追加",
+      "addCount": "{{count}}件のノートを追加",
+      "noResults": "一致するノートがありません",
+      "noNotesAvailable": "他のノートはありません"
     },
     "enhance": {
       "title": "AIで強化",
@@ -1293,5 +1312,56 @@
       "enhance": "強化",
       "noProviders": "設定でAPIキーを構成してAIモデルを使用してください"
     }
+  },
+  "dictionary": {
+    "addWord": "単語を追加",
+    "removeWord": "{{word}} を削除",
+    "clearAll": "すべてクリア",
+    "howItWorks": "仕組み",
+    "title": "カスタム辞書",
+    "description": "AIに語彙を学習させましょう — 名前、専門用語、見落とされがちな表現など",
+    "clearTitle": "辞書をクリアしますか？",
+    "clearDescription": "カスタム辞書のすべての単語が削除されます。この操作は元に戻せません。",
+    "addPlaceholder": "単語やフレーズを追加..."
+  },
+  "referral": {
+    "friends": {
+      "title": "フレンド",
+      "completed": "完了",
+      "sentInvites": "送信済みの招待"
+    }
+  },
+  "sidebar": {
+    "home": "ホーム",
+    "notes": "ノート",
+    "upload": "アップロード",
+    "dictionary": "辞書",
+    "quitTitle": "OpenWhispr を終了しますか？",
+    "quitDescription": "OpenWhispr が閉じられ、バックグラウンドプロセスが停止されます。",
+    "quitConfirm": "終了",
+    "quitCancel": "キャンセル",
+    "referral": "1か月無料を取得",
+    "settings": "設定",
+    "support": "サポート",
+    "quit": "終了"
+  },
+  "usage": {
+    "approachingLimit": "週間制限に近づいています",
+    "approachingLimitDescription": "今週の無料枠 {{limit}} 語のうち {{wordsUsed}} 語を使用しました。",
+    "yourPlan": "現在のプラン",
+    "trial": "トライアル（残り{{days}}日）",
+    "trial_other": "トライアル（残り{{days}}日）",
+    "pro": "Pro",
+    "unlimitedTrial": "トライアル期間中は無制限で文字起こし可能",
+    "unlimited": "無制限の文字起こし",
+    "manageSubscription": "サブスクリプションを管理",
+    "weeklyUsage": "週間使用量",
+    "limitReached": "制限に達しました",
+    "free": "無料",
+    "wordsRemaining": "残り{{remaining}}語",
+    "rollingLimit": "週間制限（ローリング方式）",
+    "upgradeToPro": "Proにアップグレード",
+    "useYourOwnKey": "自分のAPIキーを使用",
+    "upgradeUnlimited": "Proにアップグレード — 無制限の文字起こし"
   }
 }

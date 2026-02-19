@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { BookOpen, X, CornerDownLeft, Info } from "lucide-react";
 import { Input } from "./ui/input";
 import { ConfirmDialog } from "./ui/dialog";
@@ -6,6 +7,7 @@ import { useSettings } from "../hooks/useSettings";
 import { getAgentName } from "../utils/agentName";
 
 export default function DictionaryView() {
+  const { t } = useTranslation();
   const { customDictionary, setCustomDictionary } = useSettings();
   const agentName = getAgentName();
   const [newWord, setNewWord] = useState("");
@@ -38,8 +40,8 @@ export default function DictionaryView() {
       <ConfirmDialog
         open={confirmClear}
         onOpenChange={setConfirmClear}
-        title="Clear dictionary?"
-        description="This will remove all words from your custom dictionary. This action cannot be undone."
+        title={t("dictionary.clearTitle")}
+        description={t("dictionary.clearDescription")}
         onConfirm={() => setCustomDictionary(customDictionary.filter((w) => w === agentName))}
         variant="destructive"
       />
@@ -55,14 +57,16 @@ export default function DictionaryView() {
             />
           </div>
 
-          <h2 className="text-[13px] font-semibold text-foreground mb-1">Custom Dictionary</h2>
+          <h2 className="text-[13px] font-semibold text-foreground mb-1">
+            {t("dictionary.title")}
+          </h2>
           <p className="text-[11px] text-foreground/30 text-center leading-relaxed max-w-[240px] mb-6">
-            Teach the AI your vocabulary — names, jargon, and terms it might otherwise miss
+            {t("dictionary.description")}
           </p>
 
           <div className="w-full max-w-[260px] relative">
             <Input
-              placeholder="Add a word or phrase..."
+              placeholder={t("dictionary.addPlaceholder")}
               value={newWord}
               onChange={(e) => setNewWord(e.target.value)}
               onKeyDown={(e) => {
@@ -73,6 +77,7 @@ export default function DictionaryView() {
             {newWord.trim() ? (
               <button
                 onClick={handleAdd}
+                aria-label={t("dictionary.addWord")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-primary/50 hover:text-primary transition-colors"
               >
                 <CornerDownLeft size={11} />
@@ -98,10 +103,12 @@ export default function DictionaryView() {
           <div className="mt-8 w-full max-w-[260px]">
             <button
               onClick={() => setShowInfo(!showInfo)}
+              aria-expanded={showInfo}
+              aria-label={t("dictionary.howItWorks")}
               className="flex items-center gap-1 text-[9px] text-foreground/15 hover:text-foreground/30 transition-colors mx-auto"
             >
               <Info size={9} />
-              How it works
+              {t("dictionary.howItWorks")}
             </button>
             {showInfo && (
               <div className="mt-2.5 rounded-md bg-foreground/[0.02] dark:bg-white/[0.02] border border-foreground/5 dark:border-white/4 px-3 py-2.5">
@@ -120,23 +127,24 @@ export default function DictionaryView() {
         <>
           <div className="px-5 pt-4 pb-2.5 flex items-baseline justify-between">
             <div className="flex items-baseline gap-2">
-              <h2 className="text-[13px] font-semibold text-foreground">Dictionary</h2>
+              <h2 className="text-[13px] font-semibold text-foreground">{t("dictionary.title")}</h2>
               <span className="text-[10px] text-foreground/15 font-mono tabular-nums">
                 {customDictionary.length}
               </span>
             </div>
             <button
               onClick={() => setConfirmClear(true)}
+              aria-label={t("dictionary.clearAll")}
               className="text-[9px] text-foreground/15 hover:text-destructive/70 transition-colors"
             >
-              Clear all
+              {t("dictionary.clearAll")}
             </button>
           </div>
 
           <div className="px-5 pb-3">
             <div className="relative">
               <Input
-                placeholder="Add word or phrase..."
+                placeholder={t("dictionary.addPlaceholder")}
                 value={newWord}
                 onChange={(e) => setNewWord(e.target.value)}
                 onKeyDown={(e) => {
@@ -147,6 +155,7 @@ export default function DictionaryView() {
               {newWord.trim() ? (
                 <button
                   onClick={handleAdd}
+                  aria-label={t("dictionary.addWord")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-primary/50 hover:text-primary transition-colors"
                 >
                   <CornerDownLeft size={10} />
@@ -170,7 +179,7 @@ export default function DictionaryView() {
                     key={word}
                     className={`group inline-flex items-center gap-1 py-[3px]
                       rounded-[5px] text-[11px]
-                      border transition-all duration-150
+                      border transition-colors duration-150
                       ${
                         isAgentName
                           ? "pl-2.5 pr-2.5 bg-primary/10 dark:bg-primary/15 text-primary border-primary/20 dark:border-primary/30"
@@ -182,10 +191,11 @@ export default function DictionaryView() {
                     {!isAgentName && (
                       <button
                         onClick={() => handleRemove(word)}
+                        aria-label={t("dictionary.removeWord", { word })}
                         className="p-0.5 rounded-sm
                           opacity-0 group-hover:opacity-100
                           text-foreground/25 hover:!text-destructive/70
-                          transition-all duration-150"
+                          transition-colors duration-150"
                       >
                         <X size={10} strokeWidth={2} />
                       </button>

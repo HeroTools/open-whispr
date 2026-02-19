@@ -214,7 +214,7 @@ export function SpectrogramCard({ referralCode }: SpectrogramCardProps) {
             <button
               onClick={playing ? resetPlayback : play}
               className={cn(
-                "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200",
+                "w-8 h-8 rounded-full flex items-center justify-center transition-[background-color,color,transform] duration-200",
                 "border border-foreground/10 active:scale-[0.93]",
                 playing
                   ? "bg-foreground/12 text-foreground/80"

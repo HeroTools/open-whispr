@@ -1319,6 +1319,11 @@
       "audioSignature": "Deine Audio-Signatur",
       "stop": "Stopp",
       "playSignal": "Signal abspielen"
+    },
+    "friends": {
+      "title": "Freunde",
+      "completed": "Abgeschlossen",
+      "sentInvites": "Gesendete Einladungen"
     }
   },
   "notes": {
@@ -1426,7 +1431,70 @@
       "save": "Speichern",
       "update": "Aktualisieren",
       "cancel": "Abbrechen",
-      "noActions": "Noch keine benutzerdefinierten Aktionen"
+      "noActions": "Noch keine benutzerdefinierten Aktionen",
+      "runAction": "{{name}} ausführen",
+      "selectAction": "Aktion auswählen",
+      "done": "Fertig"
+    },
+    "empty": {
+      "title": "Noch keine Notizen hier",
+      "description": "Erstelle deine erste Notiz, um loszuschreiben",
+      "selectTitle": "Notiz auswählen",
+      "selectDescription": "Wähle eine Notiz aus der Seitenleiste",
+      "createNote": "Notiz erstellen",
+      "emptyFolder": "Keine Notizen in diesem Ordner"
+    },
+    "addToFolder": {
+      "title": "Notizen hinzufügen",
+      "searchPlaceholder": "Notizen zum Hinzufügen suchen...",
+      "addExisting": "Vorhandene hinzufügen",
+      "addCount": "{{count}} Notizen hinzufügen",
+      "noResults": "Keine passenden Notizen",
+      "noNotesAvailable": "Keine weiteren Notizen verfügbar"
     }
+  },
+  "dictionary": {
+    "addWord": "Wort hinzufügen",
+    "removeWord": "{{word}} entfernen",
+    "clearAll": "Alle löschen",
+    "howItWorks": "So funktioniert es",
+    "title": "Benutzerdefiniertes Wörterbuch",
+    "description": "Bringe der KI dein Vokabular bei – Namen, Fachbegriffe und Ausdrücke, die sie sonst übersehen könnte",
+    "clearTitle": "Wörterbuch leeren?",
+    "clearDescription": "Dadurch werden alle Wörter aus deinem benutzerdefinierten Wörterbuch entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "addPlaceholder": "Ein Wort oder eine Phrase hinzufügen..."
+  },
+  "sidebar": {
+    "home": "Startseite",
+    "notes": "Notizen",
+    "upload": "Hochladen",
+    "dictionary": "Wörterbuch",
+    "quitTitle": "OpenWhispr beenden?",
+    "quitDescription": "Dadurch wird OpenWhispr geschlossen und Hintergrundprozesse werden beendet.",
+    "quitConfirm": "Beenden",
+    "quitCancel": "Abbrechen",
+    "referral": "Gratis-Monat erhalten",
+    "settings": "Einstellungen",
+    "support": "Support",
+    "quit": "Beenden"
+  },
+  "usage": {
+    "approachingLimit": "Wochenlimit fast erreicht",
+    "approachingLimitDescription": "Du hast diese Woche {{wordsUsed}} von {{limit}} kostenlosen Wörtern verwendet.",
+    "yourPlan": "Dein Tarif",
+    "trial": "Testphase (noch {{days}} Tag)",
+    "trial_other": "Testphase (noch {{days}} Tage)",
+    "pro": "Pro",
+    "unlimitedTrial": "Unbegrenzte Transkriptionen während deiner Testphase",
+    "unlimited": "Unbegrenzte Transkriptionen",
+    "manageSubscription": "Abonnement verwalten",
+    "weeklyUsage": "Wöchentliche Nutzung",
+    "limitReached": "Limit erreicht",
+    "free": "Kostenlos",
+    "wordsRemaining": "Noch {{remaining}} Wörter",
+    "rollingLimit": "Rollierendes Wochenlimit",
+    "upgradeToPro": "Auf Pro upgraden",
+    "useYourOwnKey": "Eigenen API-Schlüssel verwenden",
+    "upgradeUnlimited": "Auf Pro upgraden – unbegrenzte Transkriptionen"
   }
 }

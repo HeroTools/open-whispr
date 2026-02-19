@@ -272,7 +272,9 @@
       "clear": "Очистить",
       "empty": "Транскрипций пока нет",
       "press": "Нажмите",
-      "toStart": "чтобы начать"
+      "toStart": "чтобы начать",
+      "clearedDescription": "{{count}} транскрипция удалена",
+      "clearedDescription_other": "{{count}} транскрипций удалено"
     },
     "cloudMigration": {
       "title": "Добро пожаловать в OpenWhispr Pro",
@@ -1320,6 +1322,11 @@
       "audioSignature": "Ваша аудиоподпись",
       "stop": "Стоп",
       "playSignal": "Воспроизвести сигнал"
+    },
+    "friends": {
+      "title": "Друзья",
+      "completed": "Завершено",
+      "sentInvites": "Отправленные приглашения"
     }
   },
   "notes": {
@@ -1427,7 +1434,70 @@
       "save": "Сохранить",
       "update": "Обновить",
       "cancel": "Отмена",
-      "noActions": "Пользовательских действий пока нет"
+      "noActions": "Пользовательских действий пока нет",
+      "runAction": "Запустить {{name}}",
+      "selectAction": "Выбрать действие",
+      "done": "Готово"
+    },
+    "empty": {
+      "title": "Нет заметок",
+      "description": "Создайте первую заметку",
+      "selectTitle": "Выберите заметку",
+      "selectDescription": "Выберите заметку на боковой панели",
+      "createNote": "Создать заметку",
+      "emptyFolder": "Папка пуста"
+    },
+    "addToFolder": {
+      "title": "Добавить заметки",
+      "searchPlaceholder": "Поиск заметок...",
+      "addExisting": "Добавить существующие",
+      "addCount": "Добавить: {{count}}",
+      "noResults": "Не найдено",
+      "noNotesAvailable": "Нет доступных заметок"
     }
+  },
+  "dictionary": {
+    "addWord": "Добавить слово",
+    "removeWord": "Удалить {{word}}",
+    "clearAll": "Очистить все",
+    "howItWorks": "Как это работает",
+    "addPlaceholder": "Добавить слово или фразу...",
+    "title": "Словарь",
+    "description": "Добавьте слова для улучшения транскрипции",
+    "clearTitle": "Очистить словарь?",
+    "clearDescription": "Все слова будут удалены без возможности восстановления."
+  },
+  "sidebar": {
+    "home": "Главная",
+    "notes": "Заметки",
+    "upload": "Загрузить",
+    "dictionary": "Словарь",
+    "quitTitle": "Выйти из OpenWhispr?",
+    "quitDescription": "Это закроет OpenWhispr и остановит фоновые процессы.",
+    "quitConfirm": "Выйти",
+    "quitCancel": "Отмена",
+    "referral": "Получить бесплатный месяц",
+    "settings": "Настройки",
+    "support": "Поддержка",
+    "quit": "Выйти"
+  },
+  "usage": {
+    "approachingLimit": "Приближается недельный лимит",
+    "approachingLimitDescription": "На этой неделе использовано {{wordsUsed}} / {{limit}} слов.",
+    "yourPlan": "Ваш тариф",
+    "trial": "Пробный период ({{days}} дн.)",
+    "trial_other": "Пробный период ({{days}} дн.)",
+    "pro": "Pro",
+    "unlimitedTrial": "Без ограничений в пробный период",
+    "unlimited": "Без ограничений",
+    "manageSubscription": "Управление подпиской",
+    "weeklyUsage": "За неделю",
+    "limitReached": "Лимит достигнут",
+    "free": "Бесплатно",
+    "wordsRemaining": "Осталось {{remaining}} слов",
+    "rollingLimit": "Скользящий недельный лимит",
+    "upgradeToPro": "Перейти на Pro",
+    "useYourOwnKey": "Свой API-ключ",
+    "upgradeUnlimited": "Pro — без ограничений"
   }
 }

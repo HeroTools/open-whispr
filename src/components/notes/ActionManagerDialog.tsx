@@ -183,6 +183,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
                   <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
                     <button
                       onClick={() => handleEdit(action)}
+                      aria-label={t("notes.actions.editAction")}
                       className={cn(
                         "p-1.5 rounded-md",
                         "text-muted-foreground/40 hover:text-foreground/70",
@@ -195,6 +196,7 @@ export default function ActionManagerDialog({ open, onOpenChange }: ActionManage
                     {action.is_builtin !== 1 && (
                       <button
                         onClick={() => handleDelete(action.id)}
+                        aria-label={t("notes.context.delete")}
                         className={cn(
                           "p-1.5 rounded-md",
                           "text-muted-foreground/40 hover:text-destructive/70",

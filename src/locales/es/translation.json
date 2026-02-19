@@ -1319,6 +1319,11 @@
       "audioSignature": "Tu firma de audio",
       "stop": "Detener",
       "playSignal": "Reproducir señal"
+    },
+    "friends": {
+      "title": "Amigos",
+      "completed": "Completado",
+      "sentInvites": "Invitaciones enviadas"
     }
   },
   "notes": {
@@ -1426,7 +1431,70 @@
       "save": "Guardar",
       "update": "Actualizar",
       "cancel": "Cancelar",
-      "noActions": "Aún no hay acciones personalizadas"
+      "noActions": "Aún no hay acciones personalizadas",
+      "runAction": "Ejecutar {{name}}",
+      "selectAction": "Seleccionar acción",
+      "done": "Listo"
+    },
+    "empty": {
+      "title": "Todavía no hay notas aquí",
+      "description": "Crea tu primera nota para empezar a escribir",
+      "selectTitle": "Selecciona una nota",
+      "selectDescription": "Elige una nota de la barra lateral",
+      "createNote": "Crear nota",
+      "emptyFolder": "No hay notas en esta carpeta"
+    },
+    "addToFolder": {
+      "title": "Añadir notas",
+      "searchPlaceholder": "Buscar notas para añadir...",
+      "addExisting": "Añadir existentes",
+      "addCount": "Añadir {{count}} notas",
+      "noResults": "No hay notas coincidentes",
+      "noNotesAvailable": "No hay otras notas disponibles"
     }
+  },
+  "dictionary": {
+    "addWord": "Añadir palabra",
+    "removeWord": "Eliminar {{word}}",
+    "clearAll": "Borrar todo",
+    "howItWorks": "Cómo funciona",
+    "title": "Diccionario personalizado",
+    "description": "Enseña a la IA tu vocabulario: nombres, jerga y términos que podría pasar por alto",
+    "clearTitle": "¿Borrar el diccionario?",
+    "clearDescription": "Esto eliminará todas las palabras de tu diccionario personalizado. Esta acción no se puede deshacer.",
+    "addPlaceholder": "Añadir una palabra o frase..."
+  },
+  "sidebar": {
+    "home": "Inicio",
+    "notes": "Notas",
+    "upload": "Subir",
+    "dictionary": "Diccionario",
+    "quitTitle": "¿Cerrar OpenWhispr?",
+    "quitDescription": "Esto cerrará OpenWhispr y detendrá los procesos en segundo plano.",
+    "quitConfirm": "Cerrar",
+    "quitCancel": "Cancelar",
+    "referral": "Obtener un mes gratis",
+    "settings": "Configuración",
+    "support": "Soporte",
+    "quit": "Salir"
+  },
+  "usage": {
+    "approachingLimit": "Cerca del límite semanal",
+    "approachingLimitDescription": "Has usado {{wordsUsed}} de {{limit}} palabras gratuitas esta semana.",
+    "yourPlan": "Tu plan",
+    "trial": "Prueba (queda {{days}} día)",
+    "trial_other": "Prueba (quedan {{days}} días)",
+    "pro": "Pro",
+    "unlimitedTrial": "Transcripciones ilimitadas durante tu período de prueba",
+    "unlimited": "Transcripciones ilimitadas",
+    "manageSubscription": "Gestionar suscripción",
+    "weeklyUsage": "Uso semanal",
+    "limitReached": "Límite alcanzado",
+    "free": "Gratis",
+    "wordsRemaining": "{{remaining}} palabras restantes",
+    "rollingLimit": "Límite semanal renovable",
+    "upgradeToPro": "Actualizar a Pro",
+    "useYourOwnKey": "Usar tu propia clave API",
+    "upgradeUnlimited": "Actualizar a Pro — transcripciones ilimitadas"
   }
 }

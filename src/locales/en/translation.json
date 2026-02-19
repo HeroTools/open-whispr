@@ -1255,6 +1255,20 @@
       }
     }
   },
+  "sidebar": {
+    "home": "Home",
+    "notes": "Notes",
+    "upload": "Upload",
+    "dictionary": "Dictionary",
+    "quitTitle": "Quit OpenWhispr?",
+    "quitDescription": "This will close OpenWhispr and stop background processes.",
+    "quitConfirm": "Quit",
+    "quitCancel": "Cancel",
+    "referral": "Get a free month",
+    "settings": "Settings",
+    "support": "Support",
+    "quit": "Quit"
+  },
   "referral": {
     "title": "Refer and earn rewards",
     "subtitle": "Give a month. Get a month.",
@@ -1325,6 +1339,25 @@
       "stop": "Stop",
       "playSignal": "Play signal"
     }
+  },
+  "usage": {
+    "approachingLimit": "Approaching Weekly Limit",
+    "approachingLimitDescription": "You've used {{wordsUsed}} of {{limit}} free words this week.",
+    "yourPlan": "Your Plan",
+    "trial": "Trial ({{days}} day left)",
+    "trial_other": "Trial ({{days}} days left)",
+    "pro": "Pro",
+    "unlimitedTrial": "Unlimited transcriptions during your trial",
+    "unlimited": "Unlimited transcriptions",
+    "manageSubscription": "Manage Subscription",
+    "weeklyUsage": "Weekly Usage",
+    "limitReached": "Limit reached",
+    "free": "Free",
+    "wordsRemaining": "{{remaining}} words remaining",
+    "rollingLimit": "Rolling weekly limit",
+    "upgradeToPro": "Upgrade to Pro",
+    "useYourOwnKey": "Use Your Own Key",
+    "upgradeUnlimited": "Upgrade to Pro \u2014 unlimited transcriptions"
   },
   "notes": {
     "folders": {
@@ -1436,6 +1469,7 @@
       "newFolder": "New folder"
     },
     "actions": {
+      "done": "Done",
       "manage": "Manage Actions...",
       "manageTitle": "Custom Actions",
       "addAction": "New Action",
@@ -1447,7 +1481,20 @@
       "save": "Save",
       "update": "Update",
       "cancel": "Cancel",
-      "noActions": "No custom actions yet"
+      "noActions": "No custom actions yet",
+      "runAction": "Run {{name}}",
+      "selectAction": "Select action"
     }
+  },
+  "dictionary": {
+    "title": "Custom Dictionary",
+    "description": "Teach the AI your vocabulary — names, jargon, and terms it might otherwise miss",
+    "clearTitle": "Clear dictionary?",
+    "clearDescription": "This will remove all words from your custom dictionary. This action cannot be undone.",
+    "addWord": "Add word",
+    "addPlaceholder": "Add a word or phrase...",
+    "removeWord": "Remove {{word}}",
+    "clearAll": "Clear all",
+    "howItWorks": "How it works"
   }
 }

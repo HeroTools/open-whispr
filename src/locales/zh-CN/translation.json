@@ -1319,6 +1319,11 @@
       "audioSignature": "你的声纹签名",
       "stop": "停止",
       "playSignal": "播放信号"
+    },
+    "friends": {
+      "title": "好友",
+      "completed": "已完成",
+      "sentInvites": "已发出的邀请"
     }
   },
   "notes": {
@@ -1426,7 +1431,70 @@
       "save": "保存",
       "update": "更新",
       "cancel": "取消",
-      "noActions": "暂无自定义操作"
+      "noActions": "暂无自定义操作",
+      "runAction": "运行 {{name}}",
+      "selectAction": "选择操作",
+      "done": "完成"
+    },
+    "empty": {
+      "title": "这里还没有笔记",
+      "description": "创建你的第一条笔记，开始书写",
+      "selectTitle": "选择笔记",
+      "selectDescription": "从侧边栏选择一条笔记",
+      "createNote": "创建笔记",
+      "emptyFolder": "此文件夹中没有笔记"
+    },
+    "addToFolder": {
+      "title": "添加笔记",
+      "searchPlaceholder": "搜索要添加的笔记...",
+      "addExisting": "添加已有笔记",
+      "addCount": "添加 {{count}} 条笔记",
+      "noResults": "没有匹配的笔记",
+      "noNotesAvailable": "没有其他可用笔记"
     }
+  },
+  "dictionary": {
+    "addWord": "添加词语",
+    "removeWord": "移除 {{word}}",
+    "clearAll": "全部清除",
+    "howItWorks": "工作原理",
+    "title": "自定义词典",
+    "description": "教 AI 学习你的词汇 — 名字、行话和它可能遗漏的术语",
+    "clearTitle": "清空词典？",
+    "clearDescription": "这将删除自定义词典中的所有词汇，此操作无法撤销。",
+    "addPlaceholder": "添加词语或短语..."
+  },
+  "sidebar": {
+    "home": "首页",
+    "notes": "笔记",
+    "upload": "上传",
+    "dictionary": "词典",
+    "quitTitle": "退出 OpenWhispr？",
+    "quitDescription": "这将关闭 OpenWhispr 并停止后台进程。",
+    "quitConfirm": "退出",
+    "quitCancel": "取消",
+    "referral": "获取免费一个月",
+    "settings": "设置",
+    "support": "支持",
+    "quit": "退出"
+  },
+  "usage": {
+    "approachingLimit": "即将达到周限额",
+    "approachingLimitDescription": "你本周已使用 {{wordsUsed}} / {{limit}} 个免费词数。",
+    "yourPlan": "你的套餐",
+    "trial": "试用期（剩余 {{days}} 天）",
+    "trial_other": "试用期（剩余 {{days}} 天）",
+    "pro": "Pro",
+    "unlimitedTrial": "试用期间无限转录",
+    "unlimited": "无限转录",
+    "manageSubscription": "管理订阅",
+    "weeklyUsage": "每周用量",
+    "limitReached": "已达上限",
+    "free": "免费版",
+    "wordsRemaining": "剩余 {{remaining}} 个词",
+    "rollingLimit": "滚动周限额",
+    "upgradeToPro": "升级到 Pro",
+    "useYourOwnKey": "使用自己的 API Key",
+    "upgradeUnlimited": "升级到 Pro — 无限转录"
   }
 }

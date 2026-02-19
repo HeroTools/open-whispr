@@ -36,7 +36,7 @@ export default function ReferralModal({ open, onOpenChange }: ReferralModalProps
         >
           <DialogPrimitive.Title className="sr-only">Refer and earn rewards</DialogPrimitive.Title>
 
-          <DialogPrimitive.Close className="absolute right-3 top-3 z-20 rounded-full p-1.5 opacity-40 transition-all hover:opacity-80 hover:bg-foreground/10 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:ring-offset-0">
+          <DialogPrimitive.Close className="absolute right-3 top-3 z-20 rounded-full p-1.5 opacity-40 transition-[opacity,background-color] hover:opacity-80 hover:bg-foreground/10 focus:outline-none focus:ring-2 focus:ring-foreground/20 focus:ring-offset-0">
             <X className="h-4 w-4 text-foreground" />
             <span className="sr-only">Close</span>
           </DialogPrimitive.Close>

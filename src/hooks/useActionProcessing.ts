@@ -7,7 +7,7 @@ export type ActionProcessingState = "idle" | "processing" | "success";
 const BASE_SYSTEM_PROMPT =
   "You are a note enhancement assistant. The user will provide raw notes — possibly voice-transcribed, rough, or unstructured. Your job is to clean them up according to the instructions below while preserving all original meaning and information. Output clean markdown.\n\nInstructions: ";
 
-const DEFAULT_CLOUD_MODEL = "gpt-5.2";
+export const DEFAULT_CLOUD_MODEL = "gpt-5.2";
 
 interface UseActionProcessingOptions {
   onSuccess: (enhancedContent: string, prompt: string) => void;
@@ -22,16 +22,14 @@ export function useActionProcessing({ onSuccess, onError }: UseActionProcessingO
   const processingRef = useRef(false);
 
   const runAction = useCallback(
-    async (action: ActionItem, noteContent: string) => {
+    async (
+      action: ActionItem,
+      noteContent: string,
+      options: { isCloudMode: boolean; modelId: string }
+    ) => {
       if (processingRef.current) return;
 
-      const isCloudMode =
-        localStorage.getItem("isSignedIn") === "true" &&
-        (localStorage.getItem("cloudReasoningMode") || "openwhispr") === "openwhispr";
-
-      const modelId = isCloudMode
-        ? DEFAULT_CLOUD_MODEL
-        : localStorage.getItem("reasoningModel") || "";
+      const modelId = options.isCloudMode ? DEFAULT_CLOUD_MODEL : options.modelId;
 
       if (!modelId) {
         onError("No AI model selected. Configure one in Settings.");

@@ -18,6 +18,7 @@ class DatabaseManager {
       const dbPath = path.join(app.getPath("userData"), dbFileName);
 
       this.db = new Database(dbPath);
+      this.db.pragma("journal_mode = WAL");
 
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS transcriptions (
@@ -51,13 +52,19 @@ class DatabaseManager {
 
       try {
         this.db.exec("ALTER TABLE notes ADD COLUMN enhanced_content TEXT");
-      } catch {}
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
       try {
         this.db.exec("ALTER TABLE notes ADD COLUMN enhancement_prompt TEXT");
-      } catch {}
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
       try {
         this.db.exec("ALTER TABLE notes ADD COLUMN enhanced_at_content_hash TEXT");
-      } catch {}
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
 
       this.db.exec(`
         CREATE TABLE IF NOT EXISTS folders (
@@ -80,7 +87,9 @@ class DatabaseManager {
 
       try {
         this.db.exec("ALTER TABLE notes ADD COLUMN folder_id INTEGER REFERENCES folders(id)");
-      } catch {}
+      } catch (err) {
+        if (!err.message.includes("duplicate column")) throw err;
+      }
 
       const personalFolder = this.db
         .prepare("SELECT id FROM folders WHERE name = 'Personal' AND is_default = 1")
@@ -179,7 +188,7 @@ class DatabaseManager {
       }
       const stmt = this.db.prepare("DELETE FROM transcriptions WHERE id = ?");
       const result = stmt.run(id);
-      console.log(`🗑️ Deleted transcription ${id}, affected rows: ${result.changes}`);
+      console.log(`Deleted transcription ${id}, affected rows: ${result.changes}`);
       return { success: result.changes > 0, id };
     } catch (error) {
       console.error("❌ Error deleting transcription:", error);

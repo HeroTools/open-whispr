@@ -195,7 +195,6 @@ class ReasoningService extends BaseReasoningService {
         provider,
         hasKey: !!trimmedKey,
         keyLength: trimmedKey.length,
-        keyPreview: trimmedKey ? `${trimmedKey.substring(0, 8)}...` : "none",
       });
 
       return trimmedKey;
@@ -223,7 +222,6 @@ class ReasoningService extends BaseReasoningService {
           provider,
           hasKey: !!apiKey,
           keyLength: apiKey?.length || 0,
-          keyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "none",
         });
 
         if (apiKey) {

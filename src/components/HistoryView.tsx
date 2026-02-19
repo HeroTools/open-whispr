@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Trash2, FileText, Loader2, Sparkles, Cloud, X } from "lucide-react";
 import TranscriptionItem from "./ui/TranscriptionItem";
@@ -33,13 +34,16 @@ export default function HistoryView({
   deleteTranscription,
   onOpenSettings,
 }: HistoryViewProps) {
+  const { t } = useTranslation();
   return (
     <div className="p-4">
       <div className="max-w-3xl mx-auto">
         <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center gap-2">
             <FileText size={14} className="text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">Transcriptions</h2>
+            <h2 className="text-sm font-semibold text-foreground">
+              {t("controlPanel.history.title")}
+            </h2>
             {history.length > 0 && (
               <span className="text-[11px] text-muted-foreground tabular-nums">
                 ({history.length})
@@ -54,7 +58,7 @@ export default function HistoryView({
               className="h-7 px-2 text-[11px] text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <Trash2 size={12} className="mr-1" />
-              Clear
+              {t("controlPanel.history.clear")}
             </Button>
           )}
         </div>
@@ -66,6 +70,7 @@ export default function HistoryView({
                 setShowCloudMigrationBanner(false);
                 localStorage.setItem("cloudMigrationShown", "true");
               }}
+              aria-label="Close"
               className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             >
               <X size={14} />
@@ -76,12 +81,10 @@ export default function HistoryView({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-foreground mb-0.5">
-                  Welcome to OpenWhispr Pro
+                  {t("controlPanel.cloudMigration.title")}
                 </p>
                 <p className="text-[12px] text-muted-foreground mb-2">
-                  Your 7-day free trial is active! We've switched your transcription to OpenWhispr
-                  Cloud for faster, more accurate results. Your previous settings are saved — switch
-                  back anytime in Settings.
+                  {t("controlPanel.cloudMigration.description")}
                 </p>
                 <Button
                   variant="default"
@@ -93,7 +96,7 @@ export default function HistoryView({
                     onOpenSettings("transcription");
                   }}
                 >
-                  View Settings
+                  {t("controlPanel.cloudMigration.viewSettings")}
                 </Button>
               </div>
             </div>
@@ -107,6 +110,7 @@ export default function HistoryView({
                 localStorage.setItem("aiCTADismissed", "true");
                 setAiCTADismissed(true);
               }}
+              aria-label="Close"
               className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
             >
               <X size={14} />
@@ -117,10 +121,10 @@ export default function HistoryView({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-[13px] font-medium text-foreground mb-0.5">
-                  Enhance your transcriptions with AI
+                  {t("controlPanel.aiCta.title")}
                 </p>
                 <p className="text-[12px] text-muted-foreground mb-2">
-                  Automatically fix grammar, punctuation, and formatting as you speak.
+                  {t("controlPanel.aiCta.description")}
                 </p>
                 <Button
                   variant="default"
@@ -128,7 +132,7 @@ export default function HistoryView({
                   className="h-7 text-[11px]"
                   onClick={() => onOpenSettings("aiModels")}
                 >
-                  Enable AI Enhancement
+                  {t("controlPanel.aiCta.enable")}
                 </Button>
               </div>
             </div>
@@ -139,7 +143,7 @@ export default function HistoryView({
           {isLoading ? (
             <div className="flex items-center justify-center gap-2 py-8">
               <Loader2 size={14} className="animate-spin text-primary" />
-              <span className="text-sm text-muted-foreground">Loading…</span>
+              <span className="text-sm text-muted-foreground">{t("controlPanel.loading")}</span>
             </div>
           ) : history.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -228,14 +232,14 @@ export default function HistoryView({
                 />
               </svg>
               <h3 className="text-[13px] font-semibold text-foreground/60 mb-2">
-                No transcriptions yet
+                {t("controlPanel.history.empty")}
               </h3>
               <div className="flex items-center gap-2 text-[11px] text-foreground/25">
-                <span>Press</span>
+                <span>{t("controlPanel.history.press")}</span>
                 <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border/50 text-[10px] font-mono font-medium text-foreground/40">
                   {formatHotkeyLabel(hotkey)}
                 </kbd>
-                <span>to start</span>
+                <span>{t("controlPanel.history.toStart")}</span>
               </div>
             </div>
           ) : (

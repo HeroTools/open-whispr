@@ -48,6 +48,7 @@ export default function ActionPicker({
       <button
         onClick={() => handleRun(activeAction)}
         disabled={disabled}
+        aria-label={t("notes.actions.runAction", { name: activeAction.name })}
         className={cn(
           "flex items-center gap-2 h-11 pl-5 pr-3 rounded-l-xl",
           "bg-accent/8 dark:bg-accent/12",
@@ -55,7 +56,7 @@ export default function ActionPicker({
           "border border-r-0 border-accent/15 dark:border-accent/20",
           "shadow-sm hover:shadow-md",
           "text-accent/70 hover:text-accent",
-          "transition-all duration-200",
+          "transition-[background-color,color,transform] duration-200",
           "hover:bg-accent/12 dark:hover:bg-accent/18",
           "active:scale-[0.98]",
           "disabled:opacity-40 disabled:pointer-events-none"
@@ -69,6 +70,7 @@ export default function ActionPicker({
         <DropdownMenuTrigger asChild>
           <button
             disabled={disabled}
+            aria-label={t("notes.actions.selectAction")}
             className={cn(
               "flex items-center justify-center h-11 w-8 rounded-r-xl",
               "bg-accent/8 dark:bg-accent/12",
@@ -76,7 +78,7 @@ export default function ActionPicker({
               "border border-l-0 border-accent/15 dark:border-accent/20",
               "shadow-sm hover:shadow-md",
               "text-accent/50 hover:text-accent",
-              "transition-all duration-200",
+              "transition-[background-color,color,transform] duration-200",
               "hover:bg-accent/15 dark:hover:bg-accent/22",
               "disabled:opacity-40 disabled:pointer-events-none"
             )}

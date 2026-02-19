@@ -8,6 +8,7 @@ import { cn } from "./lib/utils";
 import { SpectrogramCard } from "./referral-cards/SpectrogramCard";
 
 const REFERRAL_WORD_GOAL = 2000;
+const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface ReferralStats {
   referralCode: string;
@@ -97,11 +98,14 @@ function AnimatedCounter({ value, delay = 0 }: { value: number; delay?: number }
 function TiltCard({ children, className }: { children: React.ReactNode; className?: string }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
+  const prefersReducedMotion = useRef(
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches
+  );
 
   const handleMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     const card = cardRef.current;
     if (!card) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (prefersReducedMotion.current) return;
 
     cancelAnimationFrame(rafRef.current);
     rafRef.current = requestAnimationFrame(() => {
@@ -247,8 +251,7 @@ export function ReferralDashboard() {
   const sendInvite = async () => {
     if (!emailInput.trim()) return;
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(emailInput.trim())) {
+    if (!RE_EMAIL.test(emailInput.trim())) {
       toast({
         title: t("referral.toasts.invalidEmailTitle"),
         description: t("referral.toasts.invalidEmailDescription"),
@@ -316,7 +319,8 @@ export function ReferralDashboard() {
         </p>
         <button
           onClick={fetchStats}
-          className="px-3.5 py-1.5 rounded-md text-[12px] font-medium bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90 transition-all duration-200"
+          aria-label={t("referral.tryAgain")}
+          className="px-3.5 py-1.5 rounded-md text-[12px] font-medium bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90 transition-colors duration-200"
         >
           {t("referral.tryAgain")}
         </button>
@@ -415,8 +419,9 @@ export function ReferralDashboard() {
                   </div>
                   <button
                     onClick={copyLink}
+                    aria-label={t("referral.inviteLink.copy")}
                     className={cn(
-                      "shrink-0 h-8 px-3.5 rounded-md text-[11px] font-medium flex items-center gap-1.5 transition-all duration-200 active:scale-[0.97]",
+                      "shrink-0 h-8 px-3.5 rounded-md text-[11px] font-medium flex items-center gap-1.5 transition-[background-color,color,transform] duration-200 active:scale-[0.97]",
                       copied
                         ? "bg-emerald-500/15 text-emerald-400/80"
                         : "bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90"
@@ -445,7 +450,8 @@ export function ReferralDashboard() {
                   <button
                     onClick={sendInvite}
                     disabled={sendingInvite || !emailInput.trim()}
-                    className="shrink-0 h-8 px-3.5 rounded-md text-[11px] font-medium flex items-center gap-1.5 transition-all duration-200 bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none"
+                    aria-label={t("referral.sendInvites.send")}
+                    className="shrink-0 h-8 px-3.5 rounded-md text-[11px] font-medium flex items-center gap-1.5 transition-[background-color,color,transform] duration-200 bg-foreground/7 text-foreground/55 border border-foreground/5 hover:bg-foreground/12 hover:text-foreground/90 active:scale-[0.97] disabled:opacity-40 disabled:pointer-events-none"
                   >
                     {sendingInvite ? (
                       <div className="w-3 h-3 border-1.5 border-current border-r-transparent rounded-full animate-spin" />
@@ -522,7 +528,7 @@ export function ReferralDashboard() {
                         <div className="h-1 rounded-full bg-foreground/6 overflow-hidden">
                           <div
                             className={cn(
-                              "h-full rounded-full transition-all duration-500",
+                              "h-full rounded-full transition-[width] duration-500",
                               isComplete ? "bg-emerald-400/60" : "bg-foreground/20"
                             )}
                             style={{ width: `${progress}%` }}

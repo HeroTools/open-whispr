@@ -15,6 +15,13 @@ import {
 import { cn } from "../lib/utils";
 import type { NoteItem, FolderItem } from "../../types/electron";
 
+const RE_HEADING = /#{1,6}\s+/g;
+const RE_EMPHASIS = /[*_~`]+/g;
+const RE_LINK = /\[([^\]]+)\]\([^)]+\)/g;
+const RE_IMAGE = /!\[([^\]]*)\]\([^)]+\)/g;
+const RE_BLOCKQUOTE = />\s+/g;
+const RE_NEWLINES = /\n+/g;
+
 interface NoteListItemProps {
   note: NoteItem;
   isActive: boolean;
@@ -28,12 +35,12 @@ interface NoteListItemProps {
 
 function stripMarkdown(text: string): string {
   return text
-    .replace(/#{1,6}\s+/g, "")
-    .replace(/[*_~`]+/g, "")
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
-    .replace(/>\s+/g, "")
-    .replace(/\n+/g, " ")
+    .replace(RE_HEADING, "")
+    .replace(RE_EMPHASIS, "")
+    .replace(RE_LINK, "$1")
+    .replace(RE_IMAGE, "$1")
+    .replace(RE_BLOCKQUOTE, "")
+    .replace(RE_NEWLINES, " ")
     .trim();
 }
 
@@ -79,15 +86,12 @@ export default function NoteListItem({
   );
 
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") onClick();
-      }}
       className={cn(
-        "group relative px-3 py-2 cursor-pointer transition-all duration-150",
+        "group relative w-full text-left px-3 py-2 cursor-pointer transition-colors duration-150",
+        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
         isActive ? "bg-primary/6 dark:bg-primary/8" : "hover:bg-foreground/3 dark:hover:bg-white/3"
       )}
     >
@@ -236,6 +240,6 @@ export default function NoteListItem({
           <p className="text-[10px] text-muted-foreground/40 line-clamp-1 mt-0.5">{preview}</p>
         )}
       </div>
-    </div>
+    </button>
   );
 }

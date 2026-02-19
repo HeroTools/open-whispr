@@ -139,8 +139,7 @@
     transition:
       background-color 150ms ease,
       border-color 150ms ease,
-      color 150ms ease,
-      box-shadow 150ms ease;
+      color 150ms ease;
   }
 
   body {
@@ -172,6 +171,16 @@
 
   body:has(.dictation-window) #root {
     background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 
@@ -229,7 +238,11 @@ svg:hover,
 input,
 textarea {
   border-radius: var(--radius);
-  transition: all 0.2s ease;
+  transition:
+    background-color 0.2s ease,
+    border-color 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
   font-family: var(--font-family-sans);
   box-shadow: inset 0 1px 2px oklch(from var(--color-foreground) l c h / 0.06);
 }
@@ -272,7 +285,9 @@ textarea {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-card, 0 1px 3px oklch(from var(--color-foreground) l c h / 0.08));
-  transition: all 0.2s ease;
+  transition:
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
 }
 
 .card:hover {

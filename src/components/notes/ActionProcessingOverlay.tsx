@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { Check } from "lucide-react";
 import { cn } from "../lib/utils";
 import type { ActionProcessingState } from "../../hooks/useActionProcessing";
@@ -12,6 +13,7 @@ export default function ActionProcessingOverlay({
   state,
   actionName,
 }: ActionProcessingOverlayProps) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -76,7 +78,9 @@ export default function ActionProcessingOverlay({
         {isSuccess ? (
           <div className="flex items-center gap-2">
             <Check size={13} className="text-success/70" />
-            <span className="text-[12px] font-medium text-success/70 tracking-tight">Done</span>
+            <span className="text-[12px] font-medium text-success/70 tracking-tight">
+              {t("notes.actions.done")}
+            </span>
           </div>
         ) : (
           <>

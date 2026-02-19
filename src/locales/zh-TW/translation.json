@@ -1319,6 +1319,11 @@
       "audioSignature": "您的音訊簽名",
       "stop": "停止",
       "playSignal": "播放信號"
+    },
+    "friends": {
+      "title": "好友",
+      "completed": "已完成",
+      "sentInvites": "已發送的邀請"
     }
   },
   "notes": {
@@ -1426,7 +1431,70 @@
       "save": "儲存",
       "update": "更新",
       "cancel": "取消",
-      "noActions": "尚無自訂動作"
+      "noActions": "尚無自訂動作",
+      "runAction": "執行 {{name}}",
+      "selectAction": "選擇動作",
+      "done": "完成"
+    },
+    "empty": {
+      "title": "這裡還沒有筆記",
+      "description": "建立你的第一則筆記，開始書寫",
+      "selectTitle": "選擇筆記",
+      "selectDescription": "從側邊欄選擇一則筆記",
+      "createNote": "建立筆記",
+      "emptyFolder": "此資料夾中沒有筆記"
+    },
+    "addToFolder": {
+      "title": "新增筆記",
+      "searchPlaceholder": "搜尋要新增的筆記...",
+      "addExisting": "新增現有筆記",
+      "addCount": "新增 {{count}} 則筆記",
+      "noResults": "沒有符合的筆記",
+      "noNotesAvailable": "沒有其他可用的筆記"
     }
+  },
+  "dictionary": {
+    "addWord": "新增詞語",
+    "removeWord": "移除 {{word}}",
+    "clearAll": "全部清除",
+    "howItWorks": "運作方式",
+    "title": "自訂字典",
+    "description": "教 AI 學習你的詞彙 — 名字、專業術語和它可能遺漏的表達",
+    "clearTitle": "清空字典？",
+    "clearDescription": "這將移除自訂字典中的所有詞彙。此操作無法復原。",
+    "addPlaceholder": "新增詞語或片語..."
+  },
+  "sidebar": {
+    "home": "首頁",
+    "notes": "筆記",
+    "upload": "上傳",
+    "dictionary": "字典",
+    "quitTitle": "結束 OpenWhispr？",
+    "quitDescription": "這將關閉 OpenWhispr 並停止背景程序。",
+    "quitConfirm": "結束",
+    "quitCancel": "取消",
+    "referral": "獲得一個月免費",
+    "settings": "設定",
+    "support": "支援",
+    "quit": "結束"
+  },
+  "usage": {
+    "approachingLimit": "即將達到每週上限",
+    "approachingLimitDescription": "你本週已使用 {{wordsUsed}} / {{limit}} 個免費字數。",
+    "yourPlan": "你的方案",
+    "trial": "試用（剩餘 {{days}} 天）",
+    "trial_other": "試用（剩餘 {{days}} 天）",
+    "pro": "Pro",
+    "unlimitedTrial": "試用期間無限轉錄",
+    "unlimited": "無限轉錄",
+    "manageSubscription": "管理訂閱",
+    "weeklyUsage": "每週用量",
+    "limitReached": "已達上限",
+    "free": "免費",
+    "wordsRemaining": "剩餘 {{remaining}} 字",
+    "rollingLimit": "滾動式每週額度",
+    "upgradeToPro": "升級至 Pro",
+    "useYourOwnKey": "使用自己的 API Key",
+    "upgradeUnlimited": "升級至 Pro — 無限轉錄"
   }
 }
