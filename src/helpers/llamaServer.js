@@ -159,6 +159,7 @@ class LlamaServerManager {
 
     let stderrBuffer = "";
     let exitCode = null;
+    let exitSignal = null;
 
     this.process.stdout.on("data", (data) => {
       debugLogger.debug("llama-server stdout", { data: data.toString().trim() });
@@ -174,15 +175,16 @@ class LlamaServerManager {
       this.ready = false;
     });
 
-    this.process.on("close", (code) => {
+    this.process.on("close", (code, signal) => {
       exitCode = code;
-      debugLogger.debug("llama-server process exited", { code });
+      exitSignal = signal;
+      debugLogger.debug("llama-server process exited", { code, signal });
       this.ready = false;
       this.process = null;
       this.stopHealthCheck();
     });
 
-    await this.waitForReady(() => ({ stderr: stderrBuffer, exitCode }));
+    await this.waitForReady(() => ({ stderr: stderrBuffer, exitCode, exitSignal }));
     this.startHealthCheck();
 
     debugLogger.info("llama-server started successfully", {
@@ -198,9 +200,20 @@ class LlamaServerManager {
     while (Date.now() - startTime < STARTUP_TIMEOUT_MS) {
       if (!this.process || this.process.killed) {
         const info = getProcessInfo ? getProcessInfo() : {};
-        const stderr = info.stderr ? info.stderr.trim().slice(0, 500) : "";
-        const details = stderr || (info.exitCode !== null ? `exit code: ${info.exitCode}` : "");
-        throw new Error(`llama-server process died during startup${details ? `: ${details}` : ""}`);
+        const signal = info.exitSignal;
+        const diagParts = [];
+        if (signal) diagParts.push(`signal: ${signal}`);
+        else if (info.exitCode !== null && info.exitCode !== undefined)
+          diagParts.push(`exit code: ${info.exitCode}`);
+        const oomHint =
+          signal === "SIGKILL"
+            ? " — the process was killed by the OS, likely due to insufficient memory. Try a smaller/more quantized model, or reduce the context size."
+            : "";
+        const stderr = info.stderr ? info.stderr.trim().slice(-800) : "";
+        const diagStr = diagParts.length ? ` (${diagParts.join(", ")})` : "";
+        throw new Error(
+          `llama-server process died during startup${diagStr}${oomHint}${stderr ? `\nProcess output: ${stderr}` : ""}`
+        );
       }
 
       pollCount++;

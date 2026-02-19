@@ -421,6 +421,10 @@ class IPCHandlers {
       const fs = require("fs");
       try {
         const audioBuffer = fs.readFileSync(filePath);
+        if (options.provider === "nvidia") {
+          const result = await this.parakeetManager.transcribeLocalParakeet(audioBuffer, options);
+          return result;
+        }
         const result = await this.whisperManager.transcribeLocalWhisper(audioBuffer, options);
         return result;
       } catch (error) {

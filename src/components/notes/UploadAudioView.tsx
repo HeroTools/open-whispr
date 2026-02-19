@@ -10,6 +10,7 @@ import {
   Key,
   FolderOpen,
   Plus,
+  Settings,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { cn } from "../lib/utils";
@@ -48,9 +49,10 @@ function formatFileSize(bytes: number): string {
 
 interface UploadAudioViewProps {
   onNoteCreated?: (noteId: number, folderId: number | null) => void;
+  onOpenSettings?: (section: string) => void;
 }
 
-export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps) {
+export default function UploadAudioView({ onNoteCreated, onOpenSettings }: UploadAudioViewProps) {
   const { t } = useTranslation();
   const [state, setState] = useState<UploadState>("idle");
   const [file, setFile] = useState<{ name: string; path: string; size: string } | null>(null);
@@ -70,6 +72,7 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
     () => localStorage.getItem("uploadSetupComplete") === "true"
   );
   const [advancedOpen, setAdvancedOpen] = useState(false);
+  const [providerReady, setProviderReady] = useState<boolean | null>(null);
 
   const { isSignedIn } = useAuth();
   const usage = useUsage();
@@ -124,6 +127,54 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
       if (personal) setSelectedFolderId(String(personal.id));
     });
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkProviderReady = async () => {
+      if (isOpenWhisprCloud) {
+        setProviderReady(true);
+        return;
+      }
+      if (!useLocalWhisper) {
+        const key =
+          cloudTranscriptionProvider === "openai"
+            ? openaiApiKey
+            : cloudTranscriptionProvider === "groq"
+              ? groqApiKey
+              : cloudTranscriptionProvider === "mistral"
+                ? mistralApiKey
+                : customTranscriptionApiKey;
+        if (!cancelled) setProviderReady(!!key);
+        return;
+      }
+      if (localTranscriptionProvider === "nvidia") {
+        const r = await window.electronAPI.listParakeetModels?.();
+        if (!cancelled)
+          setProviderReady(
+            !!(r?.success && r.models.some((m: { downloaded?: boolean }) => m.downloaded))
+          );
+      } else {
+        const r = await window.electronAPI.listWhisperModels?.();
+        if (!cancelled)
+          setProviderReady(
+            !!(r?.success && r.models.some((m: { downloaded?: boolean }) => m.downloaded))
+          );
+      }
+    };
+    checkProviderReady();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isOpenWhisprCloud,
+    useLocalWhisper,
+    localTranscriptionProvider,
+    cloudTranscriptionProvider,
+    openaiApiKey,
+    groqApiKey,
+    mistralApiKey,
+    customTranscriptionApiKey,
+  ]);
 
   const getActiveModelLabel = (): string => {
     if (isOpenWhisprCloud) return "OpenWhispr Cloud";
@@ -237,7 +288,10 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
           return r;
         });
       } else if (useLocalWhisper) {
-        res = await window.electronAPI.transcribeAudioFile(file.path);
+        res = await window.electronAPI.transcribeAudioFile(file.path, {
+          provider: localTranscriptionProvider as "whisper" | "nvidia",
+          model: localTranscriptionProvider === "nvidia" ? parakeetModel : whisperModel,
+        });
       } else {
         res = await window.electronAPI.transcribeAudioFileByok!({
           filePath: file.path,
@@ -433,7 +487,11 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
         )}
 
         <div className="max-w-[320px] mx-auto">
-          {state === "idle" && (
+          {state === "idle" && providerReady === false && (
+            <NoProviderView t={t} onOpenSettings={() => onOpenSettings?.("transcription")} />
+          )}
+
+          {state === "idle" && providerReady !== false && (
             <IdleView
               t={t}
               getActiveModelLabel={getActiveModelLabel}
@@ -550,6 +608,39 @@ export default function UploadAudioView({ onNoteCreated }: UploadAudioViewProps)
 /* -------------------------------------------------------------------------- */
 /*  Private sub-components — one per upload state variant                      */
 /* -------------------------------------------------------------------------- */
+
+interface NoProviderViewProps {
+  t: (key: string, options?: Record<string, unknown>) => string;
+  onOpenSettings: () => void;
+}
+
+function NoProviderView({ t, onOpenSettings }: NoProviderViewProps) {
+  return (
+    <div
+      className="flex flex-col items-center gap-4 py-2"
+      style={{ animation: "float-up 0.4s ease-out" }}
+    >
+      <div className="w-10 h-10 rounded-[10px] bg-linear-to-b from-foreground/5 to-foreground/2 dark:from-white/8 dark:to-white/3 border border-foreground/8 dark:border-white/8 flex items-center justify-center">
+        <Settings
+          size={17}
+          strokeWidth={1.5}
+          className="text-foreground/25 dark:text-foreground/35"
+        />
+      </div>
+      <div className="text-center">
+        <h2 className="text-xs font-semibold text-foreground mb-1">
+          {t("notes.upload.noProviderTitle")}
+        </h2>
+        <p className="text-xs text-foreground/30 leading-relaxed max-w-60">
+          {t("notes.upload.noProviderDescription")}
+        </p>
+      </div>
+      <Button variant="default" size="sm" className="h-7 text-xs px-4" onClick={onOpenSettings}>
+        {t("notes.upload.noProviderAction")}
+      </Button>
+    </div>
+  );
+}
 
 interface IdleViewProps {
   t: (key: string, options?: Record<string, unknown>) => string;
@@ -708,12 +799,7 @@ function SelectedView({
       </div>
 
       <div className="flex items-center gap-2 justify-center">
-        <Button
-          variant="default"
-          size="sm"
-          onClick={handleTranscribe}
-          className="h-8 text-xs px-5"
-        >
+        <Button variant="default" size="sm" onClick={handleTranscribe} className="h-8 text-xs px-5">
           {t("notes.upload.transcribe")}
         </Button>
         <Button

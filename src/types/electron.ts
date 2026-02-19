@@ -307,7 +307,12 @@ declare global {
       selectAudioFile: () => Promise<{ canceled: boolean; filePath?: string }>;
       transcribeAudioFile: (
         filePath: string,
-        options?: Record<string, unknown>
+        options?: {
+          provider?: "whisper" | "nvidia";
+          model?: string;
+          language?: string;
+          [key: string]: unknown;
+        }
       ) => Promise<{ success: boolean; text?: string; error?: string }>;
       getPathForFile: (file: File) => string;
 

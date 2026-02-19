@@ -450,6 +450,10 @@ export default function ControlPanel() {
                     if (folderId) setActiveFolderId(folderId);
                     setActiveView("personal-notes");
                   }}
+                  onOpenSettings={(section) => {
+                    setSettingsSection(section as SettingsSectionType);
+                    setShowSettings(true);
+                  }}
                 />
               </Suspense>
             )}

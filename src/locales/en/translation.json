@@ -1437,7 +1437,10 @@
       "selectFolder": "Select folder",
       "transcriptionFailed": "Transcription failed",
       "errorOccurred": "An error occurred",
-      "enhancementFailed": "Enhancement failed"
+      "enhancementFailed": "Enhancement failed",
+      "noProviderTitle": "No transcription provider set up",
+      "noProviderDescription": "Add an API key or download a local model to start transcribing.",
+      "noProviderAction": "Open Transcription Settings"
     },
     "meeting": {
       "title": "Meeting Notes",

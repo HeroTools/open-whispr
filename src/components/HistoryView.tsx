@@ -45,9 +45,7 @@ export default function HistoryView({
               {t("controlPanel.history.title")}
             </h2>
             {history.length > 0 && (
-              <span className="text-xs text-muted-foreground tabular-nums">
-                ({history.length})
-              </span>
+              <span className="text-xs text-muted-foreground tabular-nums">({history.length})</span>
             )}
           </div>
           {history.length > 0 && (
