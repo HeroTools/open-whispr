@@ -97,7 +97,7 @@ export function updateNoteInStore(note: NoteItem): void {
 }
 
 export function removeNote(id: number): void {
-  if (!id) return;
+  if (id == null) return;
   const next = notes.filter((item) => item.id !== id);
   if (next.length === notes.length) return;
   notes = next;

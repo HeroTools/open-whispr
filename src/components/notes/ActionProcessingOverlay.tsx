@@ -40,7 +40,6 @@ export default function ActionProcessingOverlay({
       )}
       style={!isFadingOut ? { animation: "float-up 0.25s ease-out" } : undefined}
     >
-      {/* Faint horizontal scan-line texture */}
       <div
         className="absolute inset-0 pointer-events-none opacity-[0.02]"
         style={{
@@ -49,7 +48,6 @@ export default function ActionProcessingOverlay({
         }}
       />
 
-      {/* Sweep line */}
       <div
         className={cn(
           "absolute left-0 right-0 h-[2px] pointer-events-none scanner-sweep-line",
@@ -64,7 +62,6 @@ export default function ActionProcessingOverlay({
         }}
       />
 
-      {/* Status pill */}
       <div
         className={cn(
           "relative flex flex-col items-center gap-2.5",

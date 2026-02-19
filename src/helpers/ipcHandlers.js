@@ -395,7 +395,20 @@ class IPCHandlers {
 
         if (result.canceled || !result.filePath) return { success: false };
 
-        fs.writeFileSync(result.filePath, note.content, "utf-8");
+        let exportContent;
+        if (format === "txt") {
+          exportContent = (note.content || "")
+            .replace(/#{1,6}\s+/g, "")
+            .replace(/[*_~`]+/g, "")
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+            .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+            .replace(/^>\s+/gm, "")
+            .trim();
+        } else {
+          exportContent = note.enhanced_content || note.content;
+        }
+
+        fs.writeFileSync(result.filePath, exportContent, "utf-8");
         return { success: true };
       } catch (error) {
         console.error("Error exporting note:", error.message);

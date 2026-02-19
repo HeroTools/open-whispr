@@ -13,7 +13,7 @@ interface AddNotesToFolderDialogProps {
   onNotesAdded: () => void;
 }
 
-function formatDateGroup(dateStr: string): string {
+function formatDateGroup(dateStr: string, t: (key: string) => string): string {
   const source = dateStr.endsWith("Z") ? dateStr : `${dateStr}Z`;
   const date = new Date(source);
   if (Number.isNaN(date.getTime())) return dateStr;
@@ -23,8 +23,8 @@ function formatDateGroup(dateStr: string): string {
   const noteDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   const diffDays = Math.floor((today.getTime() - noteDate.getTime()) / 86400000);
 
-  if (diffDays === 0) return "Today";
-  if (diffDays === 1) return "Yesterday";
+  if (diffDays === 0) return t("notes.addToFolder.today");
+  if (diffDays === 1) return t("notes.addToFolder.yesterday");
 
   return date.toLocaleDateString(undefined, {
     weekday: "short",
@@ -33,10 +33,10 @@ function formatDateGroup(dateStr: string): string {
   });
 }
 
-function groupNotesByDate(notes: NoteItem[]): [string, NoteItem[]][] {
+function groupNotesByDate(notes: NoteItem[], t: (key: string) => string): [string, NoteItem[]][] {
   const groups = new Map<string, NoteItem[]>();
   for (const note of notes) {
-    const key = formatDateGroup(note.updated_at);
+    const key = formatDateGroup(note.updated_at, t);
     const arr = groups.get(key) || [];
     arr.push(note);
     groups.set(key, arr);
@@ -76,7 +76,7 @@ export default function AddNotesToFolderDialog({
     );
   }, [availableNotes, search]);
 
-  const grouped = useMemo(() => groupNotesByDate(filteredNotes), [filteredNotes]);
+  const grouped = useMemo(() => groupNotesByDate(filteredNotes, t), [filteredNotes, t]);
 
   const toggleNote = useCallback((id: number) => {
     setSelected((prev) => {

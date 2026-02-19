@@ -35,7 +35,6 @@ const FOLDER_INPUT_CLASS =
 
 export default function PersonalNotesView() {
   const { t } = useTranslation();
-  const MEETINGS_FOLDER_NAME = t("notes.folders.meetings");
   const notes = useNotes();
   const activeNoteId = useActiveNoteId();
   const activeFolderId = useActiveFolderId();
@@ -83,7 +82,7 @@ export default function PersonalNotesView() {
 
   const activeNote = notes.find((n) => n.id === activeNoteId) ?? null;
   const isMeetingsFolder = useMemo(
-    () => folders.find((f) => f.id === activeFolderId)?.name === MEETINGS_FOLDER_NAME,
+    () => folders.find((f) => f.id === activeFolderId)?.name === "Meetings",
     [folders, activeFolderId]
   );
 
@@ -314,7 +313,7 @@ export default function PersonalNotesView() {
         <div className="px-1.5 space-y-px">
           {folders.map((folder) => {
             const isActive = folder.id === activeFolderId;
-            const isMeetings = folder.name === MEETINGS_FOLDER_NAME;
+            const isMeetings = folder.name === "Meetings";
             const count = folderCounts[folder.id] || 0;
             const isRenaming = renamingFolderId === folder.id;
 

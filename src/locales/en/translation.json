@@ -1461,7 +1461,9 @@
       "addExisting": "Add existing",
       "addCount": "Add {{count}} notes",
       "noResults": "No matching notes",
-      "noNotesAvailable": "No other notes available"
+      "noNotesAvailable": "No other notes available",
+      "today": "Today",
+      "yesterday": "Yesterday"
     },
     "context": {
       "moveToFolder": "Move to folder",
