@@ -1,4 +1,5 @@
 import { getSystemPrompt } from "../config/prompts";
+import { getSettings } from "../stores/settingsStore";
 
 export interface ReasoningConfig {
   maxTokens?: number;
@@ -11,25 +12,15 @@ export abstract class BaseReasoningService {
   protected isProcessing = false;
 
   protected getCustomDictionary(): string[] {
-    if (typeof window === "undefined" || !window.localStorage) return [];
-    try {
-      const raw = window.localStorage.getItem("customDictionary");
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
-    }
+    return getSettings().customDictionary;
   }
 
   protected getPreferredLanguage(): string {
-    if (typeof window === "undefined" || !window.localStorage) return "auto";
-    return window.localStorage.getItem("preferredLanguage") || "auto";
+    return getSettings().preferredLanguage || "auto";
   }
 
   protected getUiLanguage(): string {
-    if (typeof window === "undefined" || !window.localStorage) return "en";
-    return window.localStorage.getItem("uiLanguage") || "en";
+    return getSettings().uiLanguage || "en";
   }
 
   protected getSystemPrompt(agentName: string | null, transcript?: string): string {

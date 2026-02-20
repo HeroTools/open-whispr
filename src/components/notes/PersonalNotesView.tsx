@@ -16,10 +16,9 @@ import ActionPicker from "./ActionPicker";
 import ActionManagerDialog from "./ActionManagerDialog";
 import AddNotesToFolderDialog from "./AddNotesToFolderDialog";
 import { useNoteRecording } from "../../hooks/useNoteRecording";
-import { useActionProcessing, DEFAULT_CLOUD_MODEL } from "../../hooks/useActionProcessing";
+import { useActionProcessing } from "../../hooks/useActionProcessing";
+import { useSettingsStore, selectEffectiveReasoningModel, selectIsCloudReasoningMode } from "../../stores/settingsStore";
 import { useFolderManagement } from "../../hooks/useFolderManagement";
-import { useAuth } from "../../hooks/useAuth";
-import { useSettings } from "../../hooks/useSettings";
 import { cn } from "../lib/utils";
 import {
   useNotes,
@@ -52,11 +51,8 @@ export default function PersonalNotesView() {
   const localTitleRef = useRef(localTitle);
   localTitleRef.current = localTitle;
   const { toast } = useToast();
-  const { isSignedIn } = useAuth();
-  const { cloudReasoningMode, reasoningModel } = useSettings();
-
-  const isCloudMode = !!isSignedIn && cloudReasoningMode === "openwhispr";
-  const effectiveModelId = isCloudMode ? DEFAULT_CLOUD_MODEL : reasoningModel;
+  const isCloudMode = useSettingsStore(selectIsCloudReasoningMode);
+  const effectiveModelId = useSettingsStore(selectEffectiveReasoningModel);
 
   const {
     folders,

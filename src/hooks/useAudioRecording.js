@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import AudioManager from "../helpers/audioManager";
 import logger from "../utils/logger";
 import { playStartCue, playStopCue } from "../utils/dictationCues";
+import { getSettings } from "../stores/settingsStore";
 
 export const useAudioRecording = (toast, options = {}) => {
   const { t } = useTranslation();
@@ -120,7 +121,7 @@ export const useAudioRecording = (toast, options = {}) => {
 
           audioManagerRef.current.saveTranscription(result.text);
 
-          if (result.source === "openai" && localStorage.getItem("useLocalWhisper") === "true") {
+          if (result.source === "openai" && getSettings().useLocalWhisper) {
             toast({
               title: t("hooks.audioRecording.fallback.title"),
               description: t("hooks.audioRecording.fallback.description"),

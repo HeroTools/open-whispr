@@ -1,13 +1,12 @@
 import { useState, useRef, useCallback } from "react";
 import reasoningService from "../services/ReasoningService";
 import type { ActionItem } from "../types/electron";
+import { getEffectiveReasoningModel } from "../stores/settingsStore";
 
 export type ActionProcessingState = "idle" | "processing" | "success";
 
 const BASE_SYSTEM_PROMPT =
   "You are a note enhancement assistant. The user will provide raw notes — possibly voice-transcribed, rough, or unstructured. Your job is to clean them up according to the instructions below while preserving all original meaning and information. Output clean markdown.\n\nInstructions: ";
-
-export const DEFAULT_CLOUD_MODEL = "gpt-5.2";
 
 interface UseActionProcessingOptions {
   onSuccess: (enhancedContent: string, prompt: string) => void;
@@ -29,7 +28,7 @@ export function useActionProcessing({ onSuccess, onError }: UseActionProcessingO
     ) => {
       if (processingRef.current) return;
 
-      const modelId = options.isCloudMode ? DEFAULT_CLOUD_MODEL : options.modelId;
+      const modelId = getEffectiveReasoningModel() || options.modelId;
 
       if (!modelId) {
         onError("No AI model selected. Configure one in Settings.");

@@ -5,6 +5,7 @@ import { useToast } from "./ui/Toast";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { Button } from "./ui/button";
+import { useSettingsStore } from "../stores/settingsStore";
 
 export default function UsageDisplay() {
   const { t } = useTranslation();
@@ -111,7 +112,7 @@ export default function UsageDisplay() {
             variant="outline"
             size="sm"
             onClick={() => {
-              localStorage.setItem("cloudTranscriptionMode", "byok");
+              useSettingsStore.getState().setCloudTranscriptionMode("byok");
               window.location.reload();
             }}
           >

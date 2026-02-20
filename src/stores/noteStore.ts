@@ -1,28 +1,21 @@
-import { useSyncExternalStore } from "react";
+import { create } from "zustand";
 import type { NoteItem } from "../types/electron";
 
-type Listener = () => void;
+interface NoteState {
+  notes: NoteItem[];
+  activeNoteId: number | null;
+  activeFolderId: number | null;
+}
 
-const listeners = new Set<Listener>();
-let notes: NoteItem[] = [];
-let activeNoteId: number | null = null;
-let activeFolderId: number | null = null;
+const useNoteStore = create<NoteState>()(() => ({
+  notes: [],
+  activeNoteId: null,
+  activeFolderId: null,
+}));
+
 let hasBoundIpcListeners = false;
 const DEFAULT_LIMIT = 50;
 let currentLimit = DEFAULT_LIMIT;
-
-const emit = () => {
-  listeners.forEach((listener) => listener());
-};
-
-const subscribe = (listener: Listener) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const getNotesSnapshot = () => notes;
-const getActiveNoteIdSnapshot = () => activeNoteId;
-const getActiveFolderIdSnapshot = () => activeFolderId;
 
 function ensureIpcListeners() {
   if (hasBoundIpcListeners || typeof window === "undefined") {
@@ -77,57 +70,54 @@ export async function initializeNotes(
   currentLimit = limit;
   ensureIpcListeners();
   const items = await window.electronAPI.getNotes(noteType, limit, folderId);
-  notes = items;
-  emit();
+  useNoteStore.setState({ notes: items });
   return items;
 }
 
 export function addNote(note: NoteItem): void {
   if (!note) return;
+  const { notes, activeFolderId } = useNoteStore.getState();
   if (activeFolderId && note.folder_id !== activeFolderId) return;
   const withoutDuplicate = notes.filter((existing) => existing.id !== note.id);
-  notes = [note, ...withoutDuplicate].slice(0, currentLimit);
-  emit();
+  useNoteStore.setState({ notes: [note, ...withoutDuplicate].slice(0, currentLimit) });
 }
 
 export function updateNoteInStore(note: NoteItem): void {
   if (!note) return;
-  notes = notes.map((existing) => (existing.id === note.id ? note : existing));
-  emit();
+  const { notes } = useNoteStore.getState();
+  useNoteStore.setState({ notes: notes.map((existing) => (existing.id === note.id ? note : existing)) });
 }
 
 export function removeNote(id: number): void {
   if (id == null) return;
+  const { notes } = useNoteStore.getState();
   const next = notes.filter((item) => item.id !== id);
   if (next.length === notes.length) return;
-  notes = next;
-  emit();
+  useNoteStore.setState({ notes: next });
 }
 
 export function setActiveNoteId(id: number | null): void {
-  if (activeNoteId === id) return;
-  activeNoteId = id;
-  emit();
+  if (useNoteStore.getState().activeNoteId === id) return;
+  useNoteStore.setState({ activeNoteId: id });
 }
 
 export function setActiveFolderId(id: number | null): void {
-  if (activeFolderId === id) return;
-  activeFolderId = id;
-  emit();
+  if (useNoteStore.getState().activeFolderId === id) return;
+  useNoteStore.setState({ activeFolderId: id });
 }
 
 export function getActiveFolderIdValue(): number | null {
-  return activeFolderId;
+  return useNoteStore.getState().activeFolderId;
 }
 
 export function useNotes(): NoteItem[] {
-  return useSyncExternalStore(subscribe, getNotesSnapshot, getNotesSnapshot);
+  return useNoteStore((state) => state.notes);
 }
 
 export function useActiveNoteId(): number | null {
-  return useSyncExternalStore(subscribe, getActiveNoteIdSnapshot, getActiveNoteIdSnapshot);
+  return useNoteStore((state) => state.activeNoteId);
 }
 
 export function useActiveFolderId(): number | null {
-  return useSyncExternalStore(subscribe, getActiveFolderIdSnapshot, getActiveFolderIdSnapshot);
+  return useNoteStore((state) => state.activeFolderId);
 }

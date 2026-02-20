@@ -20,6 +20,11 @@ import ReasoningService from "../../services/ReasoningService";
 import { getModelProvider } from "../../models/ModelRegistry";
 import logger from "../../utils/logger";
 import { UNIFIED_SYSTEM_PROMPT } from "../../config/prompts";
+import {
+  useSettingsStore,
+  selectEffectiveReasoningModel,
+  selectIsCloudReasoningMode,
+} from "../../stores/settingsStore";
 
 interface PromptStudioProps {
   className?: string;
@@ -68,6 +73,11 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
 
   const { alertDialog, showAlertDialog, hideAlertDialog } = useDialogs();
   const { agentName } = useAgentName();
+
+  const effectiveModel = useSettingsStore(selectEffectiveReasoningModel);
+  const isCloudMode = useSettingsStore(selectIsCloudReasoningMode);
+  const useReasoningModel = useSettingsStore((s) => s.useReasoningModel);
+  const reasoningModel = useSettingsStore((s) => s.reasoningModel);
 
   useEffect(() => {
     const legacyPrompts = localStorage.getItem("customPrompts");
@@ -123,12 +133,6 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
     setTestResult("");
 
     try {
-      const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-      const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
-      const isSignedIn = localStorage.getItem("isSignedIn") === "true";
-      const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
-
-      const reasoningModel = localStorage.getItem("reasoningModel") || "";
       const reasoningProvider = isCloudMode
         ? "openwhispr"
         : reasoningModel
@@ -153,20 +157,18 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         return;
       }
 
-      // In BYOK mode, a model must be selected
       if (!isCloudMode && !reasoningModel) {
         setTestResult(t("promptStudio.test.noModelSelected"));
         return;
       }
 
-      // In BYOK mode with custom provider, validate base URL
       if (!isCloudMode) {
         const providerConfig = PROVIDER_CONFIG[reasoningProvider] || {
           label: reasoningProvider.charAt(0).toUpperCase() + reasoningProvider.slice(1),
         };
 
         if (providerConfig.baseStorageKey) {
-          const baseUrl = (localStorage.getItem(providerConfig.baseStorageKey) || "").trim();
+          const baseUrl = (useSettingsStore.getState().cloudReasoningBaseUrl || "").trim();
           if (!baseUrl) {
             setTestResult(
               t("promptStudio.test.baseUrlMissing", {
@@ -178,8 +180,7 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         }
       }
 
-      // Cloud mode doesn't require a specific model — pass a placeholder if none is set
-      const modelToUse = isCloudMode ? reasoningModel || "auto" : reasoningModel;
+      const modelToUse = isCloudMode ? effectiveModel || "auto" : reasoningModel;
 
       const currentCustomPrompt = localStorage.getItem("customUnifiedPrompt");
       localStorage.setItem("customUnifiedPrompt", JSON.stringify(editedPrompt));
@@ -359,12 +360,6 @@ export default function PromptStudio({ className = "" }: PromptStudioProps) {
         {/* ── Test Tab ── */}
         {activeTab === "test" &&
           (() => {
-            const useReasoningModel = localStorage.getItem("useReasoningModel") === "true";
-            const cloudReasoningMode = localStorage.getItem("cloudReasoningMode") || "openwhispr";
-            const isSignedIn = localStorage.getItem("isSignedIn") === "true";
-            const isCloudMode = isSignedIn && cloudReasoningMode === "openwhispr";
-
-            const reasoningModel = localStorage.getItem("reasoningModel") || "";
             const reasoningProvider = isCloudMode
               ? "openwhispr"
               : reasoningModel

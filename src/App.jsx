@@ -8,6 +8,7 @@ import { useHotkey } from "./hooks/useHotkey";
 import { useWindowDrag } from "./hooks/useWindowDrag";
 import { useAudioRecording } from "./hooks/useAudioRecording";
 import { useAuth } from "./hooks/useAuth";
+import { useSettingsStore } from "./stores/settingsStore";
 
 // Sound Wave Icon Component (for idle/hover states)
 const SoundWaveIcon = ({ size = 16 }) => {
@@ -83,10 +84,9 @@ export default function App() {
   const [dragStartPos, setDragStartPos] = useState(null);
   const [hasDragged, setHasDragged] = useState(false);
 
-  // Floating icon auto-hide setting (read from localStorage, synced via IPC)
-  const [floatingIconAutoHide, setFloatingIconAutoHide] = useState(
-    () => localStorage.getItem("floatingIconAutoHide") === "true"
-  );
+  // Floating icon auto-hide setting (read from store, synced via IPC)
+  const floatingIconAutoHide = useSettingsStore((s) => s.floatingIconAutoHide);
+  const setFloatingIconAutoHide = useSettingsStore((s) => s.setFloatingIconAutoHide);
   const prevAutoHideRef = useRef(floatingIconAutoHide);
 
   const setWindowInteractivity = React.useCallback((shouldCapture) => {

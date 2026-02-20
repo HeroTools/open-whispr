@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import { authClient, isWithinGracePeriod } from "../lib/neonAuth";
 import logger from "../utils/logger";
+import { useSettingsStore } from "../stores/settingsStore";
 
 const useStaticSession = () => ({
   data: null,
@@ -32,7 +33,7 @@ export function useAuth() {
         { isSignedIn, rawIsSignedIn, gracePeriod: gracePeriodActive },
         "auth"
       );
-      localStorage.setItem("isSignedIn", String(isSignedIn));
+      useSettingsStore.getState().setIsSignedIn(isSignedIn);
       lastSyncedStateRef.current = isSignedIn;
     }
   }, [isSignedIn, rawIsSignedIn, gracePeriodActive, isPending]);

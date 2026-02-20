@@ -1,22 +1,15 @@
-import { useSyncExternalStore } from "react";
+import { create } from "zustand";
 import type { ActionItem } from "../types/electron";
 
-type Listener = () => void;
+interface ActionState {
+  actions: ActionItem[];
+}
 
-const listeners = new Set<Listener>();
-let actions: ActionItem[] = [];
+const useActionStore = create<ActionState>()(() => ({
+  actions: [],
+}));
+
 let hasBoundIpcListeners = false;
-
-const emit = () => {
-  listeners.forEach((listener) => listener());
-};
-
-const subscribe = (listener: Listener) => {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-};
-
-const getActionsSnapshot = () => actions;
 
 function ensureIpcListeners() {
   if (hasBoundIpcListeners || typeof window === "undefined") return;
@@ -53,29 +46,28 @@ function ensureIpcListeners() {
 export async function initializeActions(): Promise<ActionItem[]> {
   ensureIpcListeners();
   const items = await window.electronAPI.getActions();
-  actions = items;
-  emit();
+  useActionStore.setState({ actions: items });
   return items;
 }
 
 function addActionToStore(action: ActionItem): void {
+  const { actions } = useActionStore.getState();
   const withoutDuplicate = actions.filter((a) => a.id !== action.id);
-  actions = [...withoutDuplicate, action].sort((a, b) => a.sort_order - b.sort_order);
-  emit();
+  useActionStore.setState({ actions: [...withoutDuplicate, action].sort((a, b) => a.sort_order - b.sort_order) });
 }
 
 function updateActionInStore(action: ActionItem): void {
-  actions = actions.map((a) => (a.id === action.id ? action : a));
-  emit();
+  const { actions } = useActionStore.getState();
+  useActionStore.setState({ actions: actions.map((a) => (a.id === action.id ? action : a)) });
 }
 
 function removeActionFromStore(id: number): void {
+  const { actions } = useActionStore.getState();
   const next = actions.filter((a) => a.id !== id);
   if (next.length === actions.length) return;
-  actions = next;
-  emit();
+  useActionStore.setState({ actions: next });
 }
 
 export function useActions(): ActionItem[] {
-  return useSyncExternalStore(subscribe, getActionsSnapshot, getActionsSnapshot);
+  return useActionStore((state) => state.actions);
 }

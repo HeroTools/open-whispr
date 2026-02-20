@@ -31,6 +31,7 @@ import { useSettings } from "../../hooks/useSettings";
 import { withSessionRefresh } from "../../lib/neonAuth";
 import reasoningService from "../../services/ReasoningService";
 import { getAllReasoningModels } from "../../models/ModelRegistry";
+import { useSettingsStore, selectEffectiveReasoningModel } from "../../stores/settingsStore";
 
 const TranscriptionModelPicker = React.lazy(() => import("../TranscriptionModelPicker"));
 
@@ -104,9 +105,10 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
     customTranscriptionApiKey,
     setCustomTranscriptionApiKey,
     updateTranscriptionSettings,
-    useReasoningModel,
-    reasoningModel,
   } = useSettings();
+
+  const effectiveReasoningModel = useSettingsStore(selectEffectiveReasoningModel);
+  const useReasoningModel = useSettingsStore((s) => s.useReasoningModel);
 
   const isOpenWhisprCloud =
     isSignedIn && cloudTranscriptionMode === "openwhispr" && !useLocalWhisper;
@@ -207,7 +209,7 @@ export default function UploadAudioView({ onNoteCreated, onOpenSettings }: Uploa
 
   const generateTitle = async (text: string): Promise<string> => {
     if (!useReasoningModel) return "";
-    const model = reasoningModel || getAllReasoningModels()[0]?.value;
+    const model = effectiveReasoningModel || getAllReasoningModels()[0]?.value;
     if (!model) return "";
     try {
       const title = await reasoningService.processText(text.slice(0, 2000), model, null, {
