@@ -19,8 +19,12 @@ import {
   clearTranscriptions as clearStoreTranscriptions,
 } from "../stores/transcriptionStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
+import WindowControls from "./WindowControls";
+import { getCachedPlatform } from "../utils/platform";
 import { setActiveNoteId, setActiveFolderId } from "../stores/noteStore";
 import HistoryView from "./HistoryView";
+
+const platform = getCachedPlatform();
 
 const SettingsModal = React.lazy(() => import("./SettingsModal"));
 const ReferralModal = React.lazy(() => import("./ReferralModal"));
@@ -377,9 +381,18 @@ export default function ControlPanel() {
         />
         <main className="flex-1 flex flex-col overflow-hidden">
           <div
-            className="w-full h-10 shrink-0"
+            className="flex items-center justify-end w-full h-10 shrink-0"
             style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-          />
+          >
+            {platform !== "darwin" && (
+              <div
+                className="pr-1"
+                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+              >
+                <WindowControls />
+              </div>
+            )}
+          </div>
           <div className="flex-1 overflow-y-auto pt-1">
             {usage?.isPastDue && activeView === "home" && (
               <div className="max-w-3xl mx-auto w-full mb-3">

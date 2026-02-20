@@ -12,9 +12,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
-import { getCachedPlatform } from "../utils/platform";
 import SupportDropdown from "./ui/SupportDropdown";
-import WindowControls from "./WindowControls";
 import { ConfirmDialog } from "./ui/dialog";
 
 export type ControlPanelView = "home" | "personal-notes" | "dictionary" | "upload";
@@ -31,8 +29,6 @@ interface ControlPanelSidebarProps {
   authLoaded?: boolean;
   updateAction?: React.ReactNode;
 }
-
-const platform = getCachedPlatform();
 
 export default function ControlPanelSidebar({
   activeView,
@@ -81,21 +77,10 @@ export default function ControlPanelSidebar({
         variant="destructive"
       />
 
-      {platform === "darwin" ? (
-        <div
-          className="w-full h-10 shrink-0"
-          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-        />
-      ) : (
-        <div
-          className="flex items-center justify-between px-2 h-10 shrink-0"
-          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
-        >
-          <div style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
-            <WindowControls />
-          </div>
-        </div>
-      )}
+      <div
+        className="w-full h-10 shrink-0"
+        style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+      />
 
       <nav className="flex flex-col gap-0.5 px-2 pt-4 pb-2">
         {navItems.map((item) => {
