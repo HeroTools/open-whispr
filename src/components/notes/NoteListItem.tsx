@@ -31,6 +31,12 @@ interface NoteListItemProps {
   currentFolderId: number | null;
   onMoveToFolder: (noteId: number, folderId: number) => void;
   onCreateFolderAndMove: (noteId: number, folderName: string) => void;
+  dragHandlers?: {
+    draggable: true;
+    onDragStart: (e: React.DragEvent) => void;
+    onDragEnd: () => void;
+  };
+  isDragging?: boolean;
 }
 
 function stripMarkdown(text: string): string {
@@ -70,6 +76,8 @@ export default function NoteListItem({
   currentFolderId,
   onMoveToFolder,
   onCreateFolderAndMove,
+  dragHandlers,
+  isDragging,
 }: NoteListItemProps) {
   const { t } = useTranslation();
   const preview = stripMarkdown(note.content);
@@ -89,10 +97,12 @@ export default function NoteListItem({
     <button
       type="button"
       onClick={onClick}
+      {...dragHandlers}
       className={cn(
-        "group relative w-full text-left px-3 py-2 cursor-pointer transition-colors duration-150",
+        "group relative w-full text-left px-3 py-2 cursor-pointer transition-all duration-150",
         "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
-        isActive ? "bg-primary/6 dark:bg-primary/8" : "hover:bg-foreground/3 dark:hover:bg-white/3"
+        isActive ? "bg-primary/6 dark:bg-primary/8" : "hover:bg-foreground/3 dark:hover:bg-white/3",
+        isDragging && "opacity-40 scale-[0.97]"
       )}
     >
       {isActive && (

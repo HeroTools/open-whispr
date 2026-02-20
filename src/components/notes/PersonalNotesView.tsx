@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Plus, Loader2, FolderOpen, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { Plus, Loader2, FolderOpen, MoreHorizontal, Pencil, Trash2, Check } from "lucide-react";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -23,6 +23,7 @@ import {
   selectIsCloudReasoningMode,
 } from "../../stores/settingsStore";
 import { useFolderManagement } from "../../hooks/useFolderManagement";
+import { useNoteDragAndDrop } from "../../hooks/useNoteDragAndDrop";
 import { cn } from "../lib/utils";
 import {
   useNotes,
@@ -207,6 +208,11 @@ export default function PersonalNotesView() {
     [activeFolderId, loadFolders]
   );
 
+  const { dragState, noteDragHandlers, folderDropHandlers } = useNoteDragAndDrop({
+    onMoveToFolder: handleMoveToFolder,
+    currentFolderId: activeFolderId,
+  });
+
   const handleCreateFolderAndMove = useCallback(
     async (noteId: number, folderName: string) => {
       const result = await window.electronAPI.createFolder(folderName);
@@ -338,32 +344,43 @@ export default function PersonalNotesView() {
               );
             }
 
+            const isDragOver = dragState.dragOverFolderId === folder.id;
+            const isDropSuccess = dragState.dropSuccessFolderId === folder.id;
+
             return (
               <button
                 key={folder.id}
                 onClick={() => setActiveFolderId(folder.id)}
+                {...folderDropHandlers(folder.id, folder.name)}
                 className={cn(
-                  "group relative flex items-center gap-2 w-full h-7 px-2 rounded-md cursor-pointer text-left transition-colors duration-150",
+                  "group relative flex items-center gap-2 w-full h-7 px-2 rounded-md cursor-pointer text-left transition-all duration-150",
                   "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30",
                   isActive
                     ? "bg-primary/8 dark:bg-primary/10"
-                    : "hover:bg-foreground/4 dark:hover:bg-white/4"
+                    : "hover:bg-foreground/4 dark:hover:bg-white/4",
+                  isDragOver &&
+                    !isMeetings &&
+                    "bg-primary/12 dark:bg-primary/15 ring-1 ring-primary/25 scale-[1.02]",
+                  isDropSuccess &&
+                    "bg-emerald-500/10 dark:bg-emerald-400/10 ring-1 ring-emerald-500/20"
                 )}
               >
-                {isActive && (
+                {isActive && !isDragOver && !isDropSuccess && (
                   <div className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-3 rounded-r-full bg-primary" />
                 )}
                 <FolderOpen
                   size={13}
                   className={cn(
                     "shrink-0 transition-colors duration-150",
-                    isActive ? "text-primary" : "text-foreground/20 group-hover:text-foreground/35"
+                    isDragOver || isActive
+                      ? "text-primary"
+                      : "text-foreground/20 group-hover:text-foreground/35"
                   )}
                 />
                 <span
                   className={cn(
                     "text-xs truncate flex-1 transition-colors duration-150",
-                    isActive
+                    isDragOver || isActive
                       ? "text-foreground font-medium"
                       : "text-foreground/50 group-hover:text-foreground/70"
                   )}
@@ -377,14 +394,21 @@ export default function PersonalNotesView() {
                   </span>
                 ) : (
                   <>
-                    <span
-                      className={cn(
-                        "text-xs tabular-nums shrink-0 transition-colors group-hover:opacity-0",
-                        isActive ? "text-foreground/30" : "text-foreground/15"
-                      )}
-                    >
-                      {count > 0 ? count : ""}
-                    </span>
+                    {isDropSuccess ? (
+                      <Check
+                        size={10}
+                        className="text-emerald-500 dark:text-emerald-400 shrink-0 animate-[scale-in_200ms_ease-out]"
+                      />
+                    ) : (
+                      <span
+                        className={cn(
+                          "text-xs tabular-nums shrink-0 transition-colors group-hover:opacity-0",
+                          isActive ? "text-foreground/30" : "text-foreground/15"
+                        )}
+                      >
+                        {count > 0 ? count : ""}
+                      </span>
+                    )}
                     {!folder.is_default && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
@@ -564,6 +588,8 @@ export default function PersonalNotesView() {
                     currentFolderId={activeFolderId}
                     onMoveToFolder={handleMoveToFolder}
                     onCreateFolderAndMove={handleCreateFolderAndMove}
+                    dragHandlers={noteDragHandlers(note.id, note.title)}
+                    isDragging={dragState.draggingNoteId === note.id}
                   />
                 ))
               )}
