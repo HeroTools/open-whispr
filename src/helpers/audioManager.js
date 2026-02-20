@@ -64,6 +64,316 @@ class AudioManager {
     this.stopRequestedDuringStreamingStart = false;
     this.streamingFallbackRecorder = null;
     this.streamingFallbackChunks = [];
+
+    // Recording storage (local backup)
+    this._sessionFile = null;
+    this._sessionChunkIndex = 0;
+    this._chunkSplitInProgress = false;
+    this._chunkPartIndex = 0;
+    this._chunkFlushTimer = null;
+    this._cumulativeChunkSize = 0;
+    this._pendingS3Keys = [];
+    this._sessionTranscripts = []; // {partIndex, text} for multi-part sessions
+    this._sessionId = null;
+  }
+
+  // ── Recording Storage helpers ──────────────────────────────────────
+
+  _isRecordingSaveEnabled() {
+    return localStorage.getItem("saveRecordingsLocally") !== "false"; // enabled by default
+  }
+
+  _getChunkThresholdBytes() {
+    const mb = parseFloat(localStorage.getItem("recordingChunkMB") || "24.5"); // groq cloud free limit is 25MB
+    return (mb > 0 ? mb : 24.5) * 1024 * 1024;
+  }
+
+  /**
+   * Check disk space before recording starts. Returns true if OK to proceed.
+   * Shows a warning toast if space is low but does NOT block recording.
+   */
+  async _checkDiskSpaceBeforeRecording() {
+    if (localStorage.getItem("checkDiskSpace") === "false") return true;
+    if (!window.electronAPI?.recordingCheckDiskSpace) return true;
+
+    try {
+      const result = await window.electronAPI.recordingCheckDiskSpace();
+      if (!result.sufficient) {
+        this.onError?.({
+          title: "Low Disk Space",
+          description: `Only ${result.availableSpaceMB} MB free. Recordings need at least ${result.minimumMB} MB. Recording will continue but saving may fail.`,
+        });
+      }
+      return true; // Never block recording
+    } catch {
+      return true;
+    }
+  }
+
+  /**
+   * Save an audio blob to the configured recording directory.
+   * Runs asynchronously — errors are logged but never block transcription.
+   */
+  async _saveRecordingBackup(audioBlob, options = {}) {
+    if (!this._isRecordingSaveEnabled()) return;
+    if (!window.electronAPI?.recordingSave) return;
+
+    try {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const result = await window.electronAPI.recordingSave(arrayBuffer, {
+        mimeType: audioBlob.type || "audio/webm",
+        ...options,
+      });
+      if (result.success) {
+        logger.debug("Recording backup saved", { path: result.path, size: result.size }, "audio");
+
+        // Fire-and-forget S3 upload if enabled
+        this._uploadToS3(result.path).catch(() => {});
+      } else {
+        logger.warn("Recording backup failed", { error: result.error }, "audio");
+      }
+    } catch (error) {
+      logger.warn("Recording backup error", { error: error.message }, "audio");
+    }
+  }
+
+  /**
+   * Upload a saved recording file to S3 cloud storage (fire-and-forget).
+   * Only runs if S3 is configured and enabled.
+   * Stores the presigned URL for potential use by transcription providers.
+   */
+  async _uploadToS3(localPath) {
+    if (!window.electronAPI?.s3UploadRecording) return;
+    try {
+      const result = await window.electronAPI.s3UploadRecording(localPath);
+      if (result.success && result.key) {
+        logger.info("Recording uploaded to S3", { key: result.key, hasUrl: !!result.url }, "audio");
+        this._pendingS3Keys.push({ key: result.key, url: result.url });
+      }
+      // Silently ignore failures — local copy is the primary backup
+    } catch (error) {
+      logger.debug("S3 upload skipped", { error: error.message }, "audio");
+    }
+  }
+
+  /**
+   * Get the most recent presigned URL from the last S3 upload.
+   * Used by processWithOpenAIAPI to pass URL to providers like Groq.
+   */
+  _getLastS3Url() {
+    if (this._pendingS3Keys.length === 0) return null;
+    return this._pendingS3Keys[this._pendingS3Keys.length - 1].url || null;
+  }
+
+  /**
+   * Delete all pending S3 objects after transcription succeeds.
+   * Only runs when autoDeleteAfterTranscription is enabled in config.
+   */
+  async _cleanupS3Keys() {
+    if (this._pendingS3Keys.length === 0) return;
+    if (!window.electronAPI?.s3DeleteObject || !window.electronAPI?.s3GetConfig) return;
+
+    // Check if auto-delete is enabled
+    try {
+      const configRes = await window.electronAPI.s3GetConfig();
+      if (!configRes?.config?.autoDeleteAfterTranscription) return;
+    } catch {
+      return;
+    }
+
+    const entries = [...this._pendingS3Keys];
+    this._pendingS3Keys = [];
+
+    for (const { key } of entries) {
+      try {
+        await window.electronAPI.s3DeleteObject(key);
+        logger.debug("S3 object deleted after transcription", { key }, "audio");
+      } catch (error) {
+        logger.debug("S3 cleanup failed", { key, error: error.message }, "audio");
+      }
+    }
+  }
+
+  /**
+   * Start an incremental session file for long recordings.
+   * Chunks are flushed to disk periodically to keep memory usage low.
+   */
+  async _startSessionFile(mimeType) {
+    if (!this._isRecordingSaveEnabled()) return;
+    if (!window.electronAPI?.recordingCreateSessionFile) return;
+
+    try {
+      const result = await window.electronAPI.recordingCreateSessionFile(mimeType);
+      if (result.success) {
+        this._sessionFile = result.filePath;
+        this._sessionChunkIndex = 0;
+        logger.debug("Recording session file created", { path: result.filePath }, "audio");
+      }
+    } catch (error) {
+      logger.warn("Failed to create session file", { error: error.message }, "audio");
+    }
+  }
+
+  /**
+   * Flush queued audio chunks to the session file on disk, then clear
+   * the in-memory array to free RAM. Called periodically during recording.
+   */
+  async _flushChunksToSessionFile() {
+    if (!this._sessionFile || !window.electronAPI?.recordingAppendChunk) return;
+    if (this.audioChunks.length === 0) return;
+
+    try {
+      const blob = new Blob(this.audioChunks, { type: this.recordingMimeType || "audio/webm" });
+      const buffer = await blob.arrayBuffer();
+      const result = await window.electronAPI.recordingAppendChunk(buffer, this._sessionFile);
+      if (result.success) {
+        // Keep only the very last chunk in memory (for seamless stop)
+        const lastChunk = this.audioChunks[this.audioChunks.length - 1];
+        this.audioChunks = lastChunk ? [lastChunk] : [];
+        this._sessionChunkIndex++;
+        logger.debug("Flushed audio chunks to session file", {
+          fileSize: result.size,
+          flushIndex: this._sessionChunkIndex,
+        }, "audio");
+      }
+    } catch (error) {
+      logger.warn("Failed to flush chunks to session file", { error: error.message }, "audio");
+    }
+  }
+
+  /**
+   * Stop and restart the MediaRecorder on the same stream to split the
+   * recording into a new chunk file. This allows dumping memory for very
+   * long recordings (> chunkThreshold) without losing any audio.
+   */
+  async _splitRecordingChunk() {
+    if (this._chunkSplitInProgress || !this.mediaRecorder || this.mediaRecorder.state !== "recording") {
+      return;
+    }
+
+    this._chunkSplitInProgress = true;
+    const stream = this.mediaRecorder.stream;
+    const mimeType = this.recordingMimeType;
+    const splitTimestamp = this.recordingStartTime || Date.now();
+
+    try {
+      // 1. Stop the current recorder — collect its data
+      const chunkBlob = await new Promise((resolve) => {
+        this.mediaRecorder.onstop = () => {
+          const blob = new Blob(this.audioChunks, { type: mimeType });
+          this.audioChunks = [];
+          resolve(blob);
+        };
+        this.mediaRecorder.stop();
+      });
+
+      const partIndex = this._chunkPartIndex++;
+
+      // 2. Save the chunk to disk (fire-and-forget)
+      this._saveRecordingBackup(chunkBlob, {
+        timestamp: splitTimestamp,
+        partIndex,
+      });
+
+      // 3. Transcribe the split chunk (fire-and-forget, uses isChunkSplit flag
+      //    to bypass the isProcessing guard in processAudio)
+      logger.info("Transcribing split chunk", {
+        partIndex,
+        blobSize: chunkBlob.size,
+      }, "audio");
+      this.processAudio(chunkBlob, { isChunkSplit: true, partIndex }).catch((err) => {
+        logger.warn("Split chunk transcription failed", { error: err.message, partIndex }, "audio");
+      });
+
+      // 4. Reset cumulative size counter for the new segment
+      this._cumulativeChunkSize = 0;
+
+      // 5. Immediately start a new MediaRecorder on the same stream
+      if (stream && stream.active) {
+        this.mediaRecorder = new MediaRecorder(stream);
+        this.recordingMimeType = this.mediaRecorder.mimeType || "audio/webm";
+        this.audioChunks = [];
+
+        this.mediaRecorder.ondataavailable = (event) => {
+          this.audioChunks.push(event.data);
+          this._cumulativeChunkSize += event.data.size;
+        };
+
+        this.mediaRecorder.onstop = async () => {
+          this._clearChunkSplitTimer();
+          this.isRecording = false;
+          this.isProcessing = true;
+          this.onStateChange?.({ isRecording: false, isProcessing: true });
+
+          const audioBlob = new Blob(this.audioChunks, { type: this.recordingMimeType });
+          logger.info("Recording stopped (after chunk split)", {
+            blobSize: audioBlob.size,
+            partIndex: this._chunkPartIndex,
+          }, "audio");
+
+          // Save final chunk
+          this._saveRecordingBackup(audioBlob, {
+            timestamp: splitTimestamp,
+            partIndex: this._chunkPartIndex,
+          });
+
+          const durationSeconds = this.recordingStartTime
+            ? (Date.now() - this.recordingStartTime) / 1000
+            : null;
+          this.recordingStartTime = null;
+          await this.processAudio(audioBlob, { durationSeconds });
+          stream.getTracks().forEach((track) => track.stop());
+        };
+
+        this.mediaRecorder.start(1000); // timeslice: fire ondataavailable every ~1s for size tracking
+        logger.info("Recording chunk split — new recorder started", {
+          partIndex: this._chunkPartIndex,
+        }, "audio");
+      }
+    } catch (error) {
+      logger.error("Chunk split failed", { error: error.message }, "audio");
+    } finally {
+      this._chunkSplitInProgress = false;
+    }
+  }
+
+  /**
+   * Set up a periodic timer that checks whether the recording duration has
+   * exceeded the configured chunk threshold. If so, triggers a split.
+   */
+  _startChunkSplitTimer() {
+    this._clearChunkSplitTimer();
+    this._chunkPartIndex = 0;
+    this._cumulativeChunkSize = 0;
+
+    // Only start if chunk splitting is enabled
+    if (localStorage.getItem("recordingChunkEnabled") === "false") return;
+
+    // Check every 5 seconds for size-based splitting
+    this._chunkFlushTimer = setInterval(() => {
+      if (!this.isRecording || !this.recordingStartTime) return;
+      if (this._chunkSplitInProgress) return;
+
+      const thresholdBytes = this._getChunkThresholdBytes();
+
+      if (this._cumulativeChunkSize >= thresholdBytes) {
+        const sizeMB = (this._cumulativeChunkSize / (1024 * 1024)).toFixed(1);
+        const thresholdMB = (thresholdBytes / (1024 * 1024)).toFixed(0);
+        logger.info("Chunk split threshold reached", {
+          currentSizeMB: sizeMB,
+          thresholdMB,
+          partIndex: this._chunkPartIndex,
+        }, "audio");
+        this._splitRecordingChunk();
+      }
+    }, 5000);
+  }
+
+  _clearChunkSplitTimer() {
+    if (this._chunkFlushTimer) {
+      clearInterval(this._chunkFlushTimer);
+      this._chunkFlushTimer = null;
+    }
   }
 
   getWorkletBlobUrl() {
@@ -207,6 +517,9 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         return false;
       }
 
+      // Check disk space before recording (non-blocking warning)
+      await this._checkDiskSpaceBeforeRecording();
+
       const constraints = await this.getAudioConstraints();
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
 
@@ -232,9 +545,11 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
       this.mediaRecorder.ondataavailable = (event) => {
         this.audioChunks.push(event.data);
+        this._cumulativeChunkSize += event.data.size;
       };
 
       this.mediaRecorder.onstop = async () => {
+        this._clearChunkSplitTimer();
         this.isRecording = false;
         this.isProcessing = true;
         this.onStateChange?.({ isRecording: false, isProcessing: true });
@@ -251,6 +566,20 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
           "audio"
         );
 
+        // Save recording backup (fire-and-forget, never blocks transcription)
+        if (this._chunkPartIndex === 0) {
+          // No chunk splits occurred — save the entire recording
+          this._saveRecordingBackup(audioBlob, {
+            timestamp: this.recordingStartTime || Date.now(),
+          });
+        } else {
+          // Chunk splits already saved earlier parts; save this final part
+          this._saveRecordingBackup(audioBlob, {
+            timestamp: this.recordingStartTime || Date.now(),
+            partIndex: this._chunkPartIndex,
+          });
+        }
+
         const durationSeconds = this.recordingStartTime
           ? (Date.now() - this.recordingStartTime) / 1000
           : null;
@@ -260,9 +589,17 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      this.mediaRecorder.start();
+      this.mediaRecorder.start(1000); // timeslice: fire ondataavailable every ~1s for size tracking
       this.isRecording = true;
       this.onStateChange?.({ isRecording: true, isProcessing: false });
+
+      // New recording session
+      this._sessionTranscripts = [];
+      this._sessionId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      this._sessionStartedAt = Date.now();
+
+      // Start chunk split timer for long recordings
+      this._startChunkSplitTimer();
 
       return true;
     } catch (error) {
@@ -300,6 +637,7 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
 
   cancelRecording() {
     if (this.mediaRecorder && this.mediaRecorder.state === "recording") {
+      this._clearChunkSplitTimer();
       this.mediaRecorder.onstop = () => {
         this.isRecording = false;
         this.isProcessing = false;
@@ -375,11 +713,52 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         result = await this.processWithOpenAIAPI(audioBlob, metadata);
       }
 
-      if (!this.isProcessing) {
+      // Skip processing guard for chunk splits (isProcessing is false during recording)
+      if (!metadata.isChunkSplit && !this.isProcessing) {
         return;
       }
 
+      // Accumulate session transcript for multi-part recordings
+      if (result?.success && result?.text) {
+        const partIndex = metadata.isChunkSplit
+          ? (metadata.partIndex ?? this._sessionTranscripts.length)
+          : this._chunkPartIndex; // final part
+        this._sessionTranscripts.push({ partIndex, text: result.text });
+
+        // If this is the final part of a multi-part session, broadcast combined transcript
+        // and attach it to the result so the hook can paste the full session text
+        if (!metadata.isChunkSplit && this._sessionTranscripts.length > 1) {
+          const combined = this._sessionTranscripts
+            .sort((a, b) => a.partIndex - b.partIndex)
+            .map((t) => t.text)
+            .join("\n\n");
+          const sessionEndedAt = Date.now();
+          const sessionDurationSec = this._sessionStartedAt
+            ? Math.round((sessionEndedAt - this._sessionStartedAt) / 1000)
+            : null;
+          result.sessionText = combined;
+          result.isSessionEnd = true;
+          result.sessionPartsCount = this._sessionTranscripts.length;
+          window.electronAPI?.broadcastSessionTranscript?.({
+            sessionId: this._sessionId,
+            text: combined,
+            partsCount: this._sessionTranscripts.length,
+            startedAt: this._sessionStartedAt,
+            endedAt: sessionEndedAt,
+            durationSeconds: sessionDurationSec,
+          });
+          logger.info("Session transcript ready", {
+            sessionId: this._sessionId,
+            partsCount: this._sessionTranscripts.length,
+            combinedLength: combined.length,
+          }, "audio");
+        }
+      }
+
       this.onTranscriptionComplete?.(result);
+
+      // Auto-delete S3 copies after successful transcription (fire-and-forget)
+      this._cleanupS3Keys().catch(() => {});
 
       const roundTripDurationMs = Math.round(performance.now() - pipelineStart);
 
@@ -423,7 +802,8 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         });
       }
     } finally {
-      if (this.isProcessing) {
+      // Don't touch state for chunk split processing — recording is still active
+      if (!metadata.isChunkSplit && this.isProcessing) {
         this.isProcessing = false;
         this.onStateChange?.({ isRecording: false, isProcessing: false });
       }
@@ -1260,7 +1640,23 @@ registerProcessor("pcm-streaming-processor", PCMStreamingProcessor);
         "transcription"
       );
 
-      formData.append("file", optimizedAudio, `audio.${extension}`);
+      // For large files: if S3 is configured and we have a presigned URL,
+      // use the `url` parameter instead of uploading the blob directly.
+      // Groq supports this natively. Other providers fall back to file upload.
+      const CLOUD_UPLOAD_LIMIT = 25 * 1024 * 1024; // 25 MB
+      const s3Url = this._getLastS3Url();
+      const useUrlMode = s3Url && optimizedAudio.size > CLOUD_UPLOAD_LIMIT && provider === "groq";
+
+      if (useUrlMode) {
+        logger.info("Using presigned S3 URL for large file transcription", {
+          provider,
+          audioSize: optimizedAudio.size,
+          urlPreview: s3Url.substring(0, 80) + "...",
+        }, "transcription");
+        formData.append("url", s3Url);
+      } else {
+        formData.append("file", optimizedAudio, `audio.${extension}`);
+      }
       formData.append("model", model);
 
       if (language) {

@@ -22,6 +22,8 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.recordingStorageManager = managers.recordingStorageManager;
+    this.s3StorageManager = managers.s3StorageManager;
     this.getTrayManager = managers.getTrayManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
@@ -2039,6 +2041,189 @@ class IPCHandlers {
         return { isConnected: false, sessionId: null };
       }
       return this.deepgramStreaming.getStatus();
+    });
+
+    // ── Recording Storage ──────────────────────────────────────────────
+
+    ipcMain.handle("recording-get-directory", async () => {
+      try {
+        const dir = this.recordingStorageManager.getConfiguredDirectory();
+        const isDefault = !this.recordingStorageManager._readConfig().directory;
+        return { success: true, directory: dir, isDefault };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("recording-select-directory", async (event) => {
+      try {
+        const win = BrowserWindow.fromWebContents(event.sender);
+        const selected = await this.recordingStorageManager.selectDirectory(win);
+        if (!selected) return { success: false, canceled: true };
+
+        // Auto-validate
+        const validation = await this.recordingStorageManager.validateDirectory(selected);
+        if (!validation.valid) {
+          return { success: false, error: validation.error };
+        }
+
+        this.recordingStorageManager.setDirectory(selected);
+        return {
+          success: true,
+          directory: selected,
+          availableSpaceMB: validation.availableSpaceMB,
+        };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("recording-reset-directory", async () => {
+      try {
+        this.recordingStorageManager.setDirectory(null);
+        const dir = this.recordingStorageManager.getDefaultDirectory();
+        return { success: true, directory: dir };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("recording-validate-directory", async (event, dirPath) => {
+      try {
+        const dir = dirPath || this.recordingStorageManager.getConfiguredDirectory();
+        return await this.recordingStorageManager.validateDirectory(dir);
+      } catch (error) {
+        return { valid: false, error: error.message, availableSpaceMB: 0 };
+      }
+    });
+
+    ipcMain.handle("recording-check-disk-space", async () => {
+      try {
+        return await this.recordingStorageManager.checkDiskSpace();
+      } catch (error) {
+        return { availableSpaceMB: 0, sufficient: true, minimumMB: 500 };
+      }
+    });
+
+    ipcMain.handle("recording-open-directory", async () => {
+      try {
+        return this.recordingStorageManager.openDirectory();
+      } catch (error) {
+        return false;
+      }
+    });
+
+    ipcMain.handle("recording-save", async (event, audioBuffer, options) => {
+      try {
+        return await this.recordingStorageManager.saveRecording(audioBuffer, options);
+      } catch (error) {
+        debugLogger.error("IPC recording-save error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("recording-create-session-file", async (event, mimeType) => {
+      try {
+        const filePath = this.recordingStorageManager.createSessionFile(mimeType);
+        return { success: true, filePath };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("recording-append-chunk", async (event, chunkBuffer, sessionFile) => {
+      try {
+        return this.recordingStorageManager.appendChunk(chunkBuffer, sessionFile);
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("recording-finalize-session", async (event, sessionFile, options) => {
+      try {
+        return await this.recordingStorageManager.finalizeSessionFile(sessionFile, options);
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // ── S3-Compatible Cloud Storage ────────────────────────────────────────
+
+    ipcMain.handle("s3-get-config", async () => {
+      try {
+        const config = this.s3StorageManager.getConfig();
+        // Never send the secret key to the renderer — send a masked version
+        const masked = { ...config };
+        if (masked.secretAccessKey) {
+          masked.secretAccessKey = "••••••••" + masked.secretAccessKey.slice(-4);
+        }
+        return { success: true, config: masked, isConfigured: this.s3StorageManager.isConfigured() };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("s3-save-config", async (event, config) => {
+      try {
+        // If the secret is masked, keep the existing one
+        const existing = this.s3StorageManager.getConfig();
+        if (config.secretAccessKey && config.secretAccessKey.startsWith("••••")) {
+          config.secretAccessKey = existing.secretAccessKey;
+        }
+        const ok = this.s3StorageManager.saveConfig(config);
+        return { success: ok };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("s3-test-connection", async () => {
+      try {
+        return await this.s3StorageManager.testConnection();
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("s3-upload-file", async (event, filePath, options) => {
+      try {
+        return await this.s3StorageManager.uploadFile(filePath, options);
+      } catch (error) {
+        debugLogger.error("IPC s3-upload-file error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("s3-upload-recording", async (event, localPath) => {
+      try {
+        return await this.s3StorageManager.uploadRecording(localPath);
+      } catch (error) {
+        debugLogger.error("IPC s3-upload-recording error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("s3-get-presigned-url", async (event, key, expiresIn) => {
+      try {
+        return await this.s3StorageManager.getPresignedUrl(key, expiresIn);
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("s3-delete-object", async (event, key) => {
+      try {
+        return await this.s3StorageManager.deleteObject(key);
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    // ── Session Transcript ───────────────────────────────────────────────
+
+    ipcMain.handle("broadcast-session-transcript", async (event, data) => {
+      this.broadcastToWindows("session-transcript-ready", data);
+      return { success: true };
     });
   }
 

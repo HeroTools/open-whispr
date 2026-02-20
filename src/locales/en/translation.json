@@ -273,6 +273,13 @@
       "press": "Press",
       "toStart": "to start"
     },
+    "session": {
+      "title": "Session recording complete",
+      "description": "{{parts}} parts transcribed · {{duration}} ({{startTime}} – {{endTime}}) · {{length}} characters. Copy the full session transcript below.",
+      "copy": "Copy Full Session",
+      "copiedTitle": "Session transcript copied!",
+      "copiedDescription": "All {{parts}} parts copied to your clipboard."
+    },
     "cloudMigration": {
       "title": "Welcome to OpenWhispr Pro",
       "description": "Your 7-day free trial is active! We've switched your transcription to OpenWhispr Cloud for faster, more accurate results. Your previous settings are saved - switch back anytime in Settings.",
@@ -876,6 +883,10 @@
         "description": "Cloud backup & analytics",
         "label": "Privacy"
       },
+      "storage": {
+        "description": "Local recording backup",
+        "label": "Storage"
+      },
       "prompts": {
         "description": "System prompt studio",
         "label": "Prompts"
@@ -1160,6 +1171,48 @@
       "title": "Privacy",
       "usageAnalytics": "Usage analytics",
       "usageAnalyticsDescription": "Help us improve OpenWhispr by sharing anonymous performance metrics. We never send transcription content — only timing and error data."
+    },
+    "storage": {
+      "title": "Recording Storage",
+      "description": "Automatically save recordings locally as Whisper-compatible WAV files.",
+      "enableSave": "Save recordings locally",
+      "enableSaveDescription": "Automatically save every recording as a 16 kHz mono WAV file. Files are saved in the background and never block transcription.",
+      "directory": "Storage directory",
+      "directoryDescription": "Where recordings are saved. Click Browse to choose a custom folder.",
+      "browse": "Browse",
+      "open": "Open",
+      "resetToDefault": "Reset to default",
+      "defaultLabel": "(default)",
+      "directoryError": "Cannot write to this directory: {{error}}",
+      "availableSpace": "{{spaceMB}} MB available",
+      "checkDiskSpace": "Check disk space before recording",
+      "checkDiskSpaceDescription": "Warn when less than 500 MB of free space is available. Recording is never blocked.",
+      "chunkSplitting": "Auto-split large recordings",
+      "chunkSplittingDescription": "Automatically split, save, and transcribe when a recording exceeds the size threshold. Each part is transcribed independently — no audio gap.",
+      "chunkMB": "Split threshold (MB)",
+      "lowDiskWarning": "Low disk space",
+      "cloudSizeWarning": "Most cloud providers (OpenAI, Groq, Mistral) have a 25 MB upload limit. Keeping the threshold at or below 24.5 MB ensures compatibility.",
+      "cloudSizeExceeded": "Recording size ({{sizeMB}} MB) exceeds typical cloud provider limits (25 MB). Splitting is recommended.",
+      "s3Title": "S3-Compatible Cloud Backup",
+      "s3Description": "Back up recordings to any S3-compatible storage (Cloudflare R2, AWS S3, Backblaze B2, MinIO, etc.). Files are uploaded after each save and presigned URLs can be passed to transcription providers for large files.",
+      "s3Enable": "Enable cloud backup",
+      "s3EnableDescription": "Upload saved recordings to your S3-compatible bucket.",
+      "s3EndpointUrl": "Endpoint URL",
+      "s3EndpointHint": "R2: https://<accountId>.r2.cloudflarestorage.com · AWS: https://s3.<region>.amazonaws.com · B2: https://s3.<region>.backblazeb2.com",
+      "s3Region": "Region",
+      "s3AccessKeyId": "Access Key ID",
+      "s3SecretAccessKey": "Secret Access Key",
+      "s3Bucket": "Bucket name",
+      "s3TestConnection": "Test Connection",
+      "s3Testing": "Testing…",
+      "s3Connected": "Bucket access, write, and public read verified",
+      "s3ConnectionFailed": "Test failed: {{error}}",
+      "s3TestSteps": "Steps completed",
+      "s3AutoDelete": "Auto-delete after transcription",
+      "s3AutoDeleteDescription": "Remove the cloud copy once the recording has been successfully transcribed.",
+      "s3NotConfigured": "Enter your S3 credentials above to enable cloud backup.",
+      "s3QuickStartTitle": "Quick Setup — Cloudflare R2 (free tier available)",
+      "s3QuickStartR2": "1. Go to dash.cloudflare.com → R2 Object Storage\n2. Create a bucket (e.g. \"openwhispr-recordings\")\n3. Go to R2 → Manage R2 API Tokens → Create API Token\n4. Select \"Object Read & Write\" permission, scope to your bucket\n5. Copy the endpoint URL, Access Key ID, and Secret Access Key below\n\nEndpoint URL format: https://<your-account-id>.r2.cloudflarestorage.com\nYour Account ID is shown on the R2 Overview page.\n\nClick \"Test Connection\" to verify write and read access."
     },
     "prompts": {
       "description": "View, customize, and test the unified system prompt that powers text cleanup and instruction detection",

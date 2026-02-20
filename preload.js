@@ -315,4 +315,33 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
   setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),
+
+  // Recording storage
+  recordingGetDirectory: () => ipcRenderer.invoke("recording-get-directory"),
+  recordingSelectDirectory: () => ipcRenderer.invoke("recording-select-directory"),
+  recordingResetDirectory: () => ipcRenderer.invoke("recording-reset-directory"),
+  recordingValidateDirectory: (dirPath) => ipcRenderer.invoke("recording-validate-directory", dirPath),
+  recordingCheckDiskSpace: () => ipcRenderer.invoke("recording-check-disk-space"),
+  recordingOpenDirectory: () => ipcRenderer.invoke("recording-open-directory"),
+  recordingSave: (audioBuffer, options) => ipcRenderer.invoke("recording-save", audioBuffer, options),
+  recordingCreateSessionFile: (mimeType) => ipcRenderer.invoke("recording-create-session-file", mimeType),
+  recordingAppendChunk: (chunkBuffer, sessionFile) => ipcRenderer.invoke("recording-append-chunk", chunkBuffer, sessionFile),
+  recordingFinalizeSession: (sessionFile, options) => ipcRenderer.invoke("recording-finalize-session", sessionFile, options),
+
+  // Session transcript (multi-part recording)
+  broadcastSessionTranscript: (data) => ipcRenderer.invoke("broadcast-session-transcript", data),
+  onSessionTranscriptReady: (callback) => {
+    const handler = (event, data) => callback(data);
+    ipcRenderer.on("session-transcript-ready", handler);
+    return () => ipcRenderer.removeListener("session-transcript-ready", handler);
+  },
+
+  // S3-compatible cloud storage
+  s3GetConfig: () => ipcRenderer.invoke("s3-get-config"),
+  s3SaveConfig: (config) => ipcRenderer.invoke("s3-save-config", config),
+  s3TestConnection: () => ipcRenderer.invoke("s3-test-connection"),
+  s3UploadFile: (filePath, options) => ipcRenderer.invoke("s3-upload-file", filePath, options),
+  s3UploadRecording: (localPath) => ipcRenderer.invoke("s3-upload-recording", localPath),
+  s3GetPresignedUrl: (key, expiresIn) => ipcRenderer.invoke("s3-get-presigned-url", key, expiresIn),
+  s3DeleteObject: (key) => ipcRenderer.invoke("s3-delete-object", key),
 });

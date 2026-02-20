@@ -100,12 +100,16 @@ export const useAudioRecording = (toast, options = {}) => {
       },
       onTranscriptionComplete: async (result) => {
         if (result.success) {
-          setTranscript(result.text);
+          // For multi-part session end: use combined session text for paste & save
+          const textToPaste = result.isSessionEnd && result.sessionText
+            ? result.sessionText
+            : result.text;
+          setTranscript(textToPaste);
 
           const isStreaming = result.source?.includes("streaming");
           const pasteStart = performance.now();
           await audioManagerRef.current.safePaste(
-            result.text,
+            textToPaste,
             isStreaming ? { fromStreaming: true } : {}
           );
           logger.info(
@@ -113,7 +117,8 @@ export const useAudioRecording = (toast, options = {}) => {
             {
               pasteMs: Math.round(performance.now() - pasteStart),
               source: result.source,
-              textLength: result.text.length,
+              textLength: textToPaste.length,
+              isSessionEnd: !!result.isSessionEnd,
             },
             "streaming"
           );

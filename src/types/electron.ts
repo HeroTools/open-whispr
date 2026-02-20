@@ -564,6 +564,152 @@ declare global {
       onDeepgramSessionEnd?: (
         callback: (data: { audioDuration?: number; text?: string }) => void
       ) => () => void;
+
+      // Recording storage
+      recordingGetDirectory?: () => Promise<{
+        success: boolean;
+        directory?: string;
+        isDefault?: boolean;
+        error?: string;
+      }>;
+      recordingSelectDirectory?: () => Promise<{
+        success: boolean;
+        directory?: string;
+        availableSpaceMB?: number;
+        canceled?: boolean;
+        error?: string;
+      }>;
+      recordingResetDirectory?: () => Promise<{
+        success: boolean;
+        directory?: string;
+        error?: string;
+      }>;
+      recordingValidateDirectory?: (dirPath?: string) => Promise<{
+        valid: boolean;
+        error?: string | null;
+        availableSpaceMB: number;
+        availableSpaceBytes: number;
+      }>;
+      recordingCheckDiskSpace?: () => Promise<{
+        availableSpaceBytes: number;
+        availableSpaceMB: number;
+        sufficient: boolean;
+        minimumMB: number;
+      }>;
+      recordingOpenDirectory?: () => Promise<boolean>;
+      recordingSave?: (
+        audioBuffer: ArrayBuffer,
+        options?: {
+          mimeType?: string;
+          timestamp?: number;
+          partIndex?: number;
+        }
+      ) => Promise<{
+        success: boolean;
+        path?: string;
+        filename?: string;
+        size?: number;
+        error?: string;
+      }>;
+      recordingCreateSessionFile?: (mimeType?: string) => Promise<{
+        success: boolean;
+        filePath?: string;
+        error?: string;
+      }>;
+      recordingAppendChunk?: (
+        chunkBuffer: ArrayBuffer,
+        sessionFile: string
+      ) => Promise<{
+        success: boolean;
+        size?: number;
+        error?: string;
+      }>;
+      recordingFinalizeSession?: (
+        sessionFile: string,
+        options?: { timestamp?: number; partIndex?: number }
+      ) => Promise<{
+        success: boolean;
+        path?: string;
+        error?: string;
+      }>;
+
+      // ── Session Transcript (multi-part recording) ─────────────────────
+      broadcastSessionTranscript?: (data: {
+        sessionId: string;
+        text: string;
+        partsCount: number;
+        startedAt?: number;
+        endedAt?: number;
+        durationSeconds?: number | null;
+      }) => Promise<{ success: boolean }>;
+      onSessionTranscriptReady?: (
+        callback: (data: {
+          sessionId: string;
+          text: string;
+          partsCount: number;
+          startedAt?: number;
+          endedAt?: number;
+          durationSeconds?: number | null;
+        }) => void
+      ) => () => void;
+
+      // ── S3-Compatible Cloud Storage ─────────────────────────────────
+      s3GetConfig?: () => Promise<{
+        success: boolean;
+        config?: {
+          endpointUrl?: string;
+          region?: string;
+          accessKeyId?: string;
+          secretAccessKey?: string;
+          bucket?: string;
+          enabled?: boolean;
+          autoDeleteAfterTranscription?: boolean;
+          forcePathStyle?: boolean;
+        };
+        isConfigured?: boolean;
+        error?: string;
+      }>;
+      s3SaveConfig?: (config: {
+        endpointUrl?: string;
+        region?: string;
+        accessKeyId?: string;
+        secretAccessKey?: string;
+        bucket?: string;
+        enabled?: boolean;
+        autoDeleteAfterTranscription?: boolean;
+        forcePathStyle?: boolean;
+      }) => Promise<{ success: boolean; error?: string }>;
+      s3TestConnection?: () => Promise<{
+        success: boolean;
+        error?: string;
+        details?: { steps: string[] };
+      }>;
+      s3UploadFile?: (
+        filePath: string,
+        options?: { key?: string; contentType?: string }
+      ) => Promise<{
+        success: boolean;
+        key?: string;
+        error?: string;
+      }>;
+      s3UploadRecording?: (localPath: string) => Promise<{
+        success: boolean;
+        key?: string;
+        url?: string;
+        error?: string;
+      }>;
+      s3GetPresignedUrl?: (
+        key: string,
+        expiresIn?: number
+      ) => Promise<{
+        success: boolean;
+        url?: string;
+        error?: string;
+      }>;
+      s3DeleteObject?: (key: string) => Promise<{
+        success: boolean;
+        error?: string;
+      }>;
     };
 
     api?: {

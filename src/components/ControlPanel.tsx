@@ -13,6 +13,8 @@ import {
   Cloud,
   X,
   AlertTriangle,
+  Copy,
+  Layers,
 } from "lucide-react";
 import type { SettingsSectionType } from "./SettingsModal";
 import TitleBar from "./TitleBar";
@@ -50,6 +52,14 @@ export default function ControlPanel() {
     () => localStorage.getItem("aiCTADismissed") === "true"
   );
   const [showCloudMigrationBanner, setShowCloudMigrationBanner] = useState(false);
+  const [sessionTranscript, setSessionTranscript] = useState<{
+    text: string;
+    partsCount: number;
+    sessionId: string;
+    startedAt?: number;
+    endedAt?: number;
+    durationSeconds?: number | null;
+  } | null>(null);
   const cloudMigrationProcessed = useRef(false);
   const { hotkey } = useHotkey();
   const { toast } = useToast();
@@ -133,6 +143,39 @@ export default function ControlPanel() {
       duration: 8000,
     });
   }, [usage?.isPastDue, usage?.hasLoaded, toast, t]);
+
+  // Listen for session transcript from multi-part recordings
+  useEffect(() => {
+    const dispose = window.electronAPI?.onSessionTranscriptReady?.(
+      (data: { sessionId: string; text: string; partsCount: number; startedAt?: number; endedAt?: number; durationSeconds?: number | null }) => {
+        setSessionTranscript(data);
+      }
+    );
+    return () => {
+      dispose?.();
+    };
+  }, []);
+
+  const copySessionTranscript = useCallback(async () => {
+    if (!sessionTranscript?.text) return;
+    try {
+      await navigator.clipboard.writeText(sessionTranscript.text);
+      toast({
+        title: t("controlPanel.session.copiedTitle"),
+        description: t("controlPanel.session.copiedDescription", {
+          parts: sessionTranscript.partsCount,
+        }),
+        variant: "success",
+        duration: 3000,
+      });
+    } catch {
+      toast({
+        title: t("controlPanel.history.couldNotCopyTitle"),
+        description: t("controlPanel.history.couldNotCopyDescription"),
+        variant: "destructive",
+      });
+    }
+  }, [sessionTranscript, toast, t]);
 
   useEffect(() => {
     if (!authLoaded || !isSignedIn || cloudMigrationProcessed.current) return;
@@ -405,6 +448,54 @@ export default function ControlPanel() {
                     }}
                   >
                     {t("controlPanel.billing.updatePayment")}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Session transcript banner — shown after a multi-part recording completes */}
+          {sessionTranscript && (
+            <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
+              <button
+                onClick={() => setSessionTranscript(null)}
+                className="absolute top-2 right-2 p-1 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+              >
+                <X size={14} />
+              </button>
+              <div className="flex items-start gap-3 pr-6">
+                <div className="shrink-0 w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                  <Layers size={16} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-medium text-foreground mb-0.5">
+                    {t("controlPanel.session.title")}
+                  </p>
+                  <p className="text-[12px] text-muted-foreground mb-2">
+                    {t("controlPanel.session.description", {
+                      parts: sessionTranscript.partsCount,
+                      length: sessionTranscript.text.length.toLocaleString(),
+                      duration: sessionTranscript.durationSeconds != null
+                        ? sessionTranscript.durationSeconds >= 60
+                          ? `${Math.floor(sessionTranscript.durationSeconds / 60)}m ${sessionTranscript.durationSeconds % 60}s`
+                          : `${sessionTranscript.durationSeconds}s`
+                        : "—",
+                      startTime: sessionTranscript.startedAt
+                        ? new Date(sessionTranscript.startedAt).toLocaleTimeString()
+                        : "",
+                      endTime: sessionTranscript.endedAt
+                        ? new Date(sessionTranscript.endedAt).toLocaleTimeString()
+                        : "",
+                    })}
+                  </p>
+                  <Button
+                    variant="default"
+                    size="sm"
+                    className="h-7 text-[11px] gap-1.5"
+                    onClick={copySessionTranscript}
+                  >
+                    <Copy size={12} />
+                    {t("controlPanel.session.copy")}
                   </Button>
                 </div>
               </div>
