@@ -84,7 +84,7 @@ export default function ControlPanelSidebar({
                 size={15}
                 className={cn(
                   "shrink-0 transition-colors duration-150",
-                  isActive ? "text-primary" : "text-foreground/25 group-hover:text-foreground/40"
+                  isActive ? "text-primary" : "text-foreground/45 group-hover:text-foreground/60"
                 )}
               />
               <span
@@ -92,7 +92,7 @@ export default function ControlPanelSidebar({
                   "text-xs transition-colors duration-150",
                   isActive
                     ? "text-foreground font-medium"
-                    : "text-foreground/50 group-hover:text-foreground/70"
+                    : "text-foreground/65 group-hover:text-foreground/80"
                 )}
               >
                 {item.label}
@@ -119,9 +119,9 @@ export default function ControlPanelSidebar({
           >
             <Gift
               size={15}
-              className="shrink-0 text-foreground/20 group-hover:text-foreground/40 transition-colors duration-150"
+              className="shrink-0 text-foreground/35 group-hover:text-foreground/50 transition-colors duration-150"
             />
-            <span className="text-xs text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
+            <span className="text-xs text-foreground/55 group-hover:text-foreground/70 transition-colors duration-150">
               {t("sidebar.referral")}
             </span>
           </button>
@@ -134,9 +134,9 @@ export default function ControlPanelSidebar({
         >
           <Settings
             size={15}
-            className="shrink-0 text-foreground/20 group-hover:text-foreground/40 transition-colors duration-150"
+            className="shrink-0 text-foreground/35 group-hover:text-foreground/50 transition-colors duration-150"
           />
-          <span className="text-xs text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
+          <span className="text-xs text-foreground/55 group-hover:text-foreground/70 transition-colors duration-150">
             {t("sidebar.settings")}
           </span>
         </button>
@@ -149,9 +149,9 @@ export default function ControlPanelSidebar({
             >
               <HelpCircle
                 size={15}
-                className="shrink-0 text-foreground/20 group-hover:text-foreground/40 transition-colors duration-150"
+                className="shrink-0 text-foreground/35 group-hover:text-foreground/50 transition-colors duration-150"
               />
-              <span className="text-xs text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
+              <span className="text-xs text-foreground/55 group-hover:text-foreground/70 transition-colors duration-150">
                 {t("sidebar.support")}
               </span>
             </button>
@@ -164,20 +164,20 @@ export default function ControlPanelSidebar({
           {userImage ? (
             <img src={userImage} alt="" className="w-6 h-6 rounded-full shrink-0 object-cover" />
           ) : (
-            <UserCircle size={18} className="shrink-0 text-foreground/15" />
+            <UserCircle size={18} className="shrink-0 text-foreground/30" />
           )}
           <div className="flex-1 min-w-0">
             {isSignedIn && (userName || userEmail) ? (
               <>
-                <p className="text-xs text-foreground/60 truncate leading-tight">
+                <p className="text-xs text-foreground/70 truncate leading-tight">
                   {userName || "User"}
                 </p>
                 {userEmail && (
-                  <p className="text-xs text-foreground/25 truncate leading-tight">{userEmail}</p>
+                  <p className="text-xs text-foreground/40 truncate leading-tight">{userEmail}</p>
                 )}
               </>
             ) : authLoaded && !isSignedIn ? (
-              <p className="text-xs text-foreground/30">Not signed in</p>
+              <p className="text-xs text-foreground/45">Not signed in</p>
             ) : null}
           </div>
         </div>

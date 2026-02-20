@@ -271,7 +271,12 @@
       "clear": "Clear",
       "empty": "No transcriptions yet",
       "press": "Press",
-      "toStart": "to start"
+      "toStart": "to start",
+      "dateGroups": {
+        "today": "Today",
+        "yesterday": "Yesterday",
+        "older": "Older"
+      }
     },
     "cloudMigration": {
       "title": "Welcome to OpenWhispr Pro",
@@ -839,7 +844,7 @@
     "groups": {
       "app": "App",
       "intelligence": "Intelligence",
-      "profile": "Profile",
+      "account": "Account",
       "speech": "Speech",
       "system": "System"
     },
@@ -941,6 +946,34 @@
         "trial": "Trial"
       },
       "planTitle": "Plan",
+      "pricing": {
+        "title": "Plans",
+        "monthly": "Monthly",
+        "annual": "Annual",
+        "annualBadge": "Save 17%",
+        "free": {
+          "name": "Free",
+          "price": "$0",
+          "period": "forever",
+          "features": ["2,000 words/week", "Local AI models", "Bring your own keys", "Zero data retention"]
+        },
+        "pro": {
+          "name": "Pro",
+          "monthlyPrice": "$8",
+          "monthlyPeriod": "/mo",
+          "annualPrice": "$80",
+          "annualPeriod": "/yr",
+          "features": ["Unlimited usage", "Mobile app (iOS coming soon)", "Zero data retention", "Priority support"],
+          "cta": "Upgrade to Pro"
+        },
+        "enterprise": {
+          "name": "Enterprise",
+          "price": "Custom",
+          "features": ["Managed API credits", "Cloud sync", "Team features", "SSO & compliance"],
+          "cta": "Contact Us"
+        },
+        "currentPlan": "Current plan"
+      },
       "rollingWeeklyLimit": "Rolling weekly limit",
       "signOut": {
         "failedDescription": "Something went wrong signing out. Please try again.",

@@ -16,7 +16,6 @@ import {
   useTranscriptions,
   initializeTranscriptions,
   removeTranscription as removeFromStore,
-  clearTranscriptions as clearStoreTranscriptions,
 } from "../stores/transcriptionStore";
 import ControlPanelSidebar, { type ControlPanelView } from "./ControlPanelSidebar";
 import WindowControls from "./WindowControls";
@@ -178,34 +177,6 @@ export default function ControlPanel() {
     },
     [toast, t]
   );
-
-  const clearHistory = useCallback(async () => {
-    showConfirmDialog({
-      title: t("controlPanel.history.clearTitle"),
-      description: t("controlPanel.history.clearDescription"),
-      onConfirm: async () => {
-        try {
-          const result = await window.electronAPI.clearTranscriptions();
-          clearStoreTranscriptions();
-          toast({
-            title: t("controlPanel.history.clearedTitle"),
-            description: t("controlPanel.history.clearedDescription", {
-              count: result.cleared,
-            }),
-            variant: "success",
-            duration: 3000,
-          });
-        } catch (error) {
-          toast({
-            title: t("controlPanel.history.couldNotClearTitle"),
-            description: t("controlPanel.history.couldNotClearDescription"),
-            variant: "destructive",
-          });
-        }
-      },
-      variant: "destructive",
-    });
-  }, [showConfirmDialog, toast, t]);
 
   const deleteTranscription = useCallback(
     async (id: number) => {
@@ -433,7 +404,6 @@ export default function ControlPanel() {
                 aiCTADismissed={aiCTADismissed}
                 setAiCTADismissed={setAiCTADismissed}
                 useReasoningModel={useReasoningModel}
-                clearHistory={clearHistory}
                 copyToClipboard={copyToClipboard}
                 deleteTranscription={deleteTranscription}
                 onOpenSettings={(section) => {

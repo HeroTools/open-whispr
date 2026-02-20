@@ -839,7 +839,7 @@
     "groups": {
       "app": "Application",
       "intelligence": "Intelligence",
-      "profile": "Profil",
+      "account": "Compte",
       "speech": "Parole",
       "system": "Système"
     },

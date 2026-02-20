@@ -21,6 +21,8 @@ import {
   Sparkles,
   AlertTriangle,
   Loader2,
+  Check,
+  Mail,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
 import { NEON_AUTH_URL, signOut } from "../lib/neonAuth";
@@ -923,6 +925,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const { isSignedIn, isLoaded, user } = useAuth();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const [isOpeningBilling, setIsOpeningBilling] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
 
   const handleSignOut = useCallback(async () => {
     setIsSigningOut(true);
@@ -989,6 +992,197 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     </div>
                   </SettingsPanelRow>
                 </SettingsPanel>
+
+                {/* Pricing Section */}
+                <SectionHeader title={t("settingsPage.account.pricing.title")} />
+                <div className="space-y-2.5">
+                  <div className="flex justify-center">
+                    <div className="inline-flex rounded-md bg-muted/40 dark:bg-surface-2/40 p-0.5 border border-border/30 dark:border-border-subtle/40">
+                      <button
+                        onClick={() => setBillingPeriod("monthly")}
+                        className={cn(
+                          "px-3 py-1 text-[11px] font-medium rounded-[3px] transition-all duration-150",
+                          billingPeriod === "monthly"
+                            ? "bg-background dark:bg-surface-raised text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {t("settingsPage.account.pricing.monthly")}
+                      </button>
+                      <button
+                        onClick={() => setBillingPeriod("annual")}
+                        className={cn(
+                          "px-3 py-1 text-[11px] font-medium rounded-[3px] transition-all duration-150 flex items-center gap-1",
+                          billingPeriod === "annual"
+                            ? "bg-background dark:bg-surface-raised text-foreground shadow-sm"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {t("settingsPage.account.pricing.annual")}
+                        <span className="text-[9px] font-semibold text-primary">
+                          {t("settingsPage.account.pricing.annualBadge")}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2">
+                    {/* Free */}
+                    <div
+                      className={cn(
+                        "rounded-md border p-2.5 flex flex-col",
+                        !usage?.isSubscribed && !usage?.isTrial
+                          ? "border-primary/30 bg-primary/3 dark:border-primary/20 dark:bg-primary/5"
+                          : "border-border/50 dark:border-border-subtle/60 bg-card/30 dark:bg-surface-2/30"
+                      )}
+                    >
+                      <p className="text-[11px] font-semibold text-foreground">
+                        {t("settingsPage.account.pricing.free.name")}
+                      </p>
+                      <div className="flex items-baseline gap-0.5 mt-0.5">
+                        <span className="text-sm font-bold text-foreground">
+                          {t("settingsPage.account.pricing.free.price")}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {t("settingsPage.account.pricing.free.period")}
+                        </span>
+                      </div>
+                      <ul className="space-y-0.5 mt-2 flex-1">
+                        {(
+                          t("settingsPage.account.pricing.free.features", {
+                            returnObjects: true,
+                          }) as string[]
+                        ).map((feature, i) => (
+                          <li
+                            key={i}
+                            className="flex items-start gap-1 text-[10px] text-muted-foreground leading-tight"
+                          >
+                            <Check size={9} className="mt-[2px] text-primary/70 shrink-0" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                      {!usage?.isSubscribed && !usage?.isTrial && (
+                        <div className="mt-2 text-center">
+                          <span className="text-[9px] font-medium text-primary/70">
+                            {t("settingsPage.account.pricing.currentPlan")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Pro */}
+                    <div
+                      className={cn(
+                        "rounded-md border-2 p-2.5 flex flex-col",
+                        usage?.isSubscribed || usage?.isTrial
+                          ? "border-primary/40 bg-primary/5 dark:border-primary/30 dark:bg-primary/8"
+                          : "border-primary/20 bg-primary/2 dark:border-primary/15 dark:bg-primary/3"
+                      )}
+                    >
+                      <p className="text-[11px] font-semibold text-foreground">
+                        {t("settingsPage.account.pricing.pro.name")}
+                      </p>
+                      <div className="flex items-baseline gap-0.5 mt-0.5">
+                        <span className="text-sm font-bold text-foreground">
+                          {billingPeriod === "monthly"
+                            ? t("settingsPage.account.pricing.pro.monthlyPrice")
+                            : t("settingsPage.account.pricing.pro.annualPrice")}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {billingPeriod === "monthly"
+                            ? t("settingsPage.account.pricing.pro.monthlyPeriod")
+                            : t("settingsPage.account.pricing.pro.annualPeriod")}
+                        </span>
+                      </div>
+                      <ul className="space-y-0.5 mt-2 flex-1">
+                        {(
+                          t("settingsPage.account.pricing.pro.features", {
+                            returnObjects: true,
+                          }) as string[]
+                        ).map((feature, i) => (
+                          <li
+                            key={i}
+                            className="flex items-start gap-1 text-[10px] text-muted-foreground leading-tight"
+                          >
+                            <Check size={9} className="mt-[2px] text-primary shrink-0" />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                      {usage?.isSubscribed || usage?.isTrial ? (
+                        <div className="mt-2 text-center">
+                          <span className="text-[9px] font-medium text-primary">
+                            {t("settingsPage.account.pricing.currentPlan")}
+                          </span>
+                        </div>
+                      ) : (
+                        <Button
+                          onClick={async () => {
+                            const result = await usage?.openCheckout();
+                            if (result && !result.success) {
+                              toast({
+                                title: t("settingsPage.account.checkout.couldNotOpenTitle"),
+                                description: t(
+                                  "settingsPage.account.checkout.couldNotOpenDescription"
+                                ),
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          size="sm"
+                          className="mt-2 w-full h-6 text-[10px]"
+                          disabled={usage?.checkoutLoading}
+                        >
+                          {usage?.checkoutLoading
+                            ? t("settingsPage.account.checkout.opening")
+                            : t("settingsPage.account.pricing.pro.cta")}
+                        </Button>
+                      )}
+                    </div>
+
+                    {/* Enterprise */}
+                    <div className="rounded-md border border-border/50 dark:border-border-subtle/60 bg-card/30 dark:bg-surface-2/30 p-2.5 flex flex-col">
+                      <p className="text-[11px] font-semibold text-foreground">
+                        {t("settingsPage.account.pricing.enterprise.name")}
+                      </p>
+                      <div className="flex items-baseline gap-0.5 mt-0.5">
+                        <span className="text-sm font-bold text-foreground">
+                          {t("settingsPage.account.pricing.enterprise.price")}
+                        </span>
+                      </div>
+                      <ul className="space-y-0.5 mt-2 flex-1">
+                        {(
+                          t("settingsPage.account.pricing.enterprise.features", {
+                            returnObjects: true,
+                          }) as string[]
+                        ).map((feature, i) => (
+                          <li
+                            key={i}
+                            className="flex items-start gap-1 text-[10px] text-muted-foreground leading-tight"
+                          >
+                            <Check
+                              size={9}
+                              className="mt-[2px] text-purple-500 dark:text-purple-400 shrink-0"
+                            />
+                            {feature}
+                          </li>
+                        ))}
+                      </ul>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2 w-full h-6 text-[10px]"
+                        onClick={() =>
+                          window.electronAPI?.openExternal?.("mailto:gabe@openwhispr.com")
+                        }
+                      >
+                        <Mail size={10} />
+                        {t("settingsPage.account.pricing.enterprise.cta")}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
 
                 <SectionHeader title={t("settingsPage.account.planTitle")} />
                 {!usage || !usage.hasLoaded ? (

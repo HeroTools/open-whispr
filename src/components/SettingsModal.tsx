@@ -33,7 +33,7 @@ export default function SettingsModal({ open, onOpenChange, initialSection }: Se
         label: t("settingsModal.sections.account.label"),
         icon: UserCircle,
         description: t("settingsModal.sections.account.description"),
-        group: t("settingsModal.groups.profile"),
+        group: t("settingsModal.groups.account"),
       },
       {
         id: "general",

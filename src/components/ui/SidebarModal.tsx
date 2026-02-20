@@ -94,7 +94,7 @@ export default function SidebarModal<T extends string>({
               >
                 {/* Title */}
                 <div className="px-4 pt-5 pb-0.5">
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/50">
+                  <h2 className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/70">
                     {title}
                   </h2>
                 </div>
@@ -105,7 +105,7 @@ export default function SidebarModal<T extends string>({
                     <div key={groupIndex} className={groupIndex > 0 ? "mt-3" : ""}>
                       {group.label && (
                         <div className="px-2 pb-0.5 pt-1.5">
-                          <span className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground/35 dark:text-muted-foreground/50">
+                          <span className="text-xs font-medium tracking-[0.08em] uppercase text-muted-foreground/60 dark:text-muted-foreground/65">
                             {group.label}
                           </span>
                         </div>
@@ -122,7 +122,7 @@ export default function SidebarModal<T extends string>({
                               className={`group relative w-full flex items-center gap-2.5 px-2.5 py-2 text-left text-xs rounded-lg transition-colors duration-100 outline-none ${
                                 isActive
                                   ? "text-foreground bg-muted dark:bg-surface-raised"
-                                  : "text-muted-foreground dark:text-foreground/60 hover:text-foreground hover:bg-muted/50 dark:hover:bg-surface-2"
+                                  : "text-muted-foreground dark:text-foreground/75 hover:text-foreground hover:bg-muted/50 dark:hover:bg-surface-2"
                               }`}
                             >
                               {/* Active indicator bar */}
@@ -138,7 +138,7 @@ export default function SidebarModal<T extends string>({
                                   className={`h-4 w-4 shrink-0 transition-colors duration-100 ${
                                     isActive
                                       ? "text-primary"
-                                      : "text-muted-foreground/60 dark:text-foreground/40 group-hover:text-foreground/80"
+                                      : "text-muted-foreground/70 dark:text-foreground/55 group-hover:text-foreground/80"
                                   }`}
                                 />
                               </div>

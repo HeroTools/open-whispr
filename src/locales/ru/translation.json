@@ -842,7 +842,7 @@
     "groups": {
       "app": "Приложение",
       "intelligence": "Интеллект",
-      "profile": "Профиль",
+      "account": "Аккаунт",
       "speech": "Речь",
       "system": "Система"
     },

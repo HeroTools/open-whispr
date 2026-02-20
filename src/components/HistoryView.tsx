@@ -1,6 +1,7 @@
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
-import { Trash2, FileText, Loader2, Sparkles, Cloud, X } from "lucide-react";
+import { Loader2, Sparkles, Cloud, X } from "lucide-react";
 import TranscriptionItem from "./ui/TranscriptionItem";
 import type { TranscriptionItem as TranscriptionItemType } from "../types/electron";
 import { formatHotkeyLabel } from "../utils/hotkeys";
@@ -14,10 +15,29 @@ interface HistoryViewProps {
   aiCTADismissed: boolean;
   setAiCTADismissed: (dismissed: boolean) => void;
   useReasoningModel: boolean;
-  clearHistory: () => void;
   copyToClipboard: (text: string) => void;
   deleteTranscription: (id: number) => void;
   onOpenSettings: (section?: string) => void;
+}
+
+function getDateLabel(
+  timestamp: string,
+  todayStart: Date,
+  yesterdayStart: Date,
+  t: (key: string) => string,
+  locale: string
+): string {
+  const ts = timestamp.endsWith("Z") ? timestamp : `${timestamp}Z`;
+  const date = new Date(ts);
+  if (Number.isNaN(date.getTime())) return timestamp;
+
+  if (date >= todayStart) {
+    return t("controlPanel.history.dateGroups.today");
+  }
+  if (date >= yesterdayStart) {
+    return t("controlPanel.history.dateGroups.yesterday");
+  }
+  return date.toLocaleDateString(locale, { month: "long", day: "numeric", year: "numeric" });
 }
 
 export default function HistoryView({
@@ -29,38 +49,40 @@ export default function HistoryView({
   aiCTADismissed,
   setAiCTADismissed,
   useReasoningModel,
-  clearHistory,
   copyToClipboard,
   deleteTranscription,
   onOpenSettings,
 }: HistoryViewProps) {
-  const { t } = useTranslation();
-  return (
-    <div className="p-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="flex items-center justify-between mb-3 px-1">
-          <div className="flex items-center gap-2">
-            <FileText size={14} className="text-primary" />
-            <h2 className="text-sm font-semibold text-foreground">
-              {t("controlPanel.history.title")}
-            </h2>
-            {history.length > 0 && (
-              <span className="text-xs text-muted-foreground tabular-nums">({history.length})</span>
-            )}
-          </div>
-          {history.length > 0 && (
-            <Button
-              onClick={clearHistory}
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 size={12} className="mr-1" />
-              {t("controlPanel.history.clear")}
-            </Button>
-          )}
-        </div>
+  const { t, i18n } = useTranslation();
 
+  const groupedHistory = useMemo(() => {
+    if (history.length === 0) return [];
+
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const yesterdayStart = new Date(todayStart);
+    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+
+    const groups: { label: string; items: TranscriptionItemType[] }[] = [];
+    let currentLabel: string | null = null;
+
+    for (const item of history) {
+      const label = getDateLabel(item.timestamp, todayStart, yesterdayStart, t, i18n.language);
+
+      if (label !== currentLabel) {
+        groups.push({ label, items: [item] });
+        currentLabel = label;
+      } else {
+        groups[groups.length - 1].items.push(item);
+      }
+    }
+
+    return groups;
+  }, [history, t, i18n.language]);
+
+  return (
+    <div className="px-4 pt-4 pb-6">
+      <div className="max-w-3xl mx-auto">
         {showCloudMigrationBanner && (
           <div className="mb-3 relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
             <button
@@ -137,13 +159,15 @@ export default function HistoryView({
           </div>
         )}
 
-        <div className="rounded-lg border border-border bg-card/50 dark:bg-card/30 backdrop-blur-sm">
-          {isLoading ? (
+        {isLoading ? (
+          <div className="rounded-lg border border-border bg-card/50 dark:bg-card/30 backdrop-blur-sm">
             <div className="flex items-center justify-center gap-2 py-8">
               <Loader2 size={14} className="animate-spin text-primary" />
               <span className="text-sm text-muted-foreground">{t("controlPanel.loading")}</span>
             </div>
-          ) : history.length === 0 ? (
+          </div>
+        ) : history.length === 0 ? (
+          <div className="rounded-lg border border-border bg-card/50 dark:bg-card/30 backdrop-blur-sm">
             <div className="flex flex-col items-center justify-center py-16 px-4">
               <svg
                 className="text-foreground dark:text-white mb-5"
@@ -240,21 +264,30 @@ export default function HistoryView({
                 <span>{t("controlPanel.history.toStart")}</span>
               </div>
             </div>
-          ) : (
-            <div className="divide-y divide-border/50 max-h-[calc(100vh-180px)] overflow-y-auto">
-              {history.map((item, index) => (
-                <TranscriptionItem
-                  key={item.id}
-                  item={item}
-                  index={index}
-                  total={history.length}
-                  onCopy={copyToClipboard}
-                  onDelete={deleteTranscription}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {groupedHistory.map((group) => (
+              <div key={group.label}>
+                <div className="sticky top-0 z-10 bg-background px-1 pb-2 pt-1">
+                  <span className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide">
+                    {group.label}
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {group.items.map((item) => (
+                    <TranscriptionItem
+                      key={item.id}
+                      item={item}
+                      onCopy={copyToClipboard}
+                      onDelete={deleteTranscription}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
