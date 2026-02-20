@@ -1342,14 +1342,9 @@
     "notes": "ノート",
     "upload": "アップロード",
     "dictionary": "辞書",
-    "quitTitle": "OpenWhispr を終了しますか？",
-    "quitDescription": "OpenWhispr が閉じられ、バックグラウンドプロセスが停止されます。",
-    "quitConfirm": "終了",
-    "quitCancel": "キャンセル",
     "referral": "1か月無料を取得",
     "settings": "設定",
-    "support": "サポート",
-    "quit": "終了"
+    "support": "サポート"
   },
   "usage": {
     "approachingLimit": "週間制限に近づいています",

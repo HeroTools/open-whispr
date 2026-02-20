@@ -495,11 +495,7 @@ class WindowManager {
     this.controlPanelWindow.on("close", (event) => {
       if (!this.isQuitting) {
         event.preventDefault();
-        if (process.platform === "darwin") {
-          this.hideControlPanelToTray();
-        } else {
-          this.controlPanelWindow.minimize();
-        }
+        this.hideControlPanelToTray();
       }
     });
 

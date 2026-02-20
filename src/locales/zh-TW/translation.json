@@ -1475,14 +1475,9 @@
     "notes": "筆記",
     "upload": "上傳",
     "dictionary": "字典",
-    "quitTitle": "結束 OpenWhispr？",
-    "quitDescription": "這將關閉 OpenWhispr 並停止背景程序。",
-    "quitConfirm": "結束",
-    "quitCancel": "取消",
     "referral": "獲得一個月免費",
     "settings": "設定",
-    "support": "支援",
-    "quit": "結束"
+    "support": "支援"
   },
   "usage": {
     "approachingLimit": "即將達到每週上限",

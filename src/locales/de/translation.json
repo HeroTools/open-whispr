@@ -1475,14 +1475,9 @@
     "notes": "Notizen",
     "upload": "Hochladen",
     "dictionary": "Wörterbuch",
-    "quitTitle": "OpenWhispr beenden?",
-    "quitDescription": "Dadurch wird OpenWhispr geschlossen und Hintergrundprozesse werden beendet.",
-    "quitConfirm": "Beenden",
-    "quitCancel": "Abbrechen",
     "referral": "Gratis-Monat erhalten",
     "settings": "Einstellungen",
-    "support": "Support",
-    "quit": "Beenden"
+    "support": "Support"
   },
   "usage": {
     "approachingLimit": "Wochenlimit fast erreicht",

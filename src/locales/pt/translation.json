@@ -1475,14 +1475,9 @@
     "notes": "Notas",
     "upload": "Enviar",
     "dictionary": "Dicionário",
-    "quitTitle": "Sair do OpenWhispr?",
-    "quitDescription": "Isso fechará o OpenWhispr e encerrará os processos em segundo plano.",
-    "quitConfirm": "Sair",
-    "quitCancel": "Cancelar",
     "referral": "Ganhe um mês grátis",
     "settings": "Configurações",
-    "support": "Suporte",
-    "quit": "Sair"
+    "support": "Suporte"
   },
   "usage": {
     "approachingLimit": "Próximo do limite semanal",

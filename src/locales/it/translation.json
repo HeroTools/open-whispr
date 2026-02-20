@@ -1475,14 +1475,9 @@
     "notes": "Note",
     "upload": "Carica",
     "dictionary": "Dizionario",
-    "quitTitle": "Uscire da OpenWhispr?",
-    "quitDescription": "Questo chiuderà OpenWhispr e interromperà i processi in background.",
-    "quitConfirm": "Esci",
-    "quitCancel": "Annulla",
     "referral": "Ottieni un mese gratis",
     "settings": "Impostazioni",
-    "support": "Assistenza",
-    "quit": "Esci"
+    "support": "Assistenza"
   },
   "usage": {
     "approachingLimit": "Limite settimanale quasi raggiunto",

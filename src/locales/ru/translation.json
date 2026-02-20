@@ -1478,14 +1478,9 @@
     "notes": "Заметки",
     "upload": "Загрузить",
     "dictionary": "Словарь",
-    "quitTitle": "Выйти из OpenWhispr?",
-    "quitDescription": "Это закроет OpenWhispr и остановит фоновые процессы.",
-    "quitConfirm": "Выйти",
-    "quitCancel": "Отмена",
     "referral": "Получить бесплатный месяц",
     "settings": "Настройки",
-    "support": "Поддержка",
-    "quit": "Выйти"
+    "support": "Поддержка"
   },
   "usage": {
     "approachingLimit": "Приближается недельный лимит",

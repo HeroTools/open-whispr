@@ -1475,14 +1475,9 @@
     "notes": "Notas",
     "upload": "Subir",
     "dictionary": "Diccionario",
-    "quitTitle": "¿Cerrar OpenWhispr?",
-    "quitDescription": "Esto cerrará OpenWhispr y detendrá los procesos en segundo plano.",
-    "quitConfirm": "Cerrar",
-    "quitCancel": "Cancelar",
     "referral": "Obtener un mes gratis",
     "settings": "Configuración",
-    "support": "Soporte",
-    "quit": "Salir"
+    "support": "Soporte"
   },
   "usage": {
     "approachingLimit": "Cerca del límite semanal",

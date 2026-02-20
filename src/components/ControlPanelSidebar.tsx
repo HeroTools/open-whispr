@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Home,
   NotebookPen,
@@ -8,12 +8,10 @@ import {
   Settings,
   HelpCircle,
   UserCircle,
-  Power,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
 import SupportDropdown from "./ui/SupportDropdown";
-import { ConfirmDialog } from "./ui/dialog";
 
 export type ControlPanelView = "home" | "personal-notes" | "dictionary" | "upload";
 
@@ -43,7 +41,6 @@ export default function ControlPanelSidebar({
   updateAction,
 }: ControlPanelSidebarProps) {
   const { t } = useTranslation();
-  const [showQuitConfirm, setShowQuitConfirm] = useState(false);
 
   const navItems: {
     id: ControlPanelView;
@@ -56,27 +53,8 @@ export default function ControlPanelSidebar({
     { id: "dictionary", label: t("sidebar.dictionary"), icon: BookOpen },
   ];
 
-  const handleQuit = async () => {
-    try {
-      await window.electronAPI?.appQuit?.();
-    } catch {
-      // noop
-    }
-  };
-
   return (
     <div className="w-48 shrink-0 border-r border-border/15 dark:border-white/5 flex flex-col bg-surface-1/60 dark:bg-surface-0/40">
-      <ConfirmDialog
-        open={showQuitConfirm}
-        onOpenChange={setShowQuitConfirm}
-        title={t("sidebar.quitTitle")}
-        description={t("sidebar.quitDescription")}
-        confirmText={t("sidebar.quitConfirm")}
-        cancelText={t("sidebar.quitCancel")}
-        onConfirm={handleQuit}
-        variant="destructive"
-      />
-
       <div
         className="w-full h-10 shrink-0"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
@@ -177,20 +155,6 @@ export default function ControlPanelSidebar({
             </button>
           }
         />
-
-        <button
-          onClick={() => setShowQuitConfirm(true)}
-          aria-label={t("sidebar.quit")}
-          className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left outline-none hover:bg-destructive/5 dark:hover:bg-destructive/8 focus-visible:ring-1 focus-visible:ring-primary/30 transition-colors duration-150"
-        >
-          <Power
-            size={15}
-            className="shrink-0 text-foreground/20 group-hover:text-destructive/60 transition-colors duration-150"
-          />
-          <span className="text-xs text-foreground/40 group-hover:text-destructive/60 transition-colors duration-150">
-            {t("sidebar.quit")}
-          </span>
-        </button>
 
         <div className="mx-1 h-px bg-border/10 dark:bg-white/4 my-1.5!" />
 

@@ -1260,14 +1260,9 @@
     "notes": "Notes",
     "upload": "Upload",
     "dictionary": "Dictionary",
-    "quitTitle": "Quit OpenWhispr?",
-    "quitDescription": "This will close OpenWhispr and stop background processes.",
-    "quitConfirm": "Quit",
-    "quitCancel": "Cancel",
     "referral": "Get a free month",
     "settings": "Settings",
-    "support": "Support",
-    "quit": "Quit"
+    "support": "Support"
   },
   "referral": {
     "title": "Refer and earn rewards",

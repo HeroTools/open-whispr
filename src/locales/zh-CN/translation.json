@@ -1475,14 +1475,9 @@
     "notes": "笔记",
     "upload": "上传",
     "dictionary": "词典",
-    "quitTitle": "退出 OpenWhispr？",
-    "quitDescription": "这将关闭 OpenWhispr 并停止后台进程。",
-    "quitConfirm": "退出",
-    "quitCancel": "取消",
     "referral": "获取免费一个月",
     "settings": "设置",
-    "support": "支持",
-    "quit": "退出"
+    "support": "支持"
   },
   "usage": {
     "approachingLimit": "即将达到周限额",
