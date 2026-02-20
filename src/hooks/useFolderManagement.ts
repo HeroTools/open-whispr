@@ -7,6 +7,7 @@ import {
   setActiveFolderId,
   setActiveNoteId,
   getActiveFolderIdValue,
+  getActiveNoteIdValue,
   initializeNotes,
 } from "../stores/noteStore";
 
@@ -91,7 +92,11 @@ export function useFolderManagement(): UseFolderManagementReturn {
           setActiveFolderId(initialFolderId);
         }
         if (initialFolderId) {
-          await initializeNotes(null, 50, initialFolderId);
+          const notes = await initializeNotes(null, 50, initialFolderId);
+          const presetNoteId = getActiveNoteIdValue();
+          if (!presetNoteId && notes.length > 0) {
+            setActiveNoteId(notes[0].id);
+          }
         }
         prevFolderIdRef.current = initialFolderId;
       } finally {
@@ -108,8 +113,8 @@ export function useFolderManagement(): UseFolderManagementReturn {
     if (prevFolderIdRef.current === activeFolderId) return;
     prevFolderIdRef.current = activeFolderId;
     const loadForFolder = async () => {
-      await initializeNotes(null, 50, activeFolderId);
-      setActiveNoteId(null);
+      const notes = await initializeNotes(null, 50, activeFolderId);
+      setActiveNoteId(notes.length > 0 ? notes[0].id : null);
     };
     loadForFolder();
   }, [activeFolderId, isLoading]);

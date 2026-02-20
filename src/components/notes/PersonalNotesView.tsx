@@ -17,7 +17,11 @@ import ActionManagerDialog from "./ActionManagerDialog";
 import AddNotesToFolderDialog from "./AddNotesToFolderDialog";
 import { useNoteRecording } from "../../hooks/useNoteRecording";
 import { useActionProcessing } from "../../hooks/useActionProcessing";
-import { useSettingsStore, selectEffectiveReasoningModel, selectIsCloudReasoningMode } from "../../stores/settingsStore";
+import {
+  useSettingsStore,
+  selectEffectiveReasoningModel,
+  selectIsCloudReasoningMode,
+} from "../../stores/settingsStore";
 import { useFolderManagement } from "../../hooks/useFolderManagement";
 import { cn } from "../lib/utils";
 import {
@@ -337,7 +341,6 @@ export default function PersonalNotesView() {
             return (
               <button
                 key={folder.id}
-                type="button"
                 onClick={() => setActiveFolderId(folder.id)}
                 className={cn(
                   "group relative flex items-center gap-2 w-full h-7 px-2 rounded-md cursor-pointer text-left transition-colors duration-150",
@@ -385,12 +388,14 @@ export default function PersonalNotesView() {
                     {!folder.is_default && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button
+                          <span
+                            role="button"
+                            tabIndex={-1}
                             onClick={(e) => e.stopPropagation()}
-                            className="h-4 w-4 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity absolute right-1.5 text-foreground/25 hover:text-foreground/50"
+                            className="h-4 w-4 flex items-center justify-center rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity absolute right-1.5 text-foreground/25 hover:text-foreground/50 cursor-pointer"
                           >
                             <MoreHorizontal size={11} />
-                          </button>
+                          </span>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" sideOffset={4} className="min-w-32">
                           <DropdownMenuItem

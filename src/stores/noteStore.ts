@@ -85,7 +85,9 @@ export function addNote(note: NoteItem): void {
 export function updateNoteInStore(note: NoteItem): void {
   if (!note) return;
   const { notes } = useNoteStore.getState();
-  useNoteStore.setState({ notes: notes.map((existing) => (existing.id === note.id ? note : existing)) });
+  useNoteStore.setState({
+    notes: notes.map((existing) => (existing.id === note.id ? note : existing)),
+  });
 }
 
 export function removeNote(id: number): void {
@@ -104,6 +106,10 @@ export function setActiveNoteId(id: number | null): void {
 export function setActiveFolderId(id: number | null): void {
   if (useNoteStore.getState().activeFolderId === id) return;
   useNoteStore.setState({ activeFolderId: id });
+}
+
+export function getActiveNoteIdValue(): number | null {
+  return useNoteStore.getState().activeNoteId;
 }
 
 export function getActiveFolderIdValue(): number | null {

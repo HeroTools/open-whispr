@@ -114,12 +114,14 @@ export default function ControlPanelSidebar({
         {isSignedIn && onOpenReferrals && (
           <button
             onClick={onOpenReferrals}
-            className="group flex items-center gap-2.5 w-full px-2.5 py-2 rounded-lg text-left transition-colors duration-200 bg-success/4 dark:bg-success/6 border border-success/8 dark:border-success/10 hover:bg-success/7 dark:hover:bg-success/10 hover:border-success/14 dark:hover:border-success/16"
+            aria-label={t("sidebar.referral")}
+            className="group flex items-center gap-2.5 w-full h-8 px-2.5 rounded-md text-left outline-none hover:bg-foreground/4 dark:hover:bg-white/4 focus-visible:ring-1 focus-visible:ring-primary/30 transition-colors duration-150"
           >
-            <div className="flex items-center justify-center h-5 w-5 rounded bg-success/10 dark:bg-success/15 shrink-0">
-              <Gift size={11} className="text-success" />
-            </div>
-            <span className="text-xs text-success/70 dark:text-success/60 group-hover:text-success/90 dark:group-hover:text-success/80 font-medium transition-colors duration-150">
+            <Gift
+              size={15}
+              className="shrink-0 text-foreground/20 group-hover:text-foreground/40 transition-colors duration-150"
+            />
+            <span className="text-xs text-foreground/40 group-hover:text-foreground/60 transition-colors duration-150">
               {t("sidebar.referral")}
             </span>
           </button>

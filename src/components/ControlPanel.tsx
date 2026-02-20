@@ -303,7 +303,7 @@ export default function ControlPanel() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       <ConfirmDialog
         open={confirmDialog.open}
         onOpenChange={hideConfirmDialog}
@@ -385,10 +385,7 @@ export default function ControlPanel() {
             style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
           >
             {platform !== "darwin" && (
-              <div
-                className="pr-1"
-                style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-              >
+              <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
                 <WindowControls />
               </div>
             )}
