@@ -50,6 +50,22 @@ function readStringArray(key: string, fallback: string[]): string[] {
   }
 }
 
+const BOOLEAN_SETTINGS = new Set([
+  "useLocalWhisper",
+  "allowOpenAIFallback",
+  "allowLocalFallback",
+  "assemblyAiStreaming",
+  "useReasoningModel",
+  "preferBuiltInMic",
+  "cloudBackupEnabled",
+  "telemetryEnabled",
+  "audioCuesEnabled",
+  "floatingIconAutoHide",
+  "isSignedIn",
+]);
+
+const ARRAY_SETTINGS = new Set(["customDictionary"]);
+
 const LANGUAGE_MIGRATIONS: Record<string, string> = { zh: "zh-CN" };
 
 function migratePreferredLanguage() {
@@ -63,7 +79,8 @@ function migratePreferredLanguage() {
 migratePreferredLanguage();
 
 export interface SettingsState
-  extends TranscriptionSettings,
+  extends
+    TranscriptionSettings,
     ReasoningSettings,
     HotkeySettings,
     MicrophoneSettings,
@@ -174,8 +191,14 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   preferredLanguage: readString("preferredLanguage", "auto"),
   cloudTranscriptionProvider: readString("cloudTranscriptionProvider", "openai"),
   cloudTranscriptionModel: readString("cloudTranscriptionModel", "gpt-4o-mini-transcribe"),
-  cloudTranscriptionBaseUrl: readString("cloudTranscriptionBaseUrl", API_ENDPOINTS.TRANSCRIPTION_BASE),
-  cloudTranscriptionMode: readString("cloudTranscriptionMode", hasStoredByokKey() ? "byok" : "openwhispr"),
+  cloudTranscriptionBaseUrl: readString(
+    "cloudTranscriptionBaseUrl",
+    API_ENDPOINTS.TRANSCRIPTION_BASE
+  ),
+  cloudTranscriptionMode: readString(
+    "cloudTranscriptionMode",
+    hasStoredByokKey() ? "byok" : "openwhispr"
+  ),
   cloudReasoningMode: readString("cloudReasoningMode", "openwhispr"),
   cloudReasoningBaseUrl: readString("cloudReasoningBaseUrl", API_ENDPOINTS.OPENAI_BASE),
   customDictionary: readStringArray("customDictionary", []),
@@ -194,7 +217,9 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
   customReasoningApiKey: readString("customReasoningApiKey", ""),
 
   dictationKey: readString("dictationKey", ""),
-  activationMode: (readString("activationMode", "tap") === "push" ? "push" : "tap") as "tap" | "push",
+  activationMode: (readString("activationMode", "tap") === "push" ? "push" : "tap") as
+    | "tap"
+    | "push",
 
   preferBuiltInMic: readBoolean("preferBuiltInMic", true),
   selectedMicDeviceId: readString("selectedMicDeviceId", ""),
@@ -376,9 +401,11 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
 
   updateReasoningSettings: (settings: Partial<ReasoningSettings>) => {
     const s = useSettingsStore.getState();
-    if (settings.useReasoningModel !== undefined) s.setUseReasoningModel(settings.useReasoningModel);
+    if (settings.useReasoningModel !== undefined)
+      s.setUseReasoningModel(settings.useReasoningModel);
     if (settings.reasoningModel !== undefined) s.setReasoningModel(settings.reasoningModel);
-    if (settings.reasoningProvider !== undefined) s.setReasoningProvider(settings.reasoningProvider);
+    if (settings.reasoningProvider !== undefined)
+      s.setReasoningProvider(settings.reasoningProvider);
     if (settings.cloudReasoningBaseUrl !== undefined)
       s.setCloudReasoningBaseUrl(settings.cloudReasoningBaseUrl);
     if (settings.cloudReasoningMode !== undefined)
@@ -404,8 +431,7 @@ export const useSettingsStore = create<SettingsState>()((set) => ({
 export const selectIsCloudReasoningMode = (state: SettingsState) =>
   state.isSignedIn && state.cloudReasoningMode === "openwhispr";
 
-export const selectEffectiveReasoningModel = (state: SettingsState) =>
-  state.reasoningModel;
+export const selectEffectiveReasoningModel = (state: SettingsState) => state.reasoningModel;
 
 export const selectEffectiveReasoningProvider = (state: SettingsState) =>
   selectIsCloudReasoningMode(state) ? "openwhispr" : state.reasoningProvider;
@@ -543,4 +569,33 @@ export async function initializeSettings(): Promise<void> {
 
     ensureAgentNameInDictionary();
   }
+
+  // Sync Zustand store when another window writes to localStorage
+  window.addEventListener("storage", (event) => {
+    if (!event.key || event.storageArea !== localStorage || event.newValue === null) return;
+
+    const { key, newValue } = event;
+    const state = useSettingsStore.getState();
+    if (!(key in state) || typeof (state as Record<string, unknown>)[key] === "function") return;
+
+    let value: unknown;
+    if (BOOLEAN_SETTINGS.has(key)) {
+      value = newValue === "true";
+    } else if (ARRAY_SETTINGS.has(key)) {
+      try {
+        const parsed = JSON.parse(newValue);
+        value = Array.isArray(parsed) ? parsed : [];
+      } catch {
+        value = [];
+      }
+    } else {
+      value = newValue;
+    }
+
+    useSettingsStore.setState({ [key]: value });
+
+    if (key === "uiLanguage" && typeof value === "string") {
+      void i18n.changeLanguage(value);
+    }
+  });
 }
