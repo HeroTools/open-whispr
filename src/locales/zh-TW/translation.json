@@ -837,60 +837,43 @@
   },
   "settingsModal": {
     "groups": {
-      "app": "應用程式",
-      "intelligence": "智慧功能",
       "account": "帳戶",
-      "speech": "語音",
+      "app": "應用程式",
+      "speechAi": "語音與 AI",
       "system": "系統"
     },
     "sections": {
       "account": {
-        "description": "登入與用量",
+        "description": "個人資料與登入",
         "label": "帳號"
       },
-      "agentConfig": {
-        "description": "語音助理設定",
-        "label": "助理"
-      },
-      "aiModels": {
-        "description": "文字整理與增強",
-        "label": "AI 模型"
-      },
-      "developer": {
-        "description": "記錄、診斷與資料",
-        "label": "開發者"
-      },
-      "dictionary": {
-        "description": "自訂詞彙和片語",
-        "label": "字典"
+      "plansBilling": {
+        "description": "方案、用量與帳單",
+        "label": "方案與帳單"
       },
       "general": {
-        "description": "外觀、快捷鍵與啟動",
+        "description": "外觀、音效與啟動",
         "label": "偏好設定"
       },
       "hotkeys": {
         "description": "聽寫快捷鍵與啟用模式",
         "label": "快捷鍵"
       },
-      "softwareUpdates": {
-        "description": "檢查並安裝更新",
-        "label": "軟體更新"
-      },
-      "permissions": {
-        "description": "麥克風與輔助使用",
-        "label": "權限"
-      },
-      "privacy": {
-        "description": "雲端備份與分析",
-        "label": "隱私權"
-      },
-      "prompts": {
-        "description": "系統提示詞工作室",
-        "label": "提示詞"
-      },
       "transcription": {
         "description": "語音轉文字引擎",
         "label": "轉錄"
+      },
+      "intelligence": {
+        "description": "AI 模型、助理與提示詞",
+        "label": "智慧功能"
+      },
+      "privacyData": {
+        "description": "隱私、權限與資料分析",
+        "label": "隱私與資料"
+      },
+      "system": {
+        "description": "更新、儲存與開發者工具",
+        "label": "系統"
       }
     },
     "title": "設定"

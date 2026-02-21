@@ -840,60 +840,43 @@
   },
   "settingsModal": {
     "groups": {
-      "app": "Приложение",
-      "intelligence": "Интеллект",
       "account": "Аккаунт",
-      "speech": "Речь",
+      "app": "Приложение",
+      "speechAi": "Речь и ИИ",
       "system": "Система"
     },
     "sections": {
       "account": {
-        "description": "Вход и использование",
+        "description": "Профиль и вход",
         "label": "Аккаунт"
       },
-      "agentConfig": {
-        "description": "Настройка голосового агента",
-        "label": "Агент"
-      },
-      "aiModels": {
-        "description": "Очистка и улучшение текста",
-        "label": "ИИ-модели"
-      },
-      "developer": {
-        "description": "Логи, диагностика и данные",
-        "label": "Разработчик"
-      },
-      "dictionary": {
-        "description": "Пользовательские слова и фразы",
-        "label": "Словарь"
+      "plansBilling": {
+        "description": "Тарифы, использование и оплата",
+        "label": "Тарифы и оплата"
       },
       "general": {
-        "description": "Внешний вид, горячая клавиша и автозапуск",
+        "description": "Внешний вид, звуки и автозапуск",
         "label": "Настройки"
       },
       "hotkeys": {
         "description": "Горячая клавиша диктовки и активация",
         "label": "Горячие клавиши"
       },
-      "softwareUpdates": {
-        "description": "Проверка и установка обновлений",
-        "label": "Обновления"
-      },
-      "permissions": {
-        "description": "Микрофон и универсальный доступ",
-        "label": "Разрешения"
-      },
-      "privacy": {
-        "description": "Облачное резервное копирование и аналитика",
-        "label": "Конфиденциальность"
-      },
-      "prompts": {
-        "description": "Студия системных промптов",
-        "label": "Промпты"
-      },
       "transcription": {
         "description": "Движок распознавания речи",
         "label": "Транскрипция"
+      },
+      "intelligence": {
+        "description": "ИИ-модели, агент и промпты",
+        "label": "Интеллект"
+      },
+      "privacyData": {
+        "description": "Конфиденциальность, разрешения и аналитика",
+        "label": "Конфиденциальность и данные"
+      },
+      "system": {
+        "description": "Обновления, хранилище и инструменты разработчика",
+        "label": "Система"
       }
     },
     "title": "Настройки"

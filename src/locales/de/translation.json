@@ -837,60 +837,43 @@
   },
   "settingsModal": {
     "groups": {
-      "app": "App",
-      "intelligence": "Intelligenz",
       "account": "Konto",
-      "speech": "Sprache",
+      "app": "App",
+      "speechAi": "Sprache & KI",
       "system": "System"
     },
     "sections": {
       "account": {
-        "description": "Anmeldung & Nutzung",
+        "description": "Profil & Anmeldung",
         "label": "Konto"
       },
-      "agentConfig": {
-        "description": "Sprachagent-Einrichtung",
-        "label": "Agent"
-      },
-      "aiModels": {
-        "description": "Textbereinigung & -verbesserung",
-        "label": "KI-Modelle"
-      },
-      "developer": {
-        "description": "Protokolle, Diagnose & Daten",
-        "label": "Entwickler"
-      },
-      "dictionary": {
-        "description": "Eigene Wörter & Phrasen",
-        "label": "Wörterbuch"
+      "plansBilling": {
+        "description": "Tarife, Nutzung & Abrechnung",
+        "label": "Tarife & Abrechnung"
       },
       "general": {
-        "description": "Darstellung, Hotkey & Start",
+        "description": "Darstellung, Töne & Start",
         "label": "Einstellungen"
       },
       "hotkeys": {
         "description": "Diktat-Hotkey & Aktivierung",
         "label": "Hotkeys"
       },
-      "softwareUpdates": {
-        "description": "Updates prüfen & installieren",
-        "label": "Software-Updates"
-      },
-      "permissions": {
-        "description": "Mikrofon & Bedienungshilfen",
-        "label": "Berechtigungen"
-      },
-      "privacy": {
-        "description": "Cloud-Backup & Analysen",
-        "label": "Datenschutz"
-      },
-      "prompts": {
-        "description": "System-Prompt-Studio",
-        "label": "Prompts"
-      },
       "transcription": {
         "description": "Sprache-zu-Text-Engine",
         "label": "Transkription"
+      },
+      "intelligence": {
+        "description": "KI-Modelle, Agent & Prompts",
+        "label": "Intelligenz"
+      },
+      "privacyData": {
+        "description": "Datenschutz, Berechtigungen & Analyse",
+        "label": "Datenschutz & Daten"
+      },
+      "system": {
+        "description": "Updates, Speicher & Entwicklertools",
+        "label": "System"
       }
     },
     "title": "Einstellungen"

@@ -837,60 +837,43 @@
   },
   "settingsModal": {
     "groups": {
-      "app": "Application",
-      "intelligence": "Intelligence",
       "account": "Compte",
-      "speech": "Parole",
+      "app": "Application",
+      "speechAi": "Parole & IA",
       "system": "Système"
     },
     "sections": {
       "account": {
-        "description": "Connexion et utilisation",
+        "description": "Profil & connexion",
         "label": "Compte"
       },
-      "agentConfig": {
-        "description": "Configuration de l'agent vocal",
-        "label": "Agent"
-      },
-      "aiModels": {
-        "description": "Correction et amélioration du texte",
-        "label": "Modèles IA"
-      },
-      "developer": {
-        "description": "Journaux, diagnostics et données",
-        "label": "Développeur"
-      },
-      "dictionary": {
-        "description": "Mots et expressions personnalisés",
-        "label": "Dictionnaire"
+      "plansBilling": {
+        "description": "Forfaits, utilisation & facturation",
+        "label": "Forfaits & facturation"
       },
       "general": {
-        "description": "Apparence, raccourci et démarrage",
+        "description": "Apparence, sons & démarrage",
         "label": "Préférences"
       },
       "hotkeys": {
         "description": "Raccourci de dictée et activation",
         "label": "Raccourcis"
       },
-      "softwareUpdates": {
-        "description": "Vérifier et installer les mises à jour",
-        "label": "Mises à jour"
-      },
-      "permissions": {
-        "description": "Microphone et accessibilité",
-        "label": "Permissions"
-      },
-      "privacy": {
-        "description": "Sauvegarde cloud et analyse",
-        "label": "Confidentialité"
-      },
-      "prompts": {
-        "description": "Studio de prompts système",
-        "label": "Prompts"
-      },
       "transcription": {
         "description": "Moteur de reconnaissance vocale",
         "label": "Transcription"
+      },
+      "intelligence": {
+        "description": "Modèles IA, agent & prompts",
+        "label": "Intelligence"
+      },
+      "privacyData": {
+        "description": "Confidentialité, permissions & analytique",
+        "label": "Confidentialité & données"
+      },
+      "system": {
+        "description": "Mises à jour, stockage & outils de développement",
+        "label": "Système"
       }
     },
     "title": "Paramètres"

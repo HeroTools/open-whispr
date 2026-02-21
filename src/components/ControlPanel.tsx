@@ -2,7 +2,6 @@ import React, { Suspense, useState, useEffect, useRef, useCallback } from "react
 import { useTranslation } from "react-i18next";
 import { Button } from "./ui/button";
 import { Download, RefreshCw, Loader2, AlertTriangle } from "lucide-react";
-import type { SettingsSectionType } from "./SettingsModal";
 import UpgradePrompt from "./UpgradePrompt";
 import { ConfirmDialog, AlertDialog } from "./ui/dialog";
 import { useDialogs } from "../hooks/useDialogs";
@@ -39,7 +38,7 @@ export default function ControlPanel() {
   const [showUpgradePrompt, setShowUpgradePrompt] = useState(false);
   const [limitData, setLimitData] = useState<{ wordsUsed: number; limit: number } | null>(null);
   const hasShownUpgradePrompt = useRef(false);
-  const [settingsSection, setSettingsSection] = useState<SettingsSectionType | undefined>();
+  const [settingsSection, setSettingsSection] = useState<string | undefined>();
   const [aiCTADismissed, setAiCTADismissed] = useState(
     () => localStorage.getItem("aiCTADismissed") === "true"
   );
@@ -327,11 +326,16 @@ export default function ControlPanel() {
             setShowSettings(true);
           }}
           onOpenReferrals={() => setShowReferrals(true)}
+          onUpgrade={() => {
+            setSettingsSection("plansBilling");
+            setShowSettings(true);
+          }}
           userName={user?.name}
           userEmail={user?.email}
           userImage={user?.image}
           isSignedIn={isSignedIn}
           authLoaded={authLoaded}
+          isProUser={usage?.isSubscribed || usage?.isTrial}
           updateAction={
             !updateStatus.isDevelopment &&
             (updateStatus.updateAvailable ||
@@ -407,7 +411,7 @@ export default function ControlPanel() {
                 copyToClipboard={copyToClipboard}
                 deleteTranscription={deleteTranscription}
                 onOpenSettings={(section) => {
-                  setSettingsSection(section as SettingsSectionType);
+                  setSettingsSection(section );
                   setShowSettings(true);
                 }}
               />
@@ -431,7 +435,7 @@ export default function ControlPanel() {
                     setActiveView("personal-notes");
                   }}
                   onOpenSettings={(section) => {
-                    setSettingsSection(section as SettingsSectionType);
+                    setSettingsSection(section );
                     setShowSettings(true);
                   }}
                 />

@@ -837,60 +837,43 @@
   },
   "settingsModal": {
     "groups": {
-      "app": "应用",
-      "intelligence": "智能",
       "account": "账户",
-      "speech": "语音",
+      "app": "应用",
+      "speechAi": "语音与 AI",
       "system": "系统"
     },
     "sections": {
       "account": {
-        "description": "登录与用量",
+        "description": "个人资料与登录",
         "label": "账户"
       },
-      "agentConfig": {
-        "description": "语音助手设置",
-        "label": "语音助手"
-      },
-      "aiModels": {
-        "description": "文本整理与增强",
-        "label": "AI 模型"
-      },
-      "developer": {
-        "description": "日志、诊断与数据",
-        "label": "开发者"
-      },
-      "dictionary": {
-        "description": "自定义词汇和短语",
-        "label": "词典"
+      "plansBilling": {
+        "description": "套餐、用量与账单",
+        "label": "套餐与账单"
       },
       "general": {
-        "description": "外观、快捷键与启动",
+        "description": "外观、声音与启动",
         "label": "偏好设置"
       },
       "hotkeys": {
         "description": "听写快捷键与激活模式",
         "label": "快捷键"
       },
-      "softwareUpdates": {
-        "description": "检查并安装更新",
-        "label": "软件更新"
-      },
-      "permissions": {
-        "description": "麦克风与辅助功能",
-        "label": "权限"
-      },
-      "privacy": {
-        "description": "云端备份与分析",
-        "label": "隐私"
-      },
-      "prompts": {
-        "description": "系统提示词工作室",
-        "label": "提示词"
-      },
       "transcription": {
         "description": "语音转文字引擎",
         "label": "转录"
+      },
+      "intelligence": {
+        "description": "AI 模型、助手与提示词",
+        "label": "智能"
+      },
+      "privacyData": {
+        "description": "隐私、权限与数据分析",
+        "label": "隐私与数据"
+      },
+      "system": {
+        "description": "更新、存储与开发者工具",
+        "label": "系统"
       }
     },
     "title": "设置"

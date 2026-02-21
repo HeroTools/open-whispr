@@ -837,60 +837,43 @@
   },
   "settingsModal": {
     "groups": {
-      "app": "App",
-      "intelligence": "Intelligenza",
       "account": "Account",
-      "speech": "Voce",
+      "app": "App",
+      "speechAi": "Voce & IA",
       "system": "Sistema"
     },
     "sections": {
       "account": {
-        "description": "Accesso e utilizzo",
+        "description": "Profilo e accesso",
         "label": "Account"
       },
-      "agentConfig": {
-        "description": "Configurazione agente vocale",
-        "label": "Agente"
-      },
-      "aiModels": {
-        "description": "Correzione e miglioramento testo",
-        "label": "Modelli IA"
-      },
-      "developer": {
-        "description": "Log, diagnostica e dati",
-        "label": "Sviluppatore"
-      },
-      "dictionary": {
-        "description": "Parole e frasi personalizzate",
-        "label": "Dizionario"
+      "plansBilling": {
+        "description": "Piani, utilizzo e fatturazione",
+        "label": "Piani e fatturazione"
       },
       "general": {
-        "description": "Aspetto, scorciatoia e avvio",
+        "description": "Aspetto, suoni e avvio",
         "label": "Preferenze"
       },
       "hotkeys": {
         "description": "Scorciatoia di dettatura e attivazione",
         "label": "Scorciatoie"
       },
-      "softwareUpdates": {
-        "description": "Controlla e installa aggiornamenti",
-        "label": "Aggiornamenti"
-      },
-      "permissions": {
-        "description": "Microfono e accessibilità",
-        "label": "Permessi"
-      },
-      "privacy": {
-        "description": "Backup cloud e analisi",
-        "label": "Privacy"
-      },
-      "prompts": {
-        "description": "Studio del prompt di sistema",
-        "label": "Prompt"
-      },
       "transcription": {
         "description": "Motore di riconoscimento vocale",
         "label": "Trascrizione"
+      },
+      "intelligence": {
+        "description": "Modelli IA, agente e prompt",
+        "label": "Intelligenza"
+      },
+      "privacyData": {
+        "description": "Privacy, permessi e analisi",
+        "label": "Privacy e dati"
+      },
+      "system": {
+        "description": "Aggiornamenti, archiviazione e strumenti di sviluppo",
+        "label": "Sistema"
       }
     },
     "title": "Impostazioni"

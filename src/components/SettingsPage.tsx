@@ -65,16 +65,13 @@ import { cn } from "./lib/utils";
 
 export type SettingsSectionType =
   | "account"
+  | "plansBilling"
   | "general"
   | "hotkeys"
   | "transcription"
-  | "aiModels"
-  | "agentConfig"
-  | "prompts"
-  | "softwareUpdates"
-  | "privacy"
-  | "permissions"
-  | "developer";
+  | "intelligence"
+  | "privacyData"
+  | "system";
 
 interface SettingsPageProps {
   activeSection?: SettingsSectionType;
@@ -993,6 +990,106 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </SettingsPanelRow>
                 </SettingsPanel>
 
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <Button
+                      onClick={handleSignOut}
+                      variant="outline"
+                      disabled={isSigningOut}
+                      size="sm"
+                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
+                    >
+                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
+                      {isSigningOut
+                        ? t("settingsPage.account.signOut.signingOut")
+                        : t("settingsPage.account.signOut.signOut")}
+                    </Button>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            ) : isLoaded ? (
+              <>
+                <SectionHeader title={t("settingsPage.account.title")} />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label={t("settingsPage.account.notSignedIn")}
+                      description={t("settingsPage.account.notSignedInDescription")}
+                    >
+                      <Badge variant="outline">{t("settingsPage.account.offline")}</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+
+                <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/3 dark:bg-primary/6 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1 space-y-2.5">
+                      <div>
+                        <p className="text-xs font-medium text-foreground">
+                          {t("settingsPage.account.trialCta.title")}
+                        </p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                          {t("settingsPage.account.trialCta.description")}
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => {
+                          localStorage.setItem("pendingCloudMigration", "true");
+                          localStorage.setItem("onboardingCurrentStep", "0");
+                          localStorage.removeItem("onboardingCompleted");
+                          window.location.reload();
+                        }}
+                        size="sm"
+                        className="w-full"
+                      >
+                        <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                        {t("settingsPage.account.trialCta.button")}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <SectionHeader title={t("settingsPage.account.title")} />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <div className="flex items-center justify-between">
+                      <Skeleton className="h-4 w-32" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            )}
+          </div>
+        );
+
+      case "plansBilling":
+        return (
+          <div className="space-y-5">
+            {!NEON_AUTH_URL ? (
+              <>
+                <SectionHeader
+                  title={t("settingsPage.account.pricing.title")}
+                  description={t("settingsPage.account.notConfigured")}
+                />
+                <SettingsPanel>
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label={t("settingsPage.account.featuresDisabled")}
+                      description={t("settingsPage.account.featuresDisabledDescription")}
+                    >
+                      <Badge variant="warning">{t("settingsPage.account.disabled")}</Badge>
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              </>
+            ) : isLoaded && isSignedIn ? (
+              <>
                 {/* Pricing Section */}
                 <SectionHeader title={t("settingsPage.account.pricing.title")} />
                 <div className="space-y-2.5">
@@ -1391,27 +1488,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     </SettingsPanelRow>
                   </SettingsPanel>
                 )}
-
-                <SettingsPanel>
-                  <SettingsPanelRow>
-                    <Button
-                      onClick={handleSignOut}
-                      variant="outline"
-                      disabled={isSigningOut}
-                      size="sm"
-                      className="w-full text-destructive border-destructive/30 hover:bg-destructive/10 hover:border-destructive/50"
-                    >
-                      <LogOut className="mr-1.5 h-3.5 w-3.5" />
-                      {isSigningOut
-                        ? t("settingsPage.account.signOut.signingOut")
-                        : t("settingsPage.account.signOut.signOut")}
-                    </Button>
-                  </SettingsPanelRow>
-                </SettingsPanel>
               </>
             ) : isLoaded ? (
               <>
-                <SectionHeader title={t("settingsPage.account.title")} />
+                <SectionHeader title={t("settingsPage.account.pricing.title")} />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <SettingsRow
@@ -1422,41 +1502,10 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     </SettingsRow>
                   </SettingsPanelRow>
                 </SettingsPanel>
-
-                <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/3 dark:bg-primary/6 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
-                      <Sparkles className="w-4 h-4 text-primary" />
-                    </div>
-                    <div className="min-w-0 flex-1 space-y-2.5">
-                      <div>
-                        <p className="text-xs font-medium text-foreground">
-                          {t("settingsPage.account.trialCta.title")}
-                        </p>
-                        <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
-                          {t("settingsPage.account.trialCta.description")}
-                        </p>
-                      </div>
-                      <Button
-                        onClick={() => {
-                          localStorage.setItem("pendingCloudMigration", "true");
-                          localStorage.setItem("onboardingCurrentStep", "0");
-                          localStorage.removeItem("onboardingCompleted");
-                          window.location.reload();
-                        }}
-                        size="sm"
-                        className="w-full"
-                      >
-                        <UserCircle className="mr-1.5 h-3.5 w-3.5" />
-                        {t("settingsPage.account.trialCta.button")}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
               </>
             ) : (
               <>
-                <SectionHeader title={t("settingsPage.account.title")} />
+                <SectionHeader title={t("settingsPage.account.pricing.title")} />
                 <SettingsPanel>
                   <SettingsPanelRow>
                     <div className="flex items-center justify-between">
@@ -1720,164 +1769,279 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
           />
         );
 
-      case "aiModels":
-        return (
-          <AiModelsSection
-            isSignedIn={isSignedIn ?? false}
-            cloudReasoningMode={cloudReasoningMode}
-            setCloudReasoningMode={setCloudReasoningMode}
-            useReasoningModel={useReasoningModel}
-            setUseReasoningModel={(value) => {
-              setUseReasoningModel(value);
-              updateReasoningSettings({ useReasoningModel: value });
-            }}
-            reasoningModel={reasoningModel}
-            setReasoningModel={setReasoningModel}
-            reasoningProvider={reasoningProvider}
-            setReasoningProvider={setReasoningProvider}
-            cloudReasoningBaseUrl={cloudReasoningBaseUrl}
-            setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
-            openaiApiKey={openaiApiKey}
-            setOpenaiApiKey={setOpenaiApiKey}
-            anthropicApiKey={anthropicApiKey}
-            setAnthropicApiKey={setAnthropicApiKey}
-            geminiApiKey={geminiApiKey}
-            setGeminiApiKey={setGeminiApiKey}
-            groqApiKey={groqApiKey}
-            setGroqApiKey={setGroqApiKey}
-            customReasoningApiKey={customReasoningApiKey}
-            setCustomReasoningApiKey={setCustomReasoningApiKey}
-            showAlertDialog={showAlertDialog}
-            toast={toast}
-          />
-        );
-
-      case "agentConfig":
-        return (
-          <div className="space-y-5">
-            <SectionHeader
-              title={t("settingsPage.agentConfig.title")}
-              description={t("settingsPage.agentConfig.description")}
-            />
-
-            {/* Agent Name */}
-            <div>
-              <p className="text-xs font-medium text-foreground mb-3">
-                {t("settingsPage.agentConfig.agentName")}
-              </p>
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder={t("settingsPage.agentConfig.placeholder")}
-                        value={agentNameInput}
-                        onChange={(e) => setAgentNameInput(e.target.value)}
-                        className="flex-1 text-center text-base font-mono"
-                      />
-                      <Button
-                        onClick={() => {
-                          const trimmed = agentNameInput.trim();
-                          const oldName = agentName;
-                          setAgentName(trimmed);
-                          setAgentNameInput(trimmed);
-                          let dict = customDictionary.filter((w) => w !== oldName);
-                          if (trimmed && !dict.includes(trimmed)) dict = [trimmed, ...dict];
-                          setCustomDictionary(dict);
-                          showAlertDialog({
-                            title: t("settingsPage.agentConfig.dialogs.updatedTitle"),
-                            description: t("settingsPage.agentConfig.dialogs.updatedDescription", {
-                              name: trimmed,
-                            }),
-                          });
-                        }}
-                        disabled={!agentNameInput.trim()}
-                        size="sm"
-                      >
-                        {t("settingsPage.agentConfig.save")}
-                      </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground/60">
-                      {t("settingsPage.agentConfig.helper")}
-                    </p>
-                  </div>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* How it works */}
-            <div>
-              <SectionHeader title={t("settingsPage.agentConfig.howItWorksTitle")} />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    {t("settingsPage.agentConfig.howItWorksDescription", { agentName })}
-                  </p>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-
-            {/* Examples */}
-            <div>
-              <SectionHeader title={t("settingsPage.agentConfig.examplesTitle")} />
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <div className="space-y-2.5">
-                    {[
-                      {
-                        input: `Hey ${agentName}, write a formal email about the budget`,
-                        mode: t("settingsPage.agentConfig.instructionMode"),
-                      },
-                      {
-                        input: `Hey ${agentName}, make this more professional`,
-                        mode: t("settingsPage.agentConfig.instructionMode"),
-                      },
-                      {
-                        input: `Hey ${agentName}, convert this to bullet points`,
-                        mode: t("settingsPage.agentConfig.instructionMode"),
-                      },
-                      {
-                        input: t("settingsPage.agentConfig.cleanupExample"),
-                        mode: t("settingsPage.agentConfig.cleanupMode"),
-                      },
-                    ].map((example, i) => (
-                      <div key={i} className="flex items-start gap-3">
-                        <span
-                          className={`shrink-0 mt-0.5 text-xs font-medium uppercase tracking-wider px-1.5 py-px rounded ${
-                            example.mode === t("settingsPage.agentConfig.instructionMode")
-                              ? "bg-primary/10 text-primary dark:bg-primary/15"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {example.mode}
-                        </span>
-                        <p className="text-xs text-muted-foreground leading-relaxed">
-                          "{example.input}"
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            </div>
-          </div>
-        );
-
-      case "prompts":
-        return (
-          <div className="space-y-5">
-            <SectionHeader
-              title={t("settingsPage.prompts.title")}
-              description={t("settingsPage.prompts.description")}
-            />
-
-            <PromptStudio />
-          </div>
-        );
-
-      case "softwareUpdates":
+      case "intelligence":
         return (
           <div className="space-y-6">
+            {/* Text Cleanup (AI Models) */}
+            <AiModelsSection
+              isSignedIn={isSignedIn ?? false}
+              cloudReasoningMode={cloudReasoningMode}
+              setCloudReasoningMode={setCloudReasoningMode}
+              useReasoningModel={useReasoningModel}
+              setUseReasoningModel={(value) => {
+                setUseReasoningModel(value);
+                updateReasoningSettings({ useReasoningModel: value });
+              }}
+              reasoningModel={reasoningModel}
+              setReasoningModel={setReasoningModel}
+              reasoningProvider={reasoningProvider}
+              setReasoningProvider={setReasoningProvider}
+              cloudReasoningBaseUrl={cloudReasoningBaseUrl}
+              setCloudReasoningBaseUrl={setCloudReasoningBaseUrl}
+              openaiApiKey={openaiApiKey}
+              setOpenaiApiKey={setOpenaiApiKey}
+              anthropicApiKey={anthropicApiKey}
+              setAnthropicApiKey={setAnthropicApiKey}
+              geminiApiKey={geminiApiKey}
+              setGeminiApiKey={setGeminiApiKey}
+              groqApiKey={groqApiKey}
+              setGroqApiKey={setGroqApiKey}
+              customReasoningApiKey={customReasoningApiKey}
+              setCustomReasoningApiKey={setCustomReasoningApiKey}
+              showAlertDialog={showAlertDialog}
+              toast={toast}
+            />
+
+            {/* Agent Config */}
+            <div className="border-t border-border/40 pt-6">
+              <SectionHeader
+                title={t("settingsPage.agentConfig.title")}
+                description={t("settingsPage.agentConfig.description")}
+              />
+
+              <div className="space-y-5">
+                <div>
+                  <p className="text-xs font-medium text-foreground mb-3">
+                    {t("settingsPage.agentConfig.agentName")}
+                  </p>
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder={t("settingsPage.agentConfig.placeholder")}
+                            value={agentNameInput}
+                            onChange={(e) => setAgentNameInput(e.target.value)}
+                            className="flex-1 text-center text-base font-mono"
+                          />
+                          <Button
+                            onClick={() => {
+                              const trimmed = agentNameInput.trim();
+                              const oldName = agentName;
+                              setAgentName(trimmed);
+                              setAgentNameInput(trimmed);
+                              let dict = customDictionary.filter((w) => w !== oldName);
+                              if (trimmed && !dict.includes(trimmed)) dict = [trimmed, ...dict];
+                              setCustomDictionary(dict);
+                              showAlertDialog({
+                                title: t("settingsPage.agentConfig.dialogs.updatedTitle"),
+                                description: t(
+                                  "settingsPage.agentConfig.dialogs.updatedDescription",
+                                  {
+                                    name: trimmed,
+                                  }
+                                ),
+                              });
+                            }}
+                            disabled={!agentNameInput.trim()}
+                            size="sm"
+                          >
+                            {t("settingsPage.agentConfig.save")}
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground/60">
+                          {t("settingsPage.agentConfig.helper")}
+                        </p>
+                      </div>
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                </div>
+
+                <div>
+                  <SectionHeader title={t("settingsPage.agentConfig.howItWorksTitle")} />
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <p className="text-xs text-muted-foreground leading-relaxed">
+                        {t("settingsPage.agentConfig.howItWorksDescription", { agentName })}
+                      </p>
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                </div>
+
+                <div>
+                  <SectionHeader title={t("settingsPage.agentConfig.examplesTitle")} />
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <div className="space-y-2.5">
+                        {[
+                          {
+                            input: `Hey ${agentName}, write a formal email about the budget`,
+                            mode: t("settingsPage.agentConfig.instructionMode"),
+                          },
+                          {
+                            input: `Hey ${agentName}, make this more professional`,
+                            mode: t("settingsPage.agentConfig.instructionMode"),
+                          },
+                          {
+                            input: `Hey ${agentName}, convert this to bullet points`,
+                            mode: t("settingsPage.agentConfig.instructionMode"),
+                          },
+                          {
+                            input: t("settingsPage.agentConfig.cleanupExample"),
+                            mode: t("settingsPage.agentConfig.cleanupMode"),
+                          },
+                        ].map((example, i) => (
+                          <div key={i} className="flex items-start gap-3">
+                            <span
+                              className={`shrink-0 mt-0.5 text-xs font-medium uppercase tracking-wider px-1.5 py-px rounded ${
+                                example.mode === t("settingsPage.agentConfig.instructionMode")
+                                  ? "bg-primary/10 text-primary dark:bg-primary/15"
+                                  : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {example.mode}
+                            </span>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              "{example.input}"
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                </div>
+              </div>
+            </div>
+
+            {/* System Prompt */}
+            <div className="border-t border-border/40 pt-6">
+              <SectionHeader
+                title={t("settingsPage.prompts.title")}
+                description={t("settingsPage.prompts.description")}
+              />
+              <PromptStudio />
+            </div>
+          </div>
+        );
+
+      case "privacyData":
+        return (
+          <div className="space-y-6">
+            {/* Privacy */}
+            <div>
+              <SectionHeader
+                title={t("settingsPage.privacy.title")}
+                description={t("settingsPage.privacy.description")}
+              />
+
+              {isSignedIn && (
+                <SettingsPanel className="mb-4">
+                  <SettingsPanelRow>
+                    <SettingsRow
+                      label={t("settingsPage.privacy.cloudBackup")}
+                      description={t("settingsPage.privacy.cloudBackupDescription")}
+                    >
+                      <Toggle checked={cloudBackupEnabled} onChange={setCloudBackupEnabled} />
+                    </SettingsRow>
+                  </SettingsPanelRow>
+                </SettingsPanel>
+              )}
+
+              <SettingsPanel>
+                <SettingsPanelRow>
+                  <SettingsRow
+                    label={t("settingsPage.privacy.usageAnalytics")}
+                    description={t("settingsPage.privacy.usageAnalyticsDescription")}
+                  >
+                    <Toggle checked={telemetryEnabled} onChange={setTelemetryEnabled} />
+                  </SettingsRow>
+                </SettingsPanelRow>
+              </SettingsPanel>
+            </div>
+
+            {/* Permissions */}
+            <div className="border-t border-border/40 pt-6">
+              <SectionHeader
+                title={t("settingsPage.permissions.title")}
+                description={t("settingsPage.permissions.description")}
+              />
+
+              <div className="space-y-3">
+                <PermissionCard
+                  icon={Mic}
+                  title={t("settingsPage.permissions.microphoneTitle")}
+                  description={t("settingsPage.permissions.microphoneDescription")}
+                  granted={permissionsHook.micPermissionGranted}
+                  onRequest={permissionsHook.requestMicPermission}
+                  buttonText={t("settingsPage.permissions.test")}
+                  onOpenSettings={permissionsHook.openMicPrivacySettings}
+                />
+
+                {platform === "darwin" && (
+                  <PermissionCard
+                    icon={Shield}
+                    title={t("settingsPage.permissions.accessibilityTitle")}
+                    description={t("settingsPage.permissions.accessibilityDescription")}
+                    granted={permissionsHook.accessibilityPermissionGranted}
+                    onRequest={permissionsHook.testAccessibilityPermission}
+                    buttonText={t("settingsPage.permissions.testAndGrant")}
+                    onOpenSettings={permissionsHook.openAccessibilitySettings}
+                  />
+                )}
+              </div>
+
+              {!permissionsHook.micPermissionGranted && permissionsHook.micPermissionError && (
+                <MicPermissionWarning
+                  error={permissionsHook.micPermissionError}
+                  onOpenSoundSettings={permissionsHook.openSoundInputSettings}
+                  onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
+                />
+              )}
+
+              {platform === "linux" &&
+                permissionsHook.pasteToolsInfo &&
+                !permissionsHook.pasteToolsInfo.available && (
+                  <PasteToolsInfo
+                    pasteToolsInfo={permissionsHook.pasteToolsInfo}
+                    isChecking={permissionsHook.isCheckingPasteTools}
+                    onCheck={permissionsHook.checkPasteToolsAvailability}
+                  />
+                )}
+
+              {platform === "darwin" && (
+                <div className="mt-5">
+                  <p className="text-xs font-medium text-foreground mb-3">
+                    {t("settingsPage.permissions.troubleshootingTitle")}
+                  </p>
+                  <SettingsPanel>
+                    <SettingsPanelRow>
+                      <SettingsRow
+                        label={t("settingsPage.permissions.resetAccessibility.label")}
+                        description={t(
+                          "settingsPage.permissions.resetAccessibility.rowDescription"
+                        )}
+                      >
+                        <Button
+                          onClick={resetAccessibilityPermissions}
+                          variant="ghost"
+                          size="sm"
+                          className="text-foreground/70 hover:text-foreground"
+                        >
+                          {t("settingsPage.permissions.troubleshoot")}
+                        </Button>
+                      </SettingsRow>
+                    </SettingsPanelRow>
+                  </SettingsPanel>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+
+      case "system":
+        return (
+          <div className="space-y-6">
+            {/* Software Updates */}
             <div>
               <SectionHeader title={t("settingsPage.general.updates.title")} />
               <SettingsPanel>
@@ -2070,138 +2234,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                 </SettingsPanelRow>
               </SettingsPanel>
             </div>
-          </div>
-        );
 
-      case "privacy":
-        return (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold text-foreground mb-2">
-                {t("settingsPage.privacy.title")}
-              </h3>
-              <p className="text-sm text-muted-foreground mb-6">
-                {t("settingsPage.privacy.description")}
-              </p>
+            {/* Developer Tools */}
+            <div className="border-t border-border/40 pt-6">
+              <DeveloperSection />
             </div>
 
-            {isSignedIn && (
-              <SettingsPanel>
-                <SettingsPanelRow>
-                  <SettingsRow
-                    label={t("settingsPage.privacy.cloudBackup")}
-                    description={t("settingsPage.privacy.cloudBackupDescription")}
-                  >
-                    <Toggle checked={cloudBackupEnabled} onChange={setCloudBackupEnabled} />
-                  </SettingsRow>
-                </SettingsPanelRow>
-              </SettingsPanel>
-            )}
-
-            <SettingsPanel>
-              <SettingsPanelRow>
-                <SettingsRow
-                  label={t("settingsPage.privacy.usageAnalytics")}
-                  description={t("settingsPage.privacy.usageAnalyticsDescription")}
-                >
-                  <Toggle checked={telemetryEnabled} onChange={setTelemetryEnabled} />
-                </SettingsRow>
-              </SettingsPanelRow>
-            </SettingsPanel>
-          </div>
-        );
-
-      case "permissions":
-        return (
-          <div className="space-y-5">
-            <SectionHeader
-              title={t("settingsPage.permissions.title")}
-              description={t("settingsPage.permissions.description")}
-            />
-
-            {/* Permission Cards - matching onboarding style */}
-            <div className="space-y-3">
-              <PermissionCard
-                icon={Mic}
-                title={t("settingsPage.permissions.microphoneTitle")}
-                description={t("settingsPage.permissions.microphoneDescription")}
-                granted={permissionsHook.micPermissionGranted}
-                onRequest={permissionsHook.requestMicPermission}
-                buttonText={t("settingsPage.permissions.test")}
-                onOpenSettings={permissionsHook.openMicPrivacySettings}
-              />
-
-              {platform === "darwin" && (
-                <PermissionCard
-                  icon={Shield}
-                  title={t("settingsPage.permissions.accessibilityTitle")}
-                  description={t("settingsPage.permissions.accessibilityDescription")}
-                  granted={permissionsHook.accessibilityPermissionGranted}
-                  onRequest={permissionsHook.testAccessibilityPermission}
-                  buttonText={t("settingsPage.permissions.testAndGrant")}
-                  onOpenSettings={permissionsHook.openAccessibilitySettings}
-                />
-              )}
-            </div>
-
-            {/* Error state for microphone */}
-            {!permissionsHook.micPermissionGranted && permissionsHook.micPermissionError && (
-              <MicPermissionWarning
-                error={permissionsHook.micPermissionError}
-                onOpenSoundSettings={permissionsHook.openSoundInputSettings}
-                onOpenPrivacySettings={permissionsHook.openMicPrivacySettings}
-              />
-            )}
-
-            {/* Linux paste tools info */}
-            {platform === "linux" &&
-              permissionsHook.pasteToolsInfo &&
-              !permissionsHook.pasteToolsInfo.available && (
-                <PasteToolsInfo
-                  pasteToolsInfo={permissionsHook.pasteToolsInfo}
-                  isChecking={permissionsHook.isCheckingPasteTools}
-                  onCheck={permissionsHook.checkPasteToolsAvailability}
-                />
-              )}
-
-            {/* Troubleshooting section for macOS */}
-            {platform === "darwin" && (
-              <div>
-                <p className="text-xs font-medium text-foreground mb-3">
-                  {t("settingsPage.permissions.troubleshootingTitle")}
-                </p>
-                <SettingsPanel>
-                  <SettingsPanelRow>
-                    <SettingsRow
-                      label={t("settingsPage.permissions.resetAccessibility.label")}
-                      description={t("settingsPage.permissions.resetAccessibility.rowDescription")}
-                    >
-                      <Button
-                        onClick={resetAccessibilityPermissions}
-                        variant="ghost"
-                        size="sm"
-                        className="text-foreground/70 hover:text-foreground"
-                      >
-                        {t("settingsPage.permissions.troubleshoot")}
-                      </Button>
-                    </SettingsRow>
-                  </SettingsPanelRow>
-                </SettingsPanel>
-              </div>
-            )}
-          </div>
-        );
-
-      // ───────────────────────────────────────────────────
-      // DEVELOPER (+ data management moved here)
-      // ───────────────────────────────────────────────────
-      case "developer":
-        return (
-          <div className="space-y-6">
-            <DeveloperSection />
-
-            {/* Data Management — moved from General */}
-            <div className="border-t border-border/40 pt-8">
+            {/* Data Management */}
+            <div className="border-t border-border/40 pt-6">
               <SectionHeader
                 title={t("settingsPage.developer.dataManagementTitle")}
                 description={t("settingsPage.developer.dataManagementDescription")}

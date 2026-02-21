@@ -837,60 +837,43 @@
   },
   "settingsModal": {
     "groups": {
-      "app": "アプリ",
-      "intelligence": "インテリジェンス",
       "account": "アカウント",
-      "speech": "音声",
+      "app": "アプリ",
+      "speechAi": "音声 & AI",
       "system": "システム"
     },
     "sections": {
       "account": {
-        "description": "サインインと使用状況",
+        "description": "プロフィールとサインイン",
         "label": "アカウント"
       },
-      "agentConfig": {
-        "description": "音声エージェント設定",
-        "label": "エージェント"
-      },
-      "aiModels": {
-        "description": "テキスト補正と改善",
-        "label": "AI モデル"
-      },
-      "developer": {
-        "description": "ログ・診断・データ",
-        "label": "開発者"
-      },
-      "dictionary": {
-        "description": "カスタム語句",
-        "label": "辞書"
+      "plansBilling": {
+        "description": "プラン、使用状況、請求",
+        "label": "プランと請求"
       },
       "general": {
-        "description": "外観・ホットキー・起動設定",
+        "description": "外観、サウンド、起動設定",
         "label": "環境設定"
       },
       "hotkeys": {
         "description": "ディクテーションホットキーと起動モード",
         "label": "ホットキー"
       },
-      "softwareUpdates": {
-        "description": "アップデートの確認とインストール",
-        "label": "ソフトウェアアップデート"
-      },
-      "permissions": {
-        "description": "マイクとアクセシビリティ",
-        "label": "権限"
-      },
-      "privacy": {
-        "description": "クラウドバックアップと分析",
-        "label": "プライバシー"
-      },
-      "prompts": {
-        "description": "システムプロンプトスタジオ",
-        "label": "プロンプト"
-      },
       "transcription": {
         "description": "音声テキスト変換エンジン",
         "label": "文字起こし"
+      },
+      "intelligence": {
+        "description": "AIモデル、エージェント、プロンプト",
+        "label": "インテリジェンス"
+      },
+      "privacyData": {
+        "description": "プライバシー、権限、分析",
+        "label": "プライバシーとデータ"
+      },
+      "system": {
+        "description": "更新、ストレージ、開発者ツール",
+        "label": "システム"
       }
     },
     "title": "設定"

@@ -842,32 +842,19 @@
   },
   "settingsModal": {
     "groups": {
-      "app": "App",
-      "intelligence": "Intelligence",
       "account": "Account",
-      "speech": "Speech",
+      "app": "App",
+      "speechAi": "Speech & AI",
       "system": "System"
     },
     "sections": {
       "account": {
-        "description": "Sign in & usage",
+        "description": "Profile & sign in",
         "label": "Account"
       },
-      "agentConfig": {
-        "description": "Voice agent setup",
-        "label": "Agent"
-      },
-      "aiModels": {
-        "description": "Text cleanup & enhancement",
-        "label": "AI Models"
-      },
-      "developer": {
-        "description": "Logs, diagnostics & data",
-        "label": "Developer"
-      },
-      "dictionary": {
-        "description": "Custom words & phrases",
-        "label": "Dictionary"
+      "plansBilling": {
+        "description": "Plans, usage & billing",
+        "label": "Plans & Billing"
       },
       "general": {
         "description": "Appearance, sounds & startup",
@@ -877,25 +864,21 @@
         "description": "Dictation hotkey & activation",
         "label": "Hotkeys"
       },
-      "softwareUpdates": {
-        "description": "Check & install updates",
-        "label": "Software Updates"
-      },
-      "permissions": {
-        "description": "Microphone & accessibility",
-        "label": "Permissions"
-      },
-      "privacy": {
-        "description": "Cloud backup & analytics",
-        "label": "Privacy"
-      },
-      "prompts": {
-        "description": "System prompt studio",
-        "label": "Prompts"
-      },
       "transcription": {
         "description": "Speech-to-text engine",
         "label": "Transcription"
+      },
+      "intelligence": {
+        "description": "AI models, agent & prompts",
+        "label": "Intelligence"
+      },
+      "privacyData": {
+        "description": "Privacy, permissions & analytics",
+        "label": "Privacy & Data"
+      },
+      "system": {
+        "description": "Updates, storage & developer tools",
+        "label": "System"
       }
     },
     "title": "Settings"
@@ -955,7 +938,12 @@
           "name": "Free",
           "price": "$0",
           "period": "forever",
-          "features": ["2,000 words/week", "Local AI models", "Bring your own keys", "Zero data retention"]
+          "features": [
+            "2,000 words/week",
+            "Local AI models",
+            "Bring your own keys",
+            "Zero data retention"
+          ]
         },
         "pro": {
           "name": "Pro",
@@ -963,7 +951,12 @@
           "monthlyPeriod": "/mo",
           "annualPrice": "$80",
           "annualPeriod": "/yr",
-          "features": ["Unlimited usage", "Mobile app (iOS coming soon)", "Zero data retention", "Priority support"],
+          "features": [
+            "Unlimited usage",
+            "Mobile app (iOS coming soon)",
+            "Zero data retention",
+            "Priority support"
+          ],
           "cta": "Upgrade to Pro"
         },
         "enterprise": {
