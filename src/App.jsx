@@ -89,6 +89,11 @@ export default function App() {
   );
   const prevAutoHideRef = useRef(floatingIconAutoHide);
 
+  // Floating icon shrink on idle setting (read from localStorage, synced via IPC)
+  const [floatingIconShrinkOnIdle, setFloatingIconShrinkOnIdle] = useState(
+    () => localStorage.getItem("floatingIconShrinkOnIdle") === "true"
+  );
+
   const setWindowInteractivity = React.useCallback((shouldCapture) => {
     window.electronAPI?.setMainWindowInteractivity?.(shouldCapture);
   }, []);
@@ -177,6 +182,14 @@ export default function App() {
     return () => unsubscribe?.();
   }, []);
 
+  // Listen for shrink-on-idle setting changes relayed from the main process
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onFloatingIconShrinkOnIdleChanged?.((enabled) => {
+      setFloatingIconShrinkOnIdle(enabled);
+    });
+    return () => unsubscribe?.();
+  }, []);
+
   // Auto-hide the floating icon when idle (setting enabled or dictation cycle completed)
   useEffect(() => {
     let hideTimeout;
@@ -247,7 +260,7 @@ export default function App() {
     const baseClasses =
       "rounded-full w-10 h-10 flex items-center justify-center relative overflow-hidden border-2 border-white/70 cursor-pointer";
     const isActive = micState === "hover" || micState === "recording" || micState === "processing";
-    const scale = isActive ? "scale(1)" : "scale(0.5)";
+    const scale = floatingIconShrinkOnIdle && !isActive ? "scale(0.5)" : "scale(1)";
 
     switch (micState) {
       case "idle":
