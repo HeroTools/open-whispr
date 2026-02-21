@@ -837,52 +837,43 @@
   },
   "settingsModal": {
     "groups": {
+      "account": "アカウント",
       "app": "アプリ",
-      "intelligence": "インテリジェンス",
-      "profile": "プロフィール",
-      "speech": "音声",
+      "speechAi": "音声 & AI",
       "system": "システム"
     },
     "sections": {
       "account": {
-        "description": "サインインと使用状況",
+        "description": "プロフィールとサインイン",
         "label": "アカウント"
       },
-      "agentConfig": {
-        "description": "音声エージェント設定",
-        "label": "エージェント"
-      },
-      "aiModels": {
-        "description": "テキスト補正と改善",
-        "label": "AI モデル"
-      },
-      "developer": {
-        "description": "ログ・診断・データ",
-        "label": "開発者"
-      },
-      "dictionary": {
-        "description": "カスタム語句",
-        "label": "辞書"
+      "plansBilling": {
+        "description": "プラン、使用状況、請求",
+        "label": "プランと請求"
       },
       "general": {
-        "description": "外観・ホットキー・起動設定",
+        "description": "外観、サウンド、起動設定",
         "label": "環境設定"
       },
-      "permissions": {
-        "description": "マイクとアクセシビリティ",
-        "label": "権限"
-      },
-      "privacy": {
-        "description": "クラウドバックアップと分析",
-        "label": "プライバシー"
-      },
-      "prompts": {
-        "description": "システムプロンプトスタジオ",
-        "label": "プロンプト"
+      "hotkeys": {
+        "description": "ディクテーションホットキーと起動モード",
+        "label": "ホットキー"
       },
       "transcription": {
         "description": "音声テキスト変換エンジン",
         "label": "文字起こし"
+      },
+      "intelligence": {
+        "description": "AIモデル、エージェント、プロンプト",
+        "label": "インテリジェンス"
+      },
+      "privacyData": {
+        "description": "プライバシー、権限、分析",
+        "label": "プライバシーとデータ"
+      },
+      "system": {
+        "description": "更新、ストレージ、開発者ツール",
+        "label": "システム"
       }
     },
     "title": "設定"
@@ -1062,6 +1053,7 @@
       "hotkey": {
         "activationMode": "起動モード",
         "description": "音声ディクテーションの開始/停止に使用するキーの組み合わせ",
+        "resetToDefault": "{{hotkey}}にリセット",
         "title": "ディクテーションホットキー"
       },
       "microphone": {
@@ -1245,5 +1237,115 @@
         "openai_oss_gpt_oss_20b_mxfp4": "一般消費者向けハードウェア用 OpenAI オープンウェイトモデル"
       }
     }
+  },
+  "notes": {
+    "editor": {
+      "transcribe": "文字起こし",
+      "staleIndicator": "強化後にコンテンツが変更されました"
+    },
+    "context": {
+      "moveToFolder": "フォルダに移動",
+      "delete": "削除",
+      "rename": "名前を変更",
+      "searchFolders": "フォルダを検索...",
+      "noResults": "フォルダが見つかりません",
+      "newFolder": "新しいフォルダ"
+    },
+    "actions": {
+      "manage": "アクションを管理...",
+      "manageTitle": "カスタムアクション",
+      "addAction": "新しいアクション",
+      "editAction": "アクションを編集",
+      "namePlaceholder": "アクション名",
+      "descriptionPlaceholder": "簡単な説明（任意）",
+      "promptPlaceholder": "AIにノートの内容をどう処理させますか？",
+      "builtIn": "組み込み",
+      "save": "保存",
+      "update": "更新",
+      "cancel": "キャンセル",
+      "noActions": "カスタムアクションはまだありません",
+      "runAction": "{{name}} を実行",
+      "selectAction": "アクションを選択",
+      "done": "完了",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "ノートを整理",
+          "description": "文法、構成、書式を修正する"
+        }
+      }
+    },
+    "empty": {
+      "title": "まだノートがありません",
+      "description": "最初のノートを作成して書き始めましょう",
+      "selectTitle": "ノートを選択",
+      "selectDescription": "サイドバーからノートを選んでください",
+      "createNote": "ノートを作成",
+      "emptyFolder": "このフォルダにノートはありません"
+    },
+    "addToFolder": {
+      "title": "ノートを追加",
+      "searchPlaceholder": "追加するノートを検索...",
+      "addExisting": "既存を追加",
+      "addCount": "{{count}}件のノートを追加",
+      "noResults": "一致するノートがありません",
+      "noNotesAvailable": "他のノートはありません"
+    },
+    "enhance": {
+      "title": "AIで強化",
+      "defaultPrompt": "文法を修正し、構造を改善し、元の意味をすべて保持しながら、読みやすさのためにこのノートをフォーマットしてください。",
+      "placeholder": "AIにノートをどう処理させますか？",
+      "tryAgain": "再試行",
+      "apply": "適用",
+      "cancel": "キャンセル",
+      "enhancing": "強化中...",
+      "enhance": "強化",
+      "noProviders": "設定でAPIキーを構成してAIモデルを使用してください"
+    }
+  },
+  "dictionary": {
+    "addWord": "単語を追加",
+    "removeWord": "{{word}} を削除",
+    "clearAll": "すべてクリア",
+    "howItWorks": "仕組み",
+    "title": "カスタム辞書",
+    "description": "AIに語彙を学習させましょう — 名前、専門用語、見落とされがちな表現など",
+    "clearTitle": "辞書をクリアしますか？",
+    "clearDescription": "カスタム辞書のすべての単語が削除されます。この操作は元に戻せません。",
+    "addPlaceholder": "単語やフレーズを追加..."
+  },
+  "referral": {
+    "friends": {
+      "title": "フレンド",
+      "completed": "完了",
+      "sentInvites": "送信済みの招待"
+    }
+  },
+  "sidebar": {
+    "home": "ホーム",
+    "notes": "ノート",
+    "upload": "アップロード",
+    "dictionary": "辞書",
+    "referral": "1か月無料を取得",
+    "settings": "設定",
+    "support": "サポート"
+  },
+  "usage": {
+    "approachingLimit": "週間制限に近づいています",
+    "approachingLimitDescription": "今週の無料枠 {{limit}} 語のうち {{wordsUsed}} 語を使用しました。",
+    "yourPlan": "現在のプラン",
+    "trial": "トライアル（残り{{days}}日）",
+    "trial_other": "トライアル（残り{{days}}日）",
+    "pro": "Pro",
+    "unlimitedTrial": "トライアル期間中は無制限で文字起こし可能",
+    "unlimited": "無制限の文字起こし",
+    "manageSubscription": "サブスクリプションを管理",
+    "weeklyUsage": "週間使用量",
+    "limitReached": "制限に達しました",
+    "free": "無料",
+    "wordsRemaining": "残り{{remaining}}語",
+    "rollingLimit": "週間制限（ローリング方式）",
+    "upgradeToPro": "Proにアップグレード",
+    "useYourOwnKey": "自分のAPIキーを使用",
+    "upgradeUnlimited": "Proにアップグレード — 無制限の文字起こし"
   }
 }

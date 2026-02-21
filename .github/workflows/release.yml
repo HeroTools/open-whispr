@@ -219,6 +219,13 @@ jobs:
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
+      - name: Upload arch-specific update metadata
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: |
+          cp dist/latest-mac.yml "dist/latest-${{ matrix.arch }}-mac.yml"
+          gh release upload "${{ github.ref_name }}" "dist/latest-${{ matrix.arch }}-mac.yml" --clobber
+
       - name: Cleanup Certificates
         if: always()
         run: |

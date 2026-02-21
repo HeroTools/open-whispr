@@ -17,7 +17,7 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
       selected:
         "border-primary/40 bg-primary/12 dark:bg-primary/8 shadow-(--shadow-selected-glow) relative before:absolute before:inset-0 before:bg-linear-to-b before:from-white/[0.03] before:to-transparent before:pointer-events-none",
       default:
-        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-all duration-200 ease-out",
+        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out",
     },
     badges: {
       selected:
@@ -43,7 +43,7 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
       selected:
         "border-primary/40 bg-primary/12 dark:bg-primary/8 shadow-(--shadow-selected-glow) relative before:absolute before:inset-0 before:bg-linear-to-b before:from-white/[0.03] before:to-transparent before:pointer-events-none",
       default:
-        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-all duration-200 ease-out",
+        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out",
     },
     badges: {
       selected:
@@ -69,7 +69,7 @@ export const MODEL_PICKER_COLORS: Record<ColorScheme, ModelPickerStyles> = {
       selected:
         "border-primary/40 bg-primary/12 dark:bg-primary/8 shadow-(--shadow-selected-glow) relative before:absolute before:inset-0 before:bg-linear-to-b before:from-white/[0.03] before:to-transparent before:pointer-events-none",
       default:
-        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-all duration-200 ease-out",
+        "border-border/70 bg-surface-1/50 dark:bg-white/[0.02] hover:border-border-hover hover:bg-surface-raised/60 dark:hover:border-white/20 dark:hover:bg-white/[0.05] hover:-translate-y-[1px] hover:shadow-(--shadow-card-hover-subtle) transition-[background-color,border-color,transform,box-shadow] duration-200 ease-out",
     },
     badges: {
       selected:

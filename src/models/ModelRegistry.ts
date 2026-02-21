@@ -1,4 +1,5 @@
 import modelDataRaw from "./modelRegistryData.json";
+import { isCloudReasoningMode } from "../stores/settingsStore";
 
 export interface ModelDefinition {
   id: string;
@@ -251,13 +252,8 @@ export function getReasoningModelLabel(modelId: string): string {
 }
 
 export function getModelProvider(modelId: string): string {
-  // When in OpenWhispr cloud mode, route reasoning through the cloud API
-  if (typeof localStorage !== "undefined") {
-    const cloudMode = localStorage.getItem("cloudReasoningMode");
-    const isSignedIn = localStorage.getItem("isSignedIn") === "true";
-    if (cloudMode === "openwhispr" && isSignedIn) {
-      return "openwhispr";
-    }
+  if (isCloudReasoningMode()) {
+    return "openwhispr";
   }
 
   const model = getAllReasoningModels().find((m) => m.value === modelId);

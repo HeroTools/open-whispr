@@ -14,6 +14,7 @@ import {
   UserCircle,
 } from "lucide-react";
 import TitleBar from "./TitleBar";
+import WindowControls from "./WindowControls";
 import PermissionCard from "./ui/PermissionCard";
 import SupportDropdown from "./ui/SupportDropdown";
 import MicPermissionWarning from "./ui/MicPermissionWarning";
@@ -32,7 +33,6 @@ import { setAgentName as saveAgentName } from "../utils/agentName";
 import { formatHotkeyLabel, getDefaultHotkey } from "../utils/hotkeys";
 import { useAuth } from "../hooks/useAuth";
 import { HotkeyInput } from "./ui/HotkeyInput";
-import HotkeyGuidanceAccordion from "./ui/HotkeyGuidanceAccordion";
 import { useHotkeyRegistration } from "../hooks/useHotkeyRegistration";
 import { getValidationMessage } from "../utils/hotkeyValidator";
 import { getPlatform } from "../utils/platform";
@@ -608,7 +608,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
               <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t("onboarding.activation.mode")}
               </span>
-              <p className="text-[11px] text-muted-foreground/70 mt-0.5">
+              <p className="text-xs text-muted-foreground/70 mt-0.5">
                 {activationMode === "tap"
                   ? t("onboarding.activation.tapDescription")
                   : t("onboarding.activation.holdDescription")}
@@ -629,7 +629,7 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
             {t("onboarding.activation.test")}
           </span>
-          <span className="text-[10px] text-muted-foreground/60">
+          <span className="text-xs text-muted-foreground/60">
             {activationMode === "tap" || isUsingGnomeHotkeys
               ? t("onboarding.activation.hotkeyToStartStop", { hotkey: readableHotkey })
               : t("onboarding.activation.holdHotkey", { hotkey: readableHotkey })}
@@ -714,12 +714,15 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     };
   }, []);
 
+  const onboardingPlatform =
+    typeof window !== "undefined" && window.electronAPI?.getPlatform
+      ? window.electronAPI.getPlatform()
+      : "darwin";
+
   return (
     <div
       className="h-screen flex flex-col bg-background"
-      style={{
-        paddingTop: "env(safe-area-inset-top, 0px)",
-      }}
+      style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
     >
       <ConfirmDialog
         open={confirmDialog.open}
@@ -739,14 +742,27 @@ export default function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         onOk={() => {}}
       />
 
-      {/* Title Bar */}
-      <div className="shrink-0 z-10">
-        <TitleBar
-          showTitle={true}
-          className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
-          actions={isSignedIn ? <SupportDropdown /> : undefined}
-        ></TitleBar>
-      </div>
+      {/* Title Bar / drag region */}
+      {currentStep === 0 ? (
+        <div
+          className="flex items-center justify-end w-full h-10 shrink-0"
+          style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
+        >
+          {onboardingPlatform !== "darwin" && (
+            <div className="pr-1" style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}>
+              <WindowControls />
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="shrink-0 z-10">
+          <TitleBar
+            showTitle={true}
+            className="bg-background backdrop-blur-xl border-b border-border shadow-sm"
+            actions={isSignedIn ? <SupportDropdown /> : undefined}
+          ></TitleBar>
+        </div>
+      )}
 
       {/* Progress Bar - hidden on welcome/auth step */}
       {showProgress && (

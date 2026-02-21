@@ -33,7 +33,7 @@ export function DownloadProgressBar({
           {isInstalling ? (
             <Loader2 className="relative w-3.5 h-3.5 text-primary animate-spin" />
           ) : (
-            <span className="relative text-[10px] font-bold text-primary tabular-nums">
+            <span className="relative text-xs font-bold text-primary tabular-nums">
               {indeterminate ? "···" : `${pct}%`}
             </span>
           )}
@@ -45,21 +45,17 @@ export function DownloadProgressBar({
           {!isInstalling && (indeterminate || speedText || etaText) && (
             <div className="flex items-center gap-1.5 mt-0.5">
               {indeterminate && (
-                <span className="text-[10px] text-muted-foreground/70 tabular-nums">
+                <span className="text-xs text-muted-foreground/70 tabular-nums">
                   {formatBytes(downloadedBytes)}
                 </span>
               )}
               {speedText && (
-                <span className="text-[10px] text-muted-foreground/70 tabular-nums">
-                  {speedText}
-                </span>
+                <span className="text-xs text-muted-foreground/70 tabular-nums">{speedText}</span>
               )}
               {etaText && (
                 <>
-                  <span className="text-[10px] text-muted-foreground/30">·</span>
-                  <span className="text-[10px] text-muted-foreground/70 tabular-nums">
-                    {etaText}
-                  </span>
+                  <span className="text-xs text-muted-foreground/30">·</span>
+                  <span className="text-xs text-muted-foreground/70 tabular-nums">{etaText}</span>
                 </>
               )}
             </div>

@@ -81,7 +81,7 @@ function LocalModelCard({
   return (
     <div
       onClick={handleClick}
-      className={`relative w-full text-left overflow-hidden rounded-md border transition-all duration-200 group ${
+      className={`relative w-full text-left overflow-hidden rounded-md border transition-colors duration-200 group ${
         isSelected ? cardStyles.modelCard.selected : cardStyles.modelCard.default
       } ${isDownloaded && !isSelected ? "cursor-pointer" : ""}`}
     >
@@ -110,14 +110,14 @@ function LocalModelCard({
           <span className="font-semibold text-sm text-foreground truncate tracking-tight">
             {name}
           </span>
-          <span className="text-[11px] text-muted-foreground/50 tabular-nums shrink-0">
+          <span className="text-xs text-muted-foreground/50 tabular-nums shrink-0">
             {actualSizeMb ? `${actualSizeMb}MB` : size}
           </span>
           {recommended && (
             <span className={cardStyles.badges.recommended}>{t("common.recommended")}</span>
           )}
           {languageLabel && (
-            <span className="text-[11px] text-muted-foreground/50 font-medium shrink-0">
+            <span className="text-xs text-muted-foreground/50 font-medium shrink-0">
               {languageLabel}
             </span>
           )}
@@ -127,7 +127,7 @@ function LocalModelCard({
           {isDownloaded ? (
             <>
               {isSelected && (
-                <span className="text-[10px] font-medium text-primary px-2 py-0.5 bg-primary/10 rounded-sm">
+                <span className="text-xs font-medium text-primary px-2 py-0.5 bg-primary/10 rounded-sm">
                   {t("common.active")}
                 </span>
               )}
@@ -138,7 +138,7 @@ function LocalModelCard({
                 }}
                 size="sm"
                 variant="ghost"
-                className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-all active:scale-95"
+                className="h-6 w-6 p-0 text-muted-foreground/40 hover:text-destructive opacity-0 group-hover:opacity-100 transition-[color,opacity,transform] active:scale-95"
               >
                 <Trash2 size={12} />
               </Button>
@@ -152,7 +152,7 @@ function LocalModelCard({
               disabled={isCancelling}
               size="sm"
               variant="outline"
-              className="h-6 px-2.5 text-[11px] text-destructive border-destructive/25 hover:bg-destructive/8"
+              className="h-6 px-2.5 text-xs text-destructive border-destructive/25 hover:bg-destructive/8"
             >
               <X size={11} className="mr-0.5" />
               {isCancelling ? "..." : t("common.cancel")}
@@ -165,7 +165,7 @@ function LocalModelCard({
               }}
               size="sm"
               variant="default"
-              className="h-6 px-2.5 text-[11px]"
+              className="h-6 px-2.5 text-xs"
             >
               <Download size={11} className="mr-1" />
               {t("common.download")}
@@ -828,7 +828,7 @@ export default function TranscriptionModelPicker({
                           openai: "https://platform.openai.com/api-keys",
                         }[selectedCloudProvider] || "https://platform.openai.com/api-keys"
                       )}
-                      className="text-[11px] text-white/70 hover:text-white transition-colors cursor-pointer"
+                      className="text-xs text-white/70 hover:text-white transition-colors cursor-pointer"
                     >
                       {t("transcription.getKey")}
                     </button>

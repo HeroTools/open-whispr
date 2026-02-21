@@ -272,7 +272,9 @@
       "clear": "Очистить",
       "empty": "Транскрипций пока нет",
       "press": "Нажмите",
-      "toStart": "чтобы начать"
+      "toStart": "чтобы начать",
+      "clearedDescription": "{{count}} транскрипция удалена",
+      "clearedDescription_other": "{{count}} транскрипций удалено"
     },
     "cloudMigration": {
       "title": "Добро пожаловать в OpenWhispr Pro",
@@ -838,52 +840,43 @@
   },
   "settingsModal": {
     "groups": {
+      "account": "Аккаунт",
       "app": "Приложение",
-      "intelligence": "Интеллект",
-      "profile": "Профиль",
-      "speech": "Речь",
+      "speechAi": "Речь и ИИ",
       "system": "Система"
     },
     "sections": {
       "account": {
-        "description": "Вход и использование",
+        "description": "Профиль и вход",
         "label": "Аккаунт"
       },
-      "agentConfig": {
-        "description": "Настройка голосового агента",
-        "label": "Агент"
-      },
-      "aiModels": {
-        "description": "Очистка и улучшение текста",
-        "label": "ИИ-модели"
-      },
-      "developer": {
-        "description": "Логи, диагностика и данные",
-        "label": "Разработчик"
-      },
-      "dictionary": {
-        "description": "Пользовательские слова и фразы",
-        "label": "Словарь"
+      "plansBilling": {
+        "description": "Тарифы, использование и оплата",
+        "label": "Тарифы и оплата"
       },
       "general": {
-        "description": "Внешний вид, горячая клавиша и автозапуск",
+        "description": "Внешний вид, звуки и автозапуск",
         "label": "Настройки"
       },
-      "permissions": {
-        "description": "Микрофон и универсальный доступ",
-        "label": "Разрешения"
-      },
-      "privacy": {
-        "description": "Облачное резервное копирование и аналитика",
-        "label": "Конфиденциальность"
-      },
-      "prompts": {
-        "description": "Студия системных промптов",
-        "label": "Промпты"
+      "hotkeys": {
+        "description": "Горячая клавиша диктовки и активация",
+        "label": "Горячие клавиши"
       },
       "transcription": {
         "description": "Движок распознавания речи",
         "label": "Транскрипция"
+      },
+      "intelligence": {
+        "description": "ИИ-модели, агент и промпты",
+        "label": "Интеллект"
+      },
+      "privacyData": {
+        "description": "Конфиденциальность, разрешения и аналитика",
+        "label": "Конфиденциальность и данные"
+      },
+      "system": {
+        "description": "Обновления, хранилище и инструменты разработчика",
+        "label": "Система"
       }
     },
     "title": "Настройки"
@@ -1063,6 +1056,7 @@
       "hotkey": {
         "activationMode": "Режим активации",
         "description": "Комбинация клавиш для запуска и остановки голосовой диктовки",
+        "resetToDefault": "Сбросить на {{hotkey}}",
         "title": "Горячая клавиша диктовки"
       },
       "microphone": {
@@ -1246,5 +1240,248 @@
         "openai_oss_gpt_oss_20b_mxfp4": "Открытая модель OpenAI для потребительского оборудования"
       }
     }
+  },
+  "referral": {
+    "title": "Приглашайте и получайте награды",
+    "subtitle": "Подарите месяц. Получите месяц.",
+    "tabs": {
+      "refer": "Пригласить",
+      "pastInvites": "Отправленные приглашения"
+    },
+    "howItWorks": {
+      "shareLink": "Поделитесь ссылкой-приглашением",
+      "theySignUp": "Они регистрируются и получают ",
+      "freeMonthOfPro": "бесплатный месяц Pro",
+      "youGet": "Вы получаете ",
+      "freeMonth": "бесплатный месяц",
+      "whenTheyDictate": ", когда они надиктуют 2 000 слов"
+    },
+    "inviteLink": {
+      "title": "Ваша ссылка-приглашение",
+      "copy": "Копировать",
+      "copied": "Скопировано"
+    },
+    "sendInvites": {
+      "title": "Отправить приглашения",
+      "placeholder": "friend@example.com",
+      "send": "Отправить",
+      "sending": "Отправка"
+    },
+    "stats": {
+      "referred": "Приглашено",
+      "converted": "Активировано",
+      "monthsEarned": "Месяцев заработано"
+    },
+    "status": {
+      "converted": "Активировано",
+      "opened": "Открыто",
+      "failed": "Не удалось",
+      "sent": "Отправлено"
+    },
+    "empty": {
+      "title": "Приглашения ещё не отправлены",
+      "description": "Поделитесь ссылкой или отправьте приглашение, чтобы начать"
+    },
+    "toasts": {
+      "copiedTitle": "Скопировано!",
+      "copiedDescription": "Реферальная ссылка скопирована в буфер обмена",
+      "copyFailedTitle": "Ошибка копирования",
+      "copyFailedDescription": "Не удалось скопировать ссылку в буфер обмена",
+      "invalidEmailTitle": "Неверный адрес электронной почты",
+      "invalidEmailDescription": "Пожалуйста, введите корректный адрес электронной почты",
+      "inviteSentTitle": "Приглашение отправлено!",
+      "inviteSentDescription": "Приглашение отправлено на {{email}}",
+      "sendFailedTitle": "Ошибка отправки",
+      "sendFailedDescription": "Не удалось отправить приглашение. Пожалуйста, попробуйте ещё раз."
+    },
+    "errors": {
+      "unableToLoad": "Не удалось загрузить данные реферальной программы",
+      "unableToLoadStats": "Не удалось загрузить статистику рефералов. Пожалуйста, попробуйте позже."
+    },
+    "tryAgain": "Попробовать снова",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "Ваша аудиоподпись",
+      "stop": "Стоп",
+      "playSignal": "Воспроизвести сигнал"
+    },
+    "friends": {
+      "title": "Друзья",
+      "completed": "Завершено",
+      "sentInvites": "Отправленные приглашения"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "Папки",
+      "meetings": "Встречи",
+      "soon": "Скоро",
+      "folderName": "Название папки",
+      "couldNotCreate": "Не удалось создать папку",
+      "couldNotRename": "Не удалось переименовать папку",
+      "couldNotDelete": "Не удалось удалить папку"
+    },
+    "list": {
+      "title": "Заметки",
+      "newNote": "Новая заметка",
+      "untitled": "Без названия",
+      "untitledNote": "Заметка без названия",
+      "createToGetStarted": "Создайте заметку, чтобы начать",
+      "selectNote": "Выберите заметку"
+    },
+    "editor": {
+      "untitled": "Без названия",
+      "noteTitle": "Название заметки",
+      "stop": "Стоп",
+      "transcribe": "Транскрибировать",
+      "recording": "Запись",
+      "processing": "Обработка...",
+      "edit": "Редактировать",
+      "preview": "Предпросмотр",
+      "enhance": "Улучшить",
+      "reEnhance": "Улучшить снова",
+      "export": "Экспорт",
+      "asMarkdown": "Как Markdown",
+      "asPlainText": "Как обычный текст",
+      "raw": "Исходный",
+      "enhanced": "Улучшенный",
+      "saving": "Сохранение",
+      "wordsCount": "{{count}} слов",
+      "startWriting": "Начните писать...",
+      "staleIndicator": "Содержимое изменилось после улучшения"
+    },
+    "enhance": {
+      "title": "Улучшить с помощью ИИ",
+      "defaultPrompt": "Исправьте грамматику, улучшите структуру и отформатируйте эти заметки для удобства чтения, сохранив весь исходный смысл.",
+      "placeholder": "Что ИИ должен сделать с вашими заметками?",
+      "tryAgain": "Попробовать снова",
+      "apply": "Применить",
+      "cancel": "Отмена",
+      "enhancing": "Улучшение...",
+      "enhance": "Улучшить",
+      "noProviders": "Настройте API-ключи в Настройках для использования моделей ИИ"
+    },
+    "upload": {
+      "title": "Загрузить аудио",
+      "using": "Используется {{model}}",
+      "dropOrBrowse": "Перетащите аудиофайл или нажмите для выбора",
+      "supportedFormats": "MP3, WAV, M4A, WebM, OGG, FLAC, AAC",
+      "dropToUpload": "Отпустите для загрузки",
+      "transcribe": "Транскрибировать",
+      "cancel": "Отмена",
+      "transcribingCloud": "Транскрибирование через облако...",
+      "transcribingLocal": "Локальное транскрибирование...",
+      "transcribingProvider": "Транскрибирование через {{provider}}...",
+      "transcriptionComplete": "Транскрибирование завершено",
+      "openNote": "Открыть заметку",
+      "uploadAnother": "Загрузить ещё",
+      "retry": "Повторить",
+      "startOver": "Начать сначала",
+      "transcriptionSettings": "Настройки транскрибирования",
+      "newFolder": "Новая папка",
+      "folderName": "Название папки",
+      "create": "Создать",
+      "setupTitle": "Настройте транскрибирование",
+      "setupDescription": "Выберите способ транскрибирования аудио. Это также применяется к живой диктовке.",
+      "continue": "Продолжить",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "Другой",
+      "selectFolder": "Выбрать папку",
+      "transcriptionFailed": "Ошибка транскрибирования",
+      "errorOccurred": "Произошла ошибка",
+      "enhancementFailed": "Ошибка улучшения"
+    },
+    "meeting": {
+      "title": "Заметки со встреч",
+      "description": "Определение говорящих и структурированные резюме",
+      "comingSoon": "Скоро"
+    },
+    "context": {
+      "moveToFolder": "Переместить в папку",
+      "delete": "Удалить",
+      "rename": "Переименовать",
+      "searchFolders": "Поиск папок...",
+      "noResults": "Папки не найдены",
+      "newFolder": "Новая папка"
+    },
+    "actions": {
+      "manage": "Управление действиями...",
+      "manageTitle": "Пользовательские действия",
+      "addAction": "Новое действие",
+      "editAction": "Редактировать действие",
+      "namePlaceholder": "Название действия",
+      "descriptionPlaceholder": "Краткое описание (необязательно)",
+      "promptPlaceholder": "Что ИИ должен сделать с содержимым заметки?",
+      "builtIn": "Встроенное",
+      "save": "Сохранить",
+      "update": "Обновить",
+      "cancel": "Отмена",
+      "noActions": "Пользовательских действий пока нет",
+      "runAction": "Запустить {{name}}",
+      "selectAction": "Выбрать действие",
+      "done": "Готово",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "Очистить заметки",
+          "description": "Исправить грамматику, структуру и форматирование"
+        }
+      }
+    },
+    "empty": {
+      "title": "Нет заметок",
+      "description": "Создайте первую заметку",
+      "selectTitle": "Выберите заметку",
+      "selectDescription": "Выберите заметку на боковой панели",
+      "createNote": "Создать заметку",
+      "emptyFolder": "Папка пуста"
+    },
+    "addToFolder": {
+      "title": "Добавить заметки",
+      "searchPlaceholder": "Поиск заметок...",
+      "addExisting": "Добавить существующие",
+      "addCount": "Добавить: {{count}}",
+      "noResults": "Не найдено",
+      "noNotesAvailable": "Нет доступных заметок"
+    }
+  },
+  "dictionary": {
+    "addWord": "Добавить слово",
+    "removeWord": "Удалить {{word}}",
+    "clearAll": "Очистить все",
+    "howItWorks": "Как это работает",
+    "addPlaceholder": "Добавить слово или фразу...",
+    "title": "Словарь",
+    "description": "Добавьте слова для улучшения транскрипции",
+    "clearTitle": "Очистить словарь?",
+    "clearDescription": "Все слова будут удалены без возможности восстановления."
+  },
+  "sidebar": {
+    "home": "Главная",
+    "notes": "Заметки",
+    "upload": "Загрузить",
+    "dictionary": "Словарь",
+    "referral": "Получить бесплатный месяц",
+    "settings": "Настройки",
+    "support": "Поддержка"
+  },
+  "usage": {
+    "approachingLimit": "Приближается недельный лимит",
+    "approachingLimitDescription": "На этой неделе использовано {{wordsUsed}} / {{limit}} слов.",
+    "yourPlan": "Ваш тариф",
+    "trial": "Пробный период ({{days}} дн.)",
+    "trial_other": "Пробный период ({{days}} дн.)",
+    "pro": "Pro",
+    "unlimitedTrial": "Без ограничений в пробный период",
+    "unlimited": "Без ограничений",
+    "manageSubscription": "Управление подпиской",
+    "weeklyUsage": "За неделю",
+    "limitReached": "Лимит достигнут",
+    "free": "Бесплатно",
+    "wordsRemaining": "Осталось {{remaining}} слов",
+    "rollingLimit": "Скользящий недельный лимит",
+    "upgradeToPro": "Перейти на Pro",
+    "useYourOwnKey": "Свой API-ключ",
+    "upgradeUnlimited": "Pro — без ограничений"
   }
 }

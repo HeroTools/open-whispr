@@ -34,6 +34,15 @@ class UpdateManager {
       private: false,
     });
 
+    // Use arch-specific update channel on macOS to prevent arm64/x64
+    // from downloading mismatched artifacts. Both builds publish to the
+    // same GitHub release, so without this they race on latest-mac.yml.
+    // Setting channel to e.g. 'latest-arm64' makes the updater look for
+    // 'latest-arm64-mac.yml' instead of the shared 'latest-mac.yml'.
+    if (process.platform === "darwin") {
+      autoUpdater.channel = process.arch === "arm64" ? "latest-arm64" : "latest-x64";
+    }
+
     // Disable auto-download - let user control when to download
     autoUpdater.autoDownload = false;
 

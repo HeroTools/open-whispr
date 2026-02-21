@@ -385,7 +385,7 @@
         "rateLimited": "Download-Server begrenzt Anfragen. Bitte warten Sie einige Minuten und versuchen Sie es erneut.",
         "server": "Serverfehler ({{error}}). Bitte versuchen Sie es später erneut.",
         "generic": "Download fehlgeschlagen: {{error}}",
-        "extractionFailed": "Modell heruntergeladen, aber Installation fehlgeschlagen. Klicken Sie auf \u201EHerunterladen\u201C, um die Installation ohne erneuten Download zu wiederholen.",
+        "extractionFailed": "Modell heruntergeladen, aber Installation fehlgeschlagen. Klicken Sie auf „Herunterladen“, um die Installation ohne erneuten Download zu wiederholen.",
         "unknown": "Unbekannter Fehler"
       },
       "downloadFailed": {
@@ -837,52 +837,43 @@
   },
   "settingsModal": {
     "groups": {
+      "account": "Konto",
       "app": "App",
-      "intelligence": "Intelligenz",
-      "profile": "Profil",
-      "speech": "Sprache",
+      "speechAi": "Sprache & KI",
       "system": "System"
     },
     "sections": {
       "account": {
-        "description": "Anmeldung & Nutzung",
+        "description": "Profil & Anmeldung",
         "label": "Konto"
       },
-      "agentConfig": {
-        "description": "Sprachagent-Einrichtung",
-        "label": "Agent"
-      },
-      "aiModels": {
-        "description": "Textbereinigung & -verbesserung",
-        "label": "KI-Modelle"
-      },
-      "developer": {
-        "description": "Protokolle, Diagnose & Daten",
-        "label": "Entwickler"
-      },
-      "dictionary": {
-        "description": "Eigene Wörter & Phrasen",
-        "label": "Wörterbuch"
+      "plansBilling": {
+        "description": "Tarife, Nutzung & Abrechnung",
+        "label": "Tarife & Abrechnung"
       },
       "general": {
-        "description": "Darstellung, Hotkey & Start",
+        "description": "Darstellung, Töne & Start",
         "label": "Einstellungen"
       },
-      "permissions": {
-        "description": "Mikrofon & Bedienungshilfen",
-        "label": "Berechtigungen"
-      },
-      "privacy": {
-        "description": "Cloud-Backup & Analysen",
-        "label": "Datenschutz"
-      },
-      "prompts": {
-        "description": "System-Prompt-Studio",
-        "label": "Prompts"
+      "hotkeys": {
+        "description": "Diktat-Hotkey & Aktivierung",
+        "label": "Hotkeys"
       },
       "transcription": {
         "description": "Sprache-zu-Text-Engine",
         "label": "Transkription"
+      },
+      "intelligence": {
+        "description": "KI-Modelle, Agent & Prompts",
+        "label": "Intelligenz"
+      },
+      "privacyData": {
+        "description": "Datenschutz, Berechtigungen & Analyse",
+        "label": "Datenschutz & Daten"
+      },
+      "system": {
+        "description": "Updates, Speicher & Entwicklertools",
+        "label": "System"
       }
     },
     "title": "Einstellungen"
@@ -1062,6 +1053,7 @@
       "hotkey": {
         "activationMode": "Aktivierungsmodus",
         "description": "Die Tastenkombination, die das Sprachdiktat startet und stoppt",
+        "resetToDefault": "Auf {{hotkey}} zurücksetzen",
         "title": "Diktat-Hotkey"
       },
       "microphone": {
@@ -1245,5 +1237,248 @@
         "openai_oss_gpt_oss_20b_mxfp4": "Open-Weight-Modell von OpenAI für Consumer-Hardware"
       }
     }
+  },
+  "referral": {
+    "title": "Empfehlen und Belohnungen erhalten",
+    "subtitle": "Schenke einen Monat. Erhalte einen Monat.",
+    "tabs": {
+      "refer": "Empfehlen",
+      "pastInvites": "Vergangene Einladungen"
+    },
+    "howItWorks": {
+      "shareLink": "Teile deinen Einladungslink",
+      "theySignUp": "Sie registrieren sich und erhalten einen ",
+      "freeMonthOfPro": "kostenlosen Monat Pro",
+      "youGet": "Du erhältst einen ",
+      "freeMonth": "kostenlosen Monat",
+      "whenTheyDictate": " wenn sie 2.000 Wörter diktieren"
+    },
+    "inviteLink": {
+      "title": "Dein Einladungslink",
+      "copy": "Kopieren",
+      "copied": "Kopiert"
+    },
+    "sendInvites": {
+      "title": "Einladungen senden",
+      "placeholder": "friend@example.com",
+      "send": "Senden",
+      "sending": "Wird gesendet"
+    },
+    "stats": {
+      "referred": "Empfohlen",
+      "converted": "Umgewandelt",
+      "monthsEarned": "Verdiente Monate"
+    },
+    "status": {
+      "converted": "Umgewandelt",
+      "opened": "Geöffnet",
+      "failed": "Fehlgeschlagen",
+      "sent": "Gesendet"
+    },
+    "empty": {
+      "title": "Noch keine Einladungen gesendet",
+      "description": "Teile deinen Link oder sende eine Einladung, um loszulegen"
+    },
+    "toasts": {
+      "copiedTitle": "Kopiert!",
+      "copiedDescription": "Empfehlungslink in die Zwischenablage kopiert",
+      "copyFailedTitle": "Kopieren fehlgeschlagen",
+      "copyFailedDescription": "Link konnte nicht in die Zwischenablage kopiert werden",
+      "invalidEmailTitle": "Ungültige E-Mail",
+      "invalidEmailDescription": "Bitte gib eine gültige E-Mail-Adresse ein",
+      "inviteSentTitle": "Einladung gesendet!",
+      "inviteSentDescription": "Einladung an {{email}} gesendet",
+      "sendFailedTitle": "Senden fehlgeschlagen",
+      "sendFailedDescription": "Einladung konnte nicht gesendet werden. Bitte versuche es erneut."
+    },
+    "errors": {
+      "unableToLoad": "Empfehlungsdaten konnten nicht geladen werden",
+      "unableToLoadStats": "Empfehlungsstatistiken konnten nicht geladen werden. Bitte versuche es später erneut."
+    },
+    "tryAgain": "Erneut versuchen",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "Deine Audio-Signatur",
+      "stop": "Stopp",
+      "playSignal": "Signal abspielen"
+    },
+    "friends": {
+      "title": "Freunde",
+      "completed": "Abgeschlossen",
+      "sentInvites": "Gesendete Einladungen"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "Ordner",
+      "meetings": "Besprechungen",
+      "soon": "Demnächst",
+      "folderName": "Ordnername",
+      "couldNotCreate": "Ordner konnte nicht erstellt werden",
+      "couldNotRename": "Ordner konnte nicht umbenannt werden",
+      "couldNotDelete": "Ordner konnte nicht gelöscht werden"
+    },
+    "list": {
+      "title": "Notizen",
+      "newNote": "Neue Notiz",
+      "untitled": "Unbenannt",
+      "untitledNote": "Unbenannte Notiz",
+      "createToGetStarted": "Erstelle eine Notiz, um loszulegen",
+      "selectNote": "Notiz auswählen"
+    },
+    "editor": {
+      "untitled": "Unbenannt",
+      "noteTitle": "Notiztitel",
+      "stop": "Stopp",
+      "transcribe": "Transkribieren",
+      "recording": "Aufnahme",
+      "processing": "Verarbeitung...",
+      "edit": "Bearbeiten",
+      "preview": "Vorschau",
+      "enhance": "Verbessern",
+      "reEnhance": "Erneut verbessern",
+      "export": "Exportieren",
+      "asMarkdown": "Als Markdown",
+      "asPlainText": "Als Klartext",
+      "raw": "Roh",
+      "enhanced": "Verbessert",
+      "saving": "Wird gespeichert",
+      "wordsCount": "{{count}} Wörter",
+      "startWriting": "Schreibe los...",
+      "staleIndicator": "Der Inhalt hat sich seit der Verbesserung geändert"
+    },
+    "enhance": {
+      "title": "Mit KI verbessern",
+      "defaultPrompt": "Grammatik bereinigen, Struktur verbessern und diese Notizen für bessere Lesbarkeit formatieren, ohne die ursprüngliche Bedeutung zu verändern.",
+      "placeholder": "Was soll die KI mit deinen Notizen machen?",
+      "tryAgain": "Erneut versuchen",
+      "apply": "Anwenden",
+      "cancel": "Abbrechen",
+      "enhancing": "Wird verbessert...",
+      "enhance": "Verbessern",
+      "noProviders": "Konfigurieren Sie API-Schlüssel in den Einstellungen, um KI-Modelle zu verwenden"
+    },
+    "upload": {
+      "title": "Audio hochladen",
+      "using": "Verwendet {{model}}",
+      "dropOrBrowse": "Audiodatei ablegen oder klicken zum Durchsuchen",
+      "supportedFormats": "MP3, WAV, M4A, WebM, OGG, FLAC, AAC",
+      "dropToUpload": "Zum Hochladen ablegen",
+      "transcribe": "Transkribieren",
+      "cancel": "Abbrechen",
+      "transcribingCloud": "Wird über die Cloud transkribiert...",
+      "transcribingLocal": "Wird lokal transkribiert...",
+      "transcribingProvider": "Wird über {{provider}} transkribiert...",
+      "transcriptionComplete": "Transkription abgeschlossen",
+      "openNote": "Notiz öffnen",
+      "uploadAnother": "Weitere hochladen",
+      "retry": "Erneut versuchen",
+      "startOver": "Neu beginnen",
+      "transcriptionSettings": "Transkriptionseinstellungen",
+      "newFolder": "Neuer Ordner",
+      "folderName": "Ordnername",
+      "create": "Erstellen",
+      "setupTitle": "Transkription einrichten",
+      "setupDescription": "Wähle, wie dein Audio transkribiert werden soll. Dies gilt auch für die Live-Diktierfunktion.",
+      "continue": "Weiter",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "Benutzerdefiniert",
+      "selectFolder": "Ordner auswählen",
+      "transcriptionFailed": "Transkription fehlgeschlagen",
+      "errorOccurred": "Ein Fehler ist aufgetreten",
+      "enhancementFailed": "Verbesserung fehlgeschlagen"
+    },
+    "meeting": {
+      "title": "Besprechungsnotizen",
+      "description": "Sprechererkennung und strukturierte Zusammenfassungen",
+      "comingSoon": "Demnächst verfügbar"
+    },
+    "context": {
+      "moveToFolder": "In Ordner verschieben",
+      "delete": "Löschen",
+      "rename": "Umbenennen",
+      "searchFolders": "Ordner suchen...",
+      "noResults": "Keine Ordner gefunden",
+      "newFolder": "Neuer Ordner"
+    },
+    "actions": {
+      "manage": "Aktionen verwalten...",
+      "manageTitle": "Benutzerdefinierte Aktionen",
+      "addAction": "Neue Aktion",
+      "editAction": "Aktion bearbeiten",
+      "namePlaceholder": "Name der Aktion",
+      "descriptionPlaceholder": "Kurzbeschreibung (optional)",
+      "promptPlaceholder": "Was soll die KI mit dem Notizeninhalt tun?",
+      "builtIn": "Integriert",
+      "save": "Speichern",
+      "update": "Aktualisieren",
+      "cancel": "Abbrechen",
+      "noActions": "Noch keine benutzerdefinierten Aktionen",
+      "runAction": "{{name}} ausführen",
+      "selectAction": "Aktion auswählen",
+      "done": "Fertig",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "Notizen bereinigen",
+          "description": "Grammatik, Struktur und Formatierung verbessern"
+        }
+      }
+    },
+    "empty": {
+      "title": "Noch keine Notizen hier",
+      "description": "Erstelle deine erste Notiz, um loszuschreiben",
+      "selectTitle": "Notiz auswählen",
+      "selectDescription": "Wähle eine Notiz aus der Seitenleiste",
+      "createNote": "Notiz erstellen",
+      "emptyFolder": "Keine Notizen in diesem Ordner"
+    },
+    "addToFolder": {
+      "title": "Notizen hinzufügen",
+      "searchPlaceholder": "Notizen zum Hinzufügen suchen...",
+      "addExisting": "Vorhandene hinzufügen",
+      "addCount": "{{count}} Notizen hinzufügen",
+      "noResults": "Keine passenden Notizen",
+      "noNotesAvailable": "Keine weiteren Notizen verfügbar"
+    }
+  },
+  "dictionary": {
+    "addWord": "Wort hinzufügen",
+    "removeWord": "{{word}} entfernen",
+    "clearAll": "Alle löschen",
+    "howItWorks": "So funktioniert es",
+    "title": "Benutzerdefiniertes Wörterbuch",
+    "description": "Bringe der KI dein Vokabular bei – Namen, Fachbegriffe und Ausdrücke, die sie sonst übersehen könnte",
+    "clearTitle": "Wörterbuch leeren?",
+    "clearDescription": "Dadurch werden alle Wörter aus deinem benutzerdefinierten Wörterbuch entfernt. Diese Aktion kann nicht rückgängig gemacht werden.",
+    "addPlaceholder": "Ein Wort oder eine Phrase hinzufügen..."
+  },
+  "sidebar": {
+    "home": "Startseite",
+    "notes": "Notizen",
+    "upload": "Hochladen",
+    "dictionary": "Wörterbuch",
+    "referral": "Gratis-Monat erhalten",
+    "settings": "Einstellungen",
+    "support": "Support"
+  },
+  "usage": {
+    "approachingLimit": "Wochenlimit fast erreicht",
+    "approachingLimitDescription": "Du hast diese Woche {{wordsUsed}} von {{limit}} kostenlosen Wörtern verwendet.",
+    "yourPlan": "Dein Tarif",
+    "trial": "Testphase (noch {{days}} Tag)",
+    "trial_other": "Testphase (noch {{days}} Tage)",
+    "pro": "Pro",
+    "unlimitedTrial": "Unbegrenzte Transkriptionen während deiner Testphase",
+    "unlimited": "Unbegrenzte Transkriptionen",
+    "manageSubscription": "Abonnement verwalten",
+    "weeklyUsage": "Wöchentliche Nutzung",
+    "limitReached": "Limit erreicht",
+    "free": "Kostenlos",
+    "wordsRemaining": "Noch {{remaining}} Wörter",
+    "rollingLimit": "Rollierendes Wochenlimit",
+    "upgradeToPro": "Auf Pro upgraden",
+    "useYourOwnKey": "Eigenen API-Schlüssel verwenden",
+    "upgradeUnlimited": "Auf Pro upgraden – unbegrenzte Transkriptionen"
   }
 }

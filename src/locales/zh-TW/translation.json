@@ -837,52 +837,43 @@
   },
   "settingsModal": {
     "groups": {
+      "account": "帳戶",
       "app": "應用程式",
-      "intelligence": "智慧功能",
-      "profile": "個人檔案",
-      "speech": "語音",
+      "speechAi": "語音與 AI",
       "system": "系統"
     },
     "sections": {
       "account": {
-        "description": "登入與用量",
+        "description": "個人資料與登入",
         "label": "帳號"
       },
-      "agentConfig": {
-        "description": "語音助理設定",
-        "label": "助理"
-      },
-      "aiModels": {
-        "description": "文字整理與增強",
-        "label": "AI 模型"
-      },
-      "developer": {
-        "description": "記錄、診斷與資料",
-        "label": "開發者"
-      },
-      "dictionary": {
-        "description": "自訂詞彙和片語",
-        "label": "字典"
+      "plansBilling": {
+        "description": "方案、用量與帳單",
+        "label": "方案與帳單"
       },
       "general": {
-        "description": "外觀、快捷鍵與啟動",
+        "description": "外觀、音效與啟動",
         "label": "偏好設定"
       },
-      "permissions": {
-        "description": "麥克風與輔助使用",
-        "label": "權限"
-      },
-      "privacy": {
-        "description": "雲端備份與分析",
-        "label": "隱私權"
-      },
-      "prompts": {
-        "description": "系統提示詞工作室",
-        "label": "提示詞"
+      "hotkeys": {
+        "description": "聽寫快捷鍵與啟用模式",
+        "label": "快捷鍵"
       },
       "transcription": {
         "description": "語音轉文字引擎",
         "label": "轉錄"
+      },
+      "intelligence": {
+        "description": "AI 模型、助理與提示詞",
+        "label": "智慧功能"
+      },
+      "privacyData": {
+        "description": "隱私、權限與資料分析",
+        "label": "隱私與資料"
+      },
+      "system": {
+        "description": "更新、儲存與開發者工具",
+        "label": "系統"
       }
     },
     "title": "設定"
@@ -1062,6 +1053,7 @@
       "hotkey": {
         "activationMode": "啟用模式",
         "description": "用來開始和停止語音輸入的組合鍵",
+        "resetToDefault": "重置為 {{hotkey}}",
         "title": "語音輸入快捷鍵"
       },
       "microphone": {
@@ -1245,5 +1237,248 @@
         "openai_oss_gpt_oss_20b_mxfp4": "OpenAI 開放權重模型，適用於消費級硬體"
       }
     }
+  },
+  "referral": {
+    "title": "推薦好友賺取獎勵",
+    "subtitle": "送一個月，得一個月。",
+    "tabs": {
+      "refer": "推薦",
+      "pastInvites": "過去的邀請"
+    },
+    "howItWorks": {
+      "shareLink": "分享您的邀請連結",
+      "theySignUp": "對方註冊即可獲得",
+      "freeMonthOfPro": "一個月免費 Pro",
+      "youGet": "您可獲得",
+      "freeMonth": "一個月免費",
+      "whenTheyDictate": "當對方聽寫滿 2,000 字時"
+    },
+    "inviteLink": {
+      "title": "您的邀請連結",
+      "copy": "複製",
+      "copied": "已複製"
+    },
+    "sendInvites": {
+      "title": "發送邀請",
+      "placeholder": "friend@example.com",
+      "send": "發送",
+      "sending": "發送中"
+    },
+    "stats": {
+      "referred": "已推薦",
+      "converted": "已轉換",
+      "monthsEarned": "已獲得月數"
+    },
+    "status": {
+      "converted": "已轉換",
+      "opened": "已開啟",
+      "failed": "失敗",
+      "sent": "已發送"
+    },
+    "empty": {
+      "title": "尚未發送任何邀請",
+      "description": "分享您的連結或發送邀請以開始使用"
+    },
+    "toasts": {
+      "copiedTitle": "已複製！",
+      "copiedDescription": "推薦連結已複製到剪貼簿",
+      "copyFailedTitle": "複製失敗",
+      "copyFailedDescription": "無法將連結複製到剪貼簿",
+      "invalidEmailTitle": "無效的電子郵件",
+      "invalidEmailDescription": "請輸入有效的電子郵件地址",
+      "inviteSentTitle": "邀請已發送！",
+      "inviteSentDescription": "邀請已發送至 {{email}}",
+      "sendFailedTitle": "發送失敗",
+      "sendFailedDescription": "無法發送邀請，請重試。"
+    },
+    "errors": {
+      "unableToLoad": "無法載入推薦資料",
+      "unableToLoadStats": "無法載入推薦統計資料，請稍後再試。"
+    },
+    "tryAgain": "重試",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "您的音訊簽名",
+      "stop": "停止",
+      "playSignal": "播放信號"
+    },
+    "friends": {
+      "title": "好友",
+      "completed": "已完成",
+      "sentInvites": "已發送的邀請"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "資料夾",
+      "meetings": "會議",
+      "soon": "即將推出",
+      "folderName": "資料夾名稱",
+      "couldNotCreate": "無法建立資料夾",
+      "couldNotRename": "無法重新命名資料夾",
+      "couldNotDelete": "無法刪除資料夾"
+    },
+    "list": {
+      "title": "筆記",
+      "newNote": "新增筆記",
+      "untitled": "未命名",
+      "untitledNote": "未命名筆記",
+      "createToGetStarted": "建立筆記以開始使用",
+      "selectNote": "選擇筆記"
+    },
+    "editor": {
+      "untitled": "未命名",
+      "noteTitle": "筆記標題",
+      "stop": "停止",
+      "transcribe": "轉錄",
+      "recording": "錄音中",
+      "processing": "處理中...",
+      "edit": "編輯",
+      "preview": "預覽",
+      "enhance": "增強",
+      "reEnhance": "重新增強",
+      "export": "匯出",
+      "asMarkdown": "匯出為 Markdown",
+      "asPlainText": "匯出為純文字",
+      "raw": "原始",
+      "enhanced": "已增強",
+      "saving": "儲存中",
+      "wordsCount": "{{count}} 個字",
+      "startWriting": "開始撰寫...",
+      "staleIndicator": "內容在增強後已變更"
+    },
+    "enhance": {
+      "title": "使用 AI 增強",
+      "defaultPrompt": "修正文法、改善結構，並將這些筆記格式化以提升可讀性，同時保留所有原始含義。",
+      "placeholder": "AI 應如何處理您的筆記？",
+      "tryAgain": "重試",
+      "apply": "套用",
+      "cancel": "取消",
+      "enhancing": "增強中...",
+      "enhance": "增強",
+      "noProviders": "在設定中配置 API 金鑰以使用 AI 模型"
+    },
+    "upload": {
+      "title": "上傳音訊",
+      "using": "使用 {{model}}",
+      "dropOrBrowse": "拖放音訊檔案或點擊瀏覽",
+      "supportedFormats": "MP3、WAV、M4A、WebM、OGG、FLAC、AAC",
+      "dropToUpload": "拖放以上傳",
+      "transcribe": "轉錄",
+      "cancel": "取消",
+      "transcribingCloud": "透過雲端轉錄中...",
+      "transcribingLocal": "本機轉錄中...",
+      "transcribingProvider": "透過 {{provider}} 轉錄中...",
+      "transcriptionComplete": "轉錄完成",
+      "openNote": "開啟筆記",
+      "uploadAnother": "上傳另一個",
+      "retry": "重試",
+      "startOver": "重新開始",
+      "transcriptionSettings": "轉錄設定",
+      "newFolder": "新增資料夾",
+      "folderName": "資料夾名稱",
+      "create": "建立",
+      "setupTitle": "設定轉錄",
+      "setupDescription": "選擇音訊轉錄方式。此設定同樣適用於即時聽寫。",
+      "continue": "繼續",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "自訂",
+      "selectFolder": "選擇資料夾",
+      "transcriptionFailed": "轉錄失敗",
+      "errorOccurred": "發生錯誤",
+      "enhancementFailed": "增強失敗"
+    },
+    "meeting": {
+      "title": "會議筆記",
+      "description": "說話者辨識與結構化摘要",
+      "comingSoon": "即將推出"
+    },
+    "context": {
+      "moveToFolder": "移動到資料夾",
+      "delete": "刪除",
+      "rename": "重新命名",
+      "searchFolders": "搜尋資料夾...",
+      "noResults": "找不到資料夾",
+      "newFolder": "新增資料夾"
+    },
+    "actions": {
+      "manage": "管理動作...",
+      "manageTitle": "自訂動作",
+      "addAction": "新增動作",
+      "editAction": "編輯動作",
+      "namePlaceholder": "動作名稱",
+      "descriptionPlaceholder": "簡要描述（選填）",
+      "promptPlaceholder": "AI 應如何處理筆記內容？",
+      "builtIn": "內建",
+      "save": "儲存",
+      "update": "更新",
+      "cancel": "取消",
+      "noActions": "尚無自訂動作",
+      "runAction": "執行 {{name}}",
+      "selectAction": "選擇動作",
+      "done": "完成",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "整理筆記",
+          "description": "修正文法、結構和格式"
+        }
+      }
+    },
+    "empty": {
+      "title": "這裡還沒有筆記",
+      "description": "建立你的第一則筆記，開始書寫",
+      "selectTitle": "選擇筆記",
+      "selectDescription": "從側邊欄選擇一則筆記",
+      "createNote": "建立筆記",
+      "emptyFolder": "此資料夾中沒有筆記"
+    },
+    "addToFolder": {
+      "title": "新增筆記",
+      "searchPlaceholder": "搜尋要新增的筆記...",
+      "addExisting": "新增現有筆記",
+      "addCount": "新增 {{count}} 則筆記",
+      "noResults": "沒有符合的筆記",
+      "noNotesAvailable": "沒有其他可用的筆記"
+    }
+  },
+  "dictionary": {
+    "addWord": "新增詞語",
+    "removeWord": "移除 {{word}}",
+    "clearAll": "全部清除",
+    "howItWorks": "運作方式",
+    "title": "自訂字典",
+    "description": "教 AI 學習你的詞彙 — 名字、專業術語和它可能遺漏的表達",
+    "clearTitle": "清空字典？",
+    "clearDescription": "這將移除自訂字典中的所有詞彙。此操作無法復原。",
+    "addPlaceholder": "新增詞語或片語..."
+  },
+  "sidebar": {
+    "home": "首頁",
+    "notes": "筆記",
+    "upload": "上傳",
+    "dictionary": "字典",
+    "referral": "獲得一個月免費",
+    "settings": "設定",
+    "support": "支援"
+  },
+  "usage": {
+    "approachingLimit": "即將達到每週上限",
+    "approachingLimitDescription": "你本週已使用 {{wordsUsed}} / {{limit}} 個免費字數。",
+    "yourPlan": "你的方案",
+    "trial": "試用（剩餘 {{days}} 天）",
+    "trial_other": "試用（剩餘 {{days}} 天）",
+    "pro": "Pro",
+    "unlimitedTrial": "試用期間無限轉錄",
+    "unlimited": "無限轉錄",
+    "manageSubscription": "管理訂閱",
+    "weeklyUsage": "每週用量",
+    "limitReached": "已達上限",
+    "free": "免費",
+    "wordsRemaining": "剩餘 {{remaining}} 字",
+    "rollingLimit": "滾動式每週額度",
+    "upgradeToPro": "升級至 Pro",
+    "useYourOwnKey": "使用自己的 API Key",
+    "upgradeUnlimited": "升級至 Pro — 無限轉錄"
   }
 }

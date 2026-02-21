@@ -809,52 +809,43 @@
   },
   "settingsModal": {
     "groups": {
+      "account": "Conta",
       "app": "Aplicativo",
-      "intelligence": "Inteligência",
-      "profile": "Perfil",
-      "speech": "Fala",
+      "speechAi": "Fala & IA",
       "system": "Sistema"
     },
     "sections": {
       "account": {
-        "description": "Login e uso",
+        "description": "Perfil e login",
         "label": "Conta"
       },
-      "agentConfig": {
-        "description": "Configuração do agente de voz",
-        "label": "Agente"
-      },
-      "aiModels": {
-        "description": "Limpeza e melhoria de texto",
-        "label": "Modelos de IA"
-      },
-      "developer": {
-        "description": "Logs, diagnósticos e dados",
-        "label": "Desenvolvedor"
-      },
-      "dictionary": {
-        "description": "Palavras e frases personalizadas",
-        "label": "Dicionário"
+      "plansBilling": {
+        "description": "Planos, uso e cobrança",
+        "label": "Planos e cobrança"
       },
       "general": {
-        "description": "Aparência, atalho e inicialização",
+        "description": "Aparência, sons e inicialização",
         "label": "Preferências"
       },
-      "permissions": {
-        "description": "Microfone e acessibilidade",
-        "label": "Permissões"
-      },
-      "privacy": {
-        "description": "Backup na nuvem e análises",
-        "label": "Privacidade"
-      },
-      "prompts": {
-        "description": "Estúdio de prompt do sistema",
-        "label": "Prompts"
+      "hotkeys": {
+        "description": "Atalho de ditado e ativação",
+        "label": "Atalhos"
       },
       "transcription": {
         "description": "Motor de fala para texto",
         "label": "Transcrição"
+      },
+      "intelligence": {
+        "description": "Modelos de IA, agente e prompts",
+        "label": "Inteligência"
+      },
+      "privacyData": {
+        "description": "Privacidade, permissões e análise",
+        "label": "Privacidade e dados"
+      },
+      "system": {
+        "description": "Atualizações, armazenamento e ferramentas de desenvolvimento",
+        "label": "Sistema"
       }
     },
     "title": "Configurações"
@@ -1034,6 +1025,7 @@
       "hotkey": {
         "activationMode": "Modo de ativação",
         "description": "A combinação de teclas que inicia e para o ditado por voz",
+        "resetToDefault": "Redefinir para {{hotkey}}",
         "title": "Atalho de ditado"
       },
       "microphone": {
@@ -1245,5 +1237,248 @@
     "maximize": "Maximizar",
     "restore": "Restaurar",
     "close": "Fechar"
+  },
+  "referral": {
+    "title": "Indique e ganhe recompensas",
+    "subtitle": "Dê um mês. Ganhe um mês.",
+    "tabs": {
+      "refer": "Indicar",
+      "pastInvites": "Convites anteriores"
+    },
+    "howItWorks": {
+      "shareLink": "Compartilhe seu link de convite",
+      "theySignUp": "A pessoa se cadastra e ganha um ",
+      "freeMonthOfPro": "mês grátis de Pro",
+      "youGet": "Você ganha um ",
+      "freeMonth": "mês grátis",
+      "whenTheyDictate": " quando ela ditar 2.000 palavras"
+    },
+    "inviteLink": {
+      "title": "Seu link de convite",
+      "copy": "Copiar",
+      "copied": "Copiado"
+    },
+    "sendInvites": {
+      "title": "Enviar convites",
+      "placeholder": "friend@example.com",
+      "send": "Enviar",
+      "sending": "Enviando"
+    },
+    "stats": {
+      "referred": "Indicados",
+      "converted": "Convertidos",
+      "monthsEarned": "Meses ganhos"
+    },
+    "status": {
+      "converted": "Convertido",
+      "opened": "Aberto",
+      "failed": "Falhou",
+      "sent": "Enviado"
+    },
+    "empty": {
+      "title": "Nenhum convite enviado ainda",
+      "description": "Compartilhe seu link ou envie um convite para começar"
+    },
+    "toasts": {
+      "copiedTitle": "Copiado!",
+      "copiedDescription": "Link de indicação copiado para a área de transferência",
+      "copyFailedTitle": "Falha ao copiar",
+      "copyFailedDescription": "Não foi possível copiar o link para a área de transferência",
+      "invalidEmailTitle": "E-mail inválido",
+      "invalidEmailDescription": "Por favor, insira um endereço de e-mail válido",
+      "inviteSentTitle": "Convite enviado!",
+      "inviteSentDescription": "Convite enviado para {{email}}",
+      "sendFailedTitle": "Falha ao enviar",
+      "sendFailedDescription": "Não foi possível enviar o convite. Por favor, tente novamente."
+    },
+    "errors": {
+      "unableToLoad": "Não foi possível carregar os dados de indicação",
+      "unableToLoadStats": "Não foi possível carregar as estatísticas de indicação. Por favor, tente novamente mais tarde."
+    },
+    "tryAgain": "Tentar novamente",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "Sua assinatura de áudio",
+      "stop": "Parar",
+      "playSignal": "Reproduzir sinal"
+    },
+    "friends": {
+      "title": "Amigos",
+      "completed": "Concluído",
+      "sentInvites": "Convites enviados"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "Pastas",
+      "meetings": "Reuniões",
+      "soon": "Em breve",
+      "folderName": "Nome da pasta",
+      "couldNotCreate": "Não foi possível criar a pasta",
+      "couldNotRename": "Não foi possível renomear a pasta",
+      "couldNotDelete": "Não foi possível excluir a pasta"
+    },
+    "list": {
+      "title": "Notas",
+      "newNote": "Nova nota",
+      "untitled": "Sem título",
+      "untitledNote": "Nota sem título",
+      "createToGetStarted": "Crie uma nota para começar",
+      "selectNote": "Selecione uma nota"
+    },
+    "editor": {
+      "untitled": "Sem título",
+      "noteTitle": "Título da nota",
+      "stop": "Parar",
+      "transcribe": "Transcrever",
+      "recording": "Gravando",
+      "processing": "Processando...",
+      "edit": "Editar",
+      "preview": "Visualizar",
+      "enhance": "Aprimorar",
+      "reEnhance": "Reaprimorar",
+      "export": "Exportar",
+      "asMarkdown": "Como Markdown",
+      "asPlainText": "Como texto simples",
+      "raw": "Original",
+      "enhanced": "Aprimorado",
+      "saving": "Salvando",
+      "wordsCount": "{{count}} palavras",
+      "startWriting": "Comece a escrever...",
+      "staleIndicator": "O conteúdo mudou desde o aprimoramento"
+    },
+    "enhance": {
+      "title": "Aprimorar com IA",
+      "defaultPrompt": "Corrija a gramática, melhore a estrutura e formate estas notas para facilitar a leitura, preservando todo o significado original.",
+      "placeholder": "O que a IA deve fazer com suas notas?",
+      "tryAgain": "Tentar novamente",
+      "apply": "Aplicar",
+      "cancel": "Cancelar",
+      "enhancing": "Aprimorando...",
+      "enhance": "Aprimorar",
+      "noProviders": "Configure as chaves de API nas Configurações para usar modelos de IA"
+    },
+    "upload": {
+      "title": "Enviar áudio",
+      "using": "Usando {{model}}",
+      "dropOrBrowse": "Arraste um arquivo de áudio ou clique para procurar",
+      "supportedFormats": "MP3, WAV, M4A, WebM, OGG, FLAC, AAC",
+      "dropToUpload": "Solte para enviar",
+      "transcribe": "Transcrever",
+      "cancel": "Cancelar",
+      "transcribingCloud": "Transcrevendo pela nuvem...",
+      "transcribingLocal": "Transcrevendo localmente...",
+      "transcribingProvider": "Transcrevendo via {{provider}}...",
+      "transcriptionComplete": "Transcrição concluída",
+      "openNote": "Abrir nota",
+      "uploadAnother": "Enviar outro",
+      "retry": "Tentar novamente",
+      "startOver": "Recomeçar",
+      "transcriptionSettings": "Configurações de transcrição",
+      "newFolder": "Nova pasta",
+      "folderName": "Nome da pasta",
+      "create": "Criar",
+      "setupTitle": "Configurar transcrição",
+      "setupDescription": "Escolha como transcrever seu áudio. Isso também se aplica à ditação ao vivo.",
+      "continue": "Continuar",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "Personalizado",
+      "selectFolder": "Selecionar pasta",
+      "transcriptionFailed": "Falha na transcrição",
+      "errorOccurred": "Ocorreu um erro",
+      "enhancementFailed": "Falha no aprimoramento"
+    },
+    "meeting": {
+      "title": "Notas de reunião",
+      "description": "Identificação de falantes e resumos estruturados",
+      "comingSoon": "Em breve"
+    },
+    "context": {
+      "moveToFolder": "Mover para pasta",
+      "delete": "Excluir",
+      "rename": "Renomear",
+      "searchFolders": "Pesquisar pastas...",
+      "noResults": "Nenhuma pasta encontrada",
+      "newFolder": "Nova pasta"
+    },
+    "actions": {
+      "manage": "Gerenciar ações...",
+      "manageTitle": "Ações personalizadas",
+      "addAction": "Nova ação",
+      "editAction": "Editar ação",
+      "namePlaceholder": "Nome da ação",
+      "descriptionPlaceholder": "Descrição breve (opcional)",
+      "promptPlaceholder": "O que a IA deve fazer com o conteúdo da nota?",
+      "builtIn": "Integrada",
+      "save": "Salvar",
+      "update": "Atualizar",
+      "cancel": "Cancelar",
+      "noActions": "Nenhuma ação personalizada ainda",
+      "runAction": "Executar {{name}}",
+      "selectAction": "Selecionar ação",
+      "done": "Concluído",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "Limpar notas",
+          "description": "Corrigir gramática, estrutura e formatação"
+        }
+      }
+    },
+    "empty": {
+      "title": "Ainda não há notas aqui",
+      "description": "Crie sua primeira nota para começar a escrever",
+      "selectTitle": "Selecione uma nota",
+      "selectDescription": "Escolha uma nota na barra lateral",
+      "createNote": "Criar nota",
+      "emptyFolder": "Nenhuma nota nesta pasta"
+    },
+    "addToFolder": {
+      "title": "Adicionar notas",
+      "searchPlaceholder": "Pesquisar notas para adicionar...",
+      "addExisting": "Adicionar existentes",
+      "addCount": "Adicionar {{count}} notas",
+      "noResults": "Nenhuma nota encontrada",
+      "noNotesAvailable": "Nenhuma outra nota disponível"
+    }
+  },
+  "dictionary": {
+    "addWord": "Adicionar palavra",
+    "removeWord": "Remover {{word}}",
+    "clearAll": "Limpar tudo",
+    "howItWorks": "Como funciona",
+    "title": "Dicionário personalizado",
+    "description": "Ensine a IA o seu vocabulário — nomes, jargões e termos que ela poderia não reconhecer",
+    "clearTitle": "Limpar o dicionário?",
+    "clearDescription": "Isso removerá todas as palavras do seu dicionário personalizado. Esta ação não pode ser desfeita.",
+    "addPlaceholder": "Adicionar uma palavra ou frase..."
+  },
+  "sidebar": {
+    "home": "Início",
+    "notes": "Notas",
+    "upload": "Enviar",
+    "dictionary": "Dicionário",
+    "referral": "Ganhe um mês grátis",
+    "settings": "Configurações",
+    "support": "Suporte"
+  },
+  "usage": {
+    "approachingLimit": "Próximo do limite semanal",
+    "approachingLimitDescription": "Você usou {{wordsUsed}} de {{limit}} palavras gratuitas esta semana.",
+    "yourPlan": "Seu plano",
+    "trial": "Teste ({{days}} dia restante)",
+    "trial_other": "Teste ({{days}} dias restantes)",
+    "pro": "Pro",
+    "unlimitedTrial": "Transcrições ilimitadas durante o seu período de teste",
+    "unlimited": "Transcrições ilimitadas",
+    "manageSubscription": "Gerenciar assinatura",
+    "weeklyUsage": "Uso semanal",
+    "limitReached": "Limite atingido",
+    "free": "Grátis",
+    "wordsRemaining": "{{remaining}} palavras restantes",
+    "rollingLimit": "Limite semanal contínuo",
+    "upgradeToPro": "Fazer upgrade para Pro",
+    "useYourOwnKey": "Usar sua própria chave API",
+    "upgradeUnlimited": "Fazer upgrade para Pro — transcrições ilimitadas"
   }
 }

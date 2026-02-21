@@ -12,6 +12,77 @@ const DeepgramStreaming = require("./deepgramStreaming");
 
 const MISTRAL_TRANSCRIPTION_URL = "https://api.mistral.ai/v1/audio/transcriptions";
 
+const AUDIO_MIME_TYPES = {
+  mp3: "audio/mpeg",
+  wav: "audio/wav",
+  m4a: "audio/mp4",
+  webm: "audio/webm",
+  ogg: "audio/ogg",
+  flac: "audio/flac",
+  aac: "audio/aac",
+};
+
+function buildMultipartBody(fileBuffer, fileName, contentType, fields = {}) {
+  const boundary = `----OpenWhispr${Date.now()}`;
+  const parts = [];
+
+  parts.push(
+    `--${boundary}\r\n` +
+      `Content-Disposition: form-data; name="file"; filename="${fileName}"\r\n` +
+      `Content-Type: ${contentType}\r\n\r\n`
+  );
+  parts.push(fileBuffer);
+  parts.push("\r\n");
+
+  for (const [name, value] of Object.entries(fields)) {
+    if (value != null) {
+      parts.push(
+        `--${boundary}\r\n` +
+          `Content-Disposition: form-data; name="${name}"\r\n\r\n` +
+          `${value}\r\n`
+      );
+    }
+  }
+
+  parts.push(`--${boundary}--\r\n`);
+
+  const bodyParts = parts.map((p) => (typeof p === "string" ? Buffer.from(p) : p));
+  return { body: Buffer.concat(bodyParts), boundary };
+}
+
+function postMultipart(url, body, boundary, headers = {}) {
+  const httpModule = url.protocol === "https:" ? https : http;
+  return new Promise((resolve, reject) => {
+    const req = httpModule.request(
+      {
+        hostname: url.hostname,
+        port: url.port || (url.protocol === "https:" ? 443 : 80),
+        path: url.pathname,
+        method: "POST",
+        headers: {
+          "Content-Type": `multipart/form-data; boundary=${boundary}`,
+          "Content-Length": body.length,
+          ...headers,
+        },
+      },
+      (res) => {
+        let responseData = "";
+        res.on("data", (chunk) => (responseData += chunk));
+        res.on("end", () => {
+          try {
+            resolve({ statusCode: res.statusCode, data: JSON.parse(responseData) });
+          } catch (e) {
+            reject(new Error(`Invalid JSON response: ${responseData.slice(0, 200)}`));
+          }
+        });
+      }
+    );
+    req.on("error", reject);
+    req.write(body);
+    req.end();
+  });
+}
+
 class IPCHandlers {
   constructor(managers) {
     this.environmentManager = managers.environmentManager;
@@ -175,6 +246,204 @@ class IPCHandlers {
         throw new Error("words must be an array");
       }
       return this.databaseManager.setDictionary(words);
+    });
+
+    // Note handlers
+    ipcMain.handle(
+      "db-save-note",
+      async (event, title, content, noteType, sourceFile, audioDuration, folderId) => {
+        const result = this.databaseManager.saveNote(
+          title,
+          content,
+          noteType,
+          sourceFile,
+          audioDuration,
+          folderId
+        );
+        if (result?.success && result?.note) {
+          setImmediate(() => {
+            this.broadcastToWindows("note-added", result.note);
+          });
+        }
+        return result;
+      }
+    );
+
+    ipcMain.handle("db-get-note", async (event, id) => {
+      return this.databaseManager.getNote(id);
+    });
+
+    ipcMain.handle("db-get-notes", async (event, noteType, limit, folderId) => {
+      return this.databaseManager.getNotes(noteType, limit, folderId);
+    });
+
+    ipcMain.handle("db-update-note", async (event, id, updates) => {
+      const result = this.databaseManager.updateNote(id, updates);
+      if (result?.success && result?.note) {
+        setImmediate(() => {
+          this.broadcastToWindows("note-updated", result.note);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-note", async (event, id) => {
+      const result = this.databaseManager.deleteNote(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("note-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    // Folder handlers
+    ipcMain.handle("db-get-folders", async () => {
+      return this.databaseManager.getFolders();
+    });
+
+    ipcMain.handle("db-create-folder", async (event, name) => {
+      const result = this.databaseManager.createFolder(name);
+      if (result?.success && result?.folder) {
+        setImmediate(() => {
+          this.broadcastToWindows("folder-created", result.folder);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-folder", async (event, id) => {
+      const result = this.databaseManager.deleteFolder(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("folder-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-rename-folder", async (event, id, name) => {
+      const result = this.databaseManager.renameFolder(id, name);
+      if (result?.success && result?.folder) {
+        setImmediate(() => {
+          this.broadcastToWindows("folder-renamed", result.folder);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-get-folder-note-counts", async () => {
+      return this.databaseManager.getFolderNoteCounts();
+    });
+
+    // Action handlers
+    ipcMain.handle("db-get-actions", async () => {
+      return this.databaseManager.getActions();
+    });
+
+    ipcMain.handle("db-get-action", async (event, id) => {
+      return this.databaseManager.getAction(id);
+    });
+
+    ipcMain.handle("db-create-action", async (event, name, description, prompt, icon) => {
+      const result = this.databaseManager.createAction(name, description, prompt, icon);
+      if (result?.success && result?.action) {
+        setImmediate(() => {
+          this.broadcastToWindows("action-created", result.action);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-update-action", async (event, id, updates) => {
+      const result = this.databaseManager.updateAction(id, updates);
+      if (result?.success && result?.action) {
+        setImmediate(() => {
+          this.broadcastToWindows("action-updated", result.action);
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("db-delete-action", async (event, id) => {
+      const result = this.databaseManager.deleteAction(id);
+      if (result?.success) {
+        setImmediate(() => {
+          this.broadcastToWindows("action-deleted", { id });
+        });
+      }
+      return result;
+    });
+
+    ipcMain.handle("export-note", async (event, noteId, format) => {
+      try {
+        const note = this.databaseManager.getNote(noteId);
+        if (!note) return { success: false, error: "Note not found" };
+
+        const { dialog } = require("electron");
+        const fs = require("fs");
+        const ext = format === "txt" ? "txt" : "md";
+        const safeName = (note.title || "Untitled").replace(/[/\\?%*:|"<>]/g, "-");
+
+        const result = await dialog.showSaveDialog({
+          defaultPath: `${safeName}.${ext}`,
+          filters: [
+            { name: "Markdown", extensions: ["md"] },
+            { name: "Text", extensions: ["txt"] },
+          ],
+        });
+
+        if (result.canceled || !result.filePath) return { success: false };
+
+        let exportContent;
+        if (format === "txt") {
+          exportContent = (note.content || "")
+            .replace(/#{1,6}\s+/g, "")
+            .replace(/[*_~`]+/g, "")
+            .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+            .replace(/!\[([^\]]*)\]\([^)]+\)/g, "$1")
+            .replace(/^>\s+/gm, "")
+            .trim();
+        } else {
+          exportContent = note.enhanced_content || note.content;
+        }
+
+        fs.writeFileSync(result.filePath, exportContent, "utf-8");
+        return { success: true };
+      } catch (error) {
+        console.error("Error exporting note:", error.message);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle("select-audio-file", async () => {
+      const { dialog } = require("electron");
+      const result = await dialog.showOpenDialog({
+        properties: ["openFile"],
+        filters: [
+          { name: "Audio Files", extensions: ["mp3", "wav", "m4a", "webm", "ogg", "flac", "aac"] },
+        ],
+      });
+      if (result.canceled || !result.filePaths.length) {
+        return { canceled: true };
+      }
+      return { canceled: false, filePath: result.filePaths[0] };
+    });
+
+    ipcMain.handle("transcribe-audio-file", async (event, filePath, options = {}) => {
+      const fs = require("fs");
+      try {
+        const audioBuffer = fs.readFileSync(filePath);
+        if (options.provider === "nvidia") {
+          const result = await this.parakeetManager.transcribeLocalParakeet(audioBuffer, options);
+          return result;
+        }
+        const result = await this.whisperManager.transcribeLocalWhisper(audioBuffer, options);
+        return result;
+      } catch (error) {
+        debugLogger.error("Audio file transcription error", { error: error.message });
+        return { success: false, error: error.message };
+      }
     });
 
     // Clipboard handlers
@@ -1211,56 +1480,13 @@ class IPCHandlers {
         if (!cookieHeader) throw new Error("No session cookies available");
 
         const audioData = Buffer.from(audioBuffer);
-        const boundary = `----OpenWhispr${Date.now()}`;
-        const parts = [];
-
-        parts.push(
-          `--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="file"; filename="audio.webm"\r\n` +
-            `Content-Type: audio/webm\r\n\r\n`
-        );
-        parts.push(audioData);
-        parts.push("\r\n");
-
-        if (opts.language) {
-          parts.push(
-            `--${boundary}\r\n` +
-              `Content-Disposition: form-data; name="language"\r\n\r\n` +
-              `${opts.language}\r\n`
-          );
-        }
-
-        if (opts.prompt) {
-          parts.push(
-            `--${boundary}\r\n` +
-              `Content-Disposition: form-data; name="prompt"\r\n\r\n` +
-              `${opts.prompt}\r\n`
-          );
-        }
-
-        // Add client metadata for logging
-        parts.push(
-          `--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="clientType"\r\n\r\n` +
-            `desktop\r\n`
-        );
-
-        parts.push(
-          `--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="appVersion"\r\n\r\n` +
-            `${app.getVersion()}\r\n`
-        );
-
-        parts.push(
-          `--${boundary}\r\n` +
-            `Content-Disposition: form-data; name="sessionId"\r\n\r\n` +
-            `${this.sessionId}\r\n`
-        );
-
-        parts.push(`--${boundary}--\r\n`);
-
-        const bodyParts = parts.map((p) => (typeof p === "string" ? Buffer.from(p) : p));
-        const body = Buffer.concat(bodyParts);
+        const { body, boundary } = buildMultipartBody(audioData, "audio.webm", "audio/webm", {
+          language: opts.language,
+          prompt: opts.prompt,
+          clientType: "desktop",
+          appVersion: app.getVersion(),
+          sessionId: this.sessionId,
+        });
 
         debugLogger.debug(
           "Cloud transcribe request",
@@ -1269,38 +1495,7 @@ class IPCHandlers {
         );
 
         const url = new URL(`${apiUrl}/api/transcribe`);
-        const httpModule = url.protocol === "https:" ? https : http;
-
-        const data = await new Promise((resolve, reject) => {
-          const req = httpModule.request(
-            {
-              hostname: url.hostname,
-              port: url.port || (url.protocol === "https:" ? 443 : 80),
-              path: url.pathname,
-              method: "POST",
-              headers: {
-                "Content-Type": `multipart/form-data; boundary=${boundary}`,
-                "Content-Length": body.length,
-                Cookie: cookieHeader,
-              },
-            },
-            (res) => {
-              let responseData = "";
-              res.on("data", (chunk) => (responseData += chunk));
-              res.on("end", () => {
-                try {
-                  const parsed = JSON.parse(responseData);
-                  resolve({ statusCode: res.statusCode, data: parsed });
-                } catch (e) {
-                  reject(new Error(`Invalid JSON response: ${responseData.slice(0, 200)}`));
-                }
-              });
-            }
-          );
-          req.on("error", reject);
-          req.write(body);
-          req.end();
-        });
+        const data = await postMultipart(url, body, boundary, { Cookie: cookieHeader });
 
         debugLogger.debug(
           "Cloud transcribe response",
@@ -1343,23 +1538,19 @@ class IPCHandlers {
         const apiUrl = getApiUrl();
         if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
 
-        console.log("[cloud-reason] ⬇ IPC called", {
-          apiUrl,
-          model: opts.model || "(default)",
-          agentName: opts.agentName || "(none)",
-          language: opts.language || "(auto)",
-          locale: opts.locale || "en",
-          hasCustomPrompt: !!opts.customPrompt,
-          textLength: text?.length || 0,
-          textPreview: text?.substring(0, 80) || "(empty)",
-        });
-
         const cookieHeader = await getSessionCookies(event);
         if (!cookieHeader) throw new Error("No session cookies available");
 
-        console.log(`[cloud-reason] → Fetching ${apiUrl}/api/reason ...`);
+        debugLogger.debug(
+          "Cloud reason request",
+          {
+            model: opts.model || "(default)",
+            agentName: opts.agentName || "(none)",
+            textLength: text?.length || 0,
+          },
+          "cloud-api"
+        );
 
-        const fetchStart = Date.now();
         const response = await fetch(`${apiUrl}/api/reason`, {
           method: "POST",
           headers: {
@@ -1372,6 +1563,7 @@ class IPCHandlers {
             agentName: opts.agentName,
             customDictionary: opts.customDictionary,
             customPrompt: opts.customPrompt,
+            systemPrompt: opts.systemPrompt,
             language: opts.language,
             locale: opts.locale,
             sessionId: this.sessionId,
@@ -1379,35 +1571,27 @@ class IPCHandlers {
             appVersion: app.getVersion(),
           }),
         });
-        const fetchMs = Date.now() - fetchStart;
-
-        console.log("[cloud-reason] ← Response", {
-          status: response.status,
-          ok: response.ok,
-          fetchMs,
-        });
 
         if (!response.ok) {
           if (response.status === 401) {
-            console.log("[cloud-reason] ✗ 401 - session expired");
             return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
           }
           const errorData = await response.json().catch(() => ({}));
-          console.log("[cloud-reason] ✗ API error", { status: response.status, errorData });
           throw new Error(errorData.error || `API error: ${response.status}`);
         }
 
         const data = await response.json();
-        console.log("[cloud-reason] ✓ Success", {
-          model: data.model,
-          provider: data.provider,
-          processingMs: data.processingMs,
-          resultLength: data.text?.length || 0,
-          resultPreview: data.text?.substring(0, 80) || "(empty)",
-        });
+        debugLogger.debug(
+          "Cloud reason response",
+          {
+            model: data.model,
+            provider: data.provider,
+            resultLength: data.text?.length || 0,
+          },
+          "cloud-api"
+        );
         return { success: true, text: data.text, model: data.model, provider: data.provider };
       } catch (error) {
-        console.log("[cloud-reason] ✗ Error:", error.message);
         debugLogger.error("Cloud reasoning error:", error);
         return { success: false, error: error.message };
       }
@@ -1476,6 +1660,202 @@ class IPCHandlers {
     ipcMain.handle("cloud-billing-portal", (event) =>
       fetchStripeUrl(event, "/api/stripe/portal", "Cloud billing portal error")
     );
+
+    ipcMain.handle("transcribe-audio-file-cloud", async (event, filePath) => {
+      const fs = require("fs");
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) throw new Error("OpenWhispr API URL not configured");
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) throw new Error("No session cookies available");
+
+        const audioBuffer = fs.readFileSync(filePath);
+        const ext = path.extname(filePath).toLowerCase().replace(".", "");
+        const contentType = AUDIO_MIME_TYPES[ext] || "audio/mpeg";
+        const fileName = path.basename(filePath);
+
+        const { body, boundary } = buildMultipartBody(audioBuffer, fileName, contentType, {
+          source: "file_upload",
+          clientType: "desktop",
+          appVersion: app.getVersion(),
+          sessionId: this.sessionId,
+        });
+
+        const url = new URL(`${apiUrl}/api/transcribe`);
+        const data = await postMultipart(url, body, boundary, { Cookie: cookieHeader });
+
+        if (data.statusCode === 401) {
+          return { success: false, error: "Session expired", code: "AUTH_EXPIRED" };
+        }
+        if (data.statusCode === 429) {
+          return {
+            success: false,
+            error: "Daily word limit reached",
+            code: "LIMIT_REACHED",
+            ...data.data,
+          };
+        }
+        if (data.statusCode !== 200) {
+          throw new Error(data.data?.error || `API error: ${data.statusCode}`);
+        }
+
+        return { success: true, text: data.data.text };
+      } catch (error) {
+        debugLogger.error("Cloud audio file transcription error", { error: error.message });
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle(
+      "transcribe-audio-file-byok",
+      async (event, { filePath, apiKey, baseUrl, model }) => {
+        const fs = require("fs");
+        try {
+          if (!apiKey) throw new Error("No API key configured. Add your key in Settings.");
+          if (!baseUrl) throw new Error("No transcription endpoint configured.");
+
+          const audioBuffer = fs.readFileSync(filePath);
+          const ext = path.extname(filePath).toLowerCase().replace(".", "");
+          const contentType = AUDIO_MIME_TYPES[ext] || "audio/mpeg";
+          const fileName = path.basename(filePath);
+
+          let transcriptionUrl = baseUrl.replace(/\/+$/, "");
+          if (!transcriptionUrl.endsWith("/audio/transcriptions")) {
+            transcriptionUrl += "/audio/transcriptions";
+          }
+
+          const { body, boundary } = buildMultipartBody(audioBuffer, fileName, contentType, {
+            model: model || "whisper-1",
+          });
+
+          const url = new URL(transcriptionUrl);
+          const data = await postMultipart(url, body, boundary, {
+            Authorization: `Bearer ${apiKey}`,
+          });
+
+          if (data.statusCode === 401) {
+            return { success: false, error: "Invalid API key. Check your key in Settings." };
+          }
+          if (data.statusCode === 429) {
+            return { success: false, error: "Rate limit exceeded. Please try again later." };
+          }
+          if (data.statusCode !== 200) {
+            throw new Error(
+              data.data?.error?.message || data.data?.error || `API error: ${data.statusCode}`
+            );
+          }
+
+          return { success: true, text: data.data.text };
+        } catch (error) {
+          debugLogger.error("BYOK audio file transcription error", { error: error.message });
+          return { success: false, error: error.message };
+        }
+      }
+    );
+
+    // Referral stats handler
+    ipcMain.handle("get-referral-stats", async (event) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          throw new Error("OpenWhispr API URL not configured");
+        }
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) {
+          throw new Error("No session cookies available");
+        }
+
+        const response = await fetch(`${apiUrl}/api/referrals/stats`, {
+          headers: {
+            Cookie: cookieHeader,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error("Unauthorized - please sign in");
+          }
+          throw new Error(`Failed to fetch referral stats: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        debugLogger.error("Error fetching referral stats:", error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle("send-referral-invite", async (event, email) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          throw new Error("OpenWhispr API URL not configured");
+        }
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) {
+          throw new Error("No session cookies available");
+        }
+
+        const response = await fetch(`${apiUrl}/api/referrals/invite`, {
+          method: "POST",
+          headers: {
+            Cookie: cookieHeader,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || `Failed to send invite: ${response.status}`);
+        }
+
+        return data;
+      } catch (error) {
+        debugLogger.error("Error sending referral invite:", error);
+        throw error;
+      }
+    });
+
+    ipcMain.handle("get-referral-invites", async (event) => {
+      try {
+        const apiUrl = getApiUrl();
+        if (!apiUrl) {
+          throw new Error("OpenWhispr API URL not configured");
+        }
+
+        const cookieHeader = await getSessionCookies(event);
+        if (!cookieHeader) {
+          throw new Error("No session cookies available");
+        }
+
+        const response = await fetch(`${apiUrl}/api/referrals/invites`, {
+          headers: {
+            Cookie: cookieHeader,
+            "Content-Type": "application/json",
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            throw new Error("Unauthorized - please sign in");
+          }
+          throw new Error(`Failed to fetch referral invites: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return data;
+      } catch (error) {
+        debugLogger.error("Error fetching referral invites:", error);
+        throw error;
+      }
+    });
 
     ipcMain.handle("open-whisper-models-folder", async () => {
       try {

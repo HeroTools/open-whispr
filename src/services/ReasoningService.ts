@@ -6,6 +6,7 @@ import { API_ENDPOINTS, TOKEN_LIMITS, buildApiUrl, normalizeBaseUrl } from "../c
 import logger from "../utils/logger";
 import { isSecureEndpoint } from "../utils/urlUtils";
 import { withSessionRefresh } from "../lib/neonAuth";
+import { getSettings, isCloudReasoningMode } from "../stores/settingsStore";
 
 class ReasoningService extends BaseReasoningService {
   private apiKeyCache: SecureCache<string>;
@@ -24,12 +25,13 @@ class ReasoningService extends BaseReasoningService {
   }
 
   private getConfiguredOpenAIBase(): string {
-    if (typeof window === "undefined" || !window.localStorage) {
+    if (typeof window === "undefined") {
       return API_ENDPOINTS.OPENAI_BASE;
     }
 
     try {
-      const provider = window.localStorage.getItem("reasoningProvider") || "";
+      const settings = getSettings();
+      const provider = settings.reasoningProvider || "";
       const isCustomProvider = provider === "custom";
 
       if (!isCustomProvider) {
@@ -42,7 +44,7 @@ class ReasoningService extends BaseReasoningService {
         return API_ENDPOINTS.OPENAI_BASE;
       }
 
-      const stored = window.localStorage.getItem("cloudReasoningBaseUrl") || "";
+      const stored = settings.cloudReasoningBaseUrl || "";
       const trimmed = stored.trim();
 
       if (!trimmed) {
@@ -187,7 +189,7 @@ class ReasoningService extends BaseReasoningService {
         logger.logReasoning("CUSTOM_KEY_IPC_FALLBACK", { error: (err as Error)?.message });
       }
       if (!customKey || !customKey.trim()) {
-        customKey = window.localStorage?.getItem("customReasoningApiKey") || "";
+        customKey = getSettings().customReasoningApiKey || "";
       }
       const trimmedKey = customKey.trim();
 
@@ -195,7 +197,6 @@ class ReasoningService extends BaseReasoningService {
         provider,
         hasKey: !!trimmedKey,
         keyLength: trimmedKey.length,
-        keyPreview: trimmedKey ? `${trimmedKey.substring(0, 8)}...` : "none",
       });
 
       return trimmedKey;
@@ -223,7 +224,6 @@ class ReasoningService extends BaseReasoningService {
           provider,
           hasKey: !!apiKey,
           keyLength: apiKey?.length || 0,
-          keyPreview: apiKey ? `${apiKey.substring(0, 8)}...` : "none",
         });
 
         if (apiKey) {
@@ -259,7 +259,7 @@ class ReasoningService extends BaseReasoningService {
     config: ReasoningConfig,
     providerName: string
   ): Promise<string> {
-    const systemPrompt = this.getSystemPrompt(agentName, text);
+    const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
     const userPrompt = text;
 
     const messages = [
@@ -397,11 +397,12 @@ class ReasoningService extends BaseReasoningService {
     agentName: string | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
-    const trimmedModel = model?.trim?.() || "";
-    if (!trimmedModel) {
+    let trimmedModel = model?.trim?.() || "";
+    const provider = getModelProvider(trimmedModel);
+
+    if (!trimmedModel && provider !== "openwhispr") {
       throw new Error("No reasoning model selected");
     }
-    const provider = getModelProvider(trimmedModel);
 
     logger.logReasoning("PROVIDER_SELECTION", {
       model: trimmedModel,
@@ -472,7 +473,7 @@ class ReasoningService extends BaseReasoningService {
     agentName: string | null = null,
     config: ReasoningConfig = {}
   ): Promise<string> {
-    const reasoningProvider = window.localStorage?.getItem("reasoningProvider") || "";
+    const reasoningProvider = getSettings().reasoningProvider || "";
     const isCustomProvider = reasoningProvider === "custom";
 
     logger.logReasoning("OPENAI_START", {
@@ -496,7 +497,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const userPrompt = text;
 
       const messages = [
@@ -712,7 +713,7 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const result = await window.electronAPI.processAnthropicReasoning(text, model, agentName, {
         ...config,
         systemPrompt,
@@ -763,7 +764,7 @@ class ReasoningService extends BaseReasoningService {
         textLength: text.length,
       });
 
-      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const result = await window.electronAPI.processLocalReasoning(text, model, agentName, {
         ...config,
         systemPrompt,
@@ -820,7 +821,7 @@ class ReasoningService extends BaseReasoningService {
     this.isProcessing = true;
 
     try {
-      const systemPrompt = this.getSystemPrompt(agentName, text);
+      const systemPrompt = config.systemPrompt || this.getSystemPrompt(agentName, text);
       const userPrompt = text;
 
       const requestBody = {
@@ -1040,6 +1041,7 @@ class ReasoningService extends BaseReasoningService {
           agentName,
           customDictionary,
           customPrompt: this.getCustomPrompt(),
+          systemPrompt: config.systemPrompt,
           language,
           locale,
         });
@@ -1068,17 +1070,6 @@ class ReasoningService extends BaseReasoningService {
       throw error;
     } finally {
       this.isProcessing = false;
-    }
-  }
-
-  protected getCustomDictionary(): string[] {
-    try {
-      const raw = localStorage.getItem("customDictionary");
-      if (!raw) return [];
-      const parsed = JSON.parse(raw);
-      return Array.isArray(parsed) ? parsed : [];
-    } catch {
-      return [];
     }
   }
 

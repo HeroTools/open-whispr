@@ -225,7 +225,7 @@
   "controlPanel": {
     "update": {
       "readyTitle": "更新已准备就绪",
-      "readyDescription": "点击\u201c安装更新\u201d以重启并安装最新版本。",
+      "readyDescription": "点击“安装更新”以重启并安装最新版本。",
       "problemTitle": "更新遇到问题",
       "problemDescription": "无法完成更新，请稍后再试。",
       "installTitle": "安装更新",
@@ -307,7 +307,7 @@
       "applyAndRefresh": "应用并刷新",
       "queryPrefix": "我们将查询",
       "querySuffix": "获取可用模型。",
-      "modelsReloadHint": "当你离开 URL 输入框或点击\u201c应用并刷新\u201d时，模型列表将重新加载。",
+      "modelsReloadHint": "当你离开 URL 输入框或点击“应用并刷新”时，模型列表将重新加载。",
       "enterEndpoint": "请在上方输入端点 URL 以加载模型。",
       "fetchingModels": "正在从端点获取模型列表...",
       "noModels": "未返回任何模型，请检查端点 URL。",
@@ -499,7 +499,7 @@
       "failedUserCheck": "检查用户账户失败",
       "generic": "出了点问题，请重试。",
       "invalidCredentials": "邮箱或密码无效",
-      "plusAliasUnsupported": "不支持包含\u201c+\u201d的邮箱别名"
+      "plusAliasUnsupported": "不支持包含“+”的邮箱别名"
     },
     "getStarted": "开始使用",
     "legal": {
@@ -556,7 +556,7 @@
       "footer": "日志不包含 API Key 或敏感数据",
       "steps": {
         "0": "在启用 Debug 模式的情况下重现问题",
-        "1": "点击上方的\u201c打开日志文件夹\u201d",
+        "1": "点击上方的“打开日志文件夹”",
         "2": "将最新的日志文件附加到你的 Bug 报告中"
       },
       "title": "为技术支持分享日志"
@@ -778,7 +778,7 @@
       "view": "查看"
     },
     "test": {
-      "addressHint": "试试说\u201c{{agentName}}\u201d来测试指令模式",
+      "addressHint": "试试说“{{agentName}}”来测试指令模式",
       "aiModels": "AI 模型",
       "baseUrlMissing": "{{provider}} 的 URL 缺失，请在 AI 模型设置中添加。",
       "cleanup": "文本整理",
@@ -803,7 +803,7 @@
       "defaultPrompt": "默认提示词",
       "modes": {
         "agent": {
-          "description": "通过\u201c{{agentName}}\u201d触发——执行命令、回答问题、撰写内容",
+          "description": "通过“{{agentName}}”触发——执行命令、回答问题、撰写内容",
           "label": "语音助手"
         },
         "cleanup": {
@@ -837,52 +837,43 @@
   },
   "settingsModal": {
     "groups": {
+      "account": "账户",
       "app": "应用",
-      "intelligence": "智能",
-      "profile": "个人资料",
-      "speech": "语音",
+      "speechAi": "语音与 AI",
       "system": "系统"
     },
     "sections": {
       "account": {
-        "description": "登录与用量",
+        "description": "个人资料与登录",
         "label": "账户"
       },
-      "agentConfig": {
-        "description": "语音助手设置",
-        "label": "语音助手"
-      },
-      "aiModels": {
-        "description": "文本整理与增强",
-        "label": "AI 模型"
-      },
-      "developer": {
-        "description": "日志、诊断与数据",
-        "label": "开发者"
-      },
-      "dictionary": {
-        "description": "自定义词汇和短语",
-        "label": "词典"
+      "plansBilling": {
+        "description": "套餐、用量与账单",
+        "label": "套餐与账单"
       },
       "general": {
-        "description": "外观、快捷键与启动",
+        "description": "外观、声音与启动",
         "label": "偏好设置"
       },
-      "permissions": {
-        "description": "麦克风与辅助功能",
-        "label": "权限"
-      },
-      "privacy": {
-        "description": "云端备份与分析",
-        "label": "隐私"
-      },
-      "prompts": {
-        "description": "系统提示词工作室",
-        "label": "提示词"
+      "hotkeys": {
+        "description": "听写快捷键与激活模式",
+        "label": "快捷键"
       },
       "transcription": {
         "description": "语音转文字引擎",
         "label": "转录"
+      },
+      "intelligence": {
+        "description": "AI 模型、助手与提示词",
+        "label": "智能"
+      },
+      "privacyData": {
+        "description": "隐私、权限与数据分析",
+        "label": "隐私与数据"
+      },
+      "system": {
+        "description": "更新、存储与开发者工具",
+        "label": "系统"
       }
     },
     "title": "设置"
@@ -962,12 +953,12 @@
       "cleanupMode": "整理模式",
       "description": "为你的 AI 助手取个名字，这样你就能在听写时直接呼唤它",
       "dialogs": {
-        "updatedDescription": "你的助手已命名为\u201c{{name}}\u201d。说\u201cHey {{name}}\u201d然后说出指令即可使用。",
+        "updatedDescription": "你的助手已命名为“{{name}}”。说“Hey {{name}}”然后说出指令即可使用。",
         "updatedTitle": "助手名称已更新"
       },
       "examplesTitle": "示例",
       "helper": "选一个简短、说起来自然的名字",
-      "howItWorksDescription": "当你说\u201cHey {{agentName}}\u201d并跟上指令时，AI 会从整理模式切换到指令模式。没有触发短语时，它只会整理你的听写内容。",
+      "howItWorksDescription": "当你说“Hey {{agentName}}”并跟上指令时，AI 会从整理模式切换到指令模式。没有触发短语时，它只会整理你的听写内容。",
       "howItWorksTitle": "工作原理",
       "instructionMode": "指令",
       "placeholder": "例如 Jarvis、Nova、Atlas...",
@@ -1062,6 +1053,7 @@
       "hotkey": {
         "activationMode": "激活模式",
         "description": "用于开始和停止语音听写的组合键",
+        "resetToDefault": "重置为 {{hotkey}}",
         "title": "听写快捷键"
       },
       "microphone": {
@@ -1245,5 +1237,248 @@
         "openai_oss_gpt_oss_20b_mxfp4": "OpenAI 开源模型，适用于消费级硬件"
       }
     }
+  },
+  "referral": {
+    "title": "推荐赚取奖励",
+    "subtitle": "送一个月，得一个月。",
+    "tabs": {
+      "refer": "推荐",
+      "pastInvites": "历史邀请"
+    },
+    "howItWorks": {
+      "shareLink": "分享你的邀请链接",
+      "theySignUp": "对方注册即可获得",
+      "freeMonthOfPro": "一个月免费 Pro",
+      "youGet": "你将获得",
+      "freeMonth": "一个月免费",
+      "whenTheyDictate": "当对方听写满 2,000 个词时"
+    },
+    "inviteLink": {
+      "title": "你的邀请链接",
+      "copy": "复制",
+      "copied": "已复制"
+    },
+    "sendInvites": {
+      "title": "发送邀请",
+      "placeholder": "friend@example.com",
+      "send": "发送",
+      "sending": "发送中"
+    },
+    "stats": {
+      "referred": "已推荐",
+      "converted": "已转化",
+      "monthsEarned": "已获得月数"
+    },
+    "status": {
+      "converted": "已转化",
+      "opened": "已打开",
+      "failed": "失败",
+      "sent": "已发送"
+    },
+    "empty": {
+      "title": "尚未发送任何邀请",
+      "description": "分享你的链接或发送邀请以开始使用"
+    },
+    "toasts": {
+      "copiedTitle": "已复制！",
+      "copiedDescription": "推荐链接已复制到剪贴板",
+      "copyFailedTitle": "复制失败",
+      "copyFailedDescription": "无法将链接复制到剪贴板",
+      "invalidEmailTitle": "邮箱地址无效",
+      "invalidEmailDescription": "请输入有效的邮箱地址",
+      "inviteSentTitle": "邀请已发送！",
+      "inviteSentDescription": "邀请已发送至 {{email}}",
+      "sendFailedTitle": "发送失败",
+      "sendFailedDescription": "邀请发送失败，请重试。"
+    },
+    "errors": {
+      "unableToLoad": "无法加载推荐数据",
+      "unableToLoadStats": "无法加载推荐统计数据，请稍后重试。"
+    },
+    "tryAgain": "重试",
+    "card": {
+      "brand": "OpenWhispr",
+      "signalId": "Signal ID",
+      "audioSignature": "你的声纹签名",
+      "stop": "停止",
+      "playSignal": "播放信号"
+    },
+    "friends": {
+      "title": "好友",
+      "completed": "已完成",
+      "sentInvites": "已发出的邀请"
+    }
+  },
+  "notes": {
+    "folders": {
+      "title": "文件夹",
+      "meetings": "会议",
+      "soon": "即将推出",
+      "folderName": "文件夹名称",
+      "couldNotCreate": "无法创建文件夹",
+      "couldNotRename": "无法重命名文件夹",
+      "couldNotDelete": "无法删除文件夹"
+    },
+    "list": {
+      "title": "笔记",
+      "newNote": "新建笔记",
+      "untitled": "无标题",
+      "untitledNote": "无标题笔记",
+      "createToGetStarted": "创建一条笔记以开始使用",
+      "selectNote": "选择一条笔记"
+    },
+    "editor": {
+      "untitled": "无标题",
+      "noteTitle": "笔记标题",
+      "stop": "停止",
+      "transcribe": "转录",
+      "recording": "录音中",
+      "processing": "处理中...",
+      "edit": "编辑",
+      "preview": "预览",
+      "enhance": "增强",
+      "reEnhance": "重新增强",
+      "export": "导出",
+      "asMarkdown": "导出为 Markdown",
+      "asPlainText": "导出为纯文本",
+      "raw": "原始内容",
+      "enhanced": "增强内容",
+      "saving": "保存中",
+      "wordsCount": "{{count}} 个词",
+      "startWriting": "开始书写...",
+      "staleIndicator": "内容在增强后已更改"
+    },
+    "enhance": {
+      "title": "AI 增强",
+      "defaultPrompt": "修正语法、改善结构，并将笔记格式化以提高可读性，同时保留所有原始含义。",
+      "placeholder": "你希望 AI 对你的笔记做什么？",
+      "tryAgain": "重试",
+      "apply": "应用",
+      "cancel": "取消",
+      "enhancing": "增强中...",
+      "enhance": "增强",
+      "noProviders": "在设置中配置 API 密钥以使用 AI 模型"
+    },
+    "upload": {
+      "title": "上传音频",
+      "using": "使用 {{model}}",
+      "dropOrBrowse": "拖放音频文件或点击浏览",
+      "supportedFormats": "MP3、WAV、M4A、WebM、OGG、FLAC、AAC",
+      "dropToUpload": "拖放以上传",
+      "transcribe": "转录",
+      "cancel": "取消",
+      "transcribingCloud": "正在通过云端转录...",
+      "transcribingLocal": "正在本地转录...",
+      "transcribingProvider": "正在通过 {{provider}} 转录...",
+      "transcriptionComplete": "转录完成",
+      "openNote": "打开笔记",
+      "uploadAnother": "上传另一个",
+      "retry": "重试",
+      "startOver": "重新开始",
+      "transcriptionSettings": "转录设置",
+      "newFolder": "新建文件夹",
+      "folderName": "文件夹名称",
+      "create": "创建",
+      "setupTitle": "设置转录",
+      "setupDescription": "选择转录音频的方式。此设置也适用于实时听写。",
+      "continue": "继续",
+      "openwhisprCloud": "OpenWhispr Cloud",
+      "custom": "自定义",
+      "selectFolder": "选择文件夹",
+      "transcriptionFailed": "转录失败",
+      "errorOccurred": "发生错误",
+      "enhancementFailed": "增强失败"
+    },
+    "meeting": {
+      "title": "会议笔记",
+      "description": "说话人识别与结构化摘要",
+      "comingSoon": "即将推出"
+    },
+    "context": {
+      "moveToFolder": "移动到文件夹",
+      "delete": "删除",
+      "rename": "重命名",
+      "searchFolders": "搜索文件夹...",
+      "noResults": "未找到文件夹",
+      "newFolder": "新建文件夹"
+    },
+    "actions": {
+      "manage": "管理操作...",
+      "manageTitle": "自定义操作",
+      "addAction": "新建操作",
+      "editAction": "编辑操作",
+      "namePlaceholder": "操作名称",
+      "descriptionPlaceholder": "简要描述（可选）",
+      "promptPlaceholder": "AI 应如何处理笔记内容？",
+      "builtIn": "内置",
+      "save": "保存",
+      "update": "更新",
+      "cancel": "取消",
+      "noActions": "暂无自定义操作",
+      "runAction": "运行 {{name}}",
+      "selectAction": "选择操作",
+      "done": "完成",
+      "builtin": {
+        "cleanupNotes": {
+          "name": "整理笔记",
+          "description": "修正语法、结构和格式"
+        }
+      }
+    },
+    "empty": {
+      "title": "这里还没有笔记",
+      "description": "创建你的第一条笔记，开始书写",
+      "selectTitle": "选择笔记",
+      "selectDescription": "从侧边栏选择一条笔记",
+      "createNote": "创建笔记",
+      "emptyFolder": "此文件夹中没有笔记"
+    },
+    "addToFolder": {
+      "title": "添加笔记",
+      "searchPlaceholder": "搜索要添加的笔记...",
+      "addExisting": "添加已有笔记",
+      "addCount": "添加 {{count}} 条笔记",
+      "noResults": "没有匹配的笔记",
+      "noNotesAvailable": "没有其他可用笔记"
+    }
+  },
+  "dictionary": {
+    "addWord": "添加词语",
+    "removeWord": "移除 {{word}}",
+    "clearAll": "全部清除",
+    "howItWorks": "工作原理",
+    "title": "自定义词典",
+    "description": "教 AI 学习你的词汇 — 名字、行话和它可能遗漏的术语",
+    "clearTitle": "清空词典？",
+    "clearDescription": "这将删除自定义词典中的所有词汇，此操作无法撤销。",
+    "addPlaceholder": "添加词语或短语..."
+  },
+  "sidebar": {
+    "home": "首页",
+    "notes": "笔记",
+    "upload": "上传",
+    "dictionary": "词典",
+    "referral": "获取免费一个月",
+    "settings": "设置",
+    "support": "支持"
+  },
+  "usage": {
+    "approachingLimit": "即将达到周限额",
+    "approachingLimitDescription": "你本周已使用 {{wordsUsed}} / {{limit}} 个免费词数。",
+    "yourPlan": "你的套餐",
+    "trial": "试用期（剩余 {{days}} 天）",
+    "trial_other": "试用期（剩余 {{days}} 天）",
+    "pro": "Pro",
+    "unlimitedTrial": "试用期间无限转录",
+    "unlimited": "无限转录",
+    "manageSubscription": "管理订阅",
+    "weeklyUsage": "每周用量",
+    "limitReached": "已达上限",
+    "free": "免费版",
+    "wordsRemaining": "剩余 {{remaining}} 个词",
+    "rollingLimit": "滚动周限额",
+    "upgradeToPro": "升级到 Pro",
+    "useYourOwnKey": "使用自己的 API Key",
+    "upgradeUnlimited": "升级到 Pro — 无限转录"
   }
 }

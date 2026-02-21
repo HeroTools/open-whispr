@@ -327,6 +327,7 @@ function navigateControlPanelWithVerifier(verifier) {
   windowManager.controlPanelWindow.focus();
 }
 
+
 function handleOAuthDeepLink(deepLinkUrl) {
   try {
     const parsed = new URL(deepLinkUrl);
@@ -524,18 +525,29 @@ async function startApp() {
     const POST_STOP_COOLDOWN_MS = 300;
 
     globeKeyManager.on("globe-down", async () => {
+      const currentHotkey = hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey();
+      const mainWindowLive = isLiveWindow(windowManager.mainWindow);
+      debugLogger?.debug("[Globe] globe-down received", {
+        currentHotkey,
+        mainWindowLive,
+        activationMode: mainWindowLive ? windowManager.getActivationMode() : "n/a",
+      });
+
       // Forward to control panel for hotkey capture
       if (isLiveWindow(windowManager.controlPanelWindow)) {
         windowManager.controlPanelWindow.webContents.send("globe-key-pressed");
       }
 
       // Handle dictation if Globe is the current hotkey
-      if (hotkeyManager.getCurrentHotkey && hotkeyManager.getCurrentHotkey() === "GLOBE") {
-        if (isLiveWindow(windowManager.mainWindow)) {
+      if (currentHotkey === "GLOBE") {
+        if (mainWindowLive) {
           const activationMode = windowManager.getActivationMode();
           if (activationMode === "push") {
             const now = Date.now();
-            if (now - globeLastStopTime < POST_STOP_COOLDOWN_MS) return;
+            if (now - globeLastStopTime < POST_STOP_COOLDOWN_MS) {
+              debugLogger?.debug("[Globe] Ignored — cooldown active");
+              return;
+            }
             windowManager.showDictationPanel();
             const pressTime = now;
             globeKeyDownTime = pressTime;
@@ -543,6 +555,7 @@ async function startApp() {
             setTimeout(async () => {
               if (globeKeyDownTime === pressTime && !globeKeyIsRecording) {
                 globeKeyIsRecording = true;
+                debugLogger?.debug("[Globe] Starting dictation (push hold)");
                 windowManager.sendStartDictation();
               }
             }, MIN_HOLD_DURATION_MS);
@@ -550,11 +563,17 @@ async function startApp() {
             windowManager.showDictationPanel();
             windowManager.mainWindow.webContents.send("toggle-dictation");
           }
+        } else {
+          debugLogger?.debug("[Globe] Ignored — mainWindow not live");
         }
+      } else {
+        debugLogger?.debug("[Globe] Ignored — hotkey is not GLOBE", { currentHotkey });
       }
     });
 
     globeKeyManager.on("globe-up", async () => {
+      debugLogger?.debug("[Globe] globe-up received", { wasRecording: globeKeyIsRecording });
+
       // Forward to control panel for hotkey capture (Fn key released)
       if (isLiveWindow(windowManager.controlPanelWindow)) {
         windowManager.controlPanelWindow.webContents.send("globe-key-released");
@@ -568,6 +587,7 @@ async function startApp() {
           globeLastStopTime = Date.now();
           if (globeKeyIsRecording) {
             globeKeyIsRecording = false;
+            debugLogger?.debug("[Globe] Stopping dictation (push release)");
             windowManager.sendStopDictation();
           }
         }

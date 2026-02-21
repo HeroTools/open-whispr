@@ -48,7 +48,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.4.8] - 2026-02-12
 
 ### Added
-
+- **Referral Program**: Invite friends to earn free Pro months with referral dashboard, email invitations, invite tracking with status badges, and animated spectrogram share card with unique referral code
+- **Notes System**: Added sidebar navigation with notes system and dictionary view for organizing transcriptions
+- **Folder Organization**: Notes can be organized into custom folders with a default Personal folder, folder management UI, and folder-aware note filtering. Upload flow now includes folder selection
 - **Internationalization v1**: Full desktop localization across auth, settings, hooks, and UI with centralized renderer locale resources (#258)
 - **Chinese Language Split**: Split Chinese into Simplified (zh-CN) and Traditional (zh-TW) with tailored AI instructions and one-time migration for existing users (#267)
 - **Russian Interface Language**: Added Russian to interface language options
@@ -76,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Archive Extraction Retry**: Reuse existing archive on extraction retry with improved error handling
 - **Email Verification Polling**: Pass email param in verification polling and stop on 401 responses
 - **Auth Build Bundling**: Added @neondatabase/auth packages to rollup externals for correct production bundling (#256)
+- **Neon Auth Build Config**: Fixed Vite build configuration for Neon Auth packages (#266)
 
 ### Changed
 
