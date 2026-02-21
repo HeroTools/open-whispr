@@ -160,14 +160,14 @@ export default function HistoryView({
         )}
 
         {isLoading ? (
-          <div className="rounded-lg border border-border bg-card/50 dark:bg-card/30 backdrop-blur-sm">
+          <div className="rounded-lg border border-border bg-card/50 dark:bg-card/60 backdrop-blur-sm">
             <div className="flex items-center justify-center gap-2 py-8">
               <Loader2 size={14} className="animate-spin text-primary" />
               <span className="text-sm text-muted-foreground">{t("controlPanel.loading")}</span>
             </div>
           </div>
         ) : history.length === 0 ? (
-          <div className="rounded-lg border border-border bg-card/50 dark:bg-card/30 backdrop-blur-sm">
+          <div className="rounded-lg border border-border bg-card/50 dark:bg-card/60 backdrop-blur-sm">
             <div className="flex flex-col items-center justify-center py-16 px-4">
               <svg
                 className="text-foreground dark:text-white mb-5"
@@ -253,12 +253,12 @@ export default function HistoryView({
                   strokeLinecap="round"
                 />
               </svg>
-              <h3 className="text-xs font-semibold text-foreground/60 mb-2">
+              <h3 className="text-xs font-semibold text-foreground/70 dark:text-foreground/60 mb-2">
                 {t("controlPanel.history.empty")}
               </h3>
-              <div className="flex items-center gap-2 text-xs text-foreground/25">
+              <div className="flex items-center gap-2 text-xs text-foreground/50 dark:text-foreground/25">
                 <span>{t("controlPanel.history.press")}</span>
-                <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border/50 text-xs font-mono font-medium text-foreground/40">
+                <kbd className="inline-flex items-center h-5 px-1.5 rounded-sm bg-surface-1 dark:bg-white/6 border border-border/50 text-xs font-mono font-medium text-foreground/60 dark:text-foreground/40">
                   {formatHotkeyLabel(hotkey)}
                 </kbd>
                 <span>{t("controlPanel.history.toStart")}</span>
@@ -266,11 +266,11 @@ export default function HistoryView({
             </div>
           </div>
         ) : (
-          <div className="space-y-4">
-            {groupedHistory.map((group) => (
+          <div>
+            {groupedHistory.map((group, index) => (
               <div key={group.label}>
-                <div className="sticky top-0 z-10 bg-background px-1 pb-2 pt-1">
-                  <span className="text-[11px] font-semibold text-muted-foreground/70 uppercase tracking-wide">
+                <div className={`sticky top-0 z-10 bg-background px-1 pb-2 before:content-[''] before:absolute before:left-0 before:right-0 before:bottom-full before:h-5 before:bg-background ${index === 0 ? "pt-1" : "pt-5"}`}>
+                  <span className="text-[11px] font-semibold text-muted-foreground dark:text-muted-foreground uppercase tracking-wide">
                     {group.label}
                   </span>
                 </div>

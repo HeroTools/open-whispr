@@ -40,12 +40,12 @@ export function useNoteDragAndDrop({ onMoveToFolder, currentFolderId }: UseNoteD
         ghost.style.cssText = `
           position: fixed; top: -200px; left: -200px;
           padding: 4px 12px;
-          background: oklch(0.15 0.008 270 / 0.92);
-          color: oklch(0.8 0 0);
+          background: oklch(0.27 0.008 260 / 0.95);
+          color: oklch(0.9 0 0);
           font-size: 11px;
           font-weight: 500;
           border-radius: 6px;
-          border: 1px solid oklch(0.28 0.01 270);
+          border: 1px solid oklch(0.38 0.008 260);
           white-space: nowrap;
           pointer-events: none;
         `;

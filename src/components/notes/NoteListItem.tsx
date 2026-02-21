@@ -113,13 +113,13 @@ export default function NoteListItem({
           <p
             className={cn(
               "text-xs truncate transition-colors duration-150",
-              isActive ? "text-foreground font-medium" : "text-foreground/80"
+              isActive ? "text-foreground font-medium" : "text-foreground"
             )}
           >
             {note.title || t("notes.list.untitled")}
           </p>
           <div className="flex items-center gap-0.5 shrink-0">
-            <span className="text-xs text-muted-foreground/30 tabular-nums group-hover:opacity-0 transition-opacity">
+            <span className="text-xs text-muted-foreground dark:text-muted-foreground/30 tabular-nums group-hover:opacity-0 transition-opacity">
               {relativeTime(note.updated_at)}
             </span>
             <DropdownMenu
@@ -136,7 +136,7 @@ export default function NoteListItem({
                   size="icon"
                   variant="ghost"
                   onClick={(e) => e.stopPropagation()}
-                  className="h-5 w-5 rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity absolute right-2 text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/5 active:bg-foreground/8"
+                  className="h-5 w-5 rounded-sm opacity-0 group-hover:opacity-100 data-[state=open]:opacity-100 transition-opacity absolute right-2 text-muted-foreground/60 dark:text-muted-foreground/40 hover:text-foreground/60 hover:bg-foreground/5 active:bg-foreground/8"
                 >
                   <MoreHorizontal size={12} />
                 </Button>
@@ -144,7 +144,7 @@ export default function NoteListItem({
               <DropdownMenuContent align="end" sideOffset={4} className="min-w-40">
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger className="text-xs gap-2 rounded-lg px-2.5 py-1.5 cursor-pointer focus:bg-foreground/5 data-[state=open]:bg-foreground/5">
-                    <FolderOpen size={12} className="text-muted-foreground/60" />
+                    <FolderOpen size={12} className="text-muted-foreground/80 dark:text-muted-foreground/60" />
                     {t("notes.context.moveToFolder")}
                   </DropdownMenuSubTrigger>
                   <DropdownMenuSubContent
@@ -247,7 +247,7 @@ export default function NoteListItem({
           </div>
         </div>
         {preview && (
-          <p className="text-xs text-muted-foreground/40 line-clamp-1 mt-0.5">{preview}</p>
+          <p className="text-xs text-muted-foreground/80 dark:text-muted-foreground/40 line-clamp-1 mt-0.5">{preview}</p>
         )}
       </div>
     </button>

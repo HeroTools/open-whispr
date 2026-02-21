@@ -942,6 +942,8 @@
             "2,000 words/week",
             "Local AI models",
             "Bring your own keys",
+            "Dictionary and snippets",
+            "Support for 100+ languages",
             "Zero data retention"
           ]
         },
@@ -952,17 +954,19 @@
           "annualPrice": "$80",
           "annualPeriod": "/yr",
           "features": [
+            "Everything in Free",
             "Unlimited usage",
-            "Mobile app (iOS coming soon)",
+            "iOS/Android (coming soon)",
             "Zero data retention",
             "Priority support"
           ],
-          "cta": "Upgrade to Pro"
+          "cta": "Upgrade to Pro",
+          "trialCta": "Start 7-Day Free Trial"
         },
         "enterprise": {
           "name": "Enterprise",
           "price": "Custom",
-          "features": ["Managed API credits", "Cloud sync", "Team features", "SSO & compliance"],
+          "features": ["Cloud sync", "Team features (coming soon)", "SSO & compliance"],
           "cta": "Contact Us"
         },
         "currentPlan": "Current plan"
@@ -986,6 +990,11 @@
         "button": "Create Free Account",
         "description": "Unlimited transcriptions, priority processing, and more.",
         "title": "Try Pro free for 7 days"
+      },
+      "signedOutPlans": {
+        "title": "Create a free account",
+        "description": "Get 2,000 words/week free, or try Pro with a 7-day trial.",
+        "button": "Create Free Account"
       },
       "user": "User",
       "wordsRemaining": "{{remaining}} remaining"

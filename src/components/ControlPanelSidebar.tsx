@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   Home,
   NotebookPen,
@@ -8,7 +8,9 @@ import {
   Settings,
   HelpCircle,
   UserCircle,
+  X,
 } from "lucide-react";
+import logoIcon from "../assets/icon.png";
 import { useTranslation } from "react-i18next";
 import { cn } from "./lib/utils";
 import SupportDropdown from "./ui/SupportDropdown";
@@ -20,11 +22,13 @@ interface ControlPanelSidebarProps {
   onViewChange: (view: ControlPanelView) => void;
   onOpenSettings: () => void;
   onOpenReferrals?: () => void;
+  onUpgrade?: () => void;
   userName?: string | null;
   userEmail?: string | null;
   userImage?: string | null;
   isSignedIn?: boolean;
   authLoaded?: boolean;
+  isProUser?: boolean;
   updateAction?: React.ReactNode;
 }
 
@@ -33,14 +37,21 @@ export default function ControlPanelSidebar({
   onViewChange,
   onOpenSettings,
   onOpenReferrals,
+  onUpgrade,
   userName,
   userEmail,
   userImage,
   isSignedIn,
   authLoaded,
+  isProUser,
   updateAction,
 }: ControlPanelSidebarProps) {
   const { t } = useTranslation();
+  const [upgradeDismissed, setUpgradeDismissed] = useState(
+    () => localStorage.getItem("upgradeProDismissed") === "true"
+  );
+
+  const showUpgradeBanner = !isProUser && !upgradeDismissed;
 
   const navItems: {
     id: ControlPanelView;
@@ -54,7 +65,7 @@ export default function ControlPanelSidebar({
   ];
 
   return (
-    <div className="w-48 shrink-0 border-r border-border/15 dark:border-white/5 flex flex-col bg-surface-1/60 dark:bg-surface-0/40">
+    <div className="w-48 shrink-0 border-r border-border/15 dark:border-white/6 flex flex-col bg-surface-1/60 dark:bg-surface-1">
       <div
         className="w-full h-10 shrink-0"
         style={{ WebkitAppRegion: "drag" } as React.CSSProperties}
@@ -84,7 +95,7 @@ export default function ControlPanelSidebar({
                 size={15}
                 className={cn(
                   "shrink-0 transition-colors duration-150",
-                  isActive ? "text-primary" : "text-foreground/45 group-hover:text-foreground/60"
+                  isActive ? "text-primary" : "text-foreground/60 group-hover:text-foreground/75 dark:text-foreground/55 dark:group-hover:text-foreground/70"
                 )}
               />
               <span
@@ -92,7 +103,7 @@ export default function ControlPanelSidebar({
                   "text-xs transition-colors duration-150",
                   isActive
                     ? "text-foreground font-medium"
-                    : "text-foreground/65 group-hover:text-foreground/80"
+                    : "text-foreground/80 group-hover:text-foreground dark:text-foreground/75 dark:group-hover:text-foreground/90"
                 )}
               >
                 {item.label}
@@ -103,6 +114,38 @@ export default function ControlPanelSidebar({
       </nav>
 
       <div className="flex-1" />
+
+      {showUpgradeBanner && (
+        <div className="px-2 pb-2">
+          <div className="relative rounded-lg border border-primary/20 bg-primary/5 dark:bg-primary/10 p-3">
+            <button
+              onClick={() => {
+                setUpgradeDismissed(true);
+                localStorage.setItem("upgradeProDismissed", "true");
+              }}
+              aria-label="Dismiss"
+              className="absolute top-1.5 right-1.5 p-0.5 rounded-sm text-muted-foreground hover:text-foreground hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+            >
+              <X size={12} />
+            </button>
+            <div className="flex flex-col items-center text-center pt-1">
+              <img src={logoIcon} alt="" className="w-7 h-7 rounded-md mb-2" />
+              <p className="text-xs font-medium text-foreground mb-0.5">
+                Upgrade to Pro
+              </p>
+              <p className="text-[11px] leading-snug text-muted-foreground mb-2.5">
+                Unlimited transcriptions and premium features.
+              </p>
+              <button
+                onClick={onUpgrade}
+                className="w-full h-7 rounded-md bg-primary text-primary-foreground text-xs font-medium hover:bg-primary/90 transition-colors"
+              >
+                Learn more
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="px-2 pb-2 space-y-0.5">
         {updateAction && (
@@ -119,9 +162,9 @@ export default function ControlPanelSidebar({
           >
             <Gift
               size={15}
-              className="shrink-0 text-foreground/35 group-hover:text-foreground/50 transition-colors duration-150"
+              className="shrink-0 text-foreground/60 group-hover:text-foreground/75 dark:text-foreground/50 dark:group-hover:text-foreground/65 transition-colors duration-150"
             />
-            <span className="text-xs text-foreground/55 group-hover:text-foreground/70 transition-colors duration-150">
+            <span className="text-xs text-foreground/80 group-hover:text-foreground dark:text-foreground/70 dark:group-hover:text-foreground/85 transition-colors duration-150">
               {t("sidebar.referral")}
             </span>
           </button>
@@ -134,9 +177,9 @@ export default function ControlPanelSidebar({
         >
           <Settings
             size={15}
-            className="shrink-0 text-foreground/35 group-hover:text-foreground/50 transition-colors duration-150"
+            className="shrink-0 text-foreground/60 group-hover:text-foreground/75 dark:text-foreground/50 dark:group-hover:text-foreground/65 transition-colors duration-150"
           />
-          <span className="text-xs text-foreground/55 group-hover:text-foreground/70 transition-colors duration-150">
+          <span className="text-xs text-foreground/80 group-hover:text-foreground dark:text-foreground/70 dark:group-hover:text-foreground/85 transition-colors duration-150">
             {t("sidebar.settings")}
           </span>
         </button>
@@ -149,35 +192,35 @@ export default function ControlPanelSidebar({
             >
               <HelpCircle
                 size={15}
-                className="shrink-0 text-foreground/35 group-hover:text-foreground/50 transition-colors duration-150"
+                className="shrink-0 text-foreground/60 group-hover:text-foreground/75 dark:text-foreground/50 dark:group-hover:text-foreground/65 transition-colors duration-150"
               />
-              <span className="text-xs text-foreground/55 group-hover:text-foreground/70 transition-colors duration-150">
+              <span className="text-xs text-foreground/80 group-hover:text-foreground dark:text-foreground/70 dark:group-hover:text-foreground/85 transition-colors duration-150">
                 {t("sidebar.support")}
               </span>
             </button>
           }
         />
 
-        <div className="mx-1 h-px bg-border/10 dark:bg-white/4 my-1.5!" />
+        <div className="mx-1 h-px bg-border/10 dark:bg-white/6 my-1.5!" />
 
         <div className="flex items-center gap-2.5 px-2.5 py-1.5 rounded-md">
           {userImage ? (
             <img src={userImage} alt="" className="w-6 h-6 rounded-full shrink-0 object-cover" />
           ) : (
-            <UserCircle size={18} className="shrink-0 text-foreground/30" />
+            <UserCircle size={18} className="shrink-0 text-foreground/50 dark:text-foreground/45" />
           )}
           <div className="flex-1 min-w-0">
             {isSignedIn && (userName || userEmail) ? (
               <>
-                <p className="text-xs text-foreground/70 truncate leading-tight">
+                <p className="text-xs text-foreground/80 dark:text-foreground/80 truncate leading-tight">
                   {userName || "User"}
                 </p>
                 {userEmail && (
-                  <p className="text-xs text-foreground/40 truncate leading-tight">{userEmail}</p>
+                  <p className="text-xs text-foreground/55 dark:text-foreground/55 truncate leading-tight">{userEmail}</p>
                 )}
               </>
             ) : authLoaded && !isSignedIn ? (
-              <p className="text-xs text-foreground/45">Not signed in</p>
+              <p className="text-xs text-foreground/45 dark:text-foreground/55">Not signed in</p>
             ) : null}
           </div>
         </div>

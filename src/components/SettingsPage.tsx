@@ -924,6 +924,13 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
   const [isOpeningBilling, setIsOpeningBilling] = useState(false);
   const [billingPeriod, setBillingPeriod] = useState<"monthly" | "annual">("monthly");
 
+  const startOnboarding = useCallback(() => {
+    localStorage.setItem("pendingCloudMigration", "true");
+    localStorage.setItem("onboardingCurrentStep", "0");
+    localStorage.removeItem("onboardingCompleted");
+    window.location.reload();
+  }, []);
+
   const handleSignOut = useCallback(async () => {
     setIsSigningOut(true);
     try {
@@ -1036,12 +1043,7 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                         </p>
                       </div>
                       <Button
-                        onClick={() => {
-                          localStorage.setItem("pendingCloudMigration", "true");
-                          localStorage.setItem("onboardingCurrentStep", "0");
-                          localStorage.removeItem("onboardingCompleted");
-                          window.location.reload();
-                        }}
+                        onClick={startOnboarding}
                         size="sm"
                         className="w-full"
                       >
@@ -1088,9 +1090,8 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </SettingsPanelRow>
                 </SettingsPanel>
               </>
-            ) : isLoaded && isSignedIn ? (
+            ) : isLoaded ? (
               <>
-                {/* Pricing Section */}
                 <SectionHeader title={t("settingsPage.account.pricing.title")} />
                 <div className="space-y-2.5">
                   <div className="flex justify-center">
@@ -1159,13 +1160,22 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                           </li>
                         ))}
                       </ul>
-                      {!usage?.isSubscribed && !usage?.isTrial && (
+                      {isSignedIn && !usage?.isSubscribed && !usage?.isTrial ? (
                         <div className="mt-2 text-center">
                           <span className="text-[9px] font-medium text-primary/70">
                             {t("settingsPage.account.pricing.currentPlan")}
                           </span>
                         </div>
-                      )}
+                      ) : !isSignedIn ? (
+                        <Button
+                          onClick={startOnboarding}
+                          variant="outline"
+                          size="sm"
+                          className="mt-2 w-full h-6 text-[10px]"
+                        >
+                          {t("settingsPage.account.signedOutPlans.button")}
+                        </Button>
+                      ) : null}
                     </div>
 
                     {/* Pro */}
@@ -1213,6 +1223,14 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                             {t("settingsPage.account.pricing.currentPlan")}
                           </span>
                         </div>
+                      ) : !isSignedIn ? (
+                        <Button
+                          onClick={startOnboarding}
+                          size="sm"
+                          className="mt-2 w-full h-6 text-[10px]"
+                        >
+                          {t("settingsPage.account.pricing.pro.trialCta")}
+                        </Button>
                       ) : (
                         <Button
                           onClick={async () => {
@@ -1281,7 +1299,9 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                   </div>
                 </div>
 
-                <SectionHeader title={t("settingsPage.account.planTitle")} />
+                {isSignedIn ? (
+                  <>
+                    <SectionHeader title={t("settingsPage.account.planTitle")} />
                 {!usage || !usage.hasLoaded ? (
                   <SettingsPanel>
                     <SettingsPanelRow>
@@ -1488,20 +1508,34 @@ export default function SettingsPage({ activeSection = "general" }: SettingsPage
                     </SettingsPanelRow>
                   </SettingsPanel>
                 )}
-              </>
-            ) : isLoaded ? (
-              <>
-                <SectionHeader title={t("settingsPage.account.pricing.title")} />
-                <SettingsPanel>
-                  <SettingsPanelRow>
-                    <SettingsRow
-                      label={t("settingsPage.account.notSignedIn")}
-                      description={t("settingsPage.account.notSignedInDescription")}
-                    >
-                      <Badge variant="outline">{t("settingsPage.account.offline")}</Badge>
-                    </SettingsRow>
-                  </SettingsPanelRow>
-                </SettingsPanel>
+                  </>
+                ) : (
+                  <div className="rounded-lg border border-primary/20 dark:border-primary/15 bg-primary/3 dark:bg-primary/6 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-md bg-primary/10 dark:bg-primary/15 flex items-center justify-center shrink-0 mt-0.5">
+                        <UserCircle className="w-4 h-4 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1 space-y-2.5">
+                        <div>
+                          <p className="text-xs font-medium text-foreground">
+                            {t("settingsPage.account.signedOutPlans.title")}
+                          </p>
+                          <p className="text-xs text-muted-foreground leading-relaxed mt-0.5">
+                            {t("settingsPage.account.signedOutPlans.description")}
+                          </p>
+                        </div>
+                        <Button
+                          onClick={startOnboarding}
+                          size="sm"
+                          className="w-full"
+                        >
+                          <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                          {t("settingsPage.account.signedOutPlans.button")}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             ) : (
               <>

@@ -30,13 +30,13 @@ export default function TranscriptionItem({
 
   return (
     <div
-      className="group rounded-md border border-border/40 dark:border-border-subtle/50 bg-card/50 dark:bg-surface-2/30 px-3 py-2.5 transition-colors duration-150 hover:bg-muted/30 dark:hover:bg-white/3"
+      className="group rounded-md border border-border/40 dark:border-border-subtle/60 bg-card/50 dark:bg-surface-2/60 px-3 py-2.5 transition-colors duration-150 hover:bg-muted/30 dark:hover:bg-surface-2/80"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
       <div className="flex items-start gap-3">
         {formattedTime && (
-          <span className="shrink-0 text-[11px] text-muted-foreground/70 tabular-nums pt-0.5">
+          <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums pt-0.5">
             {formattedTime}
           </span>
         )}

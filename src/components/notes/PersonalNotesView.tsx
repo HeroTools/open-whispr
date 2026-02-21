@@ -302,7 +302,7 @@ export default function PersonalNotesView() {
       <div className="w-52 shrink-0 border-r border-border/15 dark:border-white/4 flex flex-col">
         {/* Folders */}
         <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-xs font-medium uppercase tracking-wider text-foreground/25">
+          <span className="text-xs font-medium uppercase tracking-wider text-foreground/50 dark:text-foreground/25">
             {t("notes.folders.title")}
           </span>
           <Button
@@ -310,7 +310,7 @@ export default function PersonalNotesView() {
             size="icon"
             onClick={() => setIsCreatingFolder(true)}
             aria-label={t("notes.context.newFolder")}
-            className="h-5 w-5 rounded-md text-muted-foreground/30 hover:text-foreground/60 hover:bg-foreground/5"
+            className="h-5 w-5 rounded-md text-muted-foreground/50 dark:text-muted-foreground/30 hover:text-foreground/60 hover:bg-foreground/5"
           >
             <Plus size={13} />
           </Button>
@@ -374,7 +374,7 @@ export default function PersonalNotesView() {
                     "shrink-0 transition-colors duration-150",
                     isDragOver || isActive
                       ? "text-primary"
-                      : "text-foreground/20 group-hover:text-foreground/35"
+                      : "text-foreground/35 dark:text-foreground/20 group-hover:text-foreground/50 dark:group-hover:text-foreground/35"
                   )}
                 />
                 <span
@@ -403,7 +403,7 @@ export default function PersonalNotesView() {
                       <span
                         className={cn(
                           "text-xs tabular-nums shrink-0 transition-colors group-hover:opacity-0",
-                          isActive ? "text-foreground/30" : "text-foreground/15"
+                          isActive ? "text-foreground/50 dark:text-foreground/30" : "text-foreground/35 dark:text-foreground/15"
                         )}
                       >
                         {count > 0 ? count : ""}
@@ -480,7 +480,7 @@ export default function PersonalNotesView() {
         {!isMeetingsFolder && (
           <>
             <div className="flex items-center justify-between px-3 py-1">
-              <span className="text-xs font-medium uppercase tracking-wider text-foreground/25">
+              <span className="text-xs font-medium uppercase tracking-wider text-foreground/50 dark:text-foreground/25">
                 {t("notes.list.title")}
               </span>
               <Button
@@ -488,7 +488,7 @@ export default function PersonalNotesView() {
                 size="icon"
                 onClick={handleNewNote}
                 aria-label={t("notes.list.newNote")}
-                className="h-5 w-5 rounded-md text-muted-foreground/30 hover:text-foreground/60 hover:bg-foreground/5"
+                className="h-5 w-5 rounded-md text-muted-foreground/50 dark:text-muted-foreground/30 hover:text-foreground/60 hover:bg-foreground/5"
               >
                 <Plus size={13} />
               </Button>
@@ -559,7 +559,7 @@ export default function PersonalNotesView() {
                       fillOpacity={0.04}
                     />
                   </svg>
-                  <p className="text-xs text-foreground/25 mb-3">{t("notes.empty.emptyFolder")}</p>
+                  <p className="text-xs text-foreground/50 dark:text-foreground/25 mb-3">{t("notes.empty.emptyFolder")}</p>
                   <div className="flex flex-col gap-1.5 w-full max-w-36">
                     <button
                       onClick={handleNewNote}
@@ -696,7 +696,7 @@ export default function PersonalNotesView() {
             <h3 className="text-xs font-semibold text-foreground/60 mb-1">
               {t("notes.meeting.title")}
             </h3>
-            <p className="text-xs text-foreground/25 text-center max-w-52 mb-3">
+            <p className="text-xs text-foreground/50 dark:text-foreground/25 text-center max-w-52 mb-3">
               {t("notes.meeting.description")}
             </p>
             <span className="text-[8px] font-semibold uppercase tracking-widest text-primary/40 bg-primary/5 dark:bg-primary/8 px-2.5 py-1 rounded-md border border-primary/8 dark:border-primary/12">
@@ -845,7 +845,7 @@ export default function PersonalNotesView() {
                 <h3 className="text-xs font-semibold text-foreground/60 mb-1">
                   {t("notes.empty.title")}
                 </h3>
-                <p className="text-xs text-foreground/25 text-center max-w-55 mb-4">
+                <p className="text-xs text-foreground/50 dark:text-foreground/25 text-center max-w-55 mb-4">
                   {t("notes.empty.description")}
                 </p>
                 <div className="flex items-center gap-2">
@@ -869,7 +869,7 @@ export default function PersonalNotesView() {
                 <h3 className="text-xs font-semibold text-foreground/60 mb-1">
                   {t("notes.empty.selectTitle")}
                 </h3>
-                <p className="text-xs text-foreground/25 text-center max-w-50">
+                <p className="text-xs text-foreground/50 dark:text-foreground/25 text-center max-w-50">
                   {t("notes.empty.selectDescription")}
                 </p>
               </>

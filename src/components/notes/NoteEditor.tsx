@@ -284,7 +284,7 @@ export default function NoteEditor({
           aria-label={t("notes.editor.noteTitle")}
         />
         <div className="flex items-center mt-1">
-          <div className="flex items-center text-xs text-foreground/20 min-w-0">
+          <div className="flex items-center text-xs text-foreground/50 dark:text-foreground/20 min-w-0">
             {noteDate && <span>{noteDate}</span>}
             {noteDate && (isSaving || wordCount > 0) && <span className="mx-1.5">&middot;</span>}
             <span className="tabular-nums flex items-center gap-1 shrink-0">
