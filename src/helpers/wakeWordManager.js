@@ -38,6 +38,8 @@ class WakeWordManager {
     this.enabled = false;
     this.phrase = (process.env.WAKE_WORD_PHRASE || "whisper").toLowerCase().trim();
     this.finishPhrase = (process.env.WAKE_WORD_FINISH_PHRASE || "").toLowerCase().trim();
+    this.cancelPhrase = (process.env.WAKE_WORD_CANCEL_PHRASE || "").toLowerCase().trim();
+    this.enterPhrase = (process.env.WAKE_WORD_ENTER_PHRASE || "").toLowerCase().trim();
     this.listening = false;
     this.dictationActive = false;
     this.starting = false;
@@ -56,7 +58,9 @@ class WakeWordManager {
       process.env.WAKE_WORD_ENABLED = enabled ? "true" : "";
       process.env.WAKE_WORD_PHRASE = this.phrase;
       process.env.WAKE_WORD_FINISH_PHRASE = this.finishPhrase;
-      return { success: true, enabled: this.enabled, phrase: this.phrase, finishPhrase: this.finishPhrase };
+      process.env.WAKE_WORD_CANCEL_PHRASE = this.cancelPhrase;
+      process.env.WAKE_WORD_ENTER_PHRASE = this.enterPhrase;
+      return { success: true, enabled: this.enabled, phrase: this.phrase, finishPhrase: this.finishPhrase, cancelPhrase: this.cancelPhrase, enterPhrase: this.enterPhrase };
     } catch (err) {
       debugLogger.error("[WakeWord] Toggle failed", { error: err.message });
       return { success: false, error: err.message };
@@ -75,11 +79,25 @@ class WakeWordManager {
     return { success: true, finishPhrase: this.finishPhrase };
   }
 
+  setCancelPhrase(phrase) {
+    this.cancelPhrase = (phrase || "").toLowerCase().trim();
+    process.env.WAKE_WORD_CANCEL_PHRASE = this.cancelPhrase;
+    return { success: true, cancelPhrase: this.cancelPhrase };
+  }
+
+  setEnterPhrase(phrase) {
+    this.enterPhrase = (phrase || "").toLowerCase().trim();
+    process.env.WAKE_WORD_ENTER_PHRASE = this.enterPhrase;
+    return { success: true, enterPhrase: this.enterPhrase };
+  }
+
   getStatus() {
     return {
       enabled: this.enabled,
       phrase: this.phrase,
       finishPhrase: this.finishPhrase,
+      cancelPhrase: this.cancelPhrase,
+      enterPhrase: this.enterPhrase,
       listening: this.listening,
       dictationActive: this.dictationActive,
       serverRunning: this.serverManager.ready,
@@ -107,16 +125,92 @@ class WakeWordManager {
       return { matched: false, text: "", skipped: "server_not_ready" };
     }
 
-    // Decide which phrase to match
-    const activePhrase = this.dictationActive && this.finishPhrase
-      ? this.finishPhrase
-      : this.phrase;
-    const mode = this.dictationActive ? "finish" : "wake";
+    // During dictation, check action phrases (cancel, enter, finish). When idle, check wake phrase.
+    if (this.dictationActive) {
+      const actionPhrases = [
+        { phrase: this.cancelPhrase, action: "cancel" },
+        { phrase: this.enterPhrase, action: "enter" },
+        { phrase: this.finishPhrase, action: "finish" },
+      ].filter(p => p.phrase);
 
-    // During dictation without a finish phrase, skip checking
-    if (this.dictationActive && !this.finishPhrase) {
-      return { matched: false, text: "" };
+      // During dictation without any action phrase, skip checking
+      if (actionPhrases.length === 0) {
+        return { matched: false, text: "" };
+      }
+
+      try {
+        const result = await this.serverManager.transcribe(Buffer.from(audioBuffer), {
+          language: "en",
+        });
+
+        const rawText = (result?.text || "").trim();
+        const text = rawText.toLowerCase();
+
+        const isJunk =
+          !text ||
+          text === "you" ||
+          text === "the" ||
+          text === "i" ||
+          /^\[.*\]$/.test(text) ||
+          /^\(.*\)$/.test(text) ||
+          text.includes("[blank_audio]") ||
+          text.includes("(silence)") ||
+          text.includes("thank you") ||
+          text.includes("thanks for watching") ||
+          text.includes("subscribe");
+
+        let matchedAction = null;
+        if (!isJunk) {
+          for (const { phrase, action } of actionPhrases) {
+            if (this._matchesWakeWord(text, phrase)) {
+              matchedAction = action;
+              break;
+            }
+          }
+        }
+
+        const matched = matchedAction !== null;
+        const mode = matchedAction || "finish";
+
+        // Only broadcast non-silence entries to the listener log
+        if (!isJunk || matched) {
+          this._broadcast("wake-word:heard", {
+            text: rawText,
+            matched,
+            phrase: matchedAction ? actionPhrases.find(p => p.action === matchedAction).phrase : actionPhrases[0].phrase,
+            mode,
+          });
+        }
+
+        if (matched) {
+          if (matchedAction === "cancel") {
+            debugLogger.info("[WakeWord] Cancel phrase detected!", { text, cancelPhrase: this.cancelPhrase });
+            this._cancelDictation();
+          } else if (matchedAction === "enter") {
+            debugLogger.info("[WakeWord] Enter phrase detected!", { text, enterPhrase: this.enterPhrase });
+            this._enterDictation();
+          } else {
+            debugLogger.info("[WakeWord] Finish phrase detected!", { text, finishPhrase: this.finishPhrase });
+            this._stopDictation();
+          }
+        }
+
+        return { matched, text: rawText };
+      } catch (err) {
+        debugLogger.debug("[WakeWord] checkAudioChunk error", { error: err.message });
+        this._broadcast("wake-word:heard", {
+          text: `[error] ${err.message}`,
+          matched: false,
+          phrase: actionPhrases[0].phrase,
+          mode: "finish",
+        });
+        return { matched: false, text: "" };
+      }
     }
+
+    // Not dictating — check wake phrase
+    const activePhrase = this.phrase;
+    const mode = "wake";
 
     try {
       const result = await this.serverManager.transcribe(Buffer.from(audioBuffer), {
@@ -141,19 +235,19 @@ class WakeWordManager {
 
       const matched = !isJunk && this._matchesWakeWord(text, activePhrase);
 
-      this._broadcast("wake-word:heard", {
-        text: isJunk ? "(silence)" : rawText,
-        matched,
-        phrase: activePhrase,
-        mode,
-      });
+      // Only broadcast non-silence entries to the listener log
+      if (!isJunk || matched) {
+        this._broadcast("wake-word:heard", {
+          text: rawText,
+          matched,
+          phrase: activePhrase,
+          mode,
+        });
+      }
 
-      if (matched && mode === "wake") {
+      if (matched) {
         debugLogger.info("[WakeWord] Wake word detected!", { text, phrase: this.phrase });
         this._triggerDictation();
-      } else if (matched && mode === "finish") {
-        debugLogger.info("[WakeWord] Finish phrase detected!", { text, finishPhrase: this.finishPhrase });
-        this._stopDictation();
       }
 
       return { matched, text: rawText };
@@ -217,23 +311,28 @@ class WakeWordManager {
   _matchesWakeWord(text, phrase) {
     phrase = phrase || this.phrase;
     const normalized = text.replace(/[.,!?]/g, "").trim();
+    const words = normalized.split(/\s+/);
 
-    // Direct match
-    if (normalized.includes(phrase)) return true;
+    // Direct whole-word match (check each word individually to avoid substring false positives)
+    if (words.includes(phrase)) return true;
 
-    // Check known fuzzy variants for the phrase
+    // Multi-word phrase: check if the phrase appears as a contiguous subsequence at word boundaries
+    if (phrase.includes(" ") && normalized.includes(phrase)) return true;
+
+    // Check known fuzzy variants for the phrase (whole-word only)
     const variants = FUZZY_VARIANTS.get(phrase);
     if (variants) {
       for (const variant of variants) {
-        if (normalized.includes(variant)) return true;
+        if (words.includes(variant)) return true;
       }
     }
 
-    // Levenshtein-based fuzzy match for each word
-    const words = normalized.split(/\s+/);
-    for (const word of words) {
-      if (this._levenshteinDistance(word, phrase) <= Math.max(1, Math.floor(phrase.length / 3))) {
-        return true;
+    // Levenshtein-based fuzzy match for each word (only for phrases 4+ chars to avoid false positives)
+    if (phrase.length >= 4) {
+      for (const word of words) {
+        if (word.length >= 3 && this._levenshteinDistance(word, phrase) <= Math.max(1, Math.floor(phrase.length / 4))) {
+          return true;
+        }
       }
     }
 
@@ -282,6 +381,20 @@ class WakeWordManager {
     const mainWindow = this.windowManager?.mainWindow;
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("stop-dictation");
+    }
+  }
+
+  _cancelDictation() {
+    const mainWindow = this.windowManager?.mainWindow;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("cancel-dictation");
+    }
+  }
+
+  _enterDictation() {
+    const mainWindow = this.windowManager?.mainWindow;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("enter-dictation");
     }
   }
 

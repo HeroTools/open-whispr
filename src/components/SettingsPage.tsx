@@ -130,11 +130,15 @@ function WakeWordSection() {
   const [enabled, setEnabled] = useState(false);
   const [phrase, setPhrase] = useState("whisper");
   const [finishPhrase, setFinishPhrase] = useState("");
+  const [cancelPhrase, setCancelPhrase] = useState("");
+  const [enterPhrase, setEnterPhrase] = useState("");
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{
     enabled: boolean;
     phrase: string;
     finishPhrase: string;
+    cancelPhrase: string;
+    enterPhrase: string;
     listening: boolean;
     paused: boolean;
     dictationActive: boolean;
@@ -152,6 +156,8 @@ function WakeWordSection() {
           setEnabled(s.enabled);
           setPhrase(s.phrase || "whisper");
           setFinishPhrase(s.finishPhrase || "");
+          setCancelPhrase(s.cancelPhrase || "");
+          setEnterPhrase(s.enterPhrase || "");
           setStatus(s);
         }
       })
@@ -214,6 +220,20 @@ function WakeWordSection() {
     setFinishPhrase(newPhrase);
     try {
       await (window as any).electronAPI?.wakeWordSetFinishPhrase(newPhrase);
+    } catch {}
+  };
+
+  const handleCancelPhraseChange = async (newPhrase: string) => {
+    setCancelPhrase(newPhrase);
+    try {
+      await (window as any).electronAPI?.wakeWordSetCancelPhrase(newPhrase);
+    } catch {}
+  };
+
+  const handleEnterPhraseChange = async (newPhrase: string) => {
+    setEnterPhrase(newPhrase);
+    try {
+      await (window as any).electronAPI?.wakeWordSetEnterPhrase(newPhrase);
     } catch {}
   };
 
@@ -295,6 +315,42 @@ function WakeWordSection() {
             </p>
           </div>
         </div>
+
+        <div className="px-4 py-3.5">
+          <div className="space-y-2">
+            <label className="text-[13px] font-medium text-foreground">Cancel Phrase</label>
+            <Input
+              value={cancelPhrase}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleCancelPhraseChange(e.target.value)
+              }
+              placeholder="cancel"
+              className="h-8 text-[13px]"
+              disabled={loading}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Say this word to cancel dictation. The audio will be discarded without pasting.
+            </p>
+          </div>
+        </div>
+
+        <div className="px-4 py-3.5">
+          <div className="space-y-2">
+            <label className="text-[13px] font-medium text-foreground">Enter Phrase</label>
+            <Input
+              value={enterPhrase}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                handleEnterPhraseChange(e.target.value)
+              }
+              placeholder="send"
+              className="h-8 text-[13px]"
+              disabled={loading}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Say this word to stop dictation and press Enter after pasting (e.g. to send a message).
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Error display */}
@@ -333,7 +389,7 @@ function WakeWordSection() {
                   <span className="text-muted-foreground/50 shrink-0">{entry.time}</span>
                   <span className="flex-1 break-words">
                     {entry.matched
-                      ? `[${entry.mode === "finish" ? "FINISH" : "WAKE"}] ${entry.text}`
+                      ? `[${entry.mode === "cancel" ? "CANCEL" : entry.mode === "enter" ? "ENTER" : entry.mode === "finish" ? "FINISH" : "WAKE"}] ${entry.text}`
                       : entry.text}
                   </span>
                 </div>

@@ -14,6 +14,7 @@ export const useAudioRecording = (toast, options = {}) => {
   const audioManagerRef = useRef(null);
   const startLockRef = useRef(false);
   const stopLockRef = useRef(false);
+  const enterAfterPasteRef = useRef(false);
   const { onToggle } = options;
 
   const performStartRecording = useCallback(async () => {
@@ -104,11 +105,17 @@ export const useAudioRecording = (toast, options = {}) => {
           let text = result.text;
           try {
             const wakeStatus = await window.electronAPI?.wakeWordStatus?.();
-            if (wakeStatus?.enabled && wakeStatus?.finishPhrase) {
-              const fp = wakeStatus.finishPhrase;
-              // Remove finish phrase from the end (case-insensitive), with optional trailing punctuation
-              const pattern = new RegExp(`\\s*\\b${fp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[.,!?]*\\s*$`, "i");
-              text = text.replace(pattern, "").trim();
+            if (wakeStatus?.enabled) {
+              // Strip any configured action phrases from the end of the transcription
+              const phrasesToStrip = [
+                wakeStatus.finishPhrase,
+                wakeStatus.cancelPhrase,
+                wakeStatus.enterPhrase,
+              ].filter(Boolean);
+              for (const fp of phrasesToStrip) {
+                const pattern = new RegExp(`\\s*\\b${fp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[.,!?]*\\s*$`, "i");
+                text = text.replace(pattern, "").trim();
+              }
             }
           } catch {}
 
@@ -129,6 +136,17 @@ export const useAudioRecording = (toast, options = {}) => {
             },
             "streaming"
           );
+
+          // If enter-dictation was used, simulate Enter key after paste
+          if (enterAfterPasteRef.current) {
+            enterAfterPasteRef.current = false;
+            try {
+              await new Promise((resolve) => setTimeout(resolve, 50));
+              await window.electronAPI.pressEnterKey();
+            } catch (err) {
+              logger.warn("Failed to press Enter key after paste", { error: err.message });
+            }
+          }
 
           audioManagerRef.current.saveTranscription(text);
 
@@ -193,6 +211,22 @@ export const useAudioRecording = (toast, options = {}) => {
       onToggle?.();
     });
 
+    const disposeCancelDictation = window.electronAPI.onCancelDictation?.(() => {
+      if (audioManagerRef.current) {
+        const state = audioManagerRef.current.getState();
+        if (state.isRecording || state.isStreaming || state.isStreamingStartInProgress) {
+          audioManagerRef.current.cancelRecording();
+          onToggle?.();
+        }
+      }
+    });
+
+    const disposeEnterDictation = window.electronAPI.onEnterDictation?.(() => {
+      enterAfterPasteRef.current = true;
+      handleStop();
+      onToggle?.();
+    });
+
     const handleNoAudioDetected = () => {
       toast({
         title: t("hooks.audioRecording.noAudio.title"),
@@ -208,6 +242,8 @@ export const useAudioRecording = (toast, options = {}) => {
       disposeToggle?.();
       disposeStart?.();
       disposeStop?.();
+      disposeCancelDictation?.();
+      disposeEnterDictation?.();
       disposeNoAudio?.();
       if (audioManagerRef.current) {
         audioManagerRef.current.cleanup();

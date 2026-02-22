@@ -202,6 +202,10 @@ class IPCHandlers {
       return this.clipboardManager.checkPasteTools();
     });
 
+    ipcMain.handle("press-enter-key", async () => {
+      return this.clipboardManager.pressEnterKey();
+    });
+
     // Whisper handlers
     ipcMain.handle("transcribe-local-whisper", async (event, audioBlob, options = {}) => {
       debugLogger.log("transcribe-local-whisper called", {
@@ -619,6 +623,16 @@ class IPCHandlers {
     });
     ipcMain.handle("wake-word:set-finish-phrase", async (_, phrase) => {
       const result = this.wakeWordManager.setFinishPhrase(phrase);
+      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
+      return result;
+    });
+    ipcMain.handle("wake-word:set-cancel-phrase", async (_, phrase) => {
+      const result = this.wakeWordManager.setCancelPhrase(phrase);
+      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
+      return result;
+    });
+    ipcMain.handle("wake-word:set-enter-phrase", async (_, phrase) => {
+      const result = this.wakeWordManager.setEnterPhrase(phrase);
       this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
       return result;
     });
