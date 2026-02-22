@@ -73,11 +73,12 @@ export const useAudioRecording = (toast, options = {}) => {
         setIsRecording(isRecording);
         setIsProcessing(isProcessing);
         setIsStreaming(isStreaming ?? false);
-        if (!isStreaming) {
+        if (isRecording) {
           setPartialTranscript("");
         }
       },
       onError: (error) => {
+        setPartialTranscript("");
         // Provide specific titles for cloud error codes
         const title =
           error.code === "AUTH_EXPIRED"
@@ -99,24 +100,27 @@ export const useAudioRecording = (toast, options = {}) => {
         setPartialTranscript(text);
       },
       onTranscriptionComplete: async (result) => {
+        setPartialTranscript("");
         if (result.success) {
           setTranscript(result.text);
 
-          const isStreaming = result.source?.includes("streaming");
-          const pasteStart = performance.now();
-          await audioManagerRef.current.safePaste(
-            result.text,
-            isStreaming ? { fromStreaming: true } : {}
-          );
-          logger.info(
-            "Paste timing",
-            {
-              pasteMs: Math.round(performance.now() - pasteStart),
-              source: result.source,
-              textLength: result.text.length,
-            },
-            "streaming"
-          );
+          if (!result.alreadyPasted) {
+            const isStreaming = result.source?.includes("streaming");
+            const pasteStart = performance.now();
+            await audioManagerRef.current.safePaste(
+              result.text,
+              isStreaming ? { fromStreaming: true } : {}
+            );
+            logger.info(
+              "Paste timing",
+              {
+                pasteMs: Math.round(performance.now() - pasteStart),
+                source: result.source,
+                textLength: result.text.length,
+              },
+              "streaming"
+            );
+          }
 
           audioManagerRef.current.saveTranscription(result.text);
 
