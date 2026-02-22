@@ -22,6 +22,7 @@ class IPCHandlers {
     this.windowManager = managers.windowManager;
     this.updateManager = managers.updateManager;
     this.windowsKeyManager = managers.windowsKeyManager;
+    this.wakeWordManager = managers.wakeWordManager;
     this.getTrayManager = managers.getTrayManager;
     this.sessionId = crypto.randomUUID();
     this.assemblyAiStreaming = null;
@@ -600,6 +601,29 @@ class IPCHandlers {
       } catch (error) {
         return { success: false, error: error.message };
       }
+    });
+
+    // Wake word handlers
+    ipcMain.handle("wake-word:toggle", async (_, enabled) => {
+      const result = await this.wakeWordManager.toggle(enabled);
+      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
+      return result;
+    });
+    ipcMain.handle("wake-word:set-phrase", async (_, phrase) => {
+      const result = this.wakeWordManager.setPhrase(phrase);
+      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
+      return result;
+    });
+    ipcMain.handle("wake-word:status", async () => {
+      return this.wakeWordManager.getStatus();
+    });
+    ipcMain.handle("wake-word:set-finish-phrase", async (_, phrase) => {
+      const result = this.wakeWordManager.setFinishPhrase(phrase);
+      this.environmentManager.saveAllKeysToEnvFile().catch(() => {});
+      return result;
+    });
+    ipcMain.handle("wake-word:check-chunk", async (_, audioBuffer) => {
+      return this.wakeWordManager.checkAudioChunk(audioBuffer);
     });
 
     // Auto-start handlers

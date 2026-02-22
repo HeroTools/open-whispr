@@ -312,6 +312,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     (callback) => (_event, enabled) => callback(enabled)
   ),
 
+  // Wake word activation
+  wakeWordToggle: (enabled) => ipcRenderer.invoke("wake-word:toggle", enabled),
+  wakeWordSetPhrase: (phrase) => ipcRenderer.invoke("wake-word:set-phrase", phrase),
+  wakeWordSetFinishPhrase: (phrase) => ipcRenderer.invoke("wake-word:set-finish-phrase", phrase),
+  wakeWordStatus: () => ipcRenderer.invoke("wake-word:status"),
+  wakeWordCheckChunk: (audioBuffer) => ipcRenderer.invoke("wake-word:check-chunk", audioBuffer),
+  wakeWordRecordingState: (isRecording) => ipcRenderer.send("wake-word:recording-state", isRecording),
+  onWakeWordHeard: registerListener("wake-word:heard", (callback) => (_event, data) => callback(data)),
+
   // Auto-start management
   getAutoStartEnabled: () => ipcRenderer.invoke("get-auto-start-enabled"),
   setAutoStartEnabled: (enabled) => ipcRenderer.invoke("set-auto-start-enabled", enabled),

@@ -100,12 +100,24 @@ export const useAudioRecording = (toast, options = {}) => {
       },
       onTranscriptionComplete: async (result) => {
         if (result.success) {
-          setTranscript(result.text);
+          // Strip finish phrase from the end of the transcription if configured
+          let text = result.text;
+          try {
+            const wakeStatus = await window.electronAPI?.wakeWordStatus?.();
+            if (wakeStatus?.enabled && wakeStatus?.finishPhrase) {
+              const fp = wakeStatus.finishPhrase;
+              // Remove finish phrase from the end (case-insensitive), with optional trailing punctuation
+              const pattern = new RegExp(`\\s*\\b${fp.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}[.,!?]*\\s*$`, "i");
+              text = text.replace(pattern, "").trim();
+            }
+          } catch {}
+
+          setTranscript(text);
 
           const isStreaming = result.source?.includes("streaming");
           const pasteStart = performance.now();
           await audioManagerRef.current.safePaste(
-            result.text,
+            text,
             isStreaming ? { fromStreaming: true } : {}
           );
           logger.info(
@@ -113,12 +125,12 @@ export const useAudioRecording = (toast, options = {}) => {
             {
               pasteMs: Math.round(performance.now() - pasteStart),
               source: result.source,
-              textLength: result.text.length,
+              textLength: text.length,
             },
             "streaming"
           );
 
-          audioManagerRef.current.saveTranscription(result.text);
+          audioManagerRef.current.saveTranscription(text);
 
           if (result.source === "openai" && localStorage.getItem("useLocalWhisper") === "true") {
             toast({
