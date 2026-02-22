@@ -110,7 +110,7 @@ OpenWhispr is an Electron-based desktop dictation application that uses whisper.
   - Detects when user addresses their named agent
   - Routes to appropriate AI provider (OpenAI/Anthropic/Gemini)
   - Removes agent name from final output
-  - Supports GPT-5, Claude 4.6 (Opus/Sonnet/Haiku), and Gemini 3.1 Pro / 3 Flash / 2.5 Flash models
+  - Supports GPT-5, Claude 4.6 (Opus/Sonnet/Haiku), and Gemini 3.1 Pro / 3 Flash models
 
 ### whisper.cpp Integration
 
@@ -242,10 +242,8 @@ Environment variables persisted to `.env` (via `saveAllKeysToEnvFile()`):
     - Claude Opus 4.6 (`claude-opus-4-6`) - Most capable Claude model
   - **Google Gemini** (Direct API integration):
     - Gemini 3.1 Pro (`gemini-3.1-pro-preview`) - Most capable Gemini model
-    - Gemini 3 Flash (`gemini-3-flash-preview`) - Frontier-class speed, more capable than 2.5 Flash
-    - Gemini 2.5 Flash (`gemini-2.5-flash`) - High-performance with thinking, lower cost than 3 Flash
+    - Gemini 3 Flash (`gemini-3-flash-preview`) - Ultra-fast, high-capability next-gen model
     - Gemini 2.5 Flash Lite (`gemini-2.5-flash-lite`) - Lowest latency and cost
-    - Gemini 2.0 Flash (`gemini-2.0-flash`) - Fast, long-context option (**retiring March 31, 2026**)
   - **Local**: GGUF models via llama.cpp (Qwen, Llama, Mistral, GPT-OSS)
 
 ### 8. Model Registry Architecture

@@ -235,28 +235,14 @@
         {
           "id": "gemini-3-flash-preview",
           "name": "Gemini 3 Flash",
-          "description": "Frontier-class speed, more capable than 2.5 Flash",
+          "description": "Ultra-fast, high-capability next-gen model",
           "descriptionKey": "models.descriptions.cloud.gemini_gemini_3_flash_preview"
-        },
-        {
-          "id": "gemini-2.5-flash",
-          "name": "Gemini 2.5 Flash",
-          "description": "High-performance with thinking, lower cost than 3 Flash",
-          "descriptionKey": "models.descriptions.cloud.gemini_gemini_2_5_flash"
         },
         {
           "id": "gemini-2.5-flash-lite",
           "name": "Gemini 2.5 Flash Lite",
           "description": "Lowest latency and cost",
           "descriptionKey": "models.descriptions.cloud.gemini_gemini_2_5_flash_lite"
-        },
-        {
-          "id": "gemini-2.0-flash",
-          "name": "Gemini 2.0 Flash",
-          "description": "Fast, long-context option — retiring March 31, 2026",
-          "deprecated": true,
-          "deprecationDate": "2026-03-31",
-          "descriptionKey": "models.descriptions.cloud.gemini_gemini_2_0_flash"
         }
       ]
     },
